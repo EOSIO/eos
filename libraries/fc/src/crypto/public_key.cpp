@@ -69,12 +69,12 @@ namespace fc { namespace crypto {
 
    bool public_key::valid()const
    {
-      return fc::visit(is_valid_visitor(), _storage);
+      return std::visit(is_valid_visitor(), _storage);
    }
 
    std::string public_key::to_string(const fc::yield_function_t& yield) const
    {
-      auto data_str = fc::visit(base58str_visitor<storage_type, config::public_key_prefix, 0>(yield), _storage);
+      auto data_str = std::visit(base58str_visitor<storage_type, config::public_key_prefix, 0>(yield), _storage);
 
       auto which = _storage.index();
       if (which == 0) {

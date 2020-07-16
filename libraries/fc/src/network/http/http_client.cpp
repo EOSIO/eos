@@ -260,7 +260,7 @@ public:
    };
 
    bool check_closed( const connection_map::iterator& conn_itr ) {
-      if (fc::visit(check_closed_visitor(), conn_itr->second)) {
+      if (std::visit(check_closed_visitor(), conn_itr->second)) {
          _connections.erase(conn_itr);
          return true;
       } else {
@@ -347,7 +347,7 @@ public:
       });
 
       // Send the HTTP request to the remote host
-      error_code ec = fc::visit(write_request_visitor(this, req, deadline), conn_iter->second);
+      error_code ec = std::visit(write_request_visitor(this, req, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
 
       // This buffer is used for reading and must be persisted
@@ -357,7 +357,7 @@ public:
       http::response<http::string_body> res;
 
       // Receive the HTTP response
-      ec = fc::visit(read_response_visitor(this, buffer, res, deadline), conn_iter->second);
+      ec = std::visit(read_response_visitor(this, buffer, res, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to read response: ${message}", ("message",ec.message()));
 
       // if the connection can be kept open, keep it open

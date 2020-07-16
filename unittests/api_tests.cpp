@@ -1169,7 +1169,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             const auto& pt = std::get<packed_transaction>(receipt.trx);
             id = pt.id();
          } else {
-            id = fc::get<transaction_id_type>(receipt.trx);
+            id = std::get<transaction_id_type>(receipt.trx);
          }
          block_ids.insert( id );
       }

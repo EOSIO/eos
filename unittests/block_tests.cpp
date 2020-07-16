@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(std::move(*b));
-   auto signed_tx = signed_transaction( fc::get<packed_transaction>(copy_b->transactions.back().trx).to_packed_transaction_v0()->get_signed_transaction() );
+   auto signed_tx = signed_transaction( std::get<packed_transaction>(copy_b->transactions.back().trx).to_packed_transaction_v0()->get_signed_transaction() );
    auto& act = signed_tx.actions.back();
    auto act_data = act.data_as<newaccount>();
    // Make the transaction invalid by having the new account name the same as the creator name
@@ -60,7 +60,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
 
    // Make a copy of the valid block and corrupt the transaction
    auto copy_b = std::make_shared<signed_block>(b->clone());
-   const auto& packed_trx = fc::get<packed_transaction>(copy_b->transactions.back().trx);
+   const auto& packed_trx = std::get<packed_transaction>(copy_b->transactions.back().trx);
    auto signed_tx = signed_transaction( packed_trx.to_packed_transaction_v0()->get_signed_transaction() );
    // Corrupt one signature
    signed_tx.signatures.clear();

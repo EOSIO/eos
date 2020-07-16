@@ -417,7 +417,7 @@ namespace impl {
          auto h = ctx.enter_scope();
          mutable_variant_object obj_mvo;
          add_static_variant<Resolver> adder(obj_mvo, resolver, ctx);
-         fc::visit(adder, v);
+         std::visit(adder, v);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
@@ -599,7 +599,7 @@ namespace impl {
          // process contents of block.transaction_extensions
          auto exts = trx.validate_and_extract_extensions();
          if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
-            const auto& deferred_transaction_generation = fc::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
+            const auto& deferred_transaction_generation = std::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
 
@@ -625,7 +625,7 @@ namespace impl {
          flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
          if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
             const auto& new_protocol_features =
-                  fc::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
+                  std::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
             vector<fc::variant> pf_array;
             pf_array.reserve(new_protocol_features.size());
             for (auto feature : new_protocol_features) {
@@ -637,7 +637,7 @@ namespace impl {
          }
          if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
             const auto& new_producer_schedule =
-                  fc::get<producer_schedule_change_extension>(header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
+                  std::get<producer_schedule_change_extension>(header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
             mvo("new_producer_schedule", new_producer_schedule);
          }
 
@@ -648,7 +648,7 @@ namespace impl {
          auto block_exts = block.validate_and_extract_extensions();
          if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
             const auto& additional_signatures =
-                  fc::get<additional_block_signatures_extension>(block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second);
+                  std::get<additional_block_signatures_extension>(block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second);
             mvo("additional_signatures", additional_signatures);
          }
 

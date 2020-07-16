@@ -28,7 +28,7 @@ using ondisk_prunable_data_t = std::variant<ondisk_prunable_full_legacy, prunabl
 
 
 inline prunable_data_type to_prunable_data_type(ondisk_prunable_data_t&& data) {
-   return fc::visit(
+   return std::visit(
        overloaded{[](ondisk_prunable_full_legacy&& v) {
                      prunable_data_type::full y{std::move(v.signatures), std::move(v.context_free_segments)};
                      return prunable_data_type{y};
@@ -91,7 +91,7 @@ size_t pack(OSTREAM&& strm, const prunable_data_type& obj, compression_type comp
    auto start_pos = strm.tellp();
    fc::raw::pack(strm, static_cast<uint8_t>(obj.prunable_data.index()));
 
-   fc::visit(overloaded{[&strm](const prunable_data_type::none& data) { fc::raw::pack(strm, data); },
+   std::visit(overloaded{[&strm](const prunable_data_type::none& data) { fc::raw::pack(strm, data); },
                                       [&strm, compression](const prunable_data_type::full_legacy& data) {
                                          fc::raw::pack(strm, data.signatures);
                                          pack(strm, data.context_free_segments, compression);
@@ -111,7 +111,7 @@ void unpack(ISTREAM&& strm, ondisk_prunable_data_t& prunable, compression_type c
    fc::raw::unpack(strm, tag);
    // set_variant_by_index(prunable, tag);
    fc::from_index(prunable, tag);
-   fc::visit(overloaded{[&strm](prunable_data_type::none& data) { fc::raw::unpack(strm, data); },
+   std::visit(overloaded{[&strm](prunable_data_type::none& data) { fc::raw::unpack(strm, data); },
                          [&strm, compression](ondisk_prunable_full_legacy& data) {
                             fc::raw::unpack(strm, data.signatures);
                             unpack(strm, data.context_free_segments, compression);
@@ -127,7 +127,7 @@ void unpack(ISTREAM&& strm, ondisk_prunable_data_t& prunable, compression_type c
 template <typename ISTREAM, typename Visitor>
 void visit_deserialized_trace(ISTREAM& strm, transaction_trace& trace, compression_type compression,
                               Visitor&& visitor) {
-   auto& trace_v0 = fc::get<transaction_trace_v0>(trace);
+   auto& trace_v0 = std::get<transaction_trace_v0>(trace);
    if (trace_v0.failed_dtrx_trace.size()) {
       // failed_dtrx_trace have at most one element because it is encoded as an optional
       visit_deserialized_trace(strm, trace_v0.failed_dtrx_trace[0].recurse, compression,
@@ -164,7 +164,7 @@ struct trace_pruner {
          // the incoming trace matches the one of ids to be pruned
          if (change_position == 0)
             change_position = write_strm.tellp();
-         auto digest = fc::visit([](const auto& v) { return v.prunable_digest(); }, incoming_prunable);
+         auto digest = std::visit([](const auto& v) { return v.prunable_digest(); }, incoming_prunable);
          uint8_t which = fc::get_index<ondisk_prunable_data_t, prunable_data_type::none>();
          fc::raw::pack(write_strm, std::make_pair(which, digest));
          ids.erase(itr);
@@ -206,7 +206,7 @@ void unpack(ISTREAM&& strm, std::vector<transaction_trace>& traces) {
    for (auto& trace : traces) {
       visit_deserialized_trace(strm, trace, static_cast<compression_type>(compression),
                                [](transaction_trace_v0& trace, ondisk_prunable_data_t&& prunable_data) {
-                                  auto& ptrx         = fc::get<partial_transaction_v1>(*trace.partial);
+                                  auto& ptrx         = std::get<partial_transaction_v1>(*trace.partial);
                                   ptrx.prunable_data = to_prunable_data_type(std::move(prunable_data));
                                });
    }
