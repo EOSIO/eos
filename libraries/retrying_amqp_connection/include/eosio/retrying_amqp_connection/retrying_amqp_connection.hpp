@@ -44,7 +44,7 @@ struct single_channel_retrying_amqp_connection {
 
    /// \param io_context a strand is created on this io_context for all asio operatoins
    /// \param address AMQP address to connect to
-   /// \param ready a callback when the AMQP channel has been established
+   /// \param ready a callback when the AMQP channel has been established, do NOT set the .onError() for the passed AMQP::Channel
    /// \param failed a callback when the AMQP channel has failed after being established; should no longer use the AMQP::Channel* within or after this callback
    /// \param logger logger to send logging to
    single_channel_retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
