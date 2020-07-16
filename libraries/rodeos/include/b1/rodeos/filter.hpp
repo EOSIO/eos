@@ -88,6 +88,7 @@ inline void register_callbacks() {
    b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
 
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    const auto& base_map = eosio::chain::webassembly::eosvmoc::get_intrinsic_map();
    auto&       my_map   = get_intrinsic_map();
 
@@ -105,6 +106,7 @@ inline void register_callbacks() {
                 ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(S))
                       .value() } });
    });
+#endif
 }
 
 } // namespace b1::rodeos::filter

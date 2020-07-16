@@ -82,6 +82,13 @@ struct type_converter : eosio::vm::type_converter<Host, Execution_Interface> {
       return { p };
    }
 
+   template <typename T>
+   auto from_wasm(eosio::vm::wasm_ptr_t ptr, eosio::vm::tag<T> = {}) const
+         -> std::enable_if_t<eosio::vm::is_argument_proxy_type_v<T> && std::is_pointer_v<typename T::proxy_type>, T> {
+      auto p = this->template validate_pointer<typename T::pointee_type>(ptr, 1);
+      return { p };
+   }
+
    EOS_VM_FROM_WASM(null_terminated_ptr, (uint32_t ptr)) {
       void* p = this->validate_null_terminated_pointer(ptr);
       return { static_cast<const char*>(p) };

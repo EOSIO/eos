@@ -239,9 +239,13 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1&
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                             ,
                              const boost::filesystem::path&                    eosvmoc_path,
-                             const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable)
+                             const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable
+#endif
+                             )
     : name{ name } {
    std::call_once(registered_filter_callbacks, filter::register_callbacks);
 
