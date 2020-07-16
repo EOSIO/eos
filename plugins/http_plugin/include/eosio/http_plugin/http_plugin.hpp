@@ -189,7 +189,7 @@ namespace eosio {
       if ((left == right) && (body[left] == ' ')) {
          return {};
       }
-      return {&body[left], right-left+1};
+      return std::string_view(body).substr(left, right-left+1);
    }
 
    inline bool is_empty_content(const std::string& body) {
