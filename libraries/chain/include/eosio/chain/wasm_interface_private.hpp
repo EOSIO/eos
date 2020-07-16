@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
                         if(p) return { p->code.data(), p->code.size() };
                         else return {};
                       }), exec(cc),
-            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, eosvmoc::get_intrinsic_map()) {}
+            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, webassembly::eosvmoc::get_intrinsic_map()) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;

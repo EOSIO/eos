@@ -332,17 +332,22 @@ constexpr auto create_function() {
    return create_function<F, Cls, TC, Preconditions, wasm_args, is_injected>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
 }
 
+inline intrinsic_map_t& get_intrinsic_map() {
+   static intrinsic_map_t instance;
+   return instance;
+}
+
 template<auto F, bool injected, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
-   // Has special handling
-   if(n == BOOST_HANA_STRING("env.eosio_exit")) return;
    constexpr auto fn = create_function<F, webassembly::interface, eos_vm_oc_type_converter, Preconditions, injected>();
-   intrinsic the_intrinsic(
-      n.c_str(),
-      wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
-      reinterpret_cast<void*>(fn),
-      ::boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(n)).value()
-   );
+   auto& map = get_intrinsic_map();
+   map.insert({n.c_str(),
+      {
+         wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
+         reinterpret_cast<void*>(fn),
+         ::boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(n)).value()
+      }
+   });
 }
 
 } } } }// eosio::chain::webassembly::eosvmoc

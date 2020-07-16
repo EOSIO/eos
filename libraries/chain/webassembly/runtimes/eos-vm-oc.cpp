@@ -61,7 +61,7 @@ eosvmoc_runtime::eosvmoc_runtime(const boost::filesystem::path data_dir, const e
                                     auto * p = db.find<code_object,by_code_hash>(boost::make_tuple(id, 0, vm_version));
                                     if(p) return { p->code.data(), p->code.size() };
                                     else return {};
-                                  }), exec(cc), mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, eosvmoc::get_intrinsic_map()) {
+                                  }), exec(cc), mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, webassembly::eosvmoc::get_intrinsic_map()) {
 }
 
 eosvmoc_runtime::~eosvmoc_runtime() {
