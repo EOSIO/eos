@@ -102,10 +102,9 @@ namespace eosio { namespace chain {
                max_pages = config.max_pages;
             }
             webassembly::interface iface(context);
+            webassembly::eosvmoc::timer timer{context};
             my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, &iface, max_call_depth, max_pages,
-                                      [&context](void (*fn)(void*), void* data) {
-                                         context.trx_context.transaction_timer.set_expiration_callback(fn, data);
-                                      }, [&context]{ context.trx_context.checktime(); },
+                                      &timer,
                                       context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
             return;
          }

@@ -12,6 +12,13 @@
 
 namespace eosio { namespace chain { namespace webassembly { namespace eosvmoc {
 
+void timer::set_expiration_callback(void (*fn)(void*), void* data) {
+   context.trx_context.transaction_timer.set_expiration_callback(fn, data);
+}
+void timer::checktime() {
+   context.trx_context.checktime();
+}
+
 class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
    public:
       eosvmoc_instantiated_module(const digest_type& code_hash, const uint8_t& vm_version, eosvmoc_runtime& wr) :
@@ -38,10 +45,9 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
             max_pages = config.max_pages;
          }
          webassembly::interface iface(context);
+         eosvmoc::timer timer{context};
          _eosvmoc_runtime.exec.execute(*cd, _eosvmoc_runtime.mem, &iface, max_call_depth, max_pages,
-                                       [&context](void (*fn)(void*), void* data) {
-                                          context.trx_context.transaction_timer.set_expiration_callback(fn, data);
-                                       }, [&context]{ context.trx_context.checktime(); },
+                                       &timer,
                                        context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
       }
 

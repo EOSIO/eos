@@ -26,6 +26,13 @@ using namespace eosio::chain::eosvmoc;
 
 class eosvmoc_instantiated_module;
 
+struct timer : eosvmoc::timer_base {
+   timer(apply_context& context) : context(context) {}
+   void set_expiration_callback(void (*fn)(void*), void* data) override;
+   void checktime() override;
+   apply_context& context;
+};
+
 class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
