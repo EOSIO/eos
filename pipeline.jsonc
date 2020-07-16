@@ -6,7 +6,6 @@
             "^/coverage/",
             "^/.git/",
             "^/libraries/eos-vm/",
-            "^/libraries/fc/",
             "^/libraries/wasm-jit/",
             "^/node_modules/",
             "^/unittests/"
