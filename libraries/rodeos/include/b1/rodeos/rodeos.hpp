@@ -75,8 +75,13 @@ struct rodeos_filter {
    std::unique_ptr<filter::backend_t>    backend      = {};
    std::unique_ptr<filter::filter_state> filter_state = {};
 
-   rodeos_filter(eosio::name name, const std::string& wasm_filename, const boost::filesystem::path& eosvmoc_path,
-                 const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable);
+   rodeos_filter(eosio::name name, const std::string& wasm_filename
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                 ,
+                 const boost::filesystem::path&                    eosvmoc_path   = "",
+                 const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config = {}, bool eosvmoc_enable = false
+#endif
+   );
 
    void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_base& result,
                 eosio::input_stream bin, const std::function<void(const char* data, uint64_t size)>& push_data);
