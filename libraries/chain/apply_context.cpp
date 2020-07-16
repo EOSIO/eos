@@ -419,7 +419,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = fc::get<deferred_transaction_generation_context>(itr->second);
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
@@ -824,7 +824,7 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
       const std::vector<bytes>& context_free_data =
             std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
                std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
-               fc::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
+               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];

@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
          if( std::holds_alternative<transaction_id_type>(trx) )
             fc::raw::pack( enc, std::get<transaction_id_type>(trx) );
          else
-            fc::raw::pack( enc, fc::get<packed_transaction_v0>(trx).packed_digest() ); 
+            fc::raw::pack( enc, std::get<packed_transaction_v0>(trx).packed_digest() ); 
          return enc.result();
       }
    };
@@ -127,7 +127,7 @@ namespace eosio { namespace chain {
          if( std::holds_alternative<transaction_id_type>(trx) )
             fc::raw::pack( enc, std::get<transaction_id_type>(trx) );
          else
-            fc::raw::pack( enc, fc::get<packed_transaction>(trx).packed_digest() );
+            fc::raw::pack( enc, std::get<packed_transaction>(trx).packed_digest() );
          return enc.result();
       }
    };

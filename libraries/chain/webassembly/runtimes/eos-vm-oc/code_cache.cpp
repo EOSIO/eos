@@ -86,7 +86,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
    size_t bytes_remaining = 0;
    size_t gotsome = _result_queue.consume_all([&](const wasm_compilation_result_message& result) {
       if(_outstanding_compiles_and_poison[result.code] == false) {
-         fc::visit(overloaded {
+         std::visit(overloaded {
             [&](const code_descriptor& cd) {
                _cache_index.push_front(cd);
             },

@@ -509,7 +509,7 @@ namespace eosio {
                             break;
                         }
                     } else {
-                        auto &id = fc::get<transaction_id_type>(receipt.trx);
+                        auto &id = std::get<transaction_id_type>(receipt.trx);
                         if (id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             result.trx = move(r);
@@ -544,7 +544,7 @@ namespace eosio {
                         break;
                      }
                   } else {
-                     auto& id = fc::get<transaction_id_type>(receipt.trx);
+                     auto& id = std::get<transaction_id_type>(receipt.trx);
                      if( txn_id_matched(id) ) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();

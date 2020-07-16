@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE( replace_producer_keys ) try {
 
    // make sure new keys is not used
    for(const auto& prod : head_ptr->active_schedule.producers) {
-      for(const auto& key : fc::get<block_signing_authority_v0>(prod.authority).keys){  
+      for(const auto& key : std::get<block_signing_authority_v0>(prod.authority).keys){  
          BOOST_REQUIRE(key.key != new_key);
       }
    }
@@ -42,8 +42,8 @@ BOOST_AUTO_TEST_CASE( replace_producer_keys ) try {
    const uint32_t expected_threshold = 1;
    const weight_type expected_key_weight = 1;
    for(const auto& prod : head_ptr->active_schedule.producers) {
-      BOOST_REQUIRE_EQUAL(fc::get<block_signing_authority_v0>(prod.authority).threshold, expected_threshold);
-      for(const auto& key : fc::get<block_signing_authority_v0>(prod.authority).keys){
+      BOOST_REQUIRE_EQUAL(std::get<block_signing_authority_v0>(prod.authority).threshold, expected_threshold);
+      for(const auto& key : std::get<block_signing_authority_v0>(prod.authority).keys){
          BOOST_REQUIRE_EQUAL(key.key, new_key);
          BOOST_REQUIRE_EQUAL(key.weight, expected_key_weight);
        }

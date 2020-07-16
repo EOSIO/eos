@@ -292,7 +292,7 @@ namespace eosio { namespace testing {
                   auto &pt = std::get<packed_transaction>(receipt.trx);
                   chain_transactions[pt.get_transaction().id()] = std::move(receipt);
               } else {
-                  auto& id = fc::get<transaction_id_type>(receipt.trx);
+                  auto& id = std::get<transaction_id_type>(receipt.trx);
                   chain_transactions[id] = std::move(receipt);
               }
           }
@@ -1108,7 +1108,7 @@ namespace eosio { namespace testing {
       vector<legacy::producer_key> legacy_keys;
       legacy_keys.reserve(schedule.size());
       for (const auto &p : schedule) {
-         fc::visit([&legacy_keys, &p](const auto& auth){
+         std::visit([&legacy_keys, &p](const auto& auth){
             legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
          }, p.authority);
       }

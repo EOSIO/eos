@@ -11,68 +11,6 @@ namespace fc {
 template<typename Result>
 struct visitor {};
 
-// fc::get mimics the functionality of std::get with the
-// exception that in the case of requesting a type that the
-// variant currently doesn't hold, it will raise an fc::assert_exception.
-//
-// Prefer calling fc::get in cases where you are excepting an fc exception.
-// In cases where you explicitly checked that the variant is holding the expected
-// type (by invoking std::holds_alternative), prefer calling std::get.
-// All other cases, prefer calling std::get.
-template<typename T, typename... Types>
-constexpr T& get(std::variant<Types...>& v)
-{
-  return std::get<T>(v);
-  //if (auto result = std::get_if<T>(&v))
-  //{
-  //  return *result;
-  //}
-
-  //FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
-}
-
-// fc::get mimics the functionality of std::get with the
-// exception that in the case of requesting a type that the
-// variant currently doesn't hold, it will raise an fc::assert_exception.
-//
-// Prefer calling fc::get in cases where you are excepting an fc exception.
-// In cases where you explicitly checked that the variant is holding the expected
-// type (by invoking std::holds_alternative), prefer calling std::get.
-// All other cases, prefer calling std::get.
-template<typename T, typename... Types>
-constexpr const T& get(const std::variant<Types...>& v)
-{
-  return std::get<T>(v);
-  //if (const auto result = std::get_if<T>(&v))
-  //{
-  //  return *result;
-  //}
-
-  //FC_THROW_EXCEPTION(fc::assert_exception, "variant does not contain a value of type ${t}", ("t",fc::get_typename<T>::name()));
-}
-
-// fc::visit mimics the functionality of std::visit with the
-// exception that in the case of the variant not holding a value, it will raise an fc::assert_exception.
-//
-// Prefer calling fc::visit in cases where you are excepting an fc exception.
-// All other cases, prefer calling std::visit.
-template <class Visitor, class... Variants>
-decltype(auto) visit(Visitor&& vis, Variants&&... vars)
-{
-  //try
-  //{
-    return std::visit(std::forward<Visitor>(vis), std::forward<Variants>(vars)...);
-  //}
-  //catch(const std::bad_variant_access&)
-  //{
-  //  FC_THROW_EXCEPTION(fc::assert_exception, "Internal error: static_variant tag is invalid.");
-  //}
-  //catch (...)
-  //{
-  //  throw;
-  //}
-}
-
 template <typename variant, int32_t i = 0>
 void from_index(variant& v, int index) 
 {

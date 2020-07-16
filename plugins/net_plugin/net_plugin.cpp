@@ -2009,7 +2009,7 @@ namespace eosio {
       std::lock_guard<std::mutex> g( local_txns_mtx );
       for( const auto& recpt : sb->transactions ) {
          const transaction_id_type& id = (recpt.trx.index() == 0) ? std::get<transaction_id_type>(recpt.trx)
-                                                                  : fc::get<packed_transaction>(recpt.trx).id();
+                                                                  : std::get<packed_transaction>(recpt.trx).id();
          auto range = local_txns.get<by_id>().equal_range( id );
          for( auto itr = range.first; itr != range.second; ++itr ) {
             local_txns.modify( itr, ubn );
@@ -2518,7 +2518,7 @@ namespace eosio {
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
-            fc::visit( m, msg );
+            std::visit( m, msg );
          }
 
       } catch( const fc::exception& e ) {
@@ -2594,7 +2594,7 @@ namespace eosio {
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
       auto exts = ptr->validate_and_extract_extensions();
       if( exts.count( additional_sigs_eid ) ) {
-         const auto &additional_sigs = fc::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
+         const auto &additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
          has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
       }
 
@@ -3048,7 +3048,7 @@ namespace eosio {
          if (std::holds_alternative<fc::exception_ptr>(result)) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
          } else {
-            const transaction_trace_ptr& trace = fc::get<transaction_trace_ptr>(result);
+            const transaction_trace_ptr& trace = std::get<transaction_trace_ptr>(result);
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {

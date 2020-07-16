@@ -334,7 +334,7 @@ namespace fc
 
    std_exception_wrapper std_exception_wrapper::from_current_exception(const std::exception& e)
    {
-     return std_exception_wrapper{FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())), 
+     return std_exception_wrapper{FC_LOG_MESSAGE(warn, "rethrow ${what}: ", ("what",e.what())), 
                                   std::current_exception(), 
                                   BOOST_CORE_TYPEID(e).name(), 
                                   e.what()};

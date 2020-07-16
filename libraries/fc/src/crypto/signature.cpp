@@ -43,7 +43,7 @@ namespace fc { namespace crypto {
    template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
    size_t signature::variable_size() const {
-      return fc::visit(overloaded {
+      return std::visit(overloaded {
          [&](const auto& k1r1) {
             return static_cast<size_t>(0);
          },
@@ -55,7 +55,7 @@ namespace fc { namespace crypto {
 
    std::string signature::to_string(const fc::yield_function_t& yield) const
    {
-      auto data_str = fc::visit(base58str_visitor<storage_type, config::signature_prefix>(yield), _storage);
+      auto data_str = std::visit(base58str_visitor<storage_type, config::signature_prefix>(yield), _storage);
       yield();
       return std::string(config::signature_base_prefix) + "_" + data_str;
    }
@@ -79,7 +79,7 @@ namespace fc { namespace crypto {
    }
 
    size_t hash_value(const signature& b) {
-       return fc::visit(hash_visitor(), b._storage);
+       return std::visit(hash_visitor(), b._storage);
    }
 } } // eosio::blockchain
 

@@ -1173,7 +1173,7 @@ namespace eosio { namespace chain {
 
          size_t num_trx_pruned = 0;
          for (auto& trx : entry.block.transactions) {
-            num_trx_pruned = fc::visit(pruner, trx.trx);
+            num_trx_pruned = std::visit(pruner, trx.trx);
          }
 
          if (num_trx_pruned) {
