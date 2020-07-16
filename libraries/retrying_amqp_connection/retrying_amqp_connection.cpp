@@ -200,14 +200,6 @@ struct single_channel_retrying_amqp_connection::impl {
       }));
    }
 
-   void set_channel_on_error() {
-      _amqp_channel->onError([this](const char* e) {
-         wlog("AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", _connection.address())("m", e));
-         _failed();
-         start_retry();
-      });
-   }
-
    void bring_up_channel() {
       try {
          _amqp_channel.emplace(_amqp_connection);
@@ -216,11 +208,13 @@ struct single_channel_retrying_amqp_connection::impl {
          wlog("AMQP channel could not start for AMQP connection ${c}; retrying", ("c", _connection.address()));
          start_retry();
       }
-      set_channel_on_error();
+      _amqp_channel->onError([this](const char* e) {
+         wlog("AMQP channel failure on AMQP connection ${c}; retrying : ${m}", ("c", _connection.address())("m", e));
+         _failed();
+         start_retry();
+      });
       _amqp_channel->onReady([this]() {
          _channel_ready(&*_amqp_channel);
-         //in case someone tried to set their own onError()...
-         set_channel_on_error();
       });
    }
 
