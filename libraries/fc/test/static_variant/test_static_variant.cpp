@@ -24,12 +24,12 @@ BOOST_AUTO_TEST_SUITE(static_variant_test_suite)
      using variant_type = std::variant<int32_t, bool, std::string>;
 
      auto v1 = variant_type{std::string{"hello world"}};
-     BOOST_CHECK_EXCEPTION(fc::get<int32_t>(v1), fc::assert_exception, [](const auto& e) { return e.code() == fc::assert_exception_code; });
+     BOOST_CHECK_EXCEPTION(fc::get<int32_t>(v1), std::bad_variant_access, [](const auto& e) { return true; });
      auto result1 = fc::get<std::string>(v1);
      BOOST_REQUIRE(result1 == std::string{"hello world"});
 
      const auto v2 = variant_type{std::string{"hello world"}};
-     BOOST_CHECK_EXCEPTION(fc::get<int32_t>(v2), fc::assert_exception, [](const auto& e) { return e.code() == fc::assert_exception_code;; });
+     BOOST_CHECK_EXCEPTION(fc::get<int32_t>(v2), std::bad_variant_access, [](const auto& e) { return true; });
      const auto result2 = fc::get<std::string>(v2);
      BOOST_REQUIRE(result2 == std::string{"hello world"});
    }
