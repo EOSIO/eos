@@ -35,15 +35,6 @@
             "170=v1.7.0"
         ]
     },
-    "eosio-replay-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
-    },
     "eosio-resume-from-state":
     {
         "test":
