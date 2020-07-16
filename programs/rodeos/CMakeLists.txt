@@ -9,6 +9,8 @@ add_executable( ${RODEOS_EXECUTABLE_NAME}
   ${HEADERS}
 )
 
+add_executable( bind-a-lot bind_a_lot.cpp ${HEADERS} )
+
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -40,9 +42,22 @@ target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
         PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
+target_include_directories(bind-a-lot PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/abieos/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/amqp-cpp/include)
+
+target_link_libraries( bind-a-lot
+        PRIVATE appbase version
+        PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+
 add_subdirectory(tests)
 
 copy_bin( ${RODEOS_EXECUTABLE_NAME} )
 install( TARGETS
    ${RODEOS_EXECUTABLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
+)
+
+copy_bin( bind-a-lot )
+install( TARGETS
+   bind-a-lot RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
 )

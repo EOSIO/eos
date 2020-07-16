@@ -112,6 +112,6 @@ int main(int argc, char** argv) {
       return other_fail;
    }
 
-   ilog("${name} successfully exiting", ("name", b1::rodeos::config::rodeos_executable_name));
+   ilog("bind-a-lot successfully exiting");
    return success;
 }
