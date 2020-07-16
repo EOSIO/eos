@@ -159,6 +159,10 @@ namespace eosio {
       error_info error;
    };
 
+   /**
+    * @brief Used to trim whitespace from body. 
+    * Returned string_view valid only for lifetime of body
+    */
    inline std::string_view make_trimmed_string_view(const std::string& body) {
       if (body.empty()) {
          return {};
@@ -185,7 +189,7 @@ namespace eosio {
       if ((left == right) && (body[left] == ' ')) {
          return {};
       }
-      return {body.substr(left, right-left+1)};
+      return std::string_view(body).substr(left, right-left+1);
    }
 
    inline bool is_empty_content(const std::string& body) {
