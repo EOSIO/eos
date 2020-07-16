@@ -130,9 +130,10 @@ struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
          auto used = _state->amqp_connection->parse(_state->read_queue.data(), _state->read_queue.size());
          _state->read_queue.erase(_state->read_queue.begin(), _state->read_queue.begin()+used);
 
-         //parse() could have resulted in an error on a channel. In an earlier implementation users could call a function
-         // which may have caused a socket connection to .close() due to that. This check below may no longer be needed since
-         // retrying_amqp_connection no longer exposes a way to "bump" a connection
+         //parse() could have resulted in an error on an AMQP channel or on the AMQP connection (causing a onError() or
+         // onClosed() to be called). An error on an AMQP channel is outside the scope of retrying_amqp_connection, but an
+         // onError() or onClosed() would call schedule_retry() and thus _sock.close(). Check that the socket is still open before
+         // looping back around for another async_read
          if(_sock.is_open())
             receive_some();
       }));
