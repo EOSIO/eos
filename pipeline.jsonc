@@ -42,14 +42,5 @@
                 "commit": "6de603529d962193eb64b3b47b2bfee9fbe185b4"
             }
         ]
-    },
-    "eosio-sync-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
     }
 }
