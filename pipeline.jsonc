@@ -46,14 +46,5 @@
                 "tag": "v2.0.0-rc3"
             }
         ]
-    },
-    "eosio-sync-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true",
-            "SKIP_V200": "false"
-        }
     }
 }
