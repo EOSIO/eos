@@ -64,7 +64,7 @@ struct action_trace_order {
 template <typename T, typename R, typename... Args>
 void execute_trace(
     uint32_t block_num,
-    ship::signed_block& block,
+    ship::signed_block_v1& block,
     ship::transaction_trace_v0& ttrace,
     ship::action_trace_v1& atrace, R (T::*func)(Args...)
 ) {
@@ -80,7 +80,7 @@ void execute_trace(
 template <typename F>
 void process_traces_impl(
     ship::get_blocks_result_v0& result,
-    ship::signed_block& block,
+    ship::signed_block_v1& block,
     ship::transaction_trace_v0& ttrace,
     std::vector<action_trace_order>& order,
     uint32_t i,
@@ -107,7 +107,7 @@ void process_traces_impl(
     ship::get_blocks_result_v0& result,
     const F& f
 ) {
-    ship::signed_block block;
+    ship::signed_block_v1 block;
     if (result.block)
         from_bin(block, *result.block);
     std::vector<ship::transaction_trace> traces;
@@ -153,7 +153,7 @@ void process_traces_impl(
 // Should work well when filters look primarily at inline action notifications, but may backfire when they
 // look at non-inline actions or at actions which have side effects.
 #define EOSIO_FILTER_ACTIONS(FILTER_CLASS, ...)                                                                        \
-    inline void process_trace(uint32_t block_num, ship::signed_block& block,                           \
+    inline void process_trace(uint32_t block_num, ship::signed_block_v1& block,                           \
                               ship::transaction_trace_v0& ttrace,                                      \
                               ship::action_trace_v1&      atrace) {                                         \
         EOSIO_MAP_REUSE_ARG0(EOSIO_FILTER_ACTIONS_IMPL, FILTER_CLASS, __VA_ARGS__)                                     \

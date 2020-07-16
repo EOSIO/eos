@@ -40,7 +40,7 @@ namespace todo {
 class todo_filter {
 private:
     uint32_t block_num;
-    ship::signed_block& block;
+    ship::signed_block_v1& block;
     ship::transaction_trace_v0& ttrace;
     ship::action_trace_v1& atrace;
     eosio::name sender;
@@ -49,7 +49,7 @@ public:
 
     todo_filter(
         uint32_t block_num,
-        ship::signed_block& block,
+        ship::signed_block_v1& block,
         ship::transaction_trace_v0& ttrace,
         ship::action_trace_v1& atrace
     ) : block_num{block_num}, block{block}, ttrace{ttrace}, atrace{atrace} {
@@ -61,7 +61,7 @@ public:
     }
 
     uint32_t get_block_num() { return block_num; }
-    ship::signed_block&  get_block() { return block; }
+    ship::signed_block_v1&  get_block() { return block; }
     ship::transaction_trace_v0& get_ttrace() { return ttrace; }
     ship::action_trace_v1& get_atrace() { return atrace; }
     eosio::name get_sender() { return sender; }
