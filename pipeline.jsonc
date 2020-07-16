@@ -46,13 +46,5 @@
                 "tag": "v1.8.7"
             }
         ]
-    },
-    "eosio-sync-tests":
-    {
-        "environment":
-        {
-            "SKIP_PRE_V180": "true",
-            "SKIP_V180": "false"
-        }
     }
 }
