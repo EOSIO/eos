@@ -47,8 +47,7 @@ target_include_directories(bind-a-lot PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/amqp-cpp/include)
 
 target_link_libraries( bind-a-lot
-        PRIVATE appbase version
-        PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE appbase version fc)
 
 add_subdirectory(tests)
 
