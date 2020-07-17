@@ -122,91 +122,6 @@ inline auto convert_native_to_wasm(char* ptr) {
    return (U32)delta;
 }
 
-
-template<typename T>
-struct wasm_to_value_type;
-
-template<>
-struct wasm_to_value_type<F32> {
-   static constexpr auto value = ValueType::f32;
-};
-
-template<>
-struct wasm_to_value_type<F64> {
-   static constexpr auto value = ValueType::f64;
-};
-template<>
-struct wasm_to_value_type<U32> {
-   static constexpr auto value = ValueType::i32;
-};
-template<>
-struct wasm_to_value_type<U64> {
-   static constexpr auto value = ValueType::i64;
-};
-template<>
-struct wasm_to_value_type<I32> {
-   static constexpr auto value = ValueType::i32;
-};
-template<>
-struct wasm_to_value_type<I64> {
-   static constexpr auto value = ValueType::i64;
-};
-
-template<typename T>
-constexpr auto wasm_to_value_type_v = wasm_to_value_type<T>::value;
-
-template<typename T>
-struct wasm_to_rvalue_type;
-template<>
-struct wasm_to_rvalue_type<F32> {
-   static constexpr auto value = ResultType::f32;
-};
-template<>
-struct wasm_to_rvalue_type<F64> {
-   static constexpr auto value = ResultType::f64;
-};
-template<>
-struct wasm_to_rvalue_type<U32> {
-   static constexpr auto value = ResultType::i32;
-};
-template<>
-struct wasm_to_rvalue_type<U64> {
-   static constexpr auto value = ResultType::i64;
-};
-template<>
-struct wasm_to_rvalue_type<I32> {
-   static constexpr auto value = ResultType::i32;
-};
-template<>
-struct wasm_to_rvalue_type<I64> {
-   static constexpr auto value = ResultType::i64;
-};
-template<>
-struct wasm_to_rvalue_type<void> {
-   static constexpr auto value = ResultType::none;
-};
-
-
-template<typename T>
-constexpr auto wasm_to_rvalue_type_v = wasm_to_rvalue_type<T>::value;
-
-
-/**
- * Forward declaration of provider for FunctionType given a desired C ABI signature
- */
-template<typename>
-struct wasm_function_type_provider;
-
-/**
- * specialization to destructure return and arguments
- */
-template<typename Ret, typename ...Args>
-struct wasm_function_type_provider<Ret(Args...)> {
-   static const FunctionType *type() {
-      return FunctionType::get(wasm_to_rvalue_type_v<Ret>, {wasm_to_value_type_v<Args> ...});
-   }
-};
-
 struct eos_vm_oc_execution_interface {
    inline const auto& operand_from_back(std::size_t index) const { return *(os - index - 1); }
 
@@ -342,7 +257,6 @@ void register_eosvm_oc(Name n) {
    auto& map = get_intrinsic_map();
    map.insert({n.c_str(),
       {
-         wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
          reinterpret_cast<void*>(fn),
          ::boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(n)).value()
       }

@@ -297,8 +297,8 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
             filter_state->eosvmoc_tierup->cc.get_descriptor_for_code(filter_state->eosvmoc_tierup->hash, 0);
       if (code) {
          eosio::chain::eosvmoc::timer_base timer;
-         filter_state->eosvmoc_tierup->exec.execute(
-               *code, filter_state->eosvmoc_tierup->mem, &cb, 528, 251, &timer, 0, 0, 0);
+         filter_state->eosvmoc_tierup->exec.execute(*code, filter_state->eosvmoc_tierup->mem, &cb, 528, 251, &timer, 0,
+                                                    0, 0);
          return;
       }
    }
