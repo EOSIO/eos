@@ -57,11 +57,8 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
 };
 
 eosvmoc_runtime::eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db)
-   : cc(data_dir, eosvmoc_config, [&db](const digest_type& id, uint8_t vm_version) -> std::string_view {
-                                    auto * p = db.find<code_object,by_code_hash>(boost::make_tuple(id, 0, vm_version));
-                                    if(p) return { p->code.data(), p->code.size() };
-                                    else return {};
-                                  }), exec(cc), mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, webassembly::eosvmoc::get_intrinsic_map()) {
+   : cc(data_dir, eosvmoc_config, make_code_finder(db)), exec(cc),
+     mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size, webassembly::eosvmoc::get_intrinsic_map()) {
 }
 
 eosvmoc_runtime::~eosvmoc_runtime() {
