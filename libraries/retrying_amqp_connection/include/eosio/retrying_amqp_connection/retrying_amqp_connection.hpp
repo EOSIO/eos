@@ -34,8 +34,7 @@ struct retrying_amqp_connection {
 
 private:
    struct impl;
-   constexpr static size_t fwd_size = 66424;
-   fc::fwd<impl,fwd_size> my;
+   std::unique_ptr<impl> my;
 };
 
 struct single_channel_retrying_amqp_connection {
@@ -56,8 +55,7 @@ struct single_channel_retrying_amqp_connection {
 
 private:
    struct impl;
-   constexpr static size_t fwd_size = 66608;
-   fc::fwd<impl,fwd_size> my;
+   std::unique_ptr<impl> my;
 };
 
 }

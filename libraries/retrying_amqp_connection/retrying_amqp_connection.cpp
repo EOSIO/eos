@@ -1,6 +1,5 @@
 #include <amqpcpp.h>
 #include <fc/variant.hpp>
-#include <fc/fwd_impl.hpp>
 
 #include <eosio/retrying_amqp_connection/retrying_amqp_connection.hpp>
 
@@ -237,7 +236,7 @@ struct single_channel_retrying_amqp_connection::impl {
 
 retrying_amqp_connection::retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, connection_ready_callback_t ready,
                                   connection_failed_callback_t failed, fc::logger logger) :
-                                  my(io_context, address, ready, failed, logger) {}
+                                  my(new impl(io_context, address, ready, failed, logger)) {}
 
 
 const AMQP::Address& retrying_amqp_connection::address() const {
@@ -252,7 +251,7 @@ retrying_amqp_connection::~retrying_amqp_connection() = default;
 
 single_channel_retrying_amqp_connection::single_channel_retrying_amqp_connection(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
                                                                                  failed_callback_t failed, fc::logger logger) :
-  my(io_context, address, ready, failed, logger) {}
+  my(new impl(io_context, address, ready, failed, logger)) {}
 
 const AMQP::Address& single_channel_retrying_amqp_connection::address() const {
    return my->_connection.address();
