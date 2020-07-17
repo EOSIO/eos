@@ -18,9 +18,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v0>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(empty_data_v1)
@@ -31,9 +31,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v1>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(no_abi)
@@ -44,9 +44,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v0>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(no_abi_v1)
@@ -57,9 +57,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v1>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(basic_abi)
@@ -88,9 +88,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v0>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(basic_abi_v1)
@@ -119,9 +119,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v1>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(basic_abi_wrong_type)
@@ -146,9 +146,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v0>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
    BOOST_AUTO_TEST_CASE(basic_abi_wrong_type_v1)
@@ -173,9 +173,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v1>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
 
 
@@ -202,9 +202,9 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data(action, [](){});
+      auto actual = handler.process_data<action_trace_v0>(action, [](){});
 
-      BOOST_TEST(to_kv(expected) == to_kv(actual), boost::test_tools::per_element());
+      BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
       BOOST_TEST(log_called);
    }
 

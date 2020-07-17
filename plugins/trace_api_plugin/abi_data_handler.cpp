@@ -9,7 +9,8 @@ namespace eosio::trace_api {
             std::make_shared<chain::abi_serializer>(abi, chain::abi_serializer::create_yield_function(fc::microseconds::maximum())));
    }
 
-   fc::variant abi_data_handler::process_data(const action_trace_v0& action, const yield_function& yield ) {
+    template<typename ActionTrace>
+    std::tuple<fc::variant, fc::optional<fc::variant>> abi_data_handler::process_data(const ActionTrace & action, const yield_function& yield ) {
       if (abi_serializer_by_account.count(action.account) > 0) {
          const auto& serializer_p = abi_serializer_by_account.at(action.account);
          auto type_name = serializer_p->get_action_type(action.action);
@@ -22,7 +23,14 @@ namespace eosio::trace_api {
                   EOS_ASSERT( recursion_depth < chain::abi_serializer::max_recursion_depth, chain::abi_recursion_depth_exception,
                               "exceeded max_recursion_depth ${r} ", ("r", chain::abi_serializer::max_recursion_depth) );
                };
-               return serializer_p->binary_to_variant(type_name, action.data, abi_yield);
+               if constexpr(std::is_same_v<ActionTrace, action_trace_v0>){
+                   return {serializer_p->binary_to_variant(type_name, action.data, abi_yield),{}};
+	         }
+               else 
+               {
+                   return {serializer_p->binary_to_variant(type_name, action.data, abi_yield), {serializer_p->binary_to_variant(type_name, action.return_value, abi_yield)}};
+               }
+
             } catch (...) {
                except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
             }
@@ -30,51 +38,10 @@ namespace eosio::trace_api {
       }
 
       return {};
-   }
+  	
+    }
 
-   fc::variant abi_data_handler::process_data(const action_trace_v1& action, const yield_function& yield ) {
-      if (abi_serializer_by_account.count(action.account) > 0) {
-         const auto& serializer_p = abi_serializer_by_account.at(action.account);
-         auto type_name = serializer_p->get_action_type(action.action);
-
-         if (!type_name.empty()) {
-            try {
-               // abi_serializer expects a yield function that takes a recursion depth
-               auto abi_yield = [yield](size_t recursion_depth) {
-                  yield();
-                  EOS_ASSERT( recursion_depth < chain::abi_serializer::max_recursion_depth, chain::abi_recursion_depth_exception,
-                              "exceeded max_recursion_depth ${r} ", ("r", chain::abi_serializer::max_recursion_depth) );
-               };
-               return serializer_p->binary_to_variant(type_name, action.data, abi_yield);
-            } catch (...) {
-               except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
-            }
-         }
-      }
-
-      return {};
-   }
-
-      fc::variant abi_data_handler::process_return(const action_trace_v1& action, const yield_function& yield ) {
-      if (abi_serializer_by_account.count(action.account) > 0) {
-         const auto& serializer_p = abi_serializer_by_account.at(action.account);
-         auto type_name = serializer_p->get_action_type(action.action);
-
-         if (!type_name.empty()) {
-            try {
-               // abi_serializer expects a yield function that takes a recursion depth
-               auto abi_yield = [yield](size_t recursion_depth) {
-                  yield();
-                  EOS_ASSERT( recursion_depth < chain::abi_serializer::max_recursion_depth, chain::abi_recursion_depth_exception,
-                              "exceeded max_recursion_depth ${r} ", ("r", chain::abi_serializer::max_recursion_depth) );
-               };
-               return serializer_p->binary_to_variant(type_name, action.return_value, abi_yield);
-            } catch (...) {
-               except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
-            }
-         }
-      }
-
-      return {};
-   }
+     template std::tuple<fc::variant, fc::optional<fc::variant>> abi_data_handler::process_data<action_trace_v0>(const action_trace_v0 & action, const yield_function& yield ) ;
+     template std::tuple<fc::variant, fc::optional<fc::variant>> abi_data_handler::process_data<action_trace_v1>(const action_trace_v1 & action, const yield_function& yield ) ;
+     
 }

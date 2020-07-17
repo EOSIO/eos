@@ -6,31 +6,13 @@
 #include <eosio/trace_api/common.hpp>
 
 namespace eosio::trace_api {
-   using data_handler_function_v0 = std::function<fc::variant(const action_trace_v0&, const yield_function&)>;
-   using data_handler_function_v1 = std::function<fc::variant(const action_trace_v1&, const yield_function&)>;
-   using return_handler_function = std::function<fc::variant(const action_trace_v1&, const yield_function&)>;
-   using transaction_trace_variant = std::variant<transaction_trace_v0, transaction_trace_v1, transaction_trace_v2, transaction_trace_v3>;
-   using action_trace_variant = std::variant<action_trace_v0, action_trace_v1>;
-   using vec_transaction_trace_variant = std::vector<transaction_trace_variant>;
-   using vec_action_trace_variant = std::vector<action_trace_variant>;
-
-   enum trace_api_type_enum {
-   	e_block_trace_v0,
-	e_block_trace_v1,
-	e_block_trace_v2,
-	e_block_trace_v3,
-	e_transaction_trace_v0,
-	e_transaction_trace_v1,
-	e_transaction_trace_v2,
-	e_transaction_trace_v3,
-	e_action_trace_v0,
-	e_action_trace_v1
-   };
+   using data_handler_function_v0 = std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v0&, const yield_function&)>;
+   using data_handler_function_v1 = std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v1&, const yield_function&)>;
    
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function_v0& data_handler_v0, const data_handler_function_v1 & data_handler_v1,   const return_handler_function & return_handler,  const yield_function& yield );
+         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function_v0& data_handler_v0, const data_handler_function_v1 & data_handler_v1,    const yield_function& yield );
       };
    }
 
@@ -62,16 +44,14 @@ namespace eosio::trace_api {
 
          yield();
          
-         auto data_handler_v0 = [this](const action_trace_v0& action, const yield_function& yield) -> fc::variant {
-               return data_handler_provider.process_data(action, yield);
+         auto data_handler_v0 = [this](const action_trace_v0& action, const yield_function& yield) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+            return data_handler_provider.template process_data<action_trace_v0>(action, yield);
          };
-         auto data_handler_v1 = [this](const action_trace_v1& action, const yield_function& yield) -> fc::variant {
-               return data_handler_provider.process_data(action, yield);
+         auto data_handler_v1 = [this](const action_trace_v1& action, const yield_function& yield) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+            return data_handler_provider.template process_data<action_trace_v1>(action, yield);
          };
-         auto return_handler = [this](const action_trace_v1& action, const yield_function& yield) -> fc::variant {
-               return data_handler_provider.process_return(action, yield);
-         };
-         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler_v0, data_handler_v1, return_handler, yield);
+
+         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler_v0, data_handler_v1, yield);
       }
 
    private:

@@ -74,11 +74,9 @@ namespace {
       :store(store)
       {}
 
-      void append( const block_trace_v1& trace ) {
-         store->append(trace);
-      }
-      void append( const block_trace_v3& trace ) {
-         store->append(trace);
+      template<typename Block_trace>
+      void append( const Block_trace & trace ) {
+         store->template append<Block_trace>(trace);
       }
 
       void append_lib( uint32_t new_lib ) {

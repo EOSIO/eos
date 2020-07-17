@@ -81,12 +81,12 @@ private:
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
       try {
-         block_trace_v3 bt = create_block_trace_v3( block_state );
+         block_trace_v2 bt = create_block_trace<block_trace_v2>( block_state );
 
-         std::vector<transaction_trace_v3>& traces = bt.transactions_v3;
+         std::vector<transaction_trace_v2>& traces = bt.transactions_v2;
          traces.reserve( block_state->block->transactions.size() + 1 );
          if( onblock_trace )
-            traces.emplace_back( to_transaction_trace_v3( *onblock_trace ));
+            traces.emplace_back( to_transaction_trace<transaction_trace_v2>( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
             transaction_id_type id;
             if( r.trx.contains<transaction_id_type>()) {
@@ -96,7 +96,7 @@ private:
             }
             const auto it = cached_traces.find( id );
             if( it != cached_traces.end() ) {
-               traces.emplace_back( to_transaction_trace_v3( it->second ));
+               traces.emplace_back( to_transaction_trace<transaction_trace_v2>( it->second ));
             }
          }
          clear_caches();
