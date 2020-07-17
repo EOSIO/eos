@@ -89,9 +89,9 @@ inline intrinsic_map_t& get_intrinsic_map() {
    return instance;
 }
 
-template<auto F, bool injected, typename Preconditions, typename Name>
+template<auto F, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
-   constexpr auto fn = create_function<F, webassembly::interface, eos_vm_oc_type_converter, Preconditions, injected>();
+   constexpr auto fn = create_function<F, webassembly::interface, eos_vm_oc_type_converter, Preconditions>();
    auto& map = get_intrinsic_map();
    map.insert({n.c_str(),
       {
