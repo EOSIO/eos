@@ -78,8 +78,8 @@ struct rodeos_filter {
    rodeos_filter(eosio::name name, const std::string& wasm_filename
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                  ,
-                 const boost::filesystem::path&                    eosvmoc_path   = "",
-                 const eosio::chain::webassembly::eosvmoc::config& eosvmoc_config = {}, bool eosvmoc_enable = false
+                 const boost::filesystem::path&       eosvmoc_path   = "",
+                 const eosio::chain::eosvmoc::config& eosvmoc_config = {}, bool eosvmoc_enable = false
 #endif
    );
 

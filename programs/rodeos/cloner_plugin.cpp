@@ -35,8 +35,8 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name               = {}; // todo: remove
    std::string filter_wasm               = {}; // todo: remove
 
-   eosio::chain::webassembly::eosvmoc::config eosvmoc_config;
-   bool                                       eosvmoc_tierup = false;
+   eosio::chain::eosvmoc::config eosvmoc_config;
+   bool                          eosvmoc_tierup = false;
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
@@ -227,7 +227,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
-      bpo::value<uint64_t>()->default_value(eosio::chain::webassembly::eosvmoc::config().cache_size / (1024u * 1024u)),
+      bpo::value<uint64_t>()->default_value(eosio::chain::eosvmoc::config().cache_size / (1024u * 1024u)),
       "Maximum size (in MiB) of the EOS VM OC code cache");
    op("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
       if (t == 0) {

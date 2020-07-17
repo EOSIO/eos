@@ -4,7 +4,8 @@
 
 #include <eosio/vm/backend.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#   include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#   include <boost/hana/equal.hpp>
+#   include <eosio/chain/webassembly/eos-vm-oc/intrinsic_interface.hpp>
 #endif
 #include <boost/hana/string.hpp>
 
@@ -103,15 +104,14 @@ using registered_host_functions =
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 
 template <typename Cls>
-struct eos_vm_oc_type_converter
-    : public type_converter<Cls, eosio::chain::webassembly::eosvmoc::eos_vm_oc_execution_interface> {
-   using base_type = type_converter<Cls, eosio::chain::webassembly::eosvmoc::eos_vm_oc_execution_interface>;
+struct eos_vm_oc_type_converter : public type_converter<Cls, eosio::chain::eosvmoc::eos_vm_oc_execution_interface> {
+   using base_type = type_converter<Cls, eosio::chain::eosvmoc::eos_vm_oc_execution_interface>;
    using base_type::base_type;
    using base_type::from_wasm;
    using base_type::to_wasm;
 
    eosio::vm::wasm_ptr_t to_wasm(void*&& ptr) {
-      return eosio::chain::webassembly::eosvmoc::convert_native_to_wasm(static_cast<char*>(ptr));
+      return eosio::chain::eosvmoc::convert_native_to_wasm(static_cast<char*>(ptr));
    }
 
    template <typename T>
@@ -137,13 +137,12 @@ inline eosio::chain::eosvmoc::intrinsic_map_t& get_intrinsic_map() {
 
 template <auto F, typename Cls, bool injected, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
-   constexpr auto fn = eosio::chain::webassembly::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>,
-                                                                           Preconditions, injected>();
+   constexpr auto fn =
+         eosio::chain::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>, Preconditions, injected>();
    get_intrinsic_map().insert(
          { n.c_str(),
            { reinterpret_cast<void*>(fn),
-             ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n))
-                   .value() } });
+             ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n)).value() } });
 }
 #endif
 
