@@ -312,6 +312,13 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
       return;
    }
 
+   if(stopping || !connected) {
+      elog( "AMQP connection ${a} to ${e} not connected dropping message ${rk}",
+            ("a", (std::string)*amqp_address)("e", exchange)("rk", rk));
+      // TODO: remove (std::string) on merge
+      return;
+   }
+
    AMQP::Envelope envelope(data.data(), data.size());
    envelope.setPersistent();
    if(message_id)
