@@ -56,8 +56,6 @@ class rabbitmq : public stream_handler {
       init(io_service, address);
 
       declare_exchange(exchange_type);
-
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address, exchange_name, "", unconfirmed_path);
    }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
@@ -118,7 +116,7 @@ class rabbitmq : public stream_handler {
          throw std::runtime_error("Unsupported RabbitMQ exchange type: " + exchange_type);
       }
 
-      auto& exchange = channel_->declareExchange( exchange_name_, type);
+      auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
       exchange.onSuccess( [this]() {
          ilog( "RabbitMQ declare exchange Successfully!\n Exchange ${e}", ("e", exchange_name_) );
          connection_->close();
