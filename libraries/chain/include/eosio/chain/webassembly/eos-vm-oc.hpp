@@ -34,6 +34,14 @@ struct timer : eosvmoc::timer_base {
    apply_context& context;
 };
 
+inline auto make_code_finder(const chainbase::database& db) {
+   return [&db](const digest_type& id, uint8_t vm_version) -> std::string_view {
+      auto * p = db.find<code_object,by_code_hash>(boost::make_tuple(id, 0, vm_version));
+      if(p) return { p->code.data(), p->code.size() };
+      else return {};
+   };
+}
+
 class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
