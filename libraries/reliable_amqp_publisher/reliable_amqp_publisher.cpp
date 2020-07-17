@@ -33,6 +33,7 @@ struct reliable_amqp_publisher_impl {
    void publish_message_raw(std::vector<char>&& data);
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
    void publish_message_direct(const std::string& routing_key, std::vector<char> data);
+   bool verify_max_queue_size();
 
    std::unique_ptr<AMQP::Address> amqp_address;
    std::unique_ptr<reliable_amqp_publisher_handler> handler;
@@ -257,8 +258,18 @@ void reliable_amqp_publisher_impl::pump_queue() {
    });
 }
 
-namespace {
+bool reliable_amqp_publisher_impl::verify_max_queue_size() {
    constexpr unsigned max_queued_messages = 1u << 20u;
+
+   if(message_deque.size() > max_queued_messages) {
+      if(logged_exceeded_max_depth == false)
+         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; dropping messages",
+              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
+      // TODO: on merge do not use conversion to string for logging of amqp_address, use new fc::variant direct logging
+      logged_exceeded_max_depth = true;
+      return false;
+   }
+   return true;
 }
 
 void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data) {
@@ -269,13 +280,8 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
       return;
    }
 
-   if(message_deque.size() > max_queued_messages) {
-      if(logged_exceeded_max_depth == false)
-         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
-      logged_exceeded_max_depth = true;
-      return;
-   }
+   if( !verify_max_queue_size() ) return;
+
    message_deque.emplace_back(amqp_message{0, "", std::move(data)});
    pump_queue();
 }
@@ -288,13 +294,7 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std
       return;
    }
 
-   if(queue.size() + message_deque.size() > max_queued_messages) {
-      if(logged_exceeded_max_depth == false)
-         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
-      logged_exceeded_max_depth = true;
-      return;
-   }
+   if( !verify_max_queue_size() ) return;
 
    ++batch_num.value;
    if( batch_num == 0u ) ++batch_num.value;
