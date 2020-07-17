@@ -40,7 +40,7 @@ struct reliable_amqp_publisher_impl {
    unsigned in_flight = 0;
    fc::unsigned_int batch_num = 0;
    struct amqp_message {
-      fc::unsigned_int  num = 0; ///< unique numbers indicates amqp transaction set
+      fc::unsigned_int  num = 0; ///< unique numbers indicates amqp transaction set (reset on clean restart)
       std::string       routing_key;
       std::vector<char> data;
    };
@@ -218,7 +218,7 @@ void reliable_amqp_publisher_impl::pump_queue() {
       const amqp_message& msg = *i;
       if( in_flight != 0 && msg.num != prev )
          break;
-      if( in_flight > max_msg_single_transaction && msg.num == fc::unsigned_int(0) )
+      if( in_flight > max_msg_single_transaction && msg.num == 0u )
          break;
 
       AMQP::Envelope envelope(msg.data.data(), msg.data.size());
@@ -306,6 +306,7 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std
    }
 
    ++batch_num.value;
+   if( batch_num == 0u ) ++batch_num.value;
    for( auto& d : queue ) {
       message_deque.emplace_back(amqp_message{batch_num, std::move(d.first), std::move(d.second)});
    }
