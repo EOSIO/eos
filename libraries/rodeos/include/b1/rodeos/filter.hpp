@@ -8,7 +8,9 @@
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
-#include <boost/hana/for_each.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 
 // todo: configure limits
 // todo: timeout
@@ -20,7 +22,7 @@ using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit>;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 struct eosvmoc_tier {
-   eosvmoc_tier(const boost::filesystem::path& d, const eosio::chain::webassembly::eosvmoc::config& c,
+   eosvmoc_tier(const boost::filesystem::path& d, const eosio::chain::eosvmoc::config& c,
                 const std::vector<uint8_t>& code, const eosio::chain::digest_type& code_hash)
        : cc(d, c,
             [code, code_hash](const eosio::chain::digest_type& id, uint8_t vm_version) -> std::string_view {
@@ -33,10 +35,10 @@ struct eosvmoc_tier {
       // start background compile
       cc.get_descriptor_for_code(code_hash, 0);
    }
-   eosio::chain::webassembly::eosvmoc::code_cache_async cc;
-   eosio::chain::webassembly::eosvmoc::executor         exec;
-   eosio::chain::webassembly::eosvmoc::memory           mem;
-   eosio::chain::digest_type                            hash;
+   eosio::chain::eosvmoc::code_cache_async cc;
+   eosio::chain::eosvmoc::executor         exec;
+   eosio::chain::eosvmoc::memory           mem;
+   eosio::chain::digest_type               hash;
 };
 #endif
 
