@@ -135,10 +135,9 @@ inline eosio::chain::eosvmoc::intrinsic_map_t& get_intrinsic_map() {
    return the_map;
 };
 
-template <auto F, typename Cls, bool injected, typename Preconditions, typename Name>
+template <auto F, typename Cls, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
-   constexpr auto fn =
-         eosio::chain::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>, Preconditions, injected>();
+   constexpr auto fn = eosio::chain::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>, Preconditions>();
    get_intrinsic_map().insert(
          { n.c_str(),
            { reinterpret_cast<void*>(fn),
@@ -149,7 +148,7 @@ void register_eosvm_oc(Name n) {
 template <typename Rft, auto F, typename Name>
 void register_host_function(Name fn_name) {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-   register_eosvm_oc<F, typename Rft::host_type_t, false, std::tuple<>>(BOOST_HANA_STRING("env.") + fn_name);
+   register_eosvm_oc<F, typename Rft::host_type_t, std::tuple<>>(BOOST_HANA_STRING("env.") + fn_name);
 #endif
    Rft::template add<F>("env", fn_name.c_str());
 }

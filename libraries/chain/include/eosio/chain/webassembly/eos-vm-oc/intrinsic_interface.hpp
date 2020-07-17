@@ -134,10 +134,10 @@ struct result_resolver {
 template<typename TC>
 result_resolver(TC&) -> result_resolver<TC>;
 
-template<auto F, typename Interface, typename TC, typename Preconditions, bool is_injected, typename... A>
+template<auto F, typename Interface, typename TC, typename Preconditions, typename... A>
 auto fn(A... a) {
    try {
-      if constexpr(!is_injected) {
+      {
          constexpr int cb_current_call_depth_remaining_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(current_call_depth_remaining);
          constexpr int depth_assertion_intrinsic_offset = OFFSET_OF_FIRST_INTRINSIC - (int)boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.depth_assert"))).value()*8;
          asm volatile("cmpl   $1,%%gs:%c[callDepthRemainOffset]\n"
@@ -167,16 +167,16 @@ auto fn(A... a) {
    __builtin_unreachable();
 }
 
-template<auto F, typename Cls, typename TC, typename Preconditions, typename Args, bool is_injected, std::size_t... Is>
+template<auto F, typename Cls, typename TC, typename Preconditions, typename Args, std::size_t... Is>
 constexpr auto create_function(std::index_sequence<Is...>) {
-   return &fn<F, Cls, TC, Preconditions, is_injected, std::tuple_element_t<Is, Args>...>;
+   return &fn<F, Cls, TC, Preconditions, std::tuple_element_t<Is, Args>...>;
 }
 
-template<auto F, typename Cls, typename TC, typename Preconditions, bool is_injected>
+template<auto F, typename Cls, typename TC, typename Preconditions>
 constexpr auto create_function() {
    using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
    using wasm_args = decltype(get_ct_args<TC, native_args>(std::make_index_sequence<std::tuple_size_v<native_args>>()));
-   return create_function<F, Cls, TC, Preconditions, wasm_args, is_injected>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
+   return create_function<F, Cls, TC, Preconditions, wasm_args>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
 }
 
   
