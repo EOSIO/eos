@@ -22,9 +22,9 @@ const intrinsic_map_t& get_internal_intrinsic_map() {
    return the_intrinsic_map();
 }
 
-intrinsic::intrinsic(const char* n, const IR::FunctionType* t, void* f, size_t o) {
+intrinsic::intrinsic(const char* n, void* f, size_t o) {
    the_intrinsic_map().erase(n);
-   the_intrinsic_map().emplace(n, intrinsic_entry{t, f, o});
+   the_intrinsic_map().emplace(n, intrinsic_entry{f, o});
 }
 
 static constexpr auto get_ordinal_map() {

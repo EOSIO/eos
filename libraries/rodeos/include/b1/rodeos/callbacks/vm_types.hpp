@@ -141,9 +141,7 @@ void register_eosvm_oc(Name n) {
                                                                            Preconditions, injected>();
    get_intrinsic_map().insert(
          { n.c_str(),
-           { eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<
-                   std::remove_pointer_t<decltype(fn)>>::type(),
-             reinterpret_cast<void*>(fn),
+           { reinterpret_cast<void*>(fn),
              ::boost::hana::index_if(eosio::chain::webassembly::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n))
                    .value() } });
 }
