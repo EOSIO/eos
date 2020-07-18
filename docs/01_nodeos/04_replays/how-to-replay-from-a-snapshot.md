@@ -13,7 +13,6 @@ You can use `snapshots-dir = "snapshots" ` in the configuration file or using th
 
 ```sh
 nodeos --snapshot yoursnapshot.name \
-  -e -p eosio \
   --plugin eosio::producer_plugin  \
   --plugin eosio::chain_api_plugin \
   --plugin eosio::http_plugin      \
