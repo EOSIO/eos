@@ -4,6 +4,7 @@
 #include "amqpcpp/libboostasio.h"
 #include "amqpcpp/linux_tcp.h"
 #include "stream.hpp"
+#include <appbase/application.hpp>
 #include <eosio/reliable_amqp_publisher/reliable_amqp_publisher.hpp>
 #include <fc/log/logger.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -104,7 +105,8 @@ class rabbitmq : public stream_handler {
          amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_);
       });
       queue.onError([](const char* error_message) {
-         throw std::runtime_error("RabbitMQ Queue error: " + std::string(error_message));
+         elog("RabbitMQ Queue error: ${e}", ("e", error_message));
+         appbase::app().quit();
       });
    }
 
@@ -113,7 +115,8 @@ class rabbitmq : public stream_handler {
       if (exchange_type == "fanout") {
          type = AMQP::fanout;
       } else if (exchange_type != "direct") {
-         throw std::runtime_error("Unsupported RabbitMQ exchange type: " + exchange_type);
+         elog("Unsupported RabbitMQ exchange type:  ${e}", ("e", exchange_type));
+         appbase::app().quit();
       }
 
       auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
@@ -123,7 +126,8 @@ class rabbitmq : public stream_handler {
          amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>( address_, exchange_name_, "", unconfirmed_path_ );
       } );
       exchange.onError([](const char* error_message) {
-         throw std::runtime_error("RabbitMQ Exchange error: " + std::string(error_message));
+         elog("RabbitMQ Queue error: ${e}", ("e", error_message));
+         appbase::app().quit();
       });
    }
 };
@@ -133,7 +137,8 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
    explicit rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
 
    void onError(AMQP::TcpConnection* connection, const char* message) {
-      throw std::runtime_error("rabbitmq connection failed: " + std::string(message));
+      elog("RabbitMQ connection failed: ${e}", ("e", message));
+      appbase::app().quit();
    }
 
    uint16_t onNegotiate(AMQP::TcpConnection* connection, uint16_t interval) { return 0; }
