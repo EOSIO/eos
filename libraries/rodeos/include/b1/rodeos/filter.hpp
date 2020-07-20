@@ -8,9 +8,11 @@
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
-#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#   include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#   include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
+#   include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#endif
 
 // todo: configure limits
 // todo: timeout

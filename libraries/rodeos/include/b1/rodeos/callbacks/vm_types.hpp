@@ -56,6 +56,8 @@ struct type_converter : eosio::vm::type_converter<Host, Execution_Interface> {
    using base_type::base_type;
    using base_type::from_wasm;
 
+   EOS_VM_FROM_WASM(bool, (uint32_t value)) { return value ? 1 : 0; }
+
    EOS_VM_FROM_WASM(memcpy_params,
                     (eosio::vm::wasm_ptr_t dst, eosio::vm::wasm_ptr_t src, eosio::vm::wasm_size_t size)) {
       auto d = this->template validate_pointer<char>(dst, size);

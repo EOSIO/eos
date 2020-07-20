@@ -35,8 +35,10 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name               = {}; // todo: remove
    std::string filter_wasm               = {}; // todo: remove
 
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
    bool                          eosvmoc_tierup = false;
+#endif
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
@@ -75,8 +77,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, app().data_dir(),
-                                                  config->eosvmoc_config, config->eosvmoc_tierup);
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                                                  ,
+                                                  app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
+#endif
+         );
    }
 
    void connect(asio::io_context& ioc) {
