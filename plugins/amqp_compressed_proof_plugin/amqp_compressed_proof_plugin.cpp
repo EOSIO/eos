@@ -3,7 +3,7 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <eosio/reliable_amqp_publisher/reliable_amqp_publisher.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/key.hpp>
