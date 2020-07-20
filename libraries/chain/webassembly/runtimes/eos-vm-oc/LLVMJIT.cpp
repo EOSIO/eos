@@ -133,7 +133,12 @@ namespace LLVMJIT
 			if(SectionName == ".stack_sizes") {
 				return stack_sizes.emplace_back(numBytes).data();
 			}
-			//WAVM_ASSERT_THROW(isReadOnly);
+			WAVM_ASSERT_THROW(isReadOnly);
+			if(SectionName == ".eosio_table") {
+				U8* ptr = get_next_code_ptr(numBytes, alignment);
+				table_offset = ptr-code->data();
+				return ptr;
+			}
 
 			return get_next_code_ptr(numBytes, alignment);
 		}
@@ -148,6 +153,7 @@ namespace LLVMJIT
 
 		std::vector<uint8_t> dumpster;
 		std::list<std::vector<uint8_t>> stack_sizes;
+		uintptr_t table_offset;
 
 		U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
 			FC_ASSERT(alignment <= alignof(std::max_align_t), "alignment of section exceeds max_align_t");
@@ -192,13 +198,7 @@ namespace LLVMJIT
 #if PRINT_DISASSEMBLY
 											disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
 #endif
-										} else if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Data && name && *name == getTableSymbolName()) {											Uptr loadedAddress = Uptr(*address);
-											auto symbolSection = symbol.getSection();
-											if(symbolSection)
-												loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
-											Uptr functionDefIndex;
-											table_offset = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
-									        }
+										}
 									}
 							  }
 							  );
@@ -211,7 +211,6 @@ namespace LLVMJIT
 		std::shared_ptr<UnitMemoryManager> unitmemorymanager = std::make_shared<UnitMemoryManager>();
 
 		std::map<unsigned, uintptr_t> function_to_offsets;
-		uintptr_t table_offset;
 		std::vector<uint8_t> final_pic_code;
 
 		~JITModule()
@@ -325,7 +324,7 @@ namespace LLVMJIT
 		instantiated_code ret;
 		ret.code = jitModule->final_pic_code;
 		ret.function_offsets = jitModule->function_to_offsets;
-		ret.table_offset = jitModule->table_offset;
+		ret.table_offset = jitModule->unitmemorymanager->table_offset;
 		return ret;
 	}
 }
