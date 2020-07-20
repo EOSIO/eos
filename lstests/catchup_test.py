@@ -79,10 +79,16 @@ def count_gen(clus, begin, end):
     sliding_total = 0
     sliding_window_avg_min = None
     window = []
+    production_blocks = 0
     for i in range(begin + 1, end + 1):
         n = len(clus.get_block(i, level="trace").response_dict["transactions"])
-        clus.info(f"Block {i} has {n} transactions.")
-        total += n
+        if production_blocks > 0 or n > 0:
+            clus.info(f"Block {i} has {n} transactions.")
+            total += n
+            production_blocks += 1
+        else:
+            continue
+
         full_window = len(window) == SLIDING_AVG_WINDOW
         if full_window:
             old = window.pop(0)
@@ -96,8 +102,11 @@ def count_gen(clus, begin, end):
             if sliding_window_avg_min is None or sliding_window_avg_min > window_avg:
                 sliding_window_avg_min = window_avg
 
-    clus.info(f"There are {total} transactions in {end - begin} blocks. Lowest sliding window average transactions per block: {sliding_window_avg_min}")
-    avg = total / (end - begin)
+    clus.info(f"There are {total} transactions in {production_blocks} blocks. Lowest sliding window average transactions per block: {sliding_window_avg_min}")
+    min_production_blocks = int((9 * (end - begin)) / 10)
+    if production_blocks < min_production_blocks:
+        raise BlockchainError(f"Transaction production should have been happening over at least {min_production_blocks} blocks but it was only produced over {production_blocks} blocks")
+    avg = total / production_blocks
     if avg < REQUIRED_AVG:
         raise BlockchainError(f"The average number of transactions per block ({avg}) is less than required ({REQUIRED_AVG})")
     return total
