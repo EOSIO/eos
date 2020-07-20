@@ -1590,20 +1590,22 @@ class Cluster:
         end_block_num = begin_block_num + full_round * producers_in_schedule
         for num in range(begin_block_num + 1, end_block_num):
             curr_prod = self.wait_get_producer_by_block(num, level="trace")
-            counter[curr_prod] += 1
             if curr_prod not in expected_producers:
                 msg = f"Unexpected producer \"{curr_prod}\" in block #{num}."
                 self.error(msg)
                 if not dont_raise:
                     raise BlockchainError(msg)
             if curr_prod != last_prod:
-                num_identified_prod = len(counter)
+                num_identified_prod = 0
+                for count in counter.values():
+                    if count > 0:
+                        num_identified_prod += 1
                 if num_identified_prod == producers_in_schedule:
                     self.log(f"All {producers_in_schedule} producers were identified and "
                              f"each produced at least {min_required_per_round} blocks", level)
                     break
 
-                if counter[curr_prod] != 1:
+                if counter[curr_prod] > 0:
                     count = counter[curr_prod]
                     msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\", but it was "
                            f"already identified earlier in the production round and only {num_identified_prod} of "
@@ -1612,6 +1614,7 @@ class Cluster:
                     if not dont_raise:
                         raise BlockchainError(msg)
 
+                counter[curr_prod] += 1
                 if counter[last_prod] < min_required_per_round or counter[last_prod] > full_round:
                     count = counter[last_prod]
                     msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
@@ -1619,11 +1622,14 @@ class Cluster:
                     self.error(msg)
                     if not dont_raise:
                         raise BlockchainError(msg)
+            else:
+                counter[curr_prod] += 1
             rest = end_block_num - num - 1
             count = counter[curr_prod]
             self.log(f"Block #{num}: {curr_prod} has produced {count} {helper.plural('block', count)} in this round. "
                      f"{rest} {helper.plural('block', rest)} {helper.singular('remain', rest)} to to be checked.", level=level)
             last_prod = curr_prod
+
         # summarize
         expected_counter = {x: full_round for x in expected_producers}
         success = counter == expected_counter
