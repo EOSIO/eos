@@ -310,7 +310,7 @@ struct controller_impl {
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    blog( cfg.blocks_dir ),
+    blog( cfg.blocks_dir, cfg.blocks_archive_dir, cfg.blocks_log_stride, cfg.max_retained_block_files, cfg.fix_irreversible_blocks),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
@@ -427,10 +427,12 @@ struct controller_impl {
 
             emit( self.irreversible_block, *bitr );
 
+            // blog.append could fail due to failures like running out of space.
+            // Do it before commit so that in case it throws, DB can be rolled back.
+            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
+
             db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
-
-            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
             auto rbitr = rbi.begin();
             while( rbitr != rbi.end() && rbitr->blocknum <= (*bitr)->block_num ) {

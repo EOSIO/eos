@@ -81,6 +81,7 @@ namespace fc {
 
       bool       is_relative()const;
       bool       is_absolute()const;
+      bool       empty() const;
 
       static char    separator_char;
 
