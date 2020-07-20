@@ -116,6 +116,7 @@ struct txn_test_gen_plugin_impl {
                   _total_us += result.get<transaction_trace_ptr>()->receipt->cpu_usage_us;
                   ++_txcount;
                }
+               ++total_trans;
             }
          });
       }
@@ -274,6 +275,10 @@ struct txn_test_gen_plugin_impl {
       if(batch_size & 1)
          return "batch_size must be even";
       ilog("Starting transaction test plugin valid");
+      report_batch = fc::time_point::now().time_since_epoch() + fc::seconds(1);
+      total_trans = 0;
+      last_total_trans = 0;
+      num_batches = 0;
 
       running = true;
 
@@ -314,6 +319,15 @@ struct txn_test_gen_plugin_impl {
    }
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
+      const auto now = fc::time_point::now().time_since_epoch();
+      if (now >= report_batch) {
+         report_batch = fc::time_point::now().time_since_epoch() + fc::seconds(1);
+         ilog("Generated ${new_trans} transactions (${trans} total) in ${batches} batches.",
+              ("new_trans", total_trans - last_total_trans)
+              ("trans", total_trans)
+              ("batches", num_batches));
+         last_total_trans = total_trans;
+      }
       timer->expires_at(s + std::chrono::milliseconds(timer_timeout));
       boost::asio::post( thread_pool->get_executor(), [this]() {
          send_transaction([this](const fc::exception_ptr& e){
@@ -386,6 +400,7 @@ struct txn_test_gen_plugin_impl {
          next(e.dynamic_copy_exception());
       }
 
+      ++num_batches;
       push_transactions(std::move(trxs), next);
    }
 
@@ -417,6 +432,11 @@ struct txn_test_gen_plugin_impl {
    action act_b_to_a;
 
    int32_t txn_reference_block_lag;
+
+   fc::microseconds report_batch;
+   unsigned total_trans = 0;
+   unsigned last_total_trans = 0;
+   unsigned num_batches = 0;
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}
