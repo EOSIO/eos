@@ -94,7 +94,8 @@ public:
    /// Do not call from lambda's passed to publish or constructor e.g. on_error
    void stop() {
       std::unique_lock<std::mutex> g(mtx_);
-      if( handler_ ) {
+      if( !stopped_ ) {
+         stopped_ = true;
          // drain amqp queue
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
@@ -106,7 +107,6 @@ public:
 
          g.lock();
          thread_pool_.stop();
-         handler_.reset();
       }
    }
 
@@ -230,6 +230,7 @@ private:
 
 private:
    std::mutex mtx_;
+   bool stopped_ = false;
    eosio::chain::named_thread_pool thread_pool_;
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
