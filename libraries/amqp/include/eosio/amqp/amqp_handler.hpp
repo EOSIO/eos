@@ -16,7 +16,7 @@ namespace eosio {
 /// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
-   // called from amqp thread on errors
+   // called from amqp thread or calling thread on errors, provide thread-safe function
    using on_error_t = std::function<void(const std::string& err)>;
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
@@ -25,7 +25,7 @@ public:
 
    /// @param address AMQP address
    /// @param name AMQP routing key
-   /// @param on_err callback for errors, called from amqp thread, can be nullptr
+   /// @param on_err callback for errors, provide thread-safe function, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string name, on_error_t on_err, on_consume_t on_consume = nullptr )
@@ -35,7 +35,7 @@ public:
    /// @param address AMQP address
    /// @param exchange_name AMQP exchange to send message to
    /// @param exchange_type AMQP exhcnage type
-   /// @param on_err callback for errors, called from amqp thread, can be nullptr
+   /// @param on_err callback for errors, provide thread-safe function, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string exchange_name, std::string exchange_type, on_error_t on_err, on_consume_t on_consume = nullptr )
