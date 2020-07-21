@@ -16,7 +16,7 @@ namespace eosio {
 /// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
-   // called from amqp thread or calling thread on errors although not concurrently
+   // called from amqp thread
    using on_error_t = std::function<void(const std::string& err)>;
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
@@ -90,23 +90,20 @@ public:
    }
 
    /// Explicitly stop thread pool execution
-   /// Thread safe
+   /// Not thread safe, call only once from constructor/destructor thread
    /// Do not call from lambda's passed to publish or constructor e.g. on_error
    void stop() {
-      std::unique_lock<std::mutex> g(mtx_);
-      if( !stopped_ ) {
-         stopped_ = true;
+      if( handler_ ) {
          // drain amqp queue
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
          boost::asio::post( *handler_->amqp_strand(), [&]() {
             stop_promise.set_value();
          } );
-         g.unlock();
          future.wait();
 
-         g.lock();
          thread_pool_.stop();
+         handler_.reset();
       }
    }
 
@@ -131,7 +128,7 @@ private:
       wait();
    }
 
-   // called amqp thread
+   // called from amqp thread
    void init( AMQP::TcpConnection* c ) {
       channel_ = std::make_unique<AMQP::TcpChannel>( c );
       if( !exchange_type_.empty() ) {
@@ -191,13 +188,17 @@ private:
    // called from non-amqp thread
    void wait() {
       auto r = connected_future_.wait_for( std::chrono::seconds( 10 ) );
-      if( r == std::future_status::timeout ) {
-         on_error( "AMQP timeout declaring queue" );
+      if( r == std::future_status::timeout && on_error_ ) {
+         boost::asio::post( *handler_->amqp_strand(),
+               [on_err = on_error_]() {
+                  try {
+                     on_err( "AMQP timeout declaring queue" );
+                  } FC_LOG_AND_DROP()
+               } );
       }
    }
 
    void on_error( const std::string& message ) {
-      std::lock_guard<std::mutex> g(mtx_);
       if( on_error_ ) on_error_( message );
    }
 
@@ -229,8 +230,6 @@ private:
    };
 
 private:
-   std::mutex mtx_;
-   bool stopped_ = false;
    eosio::chain::named_thread_pool thread_pool_;
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
