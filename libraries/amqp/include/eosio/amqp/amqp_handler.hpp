@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eosio/amqp/util.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
@@ -100,7 +101,7 @@ private:
          , on_consume_( std::move( on_consume ) )
    {
       AMQP::Address amqp_address( address );
-      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", std::string( amqp_address ))( "q", name_ ) );
+      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
 
       handler_ = std::make_unique<amqp_handler>( *this, thread_pool_.get_executor() );
       boost::asio::post( *handler_->amqp_strand(), [&]() {
