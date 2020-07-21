@@ -33,7 +33,7 @@ class rabbitmq : public stream_handler {
        , routes_( std::move( routes))
        , unconfirmed_path_( unconfirmed_path)
    {
-      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(address))( "q", queue_name_));
+      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
       bool error = false;
       eosio::amqp declare_queue( address_, queue_name_, [&error](const std::string& err){
          elog("AMQP Queue error: ${e}", ("e", err));
@@ -42,7 +42,7 @@ class rabbitmq : public stream_handler {
       } );
       if( error ) return;
       amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_);
-}
+   }
 
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
             std::string exchange_name, std::string exchange_type, const boost::filesystem::path& unconfirmed_path)
@@ -52,7 +52,7 @@ class rabbitmq : public stream_handler {
        , routes_( std::move( routes))
        , unconfirmed_path_( unconfirmed_path)
    {
-      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(address))( "e", exchange_name_));
+      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
       bool error = false;
       eosio::amqp declare_exchange( address_, exchange_name_, exchange_type, [&error](const std::string& err){
          elog("AMQP Exchange error: ${e}", ("e", err));

@@ -1,5 +1,6 @@
 #include <eosio/amqp/retrying_amqp_connection.hpp>
 #include <eosio/amqp/reliable_amqp_publisher.hpp>
+#include <eosio/amqp/util.hpp>
 
 #include <fc/network/url.hpp>
 #include <fc/exception/exception.hpp>
