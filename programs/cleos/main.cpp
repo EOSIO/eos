@@ -4126,8 +4126,12 @@ int main( int argc, char** argv ) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
       return 1;
+   } catch ( const std::bad_alloc& ) {
+     elog("bad alloc");
+   } catch( const boost::interprocess::bad_alloc& ) {
+     elog("bad alloc");
    } catch (const fc::exception& e) {
-      return handle_error(e);
+     return handle_error(e);
    } catch (const std::exception& e) {
       return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
    }

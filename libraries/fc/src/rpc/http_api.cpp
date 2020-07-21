@@ -115,6 +115,14 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
             resp_body = fc::json::to_string( fc::rpc::response( *call.id, result ) );
             resp_status = http::reply::OK;
          }
+         catch ( const std::bad_alloc& ) 
+         {
+            throw;
+         } 
+         catch ( const boost::interprocess::bad_alloc& ) 
+         {
+            throw;
+         } 
          catch ( const fc::exception& e )
          {
             handle_error_inner(e);
@@ -130,6 +138,14 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
          resp_body = "";
       }
    }
+   catch ( const std::bad_alloc& ) 
+   {
+     throw;
+   } 
+   catch ( const boost::interprocess::bad_alloc& ) 
+   {
+     throw;
+   } 
    catch ( const fc::exception& e )
    {
       handle_error(e);
@@ -145,6 +161,14 @@ void http_api_connection::on_request( const fc::http::request& req, const fc::ht
       resp.set_length( resp_body.length() );
       resp.write( resp_body.c_str(), resp_body.length() );
    }
+   catch ( const std::bad_alloc& ) 
+   {
+     throw;
+   } 
+   catch ( const boost::interprocess::bad_alloc& ) 
+   {
+     throw;
+   } 
    catch( const fc::exception& e )
    {
       wdump((e.to_detail_string()));

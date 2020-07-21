@@ -33,6 +33,10 @@ void http_client_plugin::plugin_initialize(const variables_map& options) {
                   EOS_ASSERT( boost::algorithm::starts_with( pem_str, "-----BEGIN CERTIFICATE-----\n" ),
                               chain::invalid_http_client_root_cert,
                              "File does not appear to be a PEM encoded certificate" );
+               } catch ( const std::bad_alloc& ) {
+                 throw;
+               } catch ( const boost::interprocess::bad_alloc& ) {
+                 throw;
                } catch ( const fc::exception& e ) {
                   elog( "Failed to read PEM ${f} : ${e}", ("f", root_pem)( "e", e.to_detail_string()));
                } catch ( const std::exception& e ) {
@@ -42,6 +46,10 @@ void http_client_plugin::plugin_initialize(const variables_map& options) {
 
             try {
                my->add_cert( pem_str );
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch ( const fc::exception& e ) {
                elog( "Failed to read PEM : ${e} \n${pem}\n", ("pem", pem_str)( "e", e.to_detail_string()));
             } catch ( const std::exception& e ) {

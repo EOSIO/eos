@@ -925,6 +925,10 @@ void producer_plugin::plugin_startup()
 void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
+   } catch ( const std::bad_alloc& ) {
+     chain_plugin::handle_bad_alloc();
+   } catch ( const boost::interprocess::bad_alloc& ) {
+     chain_plugin::handle_bad_alloc();
    } catch(const fc::exception& e) {
       edump((e.to_detail_string()));
    } catch(const std::exception& e) {
@@ -1480,6 +1484,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          bool drop_features_to_activate = false;
          try {
             chain.validate_protocol_features( _protocol_features_to_activate );
+         } catch ( const std::bad_alloc& ) {
+           chain_plugin::handle_bad_alloc();
+         } catch ( const boost::interprocess::bad_alloc& ) {
+           chain_plugin::handle_bad_alloc();
          } catch( const fc::exception& e ) {
             wlog( "protocol features to activate are no longer all valid: ${details}",
                   ("details",e.to_detail_string()) );

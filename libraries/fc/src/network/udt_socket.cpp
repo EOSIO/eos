@@ -159,6 +159,10 @@ namespace fc {
    {
      try {
         close();
+     } catch ( const std::bad_alloc& ) {
+        throw;
+     } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
      } catch ( const fc::exception& e ) {
         wlog( "${e}", ("e", e.to_detail_string() ) );
      } catch ( const std::exception& e ) {
@@ -338,6 +342,10 @@ namespace fc {
   {
      try {
         close();
+     } catch ( const std::bad_alloc& ) {
+        throw;
+     } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
      } catch ( const fc::exception& e ) {
         wlog( "${e}", ("e", e.to_detail_string() ) );
      } catch ( const std::exception& e ) {

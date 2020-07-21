@@ -149,6 +149,10 @@ void apply_context::exec_one()
       } else {
          act_digest = digest_type::hash(*act);
       }
+   } catch ( const std::bad_alloc& ) {
+      throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
    } catch( const fc::exception& e ) {
       handle_exception(e);
    } catch ( const std::exception& e ) {

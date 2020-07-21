@@ -123,6 +123,14 @@ std::string websocket_api_connection::on_message(
                return reply;
             }
          }
+         catch ( const std::bad_alloc& ) 
+         {
+            throw;
+         } 
+         catch ( const boost::interprocess::bad_alloc& ) 
+         {
+            throw;
+         } 
          catch ( const fc::exception& e )
          {
             optexcept = handle_error_inner(e);
@@ -147,6 +155,14 @@ std::string websocket_api_connection::on_message(
          _rpc_state.handle_reply( reply );
       }
    }
+   catch ( const std::bad_alloc& ) 
+   {
+     throw;
+   } 
+   catch ( const boost::interprocess::bad_alloc& ) 
+   {
+     throw;
+   } 
    catch ( const fc::exception& e )
    {
      return handle_error(e);

@@ -1144,6 +1144,10 @@ namespace eosio {
 
                c->enqueue_sync_block();
                c->do_queue_write();
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch( const fc::exception& ex ) {
                fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.to_string() ) );
             } catch( const std::exception& ex ) {
@@ -2475,8 +2479,17 @@ namespace eosio {
                      }
                      close_connection = true;
                   }
-               }
-               catch(const fc::exception &ex) {
+               } 
+               catch ( const std::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch ( const boost::interprocess::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch(const fc::exception &ex) 
+               {
                   fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
                   close_connection = true;
                }

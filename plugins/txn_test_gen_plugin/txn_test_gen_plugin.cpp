@@ -255,6 +255,10 @@ struct txn_test_gen_plugin_impl {
             trx.sign(txn_test_receiver_C_priv_key, chainid);
             trxs.emplace_back(std::move(trx));
          }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
       } catch (const fc::exception& e) {
          next(e.dynamic_copy_exception());
          return;
@@ -382,6 +386,10 @@ struct txn_test_gen_plugin_impl {
          trxs.emplace_back(std::move(trx));
          }
          }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
       } catch (const std::exception& e) {

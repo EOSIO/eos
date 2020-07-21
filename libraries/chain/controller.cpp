@@ -1219,6 +1219,10 @@ struct controller_impl {
          return trace;
       } catch( const objective_block_validation_exception& ) {
          throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch( const fc::exception& e ) {
          handle_exception(e);
       } catch ( const std::exception& e ) {
@@ -1391,6 +1395,10 @@ struct controller_impl {
 
          return trace;
       } catch( const objective_block_validation_exception& ) {
+         throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
          throw;
       } catch( const fc::exception& e ) {
         handle_exception(e);
@@ -1605,6 +1613,10 @@ struct controller_impl {
             return trace;
          } catch( const objective_block_validation_exception& ) {
             throw;
+         } catch ( const std::bad_alloc& ) {
+           throw;
+         } catch ( const boost::interprocess::bad_alloc& ) {
+           throw;
          } catch (const fc::exception& e) {
            handle_exception(e);
          } catch (const std::exception& e) {
@@ -2052,6 +2064,10 @@ struct controller_impl {
 
          commit_block(false);
          return;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
          abort_block();
@@ -2238,6 +2254,10 @@ struct controller_impl {
                                                        : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch (const fc::exception& e) {
                elog("exception thrown while switching forks ${e}", ("e", e.to_detail_string()));
                except = std::current_exception();

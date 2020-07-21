@@ -118,6 +118,14 @@ void cli::run()
          else
             std::cout << itr->second( result, args ) << "\n";
       }
+      catch ( const std::bad_alloc& ) 
+      {
+         throw;
+      } 
+      catch ( const boost::interprocess::bad_alloc& ) 
+      {
+         throw;
+      } 
       catch ( const fc::exception& e )
       {
          std::cout << e.to_detail_string() << "\n";

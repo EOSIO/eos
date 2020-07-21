@@ -118,6 +118,10 @@ namespace {
       } catch (const bpo::error& e) {
          std::cerr << "Error: " << e.what() << "\n\n";
          print_help_text(std::cerr, vis_desc);
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
       } catch (const fc::exception& e) {
          std::cerr << "Error: " << e.to_detail_string() << "\n";
       } catch (const std::exception& e) {
