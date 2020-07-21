@@ -277,9 +277,9 @@ namespace eosio { namespace chain {
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
    std::optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
-                                                                              account_name scope,
-                                                                              action_name act_name
-                                                                            )const
+                                                                                   account_name scope,
+                                                                                   action_name act_name
+                                                                                 )const
    {
       try {
          // First look up a specific link for this message act_name
@@ -300,9 +300,9 @@ namespace eosio { namespace chain {
    }
 
    std::optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
-                                                                               account_name scope,
-                                                                               action_name act_name
-                                                                             )const
+                                                                                    account_name scope,
+                                                                                    action_name act_name
+                                                                                  )const
    {
       // Special case native actions cannot be linked to a minimum permission, so there is no need to check.
       if( scope == config::system_account_name ) {

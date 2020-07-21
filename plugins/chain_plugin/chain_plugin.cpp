@@ -154,7 +154,7 @@ public:
    std::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
    std::optional<vm_type>            wasm_runtime;
-   fc::microseconds                 abi_serializer_max_time_us;
+   fc::microseconds                  abi_serializer_max_time_us;
    std::optional<bfs::path>          snapshot_path;
 
 
@@ -165,7 +165,7 @@ public:
    channels::irreversible_block::channel_type&     irreversible_block_channel;
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
-   incoming::channels::block::channel_type&         incoming_block_channel;
+   incoming::channels::block::channel_type&        incoming_block_channel;
 
    // retained references to methods for easy calling
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;

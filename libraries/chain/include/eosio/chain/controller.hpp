@@ -225,12 +225,12 @@ namespace eosio { namespace chain {
          time_point                     pending_block_time()const;
          account_name                   pending_block_producer()const;
          const block_signing_authority& pending_block_signing_authority()const;
-         std::optional<block_id_type>        pending_producer_block_id()const;
+         std::optional<block_id_type>   pending_producer_block_id()const;
 
          const deque<transaction_receipt>& get_pending_trx_receipts()const;
 
-         const producer_authority_schedule&    active_producers()const;
-         const producer_authority_schedule&    pending_producers()const;
+         const producer_authority_schedule&         active_producers()const;
+         const producer_authority_schedule&         pending_producers()const;
          std::optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;

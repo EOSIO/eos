@@ -182,10 +182,10 @@ struct test_chain {
    fc::temp_directory                                dir;
    std::unique_ptr<eosio::chain::controller::config> cfg;
    std::unique_ptr<eosio::chain::controller>         control;
-   std::optional<scoped_connection>                   applied_transaction_connection;
-   std::optional<scoped_connection>                   accepted_block_connection;
+   std::optional<scoped_connection>                  applied_transaction_connection;
+   std::optional<scoped_connection>                  accepted_block_connection;
    eosio::state_history::transaction_trace_cache     trace_cache;
-   std::optional<block_position>                      prev_block;
+   std::optional<block_position>                     prev_block;
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
    std::set<test_chain_ref*>                         refs;

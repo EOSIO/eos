@@ -28,11 +28,11 @@ namespace fc {
       string                           name;
       ostring                          parent;
       /// if not set, then parents level is used.
-      std::optional<log_level>          level;
+      std::optional<log_level>         level;
       bool                             enabled;
       /// if any appenders are sepecified, then parent's appenders are not set.
       bool                             additivity;
-      std::vector<string>               appenders;
+      std::vector<string>              appenders;
    };
 
    struct logging_config {

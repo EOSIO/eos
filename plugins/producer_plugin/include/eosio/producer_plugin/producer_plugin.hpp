@@ -59,13 +59,13 @@ public:
    struct get_account_ram_corrections_params {
       std::optional<account_name>  lower_bound;
       std::optional<account_name>  upper_bound;
-      uint32_t                limit = 10;
-      bool                    reverse = false;
+      uint32_t                     limit = 10;
+      bool                         reverse = false;
    };
 
    struct get_account_ram_corrections_result {
-      std::vector<fc::variant> rows;
-      std::optional<account_name>   more;
+      std::vector<fc::variant>     rows;
+      std::optional<account_name>  more;
    };
 
    template<typename T>

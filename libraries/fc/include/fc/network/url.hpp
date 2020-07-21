@@ -48,7 +48,7 @@ namespace fc {
       opath                     path()const;
       ostring                   query()const;
       ovariant_object           args()const;
-      std::optional<uint16_t>    port()const;
+      std::optional<uint16_t>   port()const;
 
     private:
       friend class mutable_url;

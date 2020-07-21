@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
 
    transaction_trace_cache          trace_cache;
    std::map<uint32_t, chain::bytes> history;
-   std::optional<block_position>     prev_block;
+   std::optional<block_position>    prev_block;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {

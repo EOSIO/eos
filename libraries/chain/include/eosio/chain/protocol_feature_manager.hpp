@@ -93,13 +93,13 @@ protected:
 };
 
 struct protocol_feature {
-   digest_type                           feature_digest;
-   digest_type                           description_digest;
-   flat_set<digest_type>                 dependencies;
-   time_point                            earliest_allowed_activation_time;
-   bool                                  preactivation_required = false;
-   bool                                  enabled = false;
-   std::optional<builtin_protocol_feature_t>  builtin_feature;
+   digest_type                               feature_digest;
+   digest_type                               description_digest;
+   flat_set<digest_type>                     dependencies;
+   time_point                                earliest_allowed_activation_time;
+   bool                                      preactivation_required = false;
+   bool                                      enabled = false;
+   std::optional<builtin_protocol_feature_t> builtin_feature;
 
    fc::variant to_variant( bool include_subjective_restrictions = true,
                            fc::mutable_variant_object* additional_fields = nullptr )const;

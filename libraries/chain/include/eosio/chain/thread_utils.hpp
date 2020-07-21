@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
 
       boost::asio::thread_pool       _thread_pool;
       boost::asio::io_context        _ioc;
-      std::optional<ioc_work_t>       _ioc_work;
+      std::optional<ioc_work_t>      _ioc_work;
    };
 
 

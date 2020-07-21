@@ -128,7 +128,7 @@ struct abi_serializer {
                      "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
 
          EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
-                    "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       };
    }
 

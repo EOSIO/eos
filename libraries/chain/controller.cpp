@@ -119,14 +119,14 @@ struct building_block {
    ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
-   pending_block_header_state            _pending_block_header_state;
-   std::optional<producer_authority_schedule> _new_pending_producer_schedule;
-   vector<digest_type>                   _new_protocol_feature_activations;
-   size_t                                _num_new_protocol_features_that_have_activated = 0;
-   deque<transaction_metadata_ptr>       _pending_trx_metas;
-   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
+   pending_block_header_state                  _pending_block_header_state;
+   std::optional<producer_authority_schedule>  _new_pending_producer_schedule;
+   vector<digest_type>                         _new_protocol_feature_activations;
+   size_t                                      _num_new_protocol_features_that_have_activated = 0;
+   deque<transaction_metadata_ptr>             _pending_trx_metas;
+   deque<transaction_receipt>                  _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
    static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
-   digests_t                             _action_receipt_digests;
+   digests_t                                   _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -157,7 +157,7 @@ struct pending_state {
    maybe_session                      _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
-   std::optional<block_id_type>            _producer_block_id;
+   std::optional<block_id_type>       _producer_block_id;
 
    /** @pre _block_stage cannot hold completed_block alternative */
    const pending_block_header_state& get_pending_block_header_state()const {
@@ -226,32 +226,32 @@ struct controller_impl {
       reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
    };
 
-   reset_new_handler              rnh; // placed here to allow for this to be set before constructing the other fields
-   controller&                    self;
-   std::function<void()>          shutdown;
-   chainbase::database            db;
-   chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
-   block_log                      blog;
-   std::optional<pending_state>        pending;
-   block_state_ptr                head;
-   fork_database                  fork_db;
-   wasm_interface                 wasmif;
-   resource_limits_manager        resource_limits;
-   authorization_manager          authorization;
-   protocol_feature_manager       protocol_features;
-   controller::config             conf;
-   const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
-   std::optional<fc::time_point>       replay_head_time;
-   db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
-   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
-   std::optional<fc::microseconds>     subjective_cpu_leeway;
-   bool                           trusted_producer_light_validation = false;
-   uint32_t                       snapshot_head_block = 0;
-   named_thread_pool              thread_pool;
-   platform_timer                 timer;
-   fc::logger*                    deep_mind_logger = nullptr;
+   reset_new_handler               rnh; // placed here to allow for this to be set before constructing the other fields
+   controller&                     self;
+   std::function<void()>           shutdown;
+   chainbase::database             db;
+   chainbase::database             reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+   block_log                       blog;
+   std::optional<pending_state>    pending;
+   block_state_ptr                 head;
+   fork_database                   fork_db;
+   wasm_interface                  wasmif;
+   resource_limits_manager         resource_limits;
+   authorization_manager           authorization;
+   protocol_feature_manager        protocol_features;
+   controller::config              conf;
+   const chain_id_type             chain_id; // read by thread_pool threads, value will not be changed
+   std::optional<fc::time_point>   replay_head_time;
+   db_read_mode                    read_mode = db_read_mode::SPECULATIVE;
+   bool                            in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
+   std::optional<fc::microseconds> subjective_cpu_leeway;
+   bool                            trusted_producer_light_validation = false;
+   uint32_t                        snapshot_head_block = 0;
+   named_thread_pool               thread_pool;
+   platform_timer                  timer;
+   fc::logger*                     deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-   vm::wasm_allocator                 wasm_alloc;
+   vm::wasm_allocator               wasm_alloc;
 #endif
 
    typedef pair<scope_name,action_name>                   handler_key;

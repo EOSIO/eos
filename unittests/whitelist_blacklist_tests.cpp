@@ -76,7 +76,7 @@ class whitelist_blacklist_tester {
    private:
       fc::temp_directory                tempdir; // Must come before chain
    public:
-      std::optional<Tester>              chain;
+      std::optional<Tester>             chain;
       flat_set<account_name>            sender_bypass_whiteblacklist;
       flat_set<account_name>            actor_whitelist;
       flat_set<account_name>            actor_blacklist;

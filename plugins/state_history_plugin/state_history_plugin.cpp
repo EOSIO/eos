@@ -42,12 +42,12 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
-   std::optional<state_history_traces_log>                     trace_log;
-   std::optional<state_history_chain_state_log>                chain_state_log;
+   std::optional<state_history_traces_log>                    trace_log;
+   std::optional<state_history_chain_state_log>               chain_state_log;
    bool                                                       stopping = false;
-   std::optional<scoped_connection>                            applied_transaction_connection;
-   std::optional<scoped_connection>                            block_start_connection;
-   std::optional<scoped_connection>                            accepted_block_connection;
+   std::optional<scoped_connection>                           applied_transaction_connection;
+   std::optional<scoped_connection>                           block_start_connection;
+   std::optional<scoped_connection>                           accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
@@ -85,7 +85,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending  = false;
       bool                                       sent_abi = false;
       std::vector<std::vector<char>>             send_queue;
-      std::optional<get_blocks_request_v0>        current_request;
+      std::optional<get_blocks_request_v0>       current_request;
       bool                                       need_to_send_update = false;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)

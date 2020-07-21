@@ -74,7 +74,7 @@ namespace fc
          opath                     _path;
          ostring                   _query;
          ovariant_object           _args;
-         std::optional<uint16_t>    _port;
+         std::optional<uint16_t>   _port;
     };
   }
 
@@ -191,7 +191,7 @@ namespace fc
   {
     return my->_args;
   }
-  std::optional<uint16_t>    url::port()const
+  std::optional<uint16_t>   url::port()const
   {
     return my->_port;
   }
