@@ -16,7 +16,7 @@ namespace eosio {
 /// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
-   // called from amqp thread
+   // called from amqp thread or calling thread, but not concurrently
    using on_error_t = std::function<void(const std::string& err)>;
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
@@ -137,6 +137,7 @@ private:
             type = AMQP::fanout;
          } else if (exchange_type_ != "direct") {
             on_error( "Unsupported exchange type: " + exchange_type_ );
+            connected_.set_value();
             return;
          }
 
@@ -188,17 +189,13 @@ private:
    // called from non-amqp thread
    void wait() {
       auto r = connected_future_.wait_for( std::chrono::seconds( 10 ) );
-      if( r == std::future_status::timeout && on_error_ ) {
-         boost::asio::post( *handler_->amqp_strand(),
-               [on_err = on_error_]() {
-                  try {
-                     on_err( "AMQP timeout declaring queue" );
-                  } FC_LOG_AND_DROP()
-               } );
+      if( r == std::future_status::timeout ) {
+         on_error( "AMQP timeout declaring queue" );
       }
    }
 
    void on_error( const std::string& message ) {
+      std::lock_guard<std::mutex> g(mtx_);
       if( on_error_ ) on_error_( message );
    }
 
@@ -230,6 +227,7 @@ private:
    };
 
 private:
+   std::mutex mtx_;
    eosio::chain::named_thread_pool thread_pool_;
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
