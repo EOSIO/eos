@@ -88,12 +88,12 @@ void streamer_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("stream-rabbits")) {
          auto rabbits = options.at("stream-rabbits").as<std::vector<std::string>>();
-         initialize_rabbits_queue(app().get_io_service(), my->streams, rabbits, my->publish_immediately, stream_data_path);
+         initialize_rabbits_queue(my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       if (options.count("stream-rabbits-exchange")) {
          auto rabbits = options.at("stream-rabbits-exchange").as<std::vector<std::string>>();
-         initialize_rabbits_exchange(app().get_io_service(), my->streams, rabbits, my->publish_immediately, stream_data_path);
+         initialize_rabbits_exchange(my->streams, rabbits, my->publish_immediately, stream_data_path);
       }
 
       ilog("initialized streams: ${streams}", ("streams", my->streams.size()));
