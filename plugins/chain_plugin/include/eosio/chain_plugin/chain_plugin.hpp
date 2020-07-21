@@ -327,6 +327,7 @@ public:
       bool        json = false;
       name        code;
       name        table;
+      name        database_id;        // N(eosio.kvram) or N(eosio.kvdisk)
       string      index_name;         // name of either primary index or secondary index
       string      index_type;         // type of index specified by lower_bound and upper_bound
       string      lower_bound;        // lower bound value of index of index_name
