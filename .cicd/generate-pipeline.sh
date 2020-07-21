@@ -217,7 +217,7 @@ for ROUND in $(seq 1 $ROUNDS); do
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
+    timeout: ${TIMEOUT:-45}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LS_TESTS}
 
 EOF
