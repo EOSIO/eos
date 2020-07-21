@@ -1868,6 +1868,12 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 #pragma GCC diagnostic pop
 }
 
+read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p )const {
+   read_only::get_table_rows_result result;
+
+   return result;
+}
+
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
    read_only::get_table_by_scope_result result;
    const auto& d = db.db();

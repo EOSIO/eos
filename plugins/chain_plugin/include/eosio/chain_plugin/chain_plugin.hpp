@@ -323,6 +323,21 @@ public:
       optional<bool>  show_payer; // show RAM pyer
     };
 
+   struct get_kv_table_rows_params {
+      bool        json = false;
+      name        code;
+      name        table;
+      string      index_name;         // name of either primary index or secondary index
+      string      index_type;         // type of index specified by lower_bound and upper_bound
+      string      lower_bound;        // lower bound value of index of index_name
+      string      upper_bound;        // upper bound value of index of index_name,
+                                      // For point query, set lower_bound and upper_bound the same value
+      uint32_t    limit = 10;
+      string      encode_type{"dec"}; //dec, hex , default=dec
+      optional<bool>  reverse;
+      optional<bool>  show_payer;     // show RAM pyer
+    };
+
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
@@ -330,6 +345,8 @@ public:
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
+
+   get_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
 
    struct get_table_by_scope_params {
       name        code; // mandatory
