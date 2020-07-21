@@ -135,7 +135,7 @@ void amqp_trace_plugin::plugin_shutdown() {
 
          my->applied_transaction_connection.reset();
          if( my->amqp_trace ) {
-            my->amqp_trace->stop();
+            my->amqp_trace.reset();
          }
 
          dlog( "exit amqp_trace_plugin" );
