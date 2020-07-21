@@ -160,7 +160,7 @@ void amqp_trx_plugin::plugin_shutdown() {
       dlog( "shutdown.." );
 
       if( my->amqp_trx ) {
-         my->amqp_trx.reset();
+         my->amqp_trx->stop();
       }
 
       dlog( "exit amqp_trx_plugin" );

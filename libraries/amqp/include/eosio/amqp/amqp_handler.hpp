@@ -16,7 +16,7 @@ namespace eosio {
 /// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
-   // called from amqp thread or calling thread on errors, provide thread-safe function
+   // called from amqp thread or calling thread on errors although not concurrently
    using on_error_t = std::function<void(const std::string& err)>;
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
@@ -25,7 +25,7 @@ public:
 
    /// @param address AMQP address
    /// @param name AMQP routing key
-   /// @param on_err callback for errors, provide thread-safe function, called from amqp thread or caller thread, can be nullptr
+   /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string name, on_error_t on_err, on_consume_t on_consume = nullptr )
@@ -35,7 +35,7 @@ public:
    /// @param address AMQP address
    /// @param exchange_name AMQP exchange to send message to
    /// @param exchange_type AMQP exhcnage type
-   /// @param on_err callback for errors, provide thread-safe function, called from amqp thread or caller thread, can be nullptr
+   /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string exchange_name, std::string exchange_type, on_error_t on_err, on_consume_t on_consume = nullptr )
@@ -87,6 +87,27 @@ public:
                   my->channel_->reject( delivery_tag );
                } FC_LOG_AND_DROP()
             } );
+   }
+
+   /// Explicitly stop thread pool execution
+   /// Thread safe
+   /// Do not call from lambda's passed to publish or constructor e.g. on_error
+   void stop() {
+      std::unique_lock<std::mutex> g(mtx_);
+      if( handler_ ) {
+         // drain amqp queue
+         std::promise<void> stop_promise;
+         auto future = stop_promise.get_future();
+         boost::asio::post( *handler_->amqp_strand(), [&]() {
+            stop_promise.set_value();
+         } );
+         g.unlock();
+         future.wait();
+
+         g.lock();
+         thread_pool_.stop();
+         handler_.reset();
+      }
    }
 
 private:
@@ -145,24 +166,6 @@ private:
       }
    }
 
-   /// Explicitly stop thread pool execution
-   /// Not thread safe, call only once.
-   /// Do not call from lambda's passed to publish or constructor e.g. on_error
-   void stop() {
-      if( handler_ ) {
-         // drain amqp queue
-         std::promise<void> stop_promise;
-         auto future = stop_promise.get_future();
-         boost::asio::post( *handler_->amqp_strand(), [&]() {
-            stop_promise.set_value();
-         } );
-         future.wait();
-
-         thread_pool_.stop();
-         handler_.reset();
-      }
-   }
-
    // called from amqp thread
    void init_consume() {
       if( !on_consume_ ) {
@@ -194,6 +197,7 @@ private:
    }
 
    void on_error( const std::string& message ) {
+      std::lock_guard<std::mutex> g(mtx_);
       if( on_error_ ) on_error_( message );
    }
 
@@ -225,6 +229,7 @@ private:
    };
 
 private:
+   std::mutex mtx_;
    eosio::chain::named_thread_pool thread_pool_;
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
