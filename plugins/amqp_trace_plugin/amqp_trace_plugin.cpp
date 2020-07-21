@@ -135,6 +135,8 @@ void amqp_trace_plugin::plugin_shutdown() {
 
          my->applied_transaction_connection.reset();
          if( my->amqp_trace ) {
+            // use stop() instead of destroying amqp_trace as amqp_trx_plugin keeps a pointer to amqp_trace
+            // and needs to live until amqp_trx_plugin shutdown.
             my->amqp_trace->stop();
          }
 
