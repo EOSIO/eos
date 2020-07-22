@@ -57,7 +57,7 @@ namespace eosio { namespace chain {
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
-         undo_session = c.mutable_db().start_undo_session(true);
+         undo_session.emplace(c.mutable_db(), c.kv_undo_stack());
       }
       trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;

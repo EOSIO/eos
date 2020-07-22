@@ -1,4 +1,5 @@
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
 
@@ -38,6 +39,7 @@ FC_REFLECT(itparam, (db)(count)(erase))
 class kv_tester : public tester {
  public:
    kv_tester() {
+   eosio::chain::use_rocksdb_for_disk(const_cast<chainbase::database&>(control->db()));
       produce_blocks(2);
 
       create_accounts({ N(kvtest), N(kvtest1), N(kvtest2), N(kvtest3), N(kvtest4) });
@@ -75,6 +77,8 @@ class kv_tester : public tester {
       BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024*1024) == "");
       produce_block();
    }
+
+   void use_rocksdb() { eosio::chain::use_rocksdb_for_disk(const_cast<chainbase::database&>(control->db())); }
 
    action_result push_action(const action_name& name, const variant_object& data, chain::name account = N(kvtest)) {
       string action_type_name = abi_ser.get_action_type(name);
@@ -135,6 +139,32 @@ class kv_tester : public tester {
 
    action_result iterlimit(const std::vector<itparam>& params) {
       return push_action(N(itlimit), mvo()("params", params));
+   }
+
+   action make_setmany_action(name db, name contract, const std::vector<kv>& kvs) {
+      action act;
+      act.account = contract;
+      act.name = N(setmany);
+      act.data = abi_ser.variant_to_binary("setmany", mvo()("db", db)("contract", contract)("kvs", kvs), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   action make_erase_action(name db, name contract, const char* k) {
+      action act;
+      act.account = contract;
+      act.name = N(erase);
+      act.data = abi_ser.variant_to_binary("erase", mvo()("db", db)("contract", contract)("k", k), abi_serializer_max_time);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
+   }
+
+   action make_fail_action(name db, name contract) {
+      action act;
+      act.account = contract;
+      act.name = N(fail);
+      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      return act;
    }
 
    void setmany(const char* error, name db, name contract, const std::vector<kv>& kvs) {
@@ -602,98 +632,169 @@ class kv_tester : public tester {
       // BOOST_TEST(iterlimit({{N(eosio.kvram), 0xFFFFFFFF, false}, {N(eosio.kvdisk), 1, false}}) == "Too many iterators");
    }
 
+   // Make sure that a failed transaction correctly rolls back changes to the database,
+   // for both rocksdb and chainbase.
+   void test_undo(name db) {
+      setmany("", db, N(kvtest),
+              {
+                    kv{ { 0x11 }, { 0x11 } },
+                    kv{ { 0x22 }, { 0x11, 0x11 } }
+              });
+
+      signed_transaction trx;
+      {
+         trx.actions.push_back(make_setmany_action(db, N(kvtest), { kv{ { 0x11 }, { 0x33 } }, kv{ { 0x44 }, { 0x55 } } } ));
+         trx.actions.push_back(make_erase_action(db, N(kvtest), "22"));
+         trx.actions.push_back(make_fail_action(db, N(kvtest)));
+      }
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_code_exception);
+
+      scan("", db, N(kvtest), "", nullptr,
+              {
+                    kv{ { 0x11 }, { 0x11 } },
+                    kv{ { 0x22 }, { 0x11, 0x11 } }
+              });
+   }
+
+   void test_kv_basic_common() {
+     /*
+      BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", N(oops))));
+      BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvram))));
+      BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvdisk))));
+      test_basic(N(eosio.kvram));
+      */
+      test_basic(N(eosio.kvdisk));
+   }
+
+   void test_kv_scan_common() { //
+      // four possibilities depending on whether the next or previous contract table has elements
+      test_scan(N(eosio.kvram), N(kvtest2));
+      test_scan(N(eosio.kvram), N(kvtest4));
+      test_scan(N(eosio.kvram), N(kvtest3));
+      test_scan(N(eosio.kvram), N(kvtest1));
+      test_scan(N(eosio.kvdisk), N(kvtest2));
+      test_scan(N(eosio.kvdisk), N(kvtest4));
+      test_scan(N(eosio.kvdisk), N(kvtest3));
+      test_scan(N(eosio.kvdisk), N(kvtest1));
+   }
+
+   void test_kv_scan_ram_after_disk_common() {
+      // Make sure that the behavior of one database is not affected by having the other database populated.
+      test_scan(N(eosio.kvdisk), N(kvtest2));
+      test_scan(N(eosio.kvdisk), N(kvtest4));
+      test_scan(N(eosio.kvdisk), N(kvtest3));
+      test_scan(N(eosio.kvdisk), N(kvtest1));
+      test_scan(N(eosio.kvram), N(kvtest2));
+      test_scan(N(eosio.kvram), N(kvtest4));
+      test_scan(N(eosio.kvram), N(kvtest3));
+      test_scan(N(eosio.kvram), N(kvtest1));
+   }
+   
+   void test_kv_scanrev_common() {
+      test_scanrev(N(eosio.kvram), N(kvtest2));
+      test_scanrev(N(eosio.kvram), N(kvtest4));
+      test_scanrev(N(eosio.kvram), N(kvtest3));
+      test_scanrev(N(eosio.kvram), N(kvtest1));
+      test_scanrev(N(eosio.kvdisk), N(kvtest2));
+      test_scanrev(N(eosio.kvdisk), N(kvtest4));
+      test_scanrev(N(eosio.kvdisk), N(kvtest3));
+      test_scanrev(N(eosio.kvdisk), N(kvtest1));
+   }
+   
+   void test_kv_scanrev_ram_after_disk_common() {
+      test_scanrev(N(eosio.kvdisk), N(kvtest2));
+      test_scanrev(N(eosio.kvdisk), N(kvtest4));
+      test_scanrev(N(eosio.kvdisk), N(kvtest3));
+      test_scanrev(N(eosio.kvdisk), N(kvtest1));
+      test_scanrev(N(eosio.kvram), N(kvtest2));
+      test_scanrev(N(eosio.kvram), N(kvtest4));
+      test_scanrev(N(eosio.kvram), N(kvtest3));
+      test_scanrev(N(eosio.kvram), N(kvtest1));
+   }
+   
+   void test_kv_scanrev2_common() {
+      test_scanrev2(N(eosio.kvram));
+      test_scanrev2(N(eosio.kvdisk));
+   }
+   
+   void test_kv_iterase_common() {
+      test_iterase(N(eosio.kvram));
+      test_iterase(N(eosio.kvdisk));
+   }
+   
+   void test_kv_ram_usage_common() {
+      test_ram_usage(N(eosio.kvram));
+      test_ram_usage(N(eosio.kvdisk));
+   }
+   
+   void test_kv_resource_limit_common() { //
+      test_resource_limit(N(eosio.kvram));
+      test_resource_limit(N(eosio.kvdisk));
+   }
+   
+   void test_kv_key_value_limit_common() { //
+      test_key_value_limit(N(eosio.kvram));
+      test_key_value_limit(N(eosio.kvdisk));
+   }
+
    abi_serializer abi_ser;
    abi_serializer sys_abi_ser;
 };
 
+
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
-   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", N(oops))));
-   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvram))));
-   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvdisk))));
-   test_basic(N(eosio.kvram));
-   test_basic(N(eosio.kvdisk));
+   test_kv_basic_common();
+   BOOST_CHECK_EXCEPTION(use_rocksdb(), database_move_kv_disk_exception,
+                         fc_exception_message_is("Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb"));
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try { //
-   // four possibilities depending on whether the next or previous contract table has elements
-   test_scan(N(eosio.kvram), N(kvtest2));
-   test_scan(N(eosio.kvram), N(kvtest4));
-   test_scan(N(eosio.kvram), N(kvtest3));
-   test_scan(N(eosio.kvram), N(kvtest1));
-   test_scan(N(eosio.kvdisk), N(kvtest2));
-   test_scan(N(eosio.kvdisk), N(kvtest4));
-   test_scan(N(eosio.kvdisk), N(kvtest3));
-   test_scan(N(eosio.kvdisk), N(kvtest1));
+BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try {
+   test_kv_scan_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scan_ram_after_disk, kv_tester) try { //
-   // Make sure that the behavior of one database is not affected by having the other database populated.
-   test_scan(N(eosio.kvdisk), N(kvtest2));
-   test_scan(N(eosio.kvdisk), N(kvtest4));
-   test_scan(N(eosio.kvdisk), N(kvtest3));
-   test_scan(N(eosio.kvdisk), N(kvtest1));
-   test_scan(N(eosio.kvram), N(kvtest2));
-   test_scan(N(eosio.kvram), N(kvtest4));
-   test_scan(N(eosio.kvram), N(kvtest3));
-   test_scan(N(eosio.kvram), N(kvtest1));
+BOOST_FIXTURE_TEST_CASE(kv_scan_ram_after_disk, kv_tester) try {
+   test_kv_scan_ram_after_disk_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try { //
-   test_scanrev(N(eosio.kvram), N(kvtest2));
-   test_scanrev(N(eosio.kvram), N(kvtest4));
-   test_scanrev(N(eosio.kvram), N(kvtest3));
-   test_scanrev(N(eosio.kvram), N(kvtest1));
-   test_scanrev(N(eosio.kvdisk), N(kvtest2));
-   test_scanrev(N(eosio.kvdisk), N(kvtest4));
-   test_scanrev(N(eosio.kvdisk), N(kvtest3));
-   test_scanrev(N(eosio.kvdisk), N(kvtest1));
+BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try {
+   test_kv_scanrev_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scanrev_ram_after_disk, kv_tester) try { //
-   test_scanrev(N(eosio.kvdisk), N(kvtest2));
-   test_scanrev(N(eosio.kvdisk), N(kvtest4));
-   test_scanrev(N(eosio.kvdisk), N(kvtest3));
-   test_scanrev(N(eosio.kvdisk), N(kvtest1));
-   test_scanrev(N(eosio.kvram), N(kvtest2));
-   test_scanrev(N(eosio.kvram), N(kvtest4));
-   test_scanrev(N(eosio.kvram), N(kvtest3));
-   test_scanrev(N(eosio.kvram), N(kvtest1));
+BOOST_FIXTURE_TEST_CASE(kv_scanrev_ram_after_disk, kv_tester) try {
+   test_kv_scanrev_ram_after_disk_common();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
-   test_scanrev2(N(eosio.kvram));
-   test_scanrev2(N(eosio.kvdisk));
+   test_kv_scanrev2_common();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
-   test_iterase(N(eosio.kvram));
-   test_iterase(N(eosio.kvdisk));
+   test_kv_iterase_common();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
-   test_ram_usage(N(eosio.kvram));
-   test_ram_usage(N(eosio.kvdisk));
+   test_kv_ram_usage_common();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
-   test_resource_limit(N(eosio.kvram));
-   test_resource_limit(N(eosio.kvdisk));
+   test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
-   test_key_value_limit(N(eosio.kvram));
-   test_key_value_limit(N(eosio.kvdisk));
+   test_kv_key_value_limit_common();
 }
 FC_LOG_AND_RETHROW()
 
@@ -726,6 +827,112 @@ FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(max_iterators, kv_tester) try { //
    test_max_iterators();
+}
+FC_LOG_AND_RETHROW()
+
+// RocksDB related test cases
+
+BOOST_FIXTURE_TEST_CASE(kv_basic_rocksdb, kv_tester) try {
+   use_rocksdb();
+   test_kv_basic_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scan_rocksdb, kv_tester) try {
+   use_rocksdb();
+   test_kv_scan_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scan_ram_after_disk_rocksdb, kv_tester) try {
+   use_rocksdb();
+   test_kv_scan_ram_after_disk_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scanrev_rocksdb, kv_tester) try {
+   use_rocksdb();
+   test_kv_scanrev_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scanrev_ram_after_disk_rocksdb, kv_tester) try {
+   use_rocksdb();
+   test_kv_scanrev_ram_after_disk_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_scanrev2_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_kv_scanrev2_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_iterase_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_kv_iterase_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_ram_usage_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_kv_ram_usage_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_resource_limit_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_kv_resource_limit_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(kv_key_value_limit_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_kv_key_value_limit_common();
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage_rocksdb, bdata::make(databases), db) try { //
+   use_rocksdb();
+   test_kv_inc_dec_usage(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_usage_and_limit_rocksdb, bdata::make(databases), db) try { //
+   use_rocksdb();
+   test_kv_inc_usage_and_limit(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, kv_dec_limit_and_usage_rocksdb, bdata::make(databases), db) try { //
+   use_rocksdb();
+   test_kv_dec_limit_and_usage(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, get_data_rocksdb, bdata::make(databases), db) try { //
+   use_rocksdb();
+   test_get_data(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_DATA_TEST_CASE_F(kv_tester, other_contract_rocksdb, bdata::make(databases), db) try { //
+   use_rocksdb();
+   test_other_contract(db);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(max_iterators_rocksdb, kv_tester) try { //
+   use_rocksdb();
+   test_max_iterators();
+}
+FC_LOG_AND_RETHROW()
+
+
+BOOST_DATA_TEST_CASE_F(kv_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
+   if(rocks)
+      use_rocksdb();
+   test_undo(db);
 }
 FC_LOG_AND_RETHROW()
 

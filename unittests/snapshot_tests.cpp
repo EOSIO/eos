@@ -2,6 +2,7 @@
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/testing/tester.hpp>
 
@@ -276,6 +277,7 @@ namespace {
    }
 }
 
+/*Lin
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
@@ -446,6 +448,7 @@ bool should_write_snapshot() {
    static bool result = compute();
    return result;
 }
+Lin*/
 
 #warning TODO: restore snapshot_tests/test_compatible_versions
 /*
@@ -568,6 +571,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
 }
 */
 
+/*Lin
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_block_log, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
@@ -618,6 +622,108 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    chain.control->abort_block();
    snap_chain.push_block(block);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
+}
+Lin*/
+
+static const char kv_snapshot_wast[] = R"=====(
+(module
+  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
+  (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
+  (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+    (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
+    (drop (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 8)))
+    (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
+    (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8)))
+  )
+)
+)=====";
+
+static const char kv_snapshot_bios[] = R"=====(
+(module
+  (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
+  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+    (call $kv_set_parameters_packed (i64.const 6138663586874765568) (i32.const 0) (i32.const 16))
+    (call $kv_set_parameters_packed (i64.const 6138663586881971200) (i32.const 0) (i32.const 16))
+    (call $set_resource_limit (get_local 2) (i64.const 5454140623722381312) (i64.const -1))
+  )
+  (data (i32.const 4) "\00\04\00\00")
+  (data (i32.const 8) "\00\00\10\00")
+  (data (i32.const 12) "\80\00\00\00")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
+   //for (bool rocks_save : { false, true }) {
+   //   for (bool rocks_load : { false, true }) {
+
+   for (bool rocks_save : { true }) {
+      for (bool rocks_load : { true }) {
+         tester chain;
+         if (rocks_save)
+            eosio::chain::use_rocksdb_for_disk(const_cast<chainbase::database&>(chain.control->db()));
+
+         chain.create_accounts({N(snapshot), N(manager)});
+         chain.set_code(N(manager), kv_snapshot_bios);
+         chain.push_action(N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", "manager")("is_priv", 1));
+
+         chain.produce_blocks(1);
+         {
+            signed_transaction trx;
+            trx.actions.push_back({{{N(manager), N(active)}}, N(manager), N(snapshot), {}});
+            chain.set_transaction_headers(trx);
+            trx.sign(chain.get_private_key(N(manager), "active"), chain.control->get_chain_id());
+            chain.push_transaction(trx);
+         }
+         chain.produce_blocks(1);
+         chain.set_code(N(snapshot), kv_snapshot_wast);
+         chain.produce_blocks(1);
+         chain.control->abort_block();
+
+         static const int generation_count = 8;
+         std::list<snapshotted_tester> sub_testers;
+
+         for (int generation = 0; generation < generation_count; generation++) {
+            std::cout << "generation: " << generation << std::endl;
+            // create a new snapshot child
+            auto writer = SNAPSHOT_SUITE::get_writer();
+            chain.control->write_snapshot(writer);
+            auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+
+            auto cfg = chain.get_config();
+            cfg.use_rocksdb_for_disk = rocks_load;
+            // create a new child at this snapshot
+            sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
+
+            // increment the test contract
+            signed_transaction trx;
+            trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
+            trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvdisk), {}});
+            chain.set_transaction_headers(trx);
+            trx.sign(chain.get_private_key(N(snapshot), "active"), chain.control->get_chain_id());
+            chain.push_transaction(trx);
+
+            // produce block
+            auto new_block = chain.produce_block();
+
+            // undo the auto-pending from tester
+            chain.control->abort_block();
+
+            auto integrity_value = chain.control->calculate_integrity_hash();
+
+            // push that block to all sub testers and validate the integrity of the database after it.
+            for (auto& other: sub_testers) {
+              std::cout << "rocks_save: " << rocks_save << ", rocks_load: " << rocks_load << std::endl;
+               other.push_block(new_block);
+               verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *other.control);
+               //BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
+            }
+         }
+      }
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

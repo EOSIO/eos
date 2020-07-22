@@ -9,6 +9,11 @@ namespace chainbase {
 class database;
 }
 
+namespace b1::chain_kv {
+   struct database;
+   class undo_stack;
+}
+
 namespace eosio { namespace chain {
 
    class apply_context;
@@ -26,6 +31,7 @@ namespace eosio { namespace chain {
       virtual ~kv_iterator() {}
 
       virtual bool       is_kv_chainbase_context_iterator() const                                       = 0;
+      virtual bool       is_kv_rocksdb_context_iterator() const                                       = 0;
       virtual kv_it_stat kv_it_status()                                                                 = 0;
       virtual int32_t    kv_it_compare(const kv_iterator& rhs)                                          = 0;
       virtual int32_t    kv_it_key_compare(const char* key, uint32_t size)                              = 0;
@@ -83,5 +89,7 @@ namespace eosio { namespace chain {
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
                                                            kv_resource_manager resource_manager, const kv_database_config& limits);
+
+   std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database& kv_database, b1::chain_kv::undo_stack& kv_undo_stack, name database_id, name receiver, kv_resource_manager resource_manager, const kv_database_config& limits);
 
 }} // namespace eosio::chain

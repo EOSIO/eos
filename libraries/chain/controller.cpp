@@ -32,6 +32,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
+#include <chain_kv/chain_kv.hpp>
 
 #include <new>
 
@@ -52,6 +53,7 @@ using controller_index_set = index_set<
    table_id_multi_index,
    code_index,
    database_header_multi_index,
+   kv_db_config_index,
    kv_index
 >;
 
@@ -73,8 +75,8 @@ class maybe_session {
       {
       }
 
-      explicit maybe_session(database& db) {
-         _session = db.start_undo_session(true);
+      explicit maybe_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack) {
+         _session.emplace(cb_database, kv_undo_stack);
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -106,7 +108,7 @@ class maybe_session {
       };
 
    private:
-      optional<database::session>     _session;
+      optional<combined_session>     _session;
 };
 
 struct building_block {
@@ -231,6 +233,8 @@ struct controller_impl {
    std::function<void()>          shutdown;
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+   b1::chain_kv::database         kv_database;
+   b1::chain_kv::undo_stack       kv_undo_stack;
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
@@ -258,6 +262,39 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
+   void set_revision(uint64_t revision) {
+      try {
+         try {
+            db.set_revision(revision);
+            kv_undo_stack.set_revision(revision, false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void undo() {
+      try {
+         try {
+            db.undo();
+            kv_undo_stack.undo(false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void commit(int64_t revision) {
+      try {
+         try {
+            db.commit(revision);
+            kv_undo_stack.commit(revision);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
@@ -277,7 +314,7 @@ struct controller_impl {
 
       head = prev;
 
-      db.undo();
+      undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
    }
@@ -310,6 +347,8 @@ struct controller_impl {
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
+    kv_database( (cfg.state_dir/"chain-kv").string().c_str(), !cfg.read_only, cfg.rocksdb_threads, cfg.rocksdb_max_open_files ),
+    kv_undo_stack( kv_database, vector<char>{rocksdb_undo_prefix} ),
     blog( cfg.blocks_dir, cfg.blocks_archive_dir, cfg.blocks_log_stride, cfg.max_retained_block_files, cfg.fix_irreversible_blocks),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -431,7 +470,7 @@ struct controller_impl {
             // Do it before commit so that in case it throws, DB can be rolled back.
             blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
-            db.commit( (*bitr)->block_num );
+            commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
             auto rbitr = rbi.begin();
@@ -447,7 +486,7 @@ struct controller_impl {
          throw;
       }
 
-      //db.commit( fork_head->dpos_irreversible_blocknum ); // redundant
+      //commit( fork_head->dpos_irreversible_blocknum ); // redundant
 
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
@@ -476,7 +515,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*head) = genheader;
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
-      db.set_revision( head->block_num );
+      set_revision( head->block_num );
       initialize_database(genesis);
    }
 
@@ -523,7 +562,7 @@ struct controller_impl {
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
-            db.set_revision( head->block_num );
+            set_revision( head->block_num );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -551,6 +590,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
@@ -579,6 +620,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -612,6 +655,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -674,6 +719,13 @@ struct controller_impl {
          });
       }
 
+      if (conf.use_rocksdb_for_disk)
+         use_rocksdb_for_disk(db);
+      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+         ilog("using rocksdb for eosio.kvdisk");
+      else
+         ilog("using chainbase for eosio.kvdisk");
+
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -688,7 +740,7 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
-         db.undo();
+         undo();
       }
 
       protocol_features.init( db );
@@ -791,16 +843,6 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.undo_all();
-      /*
-      FC_ASSERT(db.revision() == self.head_block_num(),
-                  "Chainbase revision does not match head block num",
-                  ("rev", db.revision())("head_block", self.head_block_num()));
-                  */
-   }
-
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
       snapshot->write_section("contract_tables", [this]( auto& section ) {
          index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
@@ -878,6 +920,47 @@ struct controller_impl {
             return;
          }
 
+         // skip the kv_db_config as it only determines where the kv-database is stored
+         if (std::is_same_v<value_t, kv_db_config_object>) {
+            return;
+         }
+
+         if constexpr (std::is_same_v<value_t, kv_object>) {
+            snapshot->write_section<value_t>([this]( auto& section ){
+               // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be stored in rocksdb.
+               if (db.get<kv_db_config_object>().using_rocksdb_for_disk) {
+                  std::unique_ptr<rocksdb::Iterator> it{kv_database.rdb->NewIterator(rocksdb::ReadOptions())};
+                  std::vector<char> prefix = rocksdb_contract_kv_prefix;
+                  b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
+                  it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
+                  while(it->Valid()) {
+                     auto key = it->key();
+                     if(key.size() < rocksdb_contract_kv_prefix.size() || !std::equal(prefix.begin(), prefix.end(), key.data()))
+                        break;
+                     uint64_t contract;
+                     char buf[sizeof(contract)];
+                     std::size_t key_prefix_size = prefix.size() + sizeof(contract);
+                     EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
+                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size, buf);
+                     std::memcpy(&contract, buf, sizeof(contract));
+                     auto value = it->value();
+                     kv_object_view row{
+                        kvdisk_id,
+                        name(contract),
+                        { { key.data() + key_prefix_size, key.data() + key.size() } },
+                        { { value.data(), value.data() + value.size() } }
+                     };
+                     section.add_row(row, db);
+                     it->Next();
+                  }
+               }
+               decltype(utils)::template walk<by_kv_key>(db, [this, &section]( const auto &row ) {
+                  section.add_row(row, db);
+               });
+            });
+            return;
+         }
+
          snapshot->write_section<value_t>([this]( auto& section ){
             decltype(utils)::walk(db, [this, &section]( const auto &row ) {
                section.add_row(row, db);
@@ -910,6 +993,14 @@ struct controller_impl {
          section.read_row(header, db);
          header.validate();
       });
+
+      db.create<kv_db_config_object>([](auto&){});
+      if (conf.use_rocksdb_for_disk)
+         use_rocksdb_for_disk(db);
+      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+         ilog("using rocksdb for eosio.kvdisk");
+      else
+         ilog("using chainbase for eosio.kvdisk");
 
       { /// load and upgrade the block header state
          block_header_state head_header_state;
@@ -955,6 +1046,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the kv_db_config as it only determines where the kv-database is stored
+         if (std::is_same_v<value_t, kv_db_config_object>) {
+            return;
+         }
+
          // special case for in-place upgrade of global_property_object
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
@@ -995,6 +1091,32 @@ struct controller_impl {
          if constexpr (std::is_same_v<value_t, kv_object>) {
             if ( header.version < kv_object::minimum_snapshot_version )
                return;
+            if (conf.use_rocksdb_for_disk) {
+               rocksdb::WriteBatch batch;
+               vector<char> prefix = rocksdb_contract_kv_prefix;
+               b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
+               snapshot->read_section<value_t>([this, &batch, &prefix]( auto& section ) {
+                  bool more = !section.empty();
+                  while (more) {
+                     kv_object* move_to_rocks = nullptr;
+                     decltype(utils)::create(db, [this, &section, &more, &move_to_rocks]( auto &row ) {
+                        more = section.read_row(row, db);
+                        if (row.database_id == kvdisk_id) {
+                           move_to_rocks = &row;
+                        }
+                     });
+                     if(move_to_rocks) {
+                        rocksdb::Slice key = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
+                        rocksdb::Slice value = { move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size() };
+                        batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(prefix, move_to_rocks->contract.to_uint64_t(), key)), value);
+                        db.remove(*move_to_rocks);
+                     }
+                  }
+               });
+               // TODO: Split the batch to avoid storing it all in memory at once.
+               kv_database.write(batch);
+               return;
+            }
          }
 
          snapshot->read_section<value_t>([this]( auto& section ) {
@@ -1012,7 +1134,7 @@ struct controller_impl {
       authorization.read_from_snapshot(snapshot);
       resource_limits.read_from_snapshot(snapshot, header.version);
 
-      db.set_revision( head->block_num );
+      set_revision( head->block_num );
       db.create<database_header_object>([](const auto& header){
          // nothing to do
       });
@@ -1102,6 +1224,7 @@ struct controller_impl {
       });
 
       db.create<dynamic_global_property_object>([](auto&){});
+      db.create<kv_db_config_object>([](auto&){});
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -1272,7 +1395,7 @@ struct controller_impl {
 
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db);
+         undo_session = maybe_session(db, kv_undo_stack);
 
       auto gtrx = generated_transaction(gto);
 
@@ -1614,7 +1737,7 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(db, kv_undo_stack), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
          pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
@@ -2537,6 +2660,15 @@ controller::~controller() {
    //for that we need 'my' to be valid pointer pointing to valid controller_impl.
    my->fork_db.close();
    */
+
+   try {
+      try {
+         my->kv_undo_stack.write_state();
+         my->kv_database.flush(true, true);
+      }
+      FC_LOG_AND_RETHROW()
+   }
+   CATCH_AND_EXIT_DB_FAILURE()
 }
 
 void controller::add_indices() {
@@ -2560,6 +2692,8 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
+b1::chain_kv::database& controller::kv_database() { return my->kv_database; }
+b1::chain_kv::undo_stack& controller::kv_undo_stack() { return my->kv_undo_stack; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 

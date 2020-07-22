@@ -259,6 +259,7 @@ namespace eosio { namespace chain {
       code_object_type,
       database_header_object_type,
       kv_object_type,
+      kv_db_config_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
