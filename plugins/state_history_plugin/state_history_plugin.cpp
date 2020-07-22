@@ -224,7 +224,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             ++current_request->start_block_num;
          }
          fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
-               ("head", result.head.block_num) ("last_irr", result.last_irreversible.block_num)("this_block", result.this_block->block_num));
+               ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
+               ("this_block", result.this_block ? result.this_block->block_num : 0));
          send(std::move(result));
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
