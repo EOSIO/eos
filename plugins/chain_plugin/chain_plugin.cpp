@@ -263,6 +263,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
+         ("use-rocksdb", bpo::bool_switch()->default_value(false), "Use rocksdb for eosio.kvdisk storage")
+         ("rocksdb-threads", bpo::value<uint16_t>()->default_value(config::default_rocksdb_threads),
+          "Number of rocksdb threads for flush and compaction")
+         ("rocksdb-files", bpo::value<int>()->default_value(config::default_rocksdb_max_open_files),
+          "Max number of rocksdb files to keep open. -1 = unlimited.")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
          ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
@@ -777,6 +782,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
+      my->chain_config->use_rocksdb_for_disk = options.at( "use-rocksdb" ).as<bool>();
+
+      if( options.count( "rocksdb-threads" )) {
+         my->chain_config->rocksdb_threads = options.at( "rocksdb-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->chain_config->rocksdb_threads > 0, plugin_config_exception,
+                     "rocksdb-threads ${num} must be greater than 0", ("num", my->chain_config->rocksdb_threads) );
+      }
+
+      if( options.count( "rocksdb-files" )) {
+         my->chain_config->rocksdb_max_open_files = options.at( "rocksdb-files" ).as<int>();
+         EOS_ASSERT( my->chain_config->rocksdb_max_open_files == -1 || my->chain_config->rocksdb_max_open_files > 0, plugin_config_exception,
+                     "rocksdb-files ${num} must be equal to -1 or be greater than 0", ("num", my->chain_config->rocksdb_max_open_files) );
+      }
 
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =

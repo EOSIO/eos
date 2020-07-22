@@ -15,11 +15,18 @@
 namespace chainbase {
    class database;
 }
+namespace b1::chain_kv {
+   struct database;
+   class undo_stack;
+}
 namespace boost { namespace asio {
    class thread_pool;
 }}
 
 namespace eosio { namespace chain {
+   // chainlib reserves prefixes 0x10 - 0x2F.
+   static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
+   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 };
 
    class authorization_manager;
 
@@ -74,7 +81,11 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
-            
+            uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
+            uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
+            bool                     use_rocksdb_for_disk   =  false;
+            uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
+            int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
@@ -379,6 +390,8 @@ namespace eosio { namespace chain {
          friend class transaction_context;
 
          chainbase::database& mutable_db()const;
+         b1::chain_kv::database& kv_database();
+         b1::chain_kv::undo_stack& kv_undo_stack();
 
          std::unique_ptr<controller_impl> my;
 

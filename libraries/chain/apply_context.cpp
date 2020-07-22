@@ -11,6 +11,7 @@
 #include <eosio/chain/code_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 using boost::container::flat_set;
 
@@ -91,7 +92,10 @@ void apply_context::exec_one()
          kv_destroyed_iterators.clear();
          if (!context_free) {
             kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+            if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+               kv_disk = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+            else
+               kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
