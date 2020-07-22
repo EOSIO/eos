@@ -1,8 +1,9 @@
 #pragma once
 
+#include <eosio/amqp/util.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/log/logger.hpp>
-
+#include <fc/exception/exception.hpp>
 #include <amqpcpp.h>
 #include <amqpcpp/libboostasio.h>
 #include <amqpcpp/linux_tcp.h>
@@ -15,7 +16,7 @@ namespace eosio {
 /// Constructor, stop(), destructor should be called from same thread.
 class amqp {
 public:
-   // called from amqp thread on errors
+   // called from amqp thread or calling thread, but not concurrently
    using on_error_t = std::function<void(const std::string& err)>;
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
@@ -24,24 +25,22 @@ public:
 
    /// @param address AMQP address
    /// @param name AMQP routing key
-   /// @param on_err callback for errors, called from amqp thread, can be nullptr
+   /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
    amqp( const std::string& address, std::string name, on_error_t on_err, on_consume_t on_consume = nullptr )
-         : thread_pool_( "ampq", 1) // amqp is not thread safe, use only one thread
-         , name_( std::move( name ) )
-         , on_error_( std::move( on_err ) )
-         , on_consume_( std::move( on_consume ) )
-   {
-      AMQP::Address amqp_address( address );
-      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", std::string( amqp_address ))( "q", name_ ) );
+         : amqp( address, std::move(name), "", "", std::move(on_err), std::move(on_consume))
+   {}
 
-      handler_ = std::make_unique<amqp_handler>( *this, thread_pool_.get_executor() );
-      boost::asio::post( *handler_->amqp_strand(), [&]() {
-         connection_ = std::make_unique<AMQP::TcpConnection>( handler_.get(), amqp_address );
-      });
-      wait();
-   }
+   /// @param address AMQP address
+   /// @param exchange_name AMQP exchange to send message to
+   /// @param exchange_type AMQP exhcnage type
+   /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
+   /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
+   ///        user required to ack/reject delivery_tag for each callback.
+   amqp( const std::string& address, std::string exchange_name, std::string exchange_type, on_error_t on_err, on_consume_t on_consume = nullptr )
+         : amqp( address, "", std::move(exchange_name), std::move(exchange_type), std::move(on_err), std::move(on_consume))
+   {}
 
    /// drain queue and stop thread
    ~amqp() {
@@ -70,22 +69,6 @@ public:
       } );
    }
 
-   /// Explicitly stop thread pool execution
-   /// do not call from lambda's passed to publish or constructor e.g. on_error
-   void stop() {
-      if( handler_ ) {
-         // drain amqp queue
-         std::promise<void> stop_promise;
-         boost::asio::post( *handler_->amqp_strand(), [&]() {
-            stop_promise.set_value();
-         } );
-         stop_promise.get_future().wait();
-
-         thread_pool_.stop();
-         handler_.reset();
-      }
-   }
-
    /// ack consume message
    void ack( const delivery_tag_t& delivery_tag ) {
       boost::asio::post( *handler_->amqp_strand(),
@@ -106,21 +89,79 @@ public:
             } );
    }
 
+   /// Explicitly stop thread pool execution
+   /// Not thread safe, call only once from constructor/destructor thread
+   /// Do not call from lambda's passed to publish or constructor e.g. on_error
+   void stop() {
+      if( handler_ ) {
+         // drain amqp queue
+         std::promise<void> stop_promise;
+         auto future = stop_promise.get_future();
+         boost::asio::post( *handler_->amqp_strand(), [&]() {
+            stop_promise.set_value();
+         } );
+         future.wait();
+
+         thread_pool_.stop();
+         handler_.reset();
+      }
+   }
+
 private:
-   // called amqp thread
+
+   amqp(const std::string& address, std::string name, std::string exchange_name, std::string exchange_type, on_error_t on_err, on_consume_t on_consume)
+         : thread_pool_( "ampq", 1 ) // amqp is not thread safe, use only one thread
+         , connected_future_( connected_.get_future() )
+         , name_( std::move( name ) )
+         , exchange_name_( std::move( exchange_name ) )
+         , exchange_type_( std::move( exchange_type ) )
+         , on_error_( std::move( on_err ) )
+         , on_consume_( std::move( on_consume ) )
+   {
+      AMQP::Address amqp_address( address );
+      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
+
+      handler_ = std::make_unique<amqp_handler>( *this, thread_pool_.get_executor() );
+      boost::asio::post( *handler_->amqp_strand(), [&]() {
+         connection_ = std::make_unique<AMQP::TcpConnection>( handler_.get(), amqp_address );
+      });
+      wait();
+   }
+
+   // called from amqp thread
    void init( AMQP::TcpConnection* c ) {
-      // declare channel
       channel_ = std::make_unique<AMQP::TcpChannel>( c );
-      auto& queue = channel_->declareQueue( name_, AMQP::durable );
-      queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
-         dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
-               ("q", name)( "mc", messagecount )( "cc", consumercount ) );
-         init_consume();
-      } );
-      queue.onError( [&]( const char* error_message ) {
-         on_error( error_message );
-         connected_.set_value();
-      } );
+      if( !exchange_type_.empty() ) {
+         auto type = AMQP::direct;
+         if (exchange_type_ == "fanout") {
+            type = AMQP::fanout;
+         } else if (exchange_type_ != "direct") {
+            on_error( "Unsupported exchange type: " + exchange_type_ );
+            connected_.set_value();
+            return;
+         }
+
+         auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
+         exchange.onSuccess( [this]() {
+            dlog( "AMQP declare exchange Successfully!\n Exchange ${e}", ("e", exchange_name_) );
+            init_consume();
+         } );
+         exchange.onError([this](const char* error_message) {
+            on_error( std::string("AMQP Queue error: ") + error_message );
+            connected_.set_value();
+         });
+      } else {
+         auto& queue = channel_->declareQueue( name_, AMQP::durable );
+         queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
+            dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
+                  ("q", name)( "mc", messagecount )( "cc", consumercount ) );
+            init_consume();
+         } );
+         queue.onError( [&]( const char* error_message ) {
+            on_error( error_message );
+            connected_.set_value();
+         } );
+      }
    }
 
    // called from amqp thread
@@ -147,13 +188,14 @@ private:
 
    // called from non-amqp thread
    void wait() {
-      auto r = connected_.get_future().wait_for( std::chrono::seconds( 10 ) );
+      auto r = connected_future_.wait_for( std::chrono::seconds( 10 ) );
       if( r == std::future_status::timeout ) {
          on_error( "AMQP timeout declaring queue" );
       }
    }
 
-   void on_error( const char* message ) {
+   void on_error( const std::string& message ) {
+      std::lock_guard<std::mutex> g(mtx_);
       if( on_error_ ) on_error_( message );
    }
 
@@ -185,12 +227,16 @@ private:
    };
 
 private:
+   std::mutex mtx_;
    eosio::chain::named_thread_pool thread_pool_;
    std::unique_ptr<amqp_handler> handler_;
    std::unique_ptr<AMQP::TcpConnection> connection_;
    std::unique_ptr<AMQP::TcpChannel> channel_;
    std::promise<void> connected_;
+   std::future<void> connected_future_;
    std::string name_;
+   std::string exchange_name_;
+   std::string exchange_type_;
    on_error_t on_error_;
    on_consume_t on_consume_;
 };

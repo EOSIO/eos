@@ -1,3 +1,0 @@
-add_library(retrying_amqp_connection retrying_amqp_connection.cpp)
-target_include_directories(retrying_amqp_connection PUBLIC include)
-target_link_libraries(retrying_amqp_connection fc amqpcpp)
