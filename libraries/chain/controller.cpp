@@ -350,7 +350,11 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     kv_database( (cfg.state_dir/"chain-kv").string().c_str(), !cfg.read_only, cfg.rocksdb_threads, cfg.rocksdb_max_open_files ),
     kv_undo_stack( kv_database, vector<char>{rocksdb_undo_prefix} ),
+<<<<<<< HEAD
     blog( cfg.blog ),
+=======
+    blog( cfg.blocks_dir, cfg.blocks_archive_dir, cfg.blocks_log_stride, cfg.max_retained_block_files, cfg.fix_irreversible_blocks),
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
@@ -591,6 +595,7 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+<<<<<<< HEAD
 # warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restar
       // Currently kv_undo_stack returns a wrong revision after restart,
       // failing tests/terminate-scenarios-test.py.
@@ -598,6 +603,10 @@ struct controller_impl {
       // and retest after chain_kv rewriting is finished.
       //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
       //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+=======
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
@@ -626,6 +635,7 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+<<<<<<< HEAD
 # warning TODO: Chain_kv needs to fix kv_undo_stack's revision
       // Currently kv_undo_stack returns a wrong revision after restart,
       // failing tests/terminate-scenarios-test.py.
@@ -633,6 +643,10 @@ struct controller_impl {
       // and retest after chain_kv rewriting is finished.
       //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
       //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+=======
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -666,9 +680,14 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
+<<<<<<< HEAD
 # warning TODO: Chain_kv needs to fix kv_undo_stack's revision
       //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
       //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+=======
+      EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -937,7 +956,10 @@ struct controller_impl {
             return;
          }
 
+<<<<<<< HEAD
 # warning TODO: Revisit this and adpat to new design
+=======
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
          if constexpr (std::is_same_v<value_t, kv_object>) {
             snapshot->write_section<value_t>([this]( auto& section ){
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be stored in rocksdb.

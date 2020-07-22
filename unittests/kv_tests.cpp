@@ -790,6 +790,11 @@ BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
    test_kv_basic_common();
+<<<<<<< HEAD
+=======
+   BOOST_CHECK_EXCEPTION(use_rocksdb(), database_move_kv_disk_exception,
+                         fc_exception_message_is("Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb"));
+>>>>>>> 3aab48400... KV API RocksDB integration first checkin
 }
 FC_LOG_AND_RETHROW()
 
