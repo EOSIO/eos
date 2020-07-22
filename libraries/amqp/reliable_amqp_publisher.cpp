@@ -104,10 +104,11 @@ reliable_amqp_publisher_impl::~reliable_amqp_publisher_impl() {
 
    //drain any remaining items on user submitted queue
    std::promise<void> shutdown_promise;
+   auto shutdown_future = shutdown_promise.get_future();
    boost::asio::post(user_submitted_work_strand, [&]() {
       shutdown_promise.set_value();
    });
-   shutdown_promise.get_future().wait();
+   shutdown_future.wait();
 
    ctx.stop();
    thread.join();
