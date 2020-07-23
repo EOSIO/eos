@@ -69,13 +69,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (!result && chain_state_log)
          result = chain_state_log->get_block_id(block_num);
 
-      if (!result) {
-         try {
-            return chain_plug->chain().get_block_id_for_num(block_num);
-         } catch (...) {
-         }
+      if (result)
+         return result;
+
+      try {
+         return chain_plug->chain().get_block_id_for_num(block_num);
+      } catch (...) {
+         return {};
       }
-      return result;
    }
 
    struct session : std::enable_shared_from_this<session> {
