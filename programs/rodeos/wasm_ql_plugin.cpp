@@ -44,12 +44,12 @@ struct wasm_ql_plugin_impl : std::enable_shared_from_this<wasm_ql_plugin_impl> {
                FC_LOG_AND_RETHROW()
             } catch (...) {
                elog("shutting down");
-               app().shutdown();
+               app().quit();
             }
          });
       } else {
          elog("hit --wql-retries limit; shutting down");
-         app().shutdown();
+         app().quit();
       }
    }
 
