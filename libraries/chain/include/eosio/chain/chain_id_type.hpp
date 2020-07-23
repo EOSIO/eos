@@ -53,7 +53,7 @@ namespace chain {
          friend struct eosio::handshake_message;
          friend class block_log;
          friend struct block_log_preamble;
-         friend struct block_log_catalog;
+         friend struct block_log_verifier;
          friend class controller;
          friend struct controller_impl;
          friend class global_property_object;
