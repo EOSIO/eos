@@ -86,6 +86,8 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<const char> packed_producer_schedule);
          uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
+         uint32_t get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const;
+         void set_parameters_packed( span<const char> packed_parameters );
          uint32_t get_kv_parameters_packed(name, span<char>, uint32_t) const;
          void set_kv_parameters_packed(name, span<const char>);
          bool is_privileged(account_name account) const;
@@ -104,6 +106,8 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);
          REGISTER_LEGACY_HOST_FUNCTION(set_blockchain_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(get_parameters_packed, privileged_check);
+         REGISTER_HOST_FUNCTION(set_parameters_packed, privileged_check);
          REGISTER_HOST_FUNCTION(get_kv_parameters_packed, privileged_check);
          REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
          REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
