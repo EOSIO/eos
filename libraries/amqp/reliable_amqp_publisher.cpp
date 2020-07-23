@@ -65,34 +65,8 @@ struct reliable_amqp_publisher_impl {
 
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                                            const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
-<<<<<<< HEAD
-<<<<<<< HEAD
   retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
-=======
-  data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), explicit_send(explicit_send), message_id(message_id) {
-=======
-  data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
->>>>>>> 7e3984430... Simplify interface by providing one publish_messages_raw method
-   std::string host = "localhost", user = "guest", pass = "guest", path;
-   uint16_t port = 5672;
-   fc::url parsed_url(url);
-   FC_ASSERT(parsed_url.proto() == "amqp", "Only amqp:// URIs are supported for AMQP addresses");
-   if(parsed_url.host() && parsed_url.host()->size())
-      host = *parsed_url.host();
-   if(parsed_url.user())
-      user = *parsed_url.user();
-   if(parsed_url.pass())
-      pass = *parsed_url.pass();
-   if(parsed_url.port())
-      port = *parsed_url.port();
-   if(parsed_url.path())
-      path = parsed_url.path()->string();
-
-   std::stringstream hostss;
-   hostss << "amqp://" << user << ":" << pass << "@" << host << ":" << port << "/" << path;
-   amqp_address = std::make_unique<AMQP::Address>(hostss.str());
->>>>>>> 4e2709134... Add explicit send feature
 
    boost::system::error_code ec;
    boost::filesystem::create_directories(data_file_path.parent_path(), ec);
@@ -155,52 +129,9 @@ reliable_amqp_publisher_impl::~reliable_amqp_publisher_impl() {
    }
 }
 
-<<<<<<< HEAD
 void reliable_amqp_publisher_impl::channel_ready(AMQP::Channel* c) {
    channel = c;
    pump_queue();
-=======
-void reliable_amqp_publisher_impl::retry_connection() {
-   connected = false;
-   channel.reset();
-   connection.reset();
-   handler.reset();
-   const unsigned max_retry_seconds = 30u;
-   next_retry_time = std::min(next_retry_time, max_retry_seconds);
-   retry_timer.expires_from_now(boost::posix_time::seconds(next_retry_time));
-   retry_timer.async_wait([&](auto ec) {
-      if(ec)
-         return;
-      bringup_connection();
-   });
-   next_retry_time *= 2;
-}
-
-void reliable_amqp_publisher_impl::bringup_connection() {
-   handler = std::make_unique<reliable_amqp_publisher_handler>(*this);
-   try {
-      connection = std::make_unique<AMQP::TcpConnection>(handler.get(), *amqp_address);
-   } catch(...) { //this should never happen, but it could technically have thrown
-      retry_connection();
-   }
-}
-
-void reliable_amqp_publisher_impl::amqp_ready() {
-   ilog("AMQP connection ${s} publishing to \"${e}\" established", ("s", (std::string)*amqp_address)("e", exchange));
-   next_retry_time = 1;
-   connected = true;
-   channel = std::make_unique<AMQP::TcpChannel>(connection.get());
-   channel->onError([this](const char* s) {
-      elog("Channel error for AMQP connection ${s} publishing to \"${e}\": ${m}; restarting connection", ("s", (std::string)*amqp_address)("e", exchange)("m",s));
-      retry_connection();
-   });
-<<<<<<< HEAD
-   if( !explicit_send )
-      pump_queue();
->>>>>>> 4e2709134... Add explicit send feature
-=======
-   pump_queue();
->>>>>>> 7e3984430... Simplify interface by providing one publish_messages_raw method
 }
 
 void reliable_amqp_publisher_impl::channel_failed() {
@@ -239,27 +170,11 @@ void reliable_amqp_publisher_impl::pump_queue() {
    .onFinalize([this]() {
       in_flight = 0;
       //unfortuately we don't know if an error is due to something recoverable or if an error is due
-<<<<<<< HEAD
       // to something unrecoverable. To know that, we need to pump the event queue some which may allow
       // channel_failed() to be called as needed. So always pump the event queue here
       ctx.post([this]() {
          pump_queue();
-      });
-=======
-      // to something unrecoverable. To know that, we need to pump the event queue some so that Channel's or
-      // Connection's onError is delivered. Failure to pump the event queue here can result in runaway recursion.
-<<<<<<< HEAD
-      if( !explicit_send ) {
-         handler->amqp_strand()->post( [this]() {
-            pump_queue();
-         } );
-      }
->>>>>>> 4e2709134... Add explicit send feature
-=======
-      handler->amqp_strand()->post( [this]() {
-         pump_queue();
       } );
->>>>>>> 7e3984430... Simplify interface by providing one publish_messages_raw method
    });
 }
 
@@ -269,8 +184,7 @@ bool reliable_amqp_publisher_impl::verify_max_queue_size() {
    if(message_deque.size() > max_queued_messages) {
       if(logged_exceeded_max_depth == false)
          elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; dropping messages",
-              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
-      // TODO: on merge do not use conversion to string for logging of amqp_address, use new fc::variant direct logging
+              ("a", retrying_connection.address())("e", exchange)("max", max_queued_messages));
       logged_exceeded_max_depth = true;
       return false;
    }
@@ -285,23 +199,8 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
       return;
    }
 
-<<<<<<< HEAD
-   if(message_deque.size() > max_queued_messages) {
-      if(logged_exceeded_max_depth == false)
-         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; further messages will be dropped",
-<<<<<<< HEAD
-              ("a", my->retrying_connection.address())("e", my->exchange)("max", max_queued_messages));
-      my->logged_exceeded_max_depth = true;
-=======
-              ("a", (std::string)*amqp_address)("e", exchange)("max", max_queued_messages));
-      logged_exceeded_max_depth = true;
->>>>>>> 4e2709134... Add explicit send feature
-      return;
-   }
-=======
    if( !verify_max_queue_size() ) return;
 
->>>>>>> 23ea070fd... Use message_queue size only for determination of dropping messages
    message_deque.emplace_back(amqp_message{0, "", std::move(data)});
    pump_queue();
 }
@@ -332,10 +231,9 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
       return;
    }
 
-   if(stopping || !connected) {
+   if(stopping || !channel) {
       elog( "AMQP connection ${a} to ${e} not connected dropping message ${rk}",
-            ("a", (std::string)*amqp_address)("e", exchange)("rk", rk));
-      // TODO: remove (std::string) on merge
+            ("a", retrying_connection.address())("e", exchange)("rk", rk));
       return;
    }
 
