@@ -26,9 +26,12 @@ class reliable_amqp_publisher {
       /// \param server_url server url as amqp://...
       /// \param exchange the exchange to publish to
       /// \param routing_key on published messages
+      /// \param explicit_send if true then queued messages only sent on explicit send_messages() call, otherwise
+      ///                      managed by reliable_amqp_publisher
       /// \param unconfirmed_path path to save/load unconfirmed message to be tried again after stop/start
       /// \param message_id optional message id to send with each message
       reliable_amqp_publisher(const std::string& server_url, const std::string& exchange, const std::string& routing_key,
+                              bool explicit_send,
                               const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id = {});
 
       /// Publish a message. May be called from any thread.
@@ -40,6 +43,14 @@ class reliable_amqp_publisher {
       }
 
       void publish_message_raw(std::vector<char>&& data);
+
+      /// Publish a message. May be called from any thread.
+      /// In non-explicit_send mode the batch num is effectively ignored.
+      /// \param num the batch number associated with data, equal numbers are included in a single AMQP transaction
+      void publish_message_raw(fc::unsigned_int num, std::vector<char>&& data);
+
+      /// Attempt to send next batch of messages as long as no messages in flight. May be called from any thread.
+      void send_messages();
 
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
       ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread.
