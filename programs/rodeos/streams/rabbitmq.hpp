@@ -5,7 +5,7 @@
 #include "amqpcpp/linux_tcp.h"
 #include "stream.hpp"
 #include <appbase/application.hpp>
-#include <eosio/reliable_amqp_publisher/reliable_amqp_publisher.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 #include <fc/log/logger.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <memory>
@@ -96,12 +96,19 @@ class rabbitmq : public stream_handler {
       channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
    }
 
+   void reset() {
+      connection_->close();
+      handler_.reset();
+      connection_.reset();
+      channel_.reset();
+   }
+
    void declare_queue() {
       auto& queue = channel_->declareQueue( queue_name_, AMQP::durable);
       queue.onSuccess([this](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
          ilog("RabbitMQ declare queue Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
               ("q", name)("mc", messagecount)("cc", consumercount));
-         connection_->close();
+         reset();
          amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_);
       });
       queue.onError([](const char* error_message) {
@@ -122,7 +129,7 @@ class rabbitmq : public stream_handler {
       auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
       exchange.onSuccess( [this]() {
          ilog( "RabbitMQ declare exchange Successfully!\n Exchange ${e}", ("e", exchange_name_) );
-         connection_->close();
+         reset();
          amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>( address_, exchange_name_, "", unconfirmed_path_ );
       } );
       exchange.onError([](const char* error_message) {

@@ -1,7 +1,7 @@
 #include <amqpcpp.h>
 #include <fc/variant.hpp>
 
-#include <eosio/retrying_amqp_connection/retrying_amqp_connection.hpp>
+#include <eosio/amqp/retrying_amqp_connection.hpp>
 
 namespace eosio {
 
