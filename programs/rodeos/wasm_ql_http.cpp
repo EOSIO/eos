@@ -507,6 +507,7 @@ class listener : public std::enable_shared_from_this<listener> {
       }
 
       // Bind to the server address
+      acceptor.set_option(net::socket_base::reuse_address(true));
       acceptor.bind(endpoint, ec);
       if (ec) {
          fail(ec, "bind");
