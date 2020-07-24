@@ -1,5 +1,5 @@
 #pragma once
-
+#warning TODO: Replace this file with db_undo_session.hpp. Use variant.
 #include <chain_kv/chain_kv.hpp>
 #include <chainbase/chainbase.hpp>
 

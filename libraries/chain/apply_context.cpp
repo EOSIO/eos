@@ -91,6 +91,7 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
+#warning TODO: Remove kv_ram. Rename kv_disk
             kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
             if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
                kv_disk = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
