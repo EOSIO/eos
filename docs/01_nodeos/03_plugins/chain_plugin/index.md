@@ -65,7 +65,8 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
-  --blocks-log-stride (=4294967295)     split the block log file when the head
+  --blocks-log-stride arg (=4294967295)
+                                        split the block log file when the head
                                         block number is the multiple of the
                                         stride. When the stride is reached, the
                                         current block log and index will be
@@ -75,7 +76,7 @@ Config Options for eosio::chain_plugin:
                                         created with the most recent block. All
                                         files following this format will be
                                         used to construct an extended block log
-  --max-retained-block-files (=10)      the maximum number of blocks files to
+  --max-retained-block-files arg (=10)  the maximum number of blocks files to
                                         retain so that the blocks in those
                                         files can be queried. When the number
                                         is reached, the oldest block file would
@@ -83,6 +84,10 @@ Config Options for eosio::chain_plugin:
                                         the archive dir is empty. The retained
                                         block log files should not be
                                         manipulated by users.
+  --blocks-retained-dir arg (="")       the location of the blocks retained
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty, it
+                                        is set to the value of blocks dir.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
