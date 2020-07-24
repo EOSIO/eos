@@ -130,8 +130,8 @@ class kv_tester : public tester {
    }
 
    template <typename V>
-   action_result set(name db, name contract, const char* k, V v, name payer) {
-      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", payer), contract, payer);
+   action_result set(name db, name contract, const char* k, V v, name payer, name authorizer) {
+      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", payer), contract, authorizer);
    }
 
    template <typename V>
@@ -466,26 +466,49 @@ class kv_tester : public tester {
 
       get("", db, N(kvtest), "11", nullptr);
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest)));
+
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest), N(kvtest)));
 
       const int base_billable = config::billable_size_v<kv_object>;
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "1234", N(kvtest)));
+      BOOST_TEST("" == set(db, N(kvtest), "11", "1234", N(kvtest), N(kvtest)));
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 2);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "12", N(kvtest)));
+      BOOST_TEST("" == set(db, N(kvtest), "11", "12", N(kvtest), N(kvtest)));
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 1);
       erase("", db, N(kvtest), "11");
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
 
       // test payer changes
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest)));
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest), N(kvtest)));
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
 
       uint64_t base_usage1 = get_usage(db, N(kvtest1));
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest1)));
+      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest1), N(kvtest1)));
 
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
       BOOST_TEST(get_usage(db, N(kvtest1)) == base_usage1 + base_billable + 1);
+
+      // test unauthorized payer
+      if(db == N(eosio.kvdisk)) {
+         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest1" == 
+                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
+      }
+      else
+      {
+         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" == 
+                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
+      }
+
+      if(db == N(eosio.kvdisk)) {
+         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest2" == 
+                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
+      }
+      else
+      {
+         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" == 
+                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
+      }
+      
    }
 
    void test_resource_limit(name db) {

@@ -497,6 +497,9 @@ class apply_context {
       uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free );
       uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free );
 
+   private:
+      template <typename Exception>
+      void check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas);
 
    /// Authorization methods:
    public:
@@ -579,7 +582,7 @@ class apply_context {
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 
-      void update_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
+      void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
 
    private:
       kv_context& kv_get_db(uint64_t db);
