@@ -88,6 +88,14 @@ Config Options for eosio::chain_plugin:
                                         directory (absolute path or relative to
                                         blocks dir). If the value is empty, it
                                         is set to the value of blocks dir.
+  --blocks-archive-dir (="archive")     the location of the blocks archive
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty,
+                                        blocks files beyond the retained limit
+                                        will be deleted. All files in the
+                                        archive directory are completely under
+                                        user's control, i.e. they won't be
+                                        accessed by nodeos anymore.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
