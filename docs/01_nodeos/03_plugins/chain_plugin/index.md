@@ -75,6 +75,14 @@ Config Options for eosio::chain_plugin:
                                         created with the most recent block. All
                                         files following this format will be
                                         used to construct an extended block log
+  --max-retained-block-files (=10)      the maximum number of blocks files to
+                                        retain so that the blocks in those
+                                        files can be queried. When the number
+                                        is reached, the oldest block file would
+                                        be moved to archive dir or deleted if
+                                        the archive dir is empty. The retained
+                                        block log files should not be
+                                        manipulated by users.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
