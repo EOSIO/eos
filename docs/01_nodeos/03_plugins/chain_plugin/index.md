@@ -65,6 +65,16 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
+  --blocks-log-stride (=4294967295)     split the block log file when the head
+                                        block number is the multiple of the
+                                        stride. When the stride is reached, the
+                                        current block log and index will be
+                                        renamed '<blocks-retained-dir>/blocks-
+                                        <start num>-<end num>.log/index' and a
+                                        new current block log and index will be
+                                        created with the most recent block. All
+                                        files following this format will be
+                                        used to construct an extended block log
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
