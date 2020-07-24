@@ -23,9 +23,11 @@ namespace boost { namespace asio {
 }}
 
 namespace eosio { namespace chain {
+# warning TODO: move those to lower layer
    // chainlib reserves prefixes 0x10 - 0x2F.
    static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
-   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 };
+   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
+   static const std::vector<char> rocksdb_contract_db_prefix{0x12 }; // for DB API
 
    class authorization_manager;
 
