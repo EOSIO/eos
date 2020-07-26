@@ -15,7 +15,7 @@ START_STR = "[\"salt\",10,10]"
 # See EPE-286 for why REQUIRED_AVG and REQUIRED_SLIDING_WINDOW_AVG are set so low
 REQUIRED_AVG = 80                   # should be considerably higher, generator is creating 500 per 1/2s
 SLIDING_AVG_WINDOW = 30
-REQUIRED_SLIDING_WINDOW_AVG = 40    # should be considerably higher, generator is creating 500 per 1/2s
+REQUIRED_SLIDING_WINDOW_AVG = 20    # should be considerably higher, generator is creating 500 per 1/2s
 CATCHUP_ROUNDS = 3
 REPEAT_EXCEPTIONS_ALLOWED = 10
 
