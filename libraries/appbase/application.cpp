@@ -469,7 +469,8 @@ void application::print_default_config(std::ostream& os) {
             os << "# " << od->long_name() << " = " << (boost::any_cast<bool&>(store) ? "true" : "false") << std::endl;
          else {
             // The string is formatted "arg (=<interesting part>)"
-            example.erase(0, 6);
+            auto pos = example.find("(=");
+            if(pos != string::npos) example = example.substr(pos+2);
             if(!example.empty()) example.erase(example.length()-1);
             os << "# " << od->long_name() << " = " << example << std::endl;
          }
