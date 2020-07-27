@@ -168,6 +168,21 @@ namespace eosio {
          } catch(...) {}
          return 0;
       }
+
+      /**
+       * Helper method to calculate the "in flight" size of a std::optional<T>
+       * When the optional doesn't contain value, it will return the size of 0
+       *
+       * @param o - the std::optional<T> where T is typename
+       * @return in flight size of o
+       */
+      template<typename T>
+      static size_t in_flight_sizeof( const std::optional<T>& o ) {
+         if( o ) {
+            return in_flight_sizeof( *o );
+         }
+         return 0;
+      }
    }
 
    using websocket_server_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
@@ -507,7 +522,7 @@ namespace eosio {
           */
          template<typename T>
          auto make_http_response_handler( detail::connection_ptr<T> con ) {
-            return [this, con]( int code, fc::variant response ) {
+            return [this, con]( int code, std::optional<fc::variant> response ) {
                auto tracked_response = make_in_flight(std::move(response), *this);
                if (!verify_max_bytes_in_flight(con)) {
                   return;
@@ -516,9 +531,11 @@ namespace eosio {
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
                boost::asio::post( thread_pool->get_executor(), [this, con, code, tracked_response=std::move(tracked_response)]() {
                   try {
-                     std::string json = fc::json::to_string( *tracked_response, fc::time_point::now() + max_response_time );
-                     auto tracked_json = make_in_flight(std::move(json), *this);
-                     con->set_body( std::move( *tracked_json ) );
+                     if( *tracked_response ) {
+                        std::string json = fc::json::to_string( **tracked_response, fc::time_point::now() + max_response_time );
+                        auto tracked_json = make_in_flight(std::move(json), *this);
+                        con->set_body( std::move( *tracked_json ) );
+                     }
                      con->set_status( websocketpp::http::status_code::value( code ) );
                      con->send_http_response();
                   } catch( ... ) {
