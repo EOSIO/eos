@@ -48,7 +48,7 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase Boost::program_options Boost::filesystem Threads::Threads)
+target_link_libraries( appbase eosio_chain Boost::program_options Boost::filesystem Threads::Threads)
 
 target_include_directories( appbase
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
