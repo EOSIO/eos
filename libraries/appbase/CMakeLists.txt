@@ -63,6 +63,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND GIT_FOUND)
 else()
   set(VERSION_STRING "Unknown")
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/version.cpp @ONLY ESCAPE_QUOTES)
+  target_sources(appbase PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 endif()
 
 set(CPACK_PACKAGING_INSTALL_PREFIX /)
