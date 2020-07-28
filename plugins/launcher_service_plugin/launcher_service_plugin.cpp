@@ -1333,5 +1333,6 @@ std::string launcher_service_plugin::generate_node_config(const launcher_service
 // @ignore child, abi_cache, abi_cache_time, get_info_cache, get_info_cache_time
 FC_REFLECT(eosio::launcher_service_plugin_impl::node_state, (id)(pid)(http_port)(p2p_port)(is_bios)(stdout_path)(stderr_path))
 
+// @ignore def, imported_keys, started, transaction_blocknum
 FC_REFLECT(eosio::launcher_service_plugin_impl::cluster_state, (nodes))
 
