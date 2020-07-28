@@ -67,7 +67,9 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if(ENABLE_CPPKIN)
-  target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE cppkin.so libCore.so )
+  target_link_libraries( ${NODE_EXECUTABLE_NAME}
+          PRIVATE -Wl,${whole_archive_flag} cppkin_plugin -Wl,${no_whole_archive_flag}
+          PRIVATE cppkin.so libCore.so )
 endif()
 
 include(additionalPlugins)

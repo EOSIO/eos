@@ -24,6 +24,7 @@ add_subdirectory(amqp_trx_plugin)
 add_subdirectory(amqp_trace_plugin)
 add_subdirectory(amqp_witness_plugin)
 add_subdirectory(amqp_compressed_proof_plugin)
+add_subdirectory(cppkin_plugin)
 
 # Forward variables to top level so packaging picks them up
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} PARENT_SCOPE)
