@@ -1330,6 +1330,8 @@ std::string launcher_service_plugin::generate_node_config(const launcher_service
 
 }
 
+// @ignore child
 FC_REFLECT(eosio::launcher_service_plugin_impl::node_state, (id)(pid)(http_port)(p2p_port)(is_bios)(stdout_path)(stderr_path))
+
 FC_REFLECT(eosio::launcher_service_plugin_impl::cluster_state, (nodes))
 
