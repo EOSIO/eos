@@ -66,6 +66,10 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
         PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
+if(ENABLE_CPPKIN)
+  target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE cppkin.so libCore.so )
+endif()
+
 include(additionalPlugins)
 
 copy_bin( ${NODE_EXECUTABLE_NAME} )
