@@ -10,7 +10,7 @@ class cppkin_plugin : public appbase::plugin<cppkin_plugin> {
    APPBASE_PLUGIN_REQUIRES()
 
    cppkin_plugin();
-   virtual ~cppkin_plugin();
+   virtual ~cppkin_plugin() = default;
 
    virtual void set_program_options(appbase::options_description& cli, appbase::options_description& cfg) override;
    void plugin_initialize(const appbase::variables_map& options);
