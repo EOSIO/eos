@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
       }
 
       int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) override {
-         return context.db_find_i64(name(code), name(scope), name(table), id);
+         return context.db_lowerbound_i64(name(code), name(scope), name(table), id);
       }
 
       int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) override {
