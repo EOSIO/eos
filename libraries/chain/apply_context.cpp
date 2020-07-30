@@ -66,6 +66,8 @@ void apply_context::exec_one()
          if (!context_free) {
             kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
             kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+
+            _db_context = create_db_chainbase_context(*this, receiver);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -1255,4 +1257,9 @@ void apply_context::increment_action_id() {
    trx_context.action_id.increment();
 }
 
+db_context& apply_context::db_get_context() {
+   EOS_ASSERT( _db_context, action_validate_exception,
+               "context-free actions cannot access state" );
+   return *_db_context;
+}
 } } /// eosio::chain
