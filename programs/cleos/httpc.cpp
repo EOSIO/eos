@@ -195,7 +195,7 @@ namespace eosio { namespace client { namespace http {
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
    auto host_header_value = format_host_header(url);
-   request_stream << "POST " << url.path << " HTTP/1.0\r\n";
+   request_stream << "POST " << url.path << " HTTP/1.1\r\n";
    request_stream << "Host: " << host_header_value << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
@@ -253,14 +253,15 @@ namespace eosio { namespace client { namespace http {
       throw;
    }
 
-   const auto response_result = fc::json::from_string(re);
    if( print_response ) {
       std::cerr << "RESPONSE:" << std::endl
                 << "---------------------" << std::endl
-                << fc::json::to_pretty_string( response_result ) << std::endl
+                << re << std::endl
                 << "---------------------" << std::endl;
    }
+
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
+      auto response_result = fc::json::from_string(re);
       return response_result;
    } else if( status_code == 404 ) {
       // Unknown endpoint
@@ -274,6 +275,7 @@ namespace eosio { namespace client { namespace http {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
    } else {
+      auto response_result = fc::json::from_string(re);
       auto &&error_info = response_result.as<eosio::error_results>().error;
       // Construct fc exception from error
       const auto &error_details = error_info.details;
@@ -288,6 +290,6 @@ namespace eosio { namespace client { namespace http {
    }
 
    EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
-   return response_result;
+   return variant();
    }
 }}}
