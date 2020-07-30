@@ -799,7 +799,7 @@ launcher_def::define_network () {
   }
   else {
     int ph_count = 0;
-    host_def *lhost = nullptr;
+    std::unique_ptr<host_def> lhost{nullptr};
     size_t host_ndx = 0;
     size_t num_prod_addr = servers.producer.size();
     size_t num_nonprod_addr = servers.nonprod.size();
@@ -808,9 +808,8 @@ launcher_def::define_network () {
       if (ph_count == 0) {
         if (lhost) {
           bindings.emplace_back(move(*lhost));
-          delete lhost;
         }
-        lhost = new host_def;
+        lhost.reset(new host_def);
         lhost->genesis = genesis.string();
         if (host_ndx < num_prod_addr ) {
            do_bios = servers.producer[host_ndx].has_bios;
@@ -842,13 +841,12 @@ launcher_def::define_network () {
       assign_name(eosd, do_bios);
 
       aliases.push_back(eosd.name);
-      eosd.set_host (lhost, do_bios);
+      eosd.set_host (lhost.get(), do_bios);
       do_bios = false;
       lhost->instances.emplace_back(move(eosd));
       --ph_count;
     } // for i
     bindings.emplace_back( move(*lhost) );
-    delete lhost;
   }
 }
 
