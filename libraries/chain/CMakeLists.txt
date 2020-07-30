@@ -124,6 +124,7 @@ add_library( eosio_chain
              platform_timer_accuracy.cpp
              kv_context.cpp
              kv_context_chainbase.cpp
+             db_context_chainbase.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
