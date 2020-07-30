@@ -974,10 +974,14 @@ void launcher_interval_timer::track_timeouts(const time_point& now) {
 }
 
 void launcher_interval_timer::stop_timer() {
-   _timer->cancel();
-   _timer.reset();
-   _thread_pool->stop();
-   _thread_pool.reset();
+   if (_timer) {
+      _timer->cancel();
+      _timer.reset();
+   }
+   if (_thread_pool) {
+      _thread_pool->stop();
+      _thread_pool.reset();
+   }
 }
 
 void launcher_interval_timer::start_timer() {
