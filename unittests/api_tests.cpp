@@ -1274,10 +1274,10 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit_failure) { try {
    chain.produce_block();
 
    transaction_trace_ptr trace;
-   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
-      auto& t = std::get<0>(x);
-      if (t->scheduled) { trace = t; }
-   } );
+   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
+         auto& t = std::get<0>(x);
+         if (t->scheduled) { trace = t; }
+      } );
    CALL_TEST_FUNCTION(chain, "test_transaction", "send_deferred_transaction_4k_action", {} );
    BOOST_CHECK(!trace);
    BOOST_CHECK_EXCEPTION(chain.produce_block( fc::seconds(2) ), fc::exception, 
@@ -1312,7 +1312,7 @@ BOOST_AUTO_TEST_CASE(deferred_inline_action_subjective_limit) { try {
    chain2.push_block(block);
 
    transaction_trace_ptr trace;
-   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+   auto c = chain.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
       auto& t = std::get<0>(x);
       if (t->scheduled) { trace = t; }
    } );
