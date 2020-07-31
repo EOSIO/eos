@@ -65,6 +65,37 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
+  --blocks-log-stride arg (=4294967295)
+                                        split the block log file when the head
+                                        block number is the multiple of the
+                                        stride. When the stride is reached, the
+                                        current block log and index will be
+                                        renamed '<blocks-retained-dir>/blocks-
+                                        <start num>-<end num>.log/index' and a
+                                        new current block log and index will be
+                                        created with the most recent block. All
+                                        files following this format will be
+                                        used to construct an extended block log
+  --max-retained-block-files arg (=10)  the maximum number of blocks files to
+                                        retain so that the blocks in those
+                                        files can be queried. When the number
+                                        is reached, the oldest block file would
+                                        be moved to archive dir or deleted if
+                                        the archive dir is empty. The retained
+                                        block log files should not be
+                                        manipulated by users.
+  --blocks-retained-dir arg (="")       the location of the blocks retained
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty, it
+                                        is set to the value of blocks dir.
+  --blocks-archive-dir (="archive")     the location of the blocks archive
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty,
+                                        blocks files beyond the retained limit
+                                        will be deleted. All files in the
+                                        archive directory are completely under
+                                        user's control, i.e. they won't be
+                                        accessed by nodeos anymore.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
