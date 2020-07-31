@@ -16,6 +16,7 @@
 #include <fc/io/raw.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/crypto/rand.hpp>
 #include <fc/exception/exception.hpp>
@@ -3302,6 +3303,13 @@ namespace eosio {
       controller& cc = chain_plug->chain();
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
+
+         fc_create_trace(blk_trace, "Block");
+         fc_create_span(blk_trace, blk_span, "Accepted");
+         fc_add_str_tag(blk_span, "block_id", bs->id.str());
+         fc_add_str_tag(blk_span, "block_num", std::to_string(bs->block_num));
+         fc_add_str_tag(blk_span, "block_time", std::string(bs->block->timestamp.to_time_point()));
+
          dispatcher->bcast_block( bs->block, bs->id );
       });
    }
@@ -3314,6 +3322,14 @@ namespace eosio {
          dispatcher->strand.post( [this, block]() {
             auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
+
+            fc_create_trace(blk_trace, "Block");
+            fc_create_span(blk_trace, blk_span, "PreAccepted");
+            fc_add_str_tag(blk_span, "block_id", id.str());
+            fc_add_str_tag(blk_span, "block_num", std::to_string(block->block_num()));
+            fc_add_str_tag(blk_span, "block_time", std::string(block->timestamp.to_time_point()));
+            fc_add_str_tag(blk_span, "producer", block->producer.to_string())
+
             dispatcher->bcast_block( block, id );
          });
       }
