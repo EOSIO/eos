@@ -156,8 +156,6 @@ namespace eosio { namespace chain {
                            kv_resource_manager resource_manager, const kv_database_config& limits)
          : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
-      ~kv_context_chainbase() override {}
-
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer.reset();
