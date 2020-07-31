@@ -228,14 +228,17 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("blocks-log-stride", bpo::value<uint32_t>()->default_value(config::default_blocks_log_stride),
-         "split the block log file when the head block number is the multiple of the split factor\n"
-         "When the stride is reached, the current block log and index will be renamed 'blocks-<start num>-<end num>.log/index'\n"
+         "split the block log file when the head block number is the multiple of the stride\n"
+         "When the stride is reached, the current block log and index will be renamed '<blocks-retained-dir>/blocks-<start num>-<end num>.log/index'\n"
          "and a new current block log and index will be created with the most recent block. All files following\n"
          "this format will be used to construct an extended block log.")
          ("max-retained-block-files", bpo::value<uint16_t>()->default_value(config::default_max_retained_block_files),
           "the maximum number of blocks files to retain so that the blocks in those files can be queried.\n" 
           "When the number is reached, the oldest block file would be moved to archive dir or deleted if the archive dir is empty.\n"
           "The retained block log files should not be manipulated by users." )
+         ("blocks-retained-dir", bpo::value<bfs::path>()->default_value(""),
+          "the location of the blocks retained directory (absolute path or relative to blocks dir).\n"
+          "If the value is empty, it is set to the value of blocks dir.")
          ("blocks-archive-dir", bpo::value<bfs::path>()->default_value(config::default_blocks_archive_dir_name),
           "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"
           "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
@@ -635,13 +638,13 @@ chain_plugin::do_hard_replay(const variables_map& options) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
             if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
                                             my->chain_config->reversible_cache_size,
-                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                            my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                             options.at( "truncate-at-block" ).as<uint32_t>())) {
                ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
                fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name );
                fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
             }
          }
 }
@@ -756,16 +759,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->abi_serializer_max_time_us = my->abi_serializer_max_time_us;
       }
 
-      my->chain_config->blocks_dir = my->blocks_dir;
-      my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
-      my->chain_config->read_only = my->readonly;
-      my->chain_config->blocks_archive_dir = options.at("blocks-archive-dir").as<bfs::path>();
-      my->chain_config->blocks_log_stride  = options.at("blocks-log-stride").as<uint32_t>();
-      my->chain_config->max_retained_block_files = options.at("max-retained-block-files").as<uint16_t>();
-      my->chain_config->fix_irreversible_blocks = options.at("fix-irreversible-blocks").as<bool>();
+      my->chain_config->blog.log_dir                 = my->blocks_dir;
+      my->chain_config->state_dir                    = app().data_dir() / config::default_state_dir_name;
+      my->chain_config->read_only                    = my->readonly;
+      my->chain_config->blog.retained_dir            = options.at("blocks-retained-dir").as<bfs::path>();
+      my->chain_config->blog.archive_dir             = options.at("blocks-archive-dir").as<bfs::path>();
+      my->chain_config->blog.stride                  = options.at("blocks-log-stride").as<uint32_t>();
+      my->chain_config->blog.max_retained_files      = options.at("max-retained-block-files").as<uint16_t>();
+      my->chain_config->blog.fix_irreversible_blocks = options.at("fix-irreversible-blocks").as<bool>();
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
-        resmon_plugin->monitor_directory(my->chain_config->blocks_dir);
+        resmon_plugin->monitor_directory(my->chain_config->blog.log_dir);
         resmon_plugin->monitor_directory(my->chain_config->state_dir);
       }
 
@@ -859,7 +863,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             p = bfs::current_path() / p;
          }
 
-         if( export_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name, p ) )
+         if( export_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name, p ) )
             ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
          else
             ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
@@ -881,13 +885,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          clear_chainbase_files( my->chain_config->state_dir );
          if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-            if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+            if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                             my->chain_config->reversible_cache_size )) {
                ilog( "Reversible blocks database was not corrupted." );
             }
          }
       } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-         if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+         if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                          my->chain_config->reversible_cache_size,
                                          optional<fc::path>(),
                                          options.at( "truncate-at-block" ).as<uint32_t>())) {
@@ -901,9 +905,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else if( options.count("import-reversible-blocks") ) {
          auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
          ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
-         fc::remove_all( my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
+         fc::remove_all( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name );
 
-         import_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+         import_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name,
                                    my->chain_config->reversible_cache_size, reversible_blocks_file );
 
          EOS_THROW( node_management_success, "imported reversible blocks" );

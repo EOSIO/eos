@@ -101,7 +101,6 @@ namespace appbase {
          }
 
          void                  startup();
-         void                  shutdown();
 
          /**
           *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
@@ -270,6 +269,8 @@ namespace appbase {
 
          void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
          void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
+
+         void shutdown();
 
          std::unique_ptr<class application_impl> my;
 
