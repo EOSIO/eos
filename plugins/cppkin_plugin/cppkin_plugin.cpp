@@ -60,7 +60,7 @@ void cppkin_plugin::plugin_startup() {
       cppkinParams.AddParam(cppkin::ConfigTags::ENDPOINT, my->endpoint);
       cppkinParams.AddParam(cppkin::ConfigTags::SERVICE_NAME, my->service_name);
       cppkinParams.AddParam(cppkin::ConfigTags::PORT, -1);
-      cppkinParams.AddParam(cppkin::ConfigTags::SAMPLE_COUNT, my->sample_count);
+      cppkinParams.AddParam(cppkin::ConfigTags::SAMPLE_COUNT, static_cast<int>(my->sample_count));
       cppkinParams.AddParam(cppkin::ConfigTags::TRANSPORT_TYPE, cppkin::TransportType(cppkin::TransportType::Http).ToString());
       cppkinParams.AddParam(cppkin::ConfigTags::ENCODING_TYPE, cppkin::EncodingType(cppkin::EncodingType::Json).ToString());
       cppkinParams.AddParam(cppkin::ConfigTags::API_KEY, my->api_key);
