@@ -557,6 +557,7 @@ class apply_context {
       int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
       int  db_end_i64( name code, name scope, name table );
 
+# warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
       db_context& db_get_context();
 
    private:
