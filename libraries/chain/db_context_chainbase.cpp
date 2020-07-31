@@ -69,24 +69,23 @@ namespace eosio { namespace chain {
          return context.idx64.remove(iterator);
       }
 
-      int32_t
-      db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary,
-                              uint64_t& primary) override {
+      int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary,
+                                      uint64_t& primary) override {
          return context.idx64.find_secondary(code, scope, table, secondary, primary);
       }
 
       int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                            uint64_t primary) override {
+                                    uint64_t primary) override {
          return context.idx64.find_primary(code, scope, table, secondary, primary);
       }
 
       int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                          uint64_t& primary) override {
+                                  uint64_t& primary) override {
          return context.idx64.lowerbound_secondary(code, scope, table, secondary, primary);
       }
 
       int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                          uint64_t& primary) override {
+                                  uint64_t& primary) override {
          return context.idx64.upperbound_secondary(code, scope, table, secondary, primary);
       }
 
@@ -106,7 +105,7 @@ namespace eosio { namespace chain {
        * interface for uint128_t secondary
        */
       int32_t db_idx128_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                      const uint128_t& secondary) override {
+                              const uint128_t& secondary) override {
          return context.idx128.store(scope, table, payer, id, secondary);
       }
 
@@ -118,9 +117,8 @@ namespace eosio { namespace chain {
          context.idx128.remove(iterator);
       }
 
-      int32_t
-      db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary,
-                               uint64_t& primary) override {
+      int32_t db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary,
+                                       uint64_t& primary) override {
          return context.idx128.find_secondary(code, scope, table, secondary, primary);
       }
 
@@ -167,24 +165,23 @@ namespace eosio { namespace chain {
          context.idx256.remove(iterator);
       }
 
-      int32_t
-      db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
-                               uint64_t& primary) override {
+      int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
+                                       uint64_t& primary) override {
          return context.idx256.find_secondary(code, scope, table, data, primary);
       }
 
       int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                             uint64_t primary) override {
+                                     uint64_t primary) override {
          return context.idx256.find_primary(code, scope, table, data, primary);
       }
 
       int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                           uint64_t& primary) override {
+                                   uint64_t& primary) override {
          return context.idx256.lowerbound_secondary(code, scope, table, data, primary);
       }
 
       int32_t db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                           uint64_t& primary) override {
+                                   uint64_t& primary) override {
          return context.idx256.upperbound_secondary(code, scope, table, data, primary);
       }
 
@@ -204,7 +201,7 @@ namespace eosio { namespace chain {
        * interface for double secondary
        */
       int32_t db_idx_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                          const float64_t& secondary) override {
+                                  const float64_t& secondary) override {
          return context.idx_double.store(scope, table, payer, id, secondary);
       }
 
@@ -217,25 +214,22 @@ namespace eosio { namespace chain {
       }
 
       int32_t db_idx_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
-                                                   const float64_t& secondary, uint64_t& primary) override {
+                                           const float64_t& secondary, uint64_t& primary) override {
          return context.idx_double.find_secondary(code, scope, table, secondary, primary);
       }
 
-      int32_t
-      db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                                 uint64_t primary) override {
+      int32_t db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+                                         uint64_t primary) override {
          return context.idx_double.find_primary(code, scope, table, secondary, primary);
       }
 
-      int32_t
-      db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                               uint64_t& primary) override {
+      int32_t db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+                                       uint64_t& primary) override {
          return context.idx_double.lowerbound_secondary(code, scope, table, secondary, primary);
       }
 
-      int32_t
-      db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                               uint64_t& primary) override {
+      int32_t db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+                                       uint64_t& primary) override {
          return context.idx_double.upperbound_secondary(code, scope, table, secondary, primary);
       }
 
@@ -255,7 +249,7 @@ namespace eosio { namespace chain {
        * interface for long double secondary
        */
       int32_t db_idx_long_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                               const float128_t& secondary) override {
+                                       const float128_t& secondary) override {
          return context.idx_long_double.store(scope, table, payer, id, secondary);
       }
 
@@ -268,25 +262,22 @@ namespace eosio { namespace chain {
       }
 
       int32_t db_idx_long_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
-                                                        const float128_t& secondary,
-                                                        uint64_t& primary) override {
+                                                const float128_t& secondary, uint64_t& primary) override {
          return context.idx_long_double.find_secondary(code, scope, table, secondary, primary);
       }
 
       int32_t db_idx_long_double_find_primary(uint64_t code, uint64_t scope, uint64_t table,
-                                                      float128_t& secondary, uint64_t primary) override {
+                                              float128_t& secondary, uint64_t primary) override {
          return context.idx_long_double.find_primary(code, scope, table, secondary, primary);
       }
 
-      int32_t
-      db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
-                                    uint64_t& primary) override {
+      int32_t db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
+                                            uint64_t& primary) override {
          return context.idx_long_double.lowerbound_secondary(code, scope, table, secondary, primary);
       }
 
-      int32_t
-      db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
-                                    uint64_t& primary) override {
+      int32_t db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
+                                            uint64_t& primary) override {
          return context.idx_long_double.upperbound_secondary(code, scope, table, secondary, primary);
       }
 
