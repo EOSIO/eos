@@ -24,6 +24,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/trace.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
 #include <cstdlib>
@@ -2273,12 +2274,34 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      fc_create_trace(trx_trace, "Transaction");
+      fc_create_span(trx_trace, trx_span, "HTTP Received");
+      fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+      fc_add_tag(trx_span, "method", "push_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+
+         fc_create_trace(trx_trace, "Transaction");
+         fc_create_span(trx_trace, trx_span, "Processed");
+         fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+
          if (result.contains<fc::exception_ptr>()) {
-            next(result.get<fc::exception_ptr>());
+            auto& eptr = result.get<chain::exception_ptr>();
+            fc_add_str_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+
+            fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
+            fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
+            fc_add_str_tag(trx_span, "elapsed", std::to_string(trx_trace_ptr->elapsed.count()));
+            if( trx_trace_ptr->receipt ) {
+               fc_add_str_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_str_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
@@ -2394,12 +2417,33 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      fc_create_trace(trx_trace, "Transaction");
+      fc_create_span(trx_trace, trx_span, "HTTP Received");
+      fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+      fc_add_tag(trx_span, "method", "send_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         fc_create_trace(trx_trace, "Transaction");
+         fc_create_span(trx_trace, trx_span, "Processed");
+         fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+
          if (result.contains<fc::exception_ptr>()) {
-            next(result.get<fc::exception_ptr>());
+            auto& eptr = result.get<chain::exception_ptr>();
+            fc_add_str_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+
+            fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
+            fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
+            fc_add_str_tag(trx_span, "elapsed", std::to_string(trx_trace_ptr->elapsed.count()));
+            if( trx_trace_ptr->receipt ) {
+               fc_add_str_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_str_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
