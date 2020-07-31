@@ -12,8 +12,7 @@ namespace eosio { namespace chain {
 
       class apply_context;
 
-      inline constexpr name dbram_id  = N(eosio.dbram);
-      inline constexpr name dbdisk_id = N(eosio.dbdisk);
+      constexpr name dbram_id  = N(eosio.dbram);
 
       struct db_context {
          virtual ~db_context() {}
@@ -48,18 +47,17 @@ namespace eosio { namespace chain {
 
          virtual void db_idx64_remove(int32_t iterator) = 0;
 
-         virtual int32_t
-         db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary,
-                                 uint64_t& primary) = 0;
+         virtual int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
+                                                 const uint64_t& secondary, uint64_t& primary) = 0;
 
          virtual int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                       uint64_t primary) = 0;
+                                               uint64_t primary) = 0;
 
          virtual int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                     uint64_t& primary) = 0;
+                                             uint64_t& primary) = 0;
 
          virtual int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
-                                     uint64_t& primary) = 0;
+                                             uint64_t& primary) = 0;
 
          virtual int32_t db_idx64_end(uint64_t code, uint64_t scope, uint64_t table) = 0;
 
@@ -71,24 +69,23 @@ namespace eosio { namespace chain {
           * interface for uint128_t secondary
           */
          virtual int32_t db_idx128_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                 const uint128_t& secondary) = 0;
+                                         const uint128_t& secondary) = 0;
 
          virtual void db_idx128_update(int32_t iterator, account_name payer, const uint128_t& secondary) = 0;
 
          virtual void db_idx128_remove(int32_t iterator) = 0;
 
-         virtual int32_t
-         db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary,
-                                  uint64_t& primary) = 0;
+         virtual int32_t db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
+                                                  const uint128_t& secondary, uint64_t& primary) = 0;
 
          virtual int32_t db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
-                                        uint64_t primary) = 0;
+                                                uint64_t primary) = 0;
 
          virtual int32_t db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
-                                      uint64_t& primary) = 0;
+                                              uint64_t& primary) = 0;
 
          virtual int32_t db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
-                                      uint64_t& primary) = 0;
+                                              uint64_t& primary) = 0;
 
          virtual int32_t db_idx128_end(uint64_t code, uint64_t scope, uint64_t table) = 0;
 
@@ -99,27 +96,25 @@ namespace eosio { namespace chain {
          /**
           * interface for 256-bit interger secondary
           */
-         inline static constexpr uint32_t idx256_array_size = 2;
 
          virtual int32_t db_idx256_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                 const uint128_t* data) = 0;
+                                         const uint128_t* data) = 0;
 
          virtual void db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data) = 0;
 
          virtual void db_idx256_remove(int32_t iterator) = 0;
 
-         virtual int32_t
-         db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
-                                  uint64_t& primary) = 0;
+         virtual int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
+                                                  uint64_t& primary) = 0;
 
          virtual int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                        uint64_t primary) = 0;
+                                                uint64_t primary) = 0;
 
          virtual int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                      uint64_t& primary) = 0;
+                                              uint64_t& primary) = 0;
 
          virtual int32_t db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
-                                      uint64_t& primary) = 0;
+                                              uint64_t& primary) = 0;
 
          virtual int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) = 0;
 
@@ -131,26 +126,23 @@ namespace eosio { namespace chain {
           * interface for double secondary
           */
          virtual int32_t db_idx_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
-                                     const float64_t& secondary) = 0;
+                                             const float64_t& secondary) = 0;
 
          virtual void db_idx_double_update(int32_t iterator, account_name payer, const float64_t& secondary) = 0;
 
          virtual void db_idx_double_remove(int32_t iterator) = 0;
 
          virtual int32_t db_idx_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
-                                              const float64_t& secondary, uint64_t& primary) = 0;
+                                                      const float64_t& secondary, uint64_t& primary) = 0;
 
-         virtual int32_t
-         db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                                    uint64_t primary) = 0;
+         virtual int32_t db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table,
+                                                    float64_t& secondary, uint64_t primary) = 0;
 
-         virtual int32_t
-         db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                                  uint64_t& primary) = 0;
+         virtual int32_t db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+                                                  uint64_t& primary) = 0;
 
-         virtual int32_t
-         db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
-                                  uint64_t& primary) = 0;
+         virtual int32_t db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+                                                  uint64_t& primary) = 0;
 
          virtual int32_t db_idx_double_end(uint64_t code, uint64_t scope, uint64_t table) = 0;
 
@@ -174,13 +166,11 @@ namespace eosio { namespace chain {
          virtual int32_t db_idx_long_double_find_primary(uint64_t code, uint64_t scope, uint64_t table,
                                                          float128_t& secondary, uint64_t primary) = 0;
 
-         virtual int32_t
-         db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
-                                       uint64_t& primary) = 0;
+         virtual int32_t db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table,
+                                                       float128_t& secondary, uint64_t& primary) = 0;
 
-         virtual int32_t
-         db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
-                                       uint64_t& primary) = 0;
+         virtual int32_t db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table,
+                                                       float128_t& secondary, uint64_t& primary) = 0;
 
          virtual int32_t db_idx_long_double_end(uint64_t code, uint64_t scope, uint64_t table) = 0;
 
