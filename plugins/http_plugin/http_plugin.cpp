@@ -863,7 +863,7 @@ namespace eosio {
             }});
          } catch (...) {
             fc_elog(logger, "http_plugin startup fails, shutting down");
-            app().shutdown();
+            app().quit();
          }
       });
    }

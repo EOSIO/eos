@@ -3,6 +3,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/db_context.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -553,6 +554,9 @@ class apply_context {
       int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
       int  db_end_i64( name code, name scope, name table );
 
+# warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
+      db_context& db_get_context();
+
    private:
 
       const table_id_object* find_table( name code, name scope, name table );
@@ -648,6 +652,8 @@ class apply_context {
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
       flat_set<account_delta>             _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
+
+      std::unique_ptr<db_context>         _db_context;
 
       //bytes                               _cached_trx;
 };

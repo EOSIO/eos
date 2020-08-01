@@ -273,8 +273,8 @@ namespace eosio { namespace testing {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
-            if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
-               expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
+            if( fc::is_regular_file( cfg.blog.log_dir / "blocks.log" ) ) {
+               expected_chain_id = block_log::extract_chain_id( cfg.blog.log_dir );
             } else {
                expected_chain_id = genesis_state().compute_chain_id();
             }
@@ -1187,6 +1187,20 @@ namespace eosio { namespace testing {
       }
 
       preactivate_protocol_features( preactivations );
+   }
+
+   tester::tester(const std::function<void(controller&)>& control_setup, setup_policy policy, db_read_mode read_mode) {
+      auto def_conf            = default_config(tempdir);
+      def_conf.first.read_mode = read_mode;
+      cfg                      = def_conf.first;
+
+      base_tester::open(make_protocol_feature_set(), def_conf.second.compute_chain_id(),
+                        [&genesis = def_conf.second, &control = this->control, &control_setup]() {
+                           control_setup(*control);
+                           control->startup([]() {}, []() { return false; }, genesis);
+                        });
+
+      execute_setup_policy(policy);
    }
 
    bool fc_exception_code_is::operator()( const fc::exception& ex ) {
