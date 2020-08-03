@@ -183,10 +183,7 @@ struct wasm_function_type_provider<Ret(Args...)> {
    }
 };
 
-struct eos_vm_oc_execution_interface {
-   inline const auto& operand_from_back(std::size_t index) const { return *(os - index - 1); }
-   eosio::vm::native_value* os;
-};
+struct eos_vm_oc_execution_interface {};
 
 struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::interface, eos_vm_oc_execution_interface> {
    using base_type = eosio::vm::type_converter<webassembly::interface, eos_vm_oc_execution_interface>;
@@ -285,6 +282,7 @@ inline uint32_t make_native_type(vm::i32_const_t x) { return x.data.ui; }
 inline uint64_t make_native_type(vm::i64_const_t x) { return x.data.ui; }
 inline float make_native_type(vm::f32_const_t x) { return x.data.f; }
 inline double make_native_type(vm::f64_const_t x) { return x.data.f; }
+inline void make_native_type(vm::maybe_void_t) {}
 
 template<typename TC, typename Args, std::size_t... Is>
 auto get_ct_args_one(std::index_sequence<Is...>) {
@@ -306,15 +304,98 @@ auto get_ct_args(std::index_sequence<Is...>) {
    return std::tuple_cat(get_ct_args_i<eos_vm_oc_type_converter, std::tuple_element_t<Is, Args>>()...);
 }
 
-struct result_resolver {
-   // Suppress "expression result unused" warnings
-   result_resolver(eos_vm_oc_type_converter& tc) : tc(tc) {}
-   template<typename T>
-   auto operator,(T&& res) {
-      return make_native_type(vm::detail::resolve_result(tc, static_cast<T&&>(res)));
+template <std::size_t Offset, typename Tuple, std::size_t... Is>
+auto subtuple_impl(Tuple&& t, std::index_sequence<Is...>) {
+   return std::make_tuple(std::get<Is + Offset>(t)...);
+}
+
+///
+/// @returns the tuple with the first \p N elements of \p t
+///
+template <std::size_t N, typename Tuple>
+auto tuple_fronts(Tuple&& t) {
+   return subtuple_impl<0>(std::forward<Tuple>(t), std::make_index_sequence<N>());
+}
+
+///
+/// @returns returns the part of the tuple that follows the first \p N elements
+///
+template <std::size_t N, typename Tuple>
+auto remove_fronts(Tuple&& t) {
+   constexpr std::size_t sz = std::tuple_size_v<std::decay_t<Tuple>>;
+   return subtuple_impl<N>(std::forward<Tuple>(t), std::make_index_sequence<sz - N>());
+}
+
+///
+/// @returns  the new tuple in which the element \p t1 is followed by the
+/// elements of \p tuple.
+///
+template <typename T1, typename... Args>
+auto push_front(T1&& t1, std::tuple<Args...>&& tuple) {
+   return std::apply([&](Args&&... args) { return std::make_tuple(t1, std::forward<Args>(args)...); },
+                     std::forward<std::tuple<Args...>>(tuple));
+}
+
+///
+/// @returns the first element of an index sequence
+///
+template <std::size_t N, std::size_t... Is>
+constexpr std::size_t head(std::index_sequence<N, Is...>) {
+   return N;
+}
+
+///
+/// @returns returns the part of the index sequence that follows the first item
+///
+template <std::size_t N, std::size_t... Is>
+constexpr auto tail(std::index_sequence<N, Is...>) {
+   return std::index_sequence<Is...>();
+}
+
+///
+/// Partition the specified tuple into a tuple of sub-tuples in accordance to 
+/// the sizes specified in \p sizes.
+///
+/// For example, given a tuple <tt>(1,2,3,4,5)</tt> and the sizes <tt>(1,2,2)</tt>, 
+/// the returned tuple would be <tt>(1,(2,3),(4,5))</tt>.
+///
+template <typename Tuple, typename SizeSeq>
+auto partition_tuple(Tuple&& tuple, SizeSeq sizes) {
+   if constexpr (std::tuple_size_v<std::decay_t<Tuple>> == 0)
+      return tuple;
+   else {
+      constexpr std::size_t first_size = head(sizes);
+      return push_front(tuple_fronts<first_size>(tuple), partition_tuple(remove_fronts<first_size>(tuple), tail(sizes)));
    }
-   eos_vm_oc_type_converter& tc;
-};
+}
+
+template <typename S, typename... Args>
+constexpr auto create_value(eos_vm_oc_type_converter& tc, const std::tuple<Args...>& args) {
+   if constexpr (vm::detail::has_from_wasm_v<S, eos_vm_oc_type_converter>) {
+      return std::apply([&tc](Args... arg) { return tc.template from_wasm<S>(arg...); }, args);
+   } else {
+      return S(std::get<0>(args));
+   }
+}
+
+template <typename T>
+constexpr std::size_t value_operand_size() {
+   if constexpr (!std::is_same_v<vm::no_match_t, decltype(std::declval<eos_vm_oc_type_converter>().template as_value<T>(
+                                                     vm::native_value()))>)
+      return 1;
+   else
+      return std::tuple_size_v<vm::detail::from_wasm_type_deducer_t<eos_vm_oc_type_converter, T>>;
+}
+
+template <typename... NativeType>
+constexpr auto operand_sizes(eos_vm_oc_type_converter&, std::tuple<NativeType...>*) {
+   return std::index_sequence<value_operand_size<NativeType>()...>();
+}
+
+template <typename NativeTypes, typename PartitionedArgs, std::size_t... Is>
+auto to_native_values(eos_vm_oc_type_converter& tc, PartitionedArgs partitioned, std::index_sequence<Is...>) {
+   return std::make_tuple(create_value<std::tuple_element_t<Is, NativeTypes>>(tc, std::get<Is>(partitioned))...);
+}
 
 template<auto F, typename Interface, typename Preconditions, bool is_injected, typename... A>
 auto fn(A... a) {
@@ -332,8 +413,7 @@ auto fn(A... a) {
                         [depthAssertionIntrinsicOffset] "i" (depth_assertion_intrinsic_offset)
                       : "cc");
       }
-      using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
-      eosio::vm::native_value stack[] = { a... };
+      
       constexpr int cb_ctx_ptr_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(ctx);
       apply_context* ctx;
       asm("mov %%gs:%c[applyContextOffset], %[cPtr]\n"
@@ -341,8 +421,13 @@ auto fn(A... a) {
           : [applyContextOffset] "i" (cb_ctx_ptr_offset)
           );
       Interface host(*ctx);
-      eos_vm_oc_type_converter tc{&host, eos_vm_oc_execution_interface{stack + sizeof...(A)}};
-      return result_resolver{tc}, eosio::vm::invoke_with_host<F, Preconditions, native_args>(tc, &host, std::make_index_sequence<sizeof...(A)>());
+      eos_vm_oc_type_converter tc{&host, eos_vm_oc_execution_interface{}};
+      using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
+      constexpr std::size_t num_native_args = std::tuple_size_v<native_args>;
+      constexpr auto sizes = operand_sizes(tc, static_cast<native_args *>(nullptr));
+      auto partitioned = partition_tuple(std::make_tuple(a...), sizes);
+      auto native_values = to_native_values<native_args>(tc, partitioned, std::make_index_sequence<num_native_args>());
+      return make_native_type(vm::invoke_with_host_impl<F, Preconditions>(tc, &host, std::move(native_values)));
    }
    catch(...) {
       *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
