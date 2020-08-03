@@ -467,6 +467,67 @@ namespace impl {
       }
 
       /**
+       * overload of to_variant_object for action_trace
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to extract the contents of action_trace.return_value
+       * @tparam Resolver
+       * @param action_trace
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object& out, const char* name, const action_trace& act_trace, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<action_trace>::total_member_count == 18);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+
+         mvo("action_ordinal", act_trace.action_ordinal);
+         mvo("creator_action_ordinal", act_trace.creator_action_ordinal);
+         mvo("closest_unnotified_ancestor_action_ordinal", act_trace.closest_unnotified_ancestor_action_ordinal);
+         mvo("receipt", act_trace.receipt);
+         mvo("receiver", act_trace.receiver);
+         add(mvo, "act", act_trace.act, resolver, ctx);
+         mvo("context_free", act_trace.context_free);
+         mvo("elapsed", act_trace.elapsed);
+         mvo("console", act_trace.console);
+         mvo("trx_id", act_trace.trx_id);
+         mvo("block_num", act_trace.block_num);
+         mvo("block_time", act_trace.block_time);
+         mvo("producer_block_id", act_trace.producer_block_id);
+         mvo("account_ram_deltas", act_trace.account_ram_deltas);
+         mvo("account_disk_deltas", act_trace.account_disk_deltas);
+         mvo("except", act_trace.except);
+         mvo("error_code", act_trace.error_code);
+
+         auto act = act_trace.act;
+         try {
+            auto abi = resolver(act.account);
+            if (abi.valid()) {
+               auto type = abi->get_action_result_type(act.name);
+               if (!type.empty()) {
+                  try {
+                     binary_to_variant_context _ctx(*abi, ctx, type);
+                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
+                     mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
+                     mvo("return_value_hex_data", act_trace.return_value);
+                  } catch(...) {
+                     // any failure to serialize data, then leave as not serailzed
+                     mvo("return_value_data", act_trace.return_value);
+                  }
+               } else {
+                  mvo("return_value_data", act_trace.return_value);
+               }
+            } else {
+               mvo("return_value_data", act_trace.return_value);
+            }
+         } catch(...) {
+            mvo("return_value_data", act.data);
+         }
+         out(name, std::move(mvo));
+      }
+
+      /**
        * overload of to_variant_object for packed_transaction_v0
        *
        * This matches the FC_REFLECT for packed_transaction_v0 type with the addition of "transaction" which is provided
