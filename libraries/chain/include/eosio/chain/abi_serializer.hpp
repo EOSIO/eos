@@ -512,17 +512,17 @@ namespace impl {
                      mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
                      mvo("return_value_hex_data", act_trace.return_value);
                   } catch(...) {
-                     // any failure to serialize data, then leave as not serailzed
-                     mvo("return_value_data", act_trace.return_value);
+                     // any failure to serialize data, then leave as not serialized
+                     mvo("return_value_hex_data", act_trace.return_value);
                   }
                } else {
-                  mvo("return_value_data", act_trace.return_value);
+                  mvo("return_value_hex_data", act_trace.return_value);
                }
             } else {
-               mvo("return_value_data", act_trace.return_value);
+               mvo("return_value_hex_data", act_trace.return_value);
             }
          } catch(...) {
-            mvo("return_value_data", act.data);
+            mvo("return_value_hex_data", act_trace.return_value);
          }
          out(name, std::move(mvo));
       }
