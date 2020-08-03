@@ -41,6 +41,7 @@ void cppkin_plugin::plugin_initialize(const appbase::variables_map& options) {
       if( options.count("cppkin-endpoint") ) {
          my->endpoint = options.at("cppkin-endpoint").as<std::string>();
       }
+      EOS_ASSERT( !my->endpoint.empty(), chain::plugin_exception, "cppkin-endpoint is required" );
       if( options.count("cppkin-service-name") ) {
          my->service_name = options.at("cppkin-service-name").as<std::string>();
       }
