@@ -2,6 +2,7 @@
 
 #include <eosio/chain/exceptions.hpp>
 #include <cppkin.h>
+#include <fc/log/trace.hpp>
 
 namespace {
 
@@ -67,6 +68,8 @@ void cppkin_plugin::plugin_startup() {
       cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT, std::string("zipkin"));
       cppkinParams.AddParam(cppkin::ConfigTags::DATA_FORMAT_VERSION, 2);
       cppkin::Init(cppkinParams);
+
+      fc_cppkin_trace_enabled = true;
 
       cppkin::Trace trace = cppkin::Trace("cppkin initialized");
       trace.Submit();
