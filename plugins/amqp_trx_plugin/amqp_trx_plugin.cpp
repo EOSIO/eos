@@ -83,9 +83,6 @@ private:
       app().post( priority::medium_low, [my=shared_from_this(), delivery_tag, trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
             [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-               boost::asio::post( my->chain_plug->chain().get_thread_pool(),
-                                  [my{std::move(my)}, delivery_tag, trx{std::move(trx)}, result=result]() mutable {
-
                my->amqp_trx->ack( delivery_tag );
 
                fc_create_trace(trx_trace, "Transaction");
@@ -117,7 +114,6 @@ private:
 
             } );
          } );
-      } );
    }
 };
 
