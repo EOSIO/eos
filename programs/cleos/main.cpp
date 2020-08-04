@@ -466,38 +466,6 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
-void print_action( const fc::variant& at ) {
-   auto receiver = at["receiver"].as_string();
-   const auto& act = at["act"].get_object();
-   auto code = act["account"].as_string();
-   auto func = act["name"].as_string();
-   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
-   auto console = at["console"].as_string();
-   auto return_value = at["return_value"].as_string();
-
-   /*
-   if( code == "eosio" && func == "setcode" )
-      args = args.substr(40)+"...";
-   if( name(code) == config::system_account_name && func == "setabi" )
-      args = args.substr(40)+"...";
-   */
-   if( args.size() > 100 ) args = args.substr(0,100) + "...";
-   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-   if ( return_value.size()) {
-      if (return_value.size() > 100)
-         return_value = return_value.substr(0, 100) + "...";
-      cout << std::setw(19) << std::left << "=>" << std::setw(29) << "return value: " << return_value << "\n";
-   }
-   if( console.size() ) {
-      std::stringstream ss(console);
-      string line;
-      while( std::getline( ss, line ) ) {
-         cout << ">> " << line << "\n";
-         if( !verbose ) break;
-      }
-   }
-}
-
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
    FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
@@ -514,6 +482,61 @@ fc::variant bin_to_variant( const account_name& account, const action_name& acti
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
    return abis->binary_to_variant( action_type, action_args, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+}
+
+inline fc::variant decode_return_value(const std::string& json_value, const account_name& account, const action_name& action) {
+   bytes packed_return_value(json_value.size());
+   fc::from_hex(json_value, packed_return_value.data(), packed_return_value.size());
+
+   auto abis = abi_serializer_resolver( account );
+   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+
+   auto action_return_type = abis->get_action_result_type( action );
+   FC_ASSERT( !action_return_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+
+   return abis->binary_to_variant( action_return_type, packed_return_value, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+}
+
+void print_action(const fc::variant &at)
+{
+   auto receiver = at["receiver"].as_string();
+   const auto &act = at["act"].get_object();
+   auto code = act["account"].as_string();
+   auto func = act["name"].as_string();
+   auto args = fc::json::to_string(act["data"], fc::time_point::maximum());
+   auto console = at["console"].as_string();
+//   auto return_value_hex = at["return_value_hex_data"].as_string();
+   auto return_value_string = at["return_value"].as_string();
+   /*
+   if( code == "eosio" && func == "setcode" )
+      args = args.substr(40)+"...";
+   if( name(code) == config::system_account_name && func == "setabi" )
+      args = args.substr(40)+"...";
+   */
+   if (args.size() > 100)
+      args = args.substr(0, 100) + "...";
+   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
+   if (return_value_string.size())
+   {
+      auto return_value_var = decode_return_value(return_value_string, account_name{code}, action_name{func});
+      auto return_value = fc::json::to_string(return_value_var, fc::time_point::now() + abi_serializer_max_time);
+
+      if (return_value.size() > 100) {
+         return_value = return_value.substr(0, 100) + "...";
+      }
+      cout << std::setw(19) << std::left << "=>" << std::setw(29) << "return value: " << return_value << "\n";
+   }
+   if (console.size())
+   {
+      std::stringstream ss(console);
+      string line;
+      while (std::getline(ss, line))
+      {
+         cout << ">> " << line << "\n";
+         if (!verbose)
+            break;
+      }
+   }
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::parse_type::legacy_parser)
