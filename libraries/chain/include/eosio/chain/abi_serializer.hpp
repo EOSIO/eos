@@ -500,6 +500,7 @@ namespace impl {
          mvo("except", act_trace.except);
          mvo("error_code", act_trace.error_code);
 
+         mvo("return_value_hex_data", act_trace.return_value);
          auto act = act_trace.act;
          try {
             auto abi = resolver(act.account);
@@ -510,20 +511,8 @@ namespace impl {
                      binary_to_variant_context _ctx(*abi, ctx, type);
                      _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
-                     mvo("return_value_hex_data", act_trace.return_value);
-                  } catch(...) {
-                     // any failure to serialize data, then leave as not serialized
-                     mvo("return_value_hex_data", act_trace.return_value);
-                  }
-               } else {
-                  mvo("return_value_hex_data", act_trace.return_value);
-               }
-            } else {
-               mvo("return_value_hex_data", act_trace.return_value);
-            }
-         } catch(...) {
-            mvo("return_value_hex_data", act_trace.return_value);
-         }
+                  } catch(...) {}
+         } catch(...) {}
          out(name, std::move(mvo));
       }
 
