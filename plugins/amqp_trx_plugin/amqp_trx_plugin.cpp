@@ -80,8 +80,9 @@ private:
       }
 
       trx_in_progress_size += trx->get_estimated_size();
-      chain_plug->accept_transaction( trx,
-            [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
+      app().post( priority::medium_low, [my=shared_from_this(), delivery_tag, trx{std::move(trx)}]() {
+         my->chain_plug->accept_transaction( trx,
+            [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                my->amqp_trx->ack( delivery_tag );
 
                fc_create_trace(trx_trace, "Transaction");
@@ -112,6 +113,7 @@ private:
                my->trx_in_progress_size -= trx->get_estimated_size();
 
             } );
+         } );
    }
 };
 
