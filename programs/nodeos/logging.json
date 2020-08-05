@@ -91,7 +91,7 @@
         "stderr",
         "net"
       ]
-    }{
+    },{
       "name": "transaction_failure_tracing",
       "level": "debug",
       "enabled": true,
