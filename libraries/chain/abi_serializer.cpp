@@ -1,6 +1,4 @@
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/transaction.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
