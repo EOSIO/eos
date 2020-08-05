@@ -50,7 +50,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    context_free = trace.context_free;
 }
 
-template <typename Excpetion>
+template <typename Exception>
 void apply_context::check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas) {
    const size_t checktime_interval    = 10;
    const bool   not_in_notify_context = (receiver == act->account);
@@ -61,12 +61,12 @@ void apply_context::check_unprivileged_resource_usage(const char* resource, cons
          counter = 0;
       }
       if (entry.delta > 0 && entry.account != receiver) {
-         EOS_ASSERT(not_in_notify_context, Excpetion,
+         EOS_ASSERT(not_in_notify_context, Exception,
                      "unprivileged contract cannot increase ${resource} usage of another account within a notify context: "
                      "${account}",
                      ("resource", resource)
                      ("account", entry.account));
-         EOS_ASSERT(has_authorization(entry.account), Excpetion,
+         EOS_ASSERT(has_authorization(entry.account), Exception,
                      "unprivileged contract cannot increase ${resource} usage of another account that has not authorized the "
                      "action: ${account}",
                      ("resource", resource)
