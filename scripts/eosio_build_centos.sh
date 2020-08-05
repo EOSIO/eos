@@ -12,6 +12,7 @@ echo "Disk space available: ${DISK_AVAIL}G"
 
 echo ""
 
+if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
 # Repo necessary for rh-python3, devtoolset-8 and llvm-toolset-7.0
 ensure-scl
 # GCC8 for Centos / Needed for CMAKE install even if we're pinning
@@ -23,6 +24,14 @@ if [[ -d /opt/rh/devtoolset-8 ]]; then
 fi
 # Ensure packages exist
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
+fi
+
+if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
+        echo "Install Development Tools ..."
+        dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        dnf group install -y  "Development Tools"
+fi
+
 export PYTHON3PATH="/opt/rh/rh-python36"
 if $DRYRUN || [ -d $PYTHON3PATH ]; then
 	echo "${COLOR_CYAN}[Enabling python36]${COLOR_NC}"
