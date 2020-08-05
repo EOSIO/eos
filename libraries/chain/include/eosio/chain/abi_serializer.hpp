@@ -512,6 +512,8 @@ namespace impl {
                      _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
                   } catch(...) {}
+               }
+            }
          } catch(...) {}
          out(name, std::move(mvo));
       }
