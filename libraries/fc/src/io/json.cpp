@@ -3,6 +3,7 @@
 //#include <fc/io/sstream.hpp>
 #include <fc/log/logger.hpp>
 //#include <utfcpp/utf8.h>
+#include <fc/utf8.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -485,91 +486,96 @@ namespace fc
    */
 
    /**
-    *  Convert '\t', '\a', '\n', '\\' and '"'  to "\t\a\n\\\""
-    *
-    *  All other characters are printed as UTF8.
+    *  Convert '\t', '\r', '\n', '\\' and '"'  to "\t\r\n\\\"" if escape_control_chars == true
+    *  Convert all other < 32 & 127 ascii to escaped unicode "\u00xx"
+    *  Removes invalid utf8 characters
+    *  Escapes Control sequence Introducer 0x9b to \u009b
+    *  All other characters unmolested.
     */
-   void escape_string( const string& str, std::ostream& os, const json::yield_function_t& yield )
+   std::string escape_string( const std::string_view& str, const json::yield_function_t& yield, bool escape_control_chars )
    {
-      os << '"';
+      string r;
+      const auto init_size = str.size();
+      r.reserve( init_size + 13 ); // allow for a few escapes
       size_t i = 0;
       for( auto itr = str.begin(); itr != str.end(); ++i,++itr )
       {
-         if( i % json::escape_string_yeild_check_count == 0 ) yield(os);
+         if( i % json::escape_string_yield_check_count == 0 ) yield( init_size + r.size() );
          switch( *itr )
          {
-            case '\b':        // \x08
-               os << "\\b";
-               break;
-            case '\f':        // \x0c
-               os << "\\f";
-               break;
-            case '\n':        // \x0a
-               os << "\\n";
-               break;
-            case '\r':        // \x0d
-               os << "\\r";
-               break;
+            case '\x00': r += "\\u0000"; break;
+            case '\x01': r += "\\u0001"; break;
+            case '\x02': r += "\\u0002"; break;
+            case '\x03': r += "\\u0003"; break;
+            case '\x04': r += "\\u0004"; break;
+            case '\x05': r += "\\u0005"; break;
+            case '\x06': r += "\\u0006"; break;
+            case '\x07': r += "\\u0007"; break; // \a is not valid JSON
+            case '\x08': r += "\\u0008"; break; // \b
+         // case '\x09': r += "\\u0009"; break; // \t
+         // case '\x0a': r += "\\u000a"; break; // \n
+            case '\x0b': r += "\\u000b"; break;
+            case '\x0c': r += "\\u000c"; break; // \f
+         // case '\x0d': r += "\\u000d"; break; // \r
+            case '\x0e': r += "\\u000e"; break;
+            case '\x0f': r += "\\u000f"; break;
+            case '\x10': r += "\\u0010"; break;
+            case '\x11': r += "\\u0011"; break;
+            case '\x12': r += "\\u0012"; break;
+            case '\x13': r += "\\u0013"; break;
+            case '\x14': r += "\\u0014"; break;
+            case '\x15': r += "\\u0015"; break;
+            case '\x16': r += "\\u0016"; break;
+            case '\x17': r += "\\u0017"; break;
+            case '\x18': r += "\\u0018"; break;
+            case '\x19': r += "\\u0019"; break;
+            case '\x1a': r += "\\u001a"; break;
+            case '\x1b': r += "\\u001b"; break;
+            case '\x1c': r += "\\u001c"; break;
+            case '\x1d': r += "\\u001d"; break;
+            case '\x1e': r += "\\u001e"; break;
+            case '\x1f': r += "\\u001f"; break;
+
+            case '\x7f': r += "\\u007f"; break;
+
+            // if escape_control_chars=true these fall-through to default
             case '\t':        // \x09
-               os << "\\t";
-               break;
+               if( escape_control_chars ) {
+                  r += "\\t";
+                  break;
+               }
+            case '\n':        // \x0a
+               if( escape_control_chars ) {
+                  r += "\\n";
+                  break;
+               }
+            case '\r':        // \x0d
+               if( escape_control_chars ) {
+                  r += "\\r";
+                  break;
+               }
             case '\\':
-               os << "\\\\";
-               break;
+               if( escape_control_chars ) {
+                  r += "\\\\";
+                  break;
+               }
             case '\"':
-               os << "\\\"";
-               break;
-            case '\x00': os << "\\u0000"; break;
-            case '\x01': os << "\\u0001"; break;
-            case '\x02': os << "\\u0002"; break;
-            case '\x03': os << "\\u0003"; break;
-            case '\x04': os << "\\u0004"; break;
-            case '\x05': os << "\\u0005"; break;
-            case '\x06': os << "\\u0006"; break;
-            case '\x07': os << "\\u0007"; break; // \a is not valid JSON
-         // case '\x08': os << "\\u0008"; break; // \b
-         // case '\x09': os << "\\u0009"; break; // \t
-         // case '\x0a': os << "\\u000a"; break; // \n
-            case '\x0b': os << "\\u000b"; break;
-         // case '\x0c': os << "\\u000c"; break; // \f
-         // case '\x0d': os << "\\u000d"; break; // \r
-            case '\x0e': os << "\\u000e"; break;
-            case '\x0f': os << "\\u000f"; break;
-
-            case '\x10': os << "\\u0010"; break;
-            case '\x11': os << "\\u0011"; break;
-            case '\x12': os << "\\u0012"; break;
-            case '\x13': os << "\\u0013"; break;
-            case '\x14': os << "\\u0014"; break;
-            case '\x15': os << "\\u0015"; break;
-            case '\x16': os << "\\u0016"; break;
-            case '\x17': os << "\\u0017"; break;
-            case '\x18': os << "\\u0018"; break;
-            case '\x19': os << "\\u0019"; break;
-            case '\x1a': os << "\\u001a"; break;
-            case '\x1b': os << "\\u001b"; break;
-            case '\x1c': os << "\\u001c"; break;
-            case '\x1d': os << "\\u001d"; break;
-            case '\x1e': os << "\\u001e"; break;
-            case '\x1f': os << "\\u001f"; break;
-
+               if( escape_control_chars ) {
+                  r += "\\\"";
+                  break;
+               }
             default:
-               os << *itr;
-               //toUTF8( *itr, os );
+               r += *itr;
          }
       }
-      os << '"';
-   }
-   std::ostream& json::to_stream( std::ostream& out, const std::string& str, const json::yield_function_t& yield )
-   {
-        escape_string( str, out, yield );
-        return out;
+
+      return is_valid_utf8( r ) ? r : prune_invalid_utf8( r );
    }
 
    template<typename T>
    void to_stream( T& os, const variants& a, const json::yield_function_t& yield, const json::output_formatting format )
    {
-      yield(os);
+      yield(os.tellp());
       os << '[';
       auto itr = a.begin();
 
@@ -586,13 +592,13 @@ namespace fc
    template<typename T>
    void to_stream( T& os, const variant_object& o, const json::yield_function_t& yield, const json::output_formatting format )
    {
-       yield(os);
+       yield(os.tellp());
        os << '{';
        auto itr = o.begin();
 
        while( itr != o.end() )
        {
-          escape_string( itr->key(), os, yield );
+          os << '"' << escape_string( itr->key(), yield ) << '"';
           os << ':';
           to_stream( os, itr->value(), yield, format );
           ++itr;
@@ -605,7 +611,7 @@ namespace fc
    template<typename T>
    void to_stream( T& os, const variant& v, const json::yield_function_t& yield, const json::output_formatting format )
    {
-      yield(os);
+      yield(os.tellp());
       switch( v.get_type() )
       {
          case variant::null_type:
@@ -643,10 +649,10 @@ namespace fc
               os << v.as_string();
               return;
          case variant::string_type:
-              escape_string( v.get_string(), os, yield );
+              os << '"' << escape_string( v.get_string(), yield ) << '"';
               return;
          case variant::blob_type:
-              escape_string( v.as_string(), os, yield );
+              os << '"' << escape_string( v.as_string(), yield ) << '"';
               return;
          case variant::array_type:
            {
@@ -669,7 +675,7 @@ namespace fc
    {
       std::stringstream ss;
       fc::to_stream( ss, v, yield, format );
-      yield(ss);
+      yield(ss.tellp());
       return ss.str();
    }
 
@@ -781,7 +787,7 @@ namespace fc
          return o.good();
       } else {
          std::ofstream o(fi.generic_string().c_str());
-         const auto yield = [&](std::ostream& os) {
+         const auto yield = [&](size_t s) {
             // no limitation
          };
          fc::to_stream( o, v, yield, format );
@@ -826,30 +832,6 @@ namespace fc
       }
    }
    */
-
-   std::ostream& json::to_stream( std::ostream& out, const variant& v, const json::yield_function_t& yield, const json::output_formatting format )
-   {
-      fc::to_stream( out, v, yield, format );
-      return out;
-   }
-   std::ostream& json::to_stream( std::ostream& out, const variants& v, const json::yield_function_t& yield, const json::output_formatting format )
-   {
-      fc::to_stream( out, v, yield, format );
-      return out;
-   }
-   std::ostream& json::to_stream( std::ostream& out, const variant_object& v, const json::yield_function_t& yield, const json::output_formatting format )
-   {
-      fc::to_stream( out, v, yield, format );
-      return out;
-   }
-
-   std::ostream& json::to_stream( std::ostream& out, const variant& v, const fc::time_point& deadline, const json::output_formatting format, const uint64_t max_len ) {
-      const auto yield = [&](std::ostream& os) {
-         FC_CHECK_DEADLINE(deadline);
-         FC_ASSERT( os.tellp() <= max_len );
-      };
-      return to_stream(out, v, yield, format);
-   }
 
    bool json::is_valid( const std::string& utf8_str, const json::parse_type ptype, const uint32_t max_depth )
    {
