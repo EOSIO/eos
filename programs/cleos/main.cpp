@@ -484,12 +484,12 @@ void print_action(const fc::variant &at)
       args = args.substr(0, 100) + "...";
    cout << "#" << std::setw(14) << std::right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
 
-   std::string return_value, return_value_prefix{"returned value: "};
+   std::string return_value, return_value_prefix{"return value: "};
    try {
-      return_value = at["return_value_data"].as_string();
+      return_value = fc::json::to_string(at["return_value_data"], fc::time_point::maximum());
    } catch (...) {
       return_value = at["return_value_hex_data"].as_string();
-      return_value_prefix = "returned value (hex): ";
+      return_value_prefix = "return value (hex): ";
    }
    if (!return_value.empty())
    {
