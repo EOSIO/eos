@@ -60,16 +60,23 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       return {};
    }
 
-   fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
-      if (trace_log && block_num >= trace_log->begin_block() && block_num < trace_log->end_block())
-         return trace_log->get_block_id(block_num);
-      if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
-         return chain_state_log->get_block_id(block_num);
+   std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
+      std::optional<chain::block_id_type> result;
+
+      if (trace_log)
+         result = trace_log->get_block_id(block_num);
+
+      if (!result && chain_state_log)
+         result = chain_state_log->get_block_id(block_num);
+
+      if (result)
+         return result;
+
       try {
          return chain_plug->chain().get_block_id_for_num(block_num);
       } catch (...) {
+         return {};
       }
-      return {};
    }
 
    struct session : std::enable_shared_from_this<session> {
@@ -225,7 +232,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
          fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
-               ("this_block", result.this_block ? result.this_block->block_num : 0));
+               ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
          send(std::move(result));
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
@@ -375,6 +382,22 @@ void state_history_plugin::set_program_options(options_description& cli, options
    auto options = cfg.add_options();
    options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to application data dir)");
+   options("state-history-retained-dir", bpo::value<bfs::path>()->default_value(""),
+           "the location of the state history retained directory (absolute path or relative to state-history dir).\n"
+           "If the value is empty, it is set to the value of state-history directory.");
+   options("state-history-archive-dir", bpo::value<bfs::path>()->default_value("archive"),
+           "the location of the state history archive directory (absolute path or relative to state-history dir).\n"
+           "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
+           "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.");
+   options("state-history-stride", bpo::value<uint32_t>()->default_value(UINT32_MAX),
+         "split the state history log files when the block number is the multiple of the stride\n"
+         "When the stride is reached, the current history log and index will be renamed '*-history-<start num>-<end num>.log/index'\n"
+         "and a new current history log and index will be created with the most recent blocks. All files following\n"
+         "this format will be used to construct an extended history log.");
+   options("max-retained-history-files", bpo::value<uint32_t>()->default_value(10),
+          "the maximum number of history file groups to retain so that the blocks in those files can be queried.\n" 
+          "When the number is reached, the oldest history file would be moved to archive dir or deleted if the archive dir is empty.\n"
+          "The retained history log files should not be manipulated by users." );
    cli.add_options()("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
    options("trace-history", bpo::bool_switch()->default_value(false), "enable trace history");
    options("chain-state-history", bpo::bool_switch()->default_value(false), "enable chain state history");
@@ -404,14 +427,21 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       my->block_start_connection.emplace(
           chain.block_start.connect([&](uint32_t block_num) { my->on_block_start(block_num); }));
 
-      auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
-      boost::filesystem::path state_history_dir;
+      auto  dir_option = options.at("state-history-dir").as<bfs::path>();
+
+      static eosio::state_history_config config;
+
       if (dir_option.is_relative())
-         state_history_dir = app().data_dir() / dir_option;
+         config.log_dir = app().data_dir() / dir_option;
       else
-         state_history_dir = dir_option;
+         config.log_dir = dir_option;
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
-         resmon_plugin->monitor_directory(state_history_dir);
+         resmon_plugin->monitor_directory(config.log_dir);
+
+      config.retained_dir       = options.at("state-history-retained-dir").as<bfs::path>();
+      config.archive_dir        = options.at("state-history-archive-dir").as<bfs::path>();
+      config.stride             = options.at("state-history-stride").as<uint32_t>();
+      config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
@@ -422,12 +452,12 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.at("delete-state-history").as<bool>()) {
          fc_ilog(_log, "Deleting state history");
-         boost::filesystem::remove_all(state_history_dir);
+         boost::filesystem::remove_all(config.log_dir);
       }
-      boost::filesystem::create_directories(state_history_dir);
+      boost::filesystem::create_directories(config.log_dir);
 
       if (options.at("trace-history").as<bool>()) {
-         my->trace_log.emplace(state_history_dir);
+         my->trace_log.emplace(config);
          if (options.at("trace-history-debug-mode").as<bool>()) 
             my->trace_log->trace_debug_mode = true;  
 
@@ -442,7 +472,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if (options.at("chain-state-history").as<bool>())
-         my->chain_state_log.emplace(state_history_dir);
+         my->chain_state_log.emplace(config);
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
