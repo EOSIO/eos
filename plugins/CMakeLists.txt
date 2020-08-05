@@ -22,6 +22,7 @@ add_subdirectory(test_control_plugin)
 add_subdirectory(test_control_api_plugin)
 add_subdirectory(amqp_trx_plugin)
 add_subdirectory(amqp_trace_plugin)
+add_subdirectory(witness_plugin)
 add_subdirectory(amqp_witness_plugin)
 add_subdirectory(amqp_compressed_proof_plugin)
 
