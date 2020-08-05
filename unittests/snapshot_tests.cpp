@@ -120,7 +120,7 @@ struct variant_snapshot_suite {
 
    static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
      std::ofstream file( basename + ".json", std::ios_base::binary );
-     fc::json::to_stream( file, snapshot, fc::time_point::maximum() );
+     file << fc::json::to_string( snapshot, fc::time_point::maximum() );
    }
 };
 
