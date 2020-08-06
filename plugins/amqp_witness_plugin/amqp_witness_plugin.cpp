@@ -9,7 +9,7 @@ static appbase::abstract_plugin& _amqp_witness_plugin = app().register_plugin<am
 struct amqp_witness_plugin_impl {
    std::string amqp_server = "amqp://";
    std::string exchange = "witness_signatures";
-   std::optional<std::string> routing_key;
+   std::string routing_key;
    bool delete_previous = false;
 
    std::unique_ptr<reliable_amqp_publisher> rqueue;
@@ -44,7 +44,7 @@ void amqp_witness_plugin::plugin_startup() {
    if(boost::filesystem::exists(witness_data_file_path) && my->delete_previous)
       boost::filesystem::remove(witness_data_file_path);
 
-   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key ? *my->routing_key : "", witness_data_file_path, "eosio.node.witness_v0");
+   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key, witness_data_file_path, "eosio.node.witness_v0");
 
    app().get_plugin<witness_plugin>().add_on_witness_sig([this](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
       std::promise<void> made_to_other_thread_promise;
