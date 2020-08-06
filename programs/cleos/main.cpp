@@ -466,7 +466,7 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
-void print_action( const fc::variant &at ) {
+void print_action( const fc::variant& at ) {
    auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
@@ -480,8 +480,8 @@ void print_action( const fc::variant &at ) {
    if( name(code) == config::system_account_name && func == "setabi" )
       args = args.substr(40)+"...";
    */
-   if (args.size() > 100) args = args.substr(0, 100) + "...";
-   cout << "#" << std::setw(14) << std::right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
+   if( args.size() > 100 ) args = args.substr(0, 100) + "...";
+   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
 
    std::string return_value, return_value_prefix{"return value: "};
    try {
@@ -490,18 +490,18 @@ void print_action( const fc::variant &at ) {
       return_value = at["return_value_hex_data"].as_string();
       return_value_prefix = "return value (hex): ";
    }
-   if (!return_value.empty()) {
-      if (return_value.size() > 100) {
+   if( !return_value.empty() ) {
+      if( return_value.size() > 100 ) {
          return_value = return_value.substr(0, 100) + "...";
       }
       cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
    }
-   if ( console.size() ) {
+   if( console.size() ) {
       std::stringstream ss(console);
       string line;
-      while( std::getline(ss, line) ) {
+      while( std::getline( ss, line ) ) {
          cout << ">> " << line << "\n";
-         if ( !verbose ) break;
+         if( !verbose ) break;
       }
    }
 }
