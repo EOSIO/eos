@@ -480,8 +480,8 @@ void print_action( const fc::variant& at ) {
    if( name(code) == config::system_account_name && func == "setabi" )
       args = args.substr(40)+"...";
    */
-   if( args.size() > 100 ) args = args.substr(0, 100) + "...";
-   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
+   if( args.size() > 100 ) args = args.substr(0,100) + "...";
+   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
 
    std::string return_value, return_value_prefix{"return value: "};
    try {
