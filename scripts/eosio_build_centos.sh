@@ -30,6 +30,7 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
         echo "Install Development Tools ..."
         install-package https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
         group-install-package 'Development Tools'
+        install-package openssl-devel
 fi
 
 export PYTHON3PATH="/opt/rh/rh-python36"
