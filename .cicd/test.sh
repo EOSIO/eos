@@ -27,12 +27,18 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     [[ -d eosio-ignition-wd ]] && tar czf eosio-ignition-wd.tar.gz eosio-ignition-wd
     echo 'Compressing core dumps...'
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
+    echo 'Compressing ls-tests logs...'
+    [[ $((`ls -1 data-dir/cluster*/node*/std*.txt 2>/dev/null | wc -l`)) != 0 ]] && tar czf ls_tests_logs.tar.gz data-dir/cluster*/node*/std*.txt data-dir/cluster*/node*/config.ini
+    [[ $((`ls -1 *debug*.log 2>/dev/null | wc -l`)) != 0 ]] && tar czf debug_logs.tar.gz *debug*.log
     echo 'Exporting xUnit XML'
     mv -f ./Testing/$(ls ./Testing/ | grep '2' | tail -n 1)/Test.xml test-results.xml
     echo 'Uploading artifacts'
     [[ -f config.ini ]] && buildkite-agent artifact upload config.ini
     [[ -f core.tar.gz ]] && buildkite-agent artifact upload core.tar.gz
     [[ -f genesis.json ]] && buildkite-agent artifact upload genesis.json
+    [[ -f launcher_service.log ]] && buildkite-agent artifact upload launcher_service.log
+    [[ -f ls_tests_logs.tar.gz ]] && buildkite-agent artifact upload ls_tests_logs.tar.gz
+    [[ -f debug_logs.tar.gz ]] && buildkite-agent artifact upload debug_logs.tar.gz
     [[ -f etc.tar.gz ]] && buildkite-agent artifact upload etc.tar.gz
     [[ -f ctest-output.log ]] && buildkite-agent artifact upload ctest-output.log
     [[ -f var.tar.gz ]] && buildkite-agent artifact upload var.tar.gz
@@ -46,3 +52,4 @@ if [[ "$EXIT_STATUS" != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
+exit $EXIT_STATUS

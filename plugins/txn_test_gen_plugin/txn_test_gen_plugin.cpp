@@ -116,6 +116,7 @@ struct txn_test_gen_plugin_impl {
                   _total_us += result.get<transaction_trace_ptr>()->receipt->cpu_usage_us;
                   ++_txcount;
                }
+               ++total_trans;
             }
          });
       }
@@ -274,6 +275,10 @@ struct txn_test_gen_plugin_impl {
       if(batch_size & 1)
          return "batch_size must be even";
       ilog("Starting transaction test plugin valid");
+      report_batch = fc::time_point::now().time_since_epoch() + fc::seconds(1);
+      total_trans = 0;
+      last_total_trans = 0;
+      num_batches = 0;
 
       running = true;
 
@@ -314,13 +319,25 @@ struct txn_test_gen_plugin_impl {
    }
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
+      const auto now = fc::time_point::now().time_since_epoch();
+      if (now >= report_batch) {
+         report_batch = fc::time_point::now().time_since_epoch() + fc::seconds(1);
+         ilog("Generated ${new_trans} transactions (${trans} total) in ${batches} batches.",
+              ("new_trans", total_trans - last_total_trans)
+              ("trans", total_trans)
+              ("batches", num_batches));
+         last_total_trans = total_trans;
+      }
       timer->expires_at(s + std::chrono::milliseconds(timer_timeout));
       boost::asio::post( thread_pool->get_executor(), [this]() {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               if(running)
+               if(running && ++repeat_exceptions > repeat_exceptions_allowed)
                   stop_generation();
+            }
+            else {
+               repeat_exceptions = 0;
             }
          }, nonce_prefix++);
       });
@@ -357,32 +374,33 @@ struct txn_test_gen_plugin_impl {
          block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
          for(unsigned int i = 0; i < batch; ++i) {
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(a_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }
+            {
+               signed_transaction trx;
+               trx.actions.push_back(act_a_to_b);
+               trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+               trx.set_reference_block(reference_block_id);
+               trx.expiration = cc.head_block_time() + fc::seconds(600);
+               trx.max_net_usage_words = 100;
+               trx.sign(a_priv_key, chainid);
+               trxs.emplace_back(std::move(trx));
+            }
 
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(b_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }
+            {
+               signed_transaction trx;
+               trx.actions.push_back(act_b_to_a);
+               trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+               trx.set_reference_block(reference_block_id);
+               trx.expiration = cc.head_block_time() + fc::seconds(600);
+               trx.max_net_usage_words = 100;
+               trx.sign(b_priv_key, chainid);
+               trxs.emplace_back(std::move(trx));
+            }
          }
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
       }
 
+      ++num_batches;
       push_transactions(std::move(trxs), next);
    }
 
@@ -403,6 +421,8 @@ struct txn_test_gen_plugin_impl {
    }
 
    bool running{false};
+   unsigned int repeat_exceptions = 0;
+   unsigned int repeat_exceptions_allowed = 0;
 
    unsigned timer_timeout;
    unsigned batch;
@@ -412,6 +432,11 @@ struct txn_test_gen_plugin_impl {
    action act_b_to_a;
 
    int32_t txn_reference_block_lag;
+
+   fc::microseconds report_batch;
+   unsigned total_trans = 0;
+   unsigned last_total_trans = 0;
+   unsigned num_batches = 0;
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}
@@ -422,6 +447,7 @@ void txn_test_gen_plugin::set_program_options(options_description&, options_desc
       ("txn-reference-block-lag", bpo::value<int32_t>()->default_value(0), "Lag in number of blocks from the head block when selecting the reference block for transactions (-1 means Last Irreversible Block)")
       ("txn-test-gen-threads", bpo::value<uint16_t>()->default_value(2), "Number of worker threads in txn_test_gen thread pool")
       ("txn-test-gen-account-prefix", bpo::value<string>()->default_value("txn.test."), "Prefix to use for accounts generated and used by this plugin")
+      ("txn-test-gen-allowed-repeat-exceptions", bpo::value<uint32_t>()->default_value(0), "How many exceptions to allow in repeat periods before stopping generation")
    ;
 }
 
@@ -436,6 +462,7 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
       my->newaccountT = eosio::chain::name(thread_pool_account_prefix + "t");
       EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                   "txn-test-gen-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
+      my->repeat_exceptions_allowed = options.at( "txn-test-gen-allowed-repeat-exceptions" ).as<uint32_t>();
    } FC_LOG_AND_RETHROW()
 }
 
