@@ -55,20 +55,20 @@ void witness_plugin::plugin_startup() {
       if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
          return;
 
-      std::list<std::shared_ptr<wrapped_shared_ptr_base>> locks;
+      std::list<std::pair<std::reference_wrapper<witness_plugin::witness_callback_func>, std::shared_ptr<wrapped_shared_ptr_base>>> locks;
       for(auto it = my->callbacks.begin(); it != my->callbacks.end(); ++it) {
          auto lock = it->weakptr->lock();
          if(!lock->valid())
             it = my->callbacks.erase(it);
          else
-            locks.emplace_back(lock);
+            locks.emplace_back(std::make_pair(std::ref(it->func), lock));
       }
 
       my->ctx.post([this, bsp, locks]() {
          try {
             chain::signature_type mroot_sig = my->signature_provider(bsp->header.action_mroot);
-            for(const auto& cb : my->callbacks)
-               cb.func(bsp, mroot_sig);
+            for(const auto& cb : locks)
+               cb.first(bsp, mroot_sig);
          } FC_LOG_AND_DROP();
       });
    });
