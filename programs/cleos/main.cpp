@@ -466,22 +466,21 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
-void print_action(const fc::variant &at)
-{
+void print_action( const fc::variant &at ) {
    auto receiver = at["receiver"].as_string();
-   const auto &act = at["act"].get_object();
+   const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
-   auto args = fc::json::to_string(act["data"], fc::time_point::maximum());
+   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
    auto console = at["console"].as_string();
+
    /*
    if( code == "eosio" && func == "setcode" )
       args = args.substr(40)+"...";
    if( name(code) == config::system_account_name && func == "setabi" )
       args = args.substr(40)+"...";
    */
-   if (args.size() > 100)
-      args = args.substr(0, 100) + "...";
+   if (args.size() > 100) args = args.substr(0, 100) + "...";
    cout << "#" << std::setw(14) << std::right << receiver << " <= " << std::setw(28) << std::left << (code + "::" + func) << " " << args << "\n";
 
    std::string return_value, return_value_prefix{"return value: "};
@@ -491,22 +490,18 @@ void print_action(const fc::variant &at)
       return_value = at["return_value_hex_data"].as_string();
       return_value_prefix = "return value (hex): ";
    }
-   if (!return_value.empty())
-   {
+   if (!return_value.empty()) {
       if (return_value.size() > 100) {
          return_value = return_value.substr(0, 100) + "...";
       }
       cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
    }
-   if (console.size())
-   {
+   if ( console.size() ) {
       std::stringstream ss(console);
       string line;
-      while (std::getline(ss, line))
-      {
+      while( std::getline(ss, line) ) {
          cout << ">> " << line << "\n";
-         if (!verbose)
-            break;
+         if ( !verbose ) break;
       }
    }
 }
@@ -3597,9 +3592,6 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-
-   bool print_return_value = false;
-   actionsSubcommand->add_flag("-v,--return_value", print_return_value, localized("Print action's return value"));
 
    add_standard_transaction_options_plus_signing(actionsSubcommand);
    actionsSubcommand->callback([&] {
