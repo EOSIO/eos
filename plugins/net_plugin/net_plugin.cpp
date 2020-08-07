@@ -2893,8 +2893,7 @@ namespace eosio {
    // called from connection strand
    void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
       peer_dlog( this, "received signed_block ${id}", ("id", ptr->block_num() ) );
-      auto priority = my_impl->sync_master->syncing_with_peer() ? priority::medium : priority::high;
-      app().post(priority, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
+      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
       });
    }
