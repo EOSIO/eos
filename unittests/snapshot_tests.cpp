@@ -114,13 +114,14 @@ struct variant_snapshot_suite {
       return std::make_shared<reader>(buffer);
    }
 
-   static snapshot_t load_from_file(const std::string& name) {
-      return snapshots::json(name);
+   static snapshot_t load_from_file(const std::string& filename) {
+      snapshot_input_file<snapshot::json> file(filename);
+      return file.read();
    }
 
    static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
-     std::ofstream file( basename + ".json", std::ios_base::binary );
-     fc::json::to_stream( file, snapshot, fc::time_point::maximum() );
+     snapshot_output_file<snapshot::json> file(basename);
+     file.write<snapshot_t>(snapshot);
    }
 };
 
@@ -166,12 +167,13 @@ struct buffered_snapshot_suite {
    }
 
    static snapshot_t load_from_file(const std::string& filename) {
-      return snapshots::bin(filename);
+      snapshot_input_file<snapshot::binary> file(filename);
+      return file.read_as_string();
    }
 
    static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
-     std::ofstream file( basename + ".bin", std::ios_base::binary );
-     file.write( snapshot.data(), snapshot.size() );
+      snapshot_output_file<snapshot::binary> file(basename);
+      file.write<snapshot_t>(snapshot);
    }
 };
 
