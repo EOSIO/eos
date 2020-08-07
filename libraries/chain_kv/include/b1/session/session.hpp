@@ -115,6 +115,7 @@ public:
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
         auto operator*() const -> const reference;
+        auto operator->() const -> const reference;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
@@ -1043,7 +1044,7 @@ auto session<persistent_data_store, cache_data_store>::iterator::operator--(int)
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::iterator::operator*() const -> const key_value&
+auto session<persistent_data_store, cache_data_store>::iterator::operator*() const -> const reference
 {
     if (m_use_cache_iterator)
     {
@@ -1051,6 +1052,12 @@ auto session<persistent_data_store, cache_data_store>::iterator::operator*() con
     }
     
     return *m_database_iterator_state.current;
+}
+
+template <typename persistent_data_store, typename cache_data_store>
+auto session<persistent_data_store, cache_data_store>::iterator::operator->() const -> const reference
+{
+    return *this;
 }
 
 template <typename persistent_data_store, typename cache_data_store>

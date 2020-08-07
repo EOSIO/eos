@@ -53,6 +53,7 @@ public:
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
         auto operator*() const -> const value_type;
+        auto operator->() const -> const value_type;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
     
@@ -526,11 +527,17 @@ auto rocks_data_store<allocator>::iterator::operator--(int) const -> typename ro
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::iterator::operator*() const -> const key_value
+auto rocks_data_store<allocator>::iterator::operator*() const -> const value_type
 {
     auto key_slice = m_iterator->key();
     auto value = m_iterator->value();
     return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size(), m_allocator);
+}
+
+template <typename allocator>
+auto rocks_data_store<allocator>::iterator::operator->() const -> const value_type
+{
+    return *this;
 }
 
 template <typename allocator>

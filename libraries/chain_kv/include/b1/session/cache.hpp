@@ -57,6 +57,7 @@ public:
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
         auto operator*() const -> const reference;
+        auto operator->() const -> const reference;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
@@ -448,7 +449,13 @@ typename cache<allocator>::const_iterator cache<allocator>::iterator::operator--
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator*() const -> const key_value&
+auto cache<allocator>::iterator::operator*() const -> const reference
+{
+    return m_it->second;
+}
+
+template <typename allocator>
+auto cache<allocator>::iterator::operator->() const -> const reference
 {
     return m_it->second;
 }
