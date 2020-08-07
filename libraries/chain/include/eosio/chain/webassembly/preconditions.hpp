@@ -102,20 +102,31 @@ namespace eosio { namespace chain { namespace webassembly {
       return f128_is_nan( f );
    }
 
+   inline static void context_free_check_fail(const char* msg) {
+      FC_THROW_EXCEPTION(unaccessible_api, msg);
+   }
+
+   inline static void privileged_check_fail(apply_context& ctx){
+      FC_THROW_EXCEPTION(unaccessible_api,
+         "${code} does not have permission to call this API", ("code", ctx.get_receiver()));
+   }
+
    EOS_VM_PRECONDITION(context_free_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(ctx.is_context_free(), unaccessible_api, "this API may only be called from context_free apply");
+            auto& context = ctx.get_host().get_context();
+            if (!context.is_context_free()) { context_free_check_fail("this API may only be called from context_free apply"); }
          }));
 
    EOS_VM_PRECONDITION(context_aware_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(!ctx.is_context_free(), unaccessible_api, "only context free api's can be used in this context");
+            auto& context = ctx.get_host().get_context();
+            if (context.is_context_free()) { context_free_check_fail("only context free api's can be used in this context"); }
          }));
 
    EOS_VM_PRECONDITION(privileged_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(ctx.is_privileged(), unaccessible_api,
-                       "${code} does not have permission to call this API", ("code", ctx.get_receiver()));
+            auto& context = ctx.get_host().get_context();
+            if (!context.is_privileged()) { privileged_check_fail(context); }
          }));
 
    namespace detail {

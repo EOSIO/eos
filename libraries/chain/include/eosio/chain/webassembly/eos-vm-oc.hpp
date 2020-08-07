@@ -282,7 +282,7 @@ inline uint32_t make_native_type(vm::i32_const_t x) { return x.data.ui; }
 inline uint64_t make_native_type(vm::i64_const_t x) { return x.data.ui; }
 inline float make_native_type(vm::f32_const_t x) { return x.data.f; }
 inline double make_native_type(vm::f64_const_t x) { return x.data.f; }
-inline void make_native_type(vm::maybe_void_t) {}
+inline void make_native_type(vm::maybe_void_t){}
 
 template<typename TC, typename Args, std::size_t... Is>
 auto get_ct_args_one(std::index_sequence<Is...>) {
@@ -425,9 +425,9 @@ auto fn(A... a) {
       using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
       constexpr std::size_t num_native_args = std::tuple_size_v<native_args>;
       constexpr auto sizes = operand_sizes(tc, static_cast<native_args *>(nullptr));
-      auto partitioned = partition_tuple(std::make_tuple(a...), sizes);
-      auto native_values = to_native_values<native_args>(tc, partitioned, std::make_index_sequence<num_native_args>());
-      return make_native_type(vm::invoke_with_host_impl<F, Preconditions>(tc, &host, std::move(native_values)));
+      auto partitioned_input_args = partition_tuple(std::make_tuple(a...), sizes);
+      auto native_values = to_native_values<native_args>(tc, partitioned_input_args, std::make_index_sequence<num_native_args>());
+      return make_native_type(vm::checked_apply_with_host<Preconditions>(F, tc, &host, std::move(native_values))); 
    }
    catch(...) {
       *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
