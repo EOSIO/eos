@@ -1,4 +1,4 @@
-#include <session/boost_memory_pool.hpp>
+#include <b1/session/boost_memory_pool.hpp>
 
 using namespace b1::session;
 
@@ -17,4 +17,14 @@ auto boost_memory_allocator::malloc(size_t length_bytes) -> void*
 auto boost_memory_allocator::free(void* data, size_t length_bytes) -> void
 {
     m_pool.ordered_free(data, length_bytes);
+}
+
+auto boost_memory_allocator::free_function() -> free_function_type&
+{
+    return m_free_function;
+}
+
+auto boost_memory_allocator::make() -> std::shared_ptr<boost_memory_allocator>()
+{
+    return std::make_shared<boost_memory_allocator>();
 }

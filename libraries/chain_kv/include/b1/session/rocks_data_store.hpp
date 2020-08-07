@@ -112,11 +112,11 @@ protected:
     template <typename iterable, typename other_allocator>
     auto read_(const iterable& keys, const std::shared_ptr<other_allocator>& a) const -> const std::pair<std::vector<key_value>, std::unordered_set<bytes>>;
     
-    template <typename Predicate>
-    auto make_iterator_(const Predicate& setup) -> iterator;
+    template <typename predicate>
+    auto make_iterator_(const predicate& setup) -> iterator;
     
-    template <typename Predicate>
-    auto make_iterator_(const Predicate& setup) const -> const iterator;
+    template <typename predicate>
+    auto make_iterator_(const redicate& setup) const -> const iterator;
     
 private:
     std::shared_ptr<rocksdb::DB> m_db;
@@ -217,7 +217,7 @@ auto rocks_data_store<allocator>::read_(const iterable& keys, const std::shared_
         kvs.emplace(make_kv(key_slices[i].data(), key_slices[i].size(), values[i].data(), values[i].size(), a));
     }
     
-    return std::make_pair(std::move(kvs), std::move(not_found));
+    return {std::move(kvs), std::move(not_found)};
 }
 
 // Reads a batch of keys from rocksdb.
@@ -279,7 +279,7 @@ template <typename data_store, typename iterable>
 auto rocks_data_store<allocator>::write_to(data_store& ds, const iterable& keys) const -> void
 {
     auto kvs = read_(keys, ds.memory_allocator());
-    ds.write(kvs);
+    ds.write(std::move(kvs));
 }
 
 // Reads a batch of key_values from the given data store into the rocksdb.
@@ -298,10 +298,10 @@ auto rocks_data_store<allocator>::read_from(const data_store& ds, const iterable
 
 // Instantiates an iterator for iterating over the rocksdb data store.
 //
-// \tparam Predicate A function used for preparing the initial iterator.  It has the signature of void(std::shared_ptr<rocksdb::Iterator>&)
+// \tparam predicate A function used for preparing the initial iterator.  It has the signature of void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename allocator>
-template <typename Predicate>
-auto rocks_data_store<allocator>::make_iterator_(const Predicate& setup) -> iterator
+template <typename predicate>
+auto rocks_data_store<allocator>::make_iterator_(const predicate& setup) -> iterator
 {
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
@@ -311,10 +311,10 @@ auto rocks_data_store<allocator>::make_iterator_(const Predicate& setup) -> iter
 
 // Instantiates an iterator for iterating over the rocksdb data store.
 //
-// \tparam Predicate A function used for preparing the initial iterator.  It has the signature of void(std::shared_ptr<rocksdb::Iterator>&)
+// \tparam predicate A function used for preparing the initial iterator.  It has the signature of void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename allocator>
-template <typename Predicate>
-auto rocks_data_store<allocator>::make_iterator_(const Predicate& setup) const -> const iterator
+template <typename predicate>
+auto rocks_data_store<allocator>::make_iterator_(const predicate& setup) const -> const iterator
 {
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
@@ -416,10 +416,14 @@ auto rocks_data_store<allocator>::memory_allocator() -> const std::shared_ptr<al
 template <typename allocator>
 rocks_data_store<allocator>::iterator::iterator(const iterator& it)
 : m_db{it.m_db},
-  m_iterator{it.m_db->NewIterator(rocksdb::ReadOptions{})},
+  m_iterator{[&]()
+  {
+    auto new_it = std::shared_ptr<decltype(iterator::element_type)>{it.m_db->NewIterator(rocksdb::ReadOptions{}));
+    new_it->Seek(it.m_iterator->Key());
+    return new_it;
+  }()},
   m_allocator{it.m_allocator}
 {
-    m_iterator->Seek(it.m_iterator->Key());
 }
 
 template <typename allocator>

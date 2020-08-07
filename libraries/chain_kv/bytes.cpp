@@ -42,8 +42,8 @@ bytes::~bytes()
     
     // TODO:  bytes shouldn't need to know the memory allocator in use.  Need a generic interface to cast to.
     // The memory pool must remain in scope for the lifetime of this instance.
-    auto* pool = reinterpret_cast<boost::pool<>*>(*m_memory_allocator_address);
-    pool->free(m_data, 3 * sizeof(size_t) + *m_length);
+    auto* free_function = reinterpret_cast<free_function_type*>(*m_memory_allocator_address);
+    (*free_function)(m_data, 3 * sizeof(size_t) + *m_length);
 }
 
 auto bytes::operator=(const bytes& b) -> bytes&

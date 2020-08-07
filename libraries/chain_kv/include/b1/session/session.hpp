@@ -13,7 +13,7 @@ namespace b1::session
 // \tparam persistent_data_store A type that persists data to disk or some other non memory backed storage device.
 // \tparam cache_data_store A type that persists data in memory for quick access.
 // \code{.cpp}
-//  auto memory_pool = std::make_shared<b1::session::boost_memory_allocator>();
+//  auto memory_pool = b1::session::boost_memory_allocator::make();
 //  auto pds = b1::session::make_rocks_data_store(nullptr, memory_pool);
 //  auto cds = b1::session::make_cache(memory_pool);
 //  auto fork = b1::session::make_session(std::move(pds), std::move(cds));
@@ -70,7 +70,7 @@ public:
     // Defines a key ordered, cyclical iterator for traversing a session (which includes parents and children of each session).
     // Basically we are iterating over a list of sessions and each session has its own cache of key_values, along with
     // iterating over a persistent data store all the while maintaining key order with the iterator.
-    class iterator  final: public std::iterator<std::bidirectional_iterator_tag, key_value>
+    class iterator final: public std::iterator<std::bidirectional_iterator_tag, key_value>
     {
     public:
         friend session;
@@ -546,16 +546,16 @@ auto session<persistent_data_store, cache_data_store>::read(const iterable& keys
     // and write them into our cache.
     if (m_impl->backing_data_store)
     {
-        auto bds_kvs = m_impl->backing_data_store->read(not_found);
+        auto [found, missing] = m_impl->backing_data_store->read(not_found);
         if (!bds_kvs.empty())
         {
-            m_impl->cache.write(bds_kvs.first);
+            m_impl->cache.write(found);
         }
-        not_found = std::move(bds_kvs.second);
-        kvs.insert(std::end(kvs), std::begin(bds_kvs.first), std::end(bds_kvs.first));
+        not_found = std::move(missing);
+        kvs.insert(std::end(kvs), std::begin(found), std::end(found));
     }
     
-    return std::make_pair(std::move(kvs), std::move(not_found));
+    return {std::move(kvs), std::move(not_found)};
 }
 
 // Writes a batch of key_values to the session.
@@ -650,7 +650,7 @@ template <typename persistent_data_store, typename cache_data_store>
 template <typename predicate, typename comparator>
 auto session<persistent_data_store, cache_data_store>::make_iterator_(const predicate& p, const comparator& c) -> typename session<persistent_data_store, cache_data_store>::iterator
 {
-    if (m_impl)
+    if (!m_impl)
     {
         // For some reason the pimpl is nullptr.  Return an "invalid" iterator.
         return iterator{};
@@ -964,8 +964,11 @@ auto session<persistent_data_store, cache_data_store>::iterator::move_previous_(
         && m_cache_iterator_state.current == std::begin(m_cache_iterator_state.updated_keys))
     {
         // We need to wrap around to the end.
-        m_database_iterator_state.current = m_database_iterator_state.end--;
-        m_cache_iterator_state.current = std::end(m_cache_iterator_state.updated_key)--;
+        m_database_iterator_state.current = m_database_iterator_state.end;
+        --m_database_iterator_state.current;
+
+        m_cache_iterator_state.current = std::end(m_cache_iterator_state.updated_key);
+        --m_cache_iterator_state.current;
     }
     
     // decrement the current iterator and set the next current.

@@ -22,6 +22,7 @@ class cache final
 private:
     // Currently there are some constraints that require the use of a std::map.
     // Namely, we need to be able to iterator over the entries in lexigraphical ordering on the keys.
+    // It also provides us with lower bound and upper bound out of the box.
     using cache_type = std::map<bytes, key_value>;
 
 public:
@@ -30,7 +31,7 @@ public:
     class iterator;
     using const_iterator = const iterator;
     
-    class iterator  final: public std::iterator<std::bidirectional_iterator_tag, key_value>
+    class iterator final: public std::iterator<std::bidirectional_iterator_tag, key_value>
     {
     public:
         iterator() = default;
@@ -205,7 +206,7 @@ auto cache<allocator>::read(const iterable& keys) const -> const std::pair<std::
         kvs.emplace_back(kv);
     }
     
-    return std::make_pair(std::move(kvs), std::move(not_found));
+    return {std::move(kvs), std::move(not_found)};
 }
 
 // Writes a batch of key_values to the cache.
@@ -218,7 +219,7 @@ auto cache<allocator>::write(const iterable& key_values) -> void
 {
     for (const auto& kv : key_values)
     {
-        write(std::move(kv));
+        write(kv);
     }
 }
 
@@ -255,7 +256,16 @@ auto cache<allocator>::write_to(data_store& ds, const iterable& keys) const -> v
         {
             continue;
         }
-        kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), ds.memory_allocator()));
+
+        if (*ds.memory_allocator() != *memory_allocator())
+        {
+            kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), ds.memory_allocator()));
+        }
+        else
+        {
+            kvs.emplace_back(kv);
+        }
+        
     }
     
     ds.write(kvs);

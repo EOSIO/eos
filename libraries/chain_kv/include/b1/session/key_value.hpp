@@ -12,8 +12,8 @@ class key_value final
 public:
     friend auto make_kv(bytes key, bytes value) -> key_value;
 
-    template <typename Key, typename Value, typename allocator>
-    friend auto make_kv(const Key* key, size_t key_length, const Value* value, size_t value_length, allocator& a) -> key_value;
+    template <typename key, typename value, typename allocator>
+    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
     
     template <typename allocator>
     friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
@@ -51,22 +51,22 @@ inline auto make_kv(bytes key, bytes value) -> key_value
 
 // Instantiaties a key_value instance from the given key/value pointers.
 //
-// \tparam Key The pointer type of the key.
-// \tparam Value The pointer type of the value.
+// \tparam key The pointer type of the key.
+// \tparam value The pointer type of the value.
 // \tparam allocator The memory allocator type used to manage the bytes memory. This type mush implement the "memory allocator" concept.
-// \param key A pointer to the key.
+// \param the_key A pointer to the key.
 // \param key_length The size of the memory pointed by the key.
-// \param value A pointer to the value.
+// \param the_value A pointer to the value.
 // \param value_length The size of the memory pointed by the value.
 // \param a The memory allocator used to managed the memory used by the key_value instance.
 // \returns A key_value instance.
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
-template <typename Key, typename Value, typename allocator>
-auto make_kv(const Key* key, size_t key_length, const Value* value, size_t value_length, allocator& a) -> key_value
+template <typename key, typename value, typename allocator>
+auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value
 {
-    auto total_key_length = key_length * sizeof(Key);
-    auto total_value_length = value_length * sizeof(Value);
-    return make_kv(reinterpret_cast<const void*>(key), total_key_length, reinterpret_cast<const void*>(value), total_value_length, a);
+    auto total_key_length = key_length * sizeof(key);
+    auto total_value_length = value_length * sizeof(value);
+    return make_kv(reinterpret_cast<const void*>(the_key), total_key_length, reinterpret_cast<const void*>(the_value), total_value_length, a);
 }
 
 // Instantiaties a key_value instance from the given key/value pointers.
@@ -93,7 +93,7 @@ auto make_kv(const void* key, size_t key_length, const void* value, size_t value
         result.m_length = result.m_use_count_address + sizeof(size_t);
         result.m_data = result.m_length + sizeof(size_t);
         
-        *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(a.get());
+        *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function();
         *(result.m_use_count_address) = 1;
         *(result.m_length) = length;
         memcpy(result.m_data, reinterpret_cast<const void*>(data), length);

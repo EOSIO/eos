@@ -9,6 +9,8 @@
 namespace b1::session
 {
 
+using free_function_type = std::function<void(void* data, size_t length_bytes)>;
+
 // \brief An immutable type to represent a pointer and a length.
 //
 class bytes final
@@ -24,8 +26,8 @@ public:
     
     friend auto make_kv(bytes key, bytes value) -> key_value;
 
-    template <typename Key, typename Value, typename allocator>
-    friend auto make_kv(const Key* key, size_t key_length, const Value* value, size_t value_length, allocator& a) -> key_value;
+    template <typename key, typename value, typename allocator>
+    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
     
     template <typename allocator>
     friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
@@ -73,9 +75,14 @@ private:
 template <typename T, typename allocator>
 auto make_bytes(const T* data, size_t length, allocator& a) -> bytes
 {
+    return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
+}
+
+template <>
+auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
+{
     auto result = bytes{};
     
-    length *= sizeof(T);
     auto chunk_length = 3 * sizeof(size_t) + length;
     auto* chunk = reinterpret_cast<char*>(a->malloc(chunk_length));
     
@@ -84,8 +91,8 @@ auto make_bytes(const T* data, size_t length, allocator& a) -> bytes
     result.m_length = result.m_use_count_address + sizeof(size_t);
     result.m_data = result.m_length + sizeof(size_t);
     
-    *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(a.get());
-    *(result.m_use_count_address) = 1;
+    *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function();
+    *(result.m_use_coun t_address) = 1;
     *(result.m_length) = length;
     memcpy(result.m_data, reinterpret_cast<const void*>(data), length);
     
@@ -104,6 +111,12 @@ auto make_bytes(const T* data, size_t length, allocator& a) -> bytes
 // \warning The data pointer must remain in scope for the lifetime of the given bytes instance.
 template <typename T>
 auto make_bytes(const T* data, size_t length) -> bytes
+{
+    return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
+}
+
+template <>
+auto make_bytes(const void* data, size_t length) -> bytes
 {
     auto result = bytes{};
     
