@@ -70,9 +70,15 @@ public:
     // Defines a key ordered, cyclical iterator for traversing a session (which includes parents and children of each session).
     // Basically we are iterating over a list of sessions and each session has its own cache of key_values, along with
     // iterating over a persistent data store all the while maintaining key order with the iterator.
-    class iterator final: public std::iterator<std::bidirectional_iterator_tag, key_value>
+    class iterator final
     {
     public:
+        using difference_type = long;
+        using value_type = key_value;
+        using pointer = value_type*;
+        using reference = value_type&;
+        using iterator_category = std::bidirectional_iterator_tag;
+
         friend session;
         
         // State information needed for iterating over the session caches.
@@ -108,7 +114,7 @@ public:
         auto operator--() const -> const_iterator&;
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
-        auto operator*() const -> const key_value&;
+        auto operator*() const -> const reference;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
@@ -680,6 +686,7 @@ auto session<persistent_data_store, cache_data_store>::make_iterator_(const pred
             // Add key to updated keys list.
             new_iterator.m_cache_iterator_state.updated_keys.insert(updated_key);
         }
+
         for (const auto& deleted_key : new_iterator.m_cache_iterator_state.child->deleted_keys)
         {
             // Key is no longer updated at this level since it has been deleted.
@@ -939,7 +946,7 @@ template <typename persistent_data_store, typename cache_data_store>
 auto session<persistent_data_store, cache_data_store>::iterator::move_next_() -> void
 {
     // increment the current iterator and set the next current.
-    move([](auto& it) { ++it; },  std::less<bytes>{});
+    move([](auto& it) { ++it; }, std::less<bytes>{});
     
     if (m_database_iterator_state.current == m_database_iterator_state.end
         && m_cache_iterator_state.current == std::end(m_cache_iterator_state.updated_keys))
@@ -972,7 +979,7 @@ auto session<persistent_data_store, cache_data_store>::iterator::move_previous_(
     }
     
     // decrement the current iterator and set the next current.
-    move([](auto& it) { --it; },  std::greater<bytes>{});
+    move([](auto& it) { --it; }, std::greater<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>

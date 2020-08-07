@@ -31,9 +31,15 @@ public:
     class iterator;
     using const_iterator = const iterator;
     
-    class iterator final: public std::iterator<std::bidirectional_iterator_tag, key_value>
+    class iterator final
     {
     public:
+        using difference_type = long;
+        using value_type = key_value;
+        using pointer = value_type*;
+        using reference = value_type&;
+        using iterator_category = std::bidirectional_iterator_tag;
+
         iterator() = default;
         iterator(const iterator& it) = default;
         iterator(iterator&&) = default;
@@ -50,7 +56,7 @@ public:
         auto operator--() const -> const_iterator&;
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
-        auto operator*() const -> const key_value&;
+        auto operator*() const -> const reference;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
