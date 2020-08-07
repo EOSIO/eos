@@ -1,15 +1,14 @@
-#ifndef bytes_h
-#define bytes_h
+#pragma once
 
 #include <string_view>
+
+#include <boost/pool/pool.hpp>
 
 #include <b1/session/bytes_fwd_decl.hpp>
 #include <b1/session/key_value_fwd_decl.hpp>
 
 namespace b1::session
 {
-
-using free_function_type = std::function<void(void* data, size_t length_bytes)>;
 
 // \brief An immutable type to represent a pointer and a length.
 //
@@ -20,6 +19,9 @@ public:
     
     template <typename T, typename allocator>
     friend auto make_bytes(const T* data, size_t length, allocator& a) -> bytes;
+
+    template <typename allocator>
+    friend auto make_bytes(const void* data, size_t length, allocator& a) -> bytes;
     
     template <typename T>
     friend auto make_bytes(const T* data, size_t length) -> bytes;
@@ -75,10 +77,10 @@ private:
 template <typename T, typename allocator>
 auto make_bytes(const T* data, size_t length, allocator& a) -> bytes
 {
-    return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
+    return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T), a);
 }
 
-template <>
+template <typename allocator>
 auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
 {
     auto result = bytes{};
@@ -91,10 +93,23 @@ auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
     result.m_length = result.m_use_count_address + sizeof(size_t);
     result.m_data = result.m_length + sizeof(size_t);
     
-    *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function();
-    *(result.m_use_coun t_address) = 1;
+    *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function());
+    *(result.m_use_count_address) = 1;
     *(result.m_length) = length;
-    memcpy(result.m_data, reinterpret_cast<const void*>(data), length);
+    memcpy(result.m_data, data, length);
+    
+    return result;
+}
+
+template <>
+inline auto make_bytes(const void* data, size_t length) -> bytes
+{
+    auto result = bytes{};
+    
+    result.m_memory_allocator_address = nullptr;
+    result.m_use_count_address = nullptr;
+    *(result.m_length) = length;
+    result.m_data = reinterpret_cast<void*>(const_cast<void*>(data));
     
     return result;
 }
@@ -115,17 +130,116 @@ auto make_bytes(const T* data, size_t length) -> bytes
     return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
 }
 
-template <>
-auto make_bytes(const void* data, size_t length) -> bytes
+inline const bytes bytes::invalid{};
+
+inline bytes::bytes(const bytes& b)
+: m_memory_allocator_address{b.m_memory_allocator_address},
+  m_use_count_address{b.m_use_count_address},
+  m_length{b.m_use_count_address},
+  m_data{b.m_data}
 {
-    auto result = bytes{};
+    ++(*m_use_count_address);
+}
+
+inline bytes::bytes(bytes&& b)
+: m_memory_allocator_address{std::move(b.m_memory_allocator_address)},
+  m_use_count_address{std::move(b.m_use_count_address)},
+  m_length{std::move(b.m_use_count_address)},
+  m_data{std::move(b.m_data)}
+{
+    b.m_use_count_address = nullptr;
+    b.m_length = nullptr;
+    b.m_data = nullptr;
+}
+
+inline bytes::~bytes()
+{
+    if (!m_data || !m_length || !m_use_count_address)
+    {
+        return;
+    }
     
-    result.m_memory_allocator_address = nullptr;
-    result.m_use_count_address = nullptr;
-    *(result.m_length) = length;
-    result.m_data = reinterpret_cast<void*>(const_cast<T*>(data));
+    if (--(*m_use_count_address) != 0)
+    {
+        return;
+    }
     
-    return result;
+    // TODO:  bytes shouldn't need to know the memory allocator in use.  Need a generic interface to cast to.
+    // The memory pool must remain in scope for the lifetime of this instance.
+    auto* free_function = reinterpret_cast<free_function_type*>(*m_memory_allocator_address);
+    (*free_function)(m_data, 3 * sizeof(size_t) + *m_length);
+}
+
+inline auto bytes::operator=(const bytes& b) -> bytes&
+{
+    if (this == &b)
+    {
+        return *this;
+    }
+    
+    m_memory_allocator_address = b.m_memory_allocator_address;
+    m_use_count_address = b.m_use_count_address;
+    m_length = b.m_length;
+    m_data = b.m_data;
+    
+    ++(*m_use_count_address);
+    
+    return *this;
+}
+
+inline auto bytes::operator=(bytes&& b) -> bytes&
+{
+    if (this == &b)
+    {
+        return *this;
+    }
+    
+    m_memory_allocator_address = b.m_memory_allocator_address;
+    m_use_count_address = b.m_use_count_address;
+    m_length = b.m_length;
+    m_data = b.m_data;
+    
+    b.m_memory_allocator_address = nullptr;
+    b.m_use_count_address = nullptr;
+    b.m_length = nullptr;
+    b.m_data = nullptr;
+    
+    return *this;
+}
+
+inline auto bytes::data() const -> const void * const
+{
+    return m_data;
+}
+
+inline auto bytes::length() const -> size_t
+{
+    if (!m_length)
+    {
+        return 0;
+    }
+    
+    return *m_length;
+}
+
+inline auto bytes::operator==(const bytes& other) const -> bool
+{
+    if (m_length && other.m_length && m_data && other.m_data)
+    {
+        if (*m_length != *other.m_length)
+        {
+            return false;
+        }
+        
+        return memcmp(m_data, other.m_data, *m_length) == 0 ? true : false;
+    }
+    
+    return false;
+}
+
+inline auto bytes::operator!=(const bytes& other) const -> bool
+{
+    return !(*this == other);
 }
 
 }
@@ -239,5 +353,3 @@ public:
     }
 };
 }
-
-#endif /* bytes_h */

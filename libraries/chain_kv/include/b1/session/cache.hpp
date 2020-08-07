@@ -1,5 +1,4 @@
-#ifndef cache_data_store_h
-#define cache_data_store_h
+#pragma once
 
 #include <map>
 #include <unordered_set>
@@ -36,8 +35,8 @@ public:
     public:
         using difference_type = long;
         using value_type = key_value;
-        using pointer = value_type*;
-        using reference = value_type&;
+        using pointer = const value_type*;
+        using reference = const value_type&;
         using iterator_category = std::bidirectional_iterator_tag;
 
         iterator() = default;
@@ -56,8 +55,8 @@ public:
         auto operator--() const -> const_iterator&;
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
-        auto operator*() const -> const reference;
-        auto operator->() const -> const reference;
+        auto operator*() const -> reference;
+        auto operator->() const -> reference;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
@@ -449,13 +448,13 @@ typename cache<allocator>::const_iterator cache<allocator>::iterator::operator--
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator*() const -> const reference
+auto cache<allocator>::iterator::operator*() const -> reference
 {
     return m_it->second;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator->() const -> const reference
+auto cache<allocator>::iterator::operator->() const -> reference
 {
     return m_it->second;
 }
@@ -473,5 +472,3 @@ auto cache<allocator>::iterator::operator!=(const_iterator& other) const -> bool
 }
 
 }
-
-#endif /* cache_data_store_h */

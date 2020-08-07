@@ -1,5 +1,4 @@
-#ifndef rocks_data_store_fwd_decl_h
-#define rocks_data_store_fwd_decl_h
+#pragma once
 
 #include <rocksdb/db.h>
 
@@ -13,5 +12,3 @@ template <typename allocator>
 auto make_rocks_data_store(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<allocator> memory_allocator) -> rocks_data_store<allocator>;
 
 }
-
-#endif /* rocks_data_store_fwd_decl_h */

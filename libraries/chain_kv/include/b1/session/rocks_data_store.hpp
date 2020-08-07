@@ -1,5 +1,4 @@
-#ifndef rocks_data_store_h
-#define rocks_data_store_h
+#pragma once
 
 #include <iterator>
 #include <memory>
@@ -123,7 +122,7 @@ protected:
     auto make_iterator_(const predicate& setup) -> iterator;
     
     template <typename predicate>
-    auto make_iterator_(const redicate& setup) const -> const iterator;
+    auto make_iterator_(const predicate& setup) const -> const iterator;
     
 private:
     std::shared_ptr<rocksdb::DB> m_db;
@@ -425,7 +424,7 @@ rocks_data_store<allocator>::iterator::iterator(const iterator& it)
 : m_db{it.m_db},
   m_iterator{[&]()
   {
-    auto new_it = std::shared_ptr<decltype(iterator::element_type)>{it.m_db->NewIterator(rocksdb::ReadOptions{}));
+    auto new_it = std::shared_ptr<rocksdb::Iterator>{it.m_db->NewIterator(rocksdb::ReadOptions{})};
     new_it->Seek(it.m_iterator->Key());
     return new_it;
   }()},
@@ -554,5 +553,3 @@ auto rocks_data_store<allocator>::iterator::operator!=(const_iterator& other) co
 }
 
 }
-
-#endif /* rocks_data_store_h */

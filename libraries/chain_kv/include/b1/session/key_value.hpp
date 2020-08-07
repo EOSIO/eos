@@ -1,7 +1,6 @@
-#ifndef key_value_h
-#define key_value_h
+#pragma once
 
-#include <b1/session/bytes_fwd_decl.hpp>
+#include <b1/session/bytes.hpp>
 
 namespace b1::session
 {
@@ -93,7 +92,7 @@ auto make_kv(const void* key, size_t key_length, const void* value, size_t value
         result.m_length = result.m_use_count_address + sizeof(size_t);
         result.m_data = result.m_length + sizeof(size_t);
         
-        *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function();
+        *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function());
         *(result.m_use_count_address) = 1;
         *(result.m_length) = length;
         memcpy(result.m_data, reinterpret_cast<const void*>(data), length);
@@ -106,7 +105,26 @@ auto make_kv(const void* key, size_t key_length, const void* value, size_t value
     return make_kv(std::move(key_bytes), std::move(value_bytes));
 }
 
+inline const key_value key_value::invalid{};
+
+inline auto key_value::key() const -> const bytes&
+{
+    return m_key;
 }
 
+inline auto key_value::value() const -> const bytes&
+{
+    return m_value;
+}
 
-#endif /* key_value_h */
+inline auto key_value::operator==(const key_value& other) const -> bool
+{
+    return m_key == other.m_key && m_value == other.m_value;
+}
+
+inline auto key_value::operator!=(const key_value& other) const -> bool
+{
+    return !(*this == other);
+}
+
+}
