@@ -104,18 +104,18 @@ namespace eosio { namespace chain { namespace webassembly {
 
    EOS_VM_PRECONDITION(context_free_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(ctx.get_host().get_context().is_context_free(), unaccessible_api, "this API may only be called from context_free apply");
+            EOS_ASSERT(ctx.is_context_free(), unaccessible_api, "this API may only be called from context_free apply");
          }));
 
    EOS_VM_PRECONDITION(context_aware_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(!ctx.get_host().get_context().is_context_free(), unaccessible_api, "only context free api's can be used in this context");
+            EOS_ASSERT(!ctx.is_context_free(), unaccessible_api, "only context free api's can be used in this context");
          }));
 
    EOS_VM_PRECONDITION(privileged_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {
-            EOS_ASSERT(ctx.get_host().get_context().is_privileged(), unaccessible_api,
-                       "${code} does not have permission to call this API", ("code", ctx.get_host().get_context().get_receiver()));
+            EOS_ASSERT(ctx.is_privileged(), unaccessible_api,
+                       "${code} does not have permission to call this API", ("code", ctx.get_receiver()));
          }));
 
    namespace detail {
