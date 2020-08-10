@@ -110,7 +110,7 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "DEBIAN_FRONTEND='noninteractive' && apt update && apt upgrade -y && apt install -y git"
-      - "./scripts/eosio_build.sh -P -y"
+      - "DEBIAN_FRONTEND='noninteractive' && ./scripts/eosio_build.sh -P -y"
     timeout: 180
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
@@ -210,5 +210,5 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "DEBIAN_FRONTEND='noninteractive' && apt update && apt upgrade -y && apt install -y git"
-      - "./scripts/eosio_build.sh -y"
+      - "DEBIAN_FRONTEND='noninteractive' && ./scripts/eosio_build.sh -y"
     timeout: 180
