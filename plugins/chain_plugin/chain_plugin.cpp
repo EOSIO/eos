@@ -147,6 +147,7 @@ public:
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
    bool                             accept_transactions = false;
    bool                             api_accept_transactions = true;
+   bool                             account_queries_enabled = false;
 
 
    fc::optional<fork_database>      fork_db;
@@ -186,6 +187,7 @@ public:
    fc::optional<scoped_connection>                                   accepted_transaction_connection;
    fc::optional<scoped_connection>                                   applied_transaction_connection;
 
+   fc::optional<chain_apis::account_query_db>                        _account_query_db;
 };
 
 chain_plugin::chain_plugin()
@@ -332,6 +334,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          }), "Number of threads to use for EOS VM OC tier-up")
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
+         ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
          ("max-nonprivileged-inline-action-size", bpo::value<uint32_t>()->default_value(config::default_max_nonprivileged_inline_action_size), "maximum allowed size (in bytes) of an inline action for a nonprivileged account")
          ;
 
@@ -1111,6 +1114,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_tierup = true;
 #endif
 
+      my->account_queries_enabled = options.at("enable-account-queries").as<bool>();
+
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
       // initialize deep mind logging
@@ -1188,6 +1193,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("blk", blk)
             );
          }
+         
+          if (my->_account_query_db) {
+            my->_account_query_db->commit_block(blk);
+          }
 
          my->accepted_block_channel.publish( priority::high, blk );
       } );
@@ -1210,6 +1219,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   );
                }
 
+               if (my->_account_query_db) {
+                  my->_account_query_db->cache_transaction_trace(std::get<0>(t));
+               }
+               
                my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 
@@ -1257,6 +1270,17 @@ void chain_plugin::plugin_startup()
    }
 
    my->chain_config.reset();
+  
+   if (my->account_queries_enabled) {
+      my->account_queries_enabled = false;
+      try {
+         my->_account_query_db.emplace(*my->chain);
+         my->account_queries_enabled = true;
+      } FC_LOG_AND_DROP(("Unable to enable account queries"));
+   }
+
+
+
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
@@ -1287,6 +1311,11 @@ void chain_apis::read_write::validate() const {
                "Not allowed, node has api-accept-transactions = false" );
 }
 
+chain_apis::read_only chain_plugin::get_read_only_api() const {
+   return chain_apis::read_only(chain(), my->_account_query_db, get_abi_serializer_max_time());
+}
+
+  
 bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
    return my->incoming_block_sync_method(block, id);
 }
@@ -1561,6 +1590,11 @@ void chain_plugin::handle_bad_alloc() {
    //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
    std::_Exit(-2);
 }
+  
+bool chain_plugin::account_queries_enabled() const {
+   return my->account_queries_enabled;
+}
+
 
 namespace chain_apis {
 
@@ -2706,6 +2740,12 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
+account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
+{
+   EOS_ASSERT(aqdb.valid(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   return aqdb->get_accounts_by_authorizers(args);
+}  
+  
 namespace detail {
    struct ram_market_exchange_state_t {
       asset  ignore1;
