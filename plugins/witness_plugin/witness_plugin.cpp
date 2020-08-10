@@ -1,5 +1,6 @@
 #include <eosio/witness_plugin/witness_plugin.hpp>
 #include <eosio/chain/types.hpp>
+#include <fc/log/logger_config.hpp> //set_os_thread_name()
 
 namespace eosio {
 static appbase::abstract_plugin& _witness_plugin = app().register_plugin<witness_plugin>();
@@ -42,6 +43,7 @@ void witness_plugin::plugin_initialize(const variables_map& options) {}
 
 void witness_plugin::plugin_startup() {
    my->thread = std::thread([this]() {
+      fc::set_os_thread_name("witness");
       do {
          try {
             my->ctx.run();
