@@ -58,12 +58,16 @@ void witness_plugin::plugin_startup() {
          return;
 
       std::list<std::pair<std::reference_wrapper<witness_plugin::witness_callback_func>, std::shared_ptr<wrapped_shared_ptr_base>>> locks;
-      for(auto it = my->callbacks.begin(); it != my->callbacks.end(); ++it) {
+      auto it = my->callbacks.begin();
+      while(it != my->callbacks.end()) {
          auto lock = it->weakptr->lock();
-         if(!lock->valid())
+         if(!lock->valid()) {
             it = my->callbacks.erase(it);
-         else
+         }
+         else {
             locks.emplace_back(std::make_pair(std::ref(it->func), lock));
+            ++it;
+         }
       }
 
       my->ctx.post([this, bsp, locks]() {
