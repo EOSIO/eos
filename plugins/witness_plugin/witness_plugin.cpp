@@ -6,7 +6,7 @@ static appbase::abstract_plugin& _witness_plugin = app().register_plugin<witness
 
 struct witness_plugin_impl {
    signature_provider_plugin::signature_provider_type signature_provider;
-   unsigned staleness_limit = 600;
+   std::optional<unsigned> staleness_limit;
 
    struct callback_entry {
       witness_plugin::witness_callback_func func;
@@ -32,9 +32,9 @@ void witness_plugin::set_program_options(options_description& cli, options_descr
                   my->signature_provider = provider;
                }),
                app().get_plugin<signature_provider_plugin>().signature_provider_help_text())
-         ("witness-staleness-limit", boost::program_options::value<unsigned>()->default_value(my->staleness_limit)->notifier([this](const unsigned& v) {
+         ("witness-staleness-limit", boost::program_options::value<unsigned>()->notifier([this](const unsigned& v) {
                   my->staleness_limit = v;
-               }), "Blocks older than this many seconds are not signed by the witness plugin")
+               }), "When set, blocks older than this many seconds are not signed by the witness plugin")
          ;
 }
 
@@ -52,7 +52,7 @@ void witness_plugin::plugin_startup() {
 
 
    app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
-      if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
+      if(my->staleness_limit && bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(*my->staleness_limit))
          return;
 
       std::list<std::pair<std::reference_wrapper<witness_plugin::witness_callback_func>, std::shared_ptr<wrapped_shared_ptr_base>>> locks;
