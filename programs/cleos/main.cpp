@@ -484,9 +484,10 @@ void print_action( const fc::variant& at ) {
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
 
    std::string return_value, return_value_prefix{"return value: "};
-   try {
-      return_value = fc::json::to_string(at["return_value_data"], fc::time_point::maximum());
-   } catch (...) {
+   const auto  & iter = at.get_object().find("return_value_data");
+   if( iter != at.get_object().end() ) {
+      return_value = fc::json::to_string(iter->value(), fc::time_point::maximum());
+   } else {
       return_value = at["return_value_hex_data"].as_string();
       return_value_prefix = "return value (hex): ";
    }
