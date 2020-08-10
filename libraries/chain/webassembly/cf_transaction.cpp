@@ -6,24 +6,35 @@ namespace eosio { namespace chain { namespace webassembly {
       if( data.size() == 0 ) return transaction_size();
 
       const packed_transaction& packed_trx = context.trx_context.packed_trx;
-      const bytes& trx =
-            packed_trx.get_compression() == packed_transaction::compression_type::none ?
-               packed_trx.get_packed_transaction() :
-               fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
-
+      bytes trx = fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
       size_t copy_size = std::min( static_cast<size_t>(data.size()), trx.size() );
       std::memcpy( data.data(), trx.data(), copy_size );
 
       return copy_size;
+//      if( data.size() == 0 ) return transaction_size();
+//
+//      const packed_transaction& packed_trx = context.trx_context.packed_trx;
+//      const bytes& trx =
+//            packed_trx.get_compression() == packed_transaction::compression_type::none ?
+//               packed_trx.get_packed_transaction() :
+//               fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
+//
+//      size_t copy_size = std::min( static_cast<size_t>(data.size()), trx.size() );
+//      std::memcpy( data.data(), trx.data(), copy_size );
+//
+//      return copy_size;
    }
 
    int32_t interface::transaction_size() const {
       const packed_transaction& packed_trx = context.trx_context.packed_trx;
-      if( packed_trx.get_compression() == packed_transaction::compression_type::none) {
-         return packed_trx.get_packed_transaction().size();
-      } else {
-         return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
-      }
+      return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
+
+//      const packed_transaction& packed_trx = context.trx_context.packed_trx;
+//      if( packed_trx.get_compression() == packed_transaction::compression_type::none) {
+//         return packed_trx.get_packed_transaction().size();
+//      } else {
+//         return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
+//      }
    }
 
    int32_t interface::expiration() const {
