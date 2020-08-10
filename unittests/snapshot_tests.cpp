@@ -439,41 +439,70 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
-bool should_write_snapshot() {
-   auto compute = [] {
-      auto argc = boost::unit_test::framework::master_test_suite().argc;
-      auto argv = boost::unit_test::framework::master_test_suite().argv;
-      return std::find(argv, argv + argc, std::string("--save-snapshot")) != (argv + argc);
-   };
-   static bool result = compute();
-   return result;
+static auto get_extra_args() {
+   bool save_snapshot = false;
+   bool generate_log = false;
+
+   auto argc = boost::unit_test::framework::master_test_suite().argc;
+   auto argv = boost::unit_test::framework::master_test_suite().argv;
+   std::for_each(argv, argv + argc, [&](const auto &a){
+      if (a == "--save-snapshot") {
+         save_snapshot = true;
+      } else if (a == "--generate-snapshot-log") {
+         generate_log = true;
+      }
+   });
+
+   return std::make_tuple(save_snapshot, generate_log);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
-   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
+   bool save_snapshot = false;
+   bool generate_log = false;
+   std:tie(save_snapshot, generate_log) = get_extra_args();
+   const auto source_log_dir = bfs::path(snapshot_file<snapshot::binary>::base_path);
 
-   ///< Begin deterministic code to generate blockchain for comparison
-   // TODO: create a utility that will write new bin/json gzipped files based on this
-   chain.create_account(N(snapshot));
-   chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
-   chain.produce_blocks(1);
-   chain.control->abort_block();
+   if (generate_log) {
+      ///< Begin deterministic code to generate blockchain for comparison
+
+      tester chain(setup_policy::none, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
+      chain.create_account(N(snapshot));
+      chain.produce_blocks(1);
+      chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+      chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+      chain.produce_blocks(1);
+      chain.control->abort_block();
+
+      // continue until all the above blocks are in the blocks.log
+      auto head_block_num = chain.control->head_block_num();
+      while (chain.control->last_irreversible_block_num() < head_block_num) {
+         chain.produce_blocks(1);
+      }
+
+      auto source = chain.get_config().blog.log_dir / "blocks.log";
+      auto dest = bfs::path(snapshot_file<snapshot::binary>::base_path) / "blocks.log";
+      bfs::copy(source, source_log_dir / "blocks.log");
+      chain.close();
+   }
+
+   auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
+   auto genesis = chain::block_log::extract_genesis_state(source_log_dir);
+   bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
+   tester base_chain(config, *genesis);
+
    std::string current_version = "v4";
 
    int ordinal = 0;
    for(std::string version : {"v2", "v3", "v4"})
    {
-      if(should_write_snapshot() && version == current_version) continue;
+      if(save_snapshot && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
       auto old_snapshot = SNAPSHOT_SUITE::load_from_file("snap_" + version);
       BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
-      snapshotted_tester old_snapshot_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
-      BOOST_REQUIRE_EQUAL(old_snapshot_tester.control->head_block_num(), chain.control->head_block_num());
-      BOOST_REQUIRE_NO_THROW(old_snapshot_tester.control->get_account(N(snapshot)));
+      snapshotted_tester old_snapshot_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *old_snapshot_tester.control);
 
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
@@ -481,17 +510,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
       // load the latest snapshot
-      snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
-      BOOST_REQUIRE_EQUAL(latest_tester.control->head_block_num(), chain.control->head_block_num());
-      BOOST_REQUIRE_NO_THROW(latest_tester.control->get_account(N(snapshot)));
+      snapshotted_tester latest_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *latest_tester.control);
    }
    // This isn't quite fully automated.  The snapshots still need to be gzipped and moved to
    // the correct place in the source tree.
-   if (should_write_snapshot())
+   if (save_snapshot)
    {
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
-      chain.control->write_snapshot(latest_writer);
+      base_chain.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
