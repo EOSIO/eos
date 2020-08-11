@@ -2,6 +2,7 @@
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/kv_config.hpp>
+#include <eosio/chain/types.hpp>
 #include <memory>
 #include <stdint.h>
 
@@ -60,10 +61,10 @@ namespace eosio { namespace chain {
    };
 
    struct kv_resource_manager {
-      void     update_table_usage(int64_t delta, const kv_resource_trace& trace) { return _update_table_usage(*_context, delta, trace); }
+      void     update_table_usage(account_name payer, int64_t delta, const kv_resource_trace& trace) { return _update_table_usage(*_context, delta, trace, payer); }
       apply_context* _context;
       uint64_t       billable_size;
-      void (*_update_table_usage)(apply_context&, int64_t delta, const kv_resource_trace& trace);
+      void (*_update_table_usage)(apply_context&, int64_t delta, const kv_resource_trace& trace, account_name payer);
    };
 
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
@@ -74,7 +75,7 @@ namespace eosio { namespace chain {
 
       virtual int64_t  kv_erase(uint64_t contract, const char* key, uint32_t key_size)                     = 0;
       virtual int64_t  kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                              uint32_t value_size)                                                         = 0;
+                              uint32_t value_size, account_name payer)                                     = 0;
       virtual bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) = 0;
       virtual uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size)                        = 0;
 

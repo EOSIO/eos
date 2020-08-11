@@ -482,7 +482,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
          // kv database api
          int64_t  kv_erase(uint64_t, uint64_t, span<const char>);
-         int64_t  kv_set(uint64_t, uint64_t, span<const char>, span<const char>);
+         int64_t  kv_set(uint64_t, uint64_t, span<const char>, span<const char>, account_name payer);
          bool     kv_get(uint64_t, uint64_t, span<const char>, uint32_t*);
          uint32_t kv_get_data(uint64_t, uint32_t, span<char>);
          uint32_t kv_it_create(uint64_t, uint64_t, span<const char>);
