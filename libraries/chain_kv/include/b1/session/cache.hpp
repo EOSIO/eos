@@ -42,7 +42,7 @@ public:
         iterator() = default;
         iterator(const iterator& it) = default;
         iterator(iterator&&) = default;
-        iterator(cache_type::const_iterator it);
+        iterator(cache_type::iterator it);
         
         auto operator=(const iterator& it) -> iterator& = default;
         auto operator=(iterator&&) -> iterator& = default;
@@ -61,7 +61,7 @@ public:
         auto operator!=(const_iterator& other) const -> bool;
         
     private:
-        cache_type::const_iterator m_it;
+        cache_type::iterator m_it;
     };
     
 public:
@@ -323,7 +323,7 @@ auto cache<allocator>::find(const bytes& key) -> typename cache<allocator>::iter
 template <typename allocator>
 auto cache<allocator>::find(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {m_cache.find(key)};
+    return {const_cast<cache_type&>(m_cache).find(key)};
 }
 
 template <typename allocator>
@@ -335,7 +335,7 @@ auto cache<allocator>::begin() -> typename cache<allocator>::iterator
 template <typename allocator>
 auto cache<allocator>::begin() const -> typename cache<allocator>::const_iterator
 {
-    return {std::begin(m_cache)};
+    return {std::begin(const_cast<cache_type&>(m_cache))};
 }
 
 template <typename allocator>
@@ -347,7 +347,7 @@ auto cache<allocator>::end() -> typename cache<allocator>::iterator
 template <typename allocator>
 auto cache<allocator>::end() const -> typename cache<allocator>::const_iterator
 {
-    return {std::end(m_cache)};
+    return {std::end(const_cast<cache_type&>(m_cache))};
 }
 
 template <typename allocator>
@@ -359,7 +359,7 @@ auto cache<allocator>::lower_bound(const bytes& key) -> typename cache<allocator
 template <typename allocator>
 auto cache<allocator>::lower_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {m_cache.lower_bound(key)};
+    return {const_cast<cache_type&>(m_cache).lower_bound(key)};
 }
 
 template <typename allocator>
@@ -371,11 +371,11 @@ auto cache<allocator>::upper_bound(const bytes& key) -> typename cache<allocator
 template <typename allocator>
 auto cache<allocator>::upper_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {m_cache.lower_bound(key)};
+    return {const_cast<cache_type&>(m_cache).lower_bound(key)};
 }
 
 template <typename allocator>
-cache<allocator>::iterator::iterator(cache_type::const_iterator it)
+cache<allocator>::iterator::iterator(cache_type::iterator it)
 : m_it{std::move(it)}
 {
 }
