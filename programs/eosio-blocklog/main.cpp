@@ -71,7 +71,8 @@ struct report_time {
 
 void blocklog::read_log() {
    report_time rt("reading log");
-   block_log block_logger(blocks_dir);
+   
+   block_log block_logger({ .log_dir = blocks_dir });
    const auto end = block_logger.head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
@@ -138,7 +139,7 @@ void blocklog::read_log() {
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
       if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles);
+         *out << fc::json::to_string(v, fc::time_point::maximum());
       else
          *out << fc::json::to_pretty_string(v) << "\n";
    };
@@ -238,10 +239,14 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
 }
 
 void fix_irreversible_blocks(bfs::path block_dir) {
-    std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
-    block_log block_logger(block_dir, fc::path(), 0, 0, true);
-    std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
-    block_log::smoke_test(block_dir, 0);
+   std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
+   block_log::config_type config;
+   config.log_dir = block_dir;
+   config.fix_irreversible_blocks = true;
+   block_log block_logger(config);
+
+   std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
+   block_log::smoke_test(block_dir, 0);
 }
 
 void smoke_test(bfs::path block_dir) {
@@ -256,7 +261,7 @@ int prune_transactions(const char* type, bfs::path dir, uint32_t block_num,
                        std::vector<transaction_id_type> unpruned_ids) {
    using namespace std;
    if (Log::exists(dir)) {
-      Log log(dir);
+      Log log( { .log_dir = dir });
       log.prune_transactions(block_num, unpruned_ids);
       if (unpruned_ids.size()) {
          cerr << "block " << block_num << " in " << type << " does not contain the following transactions: ";

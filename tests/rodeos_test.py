@@ -154,7 +154,7 @@ try:
         useBiosBootFile=False,
         loadSystemContract=False,
         specificExtraNodeosArgs={
-            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts " 
+            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts --state-history-stride 20 --max-retained-history-files 3 " 
                 "--state-history-endpoint {} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryEndpoint)})
 
     producerNodeIndex = 0

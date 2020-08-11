@@ -195,7 +195,7 @@ struct test_chain {
       eosio::chain::genesis_state genesis;
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
-      cfg->blocks_dir           = dir.path() / "blocks";
+      cfg->blog.log_dir         = dir.path() / "blocks";
       cfg->state_dir            = dir.path() / "state";
       cfg->contracts_console    = true;
       cfg->wasm_runtime         = eosio::chain::wasm_interface::vm_type::eos_vm_jit;

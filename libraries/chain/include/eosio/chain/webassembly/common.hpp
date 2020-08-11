@@ -38,14 +38,22 @@ namespace eosio { namespace chain {
       null_terminated_ptr(const char* ptr) : base_type(ptr, strlen(ptr)) {}
    };
 
-   // wrapper pointer type to keep the validations from being done
-   template <typename T>
-   struct unvalidated_ptr {
-      static_assert(sizeof(T) == 1); // currently only going to support these for char and const char
-      operator T*() { return ptr; }
-      T* operator->() { return ptr; }
-      T& operator*() { return *ptr; }
-      T* ptr;
+   struct memcpy_params {
+      void* dst;
+      const void* src;
+      vm::wasm_size_t size;
+   };
+
+   struct memcmp_params {
+      const void* lhs;
+      const void* rhs;
+      vm::wasm_size_t size;
+   };
+
+   struct memset_params {
+      const void* dst;
+      const int32_t val;
+      vm::wasm_size_t size;
    };
 
    // define the type converter for eosio
@@ -59,16 +67,23 @@ namespace eosio { namespace chain {
       using base_type::elem_type;
       using base_type::get_host;
 
-      template <typename T>
-      auto from_wasm(const void* ptr) const
-         -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<const char>>, T> {
-         return {static_cast<const char*>(ptr)};
+      EOS_VM_FROM_WASM(memcpy_params, (void* dst, const void* src, vm::wasm_size_t size)) {
+         validate_pointer<char>(dst, size);
+         validate_pointer<char>(src, size);
+         validate_pointer<char>(dst, 1);
+         return { dst, src, size };
       }
 
-      template <typename T>
-      auto from_wasm(void* ptr) const
-         -> std::enable_if_t<std::is_same_v<T, unvalidated_ptr<char>>, T> {
-         return {static_cast<char*>(ptr)};
+      EOS_VM_FROM_WASM(memcmp_params, (const void* lhs, const void* rhs, vm::wasm_size_t size)) {
+         validate_pointer<char>(lhs, size);
+         validate_pointer<char>(rhs, size);
+         return { lhs, rhs, size };
+      }
+
+      EOS_VM_FROM_WASM(memset_params, (void* dst, int32_t val, vm::wasm_size_t size)) {
+         validate_pointer<char>(dst, size);
+         validate_pointer<char>(dst, 1);
+         return { dst, val, size };
       }
 
       template <typename T>
@@ -76,6 +91,17 @@ namespace eosio { namespace chain {
          -> std::enable_if_t< std::is_pointer_v<T>,
                               vm::argument_proxy<T> > {
          validate_pointer<std::remove_pointer_t<T>>(ptr, 1);
+         return {ptr};
+      }
+
+      template <typename T>
+      auto from_wasm(void* ptr, vm::tag<T> = {}) const
+         -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
+                              std::is_pointer_v<typename T::proxy_type>, T> {
+         if constexpr(T::is_legacy()) {
+            EOS_ASSERT(ptr != this->get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
+         }
+         this->template validate_pointer<typename T::pointee_type>(ptr, 1);
          return {ptr};
       }
 

@@ -133,7 +133,7 @@ namespace LLVMJIT
 			if(SectionName == ".stack_sizes") {
 				return stack_sizes.emplace_back(numBytes).data();
 			}
-			//WAVM_ASSERT_THROW(isReadOnly);
+			WAVM_ASSERT_THROW(isReadOnly);
 
 			return get_next_code_ptr(numBytes, alignment);
 		}
@@ -192,13 +192,14 @@ namespace LLVMJIT
 #if PRINT_DISASSEMBLY
 											disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
 #endif
-										} else if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Data && name && *name == getTableSymbolName()) {											Uptr loadedAddress = Uptr(*address);
+										} else if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Data && name && *name == getTableSymbolName()) {
+											Uptr loadedAddress = Uptr(*address);
 											auto symbolSection = symbol.getSection();
 											if(symbolSection)
 												loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
 											Uptr functionDefIndex;
 											table_offset = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
-									        }
+										}
 									}
 							  }
 							  );
@@ -211,8 +212,8 @@ namespace LLVMJIT
 		std::shared_ptr<UnitMemoryManager> unitmemorymanager = std::make_shared<UnitMemoryManager>();
 
 		std::map<unsigned, uintptr_t> function_to_offsets;
-		uintptr_t table_offset;
 		std::vector<uint8_t> final_pic_code;
+		uintptr_t table_offset = 0;
 
 		~JITModule()
 		{
@@ -305,7 +306,7 @@ namespace LLVMJIT
 
 		unsigned num_functions_stack_size_found = 0;
 		for(const auto& stacksizes : jitModule->unitmemorymanager->stack_sizes) {
-			fc::datastream<const unsigned char*> ds(stacksizes.data(), stacksizes.size());
+			fc::datastream<const char*> ds(reinterpret_cast<const char*>(stacksizes.data()), stacksizes.size());
 			while(ds.remaining()) {
 				uint64_t funcaddr;
 				fc::unsigned_int stack_size;
