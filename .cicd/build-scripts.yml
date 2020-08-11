@@ -213,6 +213,6 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     command:
-      - "DEBIAN_FRONTEND=noninteractive && apt update && apt upgrade -y && apt install -y git"
-      - "DEBIAN_FRONTEND=noninteractive && ./scripts/eosio_build.sh -y"
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -y"
     timeout: 180
