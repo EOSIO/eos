@@ -257,15 +257,16 @@ class less<b1::session::bytes> final
 public:
     constexpr auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
     {
-        // Shorter keys are "less than" longer keys
+
+        // Shorter keys are "greater than" longer keys
         if (lhs.length() < rhs.length())
         {
-            return true;
+            return false;
         }
         
         if (lhs.length() > rhs.length())
         {
-            return false;
+            return true;
         }
         
         if (lhs.data() == nullptr && rhs.data() == nullptr)
@@ -293,15 +294,15 @@ class greater<b1::session::bytes> final
 public:
     constexpr auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
     {
-        // Shorter keys are "less than" longer keys
+        // Shorter keys are "greater than" longer keys
         if (lhs.length() > rhs.length())
         {
-            return true;
+            return false;
         }
         
         if (lhs.length() < rhs.length())
         {
-            return false;
+            return true;
         }
         
         if (lhs.data() == nullptr && rhs.data() == nullptr)
