@@ -214,7 +214,6 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     command:
-      - "apt update && apt upgrade -y && apt install -y git"
-      - "timedatectl set-timezone America/New York"
+      - "apt update && apt upgrade -y && apt install -y git tzdata"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
