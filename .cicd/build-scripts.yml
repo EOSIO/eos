@@ -29,7 +29,7 @@ steps:
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
     agents: "queue=mac-anka-large-node-fleet"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "git clone --depth=1 --branch $BUILDKITE_BRANCH $BUILDKITE_PULL_REQUEST_REPO eos && cd eos && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
     plugins:
       - EOSIO/anka#v0.6.1:
@@ -57,7 +57,7 @@ steps:
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
     agents: "queue=mac-anka-large-node-fleet"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "git clone --depth=1 --branch $BUILDKITE_BRANCH $BUILDKITE_PULL_REQUEST_REPO eos && cd eos && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
     plugins:
       - EOSIO/anka#v0.6.1:
@@ -132,7 +132,7 @@ steps:
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
     agents: "queue=mac-anka-large-node-fleet"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "git clone --depth=1 --branch $BUILDKITE_BRANCH $BUILDKITE_PULL_REQUEST_REPO eos && cd eos && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -y"
     plugins:
       - EOSIO/anka#v0.6.1:
@@ -159,7 +159,7 @@ steps:
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
     agents: "queue=mac-anka-large-node-fleet"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "git clone --depth=1 --branch $BUILDKITE_BRANCH $BUILDKITE_PULL_REQUEST_REPO eos && cd eos && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -y"
     plugins:
       - EOSIO/anka#v0.6.1:
