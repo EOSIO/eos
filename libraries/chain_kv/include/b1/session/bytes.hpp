@@ -31,9 +31,14 @@ public:
     template <typename key, typename value, typename allocator>
     friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
     
+    template <typename key, typename value>
+    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value;
+
     template <typename allocator>
     friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
     
+    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value;
+
 public:
     bytes(const bytes& b);
     bytes(bytes&& b);

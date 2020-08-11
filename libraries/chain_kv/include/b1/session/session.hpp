@@ -104,6 +104,7 @@ public:
         };
         
     public:
+        iterator() = default;
         iterator(const iterator& it) = default;
         iterator(iterator&&) = default;
         
@@ -118,15 +119,13 @@ public:
         auto operator--() const -> const_iterator&;
         auto operator--(int) -> iterator;
         auto operator--(int) const -> const_iterator;
-        auto operator*() const -> reference;
-        auto operator->() const -> reference;
+        auto operator*() const -> value_type;
+        auto operator->() const -> value_type;
         auto operator==(const_iterator& other) const -> bool;
         auto operator!=(const_iterator& other) const -> bool;
         
     protected:
-        iterator() = default;
-        
-        auto read_(const bytes& key) -> const key_value&;
+        auto read_(const bytes& key) const -> const key_value&;
         
         template <typename predicate, typename comparator>
         auto move_(const predicate& p, const comparator& c) -> void;
@@ -160,7 +159,7 @@ public:
     auto commit() -> void;
     
     // this part also identifies a concept.  don't know what to call it yet
-    auto read(const bytes& key) const -> const key_value&;
+    auto read(const bytes& key) const -> const key_value;
     auto write(key_value kv) -> void;
     auto contains(const bytes& key) const -> bool;
     auto erase(const bytes& key) -> void;
@@ -188,16 +187,13 @@ public:
     auto begin() const -> const_iterator;
     auto end() -> iterator;
     auto end() const -> const_iterator;
-    auto cbegin() const -> const_iterator;
-    auto cend() const -> const_iterator;
-    auto lower(const bytes& key) -> iterator;
-    auto lower(const bytes& key) const -> const_iterator;
-    auto upper(const bytes& key) -> iterator;
-    auto upper(const bytes& key) const -> const_iterator;
-    auto clower(const bytes& key) const -> const_iterator;
-    auto cupper(const bytes& key) const -> const_iterator;
+    auto lower_bound(const bytes& key) -> iterator;
+    auto lower_bound(const bytes& key) const -> const_iterator;
+    auto upper_bound(const bytes& key) -> iterator;
+    auto upper_bound(const bytes& key) const -> const_iterator;
     
     auto memory_allocator() -> const std::shared_ptr<typename persistent_data_store::allocator_type>&;
+    auto memory_allocator() const -> const std::shared_ptr<const typename persistent_data_store::allocator_type>;
     auto backing_data_store() -> const std::shared_ptr<persistent_data_store>&;
     auto backing_data_store() const -> const std::shared_ptr<const persistent_data_store>&;
     auto cache() -> const std::shared_ptr<cache_data_store>&;
@@ -208,7 +204,7 @@ private:
     session(std::shared_ptr<session_impl> impl);
     
     template <typename predicate, typename comparator>
-    auto make_iterator_(const predicate& p, const comparator& c) -> iterator;
+    auto make_iterator_(const predicate& p, const comparator& c) const -> iterator;
     
     struct session_impl final : public std::enable_shared_from_this<session_impl>
     {
@@ -415,18 +411,13 @@ auto session<persistent_data_store, cache_data_store>::attach(session child) -> 
         return session<persistent_data_store, cache_data_store>::invalid;
     }
 
-    auto current_child = m_impl->child.lock();
-    if (current_child)
-    {
-        current_child->parent = nullptr;
-        current_child->backing_data_store = nullptr;
-    }
+    auto current_child = detach();
 
     child.m_impl->parent = m_impl;
     child.m_impl->backing_data_store = m_impl->backing_data_store;
     m_impl->child = child.m_impl;
 
-    return {std::move(current_child)};
+    return current_child;
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -460,7 +451,7 @@ auto session<persistent_data_store, cache_data_store>::commit() -> void
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::read(const bytes& key) const -> const key_value&
+auto session<persistent_data_store, cache_data_store>::read(const bytes& key) const -> const key_value
 {
     if (!m_impl)
     {
@@ -492,7 +483,7 @@ auto session<persistent_data_store, cache_data_store>::read(const bytes& key) co
     // If we haven't found the key in the session yet, read it from the persistent data store.
     if (m_impl->backing_data_store)
     {
-        auto& kv = m_impl->backing_data_store->read(key);
+        auto kv = m_impl->backing_data_store->read(key);
         if (kv != key_value::invalid)
         {
             m_impl->cache.write(kv);
@@ -595,7 +586,7 @@ auto session<persistent_data_store, cache_data_store>::read(const iterable& keys
                 // We found the key.  Write it to our cache and bail out.
                 found = true;
                 m_impl->cache.write(kv);
-                kvs.emplace(kv);
+                kvs.emplace_back(kv);
                 break;
             }
             parent = parent->parent.get();
@@ -690,7 +681,7 @@ auto session<persistent_data_store, cache_data_store>::write_to(data_store& ds, 
                 continue;
             }
             
-            results.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), ds.allocator()));
+            results.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), ds.memory_allocator()));
         }
     }
     ds.write(results);
@@ -713,7 +704,7 @@ auto session<persistent_data_store, cache_data_store>::read_from(const data_stor
 // \tparam comparator A functor for determining if the "current" iterator points to the cache list or the persistent data store.
 template <typename persistent_data_store, typename cache_data_store>
 template <typename predicate, typename comparator>
-auto session<persistent_data_store, cache_data_store>::make_iterator_(const predicate& p, const comparator& c) -> typename session<persistent_data_store, cache_data_store>::iterator
+auto session<persistent_data_store, cache_data_store>::make_iterator_(const predicate& p, const comparator& c) const -> typename session<persistent_data_store, cache_data_store>::iterator
 {
     if (!m_impl)
     {
@@ -741,17 +732,17 @@ auto session<persistent_data_store, cache_data_store>::make_iterator_(const pred
         for (const auto& updated_key : new_iterator.m_cache_iterator_state.child->updated_keys)
         {
             // Key is no longer deleted as it has been added at this level.
-            new_iterator.m_cache_iterator_state.deleted_keys.erase(updated_key);
+            new_iterator.m_cache_iterator_state.deleted_keys->erase(updated_key);
             // Add key to updated keys list.
-            new_iterator.m_cache_iterator_state.updated_keys.insert(updated_key);
+            new_iterator.m_cache_iterator_state.updated_keys->insert(updated_key);
         }
 
         for (const auto& deleted_key : new_iterator.m_cache_iterator_state.child->deleted_keys)
         {
             // Key is no longer updated at this level since it has been deleted.
-            new_iterator.m_cache_iterator_state.updated_keys.erase(deleted_key);
+            new_iterator.m_cache_iterator_state.updated_keys->erase(deleted_key);
             // Add key to deleted keys list.
-            new_iterator.m_cache_iterator_state.deleted_keys.insert(deleted_key);
+            new_iterator.m_cache_iterator_state.deleted_keys->insert(deleted_key);
         }
         
         if (auto next_child = new_iterator.m_cache_iterator_state.child->child.lock())
@@ -762,13 +753,13 @@ auto session<persistent_data_store, cache_data_store>::make_iterator_(const pred
         break;
     }
     
-    new_iterator.m_cache_iterator_state.current = p(new_iterator.m_cache_iterator_state.updated_keys);
+    new_iterator.m_cache_iterator_state.current = p(*(new_iterator.m_cache_iterator_state.updated_keys));
     new_iterator.m_database_iterator_state.begin = std::begin(*m_impl->backing_data_store);
     new_iterator.m_database_iterator_state.current = p(*m_impl->backing_data_store);
     new_iterator.m_database_iterator_state.end = std::begin(*m_impl->backing_data_store);
     
     // Which iterator is "current".  By default we assume the cache iterator is current.
-    if (c(*new_iterator.m_database_iterator_state.current, *new_iterator.m_cache_iterator_state.current))
+    if (c((*new_iterator.m_database_iterator_state.current).key(), *new_iterator.m_cache_iterator_state.current))
     {
         // but if the comparator functor indicates the database iterator is current, then set it.
         new_iterator.m_use_cache_iterator = false;
@@ -783,12 +774,12 @@ auto session<persistent_data_store, cache_data_store>::find(const bytes& key) ->
     // This comparator just chooses the one that isn't invalid.
     static auto comparator = [](auto& left, auto& right)
     {
-        if (left == key_value::invalid && right == key_value::invalid)
+        if (left == bytes::invalid && right == bytes::invalid)
         {
             return true;
         }
         
-        if (left == key_value::invalid)
+        if (left == bytes::invalid)
         {
             return false;
         }
@@ -805,12 +796,12 @@ auto session<persistent_data_store, cache_data_store>::find(const bytes& key) co
     // This comparator just chooses the one that isn't invalid.
     static auto comparator = [](auto& left, auto& right)
     {
-        if (left == key_value::invalid && right == key_value::invalid)
+        if (left == bytes::invalid && right == bytes::invalid)
         {
             return true;
         }
         
-        if (left == key_value::invalid)
+        if (left == bytes::invalid)
         {
             return false;
         }
@@ -846,55 +837,43 @@ auto session<persistent_data_store, cache_data_store>::end() const -> typename s
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::cbegin() const -> typename session<persistent_data_store, cache_data_store>::const_iterator
+auto session<persistent_data_store, cache_data_store>::lower_bound(const bytes& key) -> typename session<persistent_data_store, cache_data_store>::iterator
 {
-    return make_iterator_([](auto& ds) { return std::begin(ds); }, std::less<bytes>{});
+    return make_iterator_([&](auto& ds) { return ds.lower_bound(key); }, std::greater<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::cend() const -> typename session<persistent_data_store, cache_data_store>::const_iterator
+auto session<persistent_data_store, cache_data_store>::lower_bound(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
 {
-    return make_iterator_([](auto& ds) { return std::end(ds); }, std::greater<bytes>{});
+    return make_iterator_([&](auto& ds) { return ds.lower_bound(key); }, std::greater<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::lower(const bytes& key) -> typename session<persistent_data_store, cache_data_store>::iterator
+auto session<persistent_data_store, cache_data_store>::upper_bound(const bytes& key) -> typename session<persistent_data_store, cache_data_store>::iterator
 {
-    return make_iterator_([&](auto& ds) { return ds.lower(key); }, std::greater<bytes>{});
+    return make_iterator_([&](auto& ds) { return ds.upper_bound(key); }, std::less<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::lower(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
+auto session<persistent_data_store, cache_data_store>::upper_bound(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
 {
-    return make_iterator_([&](auto& ds) { return ds.lower(key); }, std::greater<bytes>{});
-}
-
-template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::upper(const bytes& key) -> typename session<persistent_data_store, cache_data_store>::iterator
-{
-    return make_iterator_([&](auto& ds) { return ds.upper(key); }, std::less<bytes>{});
-}
-
-template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::upper(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
-{
-    return make_iterator_([&](auto& ds) { return ds.upper(key); }, std::less<bytes>{});
-}
-
-template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::clower(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
-{
-    return make_iterator_([&](auto& ds) { return ds.lower(key); }, std::greater<bytes>{});
-}
-
-template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::cupper(const bytes& key) const -> typename session<persistent_data_store, cache_data_store>::const_iterator
-{
-    return make_iterator_([&](auto& ds) { return ds.upper(key); }, std::less<bytes>{});
+    return make_iterator_([&](auto& ds) { return ds.upper_bound(key); }, std::less<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
 auto session<persistent_data_store, cache_data_store>::memory_allocator() -> const std::shared_ptr<typename persistent_data_store::allocator_type>&
+{
+    if (!m_impl)
+    {
+        static auto invalid = std::shared_ptr<typename persistent_data_store::allocator_type>{};
+        return invalid;
+    }
+    
+    return m_impl->backing_data_store->memory_allocator();
+}
+
+template <typename persistent_data_store, typename cache_data_store>
+auto session<persistent_data_store, cache_data_store>::memory_allocator() const -> const std::shared_ptr<const typename persistent_data_store::allocator_type>
 {
     if (!m_impl)
     {
@@ -954,7 +933,7 @@ auto session<persistent_data_store, cache_data_store>::cache() const -> const st
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::iterator::read_(const bytes& key) -> const key_value&
+auto session<persistent_data_store, cache_data_store>::iterator::read_(const bytes& key) const -> const key_value&
 {
     auto* current = m_cache_iterator_state.child.get();
     while (current)
@@ -986,7 +965,7 @@ auto session<persistent_data_store, cache_data_store>::iterator::move_(const pre
         p(m_database_iterator_state.current);
         
         // keeping moving until we find a database key that hasn't been deleted.
-        while (m_cache_iterator_state.deleted_keys.find(*m_database_iterator_state.current) != std::end(m_cache_iterator_state.deleted_keys)
+        while (m_cache_iterator_state.deleted_keys->find((*m_database_iterator_state.current).key()) != std::end(*m_cache_iterator_state.deleted_keys)
                && m_database_iterator_state.current != m_database_iterator_state.end)
         {
             p(m_database_iterator_state.current);
@@ -995,7 +974,7 @@ auto session<persistent_data_store, cache_data_store>::iterator::move_(const pre
     
     // is the cache or database iterator the current iterator.
     m_use_cache_iterator = true;
-    if (c(m_database_iterator_state.current, m_cache_iterator_state.current))
+    if (c((*m_database_iterator_state.current).key(), *m_cache_iterator_state.current))
     {
         m_use_cache_iterator = false;
     }
@@ -1005,18 +984,18 @@ template <typename persistent_data_store, typename cache_data_store>
 auto session<persistent_data_store, cache_data_store>::iterator::move_next_() -> void
 {
     // increment the current iterator and set the next current.
-    move([](auto& it) { ++it; }, std::less<bytes>{});
+    move_([](auto& it) { ++it; }, std::less<bytes>{});
     
     if (m_database_iterator_state.current == m_database_iterator_state.end
-        && m_cache_iterator_state.current == std::end(m_cache_iterator_state.updated_keys))
+        && m_cache_iterator_state.current == std::end(*m_cache_iterator_state.updated_keys))
     {
         // We need to wrap around to the beginning
         m_database_iterator_state.current = m_database_iterator_state.begin;
-        m_cache_iterator_state.current = std::begin(m_cache_iterator_state.updated_key);
+        m_cache_iterator_state.current = std::begin(*m_cache_iterator_state.updated_keys);
         
         // reset the current iterator.
         m_use_cache_iterator = true;
-        if (std::less<bytes>{}(m_database_iterator_state.current, m_cache_iterator_state.current))
+        if (std::less<bytes>{}((*m_database_iterator_state.current).key(), *m_cache_iterator_state.current))
         {
             m_use_cache_iterator = false;
         }
@@ -1027,18 +1006,18 @@ template <typename persistent_data_store, typename cache_data_store>
 auto session<persistent_data_store, cache_data_store>::iterator::move_previous_() -> void
 {
     if (m_database_iterator_state.current == m_database_iterator_state.begin
-        && m_cache_iterator_state.current == std::begin(m_cache_iterator_state.updated_keys))
+        && m_cache_iterator_state.current == std::begin(*m_cache_iterator_state.updated_keys))
     {
         // We need to wrap around to the end.
         m_database_iterator_state.current = m_database_iterator_state.end;
         --m_database_iterator_state.current;
 
-        m_cache_iterator_state.current = std::end(m_cache_iterator_state.updated_key);
+        m_cache_iterator_state.current = std::end(*m_cache_iterator_state.updated_keys);
         --m_cache_iterator_state.current;
     }
     
     // decrement the current iterator and set the next current.
-    move([](auto& it) { --it; }, std::greater<bytes>{});
+    move_([](auto& it) { --it; }, std::greater<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -1102,20 +1081,25 @@ auto session<persistent_data_store, cache_data_store>::iterator::operator--(int)
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::iterator::operator*() const -> reference
+auto session<persistent_data_store, cache_data_store>::iterator::operator*() const -> value_type
 {
     if (m_use_cache_iterator)
     {
-        return read_(*m_cache_iterator_state);
+        return read_(*m_cache_iterator_state.current);
     }
     
     return *m_database_iterator_state.current;
 }
 
 template <typename persistent_data_store, typename cache_data_store>
-auto session<persistent_data_store, cache_data_store>::iterator::operator->() const -> reference
+auto session<persistent_data_store, cache_data_store>::iterator::operator->() const -> value_type
 {
-    return *this;
+    if (m_use_cache_iterator)
+    {
+        return read_(*m_cache_iterator_state.current);
+    }
+    
+    return *m_database_iterator_state.current;
 }
 
 template <typename persistent_data_store, typename cache_data_store>

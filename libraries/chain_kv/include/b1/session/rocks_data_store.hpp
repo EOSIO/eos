@@ -5,7 +5,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include <rocksdb/db.h>
+#include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
+#include <rocksdb/slice_transform.h>
+
 #include <b1/session/bytes.hpp>
 #include <b1/session/key_value.hpp>
 #include <b1/session/rocks_data_store_fwd_decl.hpp>
@@ -35,7 +39,7 @@ public:
         using reference = value_type&;
         using iterator_category = std::bidirectional_iterator_tag;
 
-        iterator() = delete;
+        iterator() = default;
         iterator(const iterator& it);
         iterator(iterator&&) = default;
         iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a);
@@ -77,7 +81,7 @@ public:
     auto operator=(const rocks_data_store&) -> rocks_data_store& = default;
     auto operator=(rocks_data_store&&) -> rocks_data_store& = default;
     
-    auto read(const bytes& key) const -> const key_value&;
+    auto read(const bytes& key) const -> const key_value;
     auto write(key_value kv) -> void;
     auto contains(const bytes& key) const -> bool;
     auto erase(const bytes& key) -> void;
@@ -103,16 +107,13 @@ public:
     auto begin() const -> const_iterator;
     auto end() -> iterator;
     auto end() const -> const_iterator;
-    auto cbegin() const -> const_iterator;
-    auto cend() const -> const_iterator;
-    auto lower(const bytes& key) -> iterator;
-    auto lower(const bytes& key) const -> const_iterator;
-    auto upper(const bytes& key) -> iterator;
-    auto upper(const bytes& key) const -> const_iterator;
-    auto clower(const bytes& key) const -> const_iterator;
-    auto cupper(const bytes& key) const -> const_iterator;
+    auto lower_bound(const bytes& key) -> iterator;
+    auto lower_bound(const bytes& key) const -> const_iterator;
+    auto upper_bound(const bytes& key) -> iterator;
+    auto upper_bound(const bytes& key) const -> const_iterator;
     
     auto memory_allocator() -> const std::shared_ptr<allocator>&;
+    auto memory_allocator() const -> const std::shared_ptr<const allocator>;
     
 protected:
     template <typename iterable, typename other_allocator>
@@ -150,12 +151,12 @@ rocks_data_store<allocator>::rocks_data_store(std::shared_ptr<rocksdb::DB> db, s
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::read(const bytes& key) const -> const key_value&
+auto rocks_data_store<allocator>::read(const bytes& key) const -> const key_value
 {
     auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto pinnable_value = rocksdb::PinnableSlice{};
-    auto status = m_db->Get(read_options, key_slice, &pinnable_value);
+    auto status = m_db->Get(read_options, m_db->DefaultColumnFamily(), key_slice, &pinnable_value);
     
     if (status.code() != rocksdb::Status::Code::kOk)
     {
@@ -207,7 +208,7 @@ auto rocks_data_store<allocator>::read_(const iterable& keys, const std::shared_
     auto read_options = rocksdb::ReadOptions{};
     auto values = std::vector<std::string>{};
     values.reserve(key_slices.size());
-    auto status = m_db->MultiGet(read_options, keys, &values);
+    auto status = m_db->MultiGet(read_options, key_slices, &values);
     
     auto kvs = std::vector<key_value>{};
     kvs.reserve(key_slices.size());
@@ -220,7 +221,7 @@ auto rocks_data_store<allocator>::read_(const iterable& keys, const std::shared_
         }
         
         not_found.erase(make_bytes(key_slices[i].data(), key_slices[i].size()));
-        kvs.emplace(make_kv(key_slices[i].data(), key_slices[i].size(), values[i].data(), values[i].size(), a));
+        kvs.emplace_back(make_kv(key_slices[i].data(), key_slices[i].size(), values[i].data(), values[i].size(), a));
     }
     
     return {std::move(kvs), std::move(not_found)};
@@ -284,8 +285,8 @@ template <typename allocator>
 template <typename data_store, typename iterable>
 auto rocks_data_store<allocator>::write_to(data_store& ds, const iterable& keys) const -> void
 {
-    auto kvs = read_(keys, ds.memory_allocator());
-    ds.write(std::move(kvs));
+    auto [found, not_found] = read_(keys, ds.memory_allocator());
+    ds.write(found);
 }
 
 // Reads a batch of key_values from the given data store into the rocksdb.
@@ -298,8 +299,8 @@ template <typename allocator>
 template <typename data_store, typename iterable>
 auto rocks_data_store<allocator>::read_from(const data_store& ds, const iterable& keys) -> void
 {
-    auto kvs = ds.read(keys);
-    write(kvs);
+    auto [found, not_found] = ds.read(keys);
+    write(found);
 }
 
 // Instantiates an iterator for iterating over the rocksdb data store.
@@ -312,7 +313,7 @@ auto rocks_data_store<allocator>::make_iterator_(const predicate& setup) -> iter
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
     setup(rit);
-    return {rit};
+    return {m_db, rit, m_allocator};
 }
 
 // Instantiates an iterator for iterating over the rocksdb data store.
@@ -325,7 +326,7 @@ auto rocks_data_store<allocator>::make_iterator_(const predicate& setup) const -
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
     setup(rit);
-    return {rit};
+    return {m_db, rit, m_allocator};
 }
 
 
@@ -366,55 +367,37 @@ auto rocks_data_store<allocator>::end() const -> typename rocks_data_store<alloc
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::cbegin() const -> typename rocks_data_store<allocator>::const_iterator
-{
-    return make_iterator_([](auto& it){ it->SeekToFirst(); });
-}
-
-template <typename allocator>
-auto rocks_data_store<allocator>::cend() const -> typename rocks_data_store<allocator>::const_iterator
-{
-    return make_iterator_([](auto& it){ it->SeekToLast(); });
-}
-
-template <typename allocator>
-auto rocks_data_store<allocator>::lower(const bytes& key) -> typename rocks_data_store<allocator>::iterator
+auto rocks_data_store<allocator>::lower_bound(const bytes& key) -> typename rocks_data_store<allocator>::iterator
 {
     return make_iterator_([&](auto& it){ it->Seek(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::lower(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
+auto rocks_data_store<allocator>::lower_bound(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
 {
     return make_iterator_([&](auto& it){ it->Seek(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::upper(const bytes& key) -> typename rocks_data_store<allocator>::iterator
+auto rocks_data_store<allocator>::upper_bound(const bytes& key) -> typename rocks_data_store<allocator>::iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
 }
 
 template <typename allocator>
-auto rocks_data_store<allocator>::upper(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
+auto rocks_data_store<allocator>::upper_bound(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
-}
-
-template <typename allocator>
-auto rocks_data_store<allocator>::clower(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
-{
-    return make_iterator_([&](auto& it){ it->Seek(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
-}
-
-template <typename allocator>
-auto rocks_data_store<allocator>::cupper(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
-{
-    return make_iterator_([&](auto& it){ it->SeekPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
 }
 
 template <typename allocator>
 auto rocks_data_store<allocator>::memory_allocator() -> const std::shared_ptr<allocator>&
+{
+    return m_allocator;
+}
+
+template <typename allocator>
+auto rocks_data_store<allocator>::memory_allocator() const -> const std::shared_ptr<const allocator>
 {
     return m_allocator;
 }
@@ -450,8 +433,8 @@ auto rocks_data_store<allocator>::iterator::operator=(const iterator& it) -> typ
     
     m_db = it.m_db;
     m_allocator = it.m_allocator;
-    m_iterator = m_db->NewIterator(rocksdb::ReadOptions{});
-    m_iterator->Seek(it.m_iterator->Key());
+    m_iterator = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(rocksdb::ReadOptions{})};
+    m_iterator->Seek(it.m_iterator->key());
     
     return *this;
 }
@@ -536,7 +519,9 @@ auto rocks_data_store<allocator>::iterator::operator*() const -> const value_typ
 template <typename allocator>
 auto rocks_data_store<allocator>::iterator::operator->() const -> const value_type
 {
-    return *this;
+    auto key_slice = m_iterator->key();
+    auto value = m_iterator->value();
+    return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size(), m_allocator);
 }
 
 template <typename allocator>

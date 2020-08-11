@@ -17,6 +17,10 @@ public:
     template <typename allocator>
     friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
     
+    template <typename key, typename value>
+    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value;
+
+    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value;
 public:
     auto key() const -> const bytes&;
     auto value() const -> const bytes&;
@@ -67,6 +71,21 @@ auto make_kv(const key* the_key, size_t key_length, const value* the_value, size
     auto total_value_length = value_length * sizeof(value);
     return make_kv(reinterpret_cast<const void*>(the_key), total_key_length, reinterpret_cast<const void*>(the_value), total_value_length, a);
 }
+
+template <typename key, typename value>
+auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value
+{
+    return make_kv(reinterpret_cast<const void*>(the_key), key_length * sizeof(key), reinterpret_cast<const void*>(the_value), value_length * sizeof(key));
+}
+
+inline auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value
+{
+    auto kv = key_value{};
+    kv.m_key = make_bytes(key, key_length);
+    kv.m_value = make_bytes(value, value_length);
+    return kv;
+}
+
 
 // Instantiaties a key_value instance from the given key/value pointers.
 //
