@@ -102,6 +102,8 @@ steps:
     timeout: 180
 
   - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
     plugins:
       - docker#v3.3.0:
           image: "ubuntu:20.04"
@@ -109,8 +111,8 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     command:
-      - "DEBIAN_FRONTEND=noninteractive && apt update && apt upgrade -y && apt install -y git"
-      - "DEBIAN_FRONTEND=noninteractive && ./scripts/eosio_build.sh -P -y"
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
     timeout: 180
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
@@ -202,6 +204,8 @@ steps:
     timeout: 180
 
   - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
     plugins:
       - docker#v3.3.0:
           image: "ubuntu:20.04"
