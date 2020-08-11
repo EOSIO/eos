@@ -1209,6 +1209,41 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
+
+   // test read_transaction only returns packed transaction
+   {
+      signed_transaction trx;
+
+      auto pl = vector<permission_level>{{N( testapi ), config::active_name}};
+      action act( pl, test_api_action<TEST_METHOD( "test_transaction", "test_read_transaction" )>{} );
+      act.data = {};
+      act.authorization = {{N( testapi ), config::active_name}};
+      trx.actions.push_back( act );
+
+      set_transaction_headers( trx, DEFAULT_EXPIRATION_DELTA );
+      auto sigs = trx.sign( get_private_key( N( testapi ), "active" ), control->get_chain_id() );
+
+      auto time_limit = fc::microseconds::maximum();
+      auto ptrx = std::make_shared<packed_transaction>( signed_transaction(trx), true, packed_transaction::compression_type::none );
+
+      string sha_expect = ptrx->id();
+      auto packed = fc::raw::pack( static_cast<const transaction&>(ptrx->get_transaction()) );
+      packed.push_back('7'); packed.push_back('7'); // extra ignored
+      packed_transaction_v0 pkt( packed, *ptrx->get_signatures(), ptrx->to_packed_transaction_v0()->get_packed_context_free_data(),
+                                 packed_transaction_v0::compression_type::none );
+      BOOST_CHECK(pkt.get_packed_transaction() == packed);
+      ptrx = std::make_shared<packed_transaction>( pkt, true );
+
+      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( fut.get(), fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US, true );
+      if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
+      if( r->except) throw *r->except;
+      tx_trace = r;
+      produce_block();
+      BOOST_CHECK(tx_trace->action_traces.front().console == sha_expect);
+   }
+
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
