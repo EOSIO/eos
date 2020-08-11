@@ -1,13 +1,11 @@
 #pragma once
 #include <appbase/application.hpp>
-#include <eosio/witness_plugin/wrapped_weak_shared_ptr.hpp>
 #include <eosio/signature_provider_plugin/signature_provider_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 namespace eosio {
 
 using namespace appbase;
-using namespace witness_plugin_wrappers;
 
 class witness_plugin : public appbase::plugin<witness_plugin> {
 public:
@@ -29,15 +27,9 @@ public:
     * plugin begins to create a signature. This will allow any dependent plugin's impl to stay alive until the callback
     * is fired -- even if appbase has already initiated shutdown and called shutdown() of the dependent plugin.
     */
-   template<typename T>
-   void add_on_witness_sig(witness_callback_func&& func, std::weak_ptr<T> weak_ptr) {
-      auto p = std::make_unique<wrapped_weak_ptr<T>>(weak_ptr);
-      add_on_witness_sig(std::move(func), std::move(p));
-   }
+   void add_on_witness_sig(witness_callback_func&& func, std::weak_ptr<void> weak_ptr);
 
 private:
-   void add_on_witness_sig(witness_callback_func&& func, std::unique_ptr<wrapped_weak_ptr_base>&& weak_ptr);
-
    std::unique_ptr<struct witness_plugin_impl> my;
 };
 

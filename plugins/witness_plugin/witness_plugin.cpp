@@ -11,7 +11,7 @@ struct witness_plugin_impl {
 
    struct callback_entry {
       witness_plugin::witness_callback_func func;
-      std::unique_ptr<wrapped_weak_ptr_base> weakptr;
+      std::weak_ptr<void> weakptr;
    };
 
    std::list<callback_entry> callbacks;
@@ -57,11 +57,11 @@ void witness_plugin::plugin_startup() {
       if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
          return;
 
-      std::list<std::pair<std::reference_wrapper<witness_plugin::witness_callback_func>, std::shared_ptr<wrapped_shared_ptr_base>>> locks;
+      std::list<std::pair<std::reference_wrapper<witness_plugin::witness_callback_func>, std::shared_ptr<void>>> locks;
       auto it = my->callbacks.begin();
       while(it != my->callbacks.end()) {
-         auto lock = it->weakptr->lock();
-         if(!lock->valid()) {
+         auto lock = it->weakptr.lock();
+         if(!lock) {
             it = my->callbacks.erase(it);
          }
          else {
@@ -80,7 +80,7 @@ void witness_plugin::plugin_startup() {
    });
 }
 
-void witness_plugin::add_on_witness_sig(witness_callback_func&& func, std::unique_ptr<wrapped_weak_ptr_base>&& weak_ptr) {
+void witness_plugin::add_on_witness_sig(witness_callback_func&& func, std::weak_ptr<void> weak_ptr) {
    my->callbacks.emplace_back(witness_plugin_impl::callback_entry{std::move(func), std::move(weak_ptr)});
 }
 
