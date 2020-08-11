@@ -136,7 +136,7 @@ void chain_api_plugin::plugin_startup() {
    
    if (chain.account_queries_enabled()) {
       _http_plugin.add_async_api({
-         CHAIN_RO_CALL_WITH_400(get_accounts_by_authorizers, 200),
+         CHAIN_RO_CALL_WITH_400(get_accounts_by_authorizers, 200, http_params_types::params_required),
       });
    }
 }
