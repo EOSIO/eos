@@ -445,7 +445,7 @@ static auto get_extra_args() {
 
    auto argc = boost::unit_test::framework::master_test_suite().argc;
    auto argv = boost::unit_test::framework::master_test_suite().argv;
-   std::for_each(argv, argv + argc, [&](const auto &a){
+   std::for_each(argv, argv + argc, [&](const std::string &a){
       if (a == "--save-snapshot") {
          save_snapshot = true;
       } else if (a == "--generate-snapshot-log") {
@@ -461,7 +461,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
    bool save_snapshot = false;
    bool generate_log = false;
-   std:tie(save_snapshot, generate_log) = get_extra_args();
+   std::tie(save_snapshot, generate_log) = get_extra_args();
    const auto source_log_dir = bfs::path(snapshot_file<snapshot::binary>::base_path);
 
    if (generate_log) {
@@ -483,19 +483,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 
       auto source = chain.get_config().blog.log_dir / "blocks.log";
       auto dest = bfs::path(snapshot_file<snapshot::binary>::base_path) / "blocks.log";
-      bfs::copy(source, source_log_dir / "blocks.log");
+      bfs::copy_file(source, source_log_dir / "blocks.log", bfs::copy_option::overwrite_if_exists);
       chain.close();
    }
 
    auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
    auto genesis = chain::block_log::extract_genesis_state(source_log_dir);
+   bfs::create_directories(config.blog.log_dir);
    bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
    tester base_chain(config, *genesis);
 
    std::string current_version = "v4";
 
    int ordinal = 0;
-   for(std::string version : {"v2", "v3", "v4"})
+   for(std::string version : /*{"v2", "v3", "v4"}*/ {"v4"})
    {
       if(save_snapshot && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
