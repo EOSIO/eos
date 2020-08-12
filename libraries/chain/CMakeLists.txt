@@ -123,6 +123,7 @@ add_library( eosio_chain
              thread_utils.cpp
              platform_timer_accuracy.cpp
              kv_context.cpp
+             kv_context_rocksdb.cpp
              kv_context_chainbase.cpp
              db_context_chainbase.cpp
              ${PLATFORM_TIMER_IMPL}

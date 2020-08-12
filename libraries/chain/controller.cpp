@@ -731,13 +731,6 @@ struct controller_impl {
          });
       }
 
-      if (conf.use_rocksdb_for_disk)
-         use_rocksdb_for_disk(db);
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         ilog("using rocksdb for eosio.kvdisk");
-      else
-         ilog("using chainbase for eosio.kvdisk");
-
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -1008,12 +1001,6 @@ struct controller_impl {
       });
 
       db.create<kv_db_config_object>([](auto&){});
-      if (conf.use_rocksdb_for_disk)
-         use_rocksdb_for_disk(db);
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         ilog("using rocksdb for eosio.kvdisk");
-      else
-         ilog("using chainbase for eosio.kvdisk");
 
       { /// load and upgrade the block header state
          block_header_state head_header_state;
@@ -1079,7 +1066,7 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{},
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_database_config{},
                                         genesis_state::default_initial_wasm_configuration);
                   });
                });
@@ -1092,7 +1079,7 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, kv_config{},
+                     gpo.initalize_from(legacy_global_properties, kv_database_config{},
                                         genesis_state::default_initial_wasm_configuration);
                   });
                });
@@ -1104,7 +1091,7 @@ struct controller_impl {
          if constexpr (std::is_same_v<value_t, kv_object>) {
             if ( header.version < kv_object::minimum_snapshot_version )
                return;
-            if (conf.use_rocksdb_for_disk) {
+            if (conf.backing_store == backing_store_type::ROCKSDB) {
                rocksdb::WriteBatch batch;
                vector<char> prefix = rocksdb_contract_kv_prefix;
                b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
@@ -1223,7 +1210,7 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
-         gpo.kv_configuration = kv_config{};
+         gpo.kv_configuration = kv_database_config{};
          // TODO: Update this when genesis protocol features are enabled.
          gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
@@ -2659,6 +2646,11 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
 uint32_t controller::get_max_nonprivileged_inline_action_size()const
 {
    return my->conf.max_nonprivileged_inline_action_size;
+}
+
+const controller::config& controller::get_config()const
+{
+   return my->conf;
 }
 
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )

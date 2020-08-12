@@ -65,6 +65,11 @@ namespace eosio { namespace chain {
       LIGHT
    };
 
+   enum class backing_store_type {
+      CHAINBASE,
+      ROCKSDB
+   };
+
    class controller {
       public:
          struct config {
@@ -85,7 +90,7 @@ namespace eosio { namespace chain {
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
-            bool                     use_rocksdb_for_disk   =  false;
+            backing_store_type       backing_store              =  backing_store_type::CHAINBASE;
             uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
             int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
@@ -203,6 +208,7 @@ namespace eosio { namespace chain {
          authorization_manager&                get_mutable_authorization_manager();
          const protocol_feature_manager&       get_protocol_feature_manager()const;
          uint32_t                              get_max_nonprivileged_inline_action_size()const;
+         const config&                         get_config()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;

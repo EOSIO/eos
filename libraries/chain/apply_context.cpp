@@ -91,9 +91,11 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-#warning TODO: Remove kv_ram. Rename kv_disk
-            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
+            if (control.get_config().backing_store == backing_store_type::ROCKSDB) {
+               kv_backing_store = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+            } else {
+               kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+            }
 
             _db_context = create_db_chainbase_context(*this, receiver);
          }
@@ -1129,24 +1131,23 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    return keyval_cache.cache_table( *tab );
 }
 
-int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
-   return kv_get_db(db).kv_erase(contract, key, key_size);
+int64_t apply_context::kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
+   return kv_get_backing_store().kv_erase(contract, key, key_size);
 }
 
-int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
-   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size, payer);
+int64_t apply_context::kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
+   return kv_get_backing_store().kv_set(contract, key, key_size, value, value_size, payer);
 }
 
-bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-   return kv_get_db(db).kv_get(contract, key, key_size, value_size);
+bool apply_context::kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+   return kv_get_backing_store().kv_get(contract, key, key_size, value_size);
 }
 
-uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
-   return kv_get_db(db).kv_get_data(offset, data, data_size);
+uint32_t apply_context::kv_get_data(uint32_t offset, char* data, uint32_t data_size) {
+   return kv_get_backing_store().kv_get_data(offset, data, data_size);
 }
 
-uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
-   auto& kdb = kv_get_db(db);
+uint32_t apply_context::kv_it_create(uint64_t contract, const char* prefix, uint32_t size) {
    uint32_t itr;
    if (!kv_destroyed_iterators.empty()) {
       itr = kv_destroyed_iterators.back();
@@ -1157,7 +1158,7 @@ uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char*
       itr = kv_iterators.size();
       kv_iterators.emplace_back();
    }
-   kv_iterators[itr] = kdb.kv_it_create(contract, prefix, size);
+   kv_iterators[itr] = kv_get_backing_store().kv_it_create(contract, prefix, size);
    return itr;
 }
 
@@ -1211,14 +1212,6 @@ int32_t apply_context::kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint
 int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) {
    kv_check_iterator(itr);
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
-}
-
-kv_context& apply_context::kv_get_db(uint64_t db) {
-   if (db == kvram_id.to_uint64_t())
-      return *kv_ram;
-   else if (db == kvdisk_id.to_uint64_t())
-      return *kv_disk;
-   EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }
 
 void apply_context::kv_check_iterator(uint32_t itr) {

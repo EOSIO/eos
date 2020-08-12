@@ -283,10 +283,13 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_chainbase
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
                                                            kv_resource_manager resource_manager, const kv_database_config& limits)
    {
-      return std::make_unique<kv_context_chainbase>(db, database_id, receiver, resource_manager, limits);
+      // Preparing to remove db specifier. Hardcode original database_id to 
+      // kvdisk_id for now. It will be removed in the last phase of 
+      // the removing db specifier activity.
+      return std::make_unique<kv_context_chainbase>(db, kvdisk_id, receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain
