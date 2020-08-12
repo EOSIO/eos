@@ -582,8 +582,6 @@ class apply_context {
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
 
-      void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
-
    private:
       kv_context& kv_get_db(uint64_t db);
       void kv_check_iterator(uint32_t itr);
@@ -601,7 +599,7 @@ class apply_context {
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
-      
+
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }
@@ -640,7 +638,6 @@ class apply_context {
       generic_index<index_long_double_object>                        idx_long_double;
 
       std::unique_ptr<kv_context>                                    kv_ram;
-      std::unique_ptr<kv_context>                                    kv_disk;
       std::vector<std::unique_ptr<kv_iterator>>                      kv_iterators;
       std::vector<size_t>                                            kv_destroyed_iterators;
 

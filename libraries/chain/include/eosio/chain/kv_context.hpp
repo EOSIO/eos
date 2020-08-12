@@ -15,7 +15,6 @@ namespace eosio { namespace chain {
    class apply_context;
 
    inline constexpr name kvram_id  = N(eosio.kvram);
-   inline constexpr name kvdisk_id = N(eosio.kvdisk);
 
    enum class kv_it_stat {
       iterator_ok     = 0,  // Iterator is positioned at a key-value pair
@@ -68,7 +67,6 @@ namespace eosio { namespace chain {
    };
 
    kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
-   kv_resource_manager create_kv_resource_manager_disk(apply_context& context);
 
    struct kv_context {
       virtual ~kv_context() {}

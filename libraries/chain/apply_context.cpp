@@ -91,7 +91,6 @@ void apply_context::exec_one()
          kv_destroyed_iterators.clear();
          if (!context_free) {
             kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -125,8 +124,6 @@ void apply_context::exec_one()
                if (control.is_builtin_activated(builtin_protocol_feature_t::ram_restrictions)) {
                   check_unprivileged_resource_usage<unauthorized_ram_usage_increase>("RAM", _account_ram_deltas);
                }
-
-               check_unprivileged_resource_usage<unauthorized_disk_usage_increase>("DISK", _account_disk_deltas);
             }
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
@@ -1212,8 +1209,6 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
 kv_context& apply_context::kv_get_db(uint64_t db) {
    if (db == kvram_id.to_uint64_t())
       return *kv_ram;
-   else if (db == kvdisk_id.to_uint64_t())
-      return *kv_disk;
    EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }
 
@@ -1249,16 +1244,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
-   }
-}
-
-void apply_context::add_disk_usage( account_name payer, int64_t disk_delta, const storage_usage_trace& trace ) {
-
-   trx_context.add_disk_usage( payer, disk_delta, trace );
-
-   auto p = _account_disk_deltas.emplace( payer, disk_delta );
-   if( !p.second ) {
-      p.first->delta += disk_delta;
    }
 }
 

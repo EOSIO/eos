@@ -67,13 +67,7 @@ class kv_tester : public tester {
          sys_abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
       }
 
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest1)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest2)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest3)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest4)) == "");
       BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024*1024) == "");
-      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024*1024) == "");
       produce_block();
    }
 
@@ -88,9 +82,7 @@ class kv_tester : public tester {
 
    action_result set_limit(name db, int64_t limit, name account = N(kvtest)) {
       action_name name;
-      if(db == N(eosio.kvdisk)) {
-         name = N(setdisklimit);
-      } else if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram)) {
          name = N(setramlimit);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -105,9 +97,7 @@ class kv_tester : public tester {
 
    action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       action_name name;
-      if(db == N(eosio.kvdisk)) {
-         name = N(diskkvlimits);
-      } else if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram)) {
          name = N(ramkvlimits);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -175,8 +165,6 @@ class kv_tester : public tester {
    uint64_t get_usage(name db, name account=N(kvtest)) {
       if (db == N(eosio.kvram)) {
          return control->get_resource_limits_manager().get_account_ram_usage(account);
-      } else if (db == N(eosio.kvdisk)) {
-         return control->get_resource_limits_manager().get_account_disk_usage(account);
       }
       BOOST_FAIL("Wrong db");
       return 0;
@@ -461,8 +449,6 @@ class kv_tester : public tester {
 
    void test_ram_usage(name db) {
       uint64_t base_usage = get_usage(db);
-      // DISK should start at 0, because it's only used by the kv store.
-      if(db == N(eosio.kvdisk)) BOOST_TEST(base_usage == 0);
 
       get("", db, N(kvtest), "11", nullptr);
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
@@ -488,27 +474,12 @@ class kv_tester : public tester {
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
       BOOST_TEST(get_usage(db, N(kvtest1)) == base_usage1 + base_billable + 1);
 
-      // test unauthorized payer
-      if(db == N(eosio.kvdisk)) {
-         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest1" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
-      }
-      else
-      {
-         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
-      }
+      BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" ==
+                  set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
 
-      if(db == N(eosio.kvdisk)) {
-         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest2" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
-      }
-      else
-      {
-         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
-      }
-      
+
+      BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" ==
+                  set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
    }
 
    void test_resource_limit(name db) {
@@ -617,31 +588,9 @@ class kv_tester : public tester {
 
    void test_max_iterators() {
       BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024, 5) == "");
-      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024, 7) == "");
       // individual limits
       BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}}) == "");
       BOOST_TEST(iterlimit({{N(eosio.kvram), 6, false}}) == "Too many iterators");
-      BOOST_TEST(iterlimit({{N(eosio.kvdisk), 7, false}}) == "");
-      BOOST_TEST(iterlimit({{N(eosio.kvdisk), 2000, false}}) == "Too many iterators");
-      // both limits together
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}, {N(eosio.kvdisk), 7, false}}) == "");
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 6, false}, {N(eosio.kvdisk), 7, false}}) == "Too many iterators");
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}, {N(eosio.kvdisk), 8, false}}) == "Too many iterators");
-      // erase iterators and create more
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
-                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
-                            {N(eosio.kvram), 3, false}, {N(eosio.kvdisk), 3, false}}) == "");
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
-                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
-                            {N(eosio.kvram), 3, false}, {N(eosio.kvdisk), 4, false}}) == "Too many iterators");
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 6, false},
-                            {N(eosio.kvram), 2, true}, {N(eosio.kvdisk), 2, true},
-                            {N(eosio.kvram), 4, false}, {N(eosio.kvdisk), 3, false}}) == "Too many iterators");
-      // fallback limit - testing this is impractical because it uses too much memory
-      // This many iterators would consume at least 400 GiB.
-      // BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024, 0xFFFFFFFF) == "");
-      // BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024, 0xFFFFFFFF) == "");
-      // BOOST_TEST(iterlimit({{N(eosio.kvram), 0xFFFFFFFF, false}, {N(eosio.kvdisk), 1, false}}) == "Too many iterators");
    }
 
    abi_serializer abi_ser;
@@ -653,9 +602,7 @@ BOOST_AUTO_TEST_SUITE(kv_tests)
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
    BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", N(oops))));
    BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvram))));
-   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvdisk))));
    test_basic(N(eosio.kvram));
-   test_basic(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
@@ -665,19 +612,11 @@ BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try { //
    test_scan(N(eosio.kvram), N(kvtest4));
    test_scan(N(eosio.kvram), N(kvtest3));
    test_scan(N(eosio.kvram), N(kvtest1));
-   test_scan(N(eosio.kvdisk), N(kvtest2));
-   test_scan(N(eosio.kvdisk), N(kvtest4));
-   test_scan(N(eosio.kvdisk), N(kvtest3));
-   test_scan(N(eosio.kvdisk), N(kvtest1));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scan_ram_after_disk, kv_tester) try { //
    // Make sure that the behavior of one database is not affected by having the other database populated.
-   test_scan(N(eosio.kvdisk), N(kvtest2));
-   test_scan(N(eosio.kvdisk), N(kvtest4));
-   test_scan(N(eosio.kvdisk), N(kvtest3));
-   test_scan(N(eosio.kvdisk), N(kvtest1));
    test_scan(N(eosio.kvram), N(kvtest2));
    test_scan(N(eosio.kvram), N(kvtest4));
    test_scan(N(eosio.kvram), N(kvtest3));
@@ -690,18 +629,10 @@ BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try { //
    test_scanrev(N(eosio.kvram), N(kvtest4));
    test_scanrev(N(eosio.kvram), N(kvtest3));
    test_scanrev(N(eosio.kvram), N(kvtest1));
-   test_scanrev(N(eosio.kvdisk), N(kvtest2));
-   test_scanrev(N(eosio.kvdisk), N(kvtest4));
-   test_scanrev(N(eosio.kvdisk), N(kvtest3));
-   test_scanrev(N(eosio.kvdisk), N(kvtest1));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev_ram_after_disk, kv_tester) try { //
-   test_scanrev(N(eosio.kvdisk), N(kvtest2));
-   test_scanrev(N(eosio.kvdisk), N(kvtest4));
-   test_scanrev(N(eosio.kvdisk), N(kvtest3));
-   test_scanrev(N(eosio.kvdisk), N(kvtest1));
    test_scanrev(N(eosio.kvram), N(kvtest2));
    test_scanrev(N(eosio.kvram), N(kvtest4));
    test_scanrev(N(eosio.kvram), N(kvtest3));
@@ -711,35 +642,30 @@ FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
    test_scanrev2(N(eosio.kvram));
-   test_scanrev2(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
    test_iterase(N(eosio.kvram));
-   test_iterase(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
    test_ram_usage(N(eosio.kvram));
-   test_ram_usage(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
    test_resource_limit(N(eosio.kvram));
-   test_resource_limit(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
    test_key_value_limit(N(eosio.kvram));
-   test_key_value_limit(N(eosio.kvdisk));
 }
 FC_LOG_AND_RETHROW()
 
-constexpr name databases[] = { N(eosio.kvram), N(eosio.kvdisk) };
+constexpr name databases[] = { N(eosio.kvram) };
 
 BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
    test_kv_inc_dec_usage(db);
@@ -791,7 +717,6 @@ static const char kv_setup_wast[] =  R"=====(
       (then
          (drop (call $read_action_data (get_local $next_name_address) (get_local $bytes_remaining)))
          (loop
-            (call $set_resource_limit (i64.load (get_local $next_name_address)) (i64.const 5454140623722381312) (i64.const -1))            
             (set_local $bytes_remaining (i32.sub (get_local $bytes_remaining) (i32.const 8)))
             (set_local $next_name_address (i32.add (get_local $next_name_address) (i32.const 8)))
             (br_if 0 (i32.ge_s (get_local $bytes_remaining) (i32.const 8)))
