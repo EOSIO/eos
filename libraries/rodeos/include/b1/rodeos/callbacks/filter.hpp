@@ -16,28 +16,23 @@ struct filter_callbacks {
       derived().get_filter_callback_state().push_data(data.data(), data.size());
    }
 
-   int32_t clock_gettime(int32_t id, uint64_t* data) {
-      std::chrono::nanoseconds result;
-      if (id == 0) { // CLOCK_REALTIME
-         result = std::chrono::system_clock::now().time_since_epoch();
-      } else if (id == 1) { // CLOCK_MONOTONIC
-         result = std::chrono::steady_clock::now().time_since_epoch();
-      } else {
-         return -1;
-      }
-      int32_t               sec  = result.count() / 1000000000;
-      int32_t               nsec = result.count() % 1000000000;
-      fc::datastream<char*> ds((char*)data, 8);
-      fc::raw::pack(ds, sec);
-      fc::raw::pack(ds, nsec);
-      return 0;
+   void print_time_us() {
+      std::chrono::microseconds result = std::chrono::system_clock::now().time_since_epoch();
+      time_t                    sec    = result.count() / 1'000'000;
+      int32_t                   usec   = result.count() % 1'000'000;
+      tm                        t;
+      gmtime_r(&sec, &t);
+      char s[sizeof("2011-10-08T07:07:09.000000")];
+      snprintf(s, sizeof(s), "%04d-%02d-%02dT%02d:%02d:%02d.%06d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour,
+               t.tm_min, t.tm_sec, usec);
+      derived().append_console(s, strlen(s));
    }
 
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
       Rft::template add<&Derived::push_data>("env", "push_data");
-      Rft::template add<&Derived::clock_gettime>("env", "clock_gettime");
+      Rft::template add<&Derived::print_time_us>("env", "print_time_us");
    }
 }; // query_callbacks
 
