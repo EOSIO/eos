@@ -253,15 +253,21 @@ namespace eosio { namespace client { namespace http {
       throw;
    }
 
+   fc::variant response_result;
+   try {
+      response_result = fc::json::from_string(re);
+   } catch(...) {
+      // re reported below if print_response requested
+   }
+
    if( print_response ) {
       std::cerr << "RESPONSE:" << std::endl
                 << "---------------------" << std::endl
-                << re << std::endl
+                << ( response_result.is_null() ? re : fc::json::to_pretty_string( response_result ) ) << std::endl
                 << "---------------------" << std::endl;
    }
 
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
-      auto response_result = fc::json::from_string(re);
       return response_result;
    } else if( status_code == 404 ) {
       // Unknown endpoint
@@ -275,7 +281,6 @@ namespace eosio { namespace client { namespace http {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
    } else {
-      auto response_result = fc::json::from_string(re);
       auto &&error_info = response_result.as<eosio::error_results>().error;
       // Construct fc exception from error
       const auto &error_details = error_info.details;
@@ -290,6 +295,6 @@ namespace eosio { namespace client { namespace http {
    }
 
    EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
-   return variant();
+   return response_result;
    }
 }}}
