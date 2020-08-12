@@ -1,5 +1,6 @@
 #include "cloner_plugin.hpp"
 #include "ship_client.hpp"
+#include "streams/stream.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
 #include <boost/asio/connect.hpp>
@@ -40,7 +41,7 @@ struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
    std::shared_ptr<cloner_session>                                          session;
    boost::asio::deadline_timer                                              timer;
-   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
+   std::shared_ptr<streamer_t>                                              streamer;
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -161,11 +162,15 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
       if (filter) {
+         if (my->streamer)
+            my->streamer->start_block(result.this_block->block_num);
          filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
             if (my->streamer) {
-               my->streamer(data, data_size);
+               my->streamer->stream_data(data, data_size);
             }
          });
+         if (my->streamer)
+            my->streamer->stop_block(result.this_block->block_num);
       }
 
       rodeos_snapshot->end_block(result, false);
@@ -256,8 +261,8 @@ void cloner_plugin::plugin_shutdown() {
    ilog("cloner_plugin stopped");
 }
 
-void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
-   my->streamer = streamer_func;
+void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {
+   my->streamer = std::move(streamer);
 }
 
 } // namespace b1

@@ -87,7 +87,7 @@ Options:
 #include <eosio/chain/thread_utils.hpp>
 
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
-#include <eosio/amqp_trace_plugin/amqp_handler.hpp>
+#include <eosio/amqp/amqp_handler.hpp>
 
 #include <eosio/version/version.hpp>
 
