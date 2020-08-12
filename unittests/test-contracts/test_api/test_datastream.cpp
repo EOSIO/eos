@@ -83,7 +83,7 @@ void test_datastream::test_basic()
      * 
      * Details:
      * In c++17 StaticArray can be constructed with {10,20} or {{10,20}} using braces elision feature
-     * boost::pfr::for_each_field chosing constrictor with maximum parameters available
+     * boost::pfr::for_each_field chosing constructor with maximum parameters available
      * which is 2 in commented out example and then it fails to compile here
      *    <skipped>/include/boost/pfr/detail/core17_generated.hpp:51:9: error: type 'StaticArray'
      *    decomposes into 1 elements, but 2 names were provided

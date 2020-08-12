@@ -4,32 +4,6 @@
 using namespace eosio;
 using namespace eosio::internal_use_do_not_use;
 
-enum it_stat : int32_t {
-   iterator_ok     = 0,
-   iterator_erased = -1,
-   iterator_end    = -2,
-};
-
-#define IMPORT extern "C" __attribute__((eosio_wasm_import))
-
-// clang-format off
-// IMPORT int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-// IMPORT int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, name payer);
-// IMPORT bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
-// IMPORT uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
-// IMPORT uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
-// IMPORT void     kv_it_destroy(uint32_t itr);
-// IMPORT int32_t  kv_it_status(uint32_t itr);
-// IMPORT int      kv_it_compare(uint32_t itr_a, uint32_t itr_b);
-// IMPORT int      kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
-// IMPORT int32_t  kv_it_move_to_end(uint32_t itr);
-// IMPORT it_stat  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
-// IMPORT it_stat  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
-// IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
-// IMPORT it_stat  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
-// IMPORT it_stat  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
-// clang-format on
-
 struct kv {
    std::vector<char> k;
    std::vector<char> v;
