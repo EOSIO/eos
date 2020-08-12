@@ -34,9 +34,11 @@ namespace eosio { namespace chain {
 namespace config {
    template<>
    struct billable_size<kv_object> {
-      static constexpr uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;
-      static constexpr uint64_t serialized_kv_object_size = sizeof(kv_object) - 2*sizeof(shared_blob) + (8 + 4) * 2; ///< 8 for vector data 4 for vector size
-      static constexpr uint64_t value = serialized_kv_object_size + overhead; 
+      // NOTICE: Do not change any of the constants defined here; otherwise it would cause backward concensus compatibility problem.
+      static constexpr uint64_t overhead                     = overhead_per_row_per_index_ram_bytes * 2;
+      static constexpr uint64_t serialized_shared_blob_size  = 8 + 4; // 8 for vector data 4 for vector size
+      static constexpr uint64_t serialized_kv_object_size_exclude_shared_blobs = 32; // derived from sizeof(id_type) + 3* sizeof(name)
+      static constexpr uint64_t value = serialized_kv_object_size_exclude_shared_blobs + serialized_shared_blob_size * 2 + overhead; 
    };
 } // namespace config
 
