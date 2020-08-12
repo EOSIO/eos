@@ -68,7 +68,7 @@ struct augmented_transaction_trace {
 struct table_delta {
    fc::unsigned_int                                                       struct_version = 0;
    std::string                                                            name{};
-   history_serial_big_vector_wrapper<std::vector<std::pair<bool, bytes>>> rows{};
+   history_serial_big_vector_wrapper<std::vector<std::pair<uint8_t, bytes>>> rows{};
 };
 
 struct block_position {

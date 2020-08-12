@@ -502,7 +502,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             auto& delta = deltas.back();
             delta.name  = name;
             for (auto& row : index.indices())
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               delta.rows.obj.emplace_back(2, pack_row(row));
          } else {
             if (index.stack().empty())
                return;
@@ -515,13 +515,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             for (auto& old : undo.old_values) {
                auto& row = index.get(old.first);
                if (include_delta(old.second, row))
-                  delta.rows.obj.emplace_back(true, pack_row(row));
+                  delta.rows.obj.emplace_back(1, pack_row(row));
             }
             for (auto& old : undo.removed_values)
-               delta.rows.obj.emplace_back(false, pack_row(old.second));
+               delta.rows.obj.emplace_back(0, pack_row(old.second));
             for (auto id : undo.new_ids) {
                auto& row = index.get(id);
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               delta.rows.obj.emplace_back(2, pack_row(row));
             }
          }
       };
