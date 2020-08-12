@@ -223,12 +223,12 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size());
-         resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
+         //resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
          return resource_delta;
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                  uint32_t value_size) override {
+                  uint32_t value_size, account_name payer) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
          EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
@@ -251,7 +251,7 @@ namespace eosio { namespace chain {
          } else {
             resource_delta = static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size;
          }
-         resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+         resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
          return resource_delta;
       }
 
