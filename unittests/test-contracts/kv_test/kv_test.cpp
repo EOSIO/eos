@@ -4,6 +4,12 @@
 using namespace eosio;
 using namespace eosio::internal_use_do_not_use;
 
+enum it_stat : int32_t {
+   iterator_ok     = 0,
+   iterator_erased = -1,
+   iterator_end    = -2,
+};
+
 struct kv {
    std::vector<char> k;
    std::vector<char> v;
