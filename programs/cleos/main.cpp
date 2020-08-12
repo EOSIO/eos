@@ -471,6 +471,27 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
+void print_return_value( const fc::variant& at ) {
+   std::string return_value, return_value_prefix{"return value: "};
+   const auto  & iter_value = at.get_object().find("return_value_data");
+   const auto  & iter_hex   = at.get_object().find("return_value_hex_data");
+
+   if( iter_value != at.get_object().end() ) {
+      return_value = fc::json::to_string(iter_value->value(), fc::time_point::maximum());
+   }
+   else if( iter_hex != at.get_object().end() ) {
+      return_value = iter_hex->value().as_string();
+      return_value_prefix = "return value (hex): ";
+   }
+
+   if( !return_value.empty() ) {
+      if( return_value.size() > 100 ) {
+         return_value = return_value.substr(0, 100) + "...";
+      }
+      cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
+   }
+}
+
 void print_action( const fc::variant& at ) {
    auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
@@ -487,6 +508,7 @@ void print_action( const fc::variant& at ) {
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   print_return_value(at);
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
@@ -1143,7 +1165,7 @@ struct create_account_subcommand {
 
             if( active_key_str.empty() ) {
                active = owner;
-            } else if ( active_key_str.find('{') != string::npos ) { 
+            } else if ( active_key_str.find('{') != string::npos ) {
                try{
                   active = parse_json_authority_or_key(active_key_str);
                } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active authority: ${authority}", ("authority", owner_key_str) )
@@ -2628,7 +2650,7 @@ int main( int argc, char** argv ) {
    });
 
    // validate subcommand
-   auto validate = app.add_subcommand("validate", localized("Validate transactions")); 
+   auto validate = app.add_subcommand("validate", localized("Validate transactions"));
    validate->require_subcommand();
 
    // validate signatures
