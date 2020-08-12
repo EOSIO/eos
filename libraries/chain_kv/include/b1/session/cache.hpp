@@ -27,43 +27,57 @@ private:
 public:
     using allocator_type = allocator;
     
-    class iterator;
-    using const_iterator = const iterator;
-    
-    class iterator final
+    template <typename iterator_type, typename iterator_traits>
+    class cache_iterator final
     {
     public:
+        using difference_type = typename iterator_traits::difference_type;
+        using value_type = typename iterator_traits::value_type;
+        using pointer = typename iterator_traits::pointer;
+        using reference = typename iterator_traits::reference;
+        using iterator_category = typename iterator_traits::iterator_category;
+
+        cache_iterator() = default;
+        cache_iterator(const cache_iterator& it) = default;
+        cache_iterator(cache_iterator&&) = default;
+        cache_iterator(iterator_type it);
+        
+        auto operator=(const cache_iterator& it) -> cache_iterator& = default;
+        auto operator=(cache_iterator&&) -> cache_iterator& = default;
+        
+        auto operator++() -> cache_iterator&;
+        auto operator++(int) -> cache_iterator;
+        auto operator--() -> cache_iterator&;
+        auto operator--(int) -> cache_iterator;
+        auto operator*() -> reference;
+        auto operator->() -> reference;
+        auto operator==(const cache_iterator& other) const -> bool;
+        auto operator!=(const cache_iterator& other) const -> bool;
+        
+    private:
+        iterator_type m_it;
+    };
+
+    struct iterator_traits
+    {
         using difference_type = long;
         using value_type = key_value;
+        using pointer = value_type*;
+        using reference = value_type&;
+        using iterator_category = std::bidirectional_iterator_tag;
+    };
+    using iterator = cache_iterator<cache_type::iterator, iterator_traits>;
+
+    struct const_iterator_traits
+    {
+        using difference_type = long;
+        using value_type = const key_value;
         using pointer = const value_type*;
         using reference = const value_type&;
         using iterator_category = std::bidirectional_iterator_tag;
-
-        iterator() = default;
-        iterator(const iterator& it) = default;
-        iterator(iterator&&) = default;
-        iterator(cache_type::iterator it);
-        
-        auto operator=(const iterator& it) -> iterator& = default;
-        auto operator=(iterator&&) -> iterator& = default;
-        
-        auto operator++() -> iterator&;
-        auto operator++() const -> const_iterator&;
-        auto operator++(int) -> iterator;
-        auto operator++(int) const -> const_iterator;
-        auto operator--() -> iterator&;
-        auto operator--() const -> const_iterator&;
-        auto operator--(int) -> iterator;
-        auto operator--(int) const -> const_iterator;
-        auto operator*() const -> reference;
-        auto operator->() const -> reference;
-        auto operator==(const_iterator& other) const -> bool;
-        auto operator!=(const_iterator& other) const -> bool;
-        
-    private:
-        cache_type::iterator m_it;
     };
-    
+    using const_iterator = cache_iterator<cache_type::const_iterator, const_iterator_traits>;
+
 public:
     cache() = default;
     cache(const cache&) = default;
@@ -323,7 +337,7 @@ auto cache<allocator>::find(const bytes& key) -> typename cache<allocator>::iter
 template <typename allocator>
 auto cache<allocator>::find(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {const_cast<cache_type&>(m_cache).find(key)};
+    return {m_cache.find(key)};
 }
 
 template <typename allocator>
@@ -335,7 +349,7 @@ auto cache<allocator>::begin() -> typename cache<allocator>::iterator
 template <typename allocator>
 auto cache<allocator>::begin() const -> typename cache<allocator>::const_iterator
 {
-    return {std::begin(const_cast<cache_type&>(m_cache))};
+    return {std::begin(m_cache)};
 }
 
 template <typename allocator>
@@ -347,7 +361,7 @@ auto cache<allocator>::end() -> typename cache<allocator>::iterator
 template <typename allocator>
 auto cache<allocator>::end() const -> typename cache<allocator>::const_iterator
 {
-    return {std::end(const_cast<cache_type&>(m_cache))};
+    return {std::end(m_cache)};
 }
 
 template <typename allocator>
@@ -359,7 +373,7 @@ auto cache<allocator>::lower_bound(const bytes& key) -> typename cache<allocator
 template <typename allocator>
 auto cache<allocator>::lower_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {const_cast<cache_type&>(m_cache).lower_bound(key)};
+    return {m_cache.lower_bound(key)};
 }
 
 template <typename allocator>
@@ -371,87 +385,70 @@ auto cache<allocator>::upper_bound(const bytes& key) -> typename cache<allocator
 template <typename allocator>
 auto cache<allocator>::upper_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {const_cast<cache_type&>(m_cache).lower_bound(key)};
+    return {m_cache.lower_bound(key)};
 }
 
 template <typename allocator>
-cache<allocator>::iterator::iterator(cache_type::iterator it)
+template <typename iterator_type, typename iterator_traits>
+cache<allocator>::cache_iterator<iterator_type, iterator_traits>::cache_iterator(iterator_type it)
 : m_it{std::move(it)}
 {
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator++() -> typename cache<allocator>::iterator&
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++() -> cache_iterator&
 {
     ++m_it;
     return *this;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator++() const -> typename cache<allocator>::const_iterator&
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++(int) -> cache_iterator
 {
-    ++m_it;
-    return *this;
+    return {m_it++};
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator++(int) -> typename cache<allocator>::iterator
-{
-    return iterator{m_it++};
-}
-
-template <typename allocator>
-auto cache<allocator>::iterator::operator++(int) const -> typename cache<allocator>::const_iterator
-{
-    return iterator{m_it++};
-}
-
-template <typename allocator>
-auto cache<allocator>::iterator::operator--() -> typename cache<allocator>::iterator&
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--() -> cache_iterator&
 {
     --m_it;
     return *this;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator--() const -> typename cache<allocator>::const_iterator&
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--(int) -> cache_iterator
 {
-    --m_it;
-    return *this;
+    return {m_it--};
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator--(int) -> typename cache<allocator>::iterator
-{
-    return iterator{m_it--};
-}
-
-template <typename allocator>
-typename cache<allocator>::const_iterator cache<allocator>::iterator::operator--(int) const
-{
-    return iterator{m_it--};
-}
-
-template <typename allocator>
-auto cache<allocator>::iterator::operator*() const -> reference
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator*() -> reference
 {
     return m_it->second;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator->() const -> reference
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator->() -> reference
 {
     return m_it->second;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator==(const_iterator& other) const -> bool
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator==(const cache_iterator& other) const -> bool
 {
     return m_it == other.m_it;
 }
 
 template <typename allocator>
-auto cache<allocator>::iterator::operator!=(const_iterator& other) const -> bool
+template <typename iterator_type, typename iterator_traits>
+auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator!=(const cache_iterator& other) const -> bool
 {
     return !(*this == other);
 }
