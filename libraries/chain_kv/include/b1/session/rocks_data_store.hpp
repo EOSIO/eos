@@ -28,7 +28,7 @@ public:
     using allocator_type = allocator;
 
     template <typename iterator_traits>
-    class ds_iterator final
+    class rocks_iterator final
     {
     public:
         using difference_type = typename iterator_traits::difference_type;
@@ -37,25 +37,25 @@ public:
         using reference = typename iterator_traits::reference;
         using iterator_category = typename iterator_traits::iterator_category;
 
-        ds_iterator() = default;
-        ds_iterator(const ds_iterator& it);
-        ds_iterator(ds_iterator&&) = default;
-        ds_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a);
+        rocks_iterator() = default;
+        rocks_iterator(const rocks_iterator& it);
+        rocks_iterator(rocks_iterator&&) = default;
+        rocks_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a);
         
-        auto operator=(const ds_iterator& it) -> ds_iterator&;
-        auto operator=(ds_iterator&&) -> ds_iterator& = default;
+        auto operator=(const rocks_iterator& it) -> rocks_iterator&;
+        auto operator=(rocks_iterator&&) -> rocks_iterator& = default;
         
-        auto operator++() -> ds_iterator&;
-        auto operator++(int) -> ds_iterator;
-        auto operator--() -> ds_iterator&;
-        auto operator--(int) -> ds_iterator;
+        auto operator++() -> rocks_iterator&;
+        auto operator++(int) -> rocks_iterator;
+        auto operator--() -> rocks_iterator&;
+        auto operator--(int) -> rocks_iterator;
         auto operator*() -> value_type;
         auto operator->() -> value_type;
-        auto operator==(const ds_iterator& other) const -> bool;
-        auto operator!=(const ds_iterator& other) const -> bool;
+        auto operator==(const rocks_iterator& other) const -> bool;
+        auto operator!=(const rocks_iterator& other) const -> bool;
     
     protected:
-        auto make_iterator_() const -> ds_iterator;
+        auto make_iterator_() const -> rocks_iterator;
         
     private:
         std::shared_ptr<rocksdb::DB> m_db;
@@ -71,7 +71,7 @@ public:
         using reference = value_type&;
         using iterator_category = std::bidirectional_iterator_tag;
     };
-    using iterator = ds_iterator<iterator_traits>;
+    using iterator = rocks_iterator<iterator_traits>;
 
     struct const_iterator_traits
     {
@@ -81,7 +81,7 @@ public:
         using reference = value_type&;
         using iterator_category = std::bidirectional_iterator_tag;
     };
-    using const_iterator = ds_iterator<const_iterator_traits>;
+    using const_iterator = rocks_iterator<const_iterator_traits>;
 
 public:
     // TODO:  Should ColumnFamilyOptions, WriteOptions, ReadOptions also be passed in on construction
@@ -418,7 +418,7 @@ auto rocks_data_store<allocator>::memory_allocator() const -> const std::shared_
 
 template <typename allocator>
 template <typename iterator_traits>
-rocks_data_store<allocator>::ds_iterator<iterator_traits>::ds_iterator(const ds_iterator& it)
+rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(const rocks_iterator& it)
 : m_db{it.m_db},
   m_iterator{[&]()
   {
@@ -432,7 +432,7 @@ rocks_data_store<allocator>::ds_iterator<iterator_traits>::ds_iterator(const ds_
 
 template <typename allocator>
 template <typename iterator_traits>
-rocks_data_store<allocator>::ds_iterator<iterator_traits>::ds_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a)
+rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a)
 : m_db{std::move(db)},
   m_iterator{std::move(rit)},
   m_allocator{std::move(a)}
@@ -441,7 +441,7 @@ rocks_data_store<allocator>::ds_iterator<iterator_traits>::ds_iterator(std::shar
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator=(const ds_iterator& it) -> ds_iterator&
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator=(const rocks_iterator& it) -> rocks_iterator&
 {
     if (this == &it)
     {
@@ -458,7 +458,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator=(const 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::make_iterator_() const -> ds_iterator
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::make_iterator_() const -> rocks_iterator
 {
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
@@ -468,7 +468,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::make_iterator_()
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator++() -> ds_iterator&
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator++() -> rocks_iterator&
 {
     m_iterator->Next();
     return *this;
@@ -476,7 +476,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator++() -> 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator++(int) -> ds_iterator
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator++(int) -> rocks_iterator
 {
     auto new_it = make_iterator_();
     m_iterator->Next();
@@ -485,7 +485,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator++(int) 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator--() -> ds_iterator&
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator--() -> rocks_iterator&
 {
     m_iterator->Prev();
     return *this;
@@ -493,7 +493,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator--() -> 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator--(int) -> ds_iterator
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator--(int) -> rocks_iterator
 {
     auto new_it = make_iterator_();
     m_iterator->Prev();
@@ -502,7 +502,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator--(int) 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator*() -> value_type
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator*() -> value_type
 {
     auto key_slice = m_iterator->key();
     auto value = m_iterator->value();
@@ -511,7 +511,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator*() -> v
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator->() -> value_type
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator->() -> value_type
 {
     auto key_slice = m_iterator->key();
     auto value = m_iterator->value();
@@ -520,7 +520,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator->() -> 
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator==(const ds_iterator& other) const -> bool
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator==(const rocks_iterator& other) const -> bool
 {
     return m_iterator->key().compare(other.m_iterator->key()) == 0
         && m_iterator->value().compare(other.m_iterator->value()) == 0;
@@ -528,7 +528,7 @@ auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator==(const
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::ds_iterator<iterator_traits>::operator!=(const ds_iterator& other) const -> bool
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator!=(const rocks_iterator& other) const -> bool
 {
     return !(*this == other);
 }
