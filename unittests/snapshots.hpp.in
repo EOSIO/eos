@@ -81,15 +81,18 @@ namespace eosio {
 
          template <typename Snapshot>
          void write( const Snapshot& snapshot ) {
-            std::ostringstream out_str;
+            std::string out_string;
+
             if constexpr (snapshot::is_json_v<TypeTag>) {
-               fc::json::to_stream(out_str, snapshot, fc::time_point::maximum());
+               out_string = fc::json::to_string(snapshot, fc::time_point::maximum());
             } else {
                static_assert(snapshot::is_binary_v<TypeTag>, "unsupported type");
-               out_str.write(snapshot.data(), snapshot.size());
+               std::ostringstream out_stream;
+               out_stream.write(snapshot.data(), snapshot.size());
+               out_string = out_stream.str();
             }
 
-            std::istringstream inStream(out_str.str());
+            std::istringstream inStream(out_string);
             std::ofstream file(this->file_name);
             boost::iostreams::filtering_streambuf<boost::iostreams::input> buf_in;
             buf_in.push(boost::iostreams::gzip_compressor());

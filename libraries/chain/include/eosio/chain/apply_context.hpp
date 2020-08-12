@@ -497,6 +497,9 @@ class apply_context {
       uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free );
       uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free );
 
+   private:
+      template <typename Exception>
+      void check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas);
 
    /// Authorization methods:
    public:
@@ -564,7 +567,7 @@ class apply_context {
    /// KV Database methods:
    public:
       int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
+      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer);
       bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
       uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
       uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
@@ -596,6 +599,7 @@ class apply_context {
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
+
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }

@@ -27,11 +27,12 @@ namespace fc {
     namespace bip = boost::interprocess;
     using shared_string = bip::basic_string< char, std::char_traits< char >, bip::allocator<char, bip::managed_mapped_file::segment_manager> >;
 
-    using namespace boost::multiprecision;
     template<size_t Size>
-    using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
+    using UInt = boost::multiprecision::number<
+          boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void> >;
     template<size_t Size>
-    using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
+    using Int = boost::multiprecision::number<
+          boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void> >;
     template<typename Stream> void pack( Stream& s, const UInt<256>& n );
     template<typename Stream> void unpack( Stream& s,  UInt<256>& n );
     template<typename Stream> void pack( Stream& s, const Int<256>& n );
