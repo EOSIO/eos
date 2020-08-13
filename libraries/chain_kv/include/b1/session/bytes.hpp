@@ -90,19 +90,24 @@ auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
 {
     auto result = bytes{};
     
+    if (!data || length == 0)
+    {
+      return result;
+    }
+
     auto chunk_length = 3 * sizeof(size_t) + length;
     auto* chunk = reinterpret_cast<char*>(a->malloc(chunk_length));
     
     result.m_memory_allocator_address = reinterpret_cast<size_t*>(chunk);
-    result.m_use_count_address = result.m_memory_allocator_address + sizeof(size_t);
-    result.m_length = result.m_use_count_address + sizeof(size_t);
-    result.m_data = result.m_length + sizeof(size_t);
-    
+    result.m_use_count_address = reinterpret_cast<size_t*>(chunk + sizeof(size_t));
+    result.m_length = reinterpret_cast<size_t*>(chunk + 2 * sizeof(size_t));
+    result.m_data = reinterpret_cast<size_t*>(chunk + 3 * sizeof(size_t));
+
     *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function());
     *(result.m_use_count_address) = 1;
     *(result.m_length) = length;
     memcpy(result.m_data, data, length);
-    
+
     return result;
 }
 
@@ -113,7 +118,8 @@ inline auto make_bytes(const void* data, size_t length) -> bytes
     
     result.m_memory_allocator_address = nullptr;
     result.m_use_count_address = nullptr;
-    *(result.m_length) = length;
+    // encode the length as the pointer address of this data member.
+    result.m_length = reinterpret_cast<size_t*>(length);
     result.m_data = reinterpret_cast<void*>(const_cast<void*>(data));
     
     return result;
@@ -140,18 +146,22 @@ inline const bytes bytes::invalid{};
 inline bytes::bytes(const bytes& b)
 : m_memory_allocator_address{b.m_memory_allocator_address},
   m_use_count_address{b.m_use_count_address},
-  m_length{b.m_use_count_address},
+  m_length{b.m_length},
   m_data{b.m_data}
 {
-    ++(*m_use_count_address);
+    if (m_use_count_address)
+    {
+        ++(*m_use_count_address);
+    }
 }
 
 inline bytes::bytes(bytes&& b)
 : m_memory_allocator_address{std::move(b.m_memory_allocator_address)},
   m_use_count_address{std::move(b.m_use_count_address)},
-  m_length{std::move(b.m_use_count_address)},
+  m_length{std::move(b.m_length)},
   m_data{std::move(b.m_data)}
 {
+    b.m_memory_allocator_address = nullptr;
     b.m_use_count_address = nullptr;
     b.m_length = nullptr;
     b.m_data = nullptr;
@@ -187,7 +197,10 @@ inline auto bytes::operator=(const bytes& b) -> bytes&
     m_length = b.m_length;
     m_data = b.m_data;
     
-    ++(*m_use_count_address);
+    if (m_use_count_address)
+    {
+        ++(*m_use_count_address);
+    }
     
     return *this;
 }
@@ -219,6 +232,12 @@ inline auto bytes::data() const -> const void * const
 
 inline auto bytes::length() const -> size_t
 {
+    if (!m_memory_allocator_address)
+    {
+        // The size was encoded as the address of this data member.
+        return reinterpret_cast<size_t>(m_length);
+    }
+
     if (!m_length)
     {
         return 0;
@@ -231,15 +250,15 @@ inline auto bytes::operator==(const bytes& other) const -> bool
 {
     if (m_length && other.m_length && m_data && other.m_data)
     {
-        if (*m_length != *other.m_length)
+        if (length() != other.length())
         {
             return false;
         }
         
-        return memcmp(m_data, other.m_data, *m_length) == 0 ? true : false;
+        return memcmp(m_data, other.m_data, length()) == 0 ? true : false;
     }
     
-    return false;
+    return m_length == other.m_length && m_data == other.m_data;
 }
 
 inline auto bytes::operator!=(const bytes& other) const -> bool

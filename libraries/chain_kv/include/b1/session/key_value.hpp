@@ -100,16 +100,23 @@ inline auto make_kv(const void* key, size_t key_length, const void* value, size_
 template <typename allocator>
 auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value
 {
-    auto* chunk = reinterpret_cast<char*>(a->malloc(key_length + value_length + 6 * sizeof(size_t)));
+    auto key_chunk_length = key_length == 0 ? key_length : key_length + 3 * sizeof(size_t);
+    auto value_chunk_length = value_length == 0 ? value_length : value_length + 3 * sizeof(size_t);
+    auto* chunk = reinterpret_cast<char*>(a->malloc(key_chunk_length + value_chunk_length));
     
-    auto populate_bytes = [&a](const void* data, size_t length, void* chunk)
+    auto populate_bytes = [&a](const void* data, size_t length, char* chunk) mutable
     {
         auto result = bytes{};
         
-        result.m_memory_allocator_address = reinterpret_cast<size_t*>(chunk);
-        result.m_use_count_address = result.m_memory_allocator_address + sizeof(size_t);
-        result.m_length = result.m_use_count_address + sizeof(size_t);
-        result.m_data = result.m_length + sizeof(size_t);
+        if (!data || length == 0)
+        {
+          return result;
+        }
+        
+        result.m_memory_allocator_address = reinterpret_cast<size_t*>(chunk); 
+        result.m_use_count_address = reinterpret_cast<size_t*>(chunk + sizeof(size_t));
+        result.m_length = reinterpret_cast<size_t*>(chunk + 2 * sizeof(size_t));
+        result.m_data = reinterpret_cast<size_t*>(chunk + 3 * sizeof(size_t));
         
         *(result.m_memory_allocator_address) = reinterpret_cast<size_t>(&a->free_function());
         *(result.m_use_count_address) = 1;
