@@ -17,10 +17,11 @@ struct filter_callbacks {
    }
 
    void print_time_us() {
-      std::chrono::microseconds result = std::chrono::system_clock::now().time_since_epoch();
-      time_t                    sec    = result.count() / 1'000'000;
-      int32_t                   usec   = result.count() % 1'000'000;
-      tm                        t;
+      auto result =
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
+      time_t  sec  = result.count() / 1'000'000;
+      int32_t usec = result.count() % 1'000'000;
+      tm      t;
       gmtime_r(&sec, &t);
       char s[sizeof("2011-10-08T07:07:09.000000")];
       snprintf(s, sizeof(s), "%04d-%02d-%02dT%02d:%02d:%02d.%06d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour,
