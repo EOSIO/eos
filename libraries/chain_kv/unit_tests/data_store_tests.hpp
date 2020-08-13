@@ -13,8 +13,10 @@
 namespace b1::session_tests
 {
 
-inline auto make_rocks_db() -> std::shared_ptr<rocksdb::DB>
+inline auto make_rocks_db(const std::string& name = "testdb") -> std::shared_ptr<rocksdb::DB>
 {
+    rocksdb::DestroyDB(name.c_str(), rocksdb::Options{});
+
     rocksdb::DB* cache_ptr{nullptr};
     auto cache = std::shared_ptr<rocksdb::DB>{};
 
@@ -24,7 +26,7 @@ inline auto make_rocks_db() -> std::shared_ptr<rocksdb::DB>
     options.bytes_per_sync = 1048576;
     options.OptimizeLevelStyleCompaction(256ull << 20);
 
-    auto status = rocksdb::DB::Open(options, "testdb", &cache_ptr);
+    auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
     cache.reset(cache_ptr);
 
     return cache;
@@ -61,7 +63,7 @@ static const std::unordered_map<std::string, std::string> char_key_values
   {"cccccccccccccccccccccccccccccccccccccccccccccccccccccc", "dddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
   {"dddddddddddddddddddddddddddddddddddddddddddddddddddddd", "cccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
   {"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "ffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
-  {"ffffffffffffffffffffffffffffffffffffffffffffffffffffff", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"},
+  {"ffffffffffffffffffffffffffffffffffffffffffffffffffffff", "ffffffffffffffffffffffffffffffffffffffffffffffffffffff"},
 };
 
 static const std::vector<b1::session::key_value> char_batch_values
@@ -205,11 +207,11 @@ auto verify_iterators(T& ds, string_t) -> void
   BOOST_REQUIRE(ds.find(b1::session::make_bytes("g", 1)) == std::end(ds));
   BOOST_REQUIRE(ds.find(b1::session::make_bytes("a", 1)) != std::end(ds));
   BOOST_REQUIRE(*ds.find(b1::session::make_bytes("a", 1)) == b1::session::make_kv("a", 1, "123456789", 9));
-  BOOST_REQUIRE(*std::begin(ds) 
-    == b1::session::make_kv("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 54, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 54));
+  BOOST_REQUIRE(*std::begin(ds) == b1::session::make_kv("a", 1, "123456789", 9));
   BOOST_REQUIRE(std::begin(ds) != std::end(ds));
   BOOST_REQUIRE(*ds.lower_bound(b1::session::make_bytes("fffff", 5)) == b1::session::make_kv("fffff", 5, "5", 1));
-  BOOST_REQUIRE(*ds.upper_bound(b1::session::make_bytes("fffff", 5)) == b1::session::make_kv("aaa", 3, "qwerty", 6));
+  BOOST_REQUIRE(*ds.upper_bound(b1::session::make_bytes("fffff", 5)) 
+    == b1::session::make_kv("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54));
 }
 
 template <typename T>

@@ -195,7 +195,7 @@ auto rocks_data_store<allocator>::contains(const bytes& key) const -> bool
     auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto value = std::string{};
-    return !m_db->KeyMayExist(read_options, key_slice, &value);
+    return m_db->KeyMayExist(read_options, key_slice, &value);
 }
 
 template <typename allocator>
@@ -371,13 +371,13 @@ auto rocks_data_store<allocator>::begin() const -> typename rocks_data_store<all
 template <typename allocator>
 auto rocks_data_store<allocator>::end() -> typename rocks_data_store<allocator>::iterator
 {
-    return make_iterator_([](auto& it){ it->SeekToLast(); });
+    return make_iterator_([](auto& it){ it->SeekToLast(); it->Next(); });
 }
 
 template <typename allocator>
 auto rocks_data_store<allocator>::end() const -> typename rocks_data_store<allocator>::const_iterator
 {
-    return make_iterator_([](auto& it){ it->SeekToLast(); });
+    return make_iterator_([](auto& it){ it->SeekToLast(); it->Next(); });
 }
 
 template <typename allocator>
@@ -395,13 +395,13 @@ auto rocks_data_store<allocator>::lower_bound(const bytes& key) const -> typenam
 template <typename allocator>
 auto rocks_data_store<allocator>::upper_bound(const bytes& key) -> typename rocks_data_store<allocator>::iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); it->Next(); });
 }
 
 template <typename allocator>
 auto rocks_data_store<allocator>::upper_bound(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); it->Next(); });
 }
 
 template <typename allocator>
@@ -522,6 +522,16 @@ template <typename allocator>
 template <typename iterator_traits>
 auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator==(const rocks_iterator& other) const -> bool
 {
+    if (!m_iterator->Valid() && !other.m_iterator->Valid())
+    {
+      return true;
+    }
+
+    if (!m_iterator->Valid() || !other.m_iterator->Valid())
+    {
+      return false;
+    }
+
     return m_iterator->key().compare(other.m_iterator->key()) == 0
         && m_iterator->value().compare(other.m_iterator->value()) == 0;
 }

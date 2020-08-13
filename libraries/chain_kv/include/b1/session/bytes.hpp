@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <string_view>
 
 #include <boost/pool/pool.hpp>
@@ -275,36 +276,9 @@ template <>
 class less<b1::session::bytes> final
 {
 public:
-    constexpr auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
+    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
     {
-
-        // Shorter keys are "greater than" longer keys
-        if (lhs.length() < rhs.length())
-        {
-            return false;
-        }
-        
-        if (lhs.length() > rhs.length())
-        {
-            return true;
-        }
-        
-        if (lhs.data() == nullptr && rhs.data() == nullptr)
-        {
-            return true;
-        }
-        
-        if (!lhs.data())
-        {
-            return true;
-        }
-        
-        if (!rhs.data())
-        {
-            return true;
-        }
-        
-        return memcmp(lhs.data(), rhs.data(), lhs.length()) < 0;
+        return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
 
@@ -312,35 +286,9 @@ template <>
 class greater<b1::session::bytes> final
 {
 public:
-    constexpr auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
+    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
     {
-        // Shorter keys are "greater than" longer keys
-        if (lhs.length() > rhs.length())
-        {
-            return false;
-        }
-        
-        if (lhs.length() < rhs.length())
-        {
-            return true;
-        }
-        
-        if (lhs.data() == nullptr && rhs.data() == nullptr)
-        {
-            return true;
-        }
-        
-        if (!lhs.data())
-        {
-            return true;
-        }
-        
-        if (!rhs.data())
-        {
-            return true;
-        }
-        
-        return memcmp(lhs.data(), rhs.data(), lhs.length()) > 0;
+        return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
 
@@ -358,24 +306,9 @@ template <>
 class equal_to<b1::session::bytes> final
 {
 public:
-    constexpr auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
+    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
     {
-        if (lhs.length() != rhs.length())
-        {
-            return false;
-        }
-        
-        if (lhs.data() == nullptr && rhs.data() == nullptr)
-        {
-            return true;
-        }
-        
-        if (!lhs.data() || !rhs.data())
-        {
-            return false;
-        }
-        
-        return memcmp(lhs.data(), rhs.data(), lhs.length()) == 0;
+        return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} == std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     }
 };
 }
