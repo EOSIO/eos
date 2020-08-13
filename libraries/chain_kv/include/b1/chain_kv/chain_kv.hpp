@@ -5,6 +5,7 @@
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
 #include <stdexcept>
+#include <softfloat.hpp>
 
 namespace b1::chain_kv {
 
@@ -110,12 +111,136 @@ inline bytes get_next_prefix(const bytes& prefix) {
    return next_prefix;
 }
 
+namespace detail {
+   typedef __uint128_t uint128_t;
+
+   template <typename T>
+   auto append_key(bytes& dest, T value) {
+      char buf[sizeof(value)];
+      memcpy(buf, &value, sizeof(value));
+      std::reverse(std::begin(buf), std::end(buf));
+      dest.insert(dest.end(), std::begin(buf), std::end(buf));
+   }
+
+   template <typename UInt, typename T>
+   UInt float_to_key(T value) {
+      static_assert(sizeof(T) == sizeof(UInt), "Expected unsigned int of the same size");
+      UInt result;
+      std::memcpy(&result, &value, sizeof(T));
+      const UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      UInt mask    = 0;
+      if (result == signbit)
+         result = 0;
+      if (result & signbit)
+         mask = ~mask;
+      return result ^ (mask | signbit);
+   }
+
+   template <typename T, typename UInt>
+   T key_to_float(UInt value) {
+      static_assert(sizeof(T) == sizeof(UInt), "Expected unsigned int of the same size");
+      // encoded signbit indicates positive value
+      const UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      UInt mask    = 0;
+      if ((value & signbit) == 0)
+         mask = ~mask;
+      value = {value ^ (mask | signbit)};
+      T float_result;
+      std::memcpy(&float_result, &value, sizeof(UInt));
+      return float_result;
+   }
+
+   template<typename Key>
+   bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, Key& key) {
+      const auto distance = std::distance(key_loc, key_end);
+      const auto key_size = sizeof(key);
+      if (distance < key_size)
+         return false;
+
+      key_end = key_loc + key_size;
+      bytes key_store(key_loc, key_end);
+      key_loc = key_end;
+      std::reverse(std::begin(key_store), std::end(key_store));
+      memcpy(&key, key_store.data(), key_size);
+
+      return true;
+   }
+
+   template<typename T, std::size_t N>
+   void copy_and_swap_to_buffer(char* to, const char* from) {
+      const auto size_of_t = sizeof(T);
+      const auto buf_size = sizeof(T) * N;
+      char* to_ptr = to + size_of_t * (N - 1);
+      const char* from_ptr = from;
+      for (unsigned int i = 0; i < N; ++i) {
+         memcpy(to_ptr, from_ptr, size_of_t);
+         to_ptr -= size_of_t;
+         from_ptr += size_of_t;
+      }
+   }
+}
+
 template <typename T>
 auto append_key(bytes& dest, T value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
-   char buf[sizeof(value)];
-   memcpy(buf, &value, sizeof(value));
+   detail::append_key(dest, value);
+}
+
+template <typename T, std::size_t N>
+auto append_key(bytes& dest, std::array<T, N> value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   const auto buf_size = sizeof(T) * N;
+   char buf[buf_size];
+   detail::copy_and_swap_to_buffer<T, N>(buf, reinterpret_cast<char*>(value.data()));
    std::reverse(std::begin(buf), std::end(buf));
    dest.insert(dest.end(), std::begin(buf), std::end(buf));
+}
+
+inline void append_key(bytes& dest, float64_t value) {
+   append_key(dest, detail::float_to_key<uint64_t>(value));
+}
+
+inline void append_key(bytes& dest, float128_t value) {
+   append_key(dest, detail::float_to_key<detail::uint128_t>(value));
+}
+
+template<typename T>
+auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, T& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+   return detail::extract_key(key_loc, key_end, key);
+}
+
+template <typename T, std::size_t N>
+auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, std::array<T, N>& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+   const auto distance = std::distance(key_loc, key_end);
+   const auto key_size = sizeof(key);
+   if (distance < key_size)
+      return false;
+
+   key_end = key_loc + key_size;
+   bytes key_store(key_loc, key_end);
+   key_loc = key_end;
+   std::reverse(std::begin(key_store), std::end(key_store));
+   detail::copy_and_swap_to_buffer<T, N>(reinterpret_cast<char*>(key.data()), key_store.data());
+
+   return true;
+}
+
+inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float64_t& key) {
+   uint64_t int_key;
+   const bool extract = extract_key(key_loc, key_end, int_key);
+   if (!extract)
+      return false;
+
+   key = detail::key_to_float<float64_t>(int_key);
+   return true;
+}
+
+inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float128_t& key) {
+   detail::uint128_t int_key;
+   const bool extract = extract_key(key_loc, key_end, int_key);
+   if (!extract)
+      return false;
+
+   key = detail::key_to_float<float128_t>(int_key);
+   return true;
 }
 
 template <typename T>
@@ -605,7 +730,7 @@ struct write_session {
 }; // write_session
 
 // A view of the database with a restricted range (prefix). Implements part of
-// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md,
+// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md,class
 // including iterator wrap-around behavior.
 //
 // Keys have this format: prefix, contract, user-provided key.
