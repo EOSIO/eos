@@ -63,8 +63,8 @@ private:
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
-      fc_create_trace(trx_trace, "Transaction");
-      fc_create_span(trx_trace, trx_span, "AMQP Received");
+      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_span = fc_create_span(trx_trace, "AMQP Received");
       fc_add_str_tag(trx_span, "trx_id", tid.str());
 
       auto trx_in_progress = trx_in_progress_size.load();
@@ -85,8 +85,8 @@ private:
             [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                my->amqp_trx->ack( delivery_tag );
 
-               fc_create_trace(trx_trace, "Transaction");
-               fc_create_span(trx_trace, trx_span, "Processed");
+               auto trx_trace = fc_create_trace("Transaction");
+               auto trx_span = fc_create_span(trx_trace, "Processed");
                fc_add_str_tag(trx_span, "trx_id", trx->id().str());
 
                // publish to trace plugin as execptions are not reported via controller signal applied_transaction
