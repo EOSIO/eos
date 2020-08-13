@@ -100,6 +100,21 @@ void test_transaction::send_action_large() {
 }
 
 /**
+ * send an inline action that is 4K
+ */
+void test_transaction::send_action_4k() {
+   using namespace eosio;
+   static char large_message[4 * 1024];
+   test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_action", "test_action_ordinal4" )> test_action;
+   copy_data( large_message, 4*1024, test_action.data );
+
+   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "test_action_ordinal4")}, test_action );
+
+   act.send();
+}
+
+/**
  * cause failure due recursive loop
  */
 void test_transaction::send_action_recurse() {
@@ -250,6 +265,18 @@ void test_transaction::send_deferred_transaction( uint64_t receiver, uint64_t, u
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
 
    trx.actions.emplace_back( permissions, name{"testapi"}, name{ WASM_TEST_ACTION("test_transaction", "deferred_print" )}, test_action );
+   trx.delay_sec = 2;
+   trx.send( 0xffffffffffffffff, name{receiver} );
+}
+
+void test_transaction::send_deferred_transaction_4k_action( uint64_t receiver, uint64_t, uint64_t ) {
+   using namespace eosio;
+   test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_transaction", "send_action_4k" )> test_action;
+
+   auto trx = transaction();
+   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
+
+   trx.actions.emplace_back( permissions, name{"testapi"}, name{ WASM_TEST_ACTION("test_transaction", "send_action_4k" )}, test_action );
    trx.delay_sec = 2;
    trx.send( 0xffffffffffffffff, name{receiver} );
 }
