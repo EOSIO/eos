@@ -15,8 +15,8 @@ BOOST_AUTO_TEST_CASE(make_key_value_test)
 
   static const auto char_key_bytes = make_bytes(char_key, strlen(char_key));
   static const auto char_value_bytes = make_bytes(char_value, strlen(char_value));
-  static const auto int_key_bytes = make_bytes(&int_key, sizeof(int_key));
-  static const auto int_value_bytes = make_bytes(&int_value, sizeof(int_value));
+  static const auto int_key_bytes = make_bytes(&int_key, 1);
+  static const auto int_value_bytes = make_bytes(&int_value, 1);
 
   auto allocator = boost_memory_allocator::make();
 
@@ -25,8 +25,8 @@ BOOST_AUTO_TEST_CASE(make_key_value_test)
   BOOST_REQUIRE(kv1.key() == char_key_bytes);
   BOOST_REQUIRE(kv1.value() == char_value_bytes);
 
-  auto kv2 = make_kv(make_bytes(&int_key, sizeof(int_key)), 
-                     make_bytes(&int_value, sizeof(int_value)));
+  auto kv2 = make_kv(make_bytes(&int_key, 1), 
+                     make_bytes(&int_value, 1));
   BOOST_REQUIRE(kv2.key() == int_key_bytes);
   BOOST_REQUIRE(kv2.value() == int_value_bytes);
 
@@ -35,8 +35,8 @@ BOOST_AUTO_TEST_CASE(make_key_value_test)
   BOOST_REQUIRE(kv3.key() == char_key_bytes);
   BOOST_REQUIRE(kv3.value() == char_value_bytes);
 
-  auto kv4 = make_kv(make_bytes(&int_key, sizeof(int_key), allocator), 
-                     make_bytes(&int_value, sizeof(int_value), allocator));
+  auto kv4 = make_kv(make_bytes(&int_key, 1, allocator), 
+                     make_bytes(&int_value, 1, allocator));
   BOOST_REQUIRE(kv4.key() == int_key_bytes);
   BOOST_REQUIRE(kv4.value() == int_value_bytes);
 
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(make_key_value_test)
   BOOST_REQUIRE(kv5.key() == char_key_bytes);
   BOOST_REQUIRE(kv5.value() == char_value_bytes);
 
-  auto kv6 = make_kv(&int_key, sizeof(int_key), &int_value, sizeof(int_value), allocator); 
+  auto kv6 = make_kv(&int_key, 1, &int_value, 1, allocator); 
   BOOST_REQUIRE(kv6.key() == int_key_bytes);
   BOOST_REQUIRE(kv6.value() == int_value_bytes);        
 

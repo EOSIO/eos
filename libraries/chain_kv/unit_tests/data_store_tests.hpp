@@ -127,16 +127,16 @@ static const std::vector<int32_t> int_values
 
 static const std::vector<b1::session::key_value> int_batch_values
 {
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[0], sizeof(int32_t), &int_values[0], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[1], sizeof(int32_t), &int_values[1], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[2], sizeof(int32_t), &int_values[2], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[3], sizeof(int32_t), &int_values[3], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[4], sizeof(int32_t), &int_values[4], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[5], sizeof(int32_t), &int_values[5], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[6], sizeof(int32_t), &int_values[6], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[7], sizeof(int32_t), &int_values[7], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[8], sizeof(int32_t), &int_values[8], sizeof(int32_t)),
-  b1::session::make_kv<int32_t, int32_t>(&int_keys[9], sizeof(int32_t), &int_values[9], sizeof(int32_t)),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[0], 1, &int_values[0], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[1], 1, &int_values[1], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[2], 1, &int_values[2], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[3], 1, &int_values[3], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[4], 1, &int_values[4], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[5], 1, &int_values[5], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[6], 1, &int_values[6], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[7], 1, &int_values[7], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[8], 1, &int_values[8], 1),
+  b1::session::make_kv<int32_t, int32_t>(&int_keys[9], 1, &int_values[9], 1),
 };
 
 struct string_t{};
