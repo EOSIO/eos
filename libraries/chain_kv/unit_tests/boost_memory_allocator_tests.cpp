@@ -41,6 +41,7 @@ BOOST_AUTO_TEST_CASE(multiple_allocations)
   {
     static auto size = size_t{40};
     auto* chunk = allocator->malloc(size);
+    BOOST_REQUIRE(chunk);
   }
 }
 

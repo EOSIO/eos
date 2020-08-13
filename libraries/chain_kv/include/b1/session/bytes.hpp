@@ -258,6 +258,7 @@ inline auto bytes::operator==(const bytes& other) const -> bool
         return memcmp(m_data, other.m_data, length()) == 0 ? true : false;
     }
     
+    // This is just checking if all the pointers are null or not.
     return m_length == other.m_length && m_data == other.m_data;
 }
 

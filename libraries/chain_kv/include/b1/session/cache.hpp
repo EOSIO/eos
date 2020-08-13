@@ -126,8 +126,8 @@ private:
     auto find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const -> const key_value&;
     
 private:
-    cache_type m_cache;
     std::shared_ptr<allocator> m_allocator;
+    cache_type m_cache;
 };
 
 template <typename allocator>
@@ -194,7 +194,8 @@ auto cache<allocator>::write(key_value kv) -> void
     auto it = m_cache.find(kv.key());
     if (it == std::end(m_cache))
     {
-        m_cache.emplace(kv.key(), std::move(kv));
+        auto key = kv.key();
+        m_cache.emplace(std::move(key), std::move(kv));
         return;
     }
     it->second = std::move(kv);
@@ -320,7 +321,14 @@ auto cache<allocator>::read_from(const data_store& ds, const iterable& keys) -> 
             continue;
         }
         
-        kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), m_allocator));
+        if (m_allocator->equals(*ds.memory_allocator()))
+        {
+          kvs.emplace_back(kv);
+        }
+        else
+        {
+          kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), m_allocator));
+        }
     }
     
     write(kvs);
@@ -379,13 +387,13 @@ auto cache<allocator>::lower_bound(const bytes& key) const -> typename cache<all
 template <typename allocator>
 auto cache<allocator>::upper_bound(const bytes& key) -> typename cache<allocator>::iterator
 {
-    return {m_cache.lower_bound(key)};
+    return {m_cache.upper_bound(key)};
 }
 
 template <typename allocator>
 auto cache<allocator>::upper_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
 {
-    return {m_cache.lower_bound(key)};
+    return {m_cache.upper_bound(key)};
 }
 
 template <typename allocator>

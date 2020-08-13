@@ -30,7 +30,7 @@ inline auto make_rocks_db() -> std::shared_ptr<rocksdb::DB>
     return cache;
 }
 
-static const std::unordered_map<const char*, const char*> char_key_values
+static const std::unordered_map<std::string, std::string> char_key_values
 {
   {"a", "123456789"},
   {"b", "abcdefghi"},
@@ -147,7 +147,7 @@ auto make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, string_t)
 {
   for (const auto& kv : kvs)
   {
-    ds.write(b1::session::make_kv(kv.first, strlen(kv.first), kv.second, strlen(kv.second), ds.memory_allocator()));
+    ds.write(b1::session::make_kv(kv.first.c_str(), kv.first.size(), kv.second.c_str(), kv.second.size(), ds.memory_allocator()));
   }
 }
 
@@ -156,7 +156,7 @@ auto make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, int_t) ->
 {
   for (const auto& kv : kvs)
   {
-    ds.write(b1::session::make_kv(&kv.first, sizeof(Key), &kv.second, sizeof(Value), ds.memory_allocator()));
+    ds.write(b1::session::make_kv(&kv.first, 1, &kv.second, 1, ds.memory_allocator()));
   }
 }
 
@@ -165,16 +165,18 @@ auto verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
 {
   for (const auto& kv : ds)
   {
-    auto it = container.find(reinterpret_cast<Key>(kv.key().data()));
+    auto key = std::string{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
+    auto it = container.find(key);
     BOOST_REQUIRE(it != std::end(container));
-    BOOST_REQUIRE(std::memcmp(it->second, reinterpret_cast<Value>(kv.value().data()), strlen(it->second)) == 0);
+    BOOST_REQUIRE(std::memcmp(it->second.c_str(), reinterpret_cast<const char*>(kv.value().data()), it->second.size()) == 0);
   }
 
   for (const auto& it : container)
   {
-    auto kv = ds.read(b1::session::make_bytes(it.first, strlen(it.first), ds.memory_allocator()));
+    auto kv = ds.read(b1::session::make_bytes(it.first.c_str(), it.first.size()));
+    BOOST_REQUIRE(ds.contains(kv.key()) == true);
     BOOST_REQUIRE(kv != b1::session::key_value::invalid);
-    BOOST_REQUIRE(std::memcmp(it.second, reinterpret_cast<Value>(kv.value().data()), strlen(it.second)) == 0);
+    BOOST_REQUIRE(std::memcmp(it.second.c_str(), reinterpret_cast<const char*>(kv.value().data()), it.second.size()) == 0);
   }
 }
 
@@ -190,8 +192,9 @@ auto verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
 
   for (const auto& it : container)
   {
-    auto kv = ds.read(b1::session::make_bytes(&it.first, sizeof(Key), ds.memory_allocator()));
+    auto kv = ds.read(b1::session::make_bytes(&it.first, 1));
     BOOST_REQUIRE(kv != b1::session::key_value::invalid);
+    BOOST_REQUIRE(ds.contains(kv.key()) == true);
     BOOST_REQUIRE(std::memcmp(reinterpret_cast<const Value*>(&it.second), reinterpret_cast<const Value*>(kv.value().data()), sizeof(Value)) == 0);
   }
 }
@@ -202,28 +205,34 @@ auto verify_iterators(T& ds, string_t) -> void
   BOOST_REQUIRE(ds.find(b1::session::make_bytes("g", 1)) == std::end(ds));
   BOOST_REQUIRE(ds.find(b1::session::make_bytes("a", 1)) != std::end(ds));
   BOOST_REQUIRE(*ds.find(b1::session::make_bytes("a", 1)) == b1::session::make_kv("a", 1, "123456789", 9));
-  BOOST_REQUIRE(*std::begin(ds) == b1::session::make_kv("a", 1, "123456789", 9));
-  BOOST_REQUIRE(ds.lower_bound(b1::session::make_bytes("fffff", 5)) == std::end(ds)); // TODO:
-  BOOST_REQUIRE(ds.upper_bound(b1::session::make_bytes("fffff", 5)) == std::end(ds)); // TODO:
+  BOOST_REQUIRE(*std::begin(ds) 
+    == b1::session::make_kv("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 54, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 54));
+  BOOST_REQUIRE(std::begin(ds) != std::end(ds));
+  BOOST_REQUIRE(*ds.lower_bound(b1::session::make_bytes("fffff", 5)) == b1::session::make_kv("fffff", 5, "5", 1));
+  BOOST_REQUIRE(*ds.upper_bound(b1::session::make_bytes("fffff", 5)) == b1::session::make_kv("aaa", 3, "qwerty", 6));
 }
 
 template <typename T>
 auto verify_iterators(T& ds, int_t) -> void
 {
   auto search_key = int32_t{16};
-  BOOST_REQUIRE(ds.find(b1::session::make_bytes(&search_key, sizeof(int32_t))) == std::end(ds));
+  BOOST_REQUIRE(ds.find(b1::session::make_bytes(&search_key, 1)) == std::end(ds));
   search_key = 15;
   auto search_value = 8;
-  BOOST_REQUIRE(ds.find(b1::session::make_bytes(&search_key, sizeof(int32_t))) != std::end(ds));
-  BOOST_REQUIRE(*ds.find(b1::session::make_bytes(&search_key, sizeof(int32_t))) == b1::session::make_kv(&search_key, sizeof(int32_t), &search_value, sizeof(int32_t)));
+  BOOST_REQUIRE(ds.find(b1::session::make_bytes(&search_key, 1)) != std::end(ds));
+  BOOST_REQUIRE(*ds.find(b1::session::make_bytes(&search_key, 1)) == b1::session::make_kv(&search_key, 1, &search_value, 1));
   search_key = 1;
   search_value = 1;
-  BOOST_REQUIRE(*std::begin(ds) == b1::session::make_kv(&search_key, sizeof(int32_t), &search_value, sizeof(int32_t)));
-
+  BOOST_REQUIRE(*std::begin(ds) == b1::session::make_kv(&search_key, 1, &search_value, 1));
+  BOOST_REQUIRE(std::begin(ds) != std::end(ds));
   search_key = 14;
   search_value = 9;
-  BOOST_REQUIRE(ds.lower_bound(b1::session::make_bytes(&search_key, sizeof(int32_t))) == std::end(ds)); // TODO:
-  BOOST_REQUIRE(ds.upper_bound(b1::session::make_bytes(&search_key, sizeof(int32_t))) == std::end(ds)); // TODO:
+  auto result_key = int32_t{14};
+  auto result_value = int32_t{9};
+  BOOST_REQUIRE(*ds.lower_bound(b1::session::make_bytes(&search_key, 1)) == b1::session::make_kv(&result_key, 1, &result_value, 1));
+  result_key = int32_t{15};
+  result_value = int32_t{8};
+  BOOST_REQUIRE(*ds.upper_bound(b1::session::make_bytes(&search_key, 1)) == b1::session::make_kv(&result_key, 1, &result_value, 1));
 }
 
 template <typename T>
@@ -279,10 +288,10 @@ auto verify_rwd_batch(T& ds, const iterable& kvs) -> void
 
   ds.write(kvs);
   auto [read_batch2, not_found2] = ds.read(keys);
-  BOOST_REQUIRE(read_batch2.empty() == true);
+  BOOST_REQUIRE(read_batch2.empty() == false);
   for (const auto& kv : kvs)
   {
-    BOOST_REQUIRE(ds.read(kv.key()) == b1::session::key_value::invalid);
+    BOOST_REQUIRE(ds.read(kv.key()) != b1::session::key_value::invalid);
     BOOST_REQUIRE(ds.contains(kv.key()) == true);
     BOOST_REQUIRE(not_found2.find(kv.key()) == std::end(not_found2));
   }
