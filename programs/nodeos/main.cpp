@@ -108,7 +108,6 @@ enum return_codes {
 int main(int argc, char** argv)
 {
    try {
-
       app().set_version(eosio::nodeos::config::version);
       app().set_version_string(eosio::version::version_client());
       app().set_full_version_string(eosio::version::version_full());

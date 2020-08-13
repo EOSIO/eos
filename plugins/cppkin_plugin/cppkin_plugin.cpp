@@ -80,6 +80,7 @@ void cppkin_plugin::plugin_startup() {
 
 void cppkin_plugin::plugin_shutdown() {
    try {
+      fc_cppkin_trace_enabled = false;
       cppkin::Stop();
    }
    FC_CAPTURE_AND_RETHROW()

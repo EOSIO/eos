@@ -2282,16 +2282,16 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      fc_create_trace(trx_trace, "Transaction");
-      fc_create_span(trx_trace, trx_span, "HTTP Received");
+      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
-         fc_create_trace(trx_trace, "Transaction");
-         fc_create_span(trx_trace, trx_span, "Processed");
+         auto trx_trace = fc_create_trace("Transaction");
+         auto trx_span = fc_create_span(trx_trace, "Processed");
          fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
 
          if (result.contains<fc::exception_ptr>()) {
@@ -2425,15 +2425,15 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      fc_create_trace(trx_trace, "Transaction");
-      fc_create_span(trx_trace, trx_span, "HTTP Received");
+      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         fc_create_trace(trx_trace, "Transaction");
-         fc_create_span(trx_trace, trx_span, "Processed");
+         auto trx_trace = fc_create_trace("Transaction");
+         auto trx_span = fc_create_span(trx_trace, "Processed");
          fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
 
          if (result.contains<fc::exception_ptr>()) {

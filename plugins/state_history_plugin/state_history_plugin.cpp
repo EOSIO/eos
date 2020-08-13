@@ -238,20 +238,20 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
 
+         send(std::move(result));
+         --current_request->max_messages_in_flight;
+         need_to_send_update = current_request->start_block_num <= current &&
+                               current_request->start_block_num < current_request->end_block_num;
+
          std::visit( []( auto&& ptr ) {
             if( ptr ) {
-               fc_create_trace( blk_trace, "Block" );
-               fc_create_span( blk_trace, blk_span, "SHiP-Send" );
+               auto blk_trace = fc_create_trace( "Block" );
+               auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
                fc_add_str_tag( blk_span, "block_id", ptr->calculate_id().str() );
                fc_add_str_tag( blk_span, "block_num", std::to_string( ptr->block_num() ) );
                fc_add_str_tag( blk_span, "block_time", std::string( ptr->timestamp.to_time_point() ) );
             }
          }, result.block );
-
-         send(std::move(result));
-         --current_request->max_messages_in_flight;
-         need_to_send_update = current_request->start_block_num <= current &&
-                               current_request->start_block_num < current_request->end_block_num;
       }
 
       void send_update(const block_state_ptr& block_state) {
@@ -367,8 +367,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      fc_create_trace(blk_trace, "Block");
-      fc_create_span(blk_trace, blk_span, "SHiP-Accepted");
+      auto blk_trace = fc_create_trace("Block");
+      auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
       fc_add_str_tag(blk_span, "block_id", block_state->id.str());
       fc_add_str_tag(blk_span, "block_num", std::to_string(block_state->block_num));
       fc_add_str_tag(blk_span, "block_time", std::string(block_state->block->timestamp.to_time_point()));
