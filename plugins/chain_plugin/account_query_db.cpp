@@ -269,7 +269,7 @@ namespace eosio::chain_apis {
          permission_set_t deleted;
 
          /**
-          * process traces to find `updateauth` and `deleteauth` calls maintaining a final set of
+          * process traces to find `updateauth`, `deleteauth` and `newaccount` calls maintaining a final set of
           * permissions to either update or delete.  Intra-block changes are discarded
           */
          auto process_trace = [&](const chain::transaction_trace_ptr& trace) {
@@ -286,6 +286,10 @@ namespace eosio::chain_apis {
                   auto data = at.act.data_as<chain::deleteauth>();
                   auto itr = deleted.emplace(chain::permission_level{data.account, data.permission}).first;
                   updated.erase(*itr);
+               } else if (at.act.name == chain::newaccount::get_name()) {
+                  auto data = at.act.data_as<chain::newaccount>();
+                  updated.emplace(chain::permission_level{data.name, N(owner)});
+                  updated.emplace(chain::permission_level{data.name, N(active)});
                }
             }
          };
