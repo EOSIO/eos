@@ -200,7 +200,7 @@ struct compile_monitor {
             ctx.stop();
             return;
          }
-         if(!message.contains<initialize_message>() || fds.size() != 2) {
+         if(!std::holds_alternative<initialize_message>(message) || fds.size() != 2) {
             ctx.stop();
             return;
          }
