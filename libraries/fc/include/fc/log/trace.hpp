@@ -45,7 +45,7 @@ inline bool fc_cppkin_trace_enabled = false;
 /// @param TAG_VALUE_STR std::string value
 #define fc_add_str_tag( SPAN_VARNAME, TAG_KEY_STR, TAG_VALUE_STR) \
   FC_MULTILINE_MACRO_BEGIN \
-    if( SPAN_VARNAME.get_wrapped() ) SPAN_VARNAME.get_wrapped()->AddSimpleTag(TAG_KEY_STR, TAG_VALUE_STR.c_str()); \
+    if( SPAN_VARNAME.get_wrapped() ) SPAN_VARNAME.get_wrapped()->AddSimpleTag(TAG_KEY_STR, (TAG_VALUE_STR).c_str()); \
   FC_MULTILINE_MACRO_END
 
 #else // ENABLE_CPPKIN
