@@ -10,28 +10,6 @@ BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 
 const uint64_t overhead_size = sizeof(name) * 2 + 1; // 8 (scope) + 8 (table) + 1 (key type)
 
-void print_bytes(const bytes& composite_key) {
-   printf("byte contents: ");
-   uint64_t i = 0;
-   for (; i < overhead_size; ++i) {
-      printf("%02x ", (uint8_t)composite_key[i]);
-   }
-   printf(" -> < ");
-   for (; i < composite_key.size(); ++i) {
-      printf("%02x ", (uint8_t)composite_key[i]);
-   }
-   printf("> \n");
-}
-
-void print_hex(uint8_t* num, uint64_t size) {
-   printf("key ptr: %08lx\n", reinterpret_cast<uint64_t>(num));
-   printf("key: ");
-   for (uint64_t i = 0; i < size; ++i) {
-      printf("%02x ", num[i]);
-   }
-   printf("\n");
-}
-
 template<typename Type>
 void verify_secondary_wont_convert(const bytes& composite_key) {
    name scope;
@@ -54,44 +32,33 @@ void verify_secondary_wont_convert(const bytes& composite_key, key_type except) 
    if (except != key_type::sec_long_double) { verify_secondary_wont_convert<float128_t>(composite_key); }
 }
 
-float128_t to_softfloat128( long double d ) {
-   float128_t x;
-   memcpy(&x, &d, sizeof(d));
-   return x;
+float128_t to_softfloat128( double d ) {
+   return f64_to_f128(to_softfloat64(d));
 }
 
-void compare_composite_keys(const std::vector<bytes>& keys, uint64_t lhs_index, std::string desc) {
+std::pair<int, unsigned int> compare_composite_keys(const std::vector<bytes>& keys, uint64_t lhs_index) {
    const bytes& lhs = keys[lhs_index];
    const bytes& rhs = keys[lhs_index + 1];
-   bool found_less_than = false;
-   printf("left :");
-   for (unsigned int j = 0; j < lhs.size(); ++j) {
-      const auto cur_char = uint64_t(static_cast<unsigned char>(lhs[j]));
-      printf(" %02lx", cur_char);
-   }
-   printf("\nright:");
-   for (unsigned int j = 0; j < lhs.size(); ++j) {
-      const auto cur_char = uint64_t(static_cast<unsigned char>(rhs[j]));
-      printf(" %02lx", cur_char);
-   }
-   printf("\n");
-   for (unsigned int j = 0; j < lhs.size(); ++j) {
+   unsigned int j = 0;
+   for (; j < lhs.size(); ++j) {
       const auto left = uint64_t(static_cast<unsigned char>(lhs[j]));
       const auto right = uint64_t(static_cast<unsigned char>(rhs[j]));
-      const auto op = left < right ? "<" : (right < left ? ">" : "==");
-      ilog("${j}:  ${k} ${l} ${m}", ("j", j)("k", std::to_string(left))("l", op)("m", std::to_string(right)));
       if (left != right) {
-         BOOST_CHECK_MESSAGE(left < right, "expected " + std::to_string(lhs_index) +
-                             "th composite key to be less than the " + std::to_string(lhs_index + 1) + "th, but the " + std::to_string(j) +
-                             "th character is actually greater on the left than the right (" + std::to_string(left) + " > " +
-                             std::to_string(right) + ").  Called from: " + desc);
-         found_less_than = true;
-         break;
+         return { left < right ? -1 : 1, j };
       }
    }
-   BOOST_CHECK_MESSAGE(found_less_than, "expected " + std::to_string(lhs_index) +
-                                        "th composite key to be less than the " + std::to_string(lhs_index + 1) +
-                                        "th, but they were identical.  Called from: " + desc);
+
+   return { 0, j };
+}
+
+void verify_assending_composite_keys(const std::vector<bytes>& keys, uint64_t lhs_index, std::string desc) {
+   const auto ret = compare_composite_keys(keys, lhs_index);
+   BOOST_CHECK_MESSAGE(ret.first != 1, "expected " + std::to_string(lhs_index) +
+                       "th composite key to be less than the " + std::to_string(lhs_index + 1) + "th, but the " + std::to_string(ret.second) +
+                       "th character is actually greater on the left than the right.  Called from: " + desc);
+   BOOST_CHECK_MESSAGE(ret.first != 0, "expected " + std::to_string(lhs_index) +
+                       "th composite key to be less than the " + std::to_string(lhs_index + 1) +
+                       "th, but they were identical.  Called from: " + desc);
 }
 
 template<typename T, typename KeyFunc>
@@ -106,7 +73,7 @@ void verify_table_scope_order(T low_key, T high_key, KeyFunc key_func) {
    comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0}, low_key));
    comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0xffff'ffff'ffff'ffff}, low_key));
    for (unsigned int i = 0; i < comp_keys.size() - 1; ++i) {
-      compare_composite_keys(comp_keys, i, "verify_table_scope_order");
+      verify_assending_composite_keys(comp_keys, i, "verify_table_scope_order");
    }
 }
 
@@ -118,11 +85,10 @@ void check_ordered_keys(const std::vector<T> ordered_keys, KeyFunc key_func) {
    std::vector<bytes> composite_keys;
    for (const auto key: ordered_keys) {
       auto comp_key = key_func(scope, table, key);
-      comp_key.push_back('\0');
       composite_keys.push_back(comp_key);
    }
    for (unsigned int i = 0; i < composite_keys.size() - 1; ++i) {
-      compare_composite_keys(composite_keys, i, "check_ordered_keys");
+      verify_assending_composite_keys(composite_keys, i, "check_ordered_keys");
    }
 }
 
@@ -182,7 +148,6 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
 
    const auto composite_key = eosio::chain::db_key_value_format::create_secondary_key(scope, table, key);
    BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key), composite_key.size());
-   ilog("key size= ${ks}",("ks", composite_key.size()));
 
    name decomposed_scope;
    name decomposed_table;
@@ -244,18 +209,6 @@ BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
    keys.push_back(create_key256(create_uint128(0x1, 0x0), create_uint128(0x0, 0x0)));
    keys.push_back(create_key256(create_uint128(0xFFFF'FFFF'FFFF'FFFF, 0x0), create_uint128(0x0, 0x0)));
    check_ordered_keys(keys, &eosio::chain::db_key_value_format::create_secondary_key<eosio::chain::key256_t>);
-}
-
-BOOST_AUTO_TEST_CASE(test_test) {
-   const auto key1 = to_softfloat64(0.0);
-   const auto key2 = to_softfloat64(0.1);
-   const auto key3 = to_softfloat64(0.2);
-   const auto composite_key1 = eosio::chain::db_key_value_format::create_secondary_key(name{2}, name{4}, key1);
-   const auto composite_key2 = eosio::chain::db_key_value_format::create_secondary_key(name{2}, name{4}, key2);
-   const auto composite_key3 = eosio::chain::db_key_value_format::create_secondary_key(name{2}, name{4}, key3);
-   print_hex((uint8_t*)composite_key1.data(), composite_key1.size());
-   print_hex((uint8_t*)composite_key2.data(), composite_key2.size());
-   print_hex((uint8_t*)composite_key3.data(), composite_key3.size());
 }
 
 BOOST_AUTO_TEST_CASE(float64_key_conversions_test) {

@@ -114,10 +114,38 @@ inline bytes get_next_prefix(const bytes& prefix) {
 namespace detail {
    typedef __uint128_t uint128_t;
 
-   template <typename T>
+   template<std::size_t Size, std::size_t N>
+   void copy_and_swap_to_buffer(char* to, const char* from) {
+      char* to_ptr = to + Size * (N - 1);
+      const char* from_ptr = from;
+      for (unsigned int i = 0; i < N; ++i) {
+         memcpy(to_ptr, from_ptr, Size);
+         to_ptr -= Size;
+         from_ptr += Size;
+      }
+   }
+
+   template<typename T>
+   struct value_storage;
+
+   template<typename T>
+   struct value_storage<T*> {
+      char* as_char_ptr(T* value) const { return reinterpret_cast<char*>(value); }
+      constexpr std::size_t size() const { return sizeof(T); }
+   };
+
+   template<typename T>
+   struct value_storage {
+      char* as_char_ptr(T& value) const { return reinterpret_cast<char*>(&value); }
+      constexpr std::size_t size() const { return sizeof(T); }
+   };
+
+   template <typename T, std::size_t N>
    auto append_key(bytes& dest, T value) {
-      char buf[sizeof(value)];
-      memcpy(buf, &value, sizeof(value));
+      constexpr auto type_size = value_storage<T>().size();
+      constexpr auto buf_size = type_size * N;
+      char buf[buf_size];
+      detail::copy_and_swap_to_buffer<type_size, N>(buf, value_storage<T>().as_char_ptr(value));
       std::reverse(std::begin(buf), std::end(buf));
       dest.insert(dest.end(), std::begin(buf), std::end(buf));
    }
@@ -150,10 +178,11 @@ namespace detail {
       return float_result;
    }
 
-   template<typename Key>
+   template<typename Key, std::size_t N>
    bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, Key& key) {
       const auto distance = std::distance(key_loc, key_end);
-      const auto key_size = sizeof(key);
+      constexpr auto type_size = value_storage<Key>().size();
+      constexpr auto key_size = type_size * N;
       if (distance < key_size)
          return false;
 
@@ -161,71 +190,47 @@ namespace detail {
       bytes key_store(key_loc, key_end);
       key_loc = key_end;
       std::reverse(std::begin(key_store), std::end(key_store));
-      memcpy(&key, key_store.data(), key_size);
+      detail::copy_and_swap_to_buffer<type_size, N>(value_storage<Key>().as_char_ptr(key), key_store.data());
 
       return true;
-   }
-
-   template<typename T, std::size_t N>
-   void copy_and_swap_to_buffer(char* to, const char* from) {
-      const auto size_of_t = sizeof(T);
-      const auto buf_size = sizeof(T) * N;
-      char* to_ptr = to + size_of_t * (N - 1);
-      const char* from_ptr = from;
-      for (unsigned int i = 0; i < N; ++i) {
-         memcpy(to_ptr, from_ptr, size_of_t);
-         to_ptr -= size_of_t;
-         from_ptr += size_of_t;
-      }
    }
 }
 
 template <typename T>
 auto append_key(bytes& dest, T value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
-   detail::append_key(dest, value);
+   detail::append_key<T, 1>(dest, value);
 }
 
 template <typename T, std::size_t N>
 auto append_key(bytes& dest, std::array<T, N> value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
-   const auto buf_size = sizeof(T) * N;
-   char buf[buf_size];
-   detail::copy_and_swap_to_buffer<T, N>(buf, reinterpret_cast<char*>(value.data()));
-   std::reverse(std::begin(buf), std::end(buf));
-   dest.insert(dest.end(), std::begin(buf), std::end(buf));
+   detail::append_key<T*, N>(dest, value.data());
 }
 
 inline void append_key(bytes& dest, float64_t value) {
-   append_key(dest, detail::float_to_key<uint64_t>(value));
+   auto float_key = detail::float_to_key<uint64_t>(value);
+   detail::append_key<uint64_t, 1>(dest, float_key);
 }
 
 inline void append_key(bytes& dest, float128_t value) {
-   append_key(dest, detail::float_to_key<detail::uint128_t>(value));
+   auto float_key = detail::float_to_key<detail::uint128_t>(value);
+   // underlying storage is implemented as uint64_t[2], but it is laid out like it is uint128_t
+   detail::append_key<detail::uint128_t, 1>(dest, float_key);
 }
 
 template<typename T>
 auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, T& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
-   return detail::extract_key(key_loc, key_end, key);
+   return detail::extract_key<T, 1>(key_loc, key_end, key);
 }
 
 template <typename T, std::size_t N>
 auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, std::array<T, N>& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
-   const auto distance = std::distance(key_loc, key_end);
-   const auto key_size = sizeof(key);
-   if (distance < key_size)
-      return false;
-
-   key_end = key_loc + key_size;
-   bytes key_store(key_loc, key_end);
-   key_loc = key_end;
-   std::reverse(std::begin(key_store), std::end(key_store));
-   detail::copy_and_swap_to_buffer<T, N>(reinterpret_cast<char*>(key.data()), key_store.data());
-
-   return true;
+   T* key_ptr = key.data();
+   return detail::extract_key<T*, N>(key_loc, key_end, key_ptr);
 }
 
 inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float64_t& key) {
    uint64_t int_key;
-   const bool extract = extract_key(key_loc, key_end, int_key);
+   const bool extract = detail::extract_key<uint64_t, 1>(key_loc, key_end, int_key);
    if (!extract)
       return false;
 
@@ -235,7 +240,7 @@ inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator ke
 
 inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float128_t& key) {
    detail::uint128_t int_key;
-   const bool extract = extract_key(key_loc, key_end, int_key);
+   const bool extract = detail::extract_key<detail::uint128_t, 1>(key_loc, key_end, int_key);
    if (!extract)
       return false;
 
