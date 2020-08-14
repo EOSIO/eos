@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto traces = chain.traces_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!get_prunable_data_from_traces(traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    chain.traces_log.prune_transactions(cfd_trace->block_num, ids);
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
 BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
