@@ -504,7 +504,7 @@ namespace impl {
          auto act = act_trace.act;
          try {
             auto abi = resolver(act.account);
-            if (abi.valid()) {
+            if (abi) {
                auto type = abi->get_action_result_type(act.name);
                if (!type.empty()) {
                   try {
