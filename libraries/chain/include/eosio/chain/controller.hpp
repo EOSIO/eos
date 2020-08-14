@@ -66,7 +66,7 @@ namespace eosio { namespace chain {
    };
 
    enum class backing_store_type {
-      CHAINBASE,
+      NATIVE,  // A name for regular users. Uses Chainbase.
       ROCKSDB
    };
 
@@ -90,7 +90,7 @@ namespace eosio { namespace chain {
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
-            backing_store_type       backing_store              =  backing_store_type::CHAINBASE;
+            backing_store_type       backing_store              =  backing_store_type::ROCKSDB;
             uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
             int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
