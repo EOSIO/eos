@@ -192,6 +192,8 @@ public:
          auto insert_itr = queue.insert( { trx, expiry, trx_enum_type::persisted } );
          if( insert_itr.second ) added( insert_itr.first );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
+         if (itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted)
+            --incoming_count;
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
          } );
@@ -206,6 +208,9 @@ public:
                { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
       } else {
+         if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
+            ++incoming_count;
+
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
             un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
             un.next = std::move( next );

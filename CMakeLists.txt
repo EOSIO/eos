@@ -51,12 +51,6 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
    add_compile_options(-fdiagnostics-color=always)
 endif()
 
-if (ENABLE_UNITY_BUILD)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
-else()
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-endif()
-
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
@@ -70,15 +64,15 @@ endif()
 #  * ctest entries with --runtime
 # TODO reenable later
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   #if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-   #   #list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
-   #   # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-   #   # can be created with the exact version found
-   #   find_package(LLVM REQUIRED CONFIG)
-   #  if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
-   #     message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
-   #  endif()
-   #endif()
+   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+      # can be created with the exact version found
+      find_package(LLVM REQUIRED CONFIG)
+     if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
+        message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
+     endif()
+   endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
@@ -185,6 +179,15 @@ option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
 
 if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+endif()
+
+
+if (ENABLE_UNITY_BUILD)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
+  set_target_properties(eosio_chain chainbase fc rodeos_lib state_history unit_test wasm_spec_test trace_api_plugin
+                        PROPERTIES UNITY_BUILD TRUE)
+else()
+  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 endif()
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)

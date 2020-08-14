@@ -19,7 +19,6 @@ struct chain_snapshot_header {
     *   4: Updated for v3.0.0 protocol features:
     *         - forwards compatible with versions 2 and 3
     *         - kv database
-    *         - DISK resource
     *         - Configurable wasm limits
     */
 

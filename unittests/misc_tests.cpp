@@ -1,7 +1,6 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
@@ -813,6 +812,19 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    pkt6.to_packed_transaction_v0()->get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+   // verify packed_transaction creation from packed data
+   auto packed = fc::raw::pack( static_cast<const transaction&>(pkt5.get_transaction()) );
+   packed_transaction_v0 pkt7( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt7.get_transaction().id());
+
+   packed.push_back('8'); packed.push_back('8'); // extra ignored
+   packed_transaction_v0 pkt8( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt8.get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt8.get_transaction()) ));
+   BOOST_CHECK( packed == pkt8.get_packed_transaction() ); // extra maintained
 
 } FC_LOG_AND_RETHROW() }
 

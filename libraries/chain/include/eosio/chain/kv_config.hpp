@@ -27,12 +27,10 @@ namespace eosio { namespace chain {
 
    struct kv_config {
       kv_database_config kvram;
-      kv_database_config kvdisk;
    };
 
    inline bool operator==(const kv_config& lhs, const kv_config& rhs) {
-      return std::tie(lhs.kvram, lhs.kvdisk)
-          == std::tie(rhs.kvram, rhs.kvdisk);
+      return lhs.kvram == rhs.kvram;
    }
    inline bool operator!=(const kv_config& lhs, const kv_config& rhs) {
       return !(lhs == rhs);
@@ -41,4 +39,4 @@ namespace eosio { namespace chain {
 }}
 
 FC_REFLECT(eosio::chain::kv_database_config, (max_key_size)(max_value_size)(max_iterators))
-FC_REFLECT(eosio::chain::kv_config, (kvram)(kvdisk))
+FC_REFLECT(eosio::chain::kv_config, (kvram))

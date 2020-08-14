@@ -14,7 +14,7 @@
 <!-- checked [x] = Other; unchecked [ ] = no changes, ignore this section -->
 - [ ] Other - special case
 <!-- checked [x] = Other - special case; unchecked [ ] = no changes, ignore this section -->
-<!-- Other - special case is for when a change warrants additional explanation or description in the relase notes. Please include a description of the change for inclusion in the release notes.-->
+<!-- Other - special case is for when a change warrants additional explanation or description in the release notes. Please include a description of the change for inclusion in the release notes.-->
 
 
 ## Consensus Changes

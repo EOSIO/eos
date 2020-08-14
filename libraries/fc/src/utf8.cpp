@@ -2,33 +2,68 @@
 
 #include "utf8/checked.h"
 #include "utf8/core.h"
-#include "utf8/unchecked.h"
-#include <websocketpp/utf8_validator.hpp>
 
-#include <assert.h>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
-#include <iostream>
 
 namespace fc {
 
-   bool is_utf8( const std::string& str )
+    inline constexpr char hex_digits[] = "0123456789abcdef";
+
+    bool is_utf8( const std::string& str )
+    {
+       return utf8::is_valid( str.begin(), str.end() );
+    }
+
+   // tweaked utf8::find_invalid that also considers provided range as invalid
+   // @param invalid_range, indicates additional invalid values
+   // @return [iterator to found invalid char, the value found if in range of provided pair invalid_range otherwise UINT32_MAX]
+   template <typename octet_iterator>
+   std::pair<octet_iterator, uint32_t> find_invalid(octet_iterator start, octet_iterator end,
+                                                const std::pair<uint32_t, uint32_t>& invalid_range)
    {
-      return utf8::is_valid( str.begin(), str.end() );
+      FC_ASSERT( invalid_range.first <= invalid_range.second );
+      octet_iterator result = start;
+      uint32_t value = UINT32_MAX;
+      while( result != end ) {
+         octet_iterator itr = result;
+         utf8::internal::utf_error err_code = utf8::internal::validate_next( result, end, value );
+         if( err_code != utf8::internal::UTF8_OK )
+            return {result, UINT32_MAX};
+         if( value >= invalid_range.first && value <= invalid_range.second )
+            return {itr, value};
+      }
+      return {result, UINT32_MAX};
    }
 
-   string prune_invalid_utf8( const string& str ) {
-      string result;
 
-      auto itr = utf8::find_invalid(str.begin(), str.end());
-      if( itr == str.end() ) return str;
+   bool is_valid_utf8( const std::string_view& str ) {
+      const auto invalid_range = std::make_pair<uint32_t, uint32_t>(0x80, 0x9F);
+      auto [itr, v] = find_invalid( str.begin(), str.end(), invalid_range );
+      return itr == str.end();
+   }
+
+   // escape 0x80-0x9F C1 control characters
+   string prune_invalid_utf8( const std::string_view& str ) {
+      const auto invalid_range = std::make_pair<uint32_t, uint32_t>(0x80, 0x9F);
+      auto [itr, v] = find_invalid( str.begin(), str.end(), invalid_range );
+      if( itr == str.end() ) return std::string( str );
+
+      string result;
+      auto escape = [&result](uint32_t v) { // v is [0x80-0x9F]
+         result += "\\u00";
+         result += hex_digits[v >> 4u];
+         result += hex_digits[v & 15u];
+      };
 
       result = string( str.begin(), itr );
+      if( v != UINT32_MAX ) escape(v);
       while( itr != str.end() ) {
          ++itr;
          auto start = itr;
-         itr = utf8::find_invalid( start, str.end());
+         std::tie(itr, v) = find_invalid( start, str.end(), invalid_range );
          result += string( start, itr );
+         if( v != UINT32_MAX ) escape(v);
       }
       return result;
    }

@@ -122,9 +122,7 @@ namespace fc
       uint64_t lo;
   };
   static_assert( sizeof(uint128) == 2*sizeof(uint64_t), "validate packing assumptions" );
-
-  typedef uint128 uint128_t;
-
+  
   class variant;
 
   void to_variant( const uint128& var,  variant& vo );
@@ -155,7 +153,7 @@ namespace std
     };
 }
 
-FC_REFLECT( fc::uint128_t, (hi)(lo) )
+FC_REFLECT( fc::uint128, (hi)(lo) )
 
 #ifdef _MSC_VER
   #pragma warning (pop)

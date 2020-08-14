@@ -2,13 +2,14 @@
 #include <fc/filesystem.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/genesis_state.hpp>
+#include <eosio/chain/block_log_config.hpp>
 
 namespace eosio { namespace chain {
 
    namespace detail { class block_log_impl; }
 
    /* The block log is an external append only log of the blocks with a header. Blocks should only
-    * be written to the log after they irreverisble as the log is append only. The log is a doubly
+    * be written to the log after they are irreversible as the log is append only. The log is a doubly
     * linked list of blocks. There is a secondary index file of only block positions that enables
     * O(1) random access lookup by block number.
     *
@@ -32,9 +33,14 @@ namespace eosio { namespace chain {
     * linear scan of the main file.
     */
 
+   namespace bfs = boost::filesystem;
+
    class block_log {
       public:
-         block_log(const fc::path& data_dir);
+
+         using config_type = block_log_config;
+
+         block_log(const config_type& config);
          block_log(block_log&& other) = default;
          ~block_log();
          
@@ -64,7 +70,7 @@ namespace eosio { namespace chain {
          static const uint32_t min_supported_version;
          static const uint32_t max_supported_version;
 
-         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX );
+         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX, const char* reversible_block_dir_name="" );
 
          static fc::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
 
@@ -80,6 +86,10 @@ namespace eosio { namespace chain {
 
          static bool trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block);
          static int  trim_blocklog_end(fc::path block_dir, uint32_t n);
+
+         // used for unit test to generate older version blocklog
+         static void set_version(uint32_t);
+         uint32_t    version() const;
 
          /**
           * @param n Only test 1 block out of every n blocks. If n is 0, it is maximum between 1 and the ceiling of the total number blocks divided by 8.

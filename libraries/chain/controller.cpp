@@ -307,10 +307,10 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
+    reversible_blocks( cfg.blog.log_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    blog( cfg.blocks_dir ),
+    blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
@@ -1248,7 +1248,8 @@ struct controller_impl {
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
              || (code == key_blacklist_exception::code_value)
-             || (code == sig_variable_size_limit_exception::code_value);
+             || (code == sig_variable_size_limit_exception::code_value)
+             || (code == inline_action_too_big_nonprivileged::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -2517,6 +2518,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 const protocol_feature_manager& controller::get_protocol_feature_manager()const
 {
    return my->protocol_features;
+}
+
+uint32_t controller::get_max_nonprivileged_inline_action_size()const
+{
+   return my->conf.max_nonprivileged_inline_action_size;
 }
 
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )

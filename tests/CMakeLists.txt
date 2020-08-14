@@ -57,6 +57,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRE
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -138,9 +139,8 @@ set_property(TEST nodeos_under_min_avail_ram_lr_test PROPERTY LABELS long_runnin
 add_test(NAME nodeos_irreversible_mode_lr_test COMMAND tests/nodeos_irreversible_mode_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_irreversible_mode_lr_test PROPERTY LABELS long_running_tests)
 
-# TODO: uncomment once snapshot generation is enabled.
-#add_test(NAME nodeos_chainbase_allocation_lr_test COMMAND tests/nodeos_chainbase_allocation_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-#set_property(TEST nodeos_chainbase_allocation_lr_test PROPERTY LABELS long_running_tests)
+add_test(NAME nodeos_chainbase_allocation_lr_test COMMAND tests/nodeos_chainbase_allocation_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_chainbase_allocation_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME nodeos_startup_catchup_lr_test COMMAND tests/nodeos_startup_catchup.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(nodeos_startup_catchup_lr_test PROPERTIES TIMEOUT 3000)
@@ -171,6 +171,10 @@ add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINAR
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
 set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
+set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(se_tests)
 

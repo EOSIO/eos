@@ -48,6 +48,7 @@ struct blocklog {
    bool                             as_json_array = false;
    bool                             make_index = false;
    bool                             trim_log = false;
+   bool                             fix_irreversible_blocks = false;
    bool                             smoke_test = false;
    bool                             prune_transactions = false;
    bool                             help               = false;
@@ -70,7 +71,8 @@ struct report_time {
 
 void blocklog::read_log() {
    report_time rt("reading log");
-   block_log block_logger(blocks_dir);
+   
+   block_log block_logger({ .log_dir = blocks_dir });
    const auto end = block_logger.head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
@@ -137,7 +139,7 @@ void blocklog::read_log() {
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
       if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles);
+         *out << fc::json::to_string(v, fc::time_point::maximum());
       else
          *out << fc::json::to_pretty_string(v) << "\n";
    };
@@ -190,6 +192,9 @@ void blocklog::set_program_options(options_description& cli)
           "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
+         ("fix-irreversible-blocks", bpo::bool_switch(&fix_irreversible_blocks)->default_value(false),
+          "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, "
+          "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
           "Quick test that blocks.log and blocks.index are well formed and agree with each other.")
          ("block-num", bpo::value<uint32_t>()->default_value(0), "The block number which contains the transactions to be pruned")
@@ -233,6 +238,16 @@ bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first 
    return status;
 }
 
+void fix_irreversible_blocks(bfs::path block_dir) {
+   std::cout << "\nfix_irreversible_blocks of blocks.log and blocks.index in directory " << block_dir << '\n';
+   block_log::config_type config;
+   config.log_dir = block_dir;
+   config.fix_irreversible_blocks = true;
+   block_log block_logger(config);
+
+   std::cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
+   block_log::smoke_test(block_dir, 0);
+}
 
 void smoke_test(bfs::path block_dir) {
    using namespace std;
@@ -246,7 +261,7 @@ int prune_transactions(const char* type, bfs::path dir, uint32_t block_num,
                        std::vector<transaction_id_type> unpruned_ids) {
    using namespace std;
    if (Log::exists(dir)) {
-      Log log(dir);
+      Log log( { .log_dir = dir });
       log.prune_transactions(block_num, unpruned_ids);
       if (unpruned_ids.size()) {
          cerr << "block " << block_num << " in " << type << " does not contain the following transactions: ";
@@ -288,6 +303,10 @@ int main(int argc, char** argv) {
       if (blog.smoke_test) {
          smoke_test(vmap.at("blocks-dir").as<bfs::path>());
          return 0;
+      }
+      if (blog.fix_irreversible_blocks) {
+          fix_irreversible_blocks(vmap.at("blocks-dir").as<bfs::path>());
+          return 0;
       }
       if (blog.trim_log) {
          if (blog.first_block == 0 && blog.last_block == std::numeric_limits<uint32_t>::max()) {
