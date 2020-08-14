@@ -28,6 +28,7 @@ platform_timer::platform_timer() {
 
    if(refcount++ == 0) {
       std::promise<void> p;
+      auto f = p.get_future();
       checktime_thread = std::thread([&p]() {
          fc::set_os_thread_name("checktime");
          checktime_ios = std::make_unique<boost::asio::io_service>();
@@ -36,7 +37,7 @@ platform_timer::platform_timer() {
 
          checktime_ios->run();
       });
-      p.get_future().get();
+      f.get();
    }
 
    my->timer = std::make_unique<boost::asio::high_resolution_timer>(*checktime_ios);
@@ -64,11 +65,12 @@ void platform_timer::start(fc::time_point tp) {
    else {
 #if 0
       std::promise<void> p;
+      auto f = p.get_future();
       checktime_ios->post([&p,this]() {
          expired = 0;
          p.set_value();
       });
-      p.get_future().get();
+      f.get();
 #endif
       expired = 0;
       my->timer->expires_after(std::chrono::microseconds((int)x.count()));

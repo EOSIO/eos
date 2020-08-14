@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DENABLE_UNITY_BUILD=ON -DAMQP_CONN_STR='amqp://guest:guest@localhost:5672'"
+CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DENABLE_UNITY_BUILD=ON -DAMQP_CONN_STR='amqp://guest:guest@localhost:5672'"
 if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then

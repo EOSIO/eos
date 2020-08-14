@@ -1,5 +1,5 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
-#include <eosio/amqp_trace_plugin/amqp_handler.hpp>
+#include <eosio/amqp/amqp_handler.hpp>
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
@@ -31,7 +31,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::atomic<uint32_t> trx_in_progress_size{0};
 
    // called from amqp thread
-   bool consume_message( const char* buf, size_t s ) {
+   void consume_message( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
       try {
          fc::datastream<const char*> ds( buf, s );
          fc::unsigned_int which;
@@ -40,29 +40,31 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
             chain::packed_transaction_v0 v0;
             fc::raw::unpack(ds, v0);
             auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
-            handle_message( std::move( ptr ) );
+            handle_message( delivery_tag, std::move( ptr ) );
          } else if ( which == fc::unsigned_int(transaction_msg::tag<chain::packed_transaction>::value) ) {
             auto ptr = std::make_shared<chain::packed_transaction>();
             fc::raw::unpack(ds, *ptr);
-            handle_message( std::move( ptr ) );
+            handle_message( delivery_tag, std::move( ptr ) );
          } else {
             FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
-         return true;
+         return;
       } FC_LOG_AND_DROP()
-      return false;
+
+      amqp_trx->reject( delivery_tag );
    }
 
 private:
 
    // called from amqp thread
-   void handle_message( chain::packed_transaction_ptr trx ) {
+   void handle_message( const eosio::amqp::delivery_tag_t& delivery_tag, chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
       auto trx_in_progress = trx_in_progress_size.load();
       if( trx_in_progress > def_max_trx_in_progress_size ) {
          wlog( "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress) );
+         amqp_trx->reject( delivery_tag );
          if( trace_plug ) {
             std::string err = "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
             trace_plug->publish_error( trx->id().str(), chain::tx_resource_exhaustion::code_enum::code_value, std::move(err) );
@@ -71,9 +73,10 @@ private:
       }
 
       trx_in_progress_size += trx->get_estimated_size();
-      app().post( priority::medium_low, [my=shared_from_this(), trx{std::move(trx)}]() {
+      app().post( priority::medium_low, [my=shared_from_this(), delivery_tag, trx{std::move(trx)}]() {
          my->chain_plug->accept_transaction( trx,
-            [my, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
+            [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
+               my->amqp_trx->ack( delivery_tag );
                // publish to trace plugin as execptions are not reported via controller signal applied_transaction
                if( result.contains<chain::exception_ptr>() ) {
                   auto& eptr = result.get<chain::exception_ptr>();
@@ -137,9 +140,9 @@ void amqp_trx_plugin::plugin_startup() {
                elog( "amqp error: ${e}", ("e", err) );
                app().quit();
             },
-            [&]( const char* buf, size_t s ) {
-               if( app().is_quiting() ) return false;
-               return my->consume_message( buf, s );
+            [&]( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
+               if( app().is_quiting() ) return; // leave non-ack
+               my->consume_message( delivery_tag, buf, s );
             }
       );
 

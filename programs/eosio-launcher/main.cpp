@@ -799,7 +799,7 @@ launcher_def::define_network () {
   }
   else {
     int ph_count = 0;
-    host_def *lhost = nullptr;
+    std::unique_ptr<host_def> lhost{nullptr};
     size_t host_ndx = 0;
     size_t num_prod_addr = servers.producer.size();
     size_t num_nonprod_addr = servers.nonprod.size();
@@ -808,9 +808,8 @@ launcher_def::define_network () {
       if (ph_count == 0) {
         if (lhost) {
           bindings.emplace_back(move(*lhost));
-          delete lhost;
         }
-        lhost = new host_def;
+        lhost.reset(new host_def);
         lhost->genesis = genesis.string();
         if (host_ndx < num_prod_addr ) {
            do_bios = servers.producer[host_ndx].has_bios;
@@ -842,13 +841,12 @@ launcher_def::define_network () {
       assign_name(eosd, do_bios);
 
       aliases.push_back(eosd.name);
-      eosd.set_host (lhost, do_bios);
+      eosd.set_host (lhost.get(), do_bios);
       do_bios = false;
       lhost->instances.emplace_back(move(eosd));
       --ph_count;
     } // for i
     bindings.emplace_back( move(*lhost) );
-    delete lhost;
   }
 }
 
@@ -1188,12 +1186,6 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   ta.appenders.push_back( "stderr" );
   if( gelf_enabled ) ta.appenders.push_back( "net" );
   log_config.loggers.emplace_back( ta );
-
-  fc::logger_config at( "amqp_trx" );
-  at.level = fc::log_level::debug;
-  at.appenders.push_back( "stderr" );
-  if( gelf_enabled ) at.appenders.push_back( "net" );
-  log_config.loggers.emplace_back( at );
 
   auto str = fc::json::to_pretty_string( log_config, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );

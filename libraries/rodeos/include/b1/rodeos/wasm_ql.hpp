@@ -116,5 +116,7 @@ eosio::ship_protocol::transaction_trace_v0
 query_send_transaction(wasm_ql::thread_state& thread_state, const std::vector<char>& contract_kv_prefix,
                        const eosio::ship_protocol::packed_transaction& trx, const rocksdb::Snapshot* snapshot,
                        std::vector<std::vector<char>>& memory, bool return_trace_on_except);
+const std::vector<char>& query_create_checkpoint(wasm_ql::thread_state&         thread_state,
+                                                 const boost::filesystem::path& dir);
 
 } // namespace b1::rodeos::wasm_ql

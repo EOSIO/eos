@@ -1,7 +1,7 @@
 #include <eosio/amqp_witness_plugin/amqp_witness_plugin.hpp>
 #include <eosio/chain/types.hpp>
 
-#include <eosio/reliable_amqp_publisher/reliable_amqp_publisher.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 
 namespace eosio {
 static appbase::abstract_plugin& _amqp_witness_plugin = app().register_plugin<amqp_witness_plugin>();
