@@ -337,6 +337,7 @@ namespace eosio {
                con->send_http_response();
                return false;
             }
+
             return true;
          }
 
@@ -393,7 +394,7 @@ namespace eosio {
             :object(std::move(object))
             ,impl(impl)
             {
-               count = detail::in_flight_sizeof(object);
+               count = detail::in_flight_sizeof(this->object);
                impl.bytes_in_flight += count;
             }
 
@@ -448,7 +449,7 @@ namespace eosio {
           */
          template<typename T>
          static auto make_in_flight(T&& object, http_plugin_impl& impl) {
-            return in_flight<T>(std::forward<T>(object), impl);
+            return std::make_shared<in_flight<T>>(in_flight<T>(std::forward<T>(object), impl));
          }
 
          /**
@@ -463,17 +464,22 @@ namespace eosio {
          detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next ) {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
-               auto tracked_b = make_in_flight(std::move(b), *this);
+               auto tracked_b = make_in_flight<string>(std::move(b), *this);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
 
+               url_response_callback wrapped_then = [tracked_b, then=std::move(then)](int code, fc::variant resp) 
+               {
+                  then(code, std::move(resp));
+               };
+
                // post to the app thread taking shared ownership of next (via std::shared_ptr),
                // sole ownership of the tracked body and the passed in parameters
-               app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b=std::move(tracked_b), then=std::move(then)]() mutable {
+               app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b, wrapped_then=std::move(wrapped_then)]() mutable {
                   try {
                      // call the `next` url_handler and wrap the response handler
-                     (*next_ptr)( std::move( r ), std::move( *tracked_b ), std::move(then)) ;
+                     (*next_ptr)( std::move( r ), std::move(*(*tracked_b)), std::move(wrapped_then)) ;
                   } catch( ... ) {
                      conn->handle_exception();
                   }
@@ -516,9 +522,9 @@ namespace eosio {
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
                boost::asio::post( thread_pool->get_executor(), [this, con, code, tracked_response=std::move(tracked_response)]() {
                   try {
-                     std::string json = fc::json::to_string( *tracked_response, fc::time_point::now() + max_response_time );
+                     std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
-                     con->set_body( std::move( *tracked_json ) );
+                     con->set_body( std::move( *(*tracked_json) ) );
                      con->set_status( websocketpp::http::status_code::value( code ) );
                      con->send_http_response();
                   } catch( ... ) {
