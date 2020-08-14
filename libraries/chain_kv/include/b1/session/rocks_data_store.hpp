@@ -49,8 +49,8 @@ public:
         auto operator++(int) -> rocks_iterator;
         auto operator--() -> rocks_iterator&;
         auto operator--(int) -> rocks_iterator;
-        auto operator*() -> value_type;
-        auto operator->() -> value_type;
+        auto operator*() const -> value_type;
+        auto operator->() const -> value_type;
         auto operator==(const rocks_iterator& other) const -> bool;
         auto operator!=(const rocks_iterator& other) const -> bool;
     
@@ -371,13 +371,13 @@ auto rocks_data_store<allocator>::begin() const -> typename rocks_data_store<all
 template <typename allocator>
 auto rocks_data_store<allocator>::end() -> typename rocks_data_store<allocator>::iterator
 {
-    return make_iterator_([](auto& it){ it->SeekToLast(); it->Next(); });
+    return make_iterator_([](auto& it){ it->SeekToLast(); if (it->Valid()) it->Next(); });
 }
 
 template <typename allocator>
 auto rocks_data_store<allocator>::end() const -> typename rocks_data_store<allocator>::const_iterator
 {
-    return make_iterator_([](auto& it){ it->SeekToLast(); it->Next(); });
+    return make_iterator_([](auto& it){ it->SeekToLast(); if (it->Valid()) it->Next(); });
 }
 
 template <typename allocator>
@@ -395,13 +395,13 @@ auto rocks_data_store<allocator>::lower_bound(const bytes& key) const -> typenam
 template <typename allocator>
 auto rocks_data_store<allocator>::upper_bound(const bytes& key) -> typename rocks_data_store<allocator>::iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); it->Next(); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); if (it->Valid()) it->Next(); });
 }
 
 template <typename allocator>
 auto rocks_data_store<allocator>::upper_bound(const bytes& key) const -> typename rocks_data_store<allocator>::const_iterator
 {
-    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); it->Next(); });
+    return make_iterator_([&](auto& it){ it->SeekForPrev(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); if (it->Valid()) it->Next(); });
 }
 
 template <typename allocator>
@@ -423,7 +423,10 @@ rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(con
   m_iterator{[&]()
   {
     auto new_it = std::shared_ptr<rocksdb::Iterator>{it.m_db->NewIterator(rocksdb::ReadOptions{})};
-    new_it->Seek(it.m_iterator->Key());
+    if (it.m_iterator->Valid())
+    {
+        new_it->Seek(it.m_iterator->Key());
+    }
     return new_it;
   }()},
   m_allocator{it.m_allocator}
@@ -451,8 +454,10 @@ auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator=(con
     m_db = it.m_db;
     m_allocator = it.m_allocator;
     m_iterator = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(rocksdb::ReadOptions{})};
-    m_iterator->Seek(it.m_iterator->key());
-    
+    if (it.m_iterator->Valid())
+    {
+      m_iterator->Seek(it.m_iterator->key());
+    }
     return *this;
 }
 
@@ -462,7 +467,10 @@ auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::make_iterator
 {
     auto read_options = rocksdb::ReadOptions{};
     auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
-    rit->Seek(m_iterator->key());
+    if (m_iterator->Valid())
+    {
+      rit->Seek(m_iterator->key());
+    }
     return {m_db, rit, m_allocator};
 }
 
@@ -502,8 +510,13 @@ auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator--(in
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator*() -> value_type
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator*() const -> value_type
 {
+    if (!m_iterator->Valid())
+    {
+        return key_value::invalid;
+    }
+
     auto key_slice = m_iterator->key();
     auto value = m_iterator->value();
     return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size(), m_allocator);
@@ -511,8 +524,13 @@ auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator*() -
 
 template <typename allocator>
 template <typename iterator_traits>
-auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator->() -> value_type
+auto rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator->() const -> value_type
 {
+    if (!m_iterator->Valid())
+    {
+        return key_value::invalid;
+    }
+
     auto key_slice = m_iterator->key();
     auto value = m_iterator->value();
     return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size(), m_allocator);
