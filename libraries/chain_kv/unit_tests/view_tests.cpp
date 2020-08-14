@@ -7,8 +7,8 @@ using chain_kv::to_slice;
 BOOST_AUTO_TEST_SUITE(view_tests)
 
 void view_test(bool reload_session) {
-   boost::filesystem::remove_all("test-write-session-db");
-   chain_kv::database                       db{ "test-write-session-db", true };
+   boost::filesystem::remove_all("view-test-session-db");
+   chain_kv::database                       db{ "view-test-session-db", true };
    chain_kv::undo_stack                     undo_stack{ db, { 0x10 } };
    std::unique_ptr<chain_kv::write_session> session;
    std::unique_ptr<chain_kv::view>          view;

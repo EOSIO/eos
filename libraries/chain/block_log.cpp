@@ -226,7 +226,7 @@ namespace eosio { namespace chain {
       boost::iostreams::mapped_file_sink index;
    };
 
-   struct bad_block_excpetion {
+   struct bad_block_exception {
       std::exception_ptr inner;
    };
 
@@ -356,7 +356,7 @@ namespace eosio { namespace chain {
          try {
             unpack(ds, entry);
          } catch (...) {
-            throw bad_block_excpetion{std::current_exception()};
+            throw bad_block_exception{std::current_exception()};
          }
 
          const block_header& header = get_block_header(entry);
@@ -922,7 +922,7 @@ namespace eosio { namespace chain {
                pos  = ds.tellp();
             }
          }
-         catch (const bad_block_excpetion& e) {
+         catch (const bad_block_exception& e) {
             write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
             std::rethrow_exception(e.inner);
          }

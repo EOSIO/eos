@@ -165,13 +165,14 @@ namespace eosio { namespace chain {
          if (!kv)
             return 0;
          int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size());
-         resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
+         resource_manager.update_table_usage(kv->payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
 
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
                ("action_id", resource_manager._context->get_action_id())
                ("db", database_id)
-               ("payer", name{ contract })
+               ("contract", name{ contract })
+               ("payer", kv->payer)
                ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
                ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
             );
@@ -182,10 +183,11 @@ namespace eosio { namespace chain {
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                     uint32_t value_size) override {
+                     uint32_t value_size, account_name payer) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
          EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
+
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
@@ -194,37 +196,51 @@ namespace eosio { namespace chain {
             int64_t old_size = static_cast<int64_t>(kv->kv_key.size()) + kv->kv_value.size();
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
             int64_t resource_delta = new_size - old_size;
-            resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+
+            if (kv->payer != payer) {
+               // refund the existing payer
+               resource_manager.update_table_usage(kv->payer, -(old_size + resource_manager.billable_size), kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+               // charge the new payer
+               resource_manager.update_table_usage(payer, new_size + resource_manager.billable_size, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+            } else if (old_size != new_size) {
+               resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+            }
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
                   ("db", database_id)
-                  ("payer", name{ contract })
+                  ("contract", name{ contract })
+                  ("payer", payer)
                   ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
                   ("odata", fc::to_hex(kv->kv_value.data(), kv->kv_value.size()))
                   ("ndata", fc::to_hex(value, value_size))
                );
             }
 
-            db.modify(*kv, [&](auto& obj) { obj.kv_value.assign(value, value_size); });
+            db.modify(*kv, [&](auto& obj) {
+               obj.kv_value.assign(value, value_size);
+               obj.payer = payer;
+            });
             return resource_delta;
          } else {
             int64_t new_size = static_cast<int64_t>(value_size) + key_size;
             int64_t resource_delta = new_size + resource_manager.billable_size;
-            resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::create));
+            resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::create));
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };
                obj.kv_key.assign(key, key_size);
                obj.kv_value.assign(value, value_size);
+               obj.payer       = payer;
             });
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
                   ("db", database_id)
-                  ("payer", name{ contract })
+                  ("contract", name{ contract })
+                  ("payer", payer)
                   ("key", fc::to_hex(key, key_size))
                   ("ndata", fc::to_hex(value, value_size))
                );

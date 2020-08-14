@@ -67,10 +67,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits(account, ram, net, cpu);
          manager.set_account_limits( account, ram, net, limit );
-      } else if( resource == string_to_name("disk") ) {
-         if( manager.set_account_disk_limit( account, limit ) ) {
-            context.trx_context.validate_disk_usage.insert( account );
-         }
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -90,8 +86,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits( account, ram, net, cpu );
          return cpu;
-      } else if( resource == string_to_name("disk") ) {
-         return manager.get_account_disk_limit( account );
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -233,8 +227,6 @@ namespace eosio { namespace chain { namespace webassembly {
    auto kv_parameters_impl(name db) {
       if ( db == kvram_id ) {
          return &kv_config::kvram;
-      } else if ( db == kvdisk_id ) {
-         return &kv_config::kvdisk;
       } else {
          EOS_THROW(kv_bad_db_id, "Bad key-value database ID");
       }

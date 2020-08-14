@@ -53,11 +53,12 @@ namespace fc
    template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& s, variant& v );
    template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& s );
 
-   using namespace boost::multiprecision;
    template<size_t Size>
-   using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
+   using UInt = boost::multiprecision::number<
+         boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void> >;
    template<size_t Size>
-   using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
+   using Int = boost::multiprecision::number<
+         boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void> >;
 
    void to_variant( const UInt<8>& n, variant& v );
    void from_variant( const variant& v, UInt<8>& n );
