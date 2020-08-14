@@ -3669,7 +3669,7 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
       BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
 
       auto &atrace = res->action_traces;
-      BOOST_REQUIRE_EQUAL( atrace[0].receipt.valid(), true );
+      BOOST_REQUIRE_EQUAL( atrace[0].receipt.has_value(), true );
       BOOST_REQUIRE_EQUAL( atrace[0].return_value.size(), 4 );
       BOOST_REQUIRE_EQUAL( fc::raw::unpack<int>(atrace[0].return_value), 10 );
    } );
