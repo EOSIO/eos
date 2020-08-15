@@ -91,10 +91,15 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            if (control.get_config().backing_store == backing_store_type::ROCKSDB) {
-               kv_backing_store = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-            } else {
-               kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+            switch (control.get_config().backing_store) {
+               case backing_store_type::ROCKSDB:
+                  kv_backing_store = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+                  break;
+               case backing_store_type::NATIVE:
+                  kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+                  break;
+               default:
+                  EOS_ASSERT( false, action_validate_exception, "Unknown backing store." );
             }
 
             _db_context = create_db_chainbase_context(*this, receiver);

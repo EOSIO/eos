@@ -663,6 +663,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
    //for (bool rocks_save : { false, true }) {
    //   for (bool rocks_load : { false, true }) {
 
+# warning TODO: Take out the return when snapshot is done with rewriting.
    // snapshot handling is being rewritten.
    // do not waste time to update soon-to-be-changed
    // code to work. This is OK since we are in a
@@ -711,8 +712,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // increment the test contract
             signed_transaction trx;
-            //trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
-            trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvdisk), {}});
+            trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
             chain.set_transaction_headers(trx);
             trx.sign(chain.get_private_key(N(snapshot), "active"), chain.control->get_chain_id());
             chain.push_transaction(trx);
