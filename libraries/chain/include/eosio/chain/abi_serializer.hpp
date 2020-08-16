@@ -507,11 +507,9 @@ namespace impl {
             if (abi.valid()) {
                auto type = abi->get_action_result_type(act.name);
                if (!type.empty()) {
-                  try {
-                     binary_to_variant_context _ctx(*abi, ctx, type);
-                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
-                     mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
-                  } catch(...) {}
+                  binary_to_variant_context _ctx(*abi, ctx, type);
+                  _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
+                  mvo( "return_value_data", abi->_binary_to_variant( type, act_trace.return_value, _ctx ));
                }
             }
          } catch(...) {}
