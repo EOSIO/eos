@@ -208,7 +208,6 @@ steps:
     env:
       DEBIAN_FRONTEND: "noninteractive" 
       TZ: "America/New York"
-      ASM-LLVMWAR: "/usr/bin/g++"
     plugins:
       - docker#v3.3.0:
           image: "ubuntu:20.04"
@@ -217,6 +216,6 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
-      - "apt update && apt upgrade -y && apt install -y git"
+      - "apt update && apt upgrade -y && apt install -y git llvm-10"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
