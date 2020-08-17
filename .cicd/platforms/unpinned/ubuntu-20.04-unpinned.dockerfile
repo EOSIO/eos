@@ -34,8 +34,12 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
     cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
     cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
     rm ~/.bashrc.bak
-# install node 10
-RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
-    ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
-RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN sudo apt-get install -y nodejs
+# install node 12
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
+    . /etc/lsb-release && \
+    echo "deb https://deb.nodesource.com/node_12.x $DISTRIB_CODENAME main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    echo "deb-src https://deb.nodesource.com/node_12.x $DISTRIB_CODENAME main" | tee -a /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
