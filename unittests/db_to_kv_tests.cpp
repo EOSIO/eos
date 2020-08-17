@@ -64,29 +64,44 @@ void verify_assending_composite_keys(const std::vector<b1::chain_kv::bytes>& key
 }
 
 template<typename T, typename KeyFunc>
-void verify_table_scope_order(T low_key, T high_key, KeyFunc key_func) {
+void verify_scope_table_order(T low_key, T high_key, KeyFunc key_func, bool skip_trailing_prim_key) {
    std::vector<b1::chain_kv::bytes> comp_keys;
-   comp_keys.push_back(key_func(name{0}, name{0}, low_key));
-   comp_keys.push_back(key_func(name{1}, name{0}, low_key));
-   comp_keys.push_back(key_func(name{1}, name{1}, low_key));
-   comp_keys.push_back(key_func(name{1}, name{1}, high_key));
-   comp_keys.push_back(key_func(name{1}, name{2}, low_key));
-   comp_keys.push_back(key_func(name{1}, name{0xffff'ffff'ffff'ffff}, low_key));
-   comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0}, low_key));
-   comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0xffff'ffff'ffff'ffff}, low_key));
+   comp_keys.push_back(key_func(name{0}, name{0}, low_key, 0x0));
+   // this function always passes the extra primary key, but need to skip what would be redundant keys for when we are
+   // actually getting a primary key
+   if (!skip_trailing_prim_key) {
+      comp_keys.push_back(key_func(name{0}, name{0}, low_key, 0x1));
+      comp_keys.push_back(key_func(name{0}, name{0}, low_key, 0xffff'ffff'ffff'ffff));
+   }
+   comp_keys.push_back(key_func(name{1}, name{0}, low_key, 0x0));
+   comp_keys.push_back(key_func(name{1}, name{1}, low_key, 0x0));
+   comp_keys.push_back(key_func(name{1}, name{1}, high_key, 0x0));
+   if (!skip_trailing_prim_key) {
+      comp_keys.push_back(key_func(name{1}, name{1}, high_key, 0x1));
+   }
+   comp_keys.push_back(key_func(name{1}, name{2}, low_key, 0x0));
+   comp_keys.push_back(key_func(name{1}, name{0xffff'ffff'ffff'ffff}, low_key, 0x0));
+   comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0}, low_key, 0x0));
+   comp_keys.push_back(key_func(name{0xffff'ffff'ffff'ffff}, name{0xffff'ffff'ffff'ffff}, low_key, 0x0));
    for (unsigned int i = 0; i < comp_keys.size() - 1; ++i) {
-      verify_assending_composite_keys(comp_keys, i, "verify_table_scope_order");
+      verify_assending_composite_keys(comp_keys, i, "verify_scope_table_order");
    }
 }
 
+// using this function to allow check_ordered_keys to work for all key types
+b1::chain_kv::bytes prim_drop_extra_key(name scope, name table, uint64_t db_key, uint64_t unused_primary_key) {
+   return eosio::chain::db_key_value_format::create_primary_key(scope, table, db_key);
+};
+
 template<typename T, typename KeyFunc>
-void check_ordered_keys(const std::vector<T> ordered_keys, KeyFunc key_func) {
-   verify_table_scope_order(ordered_keys[0], ordered_keys[1], key_func);
+void check_ordered_keys(const std::vector<T> ordered_keys, KeyFunc key_func, bool skip_trailing_prim_key = false) {
+   verify_scope_table_order(ordered_keys[0], ordered_keys[1], key_func, skip_trailing_prim_key);
    name scope{0};
    name table{0};
+   const uint64_t prim_key = 0;
    std::vector<b1::chain_kv::bytes> composite_keys;
    for (const auto key: ordered_keys) {
-      auto comp_key = key_func(scope, table, key);
+      auto comp_key = key_func(scope, table, key, prim_key);
       composite_keys.push_back(comp_key);
    }
    for (unsigned int i = 0; i < composite_keys.size() - 1; ++i) {
@@ -116,14 +131,15 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    keys.push_back(0x7FFF'FFFF'FFFF'FFFF);
    keys.push_back(0x8000'0000'0000'0000);
    keys.push_back(0xFFFF'FFFF'FFFF'FFFF);
-   check_ordered_keys(keys, &eosio::chain::db_key_value_format::create_primary_key);
+   const bool skip_trailing_prim_key = true;
+   check_ordered_keys(keys, &prim_drop_extra_key, skip_trailing_prim_key);
 
    const name scope2 = N(myscope);
    const name table2 = N(thisscope);
    const uint64_t key2 = 0xdead87654321beef;
-   const uint64_t primary_key2 = N(primkey);
+   const uint64_t primary_key2 = 0x0123456789abcdef;
    const auto composite_key2 = eosio::chain::db_key_value_format::create_secondary_key(scope2, table2, key2, primary_key2);
-   BOOST_REQUIRE_EQUAL(overhead + sizeof(key) + sizeof(primary_key2), composite_key2.size());
+   BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key2), composite_key2.size());
 
    uint64_t decomposed_primary_key = 0x0;
    BOOST_CHECK(eosio::chain::db_key_value_format::get_secondary_key(composite_key2, decomposed_scope, decomposed_table, decomposed_key, decomposed_primary_key));
@@ -150,7 +166,7 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
    const name scope = N(myscope);
    const name table = N(thisscope);
    const eosio::chain::uint128_t key = create_uint128(0xdead12345678beef, 0x0123456789abcdef);
-   const uint64_t primary_key = N(primkey);
+   const uint64_t primary_key = 0x0123456789abcdef;
 
    const auto composite_key = eosio::chain::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
    BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key), composite_key.size());
@@ -190,7 +206,7 @@ BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
    const name table = N(thisscope);
    const eosio::chain::key256_t key = create_key256(create_uint128(0xdead12345678beef, 0x0123456789abcdef),
                                                     create_uint128(0xbadf2468013579ec, 0xf0e1d2c3b4a59687));
-   const uint64_t primary_key = N(primkey);
+   const uint64_t primary_key = 0x0123456789abcdef;
    const auto composite_key = eosio::chain::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
    BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key), composite_key.size());
 
@@ -226,7 +242,7 @@ BOOST_AUTO_TEST_CASE(float64_key_conversions_test) {
    const name scope = N(myscope);
    const name table = N(thisscope);
    const float64_t key = to_softfloat64(6.0);
-   const uint64_t primary_key = N(primkey);
+   const uint64_t primary_key = 0x0123456789abcdef;
    const auto composite_key = eosio::chain::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
    BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key), composite_key.size());
 
@@ -259,7 +275,7 @@ BOOST_AUTO_TEST_CASE(float128_key_conversions_test) {
    const name scope = N(myscope);
    const name table = N(thisscope);
    const float128_t key = to_softfloat128(99.99);
-   const uint64_t primary_key = N(primkey);
+   const uint64_t primary_key = 0x0123456789abcdef;
    const auto composite_key = eosio::chain::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
    BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key), composite_key.size());
 
