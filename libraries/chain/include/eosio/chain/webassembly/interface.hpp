@@ -86,8 +86,8 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<const char> packed_producer_schedule);
          uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
-         uint32_t get_kv_parameters_packed(name, span<char>, uint32_t) const;
-         void set_kv_parameters_packed(name, span<const char>);
+         uint32_t get_kv_parameters_packed(span<char>, uint32_t) const;
+         void set_kv_parameters_packed(span<const char>);
          bool is_privileged(account_name account) const;
          void set_privileged(account_name account, bool is_priv);
 
@@ -481,11 +481,11 @@ namespace eosio { namespace chain { namespace webassembly {
          REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
 
          // kv database api
-         int64_t  kv_erase(uint64_t, uint64_t, span<const char>);
-         int64_t  kv_set(uint64_t, uint64_t, span<const char>, span<const char>, account_name payer);
-         bool     kv_get(uint64_t, uint64_t, span<const char>, uint32_t*);
-         uint32_t kv_get_data(uint64_t, uint32_t, span<char>);
-         uint32_t kv_it_create(uint64_t, uint64_t, span<const char>);
+         int64_t  kv_erase(uint64_t, span<const char>);
+         int64_t  kv_set(uint64_t, span<const char>, span<const char>, account_name payer);
+         bool     kv_get(uint64_t, span<const char>, uint32_t*);
+         uint32_t kv_get_data(uint32_t, span<char>);
+         uint32_t kv_it_create(uint64_t, span<const char>);
          void     kv_it_destroy(uint32_t);
          int32_t  kv_it_status(uint32_t);
          int32_t  kv_it_compare(uint32_t, uint32_t);

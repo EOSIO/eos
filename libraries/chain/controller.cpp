@@ -951,7 +951,6 @@ struct controller_impl {
                      std::memcpy(&contract, buf, sizeof(contract));
                      auto value = it->value();
                      kv_object_view row{
-                        kvdisk_id,
                         name(contract),
                         { { key.data() + key_prefix_size, key.data() + key.size() } },
                         { { value.data(), value.data() + value.size() } }

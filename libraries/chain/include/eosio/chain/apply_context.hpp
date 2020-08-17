@@ -450,8 +450,6 @@ class apply_context {
          return *kv_backing_store;
       }
 
-      void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
-
    private:
       kv_context& kv_get_db(uint64_t db);
       void kv_check_iterator(uint32_t itr);
@@ -519,7 +517,6 @@ class apply_context {
       vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                                              _pending_console_output;
       flat_set<account_delta>                                  _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
-      flat_set<account_delta>                                  _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
 
       std::unique_ptr<backing_store::db_context>               _db_context;
 };

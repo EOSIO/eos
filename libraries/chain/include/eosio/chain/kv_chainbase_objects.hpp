@@ -22,7 +22,6 @@ namespace eosio { namespace chain {
    struct by_kv_key;
 
    struct kv_object_view {
-      name database_id;
       name contract;
       // TODO: Use non-owning memory
       fc::blob kv_key;
@@ -35,7 +34,6 @@ namespace eosio { namespace chain {
       static constexpr uint32_t minimum_snapshot_version = 4;
 
       id_type     id;
-      name        database_id;
       name        contract;
       shared_blob kv_key;
       shared_blob kv_value;
@@ -46,17 +44,17 @@ namespace eosio { namespace chain {
          kv_object,
          indexed_by<ordered_unique<tag<by_id>, member<kv_object, kv_object::id_type, &kv_object::id>>,
                     ordered_unique<tag<by_kv_key>,
-                                   composite_key<kv_object, member<kv_object, name, &kv_object::database_id>,
+                                   composite_key<kv_object,
                                                  member<kv_object, name, &kv_object::contract>,
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
-                                   composite_key_compare<std::less<name>, std::less<name>, unsigned_blob_less>>>>;
+                                   composite_key_compare<std::less<name>, unsigned_blob_less>>>>;
 
    inline void use_rocksdb_for_disk(chainbase::database& db) {
       if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
          return;
       auto& idx = db.get_index<kv_index, by_kv_key>();
-      auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
-      EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
+      auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
+      EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
                  "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb");
       db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_disk = true; });
    }
@@ -75,5 +73,5 @@ namespace config {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
 FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_disk))
-FC_REFLECT(eosio::chain::kv_object_view, (database_id)(contract)(kv_key)(kv_value))
-FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value)(payer))
+FC_REFLECT(eosio::chain::kv_object_view, (contract)(kv_key)(kv_value))
+FC_REFLECT(eosio::chain::kv_object, (contract)(kv_key)(kv_value)(payer))

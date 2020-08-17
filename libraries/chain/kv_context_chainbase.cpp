@@ -13,13 +13,12 @@ namespace eosio { namespace chain {
       const index_type&          idx = db.get_index<kv_index, by_kv_key>();
       tracker_type&              tracker;
       uint32_t&                  itr_count;
-      name                       database_id;
       name                       contract;
       std::vector<char>          prefix;
       const kv_object*           current = nullptr;
 
-      kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, uint32_t& itr_count, name database_id, name contract, std::vector<char> prefix)
-         : db{ db }, tracker{ tracker }, itr_count(itr_count), database_id{ database_id }, contract{ contract }, prefix{ std::move(prefix) } {
+      kv_iterator_chainbase(chainbase::database& db, tracker_type& tracker, uint32_t& itr_count, name contract, std::vector<char> prefix)
+         : db{ db }, tracker{ tracker }, itr_count(itr_count), contract{ contract }, prefix{ std::move(prefix) } {
 
          ++itr_count;
       }
@@ -31,7 +30,7 @@ namespace eosio { namespace chain {
 
       template <typename It>
       kv_it_stat move_to(const It& it, uint32_t* found_key_size, uint32_t* found_value_size) {
-         if (it != idx.end() && it->database_id == database_id && it->contract == contract &&
+         if (it != idx.end() && it->contract == contract &&
              it->kv_key.size() >= prefix.size() && !memcmp(it->kv_key.data(), prefix.data(), prefix.size())) {
             current = &*it;
             *found_key_size = current->kv_key.size();
@@ -57,8 +56,7 @@ namespace eosio { namespace chain {
       int32_t kv_it_compare(const kv_iterator& rhs) override {
          EOS_ASSERT(rhs.is_kv_chainbase_context_iterator(), kv_bad_iter, "Incompatible key-value iterators");
          auto& r = static_cast<const kv_iterator_chainbase&>(rhs);
-         EOS_ASSERT(database_id == r.database_id && contract == r.contract, kv_bad_iter,
-                    "Incompatible key-value iterators");
+         EOS_ASSERT(contract == r.contract, kv_bad_iter, "Incompatible key-value iterators");
          EOS_ASSERT(!current || !tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
          EOS_ASSERT(!r.current || !tracker.is_removed(*r.current), kv_bad_iter, "Iterator to erased element");
          if (!r.current) {
@@ -93,7 +91,7 @@ namespace eosio { namespace chain {
             ++it;
             return move_to(it, found_key_size, found_value_size);
          }
-         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, prefix)), found_key_size, found_value_size);
+         return move_to(idx.lower_bound(boost::make_tuple(contract, prefix)), found_key_size, found_value_size);
       }
 
       kv_it_stat kv_it_prev(uint32_t* found_key_size, uint32_t* found_value_size) override {
@@ -102,7 +100,7 @@ namespace eosio { namespace chain {
             EOS_ASSERT(!tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
             it = idx.iterator_to(*current);
          } else
-            it = idx.upper_bound(boost::make_tuple(database_id, contract, blob_prefix{{prefix.data(), prefix.size()}}));
+            it = idx.upper_bound(boost::make_tuple(contract, blob_prefix{{prefix.data(), prefix.size()}}));
          if (it != idx.begin())
             return move_to(--it, found_key_size, found_value_size);
          current = nullptr;
@@ -113,7 +111,7 @@ namespace eosio { namespace chain {
 
       kv_it_stat kv_it_lower_bound(const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size) override {
          auto clamped_key = std::max(std::string_view{ key, size }, std::string_view{ prefix.data(), prefix.size() }, unsigned_blob_less{});
-         return move_to(idx.lower_bound(boost::make_tuple(database_id, contract, clamped_key)), found_key_size, found_value_size);
+         return move_to(idx.lower_bound(boost::make_tuple(contract, clamped_key)), found_key_size, found_value_size);
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
@@ -145,22 +143,20 @@ namespace eosio { namespace chain {
       using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
       chainbase::database&         db;
       tracker_type                 tracker = db.get_mutable_index<kv_index>().track_removed();
-      name                         database_id;
       name                         receiver;
       kv_resource_manager          resource_manager;
       const kv_database_config&    limits;
       uint32_t                     num_iterators = 0;
       std::optional<shared_blob>   temp_data_buffer;
 
-      kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
+      kv_context_chainbase(chainbase::database& db, name receiver,
                            kv_resource_manager resource_manager, const kv_database_config& limits)
-         : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
+         : db{ db }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer.reset();
-         auto* kv = db.find<kv_object, by_kv_key>(
-               boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
+         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
             return 0;
          const int64_t resource_delta = erase_table_usage(resource_manager, kv->payer, key, kv->kv_key.size(), kv->kv_value.size());
@@ -168,7 +164,6 @@ namespace eosio { namespace chain {
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
                ("action_id", resource_manager._context->get_action_id())
-               ("db", database_id)
                ("contract", name{ contract })
                ("payer", kv->payer)
                ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
@@ -188,14 +183,13 @@ namespace eosio { namespace chain {
 
          temp_data_buffer.reset();
          auto* kv = db.find<kv_object, by_kv_key>(
-               boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
+               boost::make_tuple(name{ contract }, std::string_view{ key, key_size }));
          if (kv) {
             const auto resource_delta = update_table_usage(resource_manager, kv->payer, payer, key, key_size, kv->kv_value.size(), value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
-                  ("db", database_id)
                   ("contract", name{ contract })
                   ("payer", payer)
                   ("key", fc::to_hex(kv->kv_key.data(), kv->kv_key.size()))
@@ -212,7 +206,6 @@ namespace eosio { namespace chain {
          } else {
             const int64_t resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
             db.create<kv_object>([&](auto& obj) {
-               obj.database_id = database_id;
                obj.contract    = name{ contract };
                obj.kv_key.assign(key, key_size);
                obj.kv_value.assign(value, value_size);
@@ -222,7 +215,6 @@ namespace eosio { namespace chain {
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
                   ("action_id", resource_manager._context->get_action_id())
-                  ("db", database_id)
                   ("contract", name{ contract })
                   ("payer", payer)
                   ("key", fc::to_hex(key, key_size))
@@ -235,8 +227,7 @@ namespace eosio { namespace chain {
       }
 
       bool kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) override {
-         auto* kv = db.find<kv_object, by_kv_key>(
-               boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
+         auto* kv = db.find<kv_object, by_kv_key>(boost::make_tuple(name{ contract }, std::string_view{ key, key_size }));
          if (kv) {
             temp_data_buffer.emplace(kv->kv_value);
             value_size = temp_data_buffer->size();
@@ -263,7 +254,7 @@ namespace eosio { namespace chain {
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
          EOS_ASSERT(num_iterators < limits.max_iterators, kv_bad_iter, "Too many iterators");
          EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
-         return std::make_unique<kv_iterator_chainbase>(db, tracker, num_iterators, database_id, name{ contract },
+         return std::make_unique<kv_iterator_chainbase>(db, tracker, num_iterators, name{ contract },
                                                         std::vector<char>{ prefix, prefix + size });
       }
    }; // kv_context_chainbase
@@ -271,10 +262,7 @@ namespace eosio { namespace chain {
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
                                                            kv_resource_manager resource_manager, const kv_database_config& limits)
    {
-      // Preparing to remove db specifier. Hardcode original database_id to 
-      // kvdisk_id for now. It will be removed in the last phase of 
-      // the removing db specifier activity.
-      return std::make_unique<kv_context_chainbase>(db, kvdisk_id, receiver, resource_manager, limits);
+      return std::make_unique<kv_context_chainbase>(db,receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain

@@ -136,8 +136,6 @@ void apply_context::exec_one()
                if (control.is_builtin_activated(builtin_protocol_feature_t::ram_restrictions)) {
                   check_unprivileged_resource_usage<unauthorized_ram_usage_increase>("RAM", _account_ram_deltas);
                }
-
-               check_unprivileged_resource_usage<unauthorized_disk_usage_increase>("DISK", _account_disk_deltas);
             }
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
@@ -205,9 +203,6 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
-
-   trace.account_disk_deltas = std::move( _account_disk_deltas );
-   _account_disk_deltas.clear();
 
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
@@ -1251,16 +1246,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
-   }
-}
-
-void apply_context::add_disk_usage( account_name payer, int64_t disk_delta, const storage_usage_trace& trace ) {
-
-   trx_context.add_disk_usage( payer, disk_delta, trace );
-
-   auto p = _account_disk_deltas.emplace( payer, disk_delta );
-   if( !p.second ) {
-      p.first->delta += disk_delta;
    }
 }
 

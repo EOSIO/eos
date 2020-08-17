@@ -1,23 +1,23 @@
 #include <eosio/chain/webassembly/interface.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
-   int64_t  interface::kv_erase(uint64_t db, uint64_t contract, span<const char> key) {
+   int64_t  interface::kv_erase(uint64_t contract, span<const char> key) {
       return context.kv_erase(contract, key.data(), key.size());
    }
 
-   int64_t  interface::kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value, account_name payer) {
+   int64_t  interface::kv_set(uint64_t contract, span<const char> key, span<const char> value, account_name payer) {
       return context.kv_set(contract, key.data(), key.size(), value.data(), value.size(), payer);
    }
 
-   bool     interface::kv_get(uint64_t db, uint64_t contract, span<const char> key, uint32_t* value_size) {
+   bool     interface::kv_get(uint64_t contract, span<const char> key, uint32_t* value_size) {
       return context.kv_get(contract, key.data(), key.size(), *value_size);
    }
    
-   uint32_t interface::kv_get_data(uint64_t db, uint32_t offset, span<char> data) {
+   uint32_t interface::kv_get_data(uint32_t offset, span<char> data) {
       return context.kv_get_data(offset, data.data(), data.size());
    }
 
-   uint32_t interface::kv_it_create(uint64_t db, uint64_t contract, span<const char> prefix) {
+   uint32_t interface::kv_it_create(uint64_t contract, span<const char> prefix) {
       return context.kv_it_create(contract, prefix.data(), prefix.size());
    }
 
