@@ -182,13 +182,13 @@ void witness_trx_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void witness_trx_plugin::plugin_startup() {
-   app().get_plugin<witness_plugin>().add_on_witness_sig([this](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
+   app().get_plugin<witness_plugin>().add_on_witness_sig([my=my](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
       //if nodeos is shutting down, it is possible witness_trx_plugin_impl will be destroyed immediately after the callback returns before
       // the post() below is actually dispatched. Prevent returning until certain post() has dispatched.
       std::promise<void> made_to_other_thread_promise;
       auto fut = made_to_other_thread_promise.get_future();
 
-      my->ctx.post([this, &bsp, &sig, &made_to_other_thread_promise]() {
+      my->ctx.post([my, &bsp, &sig, &made_to_other_thread_promise]() {
          std::vector<char> witness_action_data = fc::raw::pack(std::make_pair(bsp->header.action_mroot, sig));
          made_to_other_thread_promise.set_value();
 
@@ -199,7 +199,7 @@ void witness_trx_plugin::plugin_startup() {
       });
 
       fut.wait();
-   }, std::weak_ptr<witness_trx_plugin_impl>(my));
+   });
 
    my->chainplug.chain().accepted_block.connect([this](const chain::block_state_ptr& bsp) {
       my->on_accepted_block(bsp);
