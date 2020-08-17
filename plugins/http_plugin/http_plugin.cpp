@@ -323,10 +323,10 @@ namespace eosio {
          }
 
          template<typename T>
-         bool verify_max_bytes_in_flight( const T& con ) {
+         bool verify_max_bytes_in_flight( T& con ) {
             auto bytes_in_flight_size = bytes_in_flight.load();
             if( bytes_in_flight_size > max_bytes_in_flight ) {
-               fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
+               fc_ilog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
                error_results::error_info ei;
                ei.code = websocketpp::http::status_code::too_many_requests;
                ei.name = "Busy";
@@ -337,6 +337,8 @@ namespace eosio {
                con->send_http_response();
                return false;
             }
+
+            fc_ilog( logger, "ok: bytes in flight");
             return true;
          }
 
