@@ -5,6 +5,7 @@
 #include <cstring>
 
 using key_type = eosio::chain::db_key_value_format::key_type;
+using name = eosio::chain::name;
 
 BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 
@@ -24,7 +25,7 @@ void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key, key
       name scope;
       name table;
       uint64_t key = 0;
-      BOOST_CHECK_THROW(eosio::chain::db_key_value_format::get_primary_key(composite_key, scope, table, key), bad_composite_key_exception);
+      BOOST_CHECK_THROW(eosio::chain::db_key_value_format::get_primary_key(composite_key, scope, table, key), eosio::chain::bad_composite_key_exception);
    }
    if (except != key_type::sec_i64) { verify_secondary_wont_convert<uint64_t>(composite_key); }
    if (except != key_type::sec_i128) { verify_secondary_wont_convert<eosio::chain::uint128_t>(composite_key); }
