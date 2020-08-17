@@ -2,12 +2,11 @@
 #include <b1/session/boost_memory_allocator.hpp>
 #include <b1/session/bytes.hpp>
 
-using namespace b1::session;
+using namespace eosio::session;
 
 BOOST_AUTO_TEST_SUITE(bytes_tests)
 
-BOOST_AUTO_TEST_CASE(make_bytes_test) 
-{
+BOOST_AUTO_TEST_CASE(make_bytes_test) {
   static constexpr auto* char_value = "hello world";
   static const auto char_length = strlen(char_value) - 1;
   static constexpr auto int_value = int64_t{100000000};

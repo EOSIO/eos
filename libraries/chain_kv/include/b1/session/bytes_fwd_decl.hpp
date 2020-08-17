@@ -3,34 +3,35 @@
 #include <cstddef>
 #include <functional>
 
-namespace b1::session
-{
+namespace eosio::session {
+
 using free_function_type = std::function<void(void* data, size_t length_bytes)>;
 
 class bytes;
 
 template <typename T, typename allocator>
-auto make_bytes(const T* data, size_t length, allocator& a) -> bytes;
+bytes make_bytes(const T* data, size_t length, allocator& a);
 
 template <typename allocator>
-auto make_bytes(const void* data, size_t length, allocator& a) -> bytes;
+bytes make_bytes(const void* data, size_t length, allocator& a);
 
 template <typename T>
-auto make_bytes(const T* data, size_t length) -> bytes;
+bytes make_bytes(const T* data, size_t length);
 
 }
 
-namespace std
-{
-template <>
-class less<b1::session::bytes>;
+namespace std {
 
 template <>
-class greater<b1::session::bytes>;
+class less<eosio::session::bytes>;
 
 template <>
-class hash<b1::session::bytes>;
+class greater<eosio::session::bytes>;
 
 template <>
-class equal_to<b1::session::bytes>;
+class hash<eosio::session::bytes>;
+
+template <>
+class equal_to<eosio::session::bytes>;
+
 }

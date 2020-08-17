@@ -2,12 +2,11 @@
 #include <b1/session/boost_memory_allocator.hpp>
 #include <b1/session/key_value.hpp>
 
-using namespace b1::session;
+using namespace eosio::session;
 
 BOOST_AUTO_TEST_SUITE(key_value_tests)
 
-BOOST_AUTO_TEST_CASE(make_key_value_test) 
-{
+BOOST_AUTO_TEST_CASE(make_key_value_test)  {
   static constexpr auto* char_key = "hello";
   static constexpr auto* char_value = "world";
   static constexpr auto int_key = uint64_t{100000000};

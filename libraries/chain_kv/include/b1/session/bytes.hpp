@@ -8,51 +8,49 @@
 #include <b1/session/bytes_fwd_decl.hpp>
 #include <b1/session/key_value_fwd_decl.hpp>
 
-namespace b1::session
-{
+namespace eosio::session {
 
 // \brief An immutable type to represent a pointer and a length.
 //
-class bytes final
-{
+class bytes final {
 public:
     friend class key_value;
     
     template <typename T, typename allocator>
-    friend auto make_bytes(const T* data, size_t length, allocator& a) -> bytes;
+    friend bytes make_bytes(const T* data, size_t length, allocator& a);
 
     template <typename allocator>
-    friend auto make_bytes(const void* data, size_t length, allocator& a) -> bytes;
+    friend bytes make_bytes(const void* data, size_t length, allocator& a);
     
     template <typename T>
-    friend auto make_bytes(const T* data, size_t length) -> bytes;
+    friend bytes make_bytes(const T* data, size_t length);
     
-    friend auto make_kv(bytes key, bytes value) -> key_value;
+    friend key_value make_kv(bytes key, bytes value);
 
     template <typename key, typename value, typename allocator>
-    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
+    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
     
     template <typename key, typename value>
-    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value;
+    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
 
     template <typename allocator>
-    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
     
-    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value;
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 
 public:
     bytes(const bytes& b);
     bytes(bytes&& b);
     ~bytes();
     
-    auto operator=(const bytes& b) -> bytes&;
-    auto operator=(bytes&& b) -> bytes&;
+    bytes& operator=(const bytes& b);
+    bytes& operator=(bytes&& b);
     
-    auto data() const -> const void * const;
-    auto length() const -> size_t;
+    const void * const data() const;
+    size_t length() const;
     
-    auto operator==(const bytes& other) const -> bool;
-    auto operator!=(const bytes& other) const -> bool;
+    bool operator==(const bytes& other) const;
+    bool operator!=(const bytes& other) const;
     
     static const bytes invalid;
     
@@ -81,18 +79,15 @@ private:
 // \param length The number of items in the array.
 // \param a The memory allocator used to instantiate the memory used by the bytes instance.
 template <typename T, typename allocator>
-auto make_bytes(const T* data, size_t length, allocator& a) -> bytes
-{
+bytes make_bytes(const T* data, size_t length, allocator& a) {
     return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T), a);
 }
 
 template <typename allocator>
-auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
-{
+bytes make_bytes(const void* data, size_t length, allocator& a) {
     auto result = bytes{};
     
-    if (!data || length == 0)
-    {
+    if (!data || length == 0) {
       return result;
     }
 
@@ -113,8 +108,7 @@ auto make_bytes(const void* data, size_t length, allocator& a) -> bytes
 }
 
 template <>
-inline auto make_bytes(const void* data, size_t length) -> bytes
-{
+inline bytes make_bytes(const void* data, size_t length) {
     auto result = bytes{};
     
     result.m_memory_allocator_address = nullptr;
@@ -137,8 +131,7 @@ inline auto make_bytes(const void* data, size_t length) -> bytes
 // \warning The resulting bytes instance does NOT take ownership of the given data pointer.
 // \warning The data pointer must remain in scope for the lifetime of the given bytes instance.
 template <typename T>
-auto make_bytes(const T* data, size_t length) -> bytes
-{
+bytes make_bytes(const T* data, size_t length) {
     return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
 }
 
@@ -148,10 +141,9 @@ inline bytes::bytes(const bytes& b)
 : m_memory_allocator_address{b.m_memory_allocator_address},
   m_use_count_address{b.m_use_count_address},
   m_length{b.m_length},
-  m_data{b.m_data}
-{
-    if (m_use_count_address)
-    {
+  m_data{b.m_data} {
+
+    if (m_use_count_address) {
         ++(*m_use_count_address);
     }
 }
@@ -160,36 +152,30 @@ inline bytes::bytes(bytes&& b)
 : m_memory_allocator_address{std::move(b.m_memory_allocator_address)},
   m_use_count_address{std::move(b.m_use_count_address)},
   m_length{std::move(b.m_length)},
-  m_data{std::move(b.m_data)}
-{
+  m_data{std::move(b.m_data)} {
+
     b.m_memory_allocator_address = nullptr;
     b.m_use_count_address = nullptr;
     b.m_length = nullptr;
     b.m_data = nullptr;
 }
 
-inline bytes::~bytes()
-{
-    if (!m_data || !m_length || !m_use_count_address)
-    {
+inline bytes::~bytes() {
+    if (!m_data || !m_length || !m_use_count_address) {
         return;
     }
     
-    if (--(*m_use_count_address) != 0)
-    {
+    if (--(*m_use_count_address) != 0) {
         return;
     }
     
-    // TODO:  bytes shouldn't need to know the memory allocator in use.  Need a generic interface to cast to.
     // The memory pool must remain in scope for the lifetime of this instance.
     auto* free_function = reinterpret_cast<free_function_type*>(*m_memory_allocator_address);
     (*free_function)(m_data, 3 * sizeof(size_t) + *m_length);
 }
 
-inline auto bytes::operator=(const bytes& b) -> bytes&
-{
-    if (this == &b)
-    {
+inline bytes& bytes::operator=(const bytes& b) {
+    if (this == &b) {
         return *this;
     }
     
@@ -198,18 +184,15 @@ inline auto bytes::operator=(const bytes& b) -> bytes&
     m_length = b.m_length;
     m_data = b.m_data;
     
-    if (m_use_count_address)
-    {
+    if (m_use_count_address) {
         ++(*m_use_count_address);
     }
     
     return *this;
 }
 
-inline auto bytes::operator=(bytes&& b) -> bytes&
-{
-    if (this == &b)
-    {
+inline bytes& bytes::operator=(bytes&& b) {
+    if (this == &b) {
         return *this;
     }
     
@@ -226,33 +209,26 @@ inline auto bytes::operator=(bytes&& b) -> bytes&
     return *this;
 }
 
-inline auto bytes::data() const -> const void * const
-{
+inline const void * const bytes::data() const {
     return m_data;
 }
 
-inline auto bytes::length() const -> size_t
-{
-    if (!m_memory_allocator_address)
-    {
+inline size_t bytes::length() const {
+    if (!m_memory_allocator_address) {
         // The size was encoded as the address of this data member.
         return reinterpret_cast<size_t>(m_length);
     }
 
-    if (!m_length)
-    {
+    if (!m_length) {
         return 0;
     }
     
     return *m_length;
 }
 
-inline auto bytes::operator==(const bytes& other) const -> bool
-{
-    if (m_length && other.m_length && m_data && other.m_data)
-    {
-        if (length() != other.length())
-        {
+inline bool bytes::operator==(const bytes& other) const {
+    if (m_length && other.m_length && m_data && other.m_data) {
+        if (length() != other.length()) {
             return false;
         }
         
@@ -263,52 +239,46 @@ inline auto bytes::operator==(const bytes& other) const -> bool
     return m_length == other.m_length && m_data == other.m_data;
 }
 
-inline auto bytes::operator!=(const bytes& other) const -> bool
-{
+inline bool bytes::operator!=(const bytes& other) const {
     return !(*this == other);
 }
 
 }
 
-namespace std
-{
+namespace std {
+
 template <>
-class less<b1::session::bytes> final
-{
+class less<eosio::session::bytes> final {
 public:
-    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
-    {
+    bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
 
 template <>
-class greater<b1::session::bytes> final
-{
+class greater<eosio::session::bytes> final {
 public:
-    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
-    {
+    bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
 
 template <>
-class hash<b1::session::bytes> final
-{
+class hash<eosio::session::bytes> final {
 public:
-  auto operator()(const b1::session::bytes& b) const -> size_t
-  {
+  size_t operator()(const eosio::session::bytes& b) const {
     return std::hash<std::string_view>{}({reinterpret_cast<const char*>(b.data()), b.length()});
   }
 };
 
 template <>
-class equal_to<b1::session::bytes> final
+class equal_to<eosio::session::bytes> final
 {
 public:
-    auto operator()(const b1::session::bytes& lhs, const b1::session::bytes& rhs) const -> bool
+    auto operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const -> bool
     {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} == std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     }
 };
+
 }

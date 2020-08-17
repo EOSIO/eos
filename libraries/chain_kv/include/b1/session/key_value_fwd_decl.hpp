@@ -2,22 +2,21 @@
 
 #include <b1/session/bytes_fwd_decl.hpp>
 
-namespace b1::session
-{
+namespace eosio::session {
 
 class key_value;
 
-inline auto make_kv(bytes key, bytes value) -> key_value;
+inline key_value make_kv(bytes key, bytes value);
 
 template <typename key, typename value, typename allocator>
-auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
+key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
 
 template <typename key, typename value>
-auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value;
+key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
 
 template <typename allocator>
-auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
+key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
 
-inline auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value;
+inline key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 
 }

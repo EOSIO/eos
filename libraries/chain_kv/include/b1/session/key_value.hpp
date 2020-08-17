@@ -2,31 +2,30 @@
 
 #include <b1/session/bytes.hpp>
 
-namespace b1::session
-{
+namespace eosio::session {
 
 // An immutable structure to represent a key/value pairing.
 class key_value final
 {
 public:
-    friend auto make_kv(bytes key, bytes value) -> key_value;
+    friend key_value make_kv(bytes key, bytes value);
 
     template <typename key, typename value, typename allocator>
-    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value;
+    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
     
     template <typename allocator>
-    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value;
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
     
     template <typename key, typename value>
-    friend auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value;
+    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
 
-    friend auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value;
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 public:
-    auto key() const -> const bytes&;
-    auto value() const -> const bytes&;
+    const bytes& key() const;
+    const bytes& value() const;
     
-    auto operator==(const key_value& other) const -> bool;
-    auto operator!=(const key_value& other) const -> bool;
+    bool operator==(const key_value& other) const;
+    bool operator!=(const key_value& other) const;
     
     static const key_value invalid;
 
@@ -44,8 +43,7 @@ private:
 // \param value The value.
 // \returns A key_value instance.
 // \remarks This factory does not guarentee that the the memory used for the key/value will be contiguous in memory.
-inline auto make_kv(bytes key, bytes value) -> key_value
-{
+inline key_value make_kv(bytes key, bytes value) {
     auto result = key_value{};
     result.m_key = std::move(key);
     result.m_value = std::move(value);
@@ -65,21 +63,18 @@ inline auto make_kv(bytes key, bytes value) -> key_value
 // \returns A key_value instance.
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
 template <typename key, typename value, typename allocator>
-auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) -> key_value
-{
+key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) {
     auto total_key_length = key_length * sizeof(key);
     auto total_value_length = value_length * sizeof(value);
     return make_kv(reinterpret_cast<const void*>(the_key), total_key_length, reinterpret_cast<const void*>(the_value), total_value_length, a);
 }
 
 template <typename key, typename value>
-auto make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) -> key_value
-{
+key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) {
     return make_kv(reinterpret_cast<const void*>(the_key), key_length * sizeof(key), reinterpret_cast<const void*>(the_value), value_length * sizeof(key));
 }
 
-inline auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length) -> key_value
-{
+inline key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length) {
     auto kv = key_value{};
     kv.m_key = make_bytes(key, key_length);
     kv.m_value = make_bytes(value, value_length);
@@ -98,8 +93,7 @@ inline auto make_kv(const void* key, size_t key_length, const void* value, size_
 // \returns A key_value instance.
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
 template <typename allocator>
-auto make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) -> key_value
-{
+key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) {
     // TODO:  Not quite sure how to manage this memory chunk.
     // auto key_chunk_length = key_length == 0 ? key_length : key_length + 3 * sizeof(size_t);
     // auto value_chunk_length = value_length == 0 ? value_length : value_length + 3 * sizeof(size_t);
@@ -135,23 +129,19 @@ auto make_kv(const void* key, size_t key_length, const void* value, size_t value
 
 inline const key_value key_value::invalid{};
 
-inline auto key_value::key() const -> const bytes&
-{
+inline const bytes& key_value::key() const {
     return m_key;
 }
 
-inline auto key_value::value() const -> const bytes&
-{
+inline const bytes& key_value::value() const {
     return m_value;
 }
 
-inline auto key_value::operator==(const key_value& other) const -> bool
-{
+inline bool key_value::operator==(const key_value& other) const {
     return m_key == other.m_key && m_value == other.m_value;
 }
 
-inline auto key_value::operator!=(const key_value& other) const -> bool
-{
+inline bool key_value::operator!=(const key_value& other) const {
     return !(*this == other);
 }
 

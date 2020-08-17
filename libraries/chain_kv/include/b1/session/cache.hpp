@@ -8,16 +8,14 @@
 #include <b1/session/cache_fwd_decl.hpp>
 #include <b1/session/key_value.hpp>
 
-namespace b1::session
-{
+namespace eosio::session {
 
 // An in memory caching data store for storing key_value types.
 //
 // \tparam allocator The memory allocator to managed the memory used by the key_value instances stored in the cache.
 // \remarks This type implements the "data store" concept.
 template <typename allocator>
-class cache final
-{
+class cache final {
 private:
     // Currently there are some constraints that require the use of a std::map.
     // Namely, we need to be able to iterator over the entries in lexigraphical ordering on the keys.
@@ -28,8 +26,7 @@ public:
     using allocator_type = allocator;
     
     template <typename iterator_type, typename iterator_traits>
-    class cache_iterator final
-    {
+    class cache_iterator final {
     public:
         using difference_type = typename iterator_traits::difference_type;
         using value_type = typename iterator_traits::value_type;
@@ -42,24 +39,23 @@ public:
         cache_iterator(cache_iterator&&) = default;
         cache_iterator(iterator_type it);
         
-        auto operator=(const cache_iterator& it) -> cache_iterator& = default;
-        auto operator=(cache_iterator&&) -> cache_iterator& = default;
+        cache_iterator&  operator=(const cache_iterator& it) = default;
+        cache_iterator&  operator=(cache_iterator&&) = default;
         
-        auto operator++() -> cache_iterator&;
-        auto operator++(int) -> cache_iterator;
-        auto operator--() -> cache_iterator&;
-        auto operator--(int) -> cache_iterator;
-        auto operator*() const -> reference;
-        auto operator->() const -> reference;
-        auto operator==(const cache_iterator& other) const -> bool;
-        auto operator!=(const cache_iterator& other) const -> bool;
+        cache_iterator& operator++();
+        cache_iterator operator++(int);
+        cache_iterator& operator--();
+        cache_iterator operator--(int);
+        reference operator*() const;
+        reference operator->() const;
+        bool operator==(const cache_iterator& other) const;
+        bool operator!=(const cache_iterator& other) const;
         
     private:
         iterator_type m_it;
     };
 
-    struct iterator_traits
-    {
+    struct iterator_traits {
         using difference_type = long;
         using value_type = key_value;
         using pointer = value_type*;
@@ -68,8 +64,7 @@ public:
     };
     using iterator = cache_iterator<cache_type::iterator, iterator_traits>;
 
-    struct const_iterator_traits
-    {
+    struct const_iterator_traits {
         using difference_type = long;
         using value_type = const key_value;
         using pointer = const value_type*;
@@ -87,43 +82,43 @@ public:
     auto operator=(const cache&) -> cache& = default;
     auto operator=(cache&&) -> cache& = default;
     
-    auto read(const bytes& key) const -> const key_value&;
-    auto write(key_value kv) -> void;
-    auto contains(const bytes& key) const -> bool;
-    auto erase(const bytes& key) -> void;
+    const key_value& read(const bytes& key) const;
+    void write(key_value kv);
+    bool contains(const bytes& key) const;
+    void erase(const bytes& key);
 
     template <typename iterable>
-    auto read(const iterable& keys) const -> const std::pair<std::vector<key_value>, std::unordered_set<bytes>>;
+    const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read(const iterable& keys) const;
 
     template <typename iterable>
-    auto write(const iterable& key_values) -> void;
+    void write(const iterable& key_values);
 
     template <typename iterable>
-    auto erase(const iterable& keys) -> void;
+    void erase(const iterable& keys);
 
     template <typename data_store, typename iterable>
-    auto write_to(data_store& ds, const iterable& keys) const -> void;
+    void write_to(data_store& ds, const iterable& keys) const;
 
     template <typename data_store, typename iterable>
-    auto read_from(const data_store& ds, const iterable& keys) -> void;
+    void read_from(const data_store& ds, const iterable& keys);
     
-    auto find(const bytes& key) -> iterator;
-    auto find(const bytes& key) const -> const_iterator;
-    auto begin() -> iterator;
-    auto begin() const -> const_iterator;
-    auto end() -> iterator;
-    auto end() const -> const_iterator;
-    auto lower_bound(const bytes& key) -> iterator;
-    auto lower_bound(const bytes& key) const -> const_iterator;
-    auto upper_bound(const bytes& key) -> iterator;
-    auto upper_bound(const bytes& key) const -> const_iterator;
+    iterator find(const bytes& key);
+    const_iterator find(const bytes& key) const;
+    iterator begin();
+    const_iterator begin() const;
+    iterator end();
+    const_iterator end() const;
+    iterator lower_bound(const bytes& key);
+    const_iterator lower_bound(const bytes& key) const;
+    iterator upper_bound(const bytes& key);
+    const_iterator upper_bound(const bytes& key) const;
     
-    auto memory_allocator() -> const std::shared_ptr<allocator>&;
-    auto memory_allocator() const -> const std::shared_ptr<const allocator>;
+    const std::shared_ptr<allocator>& memory_allocator();
+    const std::shared_ptr<const allocator> memory_allocator() const;
 
 private:
     template <typename on_cache_hit, typename on_cache_miss>
-    auto find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const -> const key_value&;
+    const key_value& find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const;
     
 private:
     std::shared_ptr<allocator> m_allocator;
@@ -131,26 +126,22 @@ private:
 };
 
 template <typename allocator>
-auto make_cache(std::shared_ptr<allocator> a) -> cache<allocator>
-{
+cache<allocator> make_cache(std::shared_ptr<allocator> a) {
     return {std::move(a)};
 }
 
 template <typename allocator>
 cache<allocator>::cache(std::shared_ptr<allocator> memory_allocator)
-: m_allocator{std::move(memory_allocator)}
-{
+: m_allocator{std::move(memory_allocator)} {
 }
 
 template <typename allocator>
-auto cache<allocator>::memory_allocator() -> const std::shared_ptr<allocator>&
-{
+const std::shared_ptr<allocator>& cache<allocator>::memory_allocator() {
     return m_allocator;
 }
 
 template <typename allocator>
-auto cache<allocator>::memory_allocator() const -> const std::shared_ptr<const allocator>
-{
+const std::shared_ptr<const allocator> cache<allocator>::memory_allocator() const {
     return m_allocator;
 }
 
@@ -164,18 +155,15 @@ auto cache<allocator>::memory_allocator() const -> const std::shared_ptr<const a
 // \return A reference to the key_value instance if found, key_value::invalid otherwise.
 template <typename allocator>
 template <typename on_cache_hit, typename on_cache_miss>
-auto cache<allocator>::find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const -> const key_value&
-{
+const key_value& cache<allocator>::find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const {
     auto it = m_cache.find(key);
     
-    if (it == std::end(m_cache))
-    {
+    if (it == std::end(m_cache)) {
         cache_miss();
         return key_value::invalid;
     }
     
-    if (cache_hit(it))
-    {
+    if (cache_hit(it)) {
         return it->second;
     }
     
@@ -183,17 +171,14 @@ auto cache<allocator>::find_(const bytes& key, const on_cache_hit& cache_hit, co
 }
 
 template <typename allocator>
-auto cache<allocator>::read(const bytes& key) const -> const key_value&
-{
+const key_value& cache<allocator>::read(const bytes& key) const {
     return find_(key, [](auto& it){ return true; }, [](){});
 }
 
 template <typename allocator>
-auto cache<allocator>::write(key_value kv) -> void
-{
+void cache<allocator>::write(key_value kv) {
     auto it = m_cache.find(kv.key());
-    if (it == std::end(m_cache))
-    {
+    if (it == std::end(m_cache)) {
         auto key = kv.key();
         m_cache.emplace(std::move(key), std::move(kv));
         return;
@@ -202,14 +187,12 @@ auto cache<allocator>::write(key_value kv) -> void
 }
 
 template <typename allocator>
-auto cache<allocator>::contains(const bytes& key) const -> bool
-{
+bool cache<allocator>::contains(const bytes& key) const {
     return find_(key, [](auto& it){ return true; }, [](){}) != key_value::invalid;
 }
 
 template <typename allocator>
-auto cache<allocator>::erase(const bytes& key) -> void
-{
+void cache<allocator>::erase(const bytes& key) {
     find_(key, [&](auto& it){ m_cache.erase(it); return false; }, [](){});
 }
 
@@ -220,16 +203,13 @@ auto cache<allocator>::erase(const bytes& key) -> void
 // \returns An std::pair where the first item is list of the found key_values and the second item is a set of the keys not found.
 template <typename allocator>
 template <typename iterable>
-auto cache<allocator>::read(const iterable& keys) const -> const std::pair<std::vector<key_value>, std::unordered_set<bytes>>
-{
+const std::pair<std::vector<key_value>, std::unordered_set<bytes>> cache<allocator>::read(const iterable& keys) const {
     auto not_found = std::unordered_set<bytes>{};
     auto kvs = std::vector<key_value>{};
     
-    for (const auto& key : keys)
-    {
+    for (const auto& key : keys) {
         auto& kv = find_(key, [](auto& it){ return true; }, [](){});
-        if (kv == key_value::invalid)
-        {
+        if (kv == key_value::invalid) {
             not_found.emplace(key);
             continue;
         }
@@ -245,10 +225,8 @@ auto cache<allocator>::read(const iterable& keys) const -> const std::pair<std::
 // \param key_values An iterable instance that returns key_value instances in its iterator.
 template <typename allocator>
 template <typename iterable>
-auto cache<allocator>::write(const iterable& key_values) -> void
-{
-    for (const auto& kv : key_values)
-    {
+void cache<allocator>::write(const iterable& key_values) {
+    for (const auto& kv : key_values) {
         write(kv);
     }
 }
@@ -259,10 +237,8 @@ auto cache<allocator>::write(const iterable& key_values) -> void
 // \param keys An iterable instance that returns bytes instances in its iterator.
 template <typename allocator>
 template <typename iterable>
-auto cache<allocator>::erase(const iterable& keys) -> void
-{
-    for (const auto& key : keys)
-    {
+void cache<allocator>::erase(const iterable& keys) {
+    for (const auto& key : keys) {
         find_(key, [&](auto& it){ m_cache.erase(it); return false; }, [](){});
     }
 }
@@ -275,24 +251,18 @@ auto cache<allocator>::erase(const iterable& keys) -> void
 // \param keys An iterable instance that returns bytes instances in its iterator.
 template <typename allocator>
 template <typename data_store, typename iterable>
-auto cache<allocator>::write_to(data_store& ds, const iterable& keys) const -> void
-{
+void cache<allocator>::write_to(data_store& ds, const iterable& keys) const {
     auto kvs = std::vector<key_value>{};
     
-    for (const auto& key : keys)
-    {
+    for (const auto& key : keys) {
         auto& kv = find_(key, [](auto& it){ return true; }, [](){});
-        if (kv == key_value::invalid)
-        {
+        if (kv == key_value::invalid) {
             continue;
         }
 
-        if (!ds.memory_allocator()->equals(*memory_allocator()))
-        {
+        if (!ds.memory_allocator()->equals(*memory_allocator())) {
             kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), ds.memory_allocator()));
-        }
-        else
-        {
+        } else {
             kvs.emplace_back(kv);
         }
         
@@ -309,24 +279,18 @@ auto cache<allocator>::write_to(data_store& ds, const iterable& keys) const -> v
 // \param keys An iterable instance that returns bytes instances in its iterator.
 template <typename allocator>
 template <typename data_store, typename iterable>
-auto cache<allocator>::read_from(const data_store& ds, const iterable& keys) -> void
-{
+void cache<allocator>::read_from(const data_store& ds, const iterable& keys) {
     auto kvs = std::vector<key_value>{};
     
-    for (const auto& key : keys)
-    {
+    for (const auto& key : keys) {
         auto& kv = ds.read(key);
-        if (kv == key_value::invalid)
-        {
+        if (kv == key_value::invalid) {
             continue;
         }
         
-        if (m_allocator->equals(*ds.memory_allocator()))
-        {
+        if (m_allocator->equals(*ds.memory_allocator())) {
           kvs.emplace_back(kv);
-        }
-        else
-        {
+        } else {
           kvs.emplace_back(make_kv(kv.key().data(), kv.key().length(), kv.value().data(), kv.value().length(), m_allocator));
         }
     }
@@ -337,127 +301,111 @@ auto cache<allocator>::read_from(const data_store& ds, const iterable& keys) -> 
 }
 
 template <typename allocator>
-auto cache<allocator>::find(const bytes& key) -> typename cache<allocator>::iterator
-{
+typename cache<allocator>::iterator cache<allocator>::find(const bytes& key) {
     return {m_cache.find(key)};
 }
 
 template <typename allocator>
-auto cache<allocator>::find(const bytes& key) const -> typename cache<allocator>::const_iterator
-{
+typename cache<allocator>::const_iterator cache<allocator>::find(const bytes& key) const {
     return {m_cache.find(key)};
 }
 
 template <typename allocator>
-auto cache<allocator>::begin() -> typename cache<allocator>::iterator
-{
+typename cache<allocator>::iterator cache<allocator>::begin() {
     return {std::begin(m_cache)};
 }
 
 template <typename allocator>
-auto cache<allocator>::begin() const -> typename cache<allocator>::const_iterator
-{
+typename cache<allocator>::const_iterator cache<allocator>::begin() const {
     return {std::begin(m_cache)};
 }
 
 template <typename allocator>
-auto cache<allocator>::end() -> typename cache<allocator>::iterator
-{
+typename cache<allocator>::iterator cache<allocator>::end() {
     return {std::end(m_cache)};
 }
 
 template <typename allocator>
-auto cache<allocator>::end() const -> typename cache<allocator>::const_iterator
-{
+typename cache<allocator>::const_iterator cache<allocator>::end() const {
     return {std::end(m_cache)};
 }
 
 template <typename allocator>
-auto cache<allocator>::lower_bound(const bytes& key) -> typename cache<allocator>::iterator
-{
+typename cache<allocator>::iterator cache<allocator>::lower_bound(const bytes& key) {
     return {m_cache.lower_bound(key)};
 }
 
 template <typename allocator>
-auto cache<allocator>::lower_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
-{
+typename cache<allocator>::const_iterator cache<allocator>::lower_bound(const bytes& key) const {
     return {m_cache.lower_bound(key)};
 }
 
 template <typename allocator>
-auto cache<allocator>::upper_bound(const bytes& key) -> typename cache<allocator>::iterator
-{
+typename cache<allocator>::iterator cache<allocator>::upper_bound(const bytes& key) {
     return {m_cache.upper_bound(key)};
 }
 
 template <typename allocator>
-auto cache<allocator>::upper_bound(const bytes& key) const -> typename cache<allocator>::const_iterator
-{
+typename cache<allocator>::const_iterator cache<allocator>::upper_bound(const bytes& key) const {
     return {m_cache.upper_bound(key)};
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
 cache<allocator>::cache_iterator<iterator_type, iterator_traits>::cache_iterator(iterator_type it)
-: m_it{std::move(it)}
-{
+: m_it{std::move(it)} {
 }
+
+template <typename allocator, typename iterator_type, typename iterator_traits>
+using cache_iterator_alias = typename cache<allocator>::template cache_iterator<iterator_type, iterator_traits>;
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++() -> cache_iterator&
-{
+cache_iterator_alias<allocator, iterator_type, iterator_traits>& cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++() {
     ++m_it;
     return *this;
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++(int) -> cache_iterator
-{
+cache_iterator_alias<allocator, iterator_type, iterator_traits> cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator++(int) {
     return {m_it++};
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--() -> cache_iterator&
-{
+cache_iterator_alias<allocator, iterator_type, iterator_traits>& cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--() {
     --m_it;
     return *this;
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--(int) -> cache_iterator
-{
+cache_iterator_alias<allocator, iterator_type, iterator_traits> cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator--(int) {
     return {m_it--};
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator*() const -> reference
-{
+typename cache_iterator_alias<allocator, iterator_type, iterator_traits>::reference cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator*() const {
     return m_it->second;
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator->() const -> reference
-{
+typename cache_iterator_alias<allocator, iterator_type, iterator_traits>::reference cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator->() const {
     return m_it->second;
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator==(const cache_iterator& other) const -> bool
-{
+bool cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator==(const cache_iterator& other) const {
     return m_it == other.m_it;
 }
 
 template <typename allocator>
 template <typename iterator_type, typename iterator_traits>
-auto cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator!=(const cache_iterator& other) const -> bool
-{
+bool cache<allocator>::cache_iterator<iterator_type, iterator_traits>::operator!=(const cache_iterator& other) const {
     return !(*this == other);
 }
 
