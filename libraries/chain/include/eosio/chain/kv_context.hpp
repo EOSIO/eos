@@ -73,8 +73,7 @@ namespace eosio { namespace chain {
       void (*_update_table_usage)(apply_context&, int64_t delta, const kv_resource_trace& trace, account_name payer);
    };
 
-   kv_resource_manager create_kv_resource_manager_ram(apply_context& context);
-   kv_resource_manager create_kv_resource_manager_disk(apply_context& context);
+   kv_resource_manager create_kv_resource_manager(apply_context& context);
 
    struct kv_context {
       virtual ~kv_context() {}
@@ -88,9 +87,9 @@ namespace eosio { namespace chain {
       virtual std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) = 0;
    };
 
-   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name database_id, name receiver,
+   std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
                                                            kv_resource_manager resource_manager, const kv_database_config& limits);
 
-   std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database& kv_database, b1::chain_kv::undo_stack& kv_undo_stack, name database_id, name receiver, kv_resource_manager resource_manager, const kv_database_config& limits);
+   std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database& kv_database, b1::chain_kv::undo_stack& kv_undo_stack, name receiver, kv_resource_manager resource_manager, const kv_database_config& limits);
 
 }} // namespace eosio::chain

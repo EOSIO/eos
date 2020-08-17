@@ -570,11 +570,11 @@ class apply_context {
 
    /// KV Database methods:
    public:
-      int64_t  kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-      int64_t  kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer);
-      bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
-      uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
-      uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
+      int64_t  kv_erase(uint64_t contract, const char* key, uint32_t key_size);
+      int64_t  kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer);
+      bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
+      uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size);
+      uint32_t kv_it_create(uint64_t contract, const char* prefix, uint32_t size);
       void     kv_it_destroy(uint32_t itr);
       int32_t  kv_it_status(uint32_t itr);
       int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
@@ -585,6 +585,10 @@ class apply_context {
       int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
       int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
       int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+      kv_context& kv_get_backing_store() {
+         EOS_ASSERT( kv_backing_store, action_validate_exception, "KV APIs cannot access state (null backing_store)" );
+         return *kv_backing_store;
+      }
 
       void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
 
@@ -643,8 +647,7 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
-      std::unique_ptr<kv_context>                                    kv_ram;
-      std::unique_ptr<kv_context>                                    kv_disk;
+      std::unique_ptr<kv_context>                                    kv_backing_store;
       std::vector<std::unique_ptr<kv_iterator>>                      kv_iterators;
       std::vector<size_t>                                            kv_destroyed_iterators;
 
