@@ -111,6 +111,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     command:
+      - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
