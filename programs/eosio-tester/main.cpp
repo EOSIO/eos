@@ -1060,11 +1060,7 @@ struct callbacks {
    }
 
    kv_context& kv_get_db(uint64_t db) {
-      if (db == kvram_id.to_uint64_t())
-         return *selected().kv_ram;
-      else if (db == kvdisk_id.to_uint64_t())
-         return *selected().kv_disk;
-      EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
+      return selected().kv_get_backing_store();
    }
 
    void kv_check_iterator(uint32_t itr) {

@@ -175,7 +175,6 @@ namespace eosio { namespace chain {
    struct kv_context_rocksdb : kv_context {
       b1::chain_kv::database&                  database;
       b1::chain_kv::undo_stack&                undo_stack;
-      name                                     database_id;
       b1::chain_kv::write_session              write_session;
       b1::chain_kv::view                       view;
       name                                     receiver;
@@ -184,9 +183,9 @@ namespace eosio { namespace chain {
       uint32_t                                 num_iterators = 0;
       std::shared_ptr<const std::vector<char>> temp_data_buffer;
 
-      kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack, name database_id,
+      kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
                          name receiver, kv_resource_manager resource_manager, const kv_database_config& limits)
-          : database{ database }, undo_stack{ undo_stack }, database_id{ database_id },
+          : database{ database }, undo_stack{ undo_stack },
             write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
 
@@ -201,9 +200,7 @@ namespace eosio { namespace chain {
       }
 
       std::vector<char> make_prefix() {
-         vector<char> prefix = rocksdb_contract_kv_prefix;
-         b1::chain_kv::append_key(prefix, database_id.to_uint64_t());
-         return prefix;
+         return rocksdb_contract_kv_prefix;
       }
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
@@ -223,6 +220,7 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size());
+# warning TODO: Investigate where to store payer
          //resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
          return resource_delta;
       }
@@ -299,12 +297,12 @@ namespace eosio { namespace chain {
    }; // kv_context_rocksdb
 
    std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database&   kv_database,
-                                                         b1::chain_kv::undo_stack& kv_undo_stack, name database_id,
+                                                         b1::chain_kv::undo_stack& kv_undo_stack,
                                                          name receiver, kv_resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {
          try {
-            return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, database_id, receiver,
+            return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, receiver,
                                                         resource_manager, limits);
          }
          FC_LOG_AND_RETHROW()
