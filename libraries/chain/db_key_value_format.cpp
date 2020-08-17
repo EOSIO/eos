@@ -15,7 +15,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   db_key_value_format::key_type db_key_value_format::extract_from_composite_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, name& scope, name& table) {
+   db_key_value_format::key_type db_key_value_format::extract_from_composite_key(b1::chain_kv::bytes::const_iterator& key_loc, b1::chain_kv::bytes::const_iterator key_end, name& scope, name& table) {
       uint64_t temp_name = 0;
       EOS_ASSERT(b1::chain_kv::extract_key(key_loc, key_end, temp_name), bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it does not contain a scope");
@@ -29,15 +29,15 @@ namespace eosio { namespace chain {
       return key_type(*key_loc++);
    }
 
-   bytes db_key_value_format::create_primary_key(name scope, name table, uint64_t db_key) {
-      bytes composite_key;
+   b1::chain_kv::bytes db_key_value_format::create_primary_key(name scope, name table, uint64_t db_key) {
+      b1::chain_kv::bytes composite_key;
       prepare_composite_key<uint64_t, key_type::primary>(composite_key, scope, table, sizeof(uint64_t));
       b1::chain_kv::append_key(composite_key, db_key);
       return composite_key;
    }
 
-   void db_key_value_format::get_primary_key(const bytes& composite_key, name& scope, name& table, uint64_t& db_key) {
-      bytes::const_iterator composite_loc = composite_key.cbegin();
+   void db_key_value_format::get_primary_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table, uint64_t& db_key) {
+      b1::chain_kv::bytes::const_iterator composite_loc = composite_key.cbegin();
       auto kt = extract_from_composite_key(composite_loc, composite_key.cend(), scope, table);
       EOS_ASSERT(kt == key_type::primary, bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it is supposed to be a primary key, "
