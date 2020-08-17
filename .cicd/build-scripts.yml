@@ -208,7 +208,7 @@ steps:
     env:
       DEBIAN_FRONTEND: "noninteractive" 
       TZ: "America/New York"
-      ASM-LLVMWAR: "/usr/bin"
+      ASM-LLVMWAR: "/usr/bin/g++"
     plugins:
       - docker#v3.3.0:
           image: "ubuntu:20.04"
