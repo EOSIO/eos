@@ -63,9 +63,9 @@ struct witness_trx_plugin_impl {
          if(!sig_action_data_waiting_on_catch_up.empty() && caught_up()) {
             while(!sig_action_data_waiting_on_catch_up.empty()) {
                std::list<std::vector<char>> batch;
-               constexpr unsigned max_batch_size = 1000u;
+               constexpr size_t max_batch_size = 1000u;
                auto it = sig_action_data_waiting_on_catch_up.begin();
-               for(unsigned int i = 0; i < max_batch_size && it != sig_action_data_waiting_on_catch_up.end(); ++i, ++it); //ick
+               std::advance(it, std::min(max_batch_size, sig_action_data_waiting_on_catch_up.size()));
                batch.splice(batch.begin(), sig_action_data_waiting_on_catch_up, sig_action_data_waiting_on_catch_up.begin(), it);
                submit_witness_trx(std::move(batch));
             }
