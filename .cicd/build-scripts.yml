@@ -217,5 +217,6 @@ steps:
     command:
       - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
       - "apt update && apt upgrade -y && apt install -y git llvm-10"
+      - "clang++ --version"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
