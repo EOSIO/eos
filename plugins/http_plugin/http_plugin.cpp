@@ -338,7 +338,9 @@ namespace eosio {
                return false;
             }
 
-            fc_ilog( logger, "ok: bytes in flight");
+            fc_ilog( logger, "ok: bytes in flight: bytes_in_flight_size = ${bytes_in_flight_size}",
+                     ("bytes_in_flight_size", bytes_in_flight_size));
+            fc_ilog( logger, "max_bytes_in_flight = ${max_bytes_in_flight}", ("max_bytes_in_flight", max_bytes_in_flight));
             return true;
          }
 
