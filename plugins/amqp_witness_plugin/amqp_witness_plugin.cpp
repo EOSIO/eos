@@ -47,18 +47,12 @@ void amqp_witness_plugin::plugin_startup() {
    my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key, witness_data_file_path, "eosio.node.witness_v0");
 
    app().get_plugin<witness_plugin>().add_on_witness_sig([my=my](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
-      std::promise<void> made_to_other_thread_promise;
-      auto fut = made_to_other_thread_promise.get_future();
-
-      my->rqueue->post_on_io_context([&my, &bsp, &sig, &made_to_other_thread_promise]() {
+      my->rqueue->post_on_io_context([my, bsp, sig]() {
          my->rqueue->publish_message(std::make_pair(bsp->header.action_mroot, sig));
-         made_to_other_thread_promise.set_value();
       });
 
-      //don't return from this callback until confirmation the amqp's queue has processed the posted message. If nodeos is shutting down
-      // this plugin's impl (and thus rqueue) could be destroyed immediately after the callback before the post_on_io_context()
-      // above has been dispatched
-      fut.wait();
+      //amqp_witness_plugin may get destroyed nearly immediately after returning here if nodeos is shutting down. reliable_amqp_publisher
+      // ensures that any post_on_io_context() is called before its dtor returns though.
    });
 }
 
