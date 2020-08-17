@@ -75,7 +75,7 @@ struct witness_trx_plugin_impl {
          while(it != outstanding_witness_transaction_index.get<by_trx_expiration>().end() && it->trx_expires < chain::time_point::now()) {
             wlog("Witness transaction not confirmed by producers; resubmitting");
             outstanding_witness_transaction_index.get<by_trx_expiration>().modify(it, [this](witness_trx_plugin_impl::outstanding_witness_transaction& row) {
-               submit_witness_trx(std::move(row.action_data));
+               sig_action_data_waiting_on_catch_up.splice(sig_action_data_waiting_on_catch_up.end(), row.action_data);
             });
             it = outstanding_witness_transaction_index.get<by_trx_expiration>().erase(it);
          }
