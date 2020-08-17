@@ -9,7 +9,7 @@ RUN apt-get update && \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq g++ && \
     apt-get clean && \
-    rm-rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
 
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
