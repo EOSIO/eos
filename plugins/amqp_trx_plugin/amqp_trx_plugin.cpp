@@ -7,6 +7,8 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
+#include <fc/log/trace.hpp>
+
 #include <boost/signals2/connection.hpp>
 
 namespace {
@@ -61,9 +63,14 @@ private:
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
+      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_span = fc_create_span(trx_trace, "AMQP Received");
+      fc_add_str_tag(trx_span, "trx_id", tid.str());
+
       auto trx_in_progress = trx_in_progress_size.load();
       if( trx_in_progress > def_max_trx_in_progress_size ) {
          wlog( "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress) );
+         fc_add_tag(trx_span, "error", "Dropped, too many trx in progress");
          amqp_trx->reject( delivery_tag );
          if( trace_plug ) {
             std::string err = "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
@@ -77,15 +84,31 @@ private:
          my->chain_plug->accept_transaction( trx,
             [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                my->amqp_trx->ack( delivery_tag );
+
+               auto trx_trace = fc_create_trace("Transaction");
+               auto trx_span = fc_create_span(trx_trace, "Processed");
+               fc_add_str_tag(trx_span, "trx_id", trx->id().str());
+
                // publish to trace plugin as execptions are not reported via controller signal applied_transaction
                if( result.contains<chain::exception_ptr>() ) {
                   auto& eptr = result.get<chain::exception_ptr>();
                   if( my->trace_plug ) {
                      my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
                   }
+                  fc_add_str_tag(trx_span, "error", eptr->to_string());
                   dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
                } else {
+                  auto& trace = result.get<chain::transaction_trace_ptr>();
                   dlog( "accept_transaction ${id}", ("id", trx->id()) );
+                  fc_add_str_tag(trx_span, "block_num", std::to_string(trace->block_num));
+                  fc_add_str_tag(trx_span, "block_time", std::string(trace->block_time.to_time_point()));
+                  fc_add_str_tag(trx_span, "elapsed", std::to_string(trace->elapsed.count()));
+                  if( trace->receipt ) {
+                     fc_add_str_tag(trx_span, "status", std::string(trace->receipt->status));
+                  }
+                  if( trace->except ) {
+                     fc_add_str_tag(trx_span, "error", trace->except->to_string());
+                  }
                }
                my->trx_in_progress_size -= trx->get_estimated_size();
 

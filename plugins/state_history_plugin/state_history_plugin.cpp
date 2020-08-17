@@ -4,6 +4,8 @@
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
+#include <fc/log/trace.hpp>
+
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -11,6 +13,8 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/signals2/connection.hpp>
+
+#include <variant>
 
 using tcp    = boost::asio::ip::tcp;
 namespace ws = boost::beast::websocket;
@@ -233,10 +237,21 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
+
          send(std::move(result));
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
                                current_request->start_block_num < current_request->end_block_num;
+
+         std::visit( []( auto&& ptr ) {
+            if( ptr ) {
+               auto blk_trace = fc_create_trace( "Block" );
+               auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
+               fc_add_str_tag( blk_span, "block_id", ptr->calculate_id().str() );
+               fc_add_str_tag( blk_span, "block_num", std::to_string( ptr->block_num() ) );
+               fc_add_str_tag( blk_span, "block_time", std::string( ptr->timestamp.to_time_point() ) );
+            }
+         }, result.block );
       }
 
       void send_update(const block_state_ptr& block_state) {
@@ -352,6 +367,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
+      auto blk_trace = fc_create_trace("Block");
+      auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+      fc_add_str_tag(blk_span, "block_id", block_state->id.str());
+      fc_add_str_tag(blk_span, "block_num", std::to_string(block_state->block_num));
+      fc_add_str_tag(blk_span, "block_time", std::string(block_state->block->timestamp.to_time_point()));
       if (trace_log)
          trace_log->store(chain_plug->chain().db(), block_state);
       if (chain_state_log)

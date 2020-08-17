@@ -136,6 +136,11 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+set(ENABLE_CPPKIN FALSE CACHE BOOL "Build with cppkin support")
+if(ENABLE_CPPKIN)
+    add_definitions(-DENABLE_CPPKIN)
+endif()
+
 include(utils)
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
