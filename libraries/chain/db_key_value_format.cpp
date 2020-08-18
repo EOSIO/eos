@@ -4,11 +4,11 @@ namespace eosio { namespace chain {
    std::string db_key_value_format::to_string(const key_type& kt) {
       switch (kt) {
          case key_type::primary: return "primary key of type uint64_t";
-         case key_type::sec_i64: return "seconday key of type uint64_t";
-         case key_type::sec_i128: return "seconday key of type uint128_t";
-         case key_type::sec_i256: return "seconday key of type key256_t";
-         case key_type::sec_double: return "seconday key of type float64_t";
-         case key_type::sec_long_double: return "seconday key of type float128_t";
+         case key_type::sec_i64: return "secondary key of type uint64_t";
+         case key_type::sec_i128: return "secondary key of type uint128_t";
+         case key_type::sec_i256: return "secondary key of type key256_t";
+         case key_type::sec_double: return "secondary key of type float64_t";
+         case key_type::sec_long_double: return "secondary key of type float128_t";
          default:
             const int kt_as_int = static_cast<char>(kt);
             return std::string("<invalid key_type: ") + std::to_string(kt_as_int) + ">";
