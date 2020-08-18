@@ -26,9 +26,10 @@ namespace eosio { namespace chain {
 
       template<typename Key>
       static bool get_secondary_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table, Key& db_key, uint64_t& primary_key) {
-         b1::chain_kv::bytes::const_iterator composite_loc = composite_key.cbegin();
-         auto kt = extract_from_composite_key(composite_loc, composite_key.cend(), scope, table);
-         const auto expected_kt = determine_sec_type<Key>::kt;
+         b1::chain_kv::bytes::const_iterator composite_loc;
+         key_type kt = key_type::sec_i64;
+         std::tie(scope, table, composite_loc, kt) = extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
+         constexpr static auto expected_kt = determine_sec_type<Key>::kt;
          if (kt != expected_kt) {
             return false;
          }
@@ -48,7 +49,6 @@ namespace eosio { namespace chain {
          sec_double = 4,
          sec_long_double = 5
       };
-
    private:
 
       template<typename Key>
@@ -84,7 +84,9 @@ namespace eosio { namespace chain {
          key_storage.push_back(static_cast<char>(kt));
       }
 
-      static key_type extract_from_composite_key(b1::chain_kv::bytes::const_iterator& key_loc, b1::chain_kv::bytes::const_iterator key_end, name& scope, name& table);
+      using intermittent_decomposed_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator, key_type>;
+
+      static intermittent_decomposed_values extract_from_composite_key(b1::chain_kv::bytes::const_iterator begin, b1::chain_kv::bytes::const_iterator key_end);
 
    };
 

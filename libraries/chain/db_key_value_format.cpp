@@ -15,18 +15,18 @@ namespace eosio { namespace chain {
       }
    }
 
-   db_key_value_format::key_type db_key_value_format::extract_from_composite_key(b1::chain_kv::bytes::const_iterator& key_loc, b1::chain_kv::bytes::const_iterator key_end, name& scope, name& table) {
-      uint64_t temp_name = 0;
-      EOS_ASSERT(b1::chain_kv::extract_key(key_loc, key_end, temp_name), bad_composite_key_exception,
+   db_key_value_format::intermittent_decomposed_values db_key_value_format::extract_from_composite_key(b1::chain_kv::bytes::const_iterator begin, b1::chain_kv::bytes::const_iterator key_end) {
+      auto key_loc = begin;
+      uint64_t scope_name = 0;
+      EOS_ASSERT(b1::chain_kv::extract_key(key_loc, key_end, scope_name), bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it does not contain a scope");
-      scope = name{temp_name};
-      EOS_ASSERT(b1::chain_kv::extract_key(key_loc, key_end, temp_name), bad_composite_key_exception,
+      uint64_t table_name = 0;
+      EOS_ASSERT(b1::chain_kv::extract_key(key_loc, key_end, table_name), bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it does not contain a table");
-      table = name{temp_name};
       EOS_ASSERT(key_loc != key_end, bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it does not contain an indication of the "
                  "type of the db-key (primary uint64_t or secondary uint64_t/uint128_t/etc)");
-      return key_type(*key_loc++);
+      return { name{scope_name}, name{table_name}, key_loc, key_type(*key_loc++) };
    }
 
    b1::chain_kv::bytes db_key_value_format::create_primary_key(name scope, name table, uint64_t db_key) {
@@ -37,8 +37,9 @@ namespace eosio { namespace chain {
    }
 
    void db_key_value_format::get_primary_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table, uint64_t& db_key) {
-      b1::chain_kv::bytes::const_iterator composite_loc = composite_key.cbegin();
-      auto kt = extract_from_composite_key(composite_loc, composite_key.cend(), scope, table);
+      b1::chain_kv::bytes::const_iterator composite_loc;
+      key_type kt = key_type::sec_i64;
+      std::tie(scope, table, composite_loc, kt) = extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
       EOS_ASSERT(kt == key_type::primary, bad_composite_key_exception,
                  "DB intrinsic key-value store composite key is malformed, it is supposed to be a primary key, "
                  "but it is a: " + to_string(kt));
