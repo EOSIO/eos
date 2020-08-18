@@ -216,6 +216,6 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
-      - "apt update && apt upgrade -y && apt install -y git gcc"
+      - "apt update && apt upgrade -y && apt install -y git g++"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
