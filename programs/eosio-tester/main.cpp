@@ -36,7 +36,6 @@ using eosio::chain::digest_type;
 using eosio::chain::kv_bad_db_id;
 using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
-using eosio::chain::kvdisk_id;
 using eosio::chain::kvram_id;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
@@ -1062,8 +1061,6 @@ struct callbacks {
    kv_context& kv_get_db(uint64_t db) {
       if (db == kvram_id.to_uint64_t())
          return *selected().kv_ram;
-      else if (db == kvdisk_id.to_uint64_t())
-         return *selected().kv_disk;
       EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
    }
 
