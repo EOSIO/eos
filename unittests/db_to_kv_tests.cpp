@@ -42,15 +42,24 @@ std::pair<int, unsigned int> compare_composite_keys(const std::vector<b1::chain_
    const b1::chain_kv::bytes& lhs = keys[lhs_index];
    const b1::chain_kv::bytes& rhs = keys[lhs_index + 1];
    unsigned int j = 0;
+   const int gt = 1;
+   const int lt = -1;
+   const int equal = 0;
    for (; j < lhs.size(); ++j) {
+      if (j >= rhs.size()) {
+         return { gt, j };
+      }
       const auto left = uint64_t(static_cast<unsigned char>(lhs[j]));
       const auto right = uint64_t(static_cast<unsigned char>(rhs[j]));
       if (left != right) {
-         return { left < right ? -1 : 1, j };
+         return { left < right ? lt : gt, j };
       }
    }
+   if (rhs.size() > lhs.size()) {
+      return { lt, j };
+   }
 
-   return { 0, j };
+   return { equal, j };
 }
 
 void verify_assending_composite_keys(const std::vector<b1::chain_kv::bytes>& keys, uint64_t lhs_index, std::string desc) {
@@ -304,6 +313,54 @@ BOOST_AUTO_TEST_CASE(float128_key_conversions_test) {
    keys.push_back(to_softfloat128(100000.0));
    keys.push_back(to_softfloat128(100000.001));
    check_ordered_keys(keys, &eosio::chain::db_key_value_format::create_secondary_key<float128_t>);
+}
+
+BOOST_AUTO_TEST_CASE(compare_negative_and_positive_f64_0_are_equal_test) {
+   std::vector<b1::chain_kv::bytes> composite_keys(2);
+   b1::chain_kv::append_key(composite_keys[0], to_softfloat64(-0.0));
+   b1::chain_kv::append_key(composite_keys[1], to_softfloat64(0.0));
+   // composite key representation should treat -0.0 and -0.0 as the same value
+   BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_keys, 0).first);
+}
+
+BOOST_AUTO_TEST_CASE(compare_negative_and_positive_f128_0_are_equal_test) {
+   std::vector<b1::chain_kv::bytes> composite_keys(2);
+   b1::chain_kv::append_key(composite_keys[0], to_softfloat128(-0.0));
+   b1::chain_kv::append_key(composite_keys[1], to_softfloat128(0.0));
+   // composite key representation should treat -0.0 and -0.0 as the same value
+   BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_keys, 0).first);
+}
+
+BOOST_AUTO_TEST_CASE(compare_span_of_doubles_test) {
+   std::vector<b1::chain_kv::bytes> composite_keys(4);
+   uint64_t next = 0;
+   const double neg_inf = -std::numeric_limits<double>::infinity();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(neg_inf));
+   const double min = std::numeric_limits<double>::min();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(min));
+   const double max = std::numeric_limits<double>::max();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(max));
+   const double inf = std::numeric_limits<double>::infinity();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(inf));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 0).first);
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 1).first);
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 2).first);
+}
+
+BOOST_AUTO_TEST_CASE(compare_span_of_long_doubles_test) {
+   std::vector<b1::chain_kv::bytes> composite_keys(4);
+   uint64_t next = 0;
+   const double neg_inf = -std::numeric_limits<double>::infinity();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(neg_inf));
+   const double min = std::numeric_limits<double>::min();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(min));
+   const double max = std::numeric_limits<double>::max();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(max));
+   const double inf = std::numeric_limits<double>::infinity();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(inf));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 0).first);
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 1).first);
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 2).first);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
