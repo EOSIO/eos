@@ -42,10 +42,10 @@ public:
       {
          std::unique_lock<std::mutex> lk(mtx_);
          while( (queue_.empty() || paused_) && !stopped_ ) {
-            dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_.load()));
+            dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_));
             empty_cv_.wait(lk);
          }
-         dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_.load()));
+         dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_));
          if( stopped_ ) return false;
          t = std::move(queue_.front());
          queue_.pop_front();
@@ -55,24 +55,30 @@ public:
    }
 
    void pause() {
+      std::unique_lock<std::mutex> lk(mtx_);
       paused_ = true;
+      lk.unlock();
       empty_cv_.notify_one();
    }
 
    void unpause() {
+      std::unique_lock<std::mutex> lk(mtx_);
       paused_ = false;
+      lk.unlock();
       empty_cv_.notify_one();
    }
 
    void stop() {
+      std::unique_lock<std::mutex> lk(mtx_);
       stopped_ = true;
+      lk.unlock();
       empty_cv_.notify_one();
    }
 
 private:
    std::mutex mtx_;
-   std::atomic_bool stopped_ = false;
-   std::atomic_bool paused_ = false;
+   bool stopped_ = false;
+   bool paused_ = false;
    std::condition_variable full_cv_;
    std::condition_variable empty_cv_;
    std::deque<T> queue_;
