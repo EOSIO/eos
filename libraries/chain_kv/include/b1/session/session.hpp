@@ -262,7 +262,9 @@ session<persistent_data_store, cache_data_store> make_session(persistent_data_st
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store> make_session(session<persistent_data_store, cache_data_store>& the_session) {
     using session_type = session<persistent_data_store, cache_data_store>;
-    return session_type{the_session, typename session_type::nested_session_t{}};
+    auto new_session = session_type{the_session, typename session_type::nested_session_t{}};
+    new_session.m_impl->parent->child = new_session.m_impl->shared_from_this();
+    return new_session;
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -273,18 +275,18 @@ session<persistent_data_store, cache_data_store>::session_impl::session_impl()
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store>::session_impl::session_impl(session_impl& parent_)
 : parent{parent_.shared_from_this()},
-  backing_data_store{parent_.backing_data_store} {
+  backing_data_store{parent_.backing_data_store},
+  cache{parent_.cache.memory_allocator()} {
     if (auto child_ptr = parent->child.lock()) {
         child_ptr->backing_data_store = nullptr;
         child_ptr->parent = nullptr;
     }
-    
-    parent->child = this->shared_from_this();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store>::session_impl::session_impl(persistent_data_store pds)
-: backing_data_store{std::make_shared<persistent_data_store>(std::move(pds))} {
+: backing_data_store{std::make_shared<persistent_data_store>(std::move(pds))},
+  cache{pds.memory_allocator()} {
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -332,8 +334,7 @@ void session<persistent_data_store, cache_data_store>::session_impl::commit() {
     
     if (parent) {
         // squash
-        auto parent_session = session{};
-        parent_session.m_impl = parent;
+        auto parent_session = session{parent};
         write_through(parent_session);
         return;
     }
@@ -713,14 +714,20 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
             continue;
         }
 
+        if (pending.key() == new_iterator.m_current_value.key()) {
+            // we want the first one found
+            continue;
+        }
+
         new_iterator.m_current_value = std::move(pending);
         new_iterator.m_iterator_index = i;
     }
 
     if (new_iterator.m_database_iterator_state.current != new_iterator.m_database_iterator_state.end) {
         auto pending = *new_iterator.m_database_iterator_state.current;
-        if (!is_deleted( pending.key(), new_iterator.m_cache_iterator_states.size() - 1)
-            && c(pending.key(), new_iterator.m_current_value.key())) {
+        if (!is_deleted(pending.key(), new_iterator.m_cache_iterator_states.size() - 1)
+            && c(pending.key(), new_iterator.m_current_value.key())
+            && pending.key() != new_iterator.m_current_value.key()) {
             new_iterator.m_current_value = pending;
             new_iterator.m_iterator_index = new_iterator.m_cache_iterator_states.size();
         }
@@ -812,7 +819,10 @@ const std::shared_ptr<typename persistent_data_store::allocator_type>& session<p
         return invalid;
     }
     
-    return m_impl->backing_data_store->memory_allocator();
+    if (m_impl->backing_data_store) {
+      return m_impl->backing_data_store->memory_allocator();
+    } 
+    return m_impl->cache.memory_allocator();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -822,7 +832,10 @@ const std::shared_ptr<const typename persistent_data_store::allocator_type> sess
         return invalid;
     }
     
-    return m_impl->backing_data_store->memory_allocator();
+    if (m_impl->backing_data_store) {
+      return m_impl->backing_data_store->memory_allocator();
+    } 
+    return m_impl->cache.memory_allocator();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -920,11 +933,20 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     };
 
     auto test_set = [&](auto pending, auto index) {
-        if (pending != key_value::invalid
-          && (m_current_value == key_value::invalid || key_comparator(pending.key(), m_current_value.key()))) {
-            m_current_value = std::move(pending);
-            m_iterator_index = index;
+        if (pending == key_value::invalid) {
+            return;
         }
+
+        if (m_current_value != key_value::invalid && !key_comparator(pending.key(), m_current_value.key())) {
+            return;
+        }
+
+        if (m_current_value != key_value::invalid && pending.key() == m_current_value.key()) {
+            return;
+        }
+        
+        m_current_value = std::move(pending);
+        m_iterator_index = index;
     };
 
     // Move the current iterator.
