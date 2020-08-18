@@ -266,7 +266,9 @@ session<persistent_data_store, cache_data_store> make_session(persistent_data_st
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store> make_session(session<persistent_data_store, cache_data_store>& the_session) {
     using session_type = session<persistent_data_store, cache_data_store>;
-    return session_type{the_session, typename session_type::nested_session_t{}};
+    auto new_session = session_type{the_session, typename session_type::nested_session_t{}};
+    new_session.m_impl->parent->child = new_session.m_impl->shared_from_this();
+    return new_session;
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -277,18 +279,18 @@ session<persistent_data_store, cache_data_store>::session_impl::session_impl()
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store>::session_impl::session_impl(session_impl& parent_)
 : parent{parent_.shared_from_this()},
-  backing_data_store{parent_.backing_data_store} {
+  backing_data_store{parent_.backing_data_store},
+  cache{parent_.cache.memory_allocator()} {
     if (auto child_ptr = parent->child.lock()) {
         child_ptr->backing_data_store = nullptr;
         child_ptr->parent = nullptr;
     }
-    
-    parent->child = this->shared_from_this();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store>::session_impl::session_impl(persistent_data_store pds)
-: backing_data_store{std::make_shared<persistent_data_store>(std::move(pds))} {
+: backing_data_store{std::make_shared<persistent_data_store>(std::move(pds))},
+  cache{pds.memory_allocator()} {
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -336,8 +338,7 @@ void session<persistent_data_store, cache_data_store>::session_impl::commit() {
     
     if (parent) {
         // squash
-        auto parent_session = session{};
-        parent_session.m_impl = parent;
+        auto parent_session = session{parent};
         write_through(parent_session);
         return;
     }
@@ -791,7 +792,10 @@ const std::shared_ptr<typename persistent_data_store::allocator_type>& session<p
         return invalid;
     }
     
-    return m_impl->backing_data_store->memory_allocator();
+    if (m_impl->backing_data_store) {
+      return m_impl->backing_data_store->memory_allocator();
+    } 
+    return m_impl->cache.memory_allocator();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -801,7 +805,10 @@ const std::shared_ptr<const typename persistent_data_store::allocator_type> sess
         return invalid;
     }
     
-    return m_impl->backing_data_store->memory_allocator();
+    if (m_impl->backing_data_store) {
+      return m_impl->backing_data_store->memory_allocator();
+    } 
+    return m_impl->cache.memory_allocator();
 }
 
 template <typename persistent_data_store, typename cache_data_store>

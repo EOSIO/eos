@@ -158,6 +158,11 @@ rocks_data_store<allocator>::rocks_data_store(std::shared_ptr<rocksdb::DB> db, s
 
 template <typename allocator>
 const key_value rocks_data_store<allocator>::read(const bytes& key) const {
+    if (!m_db)
+    {
+        return key_value::invalid;
+    }
+
     auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto pinnable_value = rocksdb::PinnableSlice{};
@@ -173,6 +178,11 @@ const key_value rocks_data_store<allocator>::read(const bytes& key) const {
 
 template <typename allocator>
 void rocks_data_store<allocator>::write(key_value kv) {
+    if (!m_db)
+    {
+        return;
+    }
+
     auto write_options = rocksdb::WriteOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
     auto value_slice = rocksdb::Slice{reinterpret_cast<const char*>(kv.value().data()), kv.value().length()};
@@ -181,6 +191,11 @@ void rocks_data_store<allocator>::write(key_value kv) {
 
 template <typename allocator>
 bool rocks_data_store<allocator>::contains(const bytes& key) const {
+    if (!m_db)
+    {
+        return false;
+    }
+
     auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto value = std::string{};
@@ -189,6 +204,11 @@ bool rocks_data_store<allocator>::contains(const bytes& key) const {
 
 template <typename allocator>
 void rocks_data_store<allocator>::erase(const bytes& key) {
+    if (!m_db)
+    {
+        return;
+    }
+    
     auto write_options = rocksdb::WriteOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto status = m_db->Delete(write_options, key_slice);
@@ -197,6 +217,11 @@ void rocks_data_store<allocator>::erase(const bytes& key) {
 template <typename allocator>
 template <typename iterable, typename other_allocator>
 const std::pair<std::vector<key_value>, std::unordered_set<bytes>> rocks_data_store<allocator>::read_(const iterable& keys, const std::shared_ptr<other_allocator>& a) const {
+    if (!m_db)
+    {
+        return {};
+    }
+
     auto not_found = std::unordered_set<bytes>{};
     auto key_slices = std::vector<rocksdb::Slice>{};
     
@@ -243,6 +268,11 @@ const std::pair<std::vector<key_value>, std::unordered_set<bytes>> rocks_data_st
 template <typename allocator>
 template <typename iterable>
 void rocks_data_store<allocator>::write(const iterable& key_values) {
+    if (!m_db)
+    {
+        return;
+    }
+
     auto write_options = rocksdb::WriteOptions{};
     auto batch = rocksdb::WriteBatch{1024 * 1024};
     
@@ -261,6 +291,11 @@ void rocks_data_store<allocator>::write(const iterable& key_values) {
 template <typename allocator>
 template <typename iterable>
 void rocks_data_store<allocator>::erase(const iterable& keys) {
+    if (!m_db)
+    {
+        return;
+    }
+
     auto write_options = rocksdb::WriteOptions{};
     for (const auto& key : keys) {
         auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
@@ -277,6 +312,11 @@ void rocks_data_store<allocator>::erase(const iterable& keys) {
 template <typename allocator>
 template <typename data_store, typename iterable>
 void rocks_data_store<allocator>::write_to(data_store& ds, const iterable& keys) const {
+    if (!m_db)
+    {
+        return;
+    }
+
     auto [found, not_found] = read_(keys, ds.memory_allocator());
     ds.write(found);
 }
@@ -290,6 +330,11 @@ void rocks_data_store<allocator>::write_to(data_store& ds, const iterable& keys)
 template <typename allocator>
 template <typename data_store, typename iterable>
 void rocks_data_store<allocator>::read_from(const data_store& ds, const iterable& keys) {
+    if (!m_db)
+    {
+        return;
+    }
+    
     auto [found, not_found] = ds.read(keys);
     write(found);
 }

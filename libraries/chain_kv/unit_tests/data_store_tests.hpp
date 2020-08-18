@@ -196,14 +196,14 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
     for (const auto& kv : ds) {
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));
         BOOST_REQUIRE(it != std::end(container));
-        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const Value*>(&it->second), reinterpret_cast<const Value*>(kv.value().data()), sizeof(Value)) == 0);
+        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), kv.value().data(), sizeof(Value)) == 0);
     }
 
     for (const auto& it : container) {
         auto kv = ds.read(eosio::session::make_bytes(&it.first, 1));
         BOOST_REQUIRE(kv != eosio::session::key_value::invalid);
         BOOST_REQUIRE(ds.contains(kv.key()) == true);
-        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const Value*>(&it.second), reinterpret_cast<const Value*>(kv.value().data()), sizeof(Value)) == 0);
+        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), kv.value().data(), sizeof(Value)) == 0);
     }
 }
 
@@ -216,7 +216,7 @@ void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_ma
         auto kv = *kv_it;
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));
         BOOST_REQUIRE(it != std::end(container));
-        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const Value*>(&it->second), reinterpret_cast<const Value*>(kv.value().data()), sizeof(Value)) == 0);
+        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), kv.value().data(), sizeof(Value)) == 0);
         ++kv_it;
     } while (kv_it != begin);
 
@@ -224,7 +224,7 @@ void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_ma
         auto kv = ds.read(eosio::session::make_bytes(&it.first, 1));
         BOOST_REQUIRE(kv != eosio::session::key_value::invalid);
         BOOST_REQUIRE(ds.contains(kv.key()) == true);
-        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const Value*>(&it.second), reinterpret_cast<const Value*>(kv.value().data()), sizeof(Value)) == 0);
+        BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), kv.value().data(), sizeof(Value)) == 0);
     }
 }
 
