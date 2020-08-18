@@ -1,6 +1,5 @@
 #include <appbase/application.hpp>
 #include <appbase/version.hpp>
-#include <eosio/chain/name.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -350,16 +349,6 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
 
    if(options.count("plugin") > 0)
    {
-      if (options.count("producer-name") > 0) {
-         for(const auto& p : options["producer-name"].as<vector<string>>()) {
-            try {
-               eosio::chain::name(std::string_view(p));
-            } catch(...) {
-               std::cerr << "Invalid producer name: [" << p << "]\n";
-               throw;
-            }
-         }
-      }
       auto plugins = options.at("plugin").as<std::vector<std::string>>();
       for(auto& arg : plugins)
       {
