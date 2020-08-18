@@ -348,4 +348,12 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
     verify_key_order(rocks_ds);
 }
 
+BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
+
+}
+
+BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
+
+}
+
 BOOST_AUTO_TEST_SUITE_END();
