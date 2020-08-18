@@ -14,6 +14,28 @@ namespace eosio { namespace chain {
  * values specified by the producers.
  */
 struct chain_config_v0 {
+
+   enum {
+      max_block_net_usage_id,
+      target_block_net_usage_pct_id,
+      max_transaction_net_usage_id,
+      base_per_transaction_net_usage_id,
+      net_usage_leeway_id,
+      context_free_discount_net_usage_num_id,
+      context_free_discount_net_usage_den_id,
+      max_block_cpu_usage_id,
+      target_block_cpu_usage_pct_id,
+      max_transaction_cpu_usage_id,
+      min_transaction_cpu_usage_id,
+      max_transaction_lifetime_id,
+      deferred_trx_expiration_window_id,
+      max_transaction_delay_id,
+      max_inline_action_size_id,
+      max_inline_action_depth_id,
+      max_authority_depth_id,
+      ENUM_SIZE
+   };
+
    uint64_t   max_block_net_usage;                 ///< the maxiumum net usage in instructions for a block
    uint32_t   target_block_net_usage_pct;          ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
    uint32_t   max_transaction_net_usage;           ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
@@ -109,6 +131,13 @@ struct chain_config_v0 {
 struct chain_config_v1 : chain_config_v0 {
    using Base = chain_config_v0;
    //add parameters here:
+   //...
+   //uncomment and substitute first_id with corresponding parameter name
+   //order must match parameters as ids are used in serialization
+   //enum {
+   //   first_id = chain_config_v0::ENUM_SIZE,
+   //   ENUM_SIZE
+   //};
 
    inline const Base& base() const {
       return static_cast<const Base&>(*this);
@@ -149,44 +178,221 @@ struct config_entry_validator{
 using chain_config = chain_config_v0;
 using config_range = data_range<chain_config, config_entry_validator>;
 
-#define CHAIN_CONFIG_V0_MEMBERS()\
-            (max_block_net_usage)(target_block_net_usage_pct)\
-            (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)\
-            (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)\
-            (max_block_cpu_usage)(target_block_cpu_usage_pct)\
-            (max_transaction_cpu_usage)(min_transaction_cpu_usage)\
-            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)\
-            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
-
-DEFINE_ENUM(chain_config_v0, CHAIN_CONFIG_V0_MEMBERS())
-
-//add new v1 members here. order is important
-#define CHAIN_CONFIG_V1_MEMBERS()\
-            ()
-
-//uncomment after adding 1st member to v1 config
-//DEFINE_ENUM_DERIVED(chain_config_v0, chain_config_v1, CHAIN_CONFIG_V1_MEMBERS())
-
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::chain_config_v0, CHAIN_CONFIG_V0_MEMBERS())
+FC_REFLECT(eosio::chain::chain_config_v0,
+           (max_block_net_usage)(target_block_net_usage_pct)
+           (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
+           (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
+
+           (max_block_cpu_usage)(target_block_cpu_usage_pct)
+           (max_transaction_cpu_usage)(min_transaction_cpu_usage)
+
+           (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
+           (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+
+)
 //uncomment after adding 1st member to v1 config
 //FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), CHAIN_CONFIG_V1_MEMBERS())
 
 
 namespace fc {
 
-RANGE_PACK(eosio::chain::chain_config_v0, CHAIN_CONFIG_V0_MEMBERS())
-RANGE_UNPACK(eosio::chain::chain_config_v0, CHAIN_CONFIG_V0_MEMBERS())
-//uncomment after adding 1st member to v1 config
-//RANGE_PACK(eosio::chain::chain_config_v1, CHAIN_CONFIG_V1_MEMBERS())
-//RANGE_UNPACK(eosio::chain::chain_config_v1, CHAIN_CONFIG_V1_MEMBERS())
+/**
+ * @brief This is for packing data_entry<chain_config_v0, ...> 
+ * that is used as part of packing data_range<chain_config_v0, ...>
+ * @param s datastream
+ * @param entry contains config reference and particular id
+ * @throws config_parse_error if id is unknown
+ */
+template <typename DataStream>
+inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v0, eosio::chain::config_entry_validator> &entry){
+   using namespace eosio::chain;
 
+   if (!entry.is_allowed())
+      return s;
+   
+   switch (entry.id){
+      case chain_config_v0::max_block_net_usage_id:
+      fc::raw::pack(s, entry.config.max_block_net_usage);
+      break;
+      case chain_config_v0::target_block_net_usage_pct_id:
+      fc::raw::pack(s, entry.config.target_block_net_usage_pct);
+      break;
+      case chain_config_v0::max_transaction_net_usage_id:
+      fc::raw::pack(s, entry.config.max_transaction_net_usage);
+      break;
+      case chain_config_v0::base_per_transaction_net_usage_id:
+      fc::raw::pack(s, entry.config.base_per_transaction_net_usage);
+      break;
+      case chain_config_v0::net_usage_leeway_id:
+      fc::raw::pack(s, entry.config.net_usage_leeway);
+      break;
+      case chain_config_v0::context_free_discount_net_usage_num_id:
+      fc::raw::pack(s, entry.config.context_free_discount_net_usage_num);
+      break;
+      case chain_config_v0::context_free_discount_net_usage_den_id:
+      fc::raw::pack(s, entry.config.context_free_discount_net_usage_den);
+      break;
+      case chain_config_v0::max_block_cpu_usage_id:
+      fc::raw::pack(s, entry.config.max_block_cpu_usage);
+      break;
+      case chain_config_v0::target_block_cpu_usage_pct_id:
+      fc::raw::pack(s, entry.config.target_block_cpu_usage_pct);
+      break;
+      case chain_config_v0::max_transaction_cpu_usage_id:
+      fc::raw::pack(s, entry.config.max_transaction_cpu_usage);
+      break;
+      case chain_config_v0::min_transaction_cpu_usage_id:
+      fc::raw::pack(s, entry.config.min_transaction_cpu_usage);
+      break;
+      case chain_config_v0::max_transaction_lifetime_id:
+      fc::raw::pack(s, entry.config.max_transaction_lifetime);
+      break;
+      case chain_config_v0::deferred_trx_expiration_window_id:
+      fc::raw::pack(s, entry.config.deferred_trx_expiration_window);
+      break;
+      case chain_config_v0::max_transaction_delay_id:
+      fc::raw::pack(s, entry.config.max_transaction_delay);
+      break;
+      case chain_config_v0::max_inline_action_size_id:
+      fc::raw::pack(s, entry.config.max_inline_action_size);
+      break;
+      case chain_config_v0::max_inline_action_depth_id:
+      fc::raw::pack(s, entry.config.max_inline_action_depth);
+      break;
+      case chain_config_v0::max_authority_depth_id:
+      fc::raw::pack(s, entry.config.max_authority_depth);
+      break;
+      default:
+      FC_THROW_EXCEPTION(config_parse_error, "DataStream& operator<<: no such id: ${id}", ("id", entry.id));
+   }
+   return s;
+}
 
 /**
- * Packed config stream is in the following format:
+ * @brief This is for packing data_entry<chain_config_v1, ...> 
+ * that is used as part of packing data_range<chain_config_v1, ...>
+ * @param s datastream
+ * @param entry contains config reference and particular id
+ * @throws unsupported_feature if protocol feature for particular id is not activated
+ */
+template <typename DataStream>
+inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
+   using namespace eosio::chain;
+
+   if (!entry.is_allowed())
+      return s;
+   
+   switch (entry.id){
+      //add here entries for new members of chain_config_v1
+      default:
+      data_entry<chain_config_v0, eosio::chain::config_entry_validator> base_entry(entry);
+      fc::raw::unpack(s, base_entry);
+   }
+
+   return s;
+}
+
+/**
+ * @brief This is for unpacking data_entry<chain_config_v0, ...> 
+ * that is used as part of unpacking data_range<chain_config_v0, ...>
+ * @param s datastream
+ * @param entry contains config reference and particular id
+ * @throws unsupported_feature if protocol feature for particular id is not activated
+ */
+template <typename DataStream>
+inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::chain::chain_config_v0, eosio::chain::config_entry_validator> &entry){
+   using namespace eosio::chain;
+
+   EOS_ASSERT(entry.is_allowed(), eosio::chain::unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
+
+   switch (entry.id){
+      case chain_config_v0::max_block_net_usage_id:
+      fc::raw::unpack(s, entry.config.max_block_net_usage);
+      break;
+      case chain_config_v0::target_block_net_usage_pct_id:
+      fc::raw::unpack(s, entry.config.target_block_net_usage_pct);
+      break;
+      case chain_config_v0::max_transaction_net_usage_id:
+      fc::raw::unpack(s, entry.config.max_transaction_net_usage);
+      break;
+      case chain_config_v0::base_per_transaction_net_usage_id:
+      fc::raw::unpack(s, entry.config.base_per_transaction_net_usage);
+      break;
+      case chain_config_v0::net_usage_leeway_id:
+      fc::raw::unpack(s, entry.config.net_usage_leeway);
+      break;
+      case chain_config_v0::context_free_discount_net_usage_num_id:
+      fc::raw::unpack(s, entry.config.context_free_discount_net_usage_num);
+      break;
+      case chain_config_v0::context_free_discount_net_usage_den_id:
+      fc::raw::unpack(s, entry.config.context_free_discount_net_usage_den);
+      break;
+      case chain_config_v0::max_block_cpu_usage_id:
+      fc::raw::unpack(s, entry.config.max_block_cpu_usage);
+      break;
+      case chain_config_v0::target_block_cpu_usage_pct_id:
+      fc::raw::unpack(s, entry.config.target_block_cpu_usage_pct);
+      break;
+      case chain_config_v0::max_transaction_cpu_usage_id:
+      fc::raw::unpack(s, entry.config.max_transaction_cpu_usage);
+      break;
+      case chain_config_v0::min_transaction_cpu_usage_id:
+      fc::raw::unpack(s, entry.config.min_transaction_cpu_usage);
+      break;
+      case chain_config_v0::max_transaction_lifetime_id:
+      fc::raw::unpack(s, entry.config.max_transaction_lifetime);
+      break;
+      case chain_config_v0::deferred_trx_expiration_window_id:
+      fc::raw::unpack(s, entry.config.deferred_trx_expiration_window);
+      break;
+      case chain_config_v0::max_transaction_delay_id:
+      fc::raw::unpack(s, entry.config.max_transaction_delay);
+      break;
+      case chain_config_v0::max_inline_action_size_id:
+      fc::raw::unpack(s, entry.config.max_inline_action_size);
+      break;
+      case chain_config_v0::max_inline_action_depth_id:
+      fc::raw::unpack(s, entry.config.max_inline_action_depth);
+      break;
+      case chain_config_v0::max_authority_depth_id:
+      fc::raw::unpack(s, entry.config.max_authority_depth);
+      break;
+      default:
+      FC_THROW_EXCEPTION(eosio::chain::config_parse_error, "DataStream& operator<<: no such id: ${id}", ("id", entry.id));
+   }
+   
+   return s;
+}
+
+/**
+ * @brief This is for unpacking data_entry<chain_config_v1, ...> 
+ * that is used as part of unpacking data_range<chain_config_v1, ...>
+ * @param s datastream
+ * @param entry contains config reference and particular id
+ * @throws unsupported_feature if protocol feature for particular id is not activated
+ */
+template <typename DataStream>
+inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
+   EOS_ASSERT(entry.is_allowed(), eosio::chain::unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
+
+   switch (entry.id){
+      //add here entries for new members of chain_config_v1
+      default:
+      eosio::chain::data_entry<std::false_type, eosio::chain::config_entry_validator> base_entry(entry);
+      fc::raw::unpack(s, base_entry);
+   }
+
+   return s;
+}
+
+/**
+ * @brief Packs config stream in the following format:
  * |uint32_t:sequence_length | uint32_t:parameter_id | <various>:parameter_value | ... 
- * all parameters are optional
+ * @param s datastream
+ * @param selection contains ids range to pack
+ * @throws config_parse_error on duplicate or unknown id in selection
  */
 template<typename DataStream, typename T>
 inline DataStream& operator<<( DataStream& s, const eosio::chain::data_range<T, eosio::chain::config_entry_validator>& selection ) {
@@ -196,7 +402,7 @@ inline DataStream& operator<<( DataStream& s, const eosio::chain::data_range<T, 
    fc::raw::pack(s, size);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(enum_size<T>(), false);
+   std::vector<bool> visited(T::ENUM_SIZE, false);
    for (auto uid : selection.ids){
       uint32_t id = uid;
       EOS_ASSERT(id < visited.size(), config_parse_error, "provided id ${id} should be less than ${size}", ("id", id)("size", visited.size()));
@@ -210,6 +416,13 @@ inline DataStream& operator<<( DataStream& s, const eosio::chain::data_range<T, 
    return s;
 }
 
+/**
+ * @brief Unpacks config stream in the following format:
+ * |uint32_t:sequence_length | uint32_t:parameter_id | <various>:parameter_value | ... 
+ * @param s datastream
+ * @param selection contains config reference where values will be unpacked
+ * @throws config_parse_error on duplicate or unknown id in stream
+ */
 template<typename DataStream, typename T>
 inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio::chain::config_entry_validator>& selection ) {
    using namespace eosio::chain;
@@ -218,7 +431,7 @@ inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio:
    fc::raw::unpack(s, length);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(enum_size<T>(), false);
+   std::vector<bool> visited(T::ENUM_SIZE, false);
    for (uint32_t i = 0; i < length; ++i) {
       fc::unsigned_int id;
       fc::raw::unpack(s, id);
