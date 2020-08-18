@@ -121,6 +121,7 @@ public:
                if( self->queue_.pop(i) ) {
                   auto trx_meta = i.fut.get();
                   self->queue_.pause();
+                  dlog("posting trx: ${id}", ("id", trx_meta->id()));
                   app().post(priority::low, [self, trx{std::move(trx_meta)}, next{std::move(i.next)}](){
                      auto retry_later = [self](const chain::transaction_metadata_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr>& next) {
                         std::promise<chain::transaction_metadata_ptr> p;
@@ -131,6 +132,7 @@ public:
                         self->queue_.push_front( std::move( i ) );
                      };
                      self->prod_plugin_->execute_incoming_transaction(trx, next, retry_later);
+                     dlog("unpausing for: ${id}", ("id", trx->id()));
                      self->queue_.unpause();
                   });
                }
