@@ -118,8 +118,8 @@ public:
     protected:
         const key_value& read_(const bytes& key) const;
         
-        template <typename predicate, typename comparator>
-        void move_(const predicate& p, const comparator& c);
+        template <typename move_predicate, typename rollover_predicate, typename comparator>
+        void move_(const move_predicate& move, const rollover_predicate& rollover, const comparator& key_comparator);
         void move_next_();
         void move_previous_();
         
@@ -689,7 +689,9 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
     new_iterator.m_cache_iterator_state.begin = std::begin(*(new_iterator.m_cache_iterator_state.updated_keys));
     new_iterator.m_cache_iterator_state.end = std::end(*(new_iterator.m_cache_iterator_state.updated_keys));
     new_iterator.m_cache_iterator_state.current = p(*(new_iterator.m_cache_iterator_state.updated_keys));
-    new_iterator.m_current_value = new_iterator.read_(*new_iterator.m_cache_iterator_state.current);
+    if (new_iterator.m_cache_iterator_state.current != new_iterator.m_cache_iterator_state.end) {
+        new_iterator.m_current_value = new_iterator.read_(*new_iterator.m_cache_iterator_state.current);
+    }
 
     new_iterator.m_database_iterator_state.begin = std::begin(*m_impl->backing_data_store);
     new_iterator.m_database_iterator_state.current = p(*m_impl->backing_data_store);
@@ -861,27 +863,42 @@ const key_value& session<persistent_data_store, cache_data_store>::session_itera
 // \tparam comparator A functor used to determine what the current iterator is.
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
-template <typename predicate, typename comparator>
-void session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::move_(const predicate& p, const comparator& c) {
-    if (m_use_cache_iterator) {
-        // The cache iterator is the current iterator.
-        p(m_cache_iterator_state);
-    } else {
-        // The database iterator is the current iterator.
-        p(m_database_iterator_state);
-        
+template <typename move_predicate, typename rollover_predicate, typename comparator>
+void session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::move_(const move_predicate& move, const rollover_predicate& rollover, const comparator& key_comparator) {
+    auto find_next_database_key = [&]() {
         // keeping moving until we find a database key that hasn't been deleted.
         while (m_database_iterator_state.current != m_database_iterator_state.end
                 && m_cache_iterator_state.deleted_keys->find((*m_database_iterator_state.current).key()) != std::end(*m_cache_iterator_state.deleted_keys)) {
-            p(m_database_iterator_state);
+            move(m_database_iterator_state);
         }
+    };
+
+    if (m_use_cache_iterator) {
+        // The cache iterator is the current iterator.
+        move(m_cache_iterator_state);
+    } else {
+        // The database iterator is the current iterator.
+        move(m_database_iterator_state);
+        find_next_database_key();
+    }
+
+    // Have all iterators hit the end?
+    if (m_cache_iterator_state.current == m_cache_iterator_state.end && m_database_iterator_state.current == m_database_iterator_state.end) {
+      rollover(m_cache_iterator_state);
+      rollover(m_database_iterator_state);
+      find_next_database_key();
     }
     
     // is the cache or database iterator the current iterator.
-    m_use_cache_iterator = true;
-    m_current_value = read_(*m_cache_iterator_state.current);
+    m_current_value = key_value::invalid;
+
+    if (m_cache_iterator_state.current != m_cache_iterator_state.end) {
+      m_use_cache_iterator = true;
+      m_current_value = read_(*m_cache_iterator_state.current);
+    }
+
     if (m_database_iterator_state.current != m_database_iterator_state.end
-        && c((*m_database_iterator_state.current).key(), *m_cache_iterator_state.current)) {
+        && (m_current_value == key_value::invalid || key_comparator((*m_database_iterator_state.current).key(), *m_cache_iterator_state.current))) {
         m_use_cache_iterator = false;
         m_current_value = *m_database_iterator_state.current;
     }
@@ -891,39 +908,60 @@ template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
 void session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::move_next_() {
     // increment the current iterator and set the next current.
-    auto predicate = [](auto& it) { 
+    auto move = [](auto& it) { 
         if (it.begin == it.end) {
             // There is nothing to iterate over.
             return;
         }
 
-        if (it.current == it.end || ++it.current == it.end) {
-            // Loop around to the beginning.
-            it.current = it.begin;
+        if (it.current == it.end) {
+            // This lambda doesn't perform the roll over.
+            return;
         }
+
+        ++it.current;
     };
-    move_(predicate, std::less<bytes>{});
+
+    auto rollover = [](auto& it) {
+      if (it.begin == it.end) {
+          // There is nothing to iterate over.
+          return;
+      }
+      it.current = it.begin;
+    };
+
+    move_(move, rollover, std::less<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
 void session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::move_previous_() {
     // decrement the current iterator and set the next current.
-    auto predicate = [](auto& it) { 
+    auto move = [](auto& it) { 
         if (it.begin == it.end) {
             // There is nothing to iterate over.
             return;
         }
 
         if (it.current == it.begin) {
-            // Loop around to the end.
+            // set to the end.
             it.current = it.end;
+            return;
         }
 
         --it.current;
     };
 
-    move_(predicate, std::greater<bytes>{});
+    auto rollover = [](auto& it) {
+      if (it.begin == it.end) {
+          // There is nothing to iterate over.
+          return;
+      }
+      it.current = it.end;
+      --it.current;
+    };
+
+    move_(move, rollover, std::greater<bytes>{});
 }
 
 template <typename persistent_data_store, typename cache_data_store, typename iterator_traits>

@@ -129,4 +129,48 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(session_iterate_over_multiple_levels) {
+  auto memory_allocator = boost_memory_allocator::make();
+  auto cache_ds = eosio::session::make_cache(memory_allocator);
+  auto rocksdb = make_rocks_db("testdb");
+  auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+
+  // {
+  //     auto root_session = eosio::session::make_session(rocks_ds, cache_ds);
+  //     {
+  //         auto block_session = eosio::session::make_session(root_session);
+  //         {
+  //             auto transaction = eosio::session::make_session(block_session);
+  //         }
+  //         // verify contents of block
+  //         {
+  //             auto transaction = eosio::session::make_session(block_session);
+  //         }
+  //         // verify contents of block
+  //         {
+  //             auto transaction = eosio::session::make_session(block_session);
+  //         }
+  //         // verify contents of block
+  //     }
+  //     // Verify contents of root session
+  //     {
+  //         auto block_session = eosio::session::make_session(root_session);
+  //     }
+  //     // Verify contents of root session
+  //     {
+  //         auto block_session = eosio::session::make_session(root_session);
+  //     }
+  //     // Verify contents of root session
+  // }
+  // // Verify contents of rocks ds
+}
+
+BOOST_AUTO_TEST_CASE(session_iterate_over_undo) {
+
+}
+
+BOOST_AUTO_TEST_CASE(session_iterate_over_commit) {
+
+}
+
 BOOST_AUTO_TEST_SUITE_END();
