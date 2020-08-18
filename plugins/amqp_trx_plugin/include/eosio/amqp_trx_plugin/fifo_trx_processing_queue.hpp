@@ -21,9 +21,9 @@ public:
    void push(T&& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
-         full_cv_.wait(lk, [this]() {
-            return queue_.size() < max_depth_;
-         });
+         while( queue_.size() > max_depth_ ) {
+            full_cv_.wait(lk);
+         }
          queue_.emplace_back(std::move(t));
       }
       empty_cv_.notify_one();
@@ -41,9 +41,11 @@ public:
    bool pop(T& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
-         empty_cv_.wait(lk, [this]() {
-            return (!queue_.empty() && !paused_) || stopped_;
-         });
+         while( (queue_.empty() || paused_) && !stopped_ ) {
+            dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_.load()));
+            empty_cv_.wait(lk);
+         }
+         dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_.load()));
          if( stopped_ ) return false;
          t = std::move(queue_.front());
          queue_.pop_front();
