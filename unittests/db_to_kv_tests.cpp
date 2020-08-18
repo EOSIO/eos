@@ -9,7 +9,7 @@ using name = eosio::chain::name;
 
 BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 
-const uint64_t overhead_size = sizeof(name) * 2 + 1; // 8 (scope) + 8 (table) + 1 (key type)
+constexpr uint64_t overhead_size = sizeof(name) * 2 + 1; // 8 (scope) + 8 (table) + 1 (key type)
 
 template<typename Type>
 void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key) {
@@ -103,13 +103,13 @@ b1::chain_kv::bytes prim_drop_extra_key(name scope, name table, uint64_t db_key,
 };
 
 template<typename T, typename KeyFunc>
-void check_ordered_keys(const std::vector<T> ordered_keys, KeyFunc key_func, bool skip_trailing_prim_key = false) {
+void check_ordered_keys(const std::vector<T>& ordered_keys, KeyFunc key_func, bool skip_trailing_prim_key = false) {
    verify_scope_table_order(ordered_keys[0], ordered_keys[1], key_func, skip_trailing_prim_key);
    name scope{0};
    name table{0};
    const uint64_t prim_key = 0;
    std::vector<b1::chain_kv::bytes> composite_keys;
-   for (const auto key: ordered_keys) {
+   for (const auto& key: ordered_keys) {
       auto comp_key = key_func(scope, table, key, prim_key);
       composite_keys.push_back(comp_key);
    }
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    check_ordered_keys(keys2, &eosio::chain::db_key_value_format::create_secondary_key<uint64_t>);
 }
 
-eosio::chain::uint128_t create_uint128(uint64_t upper, uint64_t lower) {
+constexpr eosio::chain::uint128_t create_uint128(uint64_t upper, uint64_t lower) {
    return (eosio::chain::uint128_t(upper) << 64) + lower;
 }
 
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
    check_ordered_keys(keys, &eosio::chain::db_key_value_format::create_secondary_key<eosio::chain::uint128_t>);
 }
 
-eosio::chain::key256_t create_key256(eosio::chain::uint128_t upper, eosio::chain::uint128_t lower) {
+constexpr eosio::chain::key256_t create_key256(eosio::chain::uint128_t upper, eosio::chain::uint128_t lower) {
    return { upper, lower };
 }
 

@@ -74,9 +74,10 @@ namespace eosio { namespace chain {
 
       template<typename Key, key_type kt = determine_sec_type<Key>::kt>
       static void prepare_composite_key(b1::chain_kv::bytes& key_storage, name scope, name table, std::size_t key_size) {
-         const auto scope_size = sizeof(scope);
-         const auto table_size = sizeof(table);
-         const auto type_size = sizeof(key_type);
+         constexpr static auto scope_size = sizeof(scope);
+         constexpr static auto table_size = sizeof(table);
+         constexpr static auto type_size = sizeof(key_type);
+         static_assert( type_size == 1, "" );
          key_storage.reserve(scope_size + table_size + type_size + key_size);
          b1::chain_kv::append_key(key_storage, scope.to_uint64_t());
          b1::chain_kv::append_key(key_storage, table.to_uint64_t());

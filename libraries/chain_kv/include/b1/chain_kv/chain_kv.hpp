@@ -112,7 +112,7 @@ inline bytes get_next_prefix(const bytes& prefix) {
 }
 
 namespace detail {
-   typedef __uint128_t uint128_t;
+   using uint128_t = __uint128_t;
 
    template<std::size_t Size, std::size_t N>
    void copy_and_swap_to_buffer(char* to, const char* from) {
@@ -130,20 +130,20 @@ namespace detail {
 
    template<typename T>
    struct value_storage<T*> {
-      char* as_char_ptr(T* value) const { return reinterpret_cast<char*>(value); }
+      constexpr char* as_char_ptr(T* value) const { return reinterpret_cast<char*>(value); }
       constexpr std::size_t size() const { return sizeof(T); }
    };
 
    template<typename T>
    struct value_storage {
-      char* as_char_ptr(T& value) const { return reinterpret_cast<char*>(&value); }
+      constexpr char* as_char_ptr(T& value) const { return reinterpret_cast<char*>(&value); }
       constexpr std::size_t size() const { return sizeof(T); }
    };
 
    template <typename T, std::size_t N>
    auto append_key(bytes& dest, T value) {
-      constexpr auto type_size = value_storage<T>().size();
-      constexpr auto buf_size = type_size * N;
+      constexpr static auto type_size = value_storage<T>().size();
+      constexpr static auto buf_size = type_size * N;
       char buf[buf_size];
       detail::copy_and_swap_to_buffer<type_size, N>(buf, value_storage<T>().as_char_ptr(value));
       std::reverse(std::begin(buf), std::end(buf));
@@ -181,8 +181,8 @@ namespace detail {
    template<typename Key, std::size_t N>
    bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, Key& key) {
       const auto distance = std::distance(key_loc, key_end);
-      constexpr auto type_size = value_storage<Key>().size();
-      constexpr auto key_size = type_size * N;
+      constexpr static auto type_size = value_storage<Key>().size();
+      constexpr static auto key_size = type_size * N;
       if (distance < key_size)
          return false;
 
