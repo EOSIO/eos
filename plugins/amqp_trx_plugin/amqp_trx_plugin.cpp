@@ -1,4 +1,5 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
+#include <eosio/amqp_trx_plugin/fifo_trx_processing_queue.hpp>
 #include <eosio/amqp/amqp_handler.hpp>
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -29,6 +30,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    std::string amqp_trx_address;
    std::atomic<uint32_t> trx_in_progress_size{0};
+   std::shared_ptr<fifo_trx_processing_queue> trx_queue_ptr;
 
    // called from amqp thread
    void consume_message( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
@@ -60,6 +62,24 @@ private:
    void handle_message( const eosio::amqp::delivery_tag_t& delivery_tag, chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
+
+      if( trx_queue_ptr ) {
+         trx_queue_ptr->push( trx, [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
+               my->amqp_trx->ack( delivery_tag );
+               // publish to trace plugin as execptions are not reported via controller signal applied_transaction
+               if( result.contains<chain::exception_ptr>() ) {
+                  auto& eptr = result.get<chain::exception_ptr>();
+                  if( my->trace_plug ) {
+                     my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
+                  }
+                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+               } else {
+                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
+               }
+            } );
+
+         return;
+      }
 
       auto trx_in_progress = trx_in_progress_size.load();
       if( trx_in_progress > def_max_trx_in_progress_size ) {
@@ -134,6 +154,15 @@ void amqp_trx_plugin::plugin_startup() {
       }
 
       ilog( "Starting amqp_trx_plugin" );
+
+      // todo make configurable
+      auto& controller = my->chain_plug->chain();
+      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
+                                                                       controller.configured_subjective_signature_length_limit(),
+                                                                       controller.get_thread_pool(),
+                                                                       app().find_plugin<producer_plugin>(),
+                                                                       1000 );
+      my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",
             [](const std::string& err) {
