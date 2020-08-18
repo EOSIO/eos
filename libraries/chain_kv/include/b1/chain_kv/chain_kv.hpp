@@ -6,6 +6,7 @@
 #include <rocksdb/table.h>
 #include <stdexcept>
 #include <softfloat.hpp>
+#include <algorithm>
 
 namespace b1::chain_kv {
 
@@ -130,22 +131,27 @@ namespace detail {
 
    template<typename T>
    struct value_storage<T*> {
-      constexpr char* as_char_ptr(T* value) const { return reinterpret_cast<char*>(value); }
-      constexpr std::size_t size() const { return sizeof(T); }
+      using type = T;
+      constexpr T* as_ptr(T* value) const { return (value); }
    };
 
    template<typename T>
    struct value_storage {
-      constexpr char* as_char_ptr(T& value) const { return reinterpret_cast<char*>(&value); }
-      constexpr std::size_t size() const { return sizeof(T); }
+      using type = T;
+      constexpr T* as_ptr(T& value) const { return &value; }
    };
 
    template <typename T, std::size_t N>
    auto append_key(bytes& dest, T value) {
-      constexpr static auto type_size = value_storage<T>().size();
-      constexpr static auto buf_size = type_size * N;
+
+      using t_type = typename value_storage<T>::type;
+      constexpr static auto buf_size = sizeof(t_type) * N;
       char buf[buf_size];
-      detail::copy_and_swap_to_buffer<type_size, N>(buf, value_storage<T>().as_char_ptr(value));
+      t_type* buf_as_type = reinterpret_cast<t_type*>(buf);
+      const t_type* first = value_storage<T>().as_ptr(value);
+      const t_type* last = first + N;
+      std::reverse_copy(first, last, buf_as_type);
+
       std::reverse(std::begin(buf), std::end(buf));
       dest.insert(dest.end(), std::begin(buf), std::end(buf));
    }
@@ -181,8 +187,8 @@ namespace detail {
    template<typename Key, std::size_t N>
    bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, Key& key) {
       const auto distance = std::distance(key_loc, key_end);
-      constexpr static auto type_size = value_storage<Key>().size();
-      constexpr static auto key_size = type_size * N;
+      using t_type = typename value_storage<Key>::type;
+      constexpr static auto key_size = sizeof(t_type) * N;
       if (distance < key_size)
          return false;
 
@@ -190,7 +196,12 @@ namespace detail {
       bytes key_store(key_loc, key_end);
       key_loc = key_end;
       std::reverse(std::begin(key_store), std::end(key_store));
-      detail::copy_and_swap_to_buffer<type_size, N>(value_storage<Key>().as_char_ptr(key), key_store.data());
+
+      const t_type* buf_as_type_first = reinterpret_cast<t_type*>(key_store.data());
+      const t_type* buf_as_type_last = buf_as_type_first + N;
+      t_type* key_ptr = value_storage<Key>().as_ptr(key);
+
+      std::reverse_copy(buf_as_type_first, buf_as_type_last, key_ptr);
 
       return true;
    }
