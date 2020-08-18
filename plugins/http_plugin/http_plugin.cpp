@@ -397,7 +397,7 @@ namespace eosio {
             :object(std::move(object))
             ,impl(impl)
             {
-               count = detail::in_flight_sizeof(object);
+               count = detail::in_flight_sizeof(this->object);
                impl.bytes_in_flight += count;
             }
 
@@ -467,7 +467,7 @@ namespace eosio {
          detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next ) {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
-               auto tracked_b = make_in_flight(std::move(b), *this);
+               auto tracked_b = make_in_flight<string>(std::move(b), *this);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
