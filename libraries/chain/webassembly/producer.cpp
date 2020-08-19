@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::get_active_producers( legacy_span<account_name> producers ) const {
