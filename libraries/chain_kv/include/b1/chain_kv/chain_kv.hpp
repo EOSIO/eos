@@ -115,17 +115,6 @@ inline bytes get_next_prefix(const bytes& prefix) {
 namespace detail {
    using uint128_t = __uint128_t;
 
-   template<std::size_t Size, std::size_t N>
-   void copy_and_swap_to_buffer(char* to, const char* from) {
-      char* to_ptr = to + Size * (N - 1);
-      const char* from_ptr = from;
-      for (unsigned int i = 0; i < N; ++i) {
-         memcpy(to_ptr, from_ptr, Size);
-         to_ptr -= Size;
-         from_ptr += Size;
-      }
-   }
-
    template<typename T>
    struct value_storage;
 
@@ -145,15 +134,15 @@ namespace detail {
    auto append_key(bytes& dest, T value) {
 
       using t_type = typename value_storage<T>::type;
-      constexpr static auto buf_size = sizeof(t_type) * N;
-      char buf[buf_size];
-      t_type* buf_as_type = reinterpret_cast<t_type*>(buf);
+      t_type t_array[N];
       const t_type* first = value_storage<T>().as_ptr(value);
       const t_type* last = first + N;
-      std::reverse_copy(first, last, buf_as_type);
+      std::reverse_copy(first, last, std::begin(t_array));
 
-      std::reverse(std::begin(buf), std::end(buf));
-      dest.insert(dest.end(), std::begin(buf), std::end(buf));
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
+      dest.insert(dest.end(), t_array_as_char_begin, t_array_as_char_end);
    }
 
    template <typename UInt, typename T>
@@ -193,15 +182,15 @@ namespace detail {
          return false;
 
       key_end = key_loc + key_size;
-      bytes key_store(key_loc, key_end);
+      t_type t_array[N];
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      std::copy(key_loc, key_loc + key_size, t_array_as_char_begin);
       key_loc = key_end;
-      std::reverse(std::begin(key_store), std::end(key_store));
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
 
-      const t_type* buf_as_type_first = reinterpret_cast<t_type*>(key_store.data());
-      const t_type* buf_as_type_last = buf_as_type_first + N;
       t_type* key_ptr = value_storage<Key>().as_ptr(key);
-
-      std::reverse_copy(buf_as_type_first, buf_as_type_last, key_ptr);
+      std::reverse_copy(std::begin(t_array), std::end(t_array), key_ptr);
 
       return true;
    }
