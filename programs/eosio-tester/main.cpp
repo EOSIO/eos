@@ -36,7 +36,6 @@ using eosio::chain::digest_type;
 using eosio::chain::kv_bad_db_id;
 using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
-using eosio::chain::kvdisk_id;
 using eosio::chain::kvram_id;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
@@ -195,7 +194,7 @@ struct test_chain {
       eosio::chain::genesis_state genesis;
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
-      cfg->blocks_dir           = dir.path() / "blocks";
+      cfg->blog.log_dir         = dir.path() / "blocks";
       cfg->state_dir            = dir.path() / "state";
       cfg->contracts_console    = true;
       cfg->wasm_runtime         = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
@@ -1062,8 +1061,6 @@ struct callbacks {
    kv_context& kv_get_db(uint64_t db) {
       if (db == kvram_id.to_uint64_t())
          return *selected().kv_ram;
-      else if (db == kvdisk_id.to_uint64_t())
-         return *selected().kv_disk;
       EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
    }
 

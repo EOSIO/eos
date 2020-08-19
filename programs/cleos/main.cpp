@@ -159,6 +159,11 @@ bfs::path determine_home_directory()
    return home;
 }
 
+std::string clean_output( std::string str ) {
+   const bool escape_control_chars = false;
+   return fc::escape_string( str, nullptr, escape_control_chars );
+}
+
 string url = "http://127.0.0.1:8888/";
 string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
 string wallet_url; //to be set to default_wallet_url in main
@@ -466,6 +471,27 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
+void print_return_value( const fc::variant& at ) {
+   std::string return_value, return_value_prefix{"return value: "};
+   const auto  & iter_value = at.get_object().find("return_value_data");
+   const auto  & iter_hex   = at.get_object().find("return_value_hex_data");
+
+   if( iter_value != at.get_object().end() ) {
+      return_value = fc::json::to_string(iter_value->value(), fc::time_point::maximum());
+   }
+   else if( iter_hex != at.get_object().end() ) {
+      return_value = iter_hex->value().as_string();
+      return_value_prefix = "return value (hex): ";
+   }
+
+   if( !return_value.empty() ) {
+      if( return_value.size() > 100 ) {
+         return_value = return_value.substr(0, 100) + "...";
+      }
+      cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
+   }
+}
+
 void print_action( const fc::variant& at ) {
    auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
@@ -482,12 +508,14 @@ void print_action( const fc::variant& at ) {
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   print_return_value(at);
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
       while( std::getline( ss, line ) ) {
-         cout << ">> " << line << "\n";
+         cout << ">> " << clean_output( std::move( line ) ) << "\n";
          if( !verbose ) break;
+         line.clear();
       }
    }
 }
@@ -1137,7 +1165,7 @@ struct create_account_subcommand {
 
             if( active_key_str.empty() ) {
                active = owner;
-            } else if ( active_key_str.find('{') != string::npos ) { 
+            } else if ( active_key_str.find('{') != string::npos ) {
                try{
                   active = parse_json_authority_or_key(active_key_str);
                } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active authority: ${authority}", ("authority", owner_key_str) )
@@ -1370,10 +1398,10 @@ struct list_producers_subcommand {
             printf("%-13.13s %-57.57s %-59.59s %1.4f\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
-                   row["url"].as_string().c_str(),
+                   clean_output( row["url"].as_string() ).c_str(),
                    row["total_votes"].as_double() / weight);
          if ( !result.more.empty() )
-            std::cout << "-L " << result.more << " for more" << std::endl;
+            std::cout << "-L " << clean_output( result.more ) << " for more" << std::endl;
       });
    }
 };
@@ -2622,7 +2650,7 @@ int main( int argc, char** argv ) {
    });
 
    // validate subcommand
-   auto validate = app.add_subcommand("validate", localized("Validate transactions")); 
+   auto validate = app.add_subcommand("validate", localized("Validate transactions"));
    validate->require_subcommand();
 
    // validate signatures
@@ -2883,8 +2911,7 @@ int main( int argc, char** argv ) {
       if (!currency_balance_print_json) {
         const auto& rows = result.get_array();
         for( const auto& r : rows ) {
-           std::cout << r.as_string()
-                     << std::endl;
+           std::cout << clean_output( r.as_string() ) << std::endl;
         }
       } else {
         std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -3023,14 +3050,15 @@ int main( int argc, char** argv ) {
               if( printconsole ) {
                  auto console = at["console"].as_string();
                  if( console.size() ) {
-                    stringstream out;
+                    stringstream sout;
                     std::stringstream ss(console);
                     string line;
                     while( std::getline( ss, line ) ) {
-                       out << ">> " << line << "\n";
+                       sout << ">> " << clean_output( std::move( line ) ) << "\n";
                        if( !fullact ) break;
+                       line.clear();
                     }
-                    cerr << out.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
+                    cerr << sout.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
                  }
               }
           }
@@ -3039,61 +3067,6 @@ int main( int argc, char** argv ) {
 
    auto getSchedule = get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
-
-   /*
-   auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"));
-   getTransactions->add_option("account_name", account_name, localized("Name of account to query on"))->required();
-   getTransactions->add_option("skip_seq", skip_seq_str, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
-   getTransactions->add_option("num_seq", num_seq_str, localized("Number of transactions to return"));
-   getTransactions->add_flag("--json,-j", printjson, localized("Print full json"));
-   getTransactions->callback([&] {
-      fc::mutable_variant_object arg;
-      if (skip_seq_str.empty()) {
-         arg = fc::mutable_variant_object( "account_name", account_name);
-      } else {
-         uint64_t skip_seq;
-         try {
-            skip_seq = boost::lexical_cast<uint64_t>(skip_seq_str);
-         } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
-         if (num_seq_str.empty()) {
-            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq);
-         } else {
-            uint64_t num_seq;
-            try {
-               num_seq = boost::lexical_cast<uint64_t>(num_seq_str);
-            } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
-            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq_str)("num_seq", num_seq);
-         }
-      }
-      auto result = call(get_transactions_func, arg);
-      if( printjson ) {
-         std::cout << fc::json::to_pretty_string(result) << std::endl;
-      }
-      else {
-         const auto& trxs = result.get_object()["transactions"].get_array();
-         for( const auto& t : trxs ) {
-
-            const auto& tobj = t.get_object();
-            const auto& trx  = tobj["transaction"].get_object();
-            const auto& data = trx["transaction"].get_object();
-            const auto& msgs = data["actions"].get_array();
-
-            for( const auto& msg : msgs ) {
-               int64_t seq_num  = tobj["seq_num"].as<int64_t>();
-               string  id       = tobj["transaction_id"].as_string();
-               const auto& exp  = data["expiration"].as<fc::time_point_sec>();
-               std::cout << tobj["seq_num"].as_string() <<"] " << id.substr(0,8) << "...  " << data["expiration"].as_string() << "  ";
-               auto code = msg["account"].as_string();
-               auto func = msg["name"].as_string();
-               auto args = fc::json::to_string( msg["data"] );
-               std::cout << setw(26) << left << (code + "::" + func) << "  " << args;
-               std::cout << std::endl;
-            }
-         }
-      }
-
-   });
-   */
 
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));

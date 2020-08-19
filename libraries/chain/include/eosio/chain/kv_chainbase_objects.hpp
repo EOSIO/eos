@@ -19,6 +19,7 @@ namespace eosio { namespace chain {
       name        contract;
       shared_blob kv_key;
       shared_blob kv_value;
+      name        payer;
    };
 
    using kv_index = chainbase::shared_multi_index_container<
@@ -33,12 +34,15 @@ namespace eosio { namespace chain {
 namespace config {
    template<>
    struct billable_size<kv_object> {
-      static constexpr uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;
-      static constexpr uint64_t value = 24 + (8 + 4) * 2 + overhead; ///< 24 for fixed fields 8 for vector data 4 for vector size
+      // NOTICE: Do not change any of the constants defined here; otherwise it would cause backward concensus compatibility problem.
+      static constexpr uint64_t overhead                     = overhead_per_row_per_index_ram_bytes * 2;
+      static constexpr uint64_t serialized_shared_blob_size  = 8 + 4; // 8 for vector data 4 for vector size
+      static constexpr uint64_t serialized_kv_object_size_exclude_shared_blobs = 32; // derived from sizeof(id_type) + 3* sizeof(name)
+      static constexpr uint64_t value = serialized_kv_object_size_exclude_shared_blobs + serialized_shared_blob_size * 2 + overhead; 
    };
 } // namespace config
 
 }} // namespace eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
-FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value))
+FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value)(payer))
