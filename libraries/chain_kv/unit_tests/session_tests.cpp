@@ -25,7 +25,6 @@ eosio::session::session<rocks_data_store<allocator>, cache<allocator>> make_sess
 
 BOOST_AUTO_TEST_SUITE(session_tests)
 
-// TODO: Add specific session/undo stack related tests.
 
 BOOST_AUTO_TEST_CASE(session_create_test) {
     {

@@ -154,12 +154,31 @@ void make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, int_t) {
 
 template <typename T, typename Key, typename Value>
 void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string_t) {
-    for (const auto& kv : ds) {
+    auto verify_key_value = [&](auto kv) {
         auto key = std::string{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
         auto it = container.find(key);
         BOOST_REQUIRE(it != std::end(container));
         BOOST_REQUIRE(std::memcmp(it->second.c_str(), reinterpret_cast<const char*>(kv.value().data()), it->second.size()) == 0);
+    };
+
+    for (const auto& kv : ds) {
+        verify_key_value(kv);
     }
+
+    auto begin = std::begin(ds);
+    auto end = std::end(ds);
+    auto current = end;
+    --current;
+    auto count = size_t{0};
+    while (true) {
+        verify_key_value(*current);
+        ++count;
+        if (current == begin) {
+            break;
+        }
+        --current;
+    }
+    BOOST_REQUIRE(count == container.size());
 
     for (const auto& it : container) {
         auto kv = ds.read(eosio::session::make_bytes(it.first.c_str(), it.first.size()));
@@ -171,17 +190,34 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
 
 template <typename pds, typename cds, typename Key, typename Value>
 void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_map<Key, Value>& container, string_t) {
-    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
-    auto begin = std::begin(ds);
-    auto kv_it = std::begin(ds);
-    do {
-        auto kv = *kv_it;
+  auto verify_key_value = [&](auto kv) {
         auto key = std::string{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
         auto it = container.find(key);
         BOOST_REQUIRE(it != std::end(container));
         BOOST_REQUIRE(std::memcmp(it->second.c_str(), reinterpret_cast<const char*>(kv.value().data()), it->second.size()) == 0);
+    };
+
+    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
+    auto begin = std::begin(ds);
+    auto kv_it = std::begin(ds);
+    do {
+        verify_key_value(*kv_it);
         ++kv_it;
     } while (kv_it != begin);
+
+    auto end = std::end(ds);
+    kv_it = end;
+    --kv_it;
+    auto count = size_t{0};
+    while (true) {
+        verify_key_value(*kv_it);
+        ++count;
+        if (kv_it == begin) {
+            break;
+        }
+        --kv_it;
+    }
+    BOOST_REQUIRE(count == container.size());
 
     for (const auto& it : container) {
         auto kv = ds.read(eosio::session::make_bytes(it.first.c_str(), it.first.size()));
@@ -193,11 +229,30 @@ void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_ma
 
 template <typename T, typename Key, typename Value>
 void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t) {
-    for (const auto& kv : ds) {
+    auto verify_key_value = [&](auto kv) {
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));
         BOOST_REQUIRE(it != std::end(container));
         BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), kv.value().data(), sizeof(Value)) == 0);
+    };
+    
+    for (const auto& kv : ds) {
+        verify_key_value(kv);
     }
+
+    auto begin = std::begin(ds);
+    auto end = std::end(ds);
+    auto current = end;
+    --current;
+    auto count = size_t{0};
+    while (true) {
+        verify_key_value(*current);
+        ++count;
+        if (current == begin) {
+            break;
+        }
+        --current;
+    }
+    BOOST_REQUIRE(count == container.size());
 
     for (const auto& it : container) {
         auto kv = ds.read(eosio::session::make_bytes(&it.first, 1));
@@ -209,17 +264,33 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
 
 template <typename pds, typename cds, typename Key, typename Value>
 void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_map<Key, Value>& container, int_t) {
-    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
-    auto begin = std::begin(ds);
-    auto kv_it = std::begin(ds);
-    auto end = std::end(ds);
-    do {
-        auto kv = *kv_it;
+    auto verify_key_value = [&](auto kv) {
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));
         BOOST_REQUIRE(it != std::end(container));
         BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), kv.value().data(), sizeof(Value)) == 0);
+    };
+
+    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
+    auto begin = std::begin(ds);
+    auto kv_it = std::begin(ds);
+    do {
+        verify_key_value(*kv_it);
         ++kv_it;
     } while (kv_it != begin);
+
+    auto end = std::end(ds);
+    kv_it = end;
+    --kv_it;
+    auto count = size_t{0};
+    while (true) {
+        verify_key_value(*kv_it);
+        ++count;
+        if (kv_it == begin) {
+            break;
+        }
+        --kv_it;
+    }
+    BOOST_REQUIRE(count == container.size());
 
     for (const auto& it : container) {
         auto kv = ds.read(eosio::session::make_bytes(&it.first, 1));
