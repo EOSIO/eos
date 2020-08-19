@@ -167,6 +167,10 @@ if( GPERFTOOLS_FOUND )
     set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${GPERFTOOLS_TCMALLOC}")
 endif()
 
+if(EOSIO_CHAIN_JOB_LIMIT)
+   set_property(GLOBAL PROPERTY JOB_POOLS "chain_jobs=${EOSIO_CHAIN_JOB_LIMIT}")
+endif()
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
