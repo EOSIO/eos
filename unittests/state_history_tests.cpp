@@ -410,7 +410,9 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
 
    scoped_temp_path state_history_dir;
    fc::create_directories(state_history_dir.path);
-   state_history_traces_log log({ .log_dir = state_history_dir.path });
+   state_history_config config;
+   config.log_dir = state_history_dir.path;
+   state_history_traces_log log(config);
 
    bool onblock_test_executed = false;
 
