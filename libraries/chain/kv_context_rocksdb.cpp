@@ -168,7 +168,7 @@ namespace eosio { namespace chain {
             EOS_ASSERT(kv->value.size() >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
             // kv is always non-null due to the check of is_valid()
             *found_key_size = kv->key.size();
-            *found_value_size = kv->value.size() - kv_payer_size;;
+            *found_value_size = kv->value.size() - kv_payer_size;
          } else {
             *found_key_size = 0;
             *found_value_size = 0;
@@ -227,9 +227,7 @@ namespace eosio { namespace chain {
          account_name payer;
          memcpy(&payer, old_value->data(), kv_payer_size);
 
-         int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size() - kv_payer_size);
-         resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
-         return resource_delta;
+         return erase_table_usage(resource_manager, payer, key, key_size, old_value->size() - kv_payer_size);
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
@@ -269,25 +267,12 @@ namespace eosio { namespace chain {
 
          int64_t resource_delta;
          if (old_value) {
-            int64_t old_size = key_size + old_value_size;
-            int64_t new_size = key_size + value_size;
-            resource_delta = new_size - old_size;
             account_name old_payer;
             memcpy(&old_payer, old_value->data(), kv_payer_size);
 
-            if (old_payer != payer) {
-               // refund the existing payer
-               resource_manager.update_table_usage(old_payer, -(old_size + resource_manager.billable_size), kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-               // charge the new payer
-               resource_manager.update_table_usage(payer, new_size + resource_manager.billable_size, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-            } else if (old_value_size != new_size) {
-               // update existing user
-               resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-            } // No need for a final "else" as usage does not change
+            resource_delta = update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
-            // charge the new payer full amount
-            resource_delta = static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size;
-            resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+            resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
          }
 
          return resource_delta;

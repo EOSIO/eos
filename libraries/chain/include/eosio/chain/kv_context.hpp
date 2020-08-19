@@ -85,6 +85,12 @@ namespace eosio { namespace chain {
       virtual uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size)                        = 0;
 
       virtual std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) = 0;
+
+     protected:
+      // Updates resource usage for payer and returns resource delta
+      int64_t create_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t key_size, uint32_t value_size);
+      int64_t erase_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t key_size, uint32_t value_size);
+      int64_t update_table_usage(kv_resource_manager&  resource_manager, const account_name& old_payer, const account_name& new_payer, const char* key, uint32_t key_size, uint32_t old_value_size, uint32_t new_value_size);
    };
 
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
