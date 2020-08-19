@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
       return resource_delta;
    }
 
-   int64_t kv_context::erase_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t const key_size, const uint32_t value_size) {
+   int64_t kv_context::erase_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, const uint32_t key_size, const uint32_t value_size) {
       int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size);
       resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
       return resource_delta;
