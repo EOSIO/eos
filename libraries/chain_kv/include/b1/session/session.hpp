@@ -901,7 +901,7 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     // Checks if the key has been deleted in this session.
     auto is_deleted = [&](auto& key, auto index) {
         for (size_t i = 0; i <= index; ++i) {
-            // Remember that the list of cache iterator states has the child at the front
+            // Remember that the list of cache iterator state has the child at the front
             // and the parent at the back.  So this is going to check from the child to
             // the current parent to see if this key has been deleted in any of those sessions.
             auto& current_state = m_cache_iterator_states[i];
@@ -943,6 +943,9 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
         }
     };
 
+    // Compares the pneding key/value against the current key/value
+    // and possibly sets the pending key/value if it compares next in
+    // order against the current key/value.
     auto test_set = [&](auto pending, auto index) {
         if (pending == key_value::invalid) {
             return;
@@ -976,6 +979,8 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     auto move_iterator = [&](auto need_rollover) { 
         auto end_count = size_t{0};
 
+        // For each session in the list, find the key in that session
+        // that depending on the comparator function is either the smallest or largest.
         for (size_t i = 0; i < m_cache_iterator_states.size(); ++i) {
             auto& state = m_cache_iterator_states[i];
             
@@ -995,6 +1000,8 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
             rollover(m_database_iterator_state);
         }
 
+        // Then get the next key from the database and see if that is larger or smaller,
+        // depending on the comparator, than the currently set value.
         auto next = find_next(m_database_iterator_state, m_cache_iterator_states.size() - 1, previous_key);
 
         if (next != key_value::invalid) {
@@ -1007,7 +1014,8 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     };
 
     if (move_iterator(false) == m_cache_iterator_states.size() + 1) {
-        // A rollover needs to occur
+        // A rollover needs to occur and then we need to determine the next key in order
+        // based on the comparator function.
         move_iterator(true);
     }
 }
