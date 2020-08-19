@@ -12,8 +12,10 @@ namespace eosio { namespace chain {
       return (raw_value_size - kv_payer_size);
    }
 
-   static void get_payer(const char* data, account_name& payer) {
+   static account_name get_payer(const char* data) {
+      account_name payer;
       memcpy(&payer, data, kv_payer_size);
+      return payer;
    }
 
    static const char* actual_value_start(const char* data) {
@@ -236,8 +238,7 @@ namespace eosio { namespace chain {
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer;
-         get_payer(old_value->data(), payer);
+         account_name payer = get_payer(old_value->data());
 
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
@@ -278,8 +279,7 @@ namespace eosio { namespace chain {
 
          int64_t resource_delta;
          if (old_value) {
-            account_name old_payer;
-            get_payer(old_value->data(), old_payer);
+            account_name old_payer = get_payer(old_value->data());
 
             resource_delta = update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
