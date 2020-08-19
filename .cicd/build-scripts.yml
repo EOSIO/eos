@@ -207,7 +207,6 @@ steps:
   - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
     env:
       DEBIAN_FRONTEND: "noninteractive" 
-      TZ: "America/New York"
     plugins:
       - docker#v3.3.0:
           image: "ubuntu:20.04"
