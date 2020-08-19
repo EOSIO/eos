@@ -212,6 +212,7 @@ void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_ma
     // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
     auto begin = std::begin(ds);
     auto kv_it = std::begin(ds);
+    auto end = std::end(ds);
     do {
         auto kv = *kv_it;
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));

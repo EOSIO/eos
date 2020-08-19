@@ -694,8 +694,13 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
         if (current_state.current == current_state.end) {
             continue;
         }
-        new_iterator.m_current_value = *current_state.current;
+        auto pending = *current_state.current;
+        if (is_deleted(pending.key(), index)) {
+            continue;
+        }
+        new_iterator.m_current_value = pending;
         new_iterator.m_iterator_index = index;
+        break;
     }
 
     // Determine what the initial key_value should be.
@@ -706,15 +711,18 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
         }
         
         auto pending = *current_state.current;
-        if (is_deleted(pending.key(), i)) {
+        auto& pending_key = pending.key();
+        auto& current_key = new_iterator.m_current_value.key();
+
+        if (is_deleted(pending_key, i)) {
             continue;
         }
 
-        if (!c(pending.key(), new_iterator.m_current_value.key())) {
+        if (!c(pending_key, current_key)) {
             continue;
         }
 
-        if (pending.key() == new_iterator.m_current_value.key()) {
+        if (pending_key == current_key) {
             // we want the first one found
             continue;
         }
@@ -725,9 +733,13 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
 
     if (new_iterator.m_database_iterator_state.current != new_iterator.m_database_iterator_state.end) {
         auto pending = *new_iterator.m_database_iterator_state.current;
-        if (!is_deleted(pending.key(), new_iterator.m_cache_iterator_states.size() - 1)
-            && c(pending.key(), new_iterator.m_current_value.key())
-            && pending.key() != new_iterator.m_current_value.key()) {
+        auto& pending_key = pending.key();
+        auto& current_key = new_iterator.m_current_value.key();
+
+        if (!is_deleted(pending_key, new_iterator.m_cache_iterator_states.size() - 1)
+            && pending_key != current_key
+            && c(pending_key, current_key)) {
+
             new_iterator.m_current_value = pending;
             new_iterator.m_iterator_index = new_iterator.m_cache_iterator_states.size();
         }
@@ -889,6 +901,9 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     // Checks if the key has been deleted in this session.
     auto is_deleted = [&](auto& key, auto index) {
         for (size_t i = 0; i <= index; ++i) {
+            // Remember that the list of cache iterator states has the child at the front
+            // and the parent at the back.  So this is going to check from the child to
+            // the current parent to see if this key has been deleted in any of those sessions.
             auto& current_state = m_cache_iterator_states[i];
             
             if (current_state.updated_keys->find(key) != std::end(*current_state.updated_keys)) {
@@ -903,32 +918,28 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     };
 
     // Finds the next key in order that is not marked for deletion.
-    auto find_next = [&](auto& state, auto index) {
+    auto find_next = [&](auto& state, auto index, auto& previous_key) {
         if (state.current == state.end) {
             return key_value::invalid;
         }
 
-        auto starting = *state.current;
-        auto pending = starting;
+        auto pending = *state.current;
         while (true) {
-            if (!is_deleted(pending.key(), index)) {
-                // If this key is not deleted, then return it.
+            auto deleted = is_deleted(pending.key(), index);
+            if (pending.key() != previous_key && !deleted) {
+                // The pending key cannot be the last current key
+                // and it cannot be deleted in a child session.
                 return pending;
             }
-            
-            // Move the iterator based on the prediate.
-            move(state);
 
+            move(state);
+            
             if (state.current == state.end) {
+                // We hit the end.  Nothing to do until the iterator is rolled over.
                 return key_value::invalid;
             }
 
             pending = *state.current;
-
-            if (starting == pending) {
-                // We've loop around.  All values have been deleted.
-                return key_value::invalid;
-            }
         }
     };
 
@@ -937,12 +948,14 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
             return;
         }
 
-        if (m_current_value != key_value::invalid && !key_comparator(pending.key(), m_current_value.key())) {
-            return;
-        }
-
-        if (m_current_value != key_value::invalid && pending.key() == m_current_value.key()) {
-            return;
+        if (m_current_value != key_value::invalid) {
+            auto& pending_key = pending.key();
+            auto& current_key = m_current_value.key();
+            if (pending_key == current_key || !key_comparator(pending_key, current_key)) {
+                // Tie breaks will always prefer what is set in the current value.
+                // pending key has to be less than the current key.
+                return;
+            }
         }
         
         m_current_value = std::move(pending);
@@ -952,50 +965,51 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
     // Move the current iterator.
     if (m_iterator_index < m_cache_iterator_states.size()) {
         move(m_cache_iterator_states[m_iterator_index]);
-        find_next(m_cache_iterator_states[m_iterator_index], m_iterator_index);
-    }
-    else if (m_iterator_index == m_cache_iterator_states.size()) {
+    } else if (m_iterator_index == m_cache_iterator_states.size()) {
         move(m_database_iterator_state);
-        find_next(m_database_iterator_state, m_cache_iterator_states.size() - 1);
     }
 
-    // Check if all iterators are in the end iterator state
-    bool need_rollover = false;
-    if (m_database_iterator_state.current == m_database_iterator_state.end) {
-        // quick check since if the database iterator is not at the end, then we can at least grab a value from there.
-        need_rollover = true;
-
-        for (size_t i = 0; i < m_cache_iterator_states.size(); ++i) {
-            auto& state = m_cache_iterator_states[i];
-            if (state.current == state.end) {
-                continue;
-            }
-            need_rollover = false;
-            break;
-        }
-    }
-    
+    auto previous_key = m_current_value.key();
     m_current_value = key_value::invalid;    
     m_iterator_index = 0;
 
-    for (size_t i = 0; i < m_cache_iterator_states.size(); ++i) {
-        auto& state = m_cache_iterator_states[i];
-        
-        if (need_rollover) {
-            rollover(state);
+    auto move_iterator = [&](auto need_rollover) { 
+        auto end_count = size_t{0};
+
+        for (size_t i = 0; i < m_cache_iterator_states.size(); ++i) {
+            auto& state = m_cache_iterator_states[i];
+            
+            if (need_rollover) {
+                rollover(state);
+            }
+
+            auto next = find_next(state, i, previous_key);
+            if (next == key_value::invalid) {
+                ++end_count;
+                continue;
+            }
+            test_set(next, i);
         }
 
-        // We should never be at the "end" iterator.  This iterator is circular
-        // Find the first non deleted key next in order.
-        test_set(find_next(state, i), i);
-    }
+        if (need_rollover) {
+            rollover(m_database_iterator_state);
+        }
 
-    if (need_rollover) {
-        rollover(m_database_iterator_state);
-    }
+        auto next = find_next(m_database_iterator_state, m_cache_iterator_states.size() - 1, previous_key);
 
-    test_set(find_next(m_database_iterator_state, m_cache_iterator_states.size() - 1), 
-             m_cache_iterator_states.size());
+        if (next != key_value::invalid) {
+            test_set(next, m_cache_iterator_states.size());
+        } else {
+            ++end_count;
+        }
+
+        return end_count;
+    };
+
+    if (move_iterator(false) == m_cache_iterator_states.size() + 1) {
+        // A rollover needs to occur
+        move_iterator(true);
+    }
 }
 
 template <typename persistent_data_store, typename cache_data_store>
