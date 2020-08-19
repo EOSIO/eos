@@ -1,6 +1,5 @@
 #pragma once
 
-#define BOOST_HANA_CONFIG_ENABLE_STRING_UDL
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/string.hpp>
 

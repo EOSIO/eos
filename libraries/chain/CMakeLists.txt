@@ -135,6 +135,7 @@ target_include_directories( eosio_chain
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
                             )
+target_compile_definitions(eosio_chain PRIVATE BOOST_HANA_CONFIG_ENABLE_STRING_UDL)
 
 add_library(eosio_chain_wrap INTERFACE )
 target_link_libraries(eosio_chain_wrap INTERFACE eosio_chain)
