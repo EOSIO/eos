@@ -51,8 +51,8 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 	});
 
 	account_name tester_account = N(tester);
-	const auto tracePtr =  create_account(tester_account);
-	aq_db.cache_transaction_trace(tracePtr);
+	const auto trace_ptr =  create_account(tester_account);
+	aq_db.cache_transaction_trace(trace_ptr);
 	produce_block();
 
 	params pars;
@@ -79,13 +79,13 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
 	produce_block();
 	create_account(tester_account);
 
-	auto tracePtr = push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
+	const auto trace_ptr = push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
 			("account", tester_account)
 			("permission", N(role))
 			("parent", "active")
 			("auth",  authority(get_public_key(tester_account, role), 5))
 	);
-	aq_db.cache_transaction_trace(tracePtr);
+	aq_db.cache_transaction_trace(trace_ptr);
 	produce_block();
 
 	params pars;
