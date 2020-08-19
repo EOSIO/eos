@@ -205,7 +205,7 @@ struct host_function_registrator {
       rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       constexpr bool is_injected = (Mod() == BOOST_HANA_STRING(EOSIO_INJECTED_MODULE_NAME));
-      eosvmoc::register_eosvm_oc<HostFunction, is_injected, std::tuple<Preconditions...>>(
+      eosvmoc::register_eosvm_oc<HostFunction, is_injected, Preconditions...>(
           mod_name + BOOST_HANA_STRING(".") + fn_name);
 #endif
    }

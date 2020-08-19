@@ -192,6 +192,8 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
    using base_type::as_result;
    using base_type::get_host;
 
+   using elem_type = vm::native_value;
+
    EOS_VM_FROM_WASM(bool, (uint32_t value)) { return value ? 1 : 0; }
 
    EOS_VM_FROM_WASM(memcpy_params, (vm::wasm_ptr_t dst, vm::wasm_ptr_t src, vm::wasm_size_t size)) {
@@ -207,10 +209,10 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
      return { l, r, size };
    }
 
-   EOS_VM_FROM_WASM(memset_params, (vm::wasm_ptr_t dst, int32_t val, vm::wasm_size_t size)) {
+   EOS_VM_FROM_WASM(memset_params, (vm::wasm_ptr_t dst, uint32_t val, vm::wasm_size_t size)) {
      auto d = array_ptr_impl<char>(dst, size);
      array_ptr_impl<char>(dst, 1);
-     return { d, val, size };
+     return { d, static_cast<int32_t>(val), size };
    }
 
    template <typename T>
@@ -260,7 +262,7 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
    EOS_VM_FROM_WASM(float64_t, (double f)) { return ::to_softfloat64(f); }
 
    template<typename T>
-   inline decltype(auto) as_value(const vm::native_value& val) const {
+   inline auto as_value(const vm::native_value& val) const {
       if constexpr (std::is_integral_v<T> && sizeof(T) == 4)
          return static_cast<T>(val.i32);
       else if constexpr (std::is_integral_v<T> && sizeof(T) == 8)
@@ -271,133 +273,16 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
          return static_cast<T>(val.f64);
       // No direct pointer support
       else
-         return vm::no_match_t{};
+         static_assert(! std::is_same_v<T,T>, "no type conversion found for type, define a from_wasm for this type");
    }
 };
 
-template<typename Args, std::size_t... Is>
-auto get_ct_args(std::index_sequence<Is...>);
-
 inline uint32_t make_native_type(vm::i32_const_t x) { return x.data.ui; }
 inline uint64_t make_native_type(vm::i64_const_t x) { return x.data.ui; }
-inline float make_native_type(vm::f32_const_t x) { return x.data.f; }
-inline double make_native_type(vm::f64_const_t x) { return x.data.f; }
-inline void make_native_type(vm::maybe_void_t){}
+inline float    make_native_type(vm::f32_const_t x) { return x.data.f; }
+inline double   make_native_type(vm::f64_const_t x) { return x.data.f; }
 
-template<typename TC, typename Args, std::size_t... Is>
-auto get_ct_args_one(std::index_sequence<Is...>) {
-   return std::tuple<decltype(make_native_type(std::declval<TC>().as_result(std::declval<std::tuple_element_t<Is, Args>>())))...>();
-}
-
-template<typename TC, typename T>
-auto get_ct_args_i() {
-   if constexpr (vm::detail::has_from_wasm_v<T, TC>) {
-      using args_tuple = vm::detail::from_wasm_type_deducer_t<TC, T>;
-      return get_ct_args_one<TC, args_tuple>(std::make_index_sequence<std::tuple_size_v<args_tuple>>());
-   } else {
-      return std::tuple<decltype(make_native_type(std::declval<TC>().as_result(std::declval<T>())))>();
-   }
-}
-
-template<typename Args, std::size_t... Is>
-auto get_ct_args(std::index_sequence<Is...>) {
-   return std::tuple_cat(get_ct_args_i<eos_vm_oc_type_converter, std::tuple_element_t<Is, Args>>()...);
-}
-
-template <std::size_t Offset, typename Tuple, std::size_t... Is>
-auto subtuple_impl(Tuple&& t, std::index_sequence<Is...>) {
-   return std::make_tuple(std::get<Is + Offset>(t)...);
-}
-
-///
-/// @returns the tuple with the first \p N elements of \p t
-///
-template <std::size_t N, typename Tuple>
-auto tuple_fronts(Tuple&& t) {
-   return subtuple_impl<0>(std::forward<Tuple>(t), std::make_index_sequence<N>());
-}
-
-///
-/// @returns returns the part of the tuple that follows the first \p N elements
-///
-template <std::size_t N, typename Tuple>
-auto remove_fronts(Tuple&& t) {
-   constexpr std::size_t sz = std::tuple_size_v<std::decay_t<Tuple>>;
-   return subtuple_impl<N>(std::forward<Tuple>(t), std::make_index_sequence<sz - N>());
-}
-
-///
-/// @returns  the new tuple in which the element \p t1 is followed by the
-/// elements of \p tuple.
-///
-template <typename T1, typename... Args>
-auto push_front(T1&& t1, std::tuple<Args...>&& tuple) {
-   return std::apply([&](Args&&... args) { return std::make_tuple(t1, std::forward<Args>(args)...); },
-                     std::forward<std::tuple<Args...>>(tuple));
-}
-
-///
-/// @returns the first element of an index sequence
-///
-template <std::size_t N, std::size_t... Is>
-constexpr std::size_t head(std::index_sequence<N, Is...>) {
-   return N;
-}
-
-///
-/// @returns returns the part of the index sequence that follows the first item
-///
-template <std::size_t N, std::size_t... Is>
-constexpr auto tail(std::index_sequence<N, Is...>) {
-   return std::index_sequence<Is...>();
-}
-
-///
-/// Partition the specified tuple into a tuple of sub-tuples in accordance to 
-/// the sizes specified in \p sizes.
-///
-/// For example, given a tuple <tt>(1,2,3,4,5)</tt> and the sizes <tt>(1,2,2)</tt>, 
-/// the returned tuple would be <tt>(1,(2,3),(4,5))</tt>.
-///
-template <typename Tuple, typename SizeSeq>
-auto partition_tuple(Tuple&& tuple, SizeSeq sizes) {
-   if constexpr (std::tuple_size_v<std::decay_t<Tuple>> == 0)
-      return tuple;
-   else {
-      constexpr std::size_t first_size = head(sizes);
-      return push_front(tuple_fronts<first_size>(tuple), partition_tuple(remove_fronts<first_size>(tuple), tail(sizes)));
-   }
-}
-
-template <typename S, typename... Args>
-constexpr auto create_value(eos_vm_oc_type_converter& tc, const std::tuple<Args...>& args) {
-   if constexpr (vm::detail::has_from_wasm_v<S, eos_vm_oc_type_converter>) {
-      return std::apply([&tc](Args... arg) { return tc.template from_wasm<S>(arg...); }, args);
-   } else {
-      return S(std::get<0>(args));
-   }
-}
-
-template <typename T>
-constexpr std::size_t value_operand_size() {
-   if constexpr (!std::is_same_v<vm::no_match_t, decltype(std::declval<eos_vm_oc_type_converter>().template as_value<T>(
-                                                     vm::native_value()))>)
-      return 1;
-   else
-      return std::tuple_size_v<vm::detail::from_wasm_type_deducer_t<eos_vm_oc_type_converter, T>>;
-}
-
-template <typename... NativeType>
-constexpr auto operand_sizes(eos_vm_oc_type_converter&, std::tuple<NativeType...>*) {
-   return std::index_sequence<value_operand_size<NativeType>()...>();
-}
-
-template <typename NativeTypes, typename PartitionedArgs, std::size_t... Is>
-auto to_native_values(eos_vm_oc_type_converter& tc, PartitionedArgs partitioned, std::index_sequence<Is...>) {
-   return std::make_tuple(create_value<std::tuple_element_t<Is, NativeTypes>>(tc, std::get<Is>(partitioned))...);
-}
-
-template<auto F, typename Interface, typename Preconditions, bool is_injected, typename... A>
+template <auto F, typename Interface, typename Traits, bool is_injected, typename... A>
 auto fn(A... a) {
    try {
       if constexpr(!is_injected) {
@@ -413,7 +298,6 @@ auto fn(A... a) {
                         [depthAssertionIntrinsicOffset] "i" (depth_assertion_intrinsic_offset)
                       : "cc");
       }
-      
       constexpr int cb_ctx_ptr_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(ctx);
       apply_context* ctx;
       asm("mov %%gs:%c[applyContextOffset], %[cPtr]\n"
@@ -422,12 +306,9 @@ auto fn(A... a) {
           );
       Interface host(*ctx);
       eos_vm_oc_type_converter tc{&host, eos_vm_oc_execution_interface{}};
-      using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
-      constexpr std::size_t num_native_args = std::tuple_size_v<native_args>;
-      constexpr auto sizes = operand_sizes(tc, static_cast<native_args *>(nullptr));
-      auto partitioned_input_args = partition_tuple(std::make_tuple(a...), sizes);
-      auto native_values = to_native_values<native_args>(tc, partitioned_input_args, std::make_index_sequence<num_native_args>());
-      return make_native_type(vm::checked_apply_with_host<Preconditions>(F, tc, &host, std::move(native_values))); 
+      auto r = vm::apply_with_wasm_args( vm::bind_host(F, &host), Traits{},  vm::make_tc_ext(tc), boost::hana::make_basic_tuple(a...));
+      if constexpr (!boost::hana::is_nothing(r))
+         return make_native_type(*r);
    }
    catch(...) {
       *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
@@ -436,28 +317,24 @@ auto fn(A... a) {
    __builtin_unreachable();
 }
 
-template<auto F, typename Preconditions, typename Args, bool is_injected, std::size_t... Is>
-constexpr auto create_function(std::index_sequence<Is...>) {
-   return &fn<F, webassembly::interface, Preconditions, is_injected, std::tuple_element_t<Is, Args>...>;
-}
-
-template<auto F, typename Preconditions, bool is_injected>
+template<auto F, bool is_injected, typename ...Precondition>
 constexpr auto create_function() {
-   using native_args = vm::flatten_parameters_t<AUTO_PARAM_WORKAROUND(F)>;
-   using wasm_args = decltype(get_ct_args<native_args>(std::make_index_sequence<std::tuple_size_v<native_args>>()));
-   return create_function<F, Preconditions, wasm_args, is_injected>(std::make_index_sequence<std::tuple_size_v<wasm_args>>());
+   using traits = vm::host_function_traits<decltype(F), eos_vm_oc_type_converter, Precondition...>;
+   return boost::hana::unpack(traits::wasm_arg_types, [](auto ...arg) { 
+       return &eosio::chain::webassembly::eosvmoc::fn<F, eosio::chain::webassembly::interface, traits, is_injected, typename decltype(arg)::type...>;
+   });
 }
 
-template<auto F, bool injected, typename Preconditions, typename Name>
+template<auto F, bool injected, typename ...Precondition, typename Name>
 void register_eosvm_oc(Name n) {
    // Has special handling
    if(n == BOOST_HANA_STRING("env.eosio_exit")) return;
-   constexpr auto fn = create_function<F, Preconditions, injected>();
+   constexpr auto fun = create_function<F, injected, Precondition...>();
    constexpr auto index = find_intrinsic_index(n.c_str());
    intrinsic the_intrinsic(
       n.c_str(),
-      wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
-      reinterpret_cast<void*>(fn),
+      wasm_function_type_provider<std::remove_pointer_t<decltype(fun)>>::type(),
+      reinterpret_cast<void*>(fun),
       index
    );
 }
