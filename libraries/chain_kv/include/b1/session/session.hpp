@@ -917,7 +917,8 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
         return false;
     };
 
-    // Finds the next key in order that is not marked for deletion.
+    // Finds the next key in order that is not marked for deletion within
+    // a session.
     auto find_next = [&](auto& state, auto index, auto& previous_key) {
         if (state.current == state.end) {
             return key_value::invalid;

@@ -358,12 +358,34 @@ typename rocks_data_store<allocator>::const_iterator rocks_data_store<allocator>
 
 template <typename allocator>
 typename rocks_data_store<allocator>::iterator rocks_data_store<allocator>::find(const bytes& key) {
-    return make_iterator_([&](auto& it){ it->Seek(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    auto predicate = [&](auto& it) {
+      auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
+      it->Seek(key_slice);
+      if (it->Valid() && it->key().compare(key_slice) != 0) {
+          // Get an invalid iterator
+          it->SeekToLast();
+          if (it->Valid()) {
+              it->Next();
+          }
+      }
+    };
+    return make_iterator_(predicate);
 }
 
 template <typename allocator>
 typename rocks_data_store<allocator>::const_iterator rocks_data_store<allocator>::find(const bytes& key) const {
-    return make_iterator_([&](auto& it){ it->Seek(rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()}); });
+    auto predicate = [&](auto& it) {
+      auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
+      it->Seek(key_slice);
+      if (it->Valid() && it->key().compare(key_slice) != 0) {
+          // Get an invalid iterator
+          it->SeekToLast();
+          if (it->Valid()) {
+              it->Next();
+          }
+      }
+    };
+    return make_iterator_(predicate);
 }
 
 template <typename allocator>
