@@ -43,12 +43,12 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 	// instantiate an account_query_db
 	auto aq_db = account_query_db(*control);
 
-    produce_blocks(10);
-
     //link aq_db to the `accepted_block` signal on the controller
 	auto c2 = control->accepted_block.connect([&](const block_state_ptr& blk) {
         aq_db.commit_block( blk);
 	});
+
+	produce_blocks(10);
 
 	account_name tester_account = N(tester);
 	const auto trace_ptr =  create_account(tester_account);
@@ -64,7 +64,6 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
-    produce_blocks(10);
 
     // instantiate an account_query_db
     auto aq_db = account_query_db(*control);
@@ -73,6 +72,8 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
     auto c = control->accepted_block.connect([&](const block_state_ptr& blk) {
         aq_db.commit_block( blk);
     });
+
+    produce_blocks(10);
 
 	const auto& tester_account = N(tester);
 	const string role = "first";
