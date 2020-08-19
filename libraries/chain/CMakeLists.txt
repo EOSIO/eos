@@ -126,6 +126,8 @@ add_library( eosio_chain
              kv_context_rocksdb.cpp
              kv_context_chainbase.cpp
              db_context_chainbase.cpp
+             db_context_rocksdb.cpp
+             db_key_value_format.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
