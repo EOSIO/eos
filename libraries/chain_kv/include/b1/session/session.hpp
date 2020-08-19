@@ -971,7 +971,7 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
 
     auto previous_key = m_current_value.key();
     m_current_value = key_value::invalid;    
-    m_iterator_index = 0;
+    m_iterator_index = static_cast<size_t>(-1);
 
     auto move_iterator = [&](auto need_rollover) { 
         auto end_count = size_t{0};
