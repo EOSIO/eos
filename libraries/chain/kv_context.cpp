@@ -19,19 +19,19 @@ namespace eosio { namespace chain {
       return {&context, config::billable_size_v<kv_object>, &kv_resource_manager_update_ram};
    }
 
-   int64_t kv_context::create_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t key_size, uint32_t value_size) {
+   int64_t kv_context::create_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, const uint32_t key_size, const uint32_t value_size) {
       int64_t resource_delta = (static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size);
       resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::create));
       return resource_delta;
    }
 
-   int64_t kv_context::erase_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t key_size, uint32_t value_size) {
+   int64_t kv_context::erase_table_usage(kv_resource_manager& resource_manager, const account_name& payer, const char* key, uint32_t const key_size, const uint32_t value_size) {
       int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size);
       resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
       return resource_delta;
    }
 
-   int64_t kv_context::update_table_usage(kv_resource_manager& resource_manager, const account_name& old_payer, const account_name& new_payer, const char* key, uint32_t key_size, uint32_t old_value_size, uint32_t new_value_size) {
+   int64_t kv_context::update_table_usage(kv_resource_manager& resource_manager, const account_name& old_payer, const account_name& new_payer, const char* key, const uint32_t key_size, const uint32_t old_value_size, const uint32_t new_value_size) {
       // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
       int64_t old_size = key_size + old_value_size;
       int64_t new_size = key_size + new_value_size;

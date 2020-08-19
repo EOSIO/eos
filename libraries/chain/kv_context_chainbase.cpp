@@ -163,7 +163,7 @@ namespace eosio { namespace chain {
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
             return 0;
-         int64_t resource_delta = erase_table_usage(resource_manager, kv->payer, key, kv->kv_key.size(), kv->kv_value.size());
+         const int64_t resource_delta = erase_table_usage(resource_manager, kv->payer, key, kv->kv_key.size(), kv->kv_value.size());
 
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
@@ -190,7 +190,7 @@ namespace eosio { namespace chain {
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (kv) {
-            auto resource_delta = update_table_usage(resource_manager, kv->payer, payer, key, key_size, kv->kv_value.size(), value_size);
+            const auto resource_delta = update_table_usage(resource_manager, kv->payer, payer, key, key_size, kv->kv_value.size(), value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
@@ -210,7 +210,7 @@ namespace eosio { namespace chain {
             });
             return resource_delta;
          } else {
-            int64_t resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
+            const int64_t resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };
