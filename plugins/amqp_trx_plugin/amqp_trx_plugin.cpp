@@ -66,7 +66,7 @@ private:
       if( trx_queue_ptr ) {
          trx_queue_ptr->push( trx, [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
                my->amqp_trx->ack( delivery_tag );
-               // publish to trace plugin as execptions are not reported via controller signal applied_transaction
+               // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
                if( result.contains<chain::exception_ptr>() ) {
                   auto& eptr = result.get<chain::exception_ptr>();
                   if( my->trace_plug ) {
@@ -156,13 +156,13 @@ void amqp_trx_plugin::plugin_startup() {
       ilog( "Starting amqp_trx_plugin" );
 
       // todo make configurable
-      auto& controller = my->chain_plug->chain();
-      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
-                                                                       controller.configured_subjective_signature_length_limit(),
-                                                                       controller.get_thread_pool(),
-                                                                       app().find_plugin<producer_plugin>(),
-                                                                       1000 );
-      my->trx_queue_ptr->run();
+//      auto& controller = my->chain_plug->chain();
+//      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
+//                                                                       controller.configured_subjective_signature_length_limit(),
+//                                                                       controller.get_thread_pool(),
+//                                                                       app().find_plugin<producer_plugin>(),
+//                                                                       1000 );
+//      my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",
             [](const std::string& err) {
