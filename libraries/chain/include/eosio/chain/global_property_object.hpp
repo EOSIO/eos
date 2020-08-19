@@ -58,10 +58,10 @@ namespace eosio { namespace chain {
       shared_producer_authority_schedule  proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;
-      kv_config                           kv_configuration;
+      kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
 
-     void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val, const kv_config& kv_config_val, const wasm_config& wasm_config_val ) {
+     void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val, const kv_database_config& kv_config_val, const wasm_config& wasm_config_val ) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
          proposed_schedule = producer_authority_schedule(legacy.proposed_schedule).to_shared(proposed_schedule.producers.get_allocator());
          configuration = legacy.configuration;
@@ -70,7 +70,7 @@ namespace eosio { namespace chain {
          wasm_configuration = wasm_config_val;
       }
 
-      void initalize_from( const legacy::snapshot_global_property_object_v3& legacy, const kv_config& kv_config_val, const wasm_config& wasm_config_val ) {
+      void initalize_from( const legacy::snapshot_global_property_object_v3& legacy, const kv_database_config& kv_config_val, const wasm_config& wasm_config_val ) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
          proposed_schedule = legacy.proposed_schedule.to_shared(proposed_schedule.producers.get_allocator());
          configuration = legacy.configuration;
@@ -95,7 +95,7 @@ namespace eosio { namespace chain {
       producer_authority_schedule         proposed_schedule;
       chain_config                        configuration;
       chain_id_type                       chain_id;
-      kv_config                           kv_configuration;
+      kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
    };
 
