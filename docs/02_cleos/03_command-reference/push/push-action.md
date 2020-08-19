@@ -34,7 +34,25 @@ Push a transaction with a single action
 
 For actions that return a value `cleos` will have an extra line which will be prefixed with `=>`.
 
-Below you can see three examples of pushing actions `rstring` and `ruint` which return the value passed as input parameter to them:
+Let's consider for exemplification the three actions defined below. The first two are `rstring` and `ruint`, which return the value passed as input parameter to them, and the third one is `rtmp` returning a default `tmp` object.
+
+```c++
+struct tmp {
+    uint32_t id = 1;
+    std::vector<uint8_t> list{ 1, 2 };
+};
+
+[[eosio::action]]
+std::string rstring(const std::string & str) { return str;   }
+
+[[eosio::action]]
+uint16_t    ruint(uint16_t i)                { return i;     }
+
+[[eosio::action]]
+tmp         rtmp()                           { return tmp{}; }
+```
+
+Below you can see examples of `cleos` commands pushing each action and their respective outputs.
 
 ```shell
 > cleos push action eosio rstring '{"str":null}'  -p eosio@active
@@ -56,18 +74,7 @@ executed transaction: 12c51fd27fad9bb0fa959037a72093ad0b168f5846e916a0e9a295c841
 =>                                return value: 42
 ```
 
-It can also work with C++ structures or classes as well. For a C++ struct like this:
-
-```cpp
-struct tmp {
-    uint32_t id = 1;
-    std::vector<uint8_t> list{ 1, 2 };
-
-    EOSLIB_SERIALIZE(tmp, (id)(list))
-};
-```
-
-and the action `rtmp` returning a default tmp object, output will look like this:
+The `rtmp` action output, returning a default `tmp` object, output will look like this:
 
 ```shell
 > cleos push action eosio rtmp '{}'  -p eosio@active
@@ -77,7 +84,7 @@ executed transaction: 42386687d94695d77d67cf901cf8d1a4f83ac9f89382f0b01f3fb51267
 =>                                return value: {"id":1,"list":[1,2]}
 ```
 
-When it will not be possible to decode the return value, output will look like this:
+When it will not be possible to decode the return value, for example when ABI doesn’t contain information about an action return value, output will look like this:
 
 ```shell
 =>                          return value (hex): 1400000001000770656e64696e6700000000
