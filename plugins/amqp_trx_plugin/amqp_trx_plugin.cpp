@@ -156,13 +156,13 @@ void amqp_trx_plugin::plugin_startup() {
       ilog( "Starting amqp_trx_plugin" );
 
       // todo make configurable
-//      auto& controller = my->chain_plug->chain();
-//      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
-//                                                                       controller.configured_subjective_signature_length_limit(),
-//                                                                       controller.get_thread_pool(),
-//                                                                       app().find_plugin<producer_plugin>(),
-//                                                                       1000 );
-//      my->trx_queue_ptr->run();
+      auto& controller = my->chain_plug->chain();
+      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
+                                                                       controller.configured_subjective_signature_length_limit(),
+                                                                       controller.get_thread_pool(),
+                                                                       app().find_plugin<producer_plugin>(),
+                                                                       10000 );
+      my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",
             [](const std::string& err) {
