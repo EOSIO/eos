@@ -423,7 +423,7 @@ rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(con
   m_iterator{[&]() {
     auto new_it = std::shared_ptr<rocksdb::Iterator>{it.m_db->NewIterator(rocksdb::ReadOptions{})};
     if (it.m_iterator->Valid()) {
-        new_it->Seek(it.m_iterator->Key());
+        new_it->Seek(it.m_iterator->key());
     }
     return new_it;
   }()},
@@ -468,7 +468,9 @@ rocks_iterator_alias<allocator, iterator_traits> rocks_data_store<allocator>::ro
 template <typename allocator>
 template <typename iterator_traits>
 rocks_iterator_alias<allocator, iterator_traits>& rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator++() {
-    m_iterator->Next();
+    if (m_iterator->Valid()) {
+        m_iterator->Next();
+    }
     return *this;
 }
 
@@ -476,14 +478,26 @@ template <typename allocator>
 template <typename iterator_traits>
 rocks_iterator_alias<allocator, iterator_traits> rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator++(int) {
     auto new_it = make_iterator_();
-    m_iterator->Next();
+    if (m_iterator->Valid()) {
+        m_iterator->Next();
+    }
     return new_it;
 }
 
 template <typename allocator>
 template <typename iterator_traits>
 rocks_iterator_alias<allocator, iterator_traits>& rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator--() {
-    m_iterator->Prev();
+    if (!m_iterator->Valid()) {
+        // This means we are at the end iterator and we are iterating backwards.
+        m_iterator->SeekToLast();
+    } else {
+        m_iterator->Prev();
+
+        if (!m_iterator->Valid()) {
+            // We move backwards past the begin iterator.  We need to clamp it there.
+            m_iterator->SeekToFirst();
+        }
+    }
     return *this;
 }
 
@@ -491,7 +505,17 @@ template <typename allocator>
 template <typename iterator_traits>
 rocks_iterator_alias<allocator, iterator_traits> rocks_data_store<allocator>::rocks_iterator<iterator_traits>::operator--(int) {
     auto new_it = make_iterator_();
-    m_iterator->Prev();
+    if (!m_iterator->Valid()) {
+        // This means we are at the end iterator and we are iterating backwards.
+        m_iterator->SeekToLast();
+    } else {
+        m_iterator->Prev();
+
+        if (!m_iterator->Valid()) {
+            // We move backwards past the begin iterator.  We need to clamp it there.
+            m_iterator->SeekToFirst();
+        }
+    }
     return new_it;
 }
 
