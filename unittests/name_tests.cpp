@@ -82,7 +82,6 @@ try {
    BOOST_CHECK_THROW( char_to_symbol(char{'Z'}), name_type_exception );
    BOOST_CHECK_THROW( char_to_symbol(char{'`'}), name_type_exception );
    BOOST_CHECK_THROW( char_to_symbol(char{'{'}), name_type_exception );
-
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(to_string_test) {
@@ -371,11 +370,42 @@ try {
    }
    {
       std::stringstream ss;
-      std::string dot_str{".ab.12345."};
+      std::string dot_str{".abcd.12345"};
       ss << dot_str;
       name tmp_name;
       ss >> tmp_name;
       BOOST_TEST( tmp_name.to_string() == dot_str );
+   }
+   for(char ch='A'; ch<='Z'; ++ch)
+   {
+      std::string name_str(REPEAT_NUMS, ch);
+      std::stringstream ss;
+      ss << name_str;
+      name tmp_name;
+      BOOST_CHECK_THROW( ss >> tmp_name, name_type_exception );
+   }
+   for(char ch='6'; ch<='?'; ++ch)
+   {
+      std::string name_str(REPEAT_NUMS, ch);
+      std::stringstream ss;
+      ss << name_str;
+      name tmp_name;
+      BOOST_CHECK_THROW( ss >> tmp_name, name_type_exception );
+   }
+   for(char ch='/'; ch<='0'; ++ch)
+   {
+      std::string name_str(REPEAT_NUMS, ch);
+      std::stringstream ss;
+      ss << name_str;
+      name tmp_name;
+      BOOST_CHECK_THROW( ss >> tmp_name, name_type_exception );
+   }
+   {
+      std::stringstream ss;
+      std::string long_str(REPEAT_NUMS + 1, 'z');
+      ss << long_str;
+      name tmp_name;
+      BOOST_CHECK_THROW( ss >> tmp_name, name_type_exception );
    }
 } FC_LOG_AND_RETHROW() }
 

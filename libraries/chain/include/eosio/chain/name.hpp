@@ -53,7 +53,6 @@ namespace eosio::chain {
       return n;
    }
 
-   /// Immutable except for fc::from_variant and istream.
    struct name {
    private:
       uint64_t value = 0;
