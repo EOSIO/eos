@@ -83,6 +83,8 @@ REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(set_proposed_producers_ex, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(get_blockchain_parameters_packed, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(set_blockchain_parameters_packed, privileged_check);
+REGISTER_HOST_FUNCTION(get_parameters_packed, privileged_check);
+REGISTER_HOST_FUNCTION(set_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(get_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
