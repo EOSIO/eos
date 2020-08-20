@@ -133,7 +133,11 @@ namespace eosio {
       struct abstract_conn {
          virtual ~abstract_conn() {}
          virtual bool verify_max_bytes_in_flight() = 0;
+         virtual bool verify_max_requests_in_flight() = 0;
          virtual void handle_exception() = 0;
+
+         virtual const void* operator* () const = 0;
+         virtual void* operator* () = 0;
       };
 
       using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
@@ -195,7 +199,9 @@ namespace eosio {
          uint16_t                                    thread_pool_size = 2;
          optional<eosio::chain::named_thread_pool>   thread_pool;
          std::atomic<size_t>                         bytes_in_flight{0};
+         std::atomic<int32_t>                        requests_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
+         int32_t                                     max_requests_in_flight = -1;
          fc::microseconds                            max_response_time{30*1000};
 
          optional<tcp::endpoint>  https_listen_endpoint;
@@ -323,21 +329,42 @@ namespace eosio {
          }
 
          template<typename T>
+         void report_429_error( const T& con, string what) {
+            error_results::error_info ei;
+            ei.code = websocketpp::http::status_code::too_many_requests;
+            ei.name = "Busy";
+            ei.what = what;
+            error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
+            con->set_body( fc::json::to_string( results, fc::time_point::maximum() ));
+            con->set_status( websocketpp::http::status_code::too_many_requests );
+            con->send_http_response();
+         }
+
+         template<typename T>
          bool verify_max_bytes_in_flight( const T& con ) {
             auto bytes_in_flight_size = bytes_in_flight.load();
             if( bytes_in_flight_size > max_bytes_in_flight ) {
                fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
-               error_results::error_info ei;
-               ei.code = websocketpp::http::status_code::too_many_requests;
-               ei.name = "Busy";
-               ei.what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size );
-               error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
-               con->set_body( fc::json::to_string( results, fc::time_point::maximum() ));
-               con->set_status( websocketpp::http::status_code::too_many_requests );
-               con->send_http_response();
+               string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
+               report_429_error(con, what);
                return false;
             }
 
+            return true;
+         }
+
+         template<typename T>
+         bool verify_max_requests_in_flight( const T& con ) {
+            if (max_requests_in_flight < 0)
+                return true;
+
+            auto requests_in_flight_num = requests_in_flight.load();
+            if( requests_in_flight_num > max_requests_in_flight ) {
+               fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
+               string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
+               report_429_error(con, what);
+               return false;
+            }
             return true;
          }
 
@@ -352,18 +379,46 @@ namespace eosio {
             abstract_conn_impl(detail::connection_ptr<T> conn, http_plugin_impl& impl)
             :_conn(std::move(conn))
             ,_impl(impl)
-            {}
+            {
+                _impl.requests_in_flight += 1;
+            }
 
-            ~abstract_conn_impl() = default;
-            abstract_conn_impl(abstract_conn_impl&&) = default;
+            ~abstract_conn_impl() {
+                _impl.requests_in_flight -= 1;
+            }
+
+            // No copy constructor and no move
+            abstract_conn_impl(abstract_conn_impl&) = delete;
+            abstract_conn_impl(abstract_conn_impl&&) = delete;
+
             abstract_conn_impl& operator=(abstract_conn_impl&&) noexcept = default;
 
             bool verify_max_bytes_in_flight() override {
                return _impl.verify_max_bytes_in_flight(_conn);
             }
 
+            bool verify_max_requests_in_flight() override {
+               return _impl.verify_max_requests_in_flight(_conn);
+            }
+
             void handle_exception()override {
                http_plugin_impl::handle_exception<T>(_conn);
+            }
+
+            /**
+             * const accessor
+             * @return const reference to the contained _conn
+             */
+            const void* operator* () const override {
+               return (const void *) &_conn;
+            }
+
+            /**
+             * mutable accessor (can be moved frmo)
+             * @return mutable reference to the contained _conn
+             */
+            void* operator* () override {
+               return (void *) &_conn;
             }
 
             detail::connection_ptr<T> _conn;
@@ -449,7 +504,7 @@ namespace eosio {
           */
          template<typename T>
          static auto make_in_flight(T&& object, http_plugin_impl& impl) {
-            return std::make_shared<in_flight<T>>(in_flight<T>(std::forward<T>(object), impl));
+            return std::make_shared<in_flight<T>>(std::forward<T>(object), impl);
          }
 
          /**
@@ -465,7 +520,7 @@ namespace eosio {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
                auto tracked_b = make_in_flight<string>(std::move(b), *this);
-               if (!conn->verify_max_bytes_in_flight()) {
+               if (!conn->verify_max_bytes_in_flight()  || !conn->verify_max_requests_in_flight()) {
                   return;
                }
 
@@ -512,23 +567,24 @@ namespace eosio {
           * @return lambda suitable for url_response_callback
           */
          template<typename T>
-         auto make_http_response_handler( detail::connection_ptr<T> con ) {
-            return [this, con]( int code, fc::variant response ) {
+         auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr ) {
+            return [this, abstract_conn_ptr]( int code, fc::variant response ) {
                auto tracked_response = make_in_flight(std::move(response), *this);
-               if (!verify_max_bytes_in_flight(con)) {
+               if (!abstract_conn_ptr->verify_max_bytes_in_flight() || !abstract_conn_ptr->verify_max_requests_in_flight()) {
                   return;
                }
 
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
-               boost::asio::post( thread_pool->get_executor(), [this, con, code, tracked_response=std::move(tracked_response)]() {
+               boost::asio::post( thread_pool->get_executor(), [this, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
                   try {
                      std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
+                     auto con = *(static_cast<detail::connection_ptr<T>*>(*(*abstract_conn_ptr)));
                      con->set_body( std::move( *(*tracked_json) ) );
                      con->set_status( websocketpp::http::status_code::value( code ) );
                      con->send_http_response();
                   } catch( ... ) {
-                     handle_exception<T>( con );
+                     abstract_conn_ptr->handle_exception();
                   }
                });
             };
@@ -563,13 +619,14 @@ namespace eosio {
                con->append_header( "Content-type", "application/json" );
                con->defer_http_response();
 
-               if( !verify_max_bytes_in_flight( con ) ) return;
+               auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, *this);
+               if( !verify_max_bytes_in_flight( con ) || !verify_max_requests_in_flight( con ) ) return;
 
                std::string resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   std::string body = con->get_request_body();
-                  handler_itr->second( make_abstract_conn_ptr<T>(con, *this), std::move( resource ), std::move( body ), make_http_response_handler<T>(con) );
+                  handler_itr->second( abstract_conn_ptr, std::move( resource ), std::move( body ), make_http_response_handler<T>(abstract_conn_ptr) );
                } else {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
@@ -689,6 +746,8 @@ namespace eosio {
              "The maximum body size in bytes allowed for incoming RPC requests")
             ("http-max-bytes-in-flight-mb", bpo::value<uint32_t>()->default_value(500),
              "Maximum size in megabytes http_plugin should use for processing http requests. 503 error response when exceeded." )
+            ("http-max-in-flight-requests", bpo::value<int32_t>()->default_value(-1),
+             "Maximum number of requests http_plugin should use for processing http requests. 503 error response when exceeded." )
             ("http-max-response-time-ms", bpo::value<uint32_t>()->default_value(30),
              "Maximum time for processing a request.")
             ("verbose-http-errors", bpo::bool_switch()->default_value(false),
@@ -778,6 +837,7 @@ namespace eosio {
                      "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
 
          my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
+         my->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
          my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
 
          //watch out for the returns above when adding new code here
