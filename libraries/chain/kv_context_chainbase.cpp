@@ -163,8 +163,7 @@ namespace eosio { namespace chain {
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (!kv)
             return 0;
-         int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + kv->kv_key.size() + kv->kv_value.size());
-         resource_manager.update_table_usage(kv->payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
+         const int64_t resource_delta = erase_table_usage(resource_manager, kv->payer, key, kv->kv_key.size(), kv->kv_value.size());
 
          if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
             fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
@@ -191,19 +190,7 @@ namespace eosio { namespace chain {
          auto* kv = db.find<kv_object, by_kv_key>(
                boost::make_tuple(database_id, name{ contract }, std::string_view{ key, key_size }));
          if (kv) {
-            // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
-            int64_t old_size = static_cast<int64_t>(kv->kv_key.size()) + kv->kv_value.size();
-            int64_t new_size = static_cast<int64_t>(value_size) + key_size;
-            int64_t resource_delta = new_size - old_size;
-
-            if (kv->payer != payer) {
-               // refund the existing payer
-               resource_manager.update_table_usage(kv->payer, -(old_size + resource_manager.billable_size), kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-               // charge the new payer
-               resource_manager.update_table_usage(payer, new_size + resource_manager.billable_size, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-            } else if (old_size != new_size) {
-               resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
-            }
+            const auto resource_delta = update_table_usage(resource_manager, kv->payer, payer, key, key_size, kv->kv_value.size(), value_size);
 
             if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
                fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
@@ -223,9 +210,7 @@ namespace eosio { namespace chain {
             });
             return resource_delta;
          } else {
-            int64_t new_size = static_cast<int64_t>(value_size) + key_size;
-            int64_t resource_delta = new_size + resource_manager.billable_size;
-            resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::create));
+            const int64_t resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
             db.create<kv_object>([&](auto& obj) {
                obj.database_id = database_id;
                obj.contract    = name{ contract };

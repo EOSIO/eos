@@ -330,8 +330,10 @@ namespace eosio { namespace chain {
                                     3060006, "Chainbase and chain-kv databases are at different revisions" )
       FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
                                     3060007, "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_rocksdb_bad_value_size_exception, database_exception,
+                                    3060008, "The size of value returned from RocksDB is less than payer's size" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
-                                    3060008, "Retrieved composite key from key/value store that was formatted incorrectly" )
+                                    3060009, "Retrieved composite key from key/value store that was formatted incorrectly" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
