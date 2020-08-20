@@ -37,7 +37,11 @@ public:
         rocks_iterator() = default;
         rocks_iterator(const rocks_iterator& it);
         rocks_iterator(rocks_iterator&&) = default;
-        rocks_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a);
+        rocks_iterator(std::shared_ptr<rocksdb::DB> db, 
+                       std::shared_ptr<rocksdb::Iterator> rit, 
+                       rocksdb::ColumnFamilyHandle* column_family,
+                       rocksdb::ReadOptions read_options,
+                       std::shared_ptr<allocator> a);
         
         rocks_iterator& operator=(const rocks_iterator& it);
         rocks_iterator& operator=(rocks_iterator&&) = default;
@@ -57,6 +61,8 @@ public:
     private:
         std::shared_ptr<rocksdb::DB> m_db;
         std::shared_ptr<rocksdb::Iterator> m_iterator;
+        rocksdb::ColumnFamilyHandle* m_column_family;
+        rocksdb::ReadOptions m_read_options;
         std::shared_ptr<allocator> m_allocator;
     };
 
@@ -124,6 +130,15 @@ public:
     const std::shared_ptr<allocator>& memory_allocator();
     const std::shared_ptr<const allocator> memory_allocator() const;
     
+    rocksdb::WriteOptions& write_options();
+    const rocksdb::WriteOptions& write_options() const;
+
+    rocksdb::ReadOptions& read_options();
+    const rocksdb::ReadOptions& read_options() const;
+
+    std::shared_ptr<rocksdb::ColumnFamilyHandle>& column_family();
+    const std::shared_ptr<const rocksdb::ColumnFamilyHandle>& column_family() const;    
+
 protected:
     template <typename iterable, typename other_allocator>
     const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read_(const iterable& keys, const std::shared_ptr<other_allocator>& a) const;
@@ -133,10 +148,15 @@ protected:
     
     template <typename predicate>
     const_iterator make_iterator_(const predicate& setup) const;
+
+    rocksdb::ColumnFamilyHandle* column_family_() const;
     
 private:
     std::shared_ptr<rocksdb::DB> m_db;
     std::shared_ptr<allocator> m_allocator;
+    std::shared_ptr<rocksdb::ColumnFamilyHandle> m_column_family;
+    rocksdb::ReadOptions m_read_options;
+    rocksdb::WriteOptions m_write_options;
 };
 
 template <typename allocator>
@@ -162,10 +182,9 @@ const key_value rocks_data_store<allocator>::read(const bytes& key) const {
         return key_value::invalid;
     }
 
-    auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto pinnable_value = rocksdb::PinnableSlice{};
-    auto status = m_db->Get(read_options, m_db->DefaultColumnFamily(), key_slice, &pinnable_value);
+    auto status = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
     
     if (status.code() != rocksdb::Status::Code::kOk) {
         return key_value::invalid;
@@ -180,10 +199,9 @@ void rocks_data_store<allocator>::write(key_value kv) {
         return;
     }
 
-    auto write_options = rocksdb::WriteOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
     auto value_slice = rocksdb::Slice{reinterpret_cast<const char*>(kv.value().data()), kv.value().length()};
-    auto status = m_db->Put(write_options, key_slice, value_slice);
+    auto status = m_db->Put(m_write_options, column_family_(), key_slice, value_slice);
 }
 
 template <typename allocator>
@@ -192,10 +210,9 @@ bool rocks_data_store<allocator>::contains(const bytes& key) const {
         return false;
     }
 
-    auto read_options = rocksdb::ReadOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto value = std::string{};
-    return m_db->KeyMayExist(read_options, key_slice, &value);
+    return m_db->KeyMayExist(m_read_options, column_family_(), key_slice, &value);
 }
 
 template <typename allocator>
@@ -204,9 +221,8 @@ void rocks_data_store<allocator>::erase(const bytes& key) {
         return;
     }
     
-    auto write_options = rocksdb::WriteOptions{};
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
-    auto status = m_db->Delete(write_options, key_slice);
+    auto status = m_db->Delete(m_write_options, column_family_(), key_slice);
 }
 
 template <typename allocator>
@@ -224,10 +240,9 @@ const std::pair<std::vector<key_value>, std::unordered_set<bytes>> rocks_data_st
         not_found.emplace(key);
     }
     
-    auto read_options = rocksdb::ReadOptions{};
     auto values = std::vector<std::string>{};
     values.reserve(key_slices.size());
-    auto status = m_db->MultiGet(read_options, key_slices, &values);
+    auto status = m_db->MultiGet(m_read_options, {key_slices.size(), column_family_()}, key_slices, &values);
     
     auto kvs = std::vector<key_value>{};
     kvs.reserve(key_slices.size());
@@ -266,15 +281,15 @@ void rocks_data_store<allocator>::write(const iterable& key_values) {
         return;
     }
 
-    auto write_options = rocksdb::WriteOptions{};
     auto batch = rocksdb::WriteBatch{1024 * 1024};
     
     for (const auto& kv : key_values) {
-        batch.Put({reinterpret_cast<const char*>(kv.key().data()), kv.key().length()},
+        batch.Put(column_family_(),
+                  {reinterpret_cast<const char*>(kv.key().data()), kv.key().length()},
                   {reinterpret_cast<const char*>(kv.value().data()), kv.value().length()});
     }
     
-    auto status = m_db->Write(write_options, &batch);
+    auto status = m_db->Write(m_write_options, &batch);
 }
 
 // Erases a batch of key_values from rocksdb.
@@ -288,10 +303,9 @@ void rocks_data_store<allocator>::erase(const iterable& keys) {
         return;
     }
 
-    auto write_options = rocksdb::WriteOptions{};
     for (const auto& key : keys) {
         auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
-        auto status = m_db->Delete(write_options, key_slice);
+        auto status = m_db->Delete(m_write_options, column_family_(), key_slice);
     }
 }
 
@@ -338,10 +352,9 @@ using rocks_iterator_alias = typename rocks_data_store<allocator>::template rock
 template <typename allocator>
 template <typename predicate>
 typename rocks_data_store<allocator>::iterator rocks_data_store<allocator>::make_iterator_(const predicate& setup)  {
-    auto read_options = rocksdb::ReadOptions{};
-    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
+    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(m_read_options, column_family_())};
     setup(rit);
-    return {m_db, rit, m_allocator};
+    return {m_db, rit, column_family_(), m_read_options, m_allocator};
 }
 
 // Instantiates an iterator for iterating over the rocksdb data store.
@@ -350,10 +363,9 @@ typename rocks_data_store<allocator>::iterator rocks_data_store<allocator>::make
 template <typename allocator>
 template <typename predicate>
 typename rocks_data_store<allocator>::const_iterator rocks_data_store<allocator>::make_iterator_(const predicate& setup) const {
-    auto read_options = rocksdb::ReadOptions{};
-    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
+    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(m_read_options, column_family_())};
     setup(rit);
-    return {m_db, rit, m_allocator};
+    return {m_db, rit, column_family_(), m_read_options, m_allocator};
 }
 
 template <typename allocator>
@@ -437,26 +449,86 @@ template <typename allocator>
 const std::shared_ptr<const allocator> rocks_data_store<allocator>::memory_allocator() const {
     return m_allocator;
 }
+    
+template <typename allocator>
+rocksdb::WriteOptions& rocks_data_store<allocator>::write_options()
+{
+    return m_read_options;
+}
+
+template <typename allocator>
+const rocksdb::WriteOptions& rocks_data_store<allocator>::write_options() const
+{
+    return m_read_options;
+}
+
+template <typename allocator>
+rocksdb::ReadOptions& rocks_data_store<allocator>::read_options()
+{
+    return m_write_options;
+}
+
+template <typename allocator>
+const rocksdb::ReadOptions& rocks_data_store<allocator>::read_options() const
+{
+    return m_write_options;
+}
+
+template <typename allocator>
+std::shared_ptr<rocksdb::ColumnFamilyHandle>& rocks_data_store<allocator>::column_family()
+{
+    return m_column_family;
+}
+
+template <typename allocator>
+const std::shared_ptr<const rocksdb::ColumnFamilyHandle>& rocks_data_store<allocator>::column_family() const
+{
+    return m_column_family;
+}
+
+template <typename allocator>
+rocksdb::ColumnFamilyHandle* rocks_data_store<allocator>::column_family_() const
+{
+    if (m_column_family)
+    {
+        return m_column_family.get();
+    }
+
+    if (m_db)
+    {
+        return m_db->DefaultColumnFamily();
+    }
+
+    return nullptr;
+}
 
 template <typename allocator>
 template <typename iterator_traits>
 rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(const rocks_iterator& it)
 : m_db{it.m_db},
   m_iterator{[&]() {
-    auto new_it = std::shared_ptr<rocksdb::Iterator>{it.m_db->NewIterator(rocksdb::ReadOptions{})};
+    auto new_it = std::shared_ptr<rocksdb::Iterator>{it.m_db->NewIterator(it.m_read_options, it.m_column_family)};
     if (it.m_iterator->Valid()) {
         new_it->Seek(it.m_iterator->key());
     }
     return new_it;
   }()},
+  m_column_family{it.m_column_family},
+  m_read_options{it.m_read_options},
   m_allocator{it.m_allocator} {
 }
 
 template <typename allocator>
 template <typename iterator_traits>
-rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(std::shared_ptr<rocksdb::DB> db, std::shared_ptr<rocksdb::Iterator> rit, std::shared_ptr<allocator> a)
+rocks_data_store<allocator>::rocks_iterator<iterator_traits>::rocks_iterator(std::shared_ptr<rocksdb::DB> db, 
+                                                                             std::shared_ptr<rocksdb::Iterator> rit,  
+                                                                             rocksdb::ColumnFamilyHandle* column_family,
+                                                                             rocksdb::ReadOptions read_options,
+                                                                             std::shared_ptr<allocator> a)
 : m_db{std::move(db)},
   m_iterator{std::move(rit)},
+  m_column_family{column_family},
+  m_read_options{std::move(read_options)},
   m_allocator{std::move(a)} {
 }
 
@@ -469,7 +541,9 @@ rocks_iterator_alias<allocator, iterator_traits>& rocks_data_store<allocator>::r
     
     m_db = it.m_db;
     m_allocator = it.m_allocator;
-    m_iterator = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(rocksdb::ReadOptions{})};
+    m_column_family = it.m_column_family;
+    m_read_options = it.m_read_options;
+    m_iterator = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(m_read_options, m_column_family)};
     if (it.m_iterator->Valid()) {
         m_iterator->Seek(it.m_iterator->key());
     }
@@ -480,11 +554,11 @@ template <typename allocator>
 template <typename iterator_traits>
 rocks_iterator_alias<allocator, iterator_traits> rocks_data_store<allocator>::rocks_iterator<iterator_traits>::make_iterator_() const {
     auto read_options = rocksdb::ReadOptions{};
-    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(read_options)};
+    auto rit = std::shared_ptr<rocksdb::Iterator>{m_db->NewIterator(m_read_options, m_column_family)};
     if (m_iterator->Valid()) {
         rit->Seek(m_iterator->key());
     }
-    return {m_db, rit, m_allocator};
+    return {m_db, rit, m_column_family, m_read_options, m_allocator};
 }
 
 template <typename allocator>
