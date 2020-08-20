@@ -12,18 +12,26 @@ namespace eosio {
 
 namespace detail {
 
+/**
+ * Thread safe blocking queue which supports pausing.
+ * push will block once max_depth_ is reached.
+ * pop blocks until item is available in queue and unpaused.
+ */
 template <typename T>
 class blocking_queue {
 public:
-   explicit blocking_queue(size_t max_depth)
-         : max_depth_(max_depth) {}
 
+   /// @param max_depth allowed entries until push is blocked
+   explicit blocking_queue( size_t max_depth )
+         : max_depth_( max_depth ) {}
+
+   /// blocks thread if queue is full
    void push(T&& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
-         while( queue_.size() > max_depth_ ) {
-            full_cv_.wait(lk);
-         }
+         full_cv_.wait(lk, [this]() {
+            return queue_.size() < max_depth_;
+         });
          queue_.emplace_back(std::move(t));
       }
       empty_cv_.notify_one();
@@ -38,14 +46,14 @@ public:
       empty_cv_.notify_one();
    }
 
+   /// blocks thread until item is available and queue is unpaused.
+   /// @return false if queue is stopped and t is not modified
    bool pop(T& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
-         while( (queue_.empty() || paused_) && !stopped_ ) {
-            dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_));
-            empty_cv_.wait(lk);
-         }
-         dlog( "empty: ${e}, paused: ${p}", ("e", queue_.empty())("p", paused_));
+         empty_cv_.wait(lk, [this]() {
+            return (!queue_.empty() && !paused_) || stopped_;
+         });
          if( stopped_ ) return false;
          t = std::move(queue_.front());
          queue_.pop_front();
@@ -54,24 +62,27 @@ public:
       return true;
    }
 
+   /// pause pop of queue. Does not pause/block push.
    void pause() {
-      std::unique_lock<std::mutex> lk(mtx_);
+      mtx_.lock();
       paused_ = true;
-      lk.unlock();
+      mtx_.unlock();
       empty_cv_.notify_one();
    }
 
+   /// unpause pop of queue.
    void unpause() {
-      std::unique_lock<std::mutex> lk(mtx_);
+      mtx_.lock();
       paused_ = false;
-      lk.unlock();
+      mtx_.unlock();
       empty_cv_.notify_one();
    }
 
+   /// cause pop to unblock
    void stop() {
-      std::unique_lock<std::mutex> lk(mtx_);
+      mtx_.lock();
       stopped_ = true;
-      lk.unlock();
+      mtx_.unlock();
       empty_cv_.notify_one();
    }
 
@@ -89,6 +100,7 @@ private:
 
 /**
  * FIFO queue for starting signature recovery. Enforces limit (max_depth) on queued transactions to be processed.
+ * Only one transaction at a time is submitted to the main application thread so that order is preserved.
  */
 class fifo_trx_processing_queue : public std::enable_shared_from_this<fifo_trx_processing_queue> {
 
@@ -103,10 +115,19 @@ private:
    chain::chain_id_type chain_id_;
    uint32_t configured_subjective_signature_length_limit_ = 0;
    boost::asio::io_context& sig_thread_pool_;
+   // Doesn't look like we have strong guarantee that producer_plugin will live longer than app().post() call
+   // but various other places also use producer_plugin* & chain_plugin* in app().post().
    producer_plugin* prod_plugin_ = nullptr;
 
 public:
 
+   /**
+    * @param chain_id for signature recovery
+    * @param configured_subjective_signature_length_limit for signature recovery
+    * @param sig_thread_pool for signature recovery
+    * @param prod_plugin producer_plugin
+    * @param max_depth the queue depth for number of trxs to start signature recovery on
+    */
    fifo_trx_processing_queue( const chain::chain_id_type& chain_id,
                               uint32_t configured_subjective_signature_length_limit,
                               boost::asio::io_context& sig_thread_pool,
@@ -120,6 +141,7 @@ public:
    {
    }
 
+   /// separate run() because of shared_from_this
    void run() {
       thread_ = std::thread([self=shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
@@ -140,7 +162,6 @@ public:
                         self->queue_.push_front( std::move( i ) );
                      };
                      self->prod_plugin_->execute_incoming_transaction(trx, next, retry_later);
-                     dlog("unpausing for: ${id}", ("id", trx->id()));
                      self->queue_.unpause();
                   });
                }

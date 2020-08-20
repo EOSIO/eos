@@ -161,6 +161,8 @@ void amqp_trx_plugin::plugin_shutdown() {
          my->amqp_trx->stop();
       }
 
+      my->trx_queue_ptr.reset();
+
       dlog( "exit amqp_trx_plugin" );
    }
    FC_CAPTURE_AND_RETHROW()
