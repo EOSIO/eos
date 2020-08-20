@@ -275,7 +275,7 @@ inline constexpr auto get_intrinsic_table() {
       "env.get_kv_parameters_packed",
       "env.set_kv_parameters_packed",
       "env.get_wasm_parameters_packed",
-      "env.set_wasm_parameters_packed"
+      "env.set_wasm_parameters_packed",
       "env.get_parameters_packed",
       "env.set_parameters_packed"
    );
@@ -289,6 +289,6 @@ inline constexpr std::size_t find_intrinsic_index(std::string_view hf) {
 }
 
 inline constexpr std::size_t intrinsic_table_size() {
-    return std::tuple_size<decltype(get_intrinsic_table())>::value;
+    return std::tuple_size_v<decltype(get_intrinsic_table())>;
 }
 }}}
