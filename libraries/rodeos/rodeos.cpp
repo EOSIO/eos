@@ -3,6 +3,8 @@
 #include <b1/rodeos/callbacks/kv.hpp>
 #include <b1/rodeos/rodeos_tables.hpp>
 
+#include <fc/log/trace.hpp>
+
 namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;
@@ -162,6 +164,13 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
    table.put(info);
 }
 
+namespace {
+   std::string to_string( const eosio::checksum256& cs ) {
+      auto bytes = cs.extract_as_byte_array();
+      return fc::to_hex((const char*)bytes.data(), bytes.size());
+   }
+}
+
 void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result_v0& result) {
    check_write(result);
    if (!result.block)
@@ -171,6 +180,12 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    eosio::input_stream bin       = *result.block;
    signed_block_header block;
    from_bin(block, bin);
+
+   auto blk_trace = fc_create_trace( "Block" );
+   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
+   fc_add_str_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_str_tag( blk_span, "block_num", std::to_string( block_num ) );
+   fc_add_str_tag( blk_span, "block_time", eosio::microseconds_to_str( block.timestamp.to_time_point().elapsed.count() ) );
 
    write_block_info(block_num, result.this_block->block_id, block);
 }
@@ -184,6 +199,13 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
 
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
+
+   auto blk_trace = fc_create_trace( "Block" );
+   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
+   fc_add_str_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_str_tag( blk_span, "block_num", std::to_string( block_num ) );
+   fc_add_str_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
+
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
