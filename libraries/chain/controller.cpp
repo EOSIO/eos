@@ -335,6 +335,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
+      set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3575,6 +3576,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::configurable_was
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_parameters>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_parameters_packed" );
+   } );
+}
 
 /// End of protocol feature activation handlers
 

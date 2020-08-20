@@ -1,0 +1,83 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "getthrow1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "getthrow2",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "getthrow3",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "maintest",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setthrow1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setthrow2",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setthrow3",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "getthrow1",
+            "type": "getthrow1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getthrow2",
+            "type": "getthrow2",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getthrow3",
+            "type": "getthrow3",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "maintest",
+            "type": "maintest",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setthrow1",
+            "type": "setthrow1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setthrow2",
+            "type": "setthrow2",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setthrow3",
+            "type": "setthrow3",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}
