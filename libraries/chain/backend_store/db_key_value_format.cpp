@@ -1,6 +1,6 @@
-#include <eosio/chain/db_key_value_format.hpp>
+#include <eosio/chain/backend_store/db_key_value_format.hpp>
 
-namespace eosio { namespace chain { namespace db_key_value_format {
+namespace eosio { namespace chain { namespace backend_store { namespace db_key_value_format {
    namespace detail {
       std::string to_string(const key_type& kt) {
          switch (kt) {
@@ -49,4 +49,4 @@ namespace eosio { namespace chain { namespace db_key_value_format {
                  "DB intrinsic key-value store composite key is malformed, it is supposed to have a primary key");
    }
 
-}}} // namespace eosio::chain::db_key_value_format
+}}}} // namespace eosio::chain::backend_store::db_key_value_format
