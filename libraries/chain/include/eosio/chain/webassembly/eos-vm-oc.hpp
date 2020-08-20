@@ -368,11 +368,12 @@ void register_eosvm_oc(Name n) {
    // Has special handling
    if(n == BOOST_HANA_STRING("env.eosio_exit")) return;
    constexpr auto fn = create_function<F, Preconditions, injected>();
+   constexpr auto index = find_intrinsic_index(n.c_str());
    intrinsic the_intrinsic(
       n.c_str(),
       wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
       reinterpret_cast<void*>(fn),
-      find_intrinsic_index(n.c_str())
+      index
    );
 }
 

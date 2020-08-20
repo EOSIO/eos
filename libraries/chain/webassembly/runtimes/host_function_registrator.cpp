@@ -6,6 +6,7 @@
 #endif
 #include <eosio/chain/webassembly/interface.hpp>
 #include <boost/hana/string.hpp>
+#include <boost/hana/equal.hpp>
 
 namespace eosio {
 namespace chain {
