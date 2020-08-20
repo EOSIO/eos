@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/apply_context.hpp>
 #include <fc/uint128.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
