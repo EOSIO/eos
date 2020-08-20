@@ -289,6 +289,6 @@ inline constexpr std::size_t find_intrinsic_index(std::string_view hf) {
 }
 
 inline constexpr std::size_t intrinsic_table_size() {
-    return std::tuple_size_v<decltype(get_intrinsic_table())>;
+    return std::tuple_size<decltype(get_intrinsic_table())>::value;
 }
 }}}
