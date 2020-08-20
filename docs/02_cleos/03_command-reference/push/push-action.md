@@ -32,7 +32,7 @@ Push a transaction with a single action
 
 ## Output
 
-For actions that return a value `cleos` will have an extra line which will be prefixed with `=>`.
+For actions that return a value `cleos` has a line which is prefixed with `=>`.
 
 Let's consider for exemplification the three actions defined below. The first two are `rstring` and `ruint`, which return the value passed as input parameter to them, and the third one is `rtmp` returning a default `tmp` object.
 
@@ -52,7 +52,7 @@ uint16_t    ruint(uint16_t i)                { return i;     }
 tmp         rtmp()                           { return tmp{}; }
 ```
 
-Below you can see examples of `cleos` commands pushing each action and their respective outputs.
+The `cleos` commands and their respective outputs are.
 
 ```shell
 > cleos push action eosio rstring '{"str":null}'  -p eosio@active
@@ -74,7 +74,7 @@ executed transaction: 12c51fd27fad9bb0fa959037a72093ad0b168f5846e916a0e9a295c841
 =>                                return value: 42
 ```
 
-The `rtmp` action output, returning a default `tmp` object, output will look like this:
+The `rtmp` action output, returning a default `tmp` object, looks like this:
 
 ```shell
 > cleos push action eosio rtmp '{}'  -p eosio@active
@@ -84,7 +84,7 @@ executed transaction: 42386687d94695d77d67cf901cf8d1a4f83ac9f89382f0b01f3fb51267
 =>                                return value: {"id":1,"list":[1,2]}
 ```
 
-When it will not be possible to decode the return value, for example when ABI doesn’t contain information about an action return value, output will look like this:
+When it is not possible to decode the return value, for example when ABI doesn’t contain information about an action return value, output will look like this:
 
 ```shell
 =>                          return value (hex): 1400000001000770656e64696e6700000000
