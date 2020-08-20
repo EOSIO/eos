@@ -74,7 +74,7 @@ notus:
 
 static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
   (void*)&eos_vm_oc_grow_memory,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
+  find_intrinsic_index("eosvmoc_internal.grow_memory")
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
@@ -83,7 +83,7 @@ static void eosio_exit(int32_t code) {
    __builtin_unreachable();
 }
 static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
+  find_intrinsic_index("env.eosio_exit")
 );
 
 static void throw_internal_exception(const char* const s) {
@@ -95,7 +95,7 @@ static void throw_internal_exception(const char* const s) {
 #define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
 	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,IR::FunctionType::get(),(void*)&name, \
-     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
+     find_intrinsic_index(#module "." #name) \
    ); \
 	void name()
 

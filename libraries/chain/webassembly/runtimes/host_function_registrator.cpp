@@ -5,6 +5,8 @@
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #endif
 #include <eosio/chain/webassembly/interface.hpp>
+#include <boost/hana/string.hpp>
+
 namespace eosio {
 namespace chain {
 namespace webassembly {
@@ -63,8 +65,10 @@ struct host_function_registrator {
    }                                                                                                                   \
    inline static auto NAME##_registrator = NAME##_registrator_impl();
 
+// context free api
 REGISTER_LEGACY_CF_ONLY_HOST_FUNCTION(get_context_free_data)
 
+// privileged api
 REGISTER_HOST_FUNCTION(is_feature_active, privileged_check);
 REGISTER_HOST_FUNCTION(activate_feature, privileged_check);
 REGISTER_LEGACY_HOST_FUNCTION(preactivate_feature, privileged_check);
@@ -83,6 +87,7 @@ REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
 REGISTER_HOST_FUNCTION(set_privileged, privileged_check);
 
+// softfloat api
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_add);
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sub);
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_div);
@@ -142,8 +147,10 @@ REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f64);
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f64);
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f64);
 
+// producer api
 REGISTER_LEGACY_HOST_FUNCTION(get_active_producers);
 
+// crypto api
 REGISTER_LEGACY_CF_HOST_FUNCTION(assert_recover_key);
 REGISTER_LEGACY_CF_HOST_FUNCTION(recover_key);
 REGISTER_LEGACY_CF_HOST_FUNCTION(assert_sha256);
@@ -155,33 +162,39 @@ REGISTER_LEGACY_CF_HOST_FUNCTION(sha1);
 REGISTER_LEGACY_CF_HOST_FUNCTION(sha512);
 REGISTER_LEGACY_CF_HOST_FUNCTION(ripemd160);
 
+// permission api
 REGISTER_LEGACY_HOST_FUNCTION(check_transaction_authorization);
 REGISTER_LEGACY_HOST_FUNCTION(check_permission_authorization);
 REGISTER_HOST_FUNCTION(get_permission_last_used);
 REGISTER_HOST_FUNCTION(get_account_creation_time);
 
+// authorization api
 REGISTER_HOST_FUNCTION(require_auth);
 REGISTER_HOST_FUNCTION(require_auth2);
 REGISTER_HOST_FUNCTION(has_auth);
 REGISTER_HOST_FUNCTION(require_recipient);
 REGISTER_HOST_FUNCTION(is_account);
 
+// system api
 REGISTER_HOST_FUNCTION(current_time);
 REGISTER_HOST_FUNCTION(publication_time);
 REGISTER_LEGACY_HOST_FUNCTION(is_feature_activated);
 REGISTER_HOST_FUNCTION(get_sender);
 
+// context-free system api
 REGISTER_CF_HOST_FUNCTION(abort)
 REGISTER_LEGACY_CF_HOST_FUNCTION(eosio_assert)
 REGISTER_LEGACY_CF_HOST_FUNCTION(eosio_assert_message)
 REGISTER_CF_HOST_FUNCTION(eosio_assert_code)
 REGISTER_CF_HOST_FUNCTION(eosio_exit)
 
+// action api
 REGISTER_LEGACY_CF_HOST_FUNCTION(read_action_data);
 REGISTER_CF_HOST_FUNCTION(action_data_size);
 REGISTER_CF_HOST_FUNCTION(current_receiver);
 REGISTER_HOST_FUNCTION(set_action_return_value);
 
+// console api
 REGISTER_LEGACY_CF_HOST_FUNCTION(prints);
 REGISTER_LEGACY_CF_HOST_FUNCTION(prints_l);
 REGISTER_CF_HOST_FUNCTION(printi);
@@ -194,6 +207,8 @@ REGISTER_LEGACY_CF_HOST_FUNCTION(printqf);
 REGISTER_CF_HOST_FUNCTION(printn);
 REGISTER_LEGACY_CF_HOST_FUNCTION(printhex);
 
+// database api
+// primary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_store_i64);
 REGISTER_LEGACY_HOST_FUNCTION(db_update_i64);
 REGISTER_HOST_FUNCTION(db_remove_i64);
@@ -205,6 +220,7 @@ REGISTER_HOST_FUNCTION(db_lowerbound_i64);
 REGISTER_HOST_FUNCTION(db_upperbound_i64);
 REGISTER_HOST_FUNCTION(db_end_i64);
 
+// uint64_t secondary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_idx64_store);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx64_update);
 REGISTER_HOST_FUNCTION(db_idx64_remove);
@@ -216,6 +232,7 @@ REGISTER_HOST_FUNCTION(db_idx64_end);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx64_next);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx64_previous);
 
+// uint128_t secondary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_idx128_store);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx128_update);
 REGISTER_HOST_FUNCTION(db_idx128_remove);
@@ -227,6 +244,7 @@ REGISTER_HOST_FUNCTION(db_idx128_end);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx128_next);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx128_previous);
 
+// 256-bit secondary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_idx256_store);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx256_update);
 REGISTER_HOST_FUNCTION(db_idx256_remove);
@@ -238,6 +256,7 @@ REGISTER_HOST_FUNCTION(db_idx256_end);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx256_next);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx256_previous);
 
+// double secondary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_store, is_nan_check);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_update, is_nan_check);
 REGISTER_HOST_FUNCTION(db_idx_double_remove);
@@ -249,6 +268,7 @@ REGISTER_HOST_FUNCTION(db_idx_double_end);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_next);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_double_previous);
 
+// long double secondary index api
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_store, is_nan_check);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_update, is_nan_check);
 REGISTER_HOST_FUNCTION(db_idx_long_double_remove);
@@ -260,6 +280,7 @@ REGISTER_HOST_FUNCTION(db_idx_long_double_end);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_next);
 REGISTER_LEGACY_HOST_FUNCTION(db_idx_long_double_previous);
 
+// kv database api
 REGISTER_HOST_FUNCTION(kv_erase);
 REGISTER_HOST_FUNCTION(kv_set);
 REGISTER_HOST_FUNCTION(kv_get);
@@ -276,16 +297,19 @@ REGISTER_HOST_FUNCTION(kv_it_lower_bound);
 REGISTER_HOST_FUNCTION(kv_it_key);
 REGISTER_HOST_FUNCTION(kv_it_value);
 
+// memory api
 REGISTER_LEGACY_CF_HOST_FUNCTION(memcpy);
 REGISTER_LEGACY_CF_HOST_FUNCTION(memmove);
 REGISTER_LEGACY_CF_HOST_FUNCTION(memcmp);
 REGISTER_LEGACY_CF_HOST_FUNCTION(memset);
 
+// transaction api
 REGISTER_LEGACY_HOST_FUNCTION(send_inline);
 REGISTER_LEGACY_HOST_FUNCTION(send_context_free_inline);
 REGISTER_LEGACY_HOST_FUNCTION(send_deferred);
 REGISTER_LEGACY_HOST_FUNCTION(cancel_deferred);
 
+// context-free transaction api
 REGISTER_LEGACY_CF_HOST_FUNCTION(read_transaction);
 REGISTER_CF_HOST_FUNCTION(transaction_size);
 REGISTER_CF_HOST_FUNCTION(expiration);
@@ -293,6 +317,7 @@ REGISTER_CF_HOST_FUNCTION(tapos_block_num);
 REGISTER_CF_HOST_FUNCTION(tapos_block_prefix);
 REGISTER_LEGACY_CF_HOST_FUNCTION(get_action);
 
+// compiler builtins api
 REGISTER_LEGACY_CF_HOST_FUNCTION(__ashlti3);
 REGISTER_LEGACY_CF_HOST_FUNCTION(__ashrti3);
 REGISTER_LEGACY_CF_HOST_FUNCTION(__lshlti3);

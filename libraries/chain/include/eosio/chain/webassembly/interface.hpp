@@ -113,14 +113,11 @@ namespace webassembly {
          void sha512(legacy_span<const char>, legacy_ptr<fc::sha512>) const;
          void ripemd160(legacy_span<const char>, legacy_ptr<fc::ripemd160>) const;
 
-
          // permission api
          bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>) const;
          bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t) const;
          int64_t get_permission_last_used(account_name, permission_name) const;
          int64_t get_account_creation_time(account_name) const;
-
- 
 
          // authorization api
          void require_auth(account_name) const;
@@ -129,15 +126,11 @@ namespace webassembly {
          void require_recipient(account_name);
          bool is_account(account_name) const;
 
-
-
          // system api
          uint64_t current_time() const;
          uint64_t publication_time() const;
          bool is_feature_activated(legacy_ptr<const digest_type>) const;
          name get_sender() const;
-
-
 
          // context-free system api
          void abort() const;
@@ -146,14 +139,11 @@ namespace webassembly {
          void eosio_assert_code(bool, uint64_t) const;
          void eosio_exit(int32_t) const;
 
- 
-
          // action api
          int32_t read_action_data(legacy_span<char>) const;
          int32_t action_data_size() const;
          name current_receiver() const;
          void set_action_return_value(span<const char>);
-
 
          // console api
          void prints(null_terminated_ptr);
@@ -168,8 +158,6 @@ namespace webassembly {
          void printn(name);
          void printhex(legacy_span<const char>);
 
-
-
          // database api
          // primary index api
          int32_t db_store_i64(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const char>);
@@ -183,7 +171,6 @@ namespace webassembly {
          int32_t db_upperbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
          int32_t db_end_i64(uint64_t, uint64_t, uint64_t);
 
-
          // uint64_t secondary index api
          int32_t db_idx64_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>);
          void db_idx64_update(int32_t, uint64_t, legacy_ptr<const uint64_t>);
@@ -195,8 +182,6 @@ namespace webassembly {
          int32_t db_idx64_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx64_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
-
-
 
          // uint128_t secondary index api
          int32_t db_idx128_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint128_t>);
@@ -210,8 +195,6 @@ namespace webassembly {
          int32_t db_idx128_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx128_previous(int32_t, legacy_ptr<uint64_t>);
 
-
-
          // 256-bit secondary index api
          int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const uint128_t>);
          void db_idx256_update(int32_t, uint64_t, legacy_span<const uint128_t>);
@@ -223,8 +206,6 @@ namespace webassembly {
          int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx256_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx256_previous(int32_t, legacy_ptr<uint64_t>);
-
-
 
          // double secondary index api
          int32_t db_idx_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>);
@@ -238,7 +219,6 @@ namespace webassembly {
          int32_t db_idx_double_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-
          // long double secondary index api
          int32_t db_idx_long_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float128_t>);
          void db_idx_long_double_update(int32_t, uint64_t, legacy_ptr<const float128_t>);
@@ -250,8 +230,6 @@ namespace webassembly {
          int32_t db_idx_long_double_end(uint64_t, uint64_t, uint64_t);
          int32_t db_idx_long_double_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx_long_double_previous(int32_t, legacy_ptr<uint64_t>);
-
-
 
          // kv database api
          int64_t  kv_erase(uint64_t, uint64_t, span<const char>);
@@ -270,15 +248,11 @@ namespace webassembly {
          int32_t  kv_it_key(uint32_t, uint32_t, span<char>, uint32_t*);
          int32_t  kv_it_value(uint32_t, uint32_t, span<char> dest, uint32_t*);
 
-
-
          // memory api
          void* memcpy(memcpy_params) const;
          void* memmove(memcpy_params) const;
          int32_t memcmp(memcmp_params) const;
          void* memset(memset_params) const;
-
-
 
          // transaction api
          void send_inline(legacy_span<const char>);
@@ -286,7 +260,6 @@ namespace webassembly {
          void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_span<const char>, uint32_t);
          bool cancel_deferred(legacy_ptr<const uint128_t>);
 
- 
          // context-free transaction api
          int32_t read_transaction(legacy_span<char>) const;
          int32_t transaction_size() const;

@@ -14,7 +14,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
-#include <boost/hana/equal.hpp>
+#include <boost/hana/string.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eosvmoc {
 
@@ -321,7 +321,8 @@ auto fn(A... a) {
    try {
       if constexpr(!is_injected) {
          constexpr int cb_current_call_depth_remaining_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(current_call_depth_remaining);
-         constexpr int depth_assertion_intrinsic_offset = OFFSET_OF_FIRST_INTRINSIC - (int)boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.depth_assert"))).value()*8;
+         constexpr int depth_assertion_intrinsic_offset = OFFSET_OF_FIRST_INTRINSIC - (int) find_intrinsic_index("eosvmoc_internal.depth_assert") * 8;
+
          asm volatile("cmpl   $1,%%gs:%c[callDepthRemainOffset]\n"
                       "jne    1f\n"
                       "callq  *%%gs:%c[depthAssertionIntrinsicOffset]\n"
@@ -371,7 +372,7 @@ void register_eosvm_oc(Name n) {
       n.c_str(),
       wasm_function_type_provider<std::remove_pointer_t<decltype(fn)>>::type(),
       reinterpret_cast<void*>(fn),
-      ::boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(n)).value()
+      find_intrinsic_index(n.c_str())
    );
 }
 
