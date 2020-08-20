@@ -54,6 +54,7 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+   kv_table_def get_kv_table_type(name action)const;
    type_name get_action_result_type(name action_result)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
@@ -118,6 +119,7 @@ private:
    map<type_name, struct_def, std::less<>>    structs;
    map<name,type_name>                        actions;
    map<name,type_name>                        tables;
+   map<name, kv_table_def>                    kv_tables;
    map<uint64_t, string>                      error_messages;
    map<type_name, variant_def, std::less<>>   variants;
    map<name,type_name>                        action_results;
