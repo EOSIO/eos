@@ -102,7 +102,7 @@ void apply_context::exec_one()
                   EOS_ASSERT( false, action_validate_exception, "Unknown backing store." );
             }
 
-            _db_context = create_db_chainbase_context(*this, receiver);
+            _db_context = backend_store::create_db_chainbase_context(*this, receiver);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -1281,7 +1281,7 @@ void apply_context::increment_action_id() {
    trx_context.action_id.increment();
 }
 
-db_context& apply_context::db_get_context() {
+backend_store::db_context& apply_context::db_get_context() {
    EOS_ASSERT( _db_context, action_validate_exception,
                "context-free actions cannot access state" );
    return *_db_context;

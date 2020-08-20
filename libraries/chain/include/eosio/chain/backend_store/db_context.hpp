@@ -13,7 +13,7 @@ namespace eosio { namespace chain {
       class apply_context;
 
       constexpr name dbram_id  = N(eosio.dbram);
-
+namespace backend_store {
       struct db_context {
          virtual ~db_context() {}
 
@@ -181,4 +181,4 @@ namespace eosio { namespace chain {
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);
 
-}} // ns eosio::chain
+}}} // ns eosio::chain::backend_store

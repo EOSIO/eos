@@ -3,7 +3,9 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
-#include <eosio/chain/db_context.hpp>
+#include <eosio/chain/backend_store/db_context.hpp>
+#include <eosio/chain/backend_store/db_chainbase_iter_cache.hpp>
+#include <eosio/chain/backend_store/db_secondary_key_helper.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -17,148 +19,6 @@ class controller;
 class transaction_context;
 
 class apply_context {
-   private:
-      template<typename T>
-      class iterator_cache {
-         public:
-            iterator_cache(){
-               _end_iterator_to_table.reserve(8);
-               _iterator_to_object.reserve(32);
-            }
-
-            /// Returns end iterator of the table.
-            int cache_table( const table_id_object& tobj ) {
-               auto itr = _table_cache.find(tobj.id);
-               if( itr != _table_cache.end() )
-                  return itr->second.second;
-
-               auto ei = index_to_end_iterator(_end_iterator_to_table.size());
-               _end_iterator_to_table.push_back( &tobj );
-               _table_cache.emplace( tobj.id, make_pair(&tobj, ei) );
-               return ei;
-            }
-
-            const table_id_object& get_table( table_id_object::id_type i )const {
-               auto itr = _table_cache.find(i);
-               EOS_ASSERT( itr != _table_cache.end(), table_not_in_cache, "an invariant was broken, table should be in cache" );
-               return *itr->second.first;
-            }
-
-            int get_end_iterator_by_table_id( table_id_object::id_type i )const {
-               auto itr = _table_cache.find(i);
-               EOS_ASSERT( itr != _table_cache.end(), table_not_in_cache, "an invariant was broken, table should be in cache" );
-               return itr->second.second;
-            }
-
-            const table_id_object* find_table_by_end_iterator( int ei )const {
-               EOS_ASSERT( ei < -1, invalid_table_iterator, "not an end iterator" );
-               auto indx = end_iterator_to_index(ei);
-               if( indx >= _end_iterator_to_table.size() ) return nullptr;
-               return _end_iterator_to_table[indx];
-            }
-
-            const T& get( int iterator ) {
-               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
-               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "dereference of end iterator" );
-               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
-               auto result = _iterator_to_object[iterator];
-               EOS_ASSERT( result, table_operation_not_permitted, "dereference of deleted object" );
-               return *result;
-            }
-
-            void remove( int iterator ) {
-               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
-               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "cannot call remove on end iterators" );
-               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
-
-               auto obj_ptr = _iterator_to_object[iterator];
-               if( !obj_ptr ) return;
-               _iterator_to_object[iterator] = nullptr;
-               _object_to_iterator.erase( obj_ptr );
-            }
-
-            int add( const T& obj ) {
-               auto itr = _object_to_iterator.find( &obj );
-               if( itr != _object_to_iterator.end() )
-                    return itr->second;
-
-               _iterator_to_object.push_back( &obj );
-               _object_to_iterator[&obj] = _iterator_to_object.size() - 1;
-
-               return _iterator_to_object.size() - 1;
-            }
-
-         private:
-            map<table_id_object::id_type, pair<const table_id_object*, int>> _table_cache;
-            vector<const table_id_object*>                  _end_iterator_to_table;
-            vector<const T*>                                _iterator_to_object;
-            map<const T*,int>                               _object_to_iterator;
-
-            /// Precondition: std::numeric_limits<int>::min() < ei < -1
-            /// Iterator of -1 is reserved for invalid iterators (i.e. when the appropriate table has not yet been created).
-            inline size_t end_iterator_to_index( int ei )const { return (-ei - 2); }
-            /// Precondition: indx < _end_iterator_to_table.size() <= std::numeric_limits<int>::max()
-            inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
-      }; /// class iterator_cache
-
-      template<typename>
-      struct array_size;
-
-      template<typename T, size_t N>
-      struct array_size< std::array<T,N> > {
-          static constexpr size_t size = N;
-      };
-
-      template <typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst, typename Enable = void>
-      class secondary_key_helper;
-
-      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
-      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
-         typename std::enable_if<std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value>::type >
-      {
-         public:
-            typedef SecondaryKey secondary_key_type;
-
-            static void set(secondary_key_type& sk_in_table, const secondary_key_type& sk_from_wasm) {
-               sk_in_table = sk_from_wasm;
-            }
-
-            static void get(secondary_key_type& sk_from_wasm, const secondary_key_type& sk_in_table ) {
-               sk_from_wasm = sk_in_table;
-            }
-
-            static auto create_tuple(const table_id_object& tab, const secondary_key_type& secondary) {
-               return boost::make_tuple( tab.id, secondary );
-            }
-      };
-
-      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
-      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
-         typename std::enable_if<!std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value &&
-                                 std::is_pointer<typename std::decay<SecondaryKeyProxy>::type>::value>::type >
-      {
-         public:
-            typedef SecondaryKey      secondary_key_type;
-            typedef SecondaryKeyProxy secondary_key_proxy_type;
-            typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
-
-            static constexpr size_t N = array_size<SecondaryKey>::size;
-
-            static void set(secondary_key_type& sk_in_table, secondary_key_proxy_const_type sk_from_wasm) {
-               std::copy(sk_from_wasm, sk_from_wasm + N, sk_in_table.begin());
-            }
-
-            static void get(secondary_key_proxy_type sk_from_wasm, const secondary_key_type& sk_in_table) {
-               std::copy(sk_in_table.begin(), sk_in_table.end(), sk_from_wasm);
-            }
-
-            static auto create_tuple(const table_id_object& tab, secondary_key_proxy_const_type sk_from_wasm) {
-               secondary_key_type secondary;
-               std::copy(sk_from_wasm, sk_from_wasm + N, secondary.begin());
-               return boost::make_tuple( tab.id, secondary );
-            }
-      };
-
    public:
       template<typename ObjectType,
                typename SecondaryKeyProxy = typename std::add_lvalue_reference<typename ObjectType::secondary_key_type>::type,
@@ -171,7 +31,7 @@ class apply_context {
             typedef SecondaryKeyProxy      secondary_key_proxy_type;
             typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
 
-            using secondary_key_helper_t = secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
+            using secondary_key_helper_t = backend_store::db_secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
 
             generic_index( apply_context& c ):context(c){}
 
@@ -474,8 +334,8 @@ class apply_context {
             }
 
          private:
-            apply_context&              context;
-            iterator_cache<ObjectType>  itr_cache;
+            apply_context&                                     context;
+            backend_store::db_chainbase_iter_cache<ObjectType> itr_cache;
       }; /// class generic_index
 
 
@@ -558,7 +418,7 @@ class apply_context {
       int  db_end_i64( name code, name scope, name table );
 
 # warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
-      db_context& db_get_context();
+      backend_store::db_context& db_get_context();
 
    private:
 
@@ -653,21 +513,17 @@ class apply_context {
 
    private:
 
-      iterator_cache<key_value_object>    keyval_cache;
-      vector< std::pair<account_name, uint32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<uint32_t>                    _inline_actions; ///< action_ordinals of queued inline actions
-      vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
-      std::string                         _pending_console_output;
-      flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
-      flat_set<account_delta>             _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
+      backend_store::db_chainbase_iter_cache<key_value_object> keyval_cache;
+      vector< std::pair<account_name, uint32_t> >              _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<uint32_t>                                         _inline_actions; ///< action_ordinals of queued inline actions
+      vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
+      std::string                                              _pending_console_output;
+      flat_set<account_delta>                                  _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
+      flat_set<account_delta>                                  _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
 
-      std::unique_ptr<db_context>         _db_context;
-
-      //bytes                               _cached_trx;
+      std::unique_ptr<backend_store::db_context>               _db_context;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
-
-//FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(deferred_transaction_requests)(deferred_transactions_count))
