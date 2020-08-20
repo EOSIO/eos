@@ -3,9 +3,9 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
-#include <eosio/chain/backend_store/db_context.hpp>
-#include <eosio/chain/backend_store/db_chainbase_iter_cache.hpp>
-#include <eosio/chain/backend_store/db_secondary_key_helper.hpp>
+#include <eosio/chain/backing_store/db_context.hpp>
+#include <eosio/chain/backing_store/db_chainbase_iter_cache.hpp>
+#include <eosio/chain/backing_store/db_secondary_key_helper.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -31,7 +31,7 @@ class apply_context {
             typedef SecondaryKeyProxy      secondary_key_proxy_type;
             typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
 
-            using secondary_key_helper_t = backend_store::db_secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
+            using secondary_key_helper_t = backing_store::db_secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
 
             generic_index( apply_context& c ):context(c){}
 
@@ -335,7 +335,7 @@ class apply_context {
 
          private:
             apply_context&                                     context;
-            backend_store::db_chainbase_iter_cache<ObjectType> itr_cache;
+            backing_store::db_chainbase_iter_cache<ObjectType> itr_cache;
       }; /// class generic_index
 
 
@@ -418,7 +418,7 @@ class apply_context {
       int  db_end_i64( name code, name scope, name table );
 
 # warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
-      backend_store::db_context& db_get_context();
+      backing_store::db_context& db_get_context();
 
    private:
 
@@ -513,7 +513,7 @@ class apply_context {
 
    private:
 
-      backend_store::db_chainbase_iter_cache<key_value_object> keyval_cache;
+      backing_store::db_chainbase_iter_cache<key_value_object> keyval_cache;
       vector< std::pair<account_name, uint32_t> >              _notified; ///< keeps track of new accounts to be notifed of current message
       vector<uint32_t>                                         _inline_actions; ///< action_ordinals of queued inline actions
       vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
@@ -521,7 +521,7 @@ class apply_context {
       flat_set<account_delta>                                  _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
       flat_set<account_delta>                                  _account_disk_deltas; ///< flat_set of account_delta so json is an array of objects
 
-      std::unique_ptr<backend_store::db_context>               _db_context;
+      std::unique_ptr<backing_store::db_context>               _db_context;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

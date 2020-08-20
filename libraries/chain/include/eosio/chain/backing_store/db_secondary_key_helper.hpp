@@ -4,7 +4,7 @@
 #include <sstream>
 #include <algorithm>
 
-namespace eosio { namespace chain { namespace backend_store {
+namespace eosio { namespace chain { namespace backing_store {
 
 template<typename>
 struct array_size;
@@ -64,4 +64,4 @@ class db_secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxy
       }
 };
 
-}}} // namespace eosio::chain::backend_store
+}}} // namespace eosio::chain::backing_store

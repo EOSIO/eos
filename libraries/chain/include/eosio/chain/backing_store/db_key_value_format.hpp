@@ -7,7 +7,7 @@
 #include <memory>
 #include <stdint.h>
 
-namespace eosio { namespace chain { namespace backend_store { namespace db_key_value_format {
+namespace eosio { namespace chain { namespace backing_store { namespace db_key_value_format {
    using key256_t = std::array<uint128_t, 2>;
    b1::chain_kv::bytes create_primary_key(name scope, name table, uint64_t db_key);
 
@@ -89,4 +89,4 @@ namespace eosio { namespace chain { namespace backend_store { namespace db_key_v
       return true;
    }
 
-}}}} // ns eosio::chain::backend_store::db_key_value_format
+}}}} // ns eosio::chain::backing_store::db_key_value_format

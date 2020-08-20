@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <set>
 
-namespace eosio { namespace chain { namespace backend_store {
+namespace eosio { namespace chain { namespace backing_store {
 
 template<typename T>
 class db_chainbase_iter_cache {
@@ -90,4 +90,4 @@ class db_chainbase_iter_cache {
       inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
 }; /// class db_chainbase_iter_cache
 
-}}} // namespace eosio::chain::backend_store
+}}} // namespace eosio::chain::backing_store
