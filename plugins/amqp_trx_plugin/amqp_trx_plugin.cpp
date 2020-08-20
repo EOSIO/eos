@@ -29,7 +29,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::optional<amqp> amqp_trx;
 
    std::string amqp_trx_address;
-   std::atomic<uint32_t> trx_in_progress_size{0};
+   uint32_t trx_processing_queue_size = 1000;
    std::shared_ptr<fifo_trx_processing_queue> trx_queue_ptr;
 
    // called from amqp thread
@@ -63,53 +63,19 @@ private:
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
-      if( trx_queue_ptr ) {
-         trx_queue_ptr->push( trx, [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-               my->amqp_trx->ack( delivery_tag );
-               // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
-               if( result.contains<chain::exception_ptr>() ) {
-                  auto& eptr = result.get<chain::exception_ptr>();
-                  if( my->trace_plug ) {
-                     my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
-                  }
-                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
-               } else {
-                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
+      trx_queue_ptr->push( trx,
+                [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+            my->amqp_trx->ack( delivery_tag );
+            // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
+            if( result.contains<chain::exception_ptr>() ) {
+               auto& eptr = result.get<chain::exception_ptr>();
+               if( my->trace_plug ) {
+                  my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
                }
-            } );
-
-         return;
-      }
-
-      auto trx_in_progress = trx_in_progress_size.load();
-      if( trx_in_progress > def_max_trx_in_progress_size ) {
-         wlog( "Dropping trx, too many trx in progress ${s} bytes", ("s", trx_in_progress) );
-         amqp_trx->reject( delivery_tag );
-         if( trace_plug ) {
-            std::string err = "Dropped trx, too many trx in progress " + std::to_string( trx_in_progress ) + " bytes";
-            trace_plug->publish_error( trx->id().str(), chain::tx_resource_exhaustion::code_enum::code_value, std::move(err) );
-         }
-         return;
-      }
-
-      trx_in_progress_size += trx->get_estimated_size();
-      app().post( priority::medium_low, [my=shared_from_this(), delivery_tag, trx{std::move(trx)}]() {
-         my->chain_plug->accept_transaction( trx,
-            [my, delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
-               my->amqp_trx->ack( delivery_tag );
-               // publish to trace plugin as execptions are not reported via controller signal applied_transaction
-               if( result.contains<chain::exception_ptr>() ) {
-                  auto& eptr = result.get<chain::exception_ptr>();
-                  if( my->trace_plug ) {
-                     my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
-                  }
-                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
-               } else {
-                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
-               }
-               my->trx_in_progress_size -= trx->get_estimated_size();
-
-            } );
+               dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+            } else {
+               dlog( "accept_transaction ${id}", ("id", trx->id()) );
+            }
          } );
    }
 };
@@ -124,6 +90,8 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
    op("amqp-trx-address", bpo::value<std::string>(),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
       "Will consume from 'trx' queue.");
+   op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
+      "The maximum number of transactions to pull from the AMQP queue.");
 }
 
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
@@ -135,6 +103,8 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
       EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
       my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
+
+      my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -155,13 +125,12 @@ void amqp_trx_plugin::plugin_startup() {
 
       ilog( "Starting amqp_trx_plugin" );
 
-      // todo make configurable
       auto& controller = my->chain_plug->chain();
       my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
                                                                        controller.configured_subjective_signature_length_limit(),
                                                                        controller.get_thread_pool(),
                                                                        app().find_plugin<producer_plugin>(),
-                                                                       10000 );
+                                                                       my->trx_processing_queue_size );
       my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",
