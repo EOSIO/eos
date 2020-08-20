@@ -15,10 +15,11 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data<action_trace_v0>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -28,10 +29,11 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v1 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {}, {}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data<action_trace_v1>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -41,10 +43,12 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
+
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data<action_trace_v0>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -54,10 +58,11 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v1 {
          0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}, {0x04, 0x05, 0x06, 0x07}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
       abi_data_handler handler(exception_handler{});
 
       auto expected = fc::variant();
-      auto actual = handler.process_data<action_trace_v1>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -67,6 +72,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
             0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
 
       auto abi = chain::abi_def ( {},
          {
@@ -88,7 +94,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data<action_trace_v0>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -98,6 +104,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v1 {
             0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}, {0x04, 0x05, 0x06, 0x07}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
 
       auto abi = chain::abi_def ( {},
          {
@@ -119,7 +126,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          ("c", 2)
          ("d", 3);
 
-      auto actual = handler.process_data<action_trace_v1>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -129,6 +136,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
             0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
 
       auto abi = chain::abi_def ( {},
          {
@@ -146,7 +154,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data<action_trace_v0>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -156,6 +164,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v1 {
             0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02, 0x03}, {0x04, 0x05, 0x06, 0x07}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
 
       auto abi = chain::abi_def ( {},
          {
@@ -173,7 +182,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data<action_trace_v1>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
    }
@@ -184,6 +193,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
       auto action = action_trace_v0 {
             0, "alice"_n, "alice"_n, "foo"_n, {}, {0x00, 0x01, 0x02}
       };
+      std::variant<action_trace_v0, action_trace_v1> action_trace_t = action;
 
       auto abi = chain::abi_def ( {},
          {
@@ -202,7 +212,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
 
       auto expected = fc::variant();
 
-      auto actual = handler.process_data<action_trace_v0>(action, [](){});
+      auto actual = handler.process_data(action_trace_t, [](){});
 
       BOOST_TEST(to_kv(expected) == to_kv(std::get<0>(actual)), boost::test_tools::per_element());
       BOOST_TEST(log_called);

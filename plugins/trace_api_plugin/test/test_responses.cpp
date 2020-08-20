@@ -84,7 +84,7 @@ struct response_test_fixture {
 BOOST_AUTO_TEST_SUITE(trace_responses)
    BOOST_FIXTURE_TEST_CASE(basic_empty_block_response, response_test_fixture)
    {
-      auto block_trace = block_trace_v1 {
+      auto block_trace = block_trace_v1 <action_trace_v0>{
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(basic_block_response, response_test_fixture)
    {
-      auto block_trace = block_trace_v1 {
+      auto block_trace = block_trace_v1<action_trace_v0> {
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params, response_test_fixture)
    {
-      auto block_trace = block_trace_v1 {
+      auto block_trace = block_trace_v1<action_trace_v0> {
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted, response_test_fixture)
    {
-      auto block_trace = block_trace_v1 {
+      auto block_trace = block_trace_v1<action_trace_v0> {
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -429,7 +429,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(lib_response, response_test_fixture)
    {
-      auto block_trace = block_trace_v1{
+      auto block_trace = block_trace_v1<action_trace_v0>{
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -490,7 +490,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(yield_throws, response_test_fixture)
    {
-      auto block_trace = block_trace_v1 {
+      auto block_trace = block_trace_v1 <action_trace_v0>{
          {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -555,7 +555,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
    BOOST_FIXTURE_TEST_CASE(old_version_block_response, response_test_fixture)
    {
-      auto block_trace = block_trace_v0 {
+      auto block_trace = block_trace_v0<action_trace_v0> {
          "b000000000000000000000000000000000000000000000000000000000000001"_h,
          1,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
@@ -615,19 +615,20 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
-
-   BOOST_FIXTURE_TEST_CASE(basic_empty_block_response_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(basic_empty_block_response_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2 {
+      auto block_trace = block_trace_v1<action_trace_v1> {
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,  // block id
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h,  // previous id
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,  // transaction mroot
          "0000000000000000000000000000000000000000000000000000000000000000"_h,  // action mroot
          0,  // schedule version
-         {} // transactions_v2
+         {} // transactions_v1
       };
 
       fc::variant expected_response = fc::mutable_variant_object()
@@ -653,19 +654,22 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
-   BOOST_FIXTURE_TEST_CASE(basic_block_response_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2 {
+      auto block_trace = block_trace_v1<action_trace_v1> {
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,  // block id
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h, // previous id
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,   // transaction mroot
          "0000000000000000000000000000000000000000000000000000000000000000"_h,   //action mroot
          0,  // schecule version
          {  // trns
-              {//trn
+            {//trn
+               {
                   "0000000000000000000000000000000000000000000000000000000000000001"_h,  // id
                   { // actions
                      { //  action_trace_v1
@@ -675,7 +679,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         { 0x00, 0x01, 0x02, 0x03 },
                         { 0x04, 0x05, 0x06, 0x07 }
                      }
-                  },
+                  }
+               },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
                10,  // cpu_usage_us
                5,    // net_usage_words
@@ -741,19 +746,22 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
-   BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_no_params_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2 {
+      auto block_trace = block_trace_v1<action_trace_v1> {
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h,
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
+               {
                   "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
                      {
@@ -763,7 +771,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         { 0x00, 0x01, 0x02, 0x03 },
                         { 0x04, 0x05, 0x06, 0x07 }
                      }
-                  } ,
+                  } 
+               },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
                10,
                5,
@@ -830,19 +839,22 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
-   BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(basic_block_response_unsorted_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2 {
+      auto block_trace = block_trace_v1<action_trace_v1> {
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h,
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
          {
             {
+               {
                   "0000000000000000000000000000000000000000000000000000000000000001"_h,
                   {
                      {
@@ -866,7 +878,8 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
                         { 0x02, 0x02, 0x02, 0x02 },
                         { 0x06, 0x06, 0x06, 0x06 }
                      }
-                  },
+                  }
+               },
                fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
                10,
                5,
@@ -959,14 +972,16 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
-   BOOST_FIXTURE_TEST_CASE(lib_response_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(lib_response_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2{
+      auto block_trace = block_trace_v1<action_trace_v1>{
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h,
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,
@@ -998,14 +1013,16 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
 
 
 
-   BOOST_FIXTURE_TEST_CASE(yield_throws_v2, response_test_fixture)
+   BOOST_FIXTURE_TEST_CASE(yield_throws_v1_1, response_test_fixture)
    {
-      auto block_trace = block_trace_v2 {
+      auto block_trace = block_trace_v1<action_trace_v1> {
+         {
             "b000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
             "0000000000000000000000000000000000000000000000000000000000000000"_h,
             chain::block_timestamp_type(0),
-            "bp.one"_n,
+            "bp.one"_n
+         },
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          "0000000000000000000000000000000000000000000000000000000000000000"_h,
          0,

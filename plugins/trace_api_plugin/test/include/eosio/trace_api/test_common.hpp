@@ -102,14 +102,14 @@ namespace eosio::trace_api {
          lhs.data == rhs.data &&
          lhs.return_value == rhs.return_value;
    }
-
-   bool operator==(const transaction_trace_v0& lhs,  const transaction_trace_v0& rhs) {
+   template<typename ActionTrace>
+   bool operator==(const transaction_trace_v0<ActionTrace> & lhs,  const transaction_trace_v0<ActionTrace>& rhs) {
       return
          lhs.id == rhs.id &&
          lhs.actions == rhs.actions;
    }
-
-   bool operator==(const transaction_trace_v2& lhs,  const transaction_trace_v2& rhs) {
+   template<typename ActionTrace>
+   bool operator==(const transaction_trace_v1<ActionTrace>& lhs,  const transaction_trace_v1<ActionTrace>& rhs) {
       return
          lhs.id == rhs.id &&
          lhs.actions == rhs.actions &&
@@ -124,8 +124,8 @@ namespace eosio::trace_api {
          lhs.trx_header.max_cpu_usage_ms == rhs.trx_header.max_cpu_usage_ms &&
          lhs.trx_header.delay_sec == rhs.trx_header.delay_sec ;
    }
-
-   bool operator==(const block_trace_v0 &lhs, const block_trace_v0 &rhs) {
+   template<typename ActionTrace>
+   bool operator==(const block_trace_v0<ActionTrace> &lhs, const block_trace_v0<ActionTrace> &rhs) {
       return
          lhs.id == rhs.id &&
          lhs.number == rhs.number &&
@@ -134,7 +134,8 @@ namespace eosio::trace_api {
          lhs.producer == rhs.producer &&
          lhs.transactions == rhs.transactions;
    }
-   bool operator==(const block_trace_v2 &lhs, const block_trace_v2 &rhs) {
+   template<typename ActionTrace>
+   bool operator==(const block_trace_v1<ActionTrace> &lhs, const block_trace_v1<ActionTrace> &rhs) {
       return
          lhs.id == rhs.id &&
          lhs.number == rhs.number &&
@@ -144,15 +145,15 @@ namespace eosio::trace_api {
          lhs.transaction_mroot == rhs.transaction_mroot &&
          lhs.action_mroot == rhs.action_mroot &&
          lhs.schedule_version == rhs.schedule_version &&
-         lhs.transactions_v2 == rhs.transactions_v2;
+         lhs.transactions_v1 == rhs.transactions_v1;
    }
-
-   std::ostream& operator<<(std::ostream &os, const block_trace_v0 &bt) {
+   template<typename ActionTrace>
+   std::ostream& operator<<(std::ostream &os, const block_trace_v0<ActionTrace> &bt) {
       os << fc::json::to_string( bt, fc::time_point::maximum() );
       return os;
    }
-
-   std::ostream& operator<<(std::ostream &os, const block_trace_v2 &bt) {
+   template<typename ActionTrace>
+   std::ostream& operator<<(std::ostream &os, const block_trace_v1<ActionTrace> &bt) {
       os << fc::json::to_string( bt, fc::time_point::maximum() );
       return os;
    }

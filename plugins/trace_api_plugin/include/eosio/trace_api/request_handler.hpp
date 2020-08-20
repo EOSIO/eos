@@ -6,13 +6,11 @@
 #include <eosio/trace_api/common.hpp>
 
 namespace eosio::trace_api {
-   using data_handler_function_v0 = std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v0&, const yield_function&)>;
-   using data_handler_function_v1 = std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v1&, const yield_function&)>;
-   
+   using data_handler_function = std::function<std::tuple<fc::variant, fc::optional<fc::variant>>( const std::variant<action_trace_v0, action_trace_v1> & action_trace_t, const yield_function&)>;
    namespace detail {
       class response_formatter {
       public:
-         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function_v0& data_handler_v0, const data_handler_function_v1 & data_handler_v1,    const yield_function& yield );
+         static fc::variant process_block( const data_log_entry& trace, bool irreversible, const data_handler_function & data_handler,    const yield_function& yield );
       };
    }
 
@@ -43,15 +41,14 @@ namespace eosio::trace_api {
          }
 
          yield();
-         
-         auto data_handler_v0 = [this](const action_trace_v0& action, const yield_function& yield) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
-            return data_handler_provider.template process_data<action_trace_v0>(action, yield);
-         };
-         auto data_handler_v1 = [this](const action_trace_v1& action, const yield_function& yield) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
-            return data_handler_provider.template process_data<action_trace_v1>(action, yield);
-         };
 
-         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler_v0, data_handler_v1, yield);
+
+         auto data_handler = [this](const auto& action, const yield_function& yield) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+            return std::visit([&](const auto& action_trace_t) {
+               return data_handler_provider.process_data(action_trace_t, yield);
+            }, action);
+         };
+         return detail::response_formatter::process_block(std::get<0>(*data), std::get<1>(*data), data_handler, yield);
       }
 
    private:

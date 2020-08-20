@@ -14,7 +14,7 @@ using open_state = slice_directory::open_state;
 namespace {
    struct test_fixture {
 
-      const block_trace_v1 bt {
+      const block_trace_v1<action_trace_v0> bt {
          {
             "0000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -60,7 +60,7 @@ namespace {
          }
       };
       
-      const block_trace_v1 bt2 {
+      const block_trace_v1<action_trace_v0> bt2 {
          {
             "0000000000000000000000000000000000000000000000000000000000000002"_h,
             5,
@@ -86,7 +86,7 @@ namespace {
          }
       };
 
-      const block_trace_v0 bt_v0 {
+      const block_trace_v0<action_trace_v0> bt_v0 {
          "0000000000000000000000000000000000000000000000000000000000000001"_h,
          1,
          "0000000000000000000000000000000000000000000000000000000000000003"_h,
@@ -243,11 +243,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
-      const auto bt_returned = extract_store<block_trace_v1>( vs );
+      const auto bt_returned = extract_store<block_trace_v1<action_trace_v0>>( vs );
       BOOST_REQUIRE(bt_returned == bt);
 
       vs._pos = offset2;
-      const auto bt_returned2 = extract_store<block_trace_v1>( vs );
+      const auto bt_returned2 = extract_store<block_trace_v1<action_trace_v0>>( vs );
       BOOST_REQUIRE(bt_returned2 == bt2);
    }
 
@@ -261,11 +261,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
-      const auto bt_returned = extract_store<block_trace_v0>( vs );
+      const auto bt_returned = extract_store<block_trace_v0<action_trace_v0>>( vs );
       BOOST_REQUIRE(bt_returned == bt_v0);
 
       vs._pos = offset2;
-      const auto bt_returned2 = extract_store<block_trace_v1>( vs );
+      const auto bt_returned2 = extract_store<block_trace_v1<action_trace_v0>>( vs );
       BOOST_REQUIRE(bt_returned2 == bt);
    }
 

@@ -38,8 +38,7 @@ namespace eosio {
        * @return variant representing the `data` field of the action interpreted by known ABIs OR an empty variant
        */
 
-      template<typename ActionTrace>
-      std::tuple<fc::variant, fc::optional<fc::variant>> process_data(const ActionTrace & action, const yield_function& yield );
+      std::tuple<fc::variant, fc::optional<fc::variant>> process_data(const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield );
 
       /**
        * Utility class that allows mulitple request_handlers to share the same abi_data_handler
@@ -49,9 +48,8 @@ namespace eosio {
          explicit shared_provider(const std::shared_ptr<abi_data_handler>& handler)
          :handler(handler)
          {}
-         template<typename ActionTrace>
-         std::tuple<fc::variant, fc::optional<fc::variant>> process_data( const ActionTrace& action, const yield_function& yield ) {
-            return handler->process_data<ActionTrace>(action, yield);
+         std::tuple<fc::variant, fc::optional<fc::variant>> process_data( const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield ) {
+            return handler->process_data(action, yield);
          }
 
          std::shared_ptr<abi_data_handler> handler;

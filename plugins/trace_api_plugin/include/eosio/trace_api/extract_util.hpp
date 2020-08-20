@@ -34,7 +34,7 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
    } else {
       r.id = t.trace->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
    }
-   if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1>  || std::is_same_v<TransactionTrace, transaction_trace_v2>){
+   if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v0>>  || std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>){
       if (t.trace->receipt) {
          r.status = t.trace->receipt->status;
          r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
@@ -47,14 +47,13 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
 
    r.actions.reserve( t.trace->action_traces.size());
 
+
+
    for( const auto& at : t.trace->action_traces ) {
       if( !at.context_free ) { // not including CFA at this time
-         if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v2>)
-         {
-            r.actions.emplace_back( to_action_trace<action_trace_v1>( at ));
-         }else{
-            r.actions.emplace_back( to_action_trace<action_trace_v0>( at ));
-         }
+         using action_trace_tc = std::conditional_t<std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>, action_trace_v1, action_trace_v0>;
+         r.actions.emplace_back( to_action_trace<action_trace_tc>(at) );
+
       }
    }
    return r;
@@ -69,7 +68,7 @@ inline BlockTrace create_block_trace( const chain::block_state_ptr& bsp ) {
    r.previous_id = bsp->block->previous;
    r.timestamp = bsp->block->timestamp;
    r.producer = bsp->block->producer;
-   if constexpr(std::is_same_v<BlockTrace, block_trace_v1>  || std::is_same_v<BlockTrace, block_trace_v2>)
+   if constexpr(std::is_same_v<BlockTrace, block_trace_v1<action_trace_v0>>  || std::is_same_v<BlockTrace, block_trace_v1<action_trace_v1>>)
    {
       r.schedule_version = bsp->block->schedule_version;
       r.transaction_mroot = bsp->block->transaction_mroot;

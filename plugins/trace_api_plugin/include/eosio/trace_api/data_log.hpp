@@ -7,9 +7,8 @@
 namespace eosio { namespace trace_api {
 
    using data_log_entry = fc::static_variant<
-      block_trace_v0,
-      block_trace_v1,
-      block_trace_v2
+      block_trace_v0<action_trace_v0>,
+      block_trace_v1<action_trace_v0>,
+      block_trace_v1<action_trace_v1>
    >;
-
 }}
