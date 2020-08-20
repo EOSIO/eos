@@ -933,32 +933,6 @@ struct controller_impl {
 # warning TODO: Revisit this and adpat to new design
          if constexpr (std::is_same_v<value_t, kv_object>) {
             snapshot->write_section<value_t>([this]( auto& section ){
-               // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be stored in rocksdb.
-               if (db.get<kv_db_config_object>().using_rocksdb_for_disk) {
-                  std::unique_ptr<rocksdb::Iterator> it{kv_database.rdb->NewIterator(rocksdb::ReadOptions())};
-                  std::vector<char> prefix = rocksdb_contract_kv_prefix;
-                  b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
-                  it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
-                  while(it->Valid()) {
-                     auto key = it->key();
-                     if(key.size() < rocksdb_contract_kv_prefix.size() || !std::equal(prefix.begin(), prefix.end(), key.data()))
-                        break;
-                     uint64_t contract;
-                     char buf[sizeof(contract)];
-                     std::size_t key_prefix_size = prefix.size() + sizeof(contract);
-                     EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size, buf);
-                     std::memcpy(&contract, buf, sizeof(contract));
-                     auto value = it->value();
-                     kv_object_view row{
-                        name(contract),
-                        { { key.data() + key_prefix_size, key.data() + key.size() } },
-                        { { value.data(), value.data() + value.size() } }
-                     };
-                     section.add_row(row, db);
-                     it->Next();
-                  }
-               }
                decltype(utils)::template walk<by_kv_key>(db, [this, &section]( const auto &row ) {
                   section.add_row(row, db);
                });
@@ -1093,23 +1067,13 @@ struct controller_impl {
             if (conf.backing_store == backing_store_type::ROCKSDB) {
                rocksdb::WriteBatch batch;
                vector<char> prefix = rocksdb_contract_kv_prefix;
-               b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
+               b1::chain_kv::append_key(prefix, kvram_id.to_uint64_t());
                snapshot->read_section<value_t>([this, &batch, &prefix]( auto& section ) {
                   bool more = !section.empty();
                   while (more) {
-                     kv_object* move_to_rocks = nullptr;
-                     decltype(utils)::create(db, [this, &section, &more, &move_to_rocks]( auto &row ) {
+                     decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
                         more = section.read_row(row, db);
-                        if (row.database_id == kvdisk_id) {
-                           move_to_rocks = &row;
-                        }
                      });
-                     if(move_to_rocks) {
-                        rocksdb::Slice key = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
-                        rocksdb::Slice value = { move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size() };
-                        batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(prefix, move_to_rocks->contract.to_uint64_t(), key)), value);
-                        db.remove(*move_to_rocks);
-                     }
                   }
                });
                // TODO: Split the batch to avoid storing it all in memory at once.
