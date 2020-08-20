@@ -43,16 +43,16 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 	// instantiate an account_query_db
 	auto aq_db = account_query_db(*control);
 
-    produce_blocks(10);
-
     //link aq_db to the `accepted_block` signal on the controller
 	auto c2 = control->accepted_block.connect([&](const block_state_ptr& blk) {
         aq_db.commit_block( blk);
 	});
 
+	produce_blocks(10);
+
 	account_name tester_account = N(tester);
-	const auto tracePtr =  create_account(tester_account);
-	aq_db.cache_transaction_trace(tracePtr);
+	const auto trace_ptr =  create_account(tester_account);
+	aq_db.cache_transaction_trace(trace_ptr);
 	produce_block();
 
 	params pars;
@@ -64,7 +64,6 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
-    produce_blocks(10);
 
     // instantiate an account_query_db
     auto aq_db = account_query_db(*control);
@@ -74,18 +73,20 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
         aq_db.commit_block( blk);
     });
 
+    produce_blocks(10);
+
 	const auto& tester_account = N(tester);
 	const string role = "first";
 	produce_block();
 	create_account(tester_account);
 
-	auto tracePtr = push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
+	const auto trace_ptr = push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
 			("account", tester_account)
 			("permission", N(role))
 			("parent", "active")
 			("auth",  authority(get_public_key(tester_account, role), 5))
 	);
-	aq_db.cache_transaction_trace(tracePtr);
+	aq_db.cache_transaction_trace(trace_ptr);
 	produce_block();
 
 	params pars;
