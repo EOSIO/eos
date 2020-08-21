@@ -211,8 +211,9 @@ template <typename DataStream>
 inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v0, eosio::chain::config_entry_validator> &entry){
    using namespace eosio::chain;
 
-   if (!entry.is_allowed())
-      return s;
+   //initial requirements were to skip packing field if it is not activated.
+   //this approach allows to spam this function with big buffer so changing this behavior
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
    
    switch (entry.id){
       case chain_config_v0::max_block_net_usage_id:
@@ -283,8 +284,9 @@ template <typename DataStream>
 inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
    using namespace eosio::chain;
 
-   if (!entry.is_allowed())
-      return s;
+   //initial requirements were to skip packing field if it is not activated.
+   //this approach allows to spam this function with big buffer so changing this behavior
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
    
    switch (entry.id){
       case chain_config_v1::max_action_return_value_size_id:

@@ -243,4 +243,22 @@ public:
       auto pp = params_object(2_ui)(0_ui)(1_ui);
       get_parameters_packed(pp.packed.c_str(), pp.packed.size(), buffer, sizeof(buffer));
    }
+
+   [[eosio::action]] void throwrvia1(){
+      //throws when setting parameter that is not allowed because of protocol feature for
+      //this parameter is not active
+      
+      //v1 config, max_action_return_value_size
+      params_object(1_ui)(17_ui)(1024_32).set();
+      ASSERT_EQ(params_object(1_ui)(17_ui).get(), 
+                params_object(1_ui)(17_ui)(1024_32));
+   }
+
+   [[eosio::action]] void throwrvia2(){
+      //this test tries to get parameter with corresponding inactive protocol feature
+      
+      //v1 config, max_action_return_value_size
+      ASSERT_EQ(params_object(1_ui)(17_ui).get(), 
+                params_object(1_ui)(17_ui)(1024_32));
+   }
 };
