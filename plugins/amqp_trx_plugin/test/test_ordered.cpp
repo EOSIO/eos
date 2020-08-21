@@ -115,6 +115,8 @@ BOOST_AUTO_TEST_CASE(order) {
       usleep(100);
    }
 
+   queue->stop();
+
    BOOST_CHECK_EQUAL( 42, next_calls );
    BOOST_CHECK( next_trx_match.load() );
 
