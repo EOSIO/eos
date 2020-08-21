@@ -23,11 +23,12 @@ public:
    /*
     * Add a callback for when a witness signature is created. This function may only be called from a plugin's
     * initialize() or startup() (and on the main thread, of course). The callback will be on a non-main thread.
-    * For proper shutdown semantics, you almost certainly want the passed callback to hold a shared_ptr to
-    * the object that will be used in the callback. This will allow that object's lifetime (like a plugin_impl)
-    * to extend as long as needed by the witness_plugin (longer than a dependent plugin's shutdown() call).
+    * Similar to how boost signals2 object tracking works, a weak_ptr is required which is lock()ed once the witness
+    * plugin begins to create a signature. This will allow any dependent plugin's impl to stay alive until the callback
+    * is fired -- even if appbase has already initiated shutdown and called shutdown() of the dependent plugin which
+    * would typically cause the plugin_impl's shared_ptr reference count to be decremented.
     */
-   void add_on_witness_sig(witness_callback_func&& func);
+   void add_on_witness_sig(witness_callback_func&& func, std::weak_ptr<void> weak_ptr);
 
 private:
    std::unique_ptr<struct witness_plugin_impl> my;

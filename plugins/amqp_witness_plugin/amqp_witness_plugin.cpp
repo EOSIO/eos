@@ -46,14 +46,14 @@ void amqp_witness_plugin::plugin_startup() {
 
    my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key, witness_data_file_path, "eosio.node.witness_v0");
 
-   app().get_plugin<witness_plugin>().add_on_witness_sig([my=my](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
+   app().get_plugin<witness_plugin>().add_on_witness_sig([my=my.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
       my->rqueue->post_on_io_context([my, bsp, sig]() {
          my->rqueue->publish_message(std::make_pair(bsp->header.action_mroot, sig));
       });
 
       //amqp_witness_plugin may get destroyed nearly immediately after returning here if nodeos is shutting down. reliable_amqp_publisher
       // ensures that any post_on_io_context() is called before its dtor returns though.
-   });
+   }, std::weak_ptr<amqp_witness_plugin_impl>(my));
 }
 
 void amqp_witness_plugin::plugin_shutdown() {}
