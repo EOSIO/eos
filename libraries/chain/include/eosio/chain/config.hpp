@@ -86,6 +86,7 @@ const static uint32_t   default_block_cpu_effort_pct                 = 80 * perc
 const static uint16_t   default_controller_thread_pool_size          = 2;
 const static uint32_t   default_max_variable_signature_length        = 16384u;
 const static uint32_t   default_max_nonprivileged_inline_action_size = 4 * 1024; // 4 KB
+const static uint32_t   default_max_action_return_value_size         = 256;
 
 const static uint32_t   default_max_kv_key_size                = 1024;
 const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts
