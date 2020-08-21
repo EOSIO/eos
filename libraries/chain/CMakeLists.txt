@@ -35,7 +35,6 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc/default_real_main.cpp
                              webassembly/runtimes/eos-vm-oc/softfloat.cpp)
 
-
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
       list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.llvmwar)
@@ -51,7 +50,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 endif()
 
 if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp")
+   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp" "webassembly/runtimes/host_function_registrator.cpp")
    set(CHAIN_EOSVM_LIBRARIES eos-vm)
 endif()
 

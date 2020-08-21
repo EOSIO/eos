@@ -27,19 +27,44 @@ intrinsic::intrinsic(const char* n, void* f, size_t o) {
    the_intrinsic_map().emplace(n, intrinsic_entry{f, o});
 }
 
+struct ordinal_entry {
+   std::string_view first;
+   std::size_t second;
+};
+constexpr bool operator<(const ordinal_entry& lhs, const ordinal_entry& rhs) { return lhs.first < rhs.first; }
+// C++20: using std::sort;
+constexpr ordinal_entry* partition(ordinal_entry* first, ordinal_entry* last) {
+   ordinal_entry pivot = *first;
+   while(true) {
+      --last;
+      while(first < last && pivot < *last) --last;
+      if(first == last) break;
+      *first = *last;
+
+      ++first;
+      while(first < last && *first < pivot) ++first;
+      if(first == last) break;
+      *last = *first;
+   }
+   *first = pivot;
+   return first;
+}
+constexpr void sort(ordinal_entry* first, ordinal_entry* last) {
+   if(last - first <= 1) return;
+   // basic quicksort
+   auto mid = eosvmoc::partition(first, last);
+   sort(first, mid);
+   sort(mid + 1, last);
+}
+
 static constexpr auto get_ordinal_map() {
-   constexpr auto static_result = boost::hana::sort(boost::hana::zip(intrinsic_table, boost::hana::to_tuple(boost::hana::make_range(boost::hana::int_c<0>, boost::hana::length(intrinsic_table)))));
-   constexpr std::size_t array_size = boost::hana::length(intrinsic_table);
-   using result_type = std::array<std::pair<std::string_view, std::size_t>, array_size>;
-   constexpr auto construct_array = [](auto... a) {
-      return result_type{
-         std::pair<std::string_view, std::size_t>{
-            boost::hana::at(a, boost::hana::int_c<0>).c_str(),
-            boost::hana::at(a, boost::hana::int_c<1>)
-         }...
-      };
-   };
-   return boost::hana::unpack(static_result, construct_array);
+   constexpr auto intrinsic_table = get_intrinsic_table();
+   std::array<ordinal_entry, intrinsic_table.size()> result{};
+   for(std::size_t i = 0; i < intrinsic_table.size(); ++i) {
+     result[i] = { intrinsic_table[i], i };
+   }
+   eosvmoc::sort(result.data(), result.data() + result.size());
+   return result;
 }
 
 std::size_t get_intrinsic_ordinal(std::string_view name) {

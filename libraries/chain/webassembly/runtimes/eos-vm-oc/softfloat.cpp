@@ -466,7 +466,7 @@ namespace {
 
 #define REGISTER_INJECTED_HOST_FUNCTION(name)\
    intrinsic name##Function("eosio_injection." #name, (void*)&name, \
-     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosio_injection." #name))).value() \
+     std::integral_constant<std::size_t, find_intrinsic_index("eosio_injection." #name)>::value \
    ); \
 
 namespace eosio::chain::eosvmoc {

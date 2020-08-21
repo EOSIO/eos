@@ -140,10 +140,10 @@ inline eosio::chain::eosvmoc::intrinsic_map_t& get_intrinsic_map() {
 template <auto F, typename Cls, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
    constexpr auto fn = eosio::chain::eosvmoc::create_function<F, Cls, eos_vm_oc_type_converter<Cls>, Preconditions>();
+   constexpr auto index = eosio::chain::eosvmoc::find_intrinsic_index(n.c_str());
    get_intrinsic_map().insert(
          { n.c_str(),
-           { reinterpret_cast<void*>(fn),
-             ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(n)).value() } });
+           { reinterpret_cast<void*>(fn), index } });
 }
 #endif
 

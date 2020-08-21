@@ -19,6 +19,9 @@ struct unimplemented_callbacks {
    int64_t set_proposed_producers(int, int) { return unimplemented<int64_t>("set_proposed_producers"); }
    int     get_blockchain_parameters_packed(int, int) { return unimplemented<int>("get_blockchain_parameters_packed"); }
    void set_blockchain_parameters_packed(int, int) { return unimplemented<void>("set_blockchain_parameters_packed"); }
+   uint32_t get_parameters_packed(eosio::vm::span<const char>, eosio::vm::span<char>) const { return unimplemented<uint32_t>("get_parameters_packed"); }
+   void set_parameters_packed( eosio::vm::span<const char> ) { return unimplemented<uint32_t>("set_parameters_packed"); }
+
    int  is_privileged(int64_t) { return unimplemented<int>("is_privileged"); }
    void set_privileged(int64_t, int) { return unimplemented<void>("set_privileged"); }
    void preactivate_feature(int) { return unimplemented<void>("preactivate_feature"); }

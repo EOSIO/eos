@@ -12,7 +12,7 @@
 namespace eosio { namespace chain { namespace eosvmoc {
 
 class memory {
-      static constexpr uint64_t intrinsic_count                   = boost::hana::length(intrinsic_table);
+      static constexpr uint64_t intrinsic_count                   = intrinsic_table_size();
       //warning: changing the following 3 params will invalidate existing PIC
       static constexpr uint64_t mutable_global_size               = 8u  * eosio::chain::wasm_constraints::maximum_mutable_globals/4u;
       static constexpr uint64_t table_size                        = 16u * eosio::chain::wasm_constraints::maximum_table_elements;

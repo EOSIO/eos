@@ -15,7 +15,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic_interface.hpp>
 
-#include <boost/hana/equal.hpp>
+#include <boost/hana/string.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eosvmoc {
 
@@ -93,10 +93,11 @@ template<auto F, typename Preconditions, typename Name>
 void register_eosvm_oc(Name n) {
    constexpr auto fn = create_function<F, webassembly::interface, eos_vm_oc_type_converter, Preconditions>();
    auto& map = get_intrinsic_map();
+   constexpr auto index = find_intrinsic_index(n.c_str());
    map.insert({n.c_str(),
       {
          reinterpret_cast<void*>(fn),
-         ::boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(n)).value()
+         index
       }
    });
 }
