@@ -25,6 +25,7 @@ struct witness_trx_plugin_impl {
 
    chain::time_point last_known_head_time;
    chain::block_id_type lib_block_id;
+   std::optional<chain::chain_id_type> chain_id;
    std::list<std::vector<char>> sig_action_data_waiting_on_catch_up;
 
    std::thread thread;
@@ -106,7 +107,7 @@ struct witness_trx_plugin_impl {
       trx.expiration = last_known_head_time + fc::seconds(30);
 
       try {
-         trx.signatures.emplace_back(signature_provider(trx.sig_digest(chainplug.chain().get_chain_id(), trx.context_free_data)));
+         trx.signatures.emplace_back(signature_provider(trx.sig_digest(*chain_id, trx.context_free_data)));
          outstanding_witness_transaction_index.emplace(trx.id(), trx.expiration + fc::seconds(600), std::move(action_datas));
       }
       catch(const fc::exception& e) {
@@ -215,6 +216,7 @@ void witness_trx_plugin::plugin_startup() {
 
    my->last_known_head_time = my->chainplug.chain().head_block_time();
    my->lib_block_id = my->chainplug.chain().last_irreversible_block_id();
+   my->chain_id = my->chainplug.chain().get_chain_id();
 
    if(boost::filesystem::exists(my->trx_witness_path) && !my->delete_previous) {
       try {
