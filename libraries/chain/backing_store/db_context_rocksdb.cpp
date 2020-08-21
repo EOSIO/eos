@@ -1,8 +1,8 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/db_context.hpp>
+#include <eosio/chain/backing_store/db_context.hpp>
 
-namespace eosio { namespace chain {
+namespace eosio { namespace chain { namespace backing_store {
 
    struct db_context_rocksdb : db_context {
       apply_context&               context;
@@ -282,4 +282,4 @@ namespace eosio { namespace chain {
       }
    }; // db_context_rocksdb
 
-}} // namespace eosio::chain
+}}} // namespace eosio::chain::backing_store
