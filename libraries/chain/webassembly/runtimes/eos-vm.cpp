@@ -6,6 +6,7 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
+#include "host_function_registrator.cpp"
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
