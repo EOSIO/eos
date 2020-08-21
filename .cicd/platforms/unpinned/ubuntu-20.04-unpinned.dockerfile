@@ -27,11 +27,6 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-# load nvm in non-interactive shells
-RUN cp ~/.bashrc ~/.bashrc.bak && \
-    cat ~/.bashrc.bak | tail -3 > ~/.bashrc && \
-    cat ~/.bashrc.bak | head -n '-3' >> ~/.bashrc && \
-    rm ~/.bashrc.bak
 # install node 12
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
     . /etc/lsb-release && \
