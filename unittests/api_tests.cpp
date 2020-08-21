@@ -3656,16 +3656,16 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
    set_code( N(test), contracts::action_results_wasm() );
    produce_blocks(1);
 
-   auto call_autoresret_and_check = [&]( account_name contract, account_name signer, auto&& checker ) {
+   auto call_autoresret_and_check = [&]( account_name contract, account_name signer, action_name action, auto&& checker ) {
       signed_transaction trx;
-      trx.actions.emplace_back( vector<permission_level>{{signer, config::active_name}}, contract, N(actionresret), bytes{} );
+      trx.actions.emplace_back( vector<permission_level>{{signer, config::active_name}}, contract, action, bytes{} );
       this->set_transaction_headers( trx, this->DEFAULT_EXPIRATION_DELTA );
       trx.sign( this->get_private_key(signer, "active"), control->get_chain_id() );
       auto res = this->push_transaction(trx);
       checker( res );
    };
 
-   call_autoresret_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
+   call_autoresret_and_check( N(test), N(test), N(actionresret), [&]( const transaction_trace_ptr& res ) {
       BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
 
       auto &atrace = res->action_traces;
@@ -3673,6 +3673,11 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
       BOOST_REQUIRE_EQUAL( atrace[0].return_value.size(), 4 );
       BOOST_REQUIRE_EQUAL( fc::raw::unpack<int>(atrace[0].return_value), 10 );
    } );
+
+   produce_blocks(1);
+
+   BOOST_REQUIRE_THROW(call_autoresret_and_check( N(test), N(test), N(retoverlim), [&]( auto res ) {}),
+                       action_return_value_exception);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

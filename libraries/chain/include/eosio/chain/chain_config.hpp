@@ -15,6 +15,7 @@ namespace eosio { namespace chain {
  */
 struct chain_config_v0 {
 
+   //order must match parameters as ids are used in serialization
    enum {
       max_block_net_usage_id,
       target_block_net_usage_pct_id,
@@ -33,7 +34,7 @@ struct chain_config_v0 {
       max_inline_action_size_id,
       max_inline_action_depth_id,
       max_authority_depth_id,
-      ENUM_SIZE
+      PARAMS_COUNT
    };
 
    uint64_t   max_block_net_usage;                 ///< the maxiumum net usage in instructions for a block
@@ -130,14 +131,14 @@ struct chain_config_v0 {
 
 struct chain_config_v1 : chain_config_v0 {
    using Base = chain_config_v0;
-   //add parameters here:
-   //...
-   //uncomment and substitute first_id with corresponding parameter name
+
+   uint32_t   max_action_return_value_size = config::default_max_action_return_value_size;               ///< size limit for action return value
+   
    //order must match parameters as ids are used in serialization
-   //enum {
-   //   first_id = chain_config_v0::ENUM_SIZE,
-   //   ENUM_SIZE
-   //};
+   enum {
+     max_action_return_value_size_id = Base::PARAMS_COUNT,
+     PARAMS_COUNT
+   };
 
    inline const Base& base() const {
       return static_cast<const Base&>(*this);
@@ -147,13 +148,13 @@ struct chain_config_v1 : chain_config_v0 {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config_v1& c ) {
-      //add v1 parameters output here
-      return out << c.base();
+      return out << c.base() << "Max Action Return Value Size" << c.max_action_return_value_size << "\n";
    }
 
    friend inline bool operator == ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
       //add v1 parameters comarison here
-      return lhs.base() == rhs.base();
+      return std::tie(lhs.max_action_return_value_size) == std::tie(rhs.max_action_return_value_size) 
+          && lhs.base() == rhs.base();
    }
 
    friend inline bool operator != ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
@@ -175,7 +176,7 @@ struct config_entry_validator{
 };
 
 //after adding 1st value to chain_config_v1 change this using to point to v1
-using chain_config = chain_config_v0;
+using chain_config = chain_config_v1;
 using config_range = data_range<chain_config, config_entry_validator>;
 
 } } // namespace eosio::chain
@@ -192,9 +193,10 @@ FC_REFLECT(eosio::chain::chain_config_v0,
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
 
 )
-//uncomment after adding 1st member to v1 config
-//FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), CHAIN_CONFIG_V1_MEMBERS())
 
+FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), 
+           (max_action_return_value_size)
+)
 
 namespace fc {
 
@@ -285,10 +287,12 @@ inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosi
       return s;
    
    switch (entry.id){
-      //add here entries for new members of chain_config_v1
+      case chain_config_v1::max_action_return_value_size_id:
+      fc::raw::pack(s, entry.config.max_action_return_value_size);
+      break;
       default:
-      data_entry<chain_config_v0, eosio::chain::config_entry_validator> base_entry(entry);
-      fc::raw::unpack(s, base_entry);
+      data_entry<chain_config_v0, config_entry_validator> base_entry(entry);
+      fc::raw::pack(s, base_entry);
    }
 
    return s;
@@ -375,12 +379,16 @@ inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::cha
  */
 template <typename DataStream>
 inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
-   EOS_ASSERT(entry.is_allowed(), eosio::chain::unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
+   using namespace eosio::chain;
+
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
 
    switch (entry.id){
-      //add here entries for new members of chain_config_v1
+      case chain_config_v1::max_action_return_value_size_id:
+      fc::raw::unpack(s, entry.config.max_action_return_value_size);
+      break;
       default:
-      eosio::chain::data_entry<std::false_type, eosio::chain::config_entry_validator> base_entry(entry);
+      eosio::chain::data_entry<chain_config_v0, config_entry_validator> base_entry(entry);
       fc::raw::unpack(s, base_entry);
    }
 
@@ -402,7 +410,7 @@ inline DataStream& operator<<( DataStream& s, const eosio::chain::data_range<T, 
    fc::raw::pack(s, size);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(T::ENUM_SIZE, false);
+   std::vector<bool> visited(T::PARAMS_COUNT, false);
    for (auto uid : selection.ids){
       uint32_t id = uid;
       EOS_ASSERT(id < visited.size(), config_parse_error, "provided id ${id} should be less than ${size}", ("id", id)("size", visited.size()));
@@ -431,7 +439,7 @@ inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio:
    fc::raw::unpack(s, length);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(T::ENUM_SIZE, false);
+   std::vector<bool> visited(T::PARAMS_COUNT, false);
    for (uint32_t i = 0; i < length; ++i) {
       fc::unsigned_int id;
       fc::raw::unpack(s, id);
@@ -440,7 +448,7 @@ inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio:
       EOS_ASSERT(!visited[id], config_parse_error, "duplicate id provided: ${id}", ("id", id));
       visited[id] = true;
 
-      eosio::chain::data_entry<T, config_entry_validator> cfg_entry(selection.config, id, selection.validator);
+      data_entry<T, config_entry_validator> cfg_entry(selection.config, id, selection.validator);
       fc::raw::unpack(s, cfg_entry);
    }
    return s;

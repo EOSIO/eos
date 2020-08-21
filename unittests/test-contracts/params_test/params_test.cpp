@@ -201,6 +201,14 @@ public:
       ASSERT_EQ(old_way_params.max_inline_action_size, 1024*1024);
       ASSERT_EQ(old_way_params.max_inline_action_depth, 6);
       ASSERT_EQ(old_way_params.max_authority_depth, 9);
+
+      //v1 config, max_action_return_value_size
+      ASSERT_EQ(params_object(1_ui)(17_ui).get(), 
+                params_object(1_ui)(17_ui)(256_32));
+      
+      params_object(1_ui)(17_ui)(512_32).set();
+      ASSERT_EQ(params_object(1_ui)(17_ui).get(), 
+                params_object(1_ui)(17_ui)(512_32));
    }
 
    [[eosio::action]] void setthrow1(){
