@@ -47,8 +47,9 @@ public:
    }
 
    /// blocks thread until item is available and queue is unpaused.
+   /// pauses queue so nothing else can pull one off until unpaused.
    /// @return false if queue is stopped and t is not modified
-   bool pop(T& t) {
+   bool pop_and_pause(T& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
          empty_cv_.wait(lk, [this]() {
@@ -57,6 +58,7 @@ public:
          if( stopped_ ) return false;
          t = std::move(queue_.front());
          queue_.pop_front();
+         paused_ = true;
       }
       full_cv_.notify_one();
       return true;
@@ -86,8 +88,14 @@ public:
       empty_cv_.notify_one();
    }
 
+   /// also checks paused flag because a paused queue indicates processing is on-going
+   bool empty() const {
+      std::scoped_lock<std::mutex> lk(mtx_);
+      return queue_.empty() && !paused_;
+   }
+
 private:
-   std::mutex mtx_;
+   mutable std::mutex mtx_;
    bool stopped_ = false;
    bool paused_ = false;
    std::condition_variable full_cv_;
@@ -102,7 +110,8 @@ private:
  * FIFO queue for starting signature recovery. Enforces limit (max_depth) on queued transactions to be processed.
  * Only one transaction at a time is submitted to the main application thread so that order is preserved.
  */
-class fifo_trx_processing_queue : public std::enable_shared_from_this<fifo_trx_processing_queue> {
+template<typename ProducerPlugin>
+class fifo_trx_processing_queue : public std::enable_shared_from_this<fifo_trx_processing_queue<ProducerPlugin>> {
 
 private:
    struct q_item {
@@ -117,7 +126,7 @@ private:
    boost::asio::io_context& sig_thread_pool_;
    // Doesn't look like we have strong guarantee that producer_plugin will live longer than app().post() call
    // but various other places also use producer_plugin* & chain_plugin* in app().post().
-   producer_plugin* prod_plugin_ = nullptr;
+   ProducerPlugin* prod_plugin_ = nullptr;
 
 public:
 
@@ -131,7 +140,7 @@ public:
    fifo_trx_processing_queue( const chain::chain_id_type& chain_id,
                               uint32_t configured_subjective_signature_length_limit,
                               boost::asio::io_context& sig_thread_pool,
-                              producer_plugin* prod_plugin,
+                              ProducerPlugin* prod_plugin,
                               size_t max_depth )
    : queue_(max_depth)
    , chain_id_(chain_id)
@@ -143,14 +152,13 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
-      thread_ = std::thread([self=shared_from_this()]() {
+      thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
          while( self->running_ ) {
             try {
                q_item i;
-               if( self->queue_.pop(i) ) {
+               if( self->queue_.pop_and_pause(i) ) {
                   auto trx_meta = i.fut.get();
-                  self->queue_.pause();
                   dlog("posting trx: ${id}", ("id", trx_meta->id()));
                   app().post(priority::low, [self, trx{std::move(trx_meta)}, next{std::move(i.next)}](){
                      auto retry_later = [self](const chain::transaction_metadata_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr>& next) {
@@ -165,8 +173,14 @@ public:
                      self->queue_.unpause();
                   });
                }
+               continue;
             }
             FC_LOG_AND_DROP();
+            // something completely unexpected
+            elog( "Unexpected error, exiting. See above errors." );
+            app().quit();
+            self->queue_.stop();
+            self->running_ = false;
          }
       });
    }
@@ -187,6 +201,10 @@ public:
                                                                      configured_subjective_signature_length_limit_ );
       q_item i{ std::move(future), std::move(next)};
       queue_.push( std::move( i ) );
+   }
+
+   bool empty() const {
+      return queue_.empty();
    }
 
 };

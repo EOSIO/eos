@@ -32,7 +32,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    std::string amqp_trx_address;
    uint32_t trx_processing_queue_size = 1000;
-   std::shared_ptr<fifo_trx_processing_queue> trx_queue_ptr;
+   std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
 
    // called from amqp thread
    void consume_message( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
@@ -149,11 +149,12 @@ void amqp_trx_plugin::plugin_startup() {
       ilog( "Starting amqp_trx_plugin" );
 
       auto& controller = my->chain_plug->chain();
-      my->trx_queue_ptr = std::make_shared<fifo_trx_processing_queue>( controller.get_chain_id(),
-                                                                       controller.configured_subjective_signature_length_limit(),
-                                                                       controller.get_thread_pool(),
-                                                                       app().find_plugin<producer_plugin>(),
-                                                                       my->trx_processing_queue_size );
+      my->trx_queue_ptr =
+            std::make_shared<fifo_trx_processing_queue<producer_plugin>>( controller.get_chain_id(),
+                                                                          controller.configured_subjective_signature_length_limit(),
+                                                                          controller.get_thread_pool(),
+                                                                          app().find_plugin<producer_plugin>(),
+                                                                          my->trx_processing_queue_size );
       my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",
