@@ -7,12 +7,22 @@
             "name": "actionresret",
             "base": "",
             "fields": []
+        },
+        {
+            "name": "retoverlim",
+            "base": "",
+            "fields": []
         }
     ],
     "actions": [
         {
             "name": "actionresret",
             "type": "actionresret",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "retoverlim",
+            "type": "retoverlim",
             "ricardian_contract": ""
         }
     ],
@@ -23,6 +33,10 @@
         {
             "name": "actionresret",
             "result_type": "int32"
+        },
+        {
+            "name": "retoverlim",
+            "result_type": "bytes"
         }
     ]
 }
