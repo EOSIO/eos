@@ -2,6 +2,28 @@
 #warning TODO: Replace this file with db_undo_session.hpp. Use variant.
 #include <chain_kv/chain_kv.hpp>
 #include <chainbase/chainbase.hpp>
+#include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/block_state.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/genesis_state.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/snapshot.hpp>
+
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/backing_store.hpp>
+#include <eosio/chain/block_summary_object.hpp>
+#include <eosio/chain/code_object.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/database_header_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/genesis_intrinsics.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
+#include <eosio/chain/reversible_block_object.hpp>
+#include <eosio/chain/transaction_object.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 
 // It's a fatal condition if chainbase and chain_kv get out of sync with each
 // other due to exceptions.
@@ -14,12 +36,33 @@
 
 namespace eosio { namespace chain {
 
-   struct combined_session {
+   using controller_index_set =
+         index_set<account_index, account_metadata_index, account_ram_correction_index, global_property_multi_index,
+                   protocol_state_multi_index, dynamic_global_property_multi_index, block_summary_multi_index,
+                   transaction_multi_index, generated_transaction_multi_index, table_id_multi_index, code_index,
+                   database_header_multi_index, kv_db_config_index, kv_index>;
+
+   using contract_database_index_set = index_set<key_value_index, index64_index, index128_index, index256_index,
+                                                 index_double_index, index_long_double_index>;
+
+   class combined_session {
+    private:
+      enum class session_type { no_op, chainbase_only, chainbase_and_chain_kv };
+
+      session_type type;
+
       std::unique_ptr<chainbase::database::session> cb_session    = {};
       b1::chain_kv::undo_stack*                     kv_undo_stack = {};
 
+    public:
+      combined_session() : type{ session_type::no_op } {}
+
+      combined_session(chainbase::database& cb_database)
+          : type{ session_type::chainbase_only }, cb_session{ std::make_unique<chainbase::database::session>(
+                                                        cb_database.start_undo_session(true)) } {}
+
       combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack)
-          : kv_undo_stack{ &kv_undo_stack } {
+          : type{ session_type::chainbase_and_chain_kv }, kv_undo_stack{ &kv_undo_stack } {
          try {
             try {
                cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
@@ -30,41 +73,121 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
       }
 
-      combined_session()                        = default;
-      combined_session(const combined_session&) = delete;
       combined_session(combined_session&& src) { *this = std::move(src); }
 
       ~combined_session() { undo(); }
 
       combined_session& operator=(combined_session&& src) {
+         type              = src.type;
          cb_session        = std::move(src.cb_session);
          kv_undo_stack     = src.kv_undo_stack;
+         src.type          = session_type::no_op;
          src.kv_undo_stack = nullptr;
          return *this;
       }
 
       void push() {
-         try {
-            try {
+         switch (type) {
+            default: /* session_type::no_op */ break;
+
+            case session_type::chainbase_only:
                if (cb_session)
                   cb_session->push();
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
-            }
-            FC_LOG_AND_RETHROW()
+               cb_session = nullptr;
+               break;
+
+            case session_type::chainbase_and_chain_kv:
+               try {
+                  try {
+                     if (cb_session)
+                        cb_session->push();
+                     cb_session    = nullptr;
+                     kv_undo_stack = nullptr;
+                  }
+                  FC_LOG_AND_RETHROW()
+               }
+               CATCH_AND_EXIT_DB_FAILURE()
          }
-         CATCH_AND_EXIT_DB_FAILURE()
       }
 
       void squash() {
-         try {
-            try {
+         switch (type) {
+            default: /* session_type::no_op */ break;
+
+            case session_type::chainbase_only:
                if (cb_session)
                   cb_session->squash();
-               if (kv_undo_stack)
-                  kv_undo_stack->squash(false);
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
+               cb_session = nullptr;
+               break;
+
+            case session_type::chainbase_and_chain_kv:
+               try {
+                  try {
+                     if (cb_session)
+                        cb_session->squash();
+                     if (kv_undo_stack)
+                        kv_undo_stack->squash(false);
+                     cb_session    = nullptr;
+                     kv_undo_stack = nullptr;
+                  }
+                  FC_LOG_AND_RETHROW()
+               }
+               CATCH_AND_EXIT_DB_FAILURE()
+         }
+      }
+
+      void undo() {
+         switch (type) {
+            default: /* session_type::no_op */ break;
+
+            case session_type::chainbase_only:
+               if (cb_session)
+                  cb_session->undo();
+               cb_session = nullptr;
+               break;
+
+            case session_type::chainbase_and_chain_kv:
+               try {
+                  try {
+                     if (cb_session)
+                        cb_session->undo();
+                     if (kv_undo_stack)
+                        kv_undo_stack->undo(false);
+                     cb_session    = nullptr;
+                     kv_undo_stack = nullptr;
+                  }
+                  FC_LOG_AND_RETHROW()
+               }
+               CATCH_AND_EXIT_DB_FAILURE()
+         }
+      }
+   };
+
+   class combined_database {
+    public:
+      combined_database(backing_store_type backing_store, chainbase::database& chain_db,
+                        const std::string& rocksdb_path, bool rocksdb_create_if_missing, uint32_t rocksdb_threads,
+                        int rocksdb_max_open_files);
+
+      void set_backing_store(backing_store_type backing_store);
+
+      static combined_session make_no_op_session() { return combined_session(); }
+
+      combined_session make_chainbase_and_chain_kv_session() { return combined_session(db, kv_undo_stack); }
+
+      combined_session make_chainbase_session() { return combined_session(db); }
+
+      combined_session make_session() {
+         return backing_store == backing_store_type::ROCKSDB ? make_chainbase_and_chain_kv_session()
+                                                             : make_chainbase_session();
+      }
+
+      void set_revision(uint64_t revision) {
+         try {
+            try {
+               db.set_revision(revision);
+#warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restart
+               // kv_undo_stack.set_revision(revision, false);
             }
             FC_LOG_AND_RETHROW()
          }
@@ -74,17 +197,68 @@ namespace eosio { namespace chain {
       void undo() {
          try {
             try {
-               if (cb_session)
-                  cb_session->undo();
-               if (kv_undo_stack)
-                  kv_undo_stack->undo(false);
-               cb_session    = nullptr;
-               kv_undo_stack = nullptr;
+               db.undo();
+               kv_undo_stack.undo(false);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
       }
+
+      void commit(int64_t revision) {
+         try {
+            try {
+               db.commit(revision);
+               kv_undo_stack.commit(revision);
+            }
+            FC_LOG_AND_RETHROW()
+         }
+         CATCH_AND_EXIT_DB_FAILURE()
+      }
+
+      void add_to_snapshot(const eosio::chain::snapshot_writer_ptr& snapshot, const eosio::chain::block_state& head,
+                           const eosio::chain::authorization_manager&                    authorization,
+                           const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const;
+
+      void read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end,
+                              backing_store_type backing_store, eosio::chain::authorization_manager& authorization,
+                              eosio::chain::resource_limits::resource_limits_manager& resource_limits,
+                              eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
+                              uint32_t& snapshot_head_block, const eosio::chain::chain_id_type& chain_id);
+
+      std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
+                                                    const kv_database_config& limits) {
+         switch (backing_store) {
+            case backing_store_type::ROCKSDB:
+               return create_kv_rocksdb_context(kv_database, kv_undo_stack, receiver, resource_manager, limits);
+            case backing_store_type::NATIVE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+            default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
+         }
+      }
+
+      void flush() {
+         try {
+            try {
+               kv_undo_stack.write_state();
+               kv_database.flush(true, true);
+            }
+            FC_LOG_AND_RETHROW()
+         }
+         CATCH_AND_EXIT_DB_FAILURE()
+      }
+
+    private:
+      void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;
+      void read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot);
+
+      backing_store_type       backing_store;
+      chainbase::database&     db;
+      b1::chain_kv::database   kv_database;
+      b1::chain_kv::undo_stack kv_undo_stack;
    };
+
+   fc::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
+
+   std::vector<char> make_rocksdb_contract_kv_prefix();
 
 }} // namespace eosio::chain

@@ -57,7 +57,7 @@ namespace eosio { namespace chain {
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
-         undo_session.emplace(c.mutable_db(), c.kv_undo_stack());
+         undo_session = c.kv_db().make_session();
       }
       trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;
@@ -367,11 +367,11 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::squash() {
-      if (undo_session) undo_session->squash();
+      undo_session.squash();
    }
 
    void transaction_context::undo() {
-      if (undo_session) undo_session->undo();
+      undo_session.undo();
    }
 
    void transaction_context::check_net_usage()const {

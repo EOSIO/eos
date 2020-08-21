@@ -51,16 +51,6 @@ namespace eosio { namespace chain {
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
                                    composite_key_compare<std::less<name>, std::less<name>, unsigned_blob_less>>>>;
 
-   inline void use_rocksdb_for_disk(chainbase::database& db) {
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         return;
-      auto& idx = db.get_index<kv_index, by_kv_key>();
-      auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
-      EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
-                 "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb");
-      db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_disk = true; });
-   }
-
 namespace config {
    template<>
    struct billable_size<kv_object> {
