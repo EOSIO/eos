@@ -30,6 +30,7 @@ struct witness_trx_plugin_impl {
    std::thread thread;
    boost::asio::io_context ctx;
    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard{ctx.get_executor()};
+   boost::asio::io_context::strand from_witness_plugin_strand{ctx};
 
    struct outstanding_witness_transaction {
       outstanding_witness_transaction(const chain::digest_type& trx_id, const chain::time_point& trx_expires, std::list<std::vector<char>>&& action_data) :
@@ -126,9 +127,17 @@ struct witness_trx_plugin_impl {
    }
 
    ~witness_trx_plugin_impl() {
-      ctx.stop();
-      if(thread.joinable())
+      if(thread.joinable()) {
+         //drain any remaining items being delivered from witness_plugin
+         std::promise<void> shutdown_promise;
+         boost::asio::post(from_witness_plugin_strand, [&]() {
+            shutdown_promise.set_value();
+         });
+         shutdown_promise.get_future().wait();
+
+         ctx.stop();
          thread.join();
+      }
 
       //splice() all the action datas from the outstanding_witness_transaction_index items over to the sig_action_data_waiting_on_catch_up list
       // to have a single location to write out everything
@@ -182,24 +191,19 @@ void witness_trx_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void witness_trx_plugin::plugin_startup() {
-   app().get_plugin<witness_plugin>().add_on_witness_sig([my=my](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
+   app().get_plugin<witness_plugin>().add_on_witness_sig([my=my.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
       //if nodeos is shutting down, it is possible witness_trx_plugin_impl will be destroyed immediately after the callback returns before
       // the post() below is actually dispatched. Prevent returning until certain post() has dispatched.
-      std::promise<void> made_to_other_thread_promise;
-      auto fut = made_to_other_thread_promise.get_future();
 
-      my->ctx.post([my, &bsp, &sig, &made_to_other_thread_promise]() {
+      boost::asio::post(my->from_witness_plugin_strand, [my, bsp, sig]() {
          std::vector<char> witness_action_data = fc::raw::pack(std::make_pair(bsp->header.action_mroot, sig));
-         made_to_other_thread_promise.set_value();
 
          if(my->caught_up())
             my->submit_witness_trx({witness_action_data});
          else
             my->sig_action_data_waiting_on_catch_up.emplace_back(std::move(witness_action_data));
       });
-
-      fut.wait();
-   });
+   }, std::weak_ptr<witness_trx_plugin_impl>(my));
 
    my->chainplug.chain().accepted_block.connect([this](const chain::block_state_ptr& bsp) {
       my->on_accepted_block(bsp);
