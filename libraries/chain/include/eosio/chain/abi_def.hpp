@@ -6,7 +6,7 @@ namespace eosio { namespace chain {
 
 using type_name      = string;
 using field_name     = string;
-using index_name = name;
+using index_name     = name;
 
 struct type_def {
    type_def() = default;
@@ -86,21 +86,6 @@ struct primary_index_def
    {
       return std::tie(name, type) == std::tie(other.name, other.type);
    }
-
-   /*
-    template <typename ST>
-    friend std::ostream &operator<<(ST &s, const eosio::chain::primary_index_def &o)
-    {
-        s <<o.name << o.type;
-        return s;
-    }
-
-    template <typename ST>
-    friend ST &operator>>(ST &s, eosio::chain::primary_index_def &o)
-    {
-        return s;
-    }
-    */
 };
 
 struct secondary_index_def
@@ -116,20 +101,6 @@ struct secondary_index_def
     {
         return type == other.type;
     }
-/*
-    template <typename ST>
-    friend std::ostream &operator<<(ST &s, const eosio::chain::secondary_index_def &o)
-    {
-        s << o.type;
-        return s;
-    }
-
-    template <typename ST>
-    friend ST &operator>>(ST &s, eosio::chain::secondary_index_def &o)
-    {
-        return s;
-    }
-*/
 };
 
 
@@ -142,20 +113,6 @@ struct kv_table_def {
    type_name                             type;                // the name of the struct
    primary_index_def                     primary_index;       // primary index field
    map<index_name, secondary_index_def>  secondary_indices;   // secondary indices fields
-/*
-    template <typename ST>
-    friend std::ostream &operator<<(ST &s, const eosio::chain::kv_table_def &o)
-    {
-        //s << o.type << " " << o.primary_index << " " << o.secondary_indices;
-        return s;
-    }
-
-    template <typename ST>
-    friend ST &operator>>(ST &s, eosio::chain::kv_table_def &o)
-    {
-        return s;
-    }
-*/
  };
 
 struct clause_pair {

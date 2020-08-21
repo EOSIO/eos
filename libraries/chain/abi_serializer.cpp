@@ -216,6 +216,12 @@ namespace eosio { namespace chain {
       return _is_type(type, ctx);
    }
 
+   bool abi_serializer::is_kv_table(const std::string_view& type)const {
+      return kv_tables.find(name(type)) != kv_tables.end();
+   }
+
+
+
    std::string_view abi_serializer::fundamental_type(const std::string_view& type)const {
       if( is_array(type) ) {
          return type.substr(0, type.size()-2);
@@ -584,10 +590,10 @@ namespace eosio { namespace chain {
       return type_name();
    }
 
-   kv_table_def abi_serializer::get_kv_table_type(name action)const {
+   type_name abi_serializer::get_kv_table_type(name action)const {
       auto itr = kv_tables.find(action);
-      if( itr != kv_tables.end() ) return itr->second;
-      return kv_table_def();
+      if( itr != kv_tables.end() ) return itr->second.type;
+      return type_name();
    }
 
    type_name abi_serializer::get_action_result_type(name action_result)const {
