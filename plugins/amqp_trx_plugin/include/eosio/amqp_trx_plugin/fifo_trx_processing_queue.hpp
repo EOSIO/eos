@@ -66,10 +66,8 @@ public:
 
    /// pause pop of queue. Does not pause/block push.
    void pause() {
-      mtx_.lock();
+      std::scoped_lock<std::mutex> lk(mtx_);
       paused_ = true;
-      mtx_.unlock();
-      empty_cv_.notify_one();
    }
 
    /// unpause pop of queue.
@@ -77,7 +75,7 @@ public:
       mtx_.lock();
       paused_ = false;
       mtx_.unlock();
-      empty_cv_.notify_one();
+      empty_cv_.notify_all();
    }
 
    /// cause pop to unblock
@@ -85,7 +83,7 @@ public:
       mtx_.lock();
       stopped_ = true;
       mtx_.unlock();
-      empty_cv_.notify_one();
+      empty_cv_.notify_all();
    }
 
    /// also checks paused flag because a paused queue indicates processing is on-going
@@ -185,9 +183,10 @@ public:
       });
    }
 
-   ~fifo_trx_processing_queue() {
-      queue_.stop();
+   /// shutdown queue processing
+   void stop() {
       running_ = false;
+      queue_.stop();
       if( thread_.joinable() ) {
          thread_.join();
       }
@@ -195,11 +194,12 @@ public:
 
    /// thread-safe
    /// queue a trx to be processed. transactions are processed in the order pushed
+   /// next function is called from the app() thread
    void push(const chain::packed_transaction_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr> next) {
       fc::microseconds max_trx_cpu_usage = prod_plugin_->get_max_transaction_time();
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
                                                                      configured_subjective_signature_length_limit_ );
-      q_item i{ std::move(future), std::move(next)};
+      q_item i{ std::move(future), std::move(next) };
       queue_.push( std::move( i ) );
    }
 
