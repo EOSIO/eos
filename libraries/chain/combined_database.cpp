@@ -3,6 +3,115 @@
 
 namespace eosio { namespace chain {
 
+   combined_session::combined_session(chainbase::database& cb_database)
+       : type{ session_type::chainbase_only }, cb_session{ std::make_unique<chainbase::database::session>(
+                                                     cb_database.start_undo_session(true)) } {}
+
+   combined_session::combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack)
+       : type{ session_type::chainbase_and_chain_kv }, kv_undo_stack{ &kv_undo_stack } {
+      try {
+         try {
+            cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
+            kv_undo_stack.push(false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   combined_session::combined_session(combined_session&& src) noexcept
+       : type(src.type), cb_session(std::move(src.cb_session)), kv_undo_stack(src.kv_undo_stack) {
+      src.type          = session_type::no_op;
+      src.kv_undo_stack = nullptr;
+   }
+
+   combined_session& combined_session::operator=(combined_session&& src) noexcept {
+      if (this != &src) {
+         type              = src.type;
+         cb_session        = std::move(src.cb_session);
+         kv_undo_stack     = src.kv_undo_stack;
+         src.type          = session_type::no_op;
+         src.kv_undo_stack = nullptr;
+      }
+      return *this;
+   }
+
+   void combined_session::push() {
+      switch (type) {
+         default: /* session_type::no_op */ break;
+
+         case session_type::chainbase_only:
+            if (cb_session)
+               cb_session->push();
+            cb_session = nullptr;
+            break;
+
+         case session_type::chainbase_and_chain_kv:
+            try {
+               try {
+                  if (cb_session)
+                     cb_session->push();
+                  cb_session    = nullptr;
+                  kv_undo_stack = nullptr;
+               }
+               FC_LOG_AND_RETHROW()
+            }
+            CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
+   void combined_session::squash() {
+      switch (type) {
+         default: /* session_type::no_op */ break;
+
+         case session_type::chainbase_only:
+            if (cb_session)
+               cb_session->squash();
+            cb_session = nullptr;
+            break;
+
+         case session_type::chainbase_and_chain_kv:
+            try {
+               try {
+                  if (cb_session)
+                     cb_session->squash();
+                  if (kv_undo_stack)
+                     kv_undo_stack->squash(false);
+                  cb_session    = nullptr;
+                  kv_undo_stack = nullptr;
+               }
+               FC_LOG_AND_RETHROW()
+            }
+            CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
+   void combined_session::undo() {
+      switch (type) {
+         default: /* session_type::no_op */ break;
+
+         case session_type::chainbase_only:
+            if (cb_session)
+               cb_session->undo();
+            cb_session = nullptr;
+            break;
+
+         case session_type::chainbase_and_chain_kv:
+            try {
+               try {
+                  if (cb_session)
+                     cb_session->undo();
+                  if (kv_undo_stack)
+                     kv_undo_stack->undo(false);
+                  cb_session    = nullptr;
+                  kv_undo_stack = nullptr;
+               }
+               FC_LOG_AND_RETHROW()
+            }
+            CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
    // chainlib reserves prefixes 0x10 - 0x2F.
    static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
@@ -13,7 +122,7 @@ namespace eosio { namespace chain {
                                         uint32_t rocksdb_threads, int rocksdb_max_open_files)
        : backing_store(backing_store_), db(chain_db),
          kv_database(rocksdb_path.c_str(), rocksdb_create_if_missing, rocksdb_threads, rocksdb_max_open_files),
-         kv_undo_stack(kv_database, std::vector<char>{ rocksdb_undo_prefix }) {}
+         kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
       if (backing_store == backing_store_type::ROCKSDB) {
@@ -32,58 +141,59 @@ namespace eosio { namespace chain {
          ilog("using chainbase for eosio.kvdisk");
    }
 
-   void combined_database::add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const {
-      snapshot->write_section("contract_tables", [this](auto& section) {
-         index_utils<table_id_multi_index>::walk(db, [this, &section](const table_id_object& table_row) {
-            // add a row for the table
-            section.add_row(table_row, db);
-
-            // followed by a size row and then N data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &table_row](auto utils) {
-               using utils_t     = decltype(utils);
-               using value_t     = typename decltype(utils)::index_t::value_type;
-               using by_table_id = object_to_table_id_tag_t<value_t>;
-
-               auto tid_key      = boost::make_tuple(table_row.id);
-               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
-
-               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
-               section.add_row(size, db);
-
-               utils_t::template walk_range<by_table_id>(
-                     db, tid_key, next_tid_key, [this, &section](const auto& row) { section.add_row(row, db); });
-            });
-         });
-      });
+   void combined_database::set_revision(uint64_t revision) {
+      try {
+         try {
+            db.set_revision(revision);
+#warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restart
+            // kv_undo_stack.set_revision(revision, false);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
    }
 
-   void combined_database::read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot) {
-      snapshot->read_section("contract_tables", [this](auto& section) {
-         bool more = !section.empty();
-         while (more) {
-            // read the row for the table
-            table_id_object::id_type t_id;
-            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
-               section.read_row(row, db);
-               t_id = row.id;
-            });
-
-            // read the size and data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
-               using utils_t = decltype(utils);
-
-               unsigned_int size;
-               more = section.read_row(size, db);
-
-               for (size_t idx = 0; idx < size.value; idx++) {
-                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
-                     row.t_id = t_id;
-                     more     = section.read_row(row, db);
-                  });
-               }
-            });
+   void combined_database::undo() {
+      try {
+         try {
+            db.undo();
+            kv_undo_stack.undo(false);
          }
-      });
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void combined_database::commit(int64_t revision) {
+      try {
+         try {
+            db.commit(revision);
+            kv_undo_stack.commit(revision);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   void combined_database::flush() {
+      try {
+         try {
+            kv_undo_stack.write_state();
+            kv_database.flush(true, true);
+         }
+         FC_LOG_AND_RETHROW()
+      }
+      CATCH_AND_EXIT_DB_FAILURE()
+   }
+
+   std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
+                                                                    const kv_database_config& limits) {
+      switch (backing_store) {
+         case backing_store_type::ROCKSDB:
+            return create_kv_rocksdb_context(kv_database, kv_undo_stack, receiver, resource_manager, limits);
+         case backing_store_type::NATIVE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+         default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
+      }
    }
 
    void combined_database::add_to_snapshot(
@@ -131,11 +241,10 @@ namespace eosio { namespace chain {
                          !std::equal(prefix.begin(), prefix.end(), key.data()))
                         break;
                      uint64_t    contract;
-                     char        buf[sizeof(contract)];
                      std::size_t key_prefix_size = prefix.size() + sizeof(contract);
                      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size, buf);
-                     std::memcpy(&contract, buf, sizeof(contract));
+                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size,
+                                       reinterpret_cast<char*>(&contract));
                      auto           value = it->value();
                      kv_object_view row{ kvdisk_id,
                                          name(contract),
@@ -317,6 +426,60 @@ namespace eosio { namespace chain {
                  "chain ID in snapshot (${snapshot_chain_id}) does not match the chain ID that controller was "
                  "constructed with (${controller_chain_id})",
                  ("snapshot_chain_id", gpo.chain_id)("controller_chain_id", chain_id));
+   }
+
+   void combined_database::add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const {
+      snapshot->write_section("contract_tables", [this](auto& section) {
+         index_utils<table_id_multi_index>::walk(db, [this, &section](const table_id_object& table_row) {
+            // add a row for the table
+            section.add_row(table_row, db);
+
+            // followed by a size row and then N data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &table_row](auto utils) {
+               using utils_t     = decltype(utils);
+               using value_t     = typename utils_t::index_t::value_type;
+               using by_table_id = object_to_table_id_tag_t<value_t>;
+
+               auto tid_key      = boost::make_tuple(table_row.id);
+               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
+               section.add_row(size, db);
+
+               utils_t::template walk_range<by_table_id>(
+                     db, tid_key, next_tid_key, [this, &section](const auto& row) { section.add_row(row, db); });
+            });
+         });
+      });
+   }
+
+   void combined_database::read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot) {
+      snapshot->read_section("contract_tables", [this](auto& section) {
+         bool more = !section.empty();
+         while (more) {
+            // read the row for the table
+            table_id_object::id_type t_id;
+            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+               section.read_row(row, db);
+               t_id = row.id;
+            });
+
+            // read the size and data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+               using utils_t = decltype(utils);
+
+               unsigned_int size;
+               more = section.read_row(size, db);
+
+               for (size_t idx = 0; idx < size.value; ++idx) {
+                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                     row.t_id = t_id;
+                     more     = section.read_row(row, db);
+                  });
+               }
+            });
+         }
+      });
    }
 
    fc::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version) {
