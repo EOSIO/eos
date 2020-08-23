@@ -23,15 +23,15 @@ bytes make_bytes(const T* data, size_t length);
 namespace std {
 
 template <>
-class less<eosio::session::bytes>;
+struct less<eosio::session::bytes>;
 
 template <>
-class greater<eosio::session::bytes>;
+struct greater<eosio::session::bytes>;
 
 template <>
-class hash<eosio::session::bytes>;
+struct hash<eosio::session::bytes>;
 
 template <>
-class equal_to<eosio::session::bytes>;
+struct equal_to<eosio::session::bytes>;
 
 }

@@ -100,6 +100,7 @@ public:
     void write(key_value kv);
     bool contains(const bytes& key) const;
     void erase(const bytes& key);
+    void clear();
 
     template <typename iterable>
     const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read(const iterable& keys) const;
@@ -223,6 +224,11 @@ void rocks_data_store<allocator>::erase(const bytes& key) {
     
     auto key_slice = rocksdb::Slice{reinterpret_cast<const char*>(key.data()), key.length()};
     auto status = m_db->Delete(m_write_options, column_family_(), key_slice);
+}
+
+template <typename allocator>
+void rocks_data_store<allocator>::clear() {
+    // TODO:
 }
 
 template <typename allocator>

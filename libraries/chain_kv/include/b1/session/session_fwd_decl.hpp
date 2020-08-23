@@ -9,7 +9,7 @@ class session;
 template <typename persistent_data_store, typename cache_data_store>
 session<persistent_data_store, cache_data_store> make_session();
 
-template <typename persistent_data_store, typename cache_data_store>
+template <typename cache_data_store, typename persistent_data_store>
 session<persistent_data_store, cache_data_store> make_session(persistent_data_store store);
 
 template <typename persistent_data_store, typename cache_data_store>
