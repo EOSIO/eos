@@ -71,16 +71,15 @@ struct table_def {
    type_name          type;        // type of binary data stored in this table
 };
 
-
 struct primary_index_def
 {
-    primary_index_def() = default;
-    primary_index_def(const index_name &name, const type_name &type)
-       : name(name), type(type)
+   primary_index_def() = default;
+   primary_index_def(const index_name &name, const type_name &type)
+      : name(name), type(type)
    {}
 
-   index_name name;
-   type_name  type;
+   index_name name;                // the name of primary index
+   type_name  type;                // the kind of index
 
    bool operator==(const primary_index_def &other) const
    {
@@ -90,19 +89,18 @@ struct primary_index_def
 
 struct secondary_index_def
 {
-    secondary_index_def() = default;
-    secondary_index_def(const type_name &type)
-            : type(type)
-    {}
+   secondary_index_def() = default;
+   secondary_index_def(const type_name &type)
+      : type(type)
+   {}
 
-    type_name  type;
+   type_name  type;              // the kind of index
 
-    bool operator==(const secondary_index_def &other) const
-    {
-        return type == other.type;
-    }
+   bool operator==(const secondary_index_def &other) const
+   {
+      return type == other.type;
+   }
 };
-
 
 struct kv_table_def {
    kv_table_def() = default;
@@ -110,7 +108,7 @@ struct kv_table_def {
    :type(type), primary_index(primary_index), secondary_indices(secondary_indices)
    {}
 
-   type_name                             type;                // the name of the struct
+   type_name                             type;                // the name of the struct_def
    primary_index_def                     primary_index;       // primary index field
    map<index_name, secondary_index_def>  secondary_indices;   // secondary indices fields
  };
@@ -155,6 +153,7 @@ struct may_not_exist {
    T value{};
 };
 
+// Needed for custom from_variant and to_variant of kv_table_def
 template<typename T>
 struct kv_tables_as_object {
     T value{};
@@ -233,36 +232,33 @@ ST& operator >> (ST& s, eosio::chain::kv_tables_as_object<T>& v) {
 }
 
 template<typename T>
-void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v) {
-    //EOS_ASSERT( v.is_object(), invalid_type_inside_abi, "variant is not an variant_object type");
+void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v)
+{
+   const auto &kv_tables = o.value;
+   mutable_variant_object mvo;
 
-    //map<table_name, kv_table_def>
-    const auto &kv_tables = o.value;
-    mutable_variant_object vo_tables;
+   for (const auto &table : kv_tables) {
+      mutable_variant_object vo_table;
 
-    for (const auto &table : kv_tables) {// kv_table_def
-       mutable_variant_object vo_table;
-       vo_table("type", variant(table.second.type));
+      variant primary_index;
+      to_variant(table.second.primary_index, primary_index);
 
-       variant primary_index;
-       to_variant(table.second.primary_index, primary_index);
-       vo_table("primary_index", primary_index);
-       
-       mutable_variant_object secondary_indices;
-       for(const auto &sec_index : table.second.secondary_indices) {
-          variant sidx;
-          to_variant(sec_index.second, sidx);
-          secondary_indices(sec_index.first.to_string(), sidx);
-       }
-       vo_table("secondary_indices", variant(secondary_indices));
-       vo_tables(table.first.to_string(), variant(vo_table));
-    }
-    v = variant(vo_tables);
+      mutable_variant_object secondary_indices;
+      for(const auto &sec_index : table.second.secondary_indices) {
+         variant sidx;
+         to_variant(sec_index.second, sidx);
+         secondary_indices(sec_index.first.to_string(), sidx);
+      }
+
+      vo_table("type", variant(table.second.type))("primary_index", primary_index)("secondary_indices", variant(secondary_indices));
+      mvo(table.first.to_string(), variant(vo_table));
+   }
+   v = variant(mvo);
 }
 
 template<typename T>
 void from_variant(const fc::variant& v, eosio::chain::kv_tables_as_object<T>& o) {
-    //EOS_ASSERT( v.is_object(), eosio::chain::invalid_type_inside_abi, "variant is not an variant_object type");
+    EOS_ASSERT( v.is_object(), eosio::chain::invalid_type_inside_abi, "variant is not an variant_object type");
 
     auto &kv_tables = o.value;
     const auto& tables = v.get_object();
@@ -283,8 +279,6 @@ void from_variant(const fc::variant& v, eosio::chain::kv_tables_as_object<T>& o)
         kv_tables[eosio::chain::name(table_it.key())] = kv_tbl_def;
     }
 }
-
-
 } // namespace fc
 
 FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(type) )

@@ -220,8 +220,6 @@ namespace eosio { namespace chain {
       return kv_tables.find(name(type)) != kv_tables.end();
    }
 
-
-
    std::string_view abi_serializer::fundamental_type(const std::string_view& type)const {
       if( is_array(type) ) {
          return type.substr(0, type.size()-2);
@@ -246,6 +244,10 @@ namespace eosio { namespace chain {
       if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, ctx);
       if( structs.find(type) != structs.end() ) return true;
       if( variants.find(type) != variants.end() ) return true;
+      if (is_string_valid_name(rtype))
+      {
+         if( kv_tables.find(name(type)) != kv_tables.end() ) return true;
+      }
       return false;
    }
 
@@ -305,13 +307,11 @@ namespace eosio { namespace chain {
         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(t.second)) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
 
-      /*
       for( const auto& kt : kv_tables ) { try {
         ctx.check_deadline();
-        //EOS_ASSERT(_is_type(kt.second.primary_index.type, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(kt.second.primary_index.type)) );
+        //EOS_ASSERT(_is_type(kt.second.type, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(kt.second.type))) );
+        //EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",kt.first.to_string());
       } FC_CAPTURE_AND_RETHROW( (kt)  ) }
-
-	  */
 
       for( const auto& r : action_results ) { try {
         ctx.check_deadline();
@@ -371,6 +371,7 @@ namespace eosio { namespace chain {
       auto rtype = resolve_type(type);
       auto ftype = fundamental_type(rtype);
       auto btype = built_in_types.find(ftype );
+      
       if( btype != built_in_types.end() ) {
          try {
             return btype->second.first(stream, is_array(rtype), is_optional(rtype), ctx.get_yield_function());
@@ -408,18 +409,29 @@ namespace eosio { namespace chain {
          } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()) )
          return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
       } else {
-         auto v_itr = variants.find(rtype);
-         if( v_itr != variants.end() ) {
-            ctx.hint_variant_type_if_in_array( v_itr );
-            fc::unsigned_int select;
-            try {
-               fc::raw::unpack(stream, select);
-            } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack tag of variant '${p}'", ("p", ctx.get_path_string()) )
+         if(kv_tables.size() > 0 && is_string_valid_name(rtype)) {
+            auto kv_itr = kv_tables.find(name(rtype));
+            if (kv_itr != kv_tables.end() )
+            {
+               auto &kv_table = kv_itr->second;
+                  return _binary_to_variant(kv_table.type, stream, ctx);
+               }
+            }
+
+           auto v_itr = variants.find(rtype);
+           if (v_itr != variants.end())
+           {
+              ctx.hint_variant_type_if_in_array(v_itr);
+              fc::unsigned_int select;
+              try
+              {
+                 fc::raw::unpack(stream, select);
+              } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack tag of variant '${p}'", ("p", ctx.get_path_string()) )
             EOS_ASSERT( (size_t)select < v_itr->second.types.size(), unpack_exception,
                         "Unpacked invalid tag (${select}) for variant '${p}'", ("select", select.value)("p",ctx.get_path_string()) );
             auto h1 = ctx.push_to_path( impl::variant_path_item{ .variant_itr = v_itr, .variant_ordinal = static_cast<uint32_t>(select) } );
             return vector<fc::variant>{v_itr->second.types[select], _binary_to_variant(v_itr->second.types[select], stream, ctx)};
-         }
+           }
       }
 
       fc::mutable_variant_object mvo;
@@ -547,6 +559,18 @@ namespace eosio { namespace chain {
             }
          } else {
             EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
+         }
+      } else if( var.is_object() ) {
+         if( kv_tables.size() > 0 && is_string_valid_name(rtype) ) {
+            auto kv_itr = kv_tables.find(name(rtype));
+            if( kv_itr != kv_tables.end() ) {
+               auto& kv_table = kv_itr->second;
+               _variant_to_binary( kv_table.type, var, ds, ctx );
+           }
+         }
+         else
+         {
+            EOS_THROW(invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
          }
       } else {
          EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
@@ -784,6 +808,7 @@ namespace eosio { namespace chain {
             const auto& str = item.variant_itr->first;
             output_name( s, str, shorten_names );
          }
+
       };
 
       struct path_item_type_visitor {

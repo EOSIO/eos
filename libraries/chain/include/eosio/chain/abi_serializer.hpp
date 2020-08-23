@@ -120,7 +120,7 @@ private:
    map<type_name, struct_def, std::less<>>    structs;
    map<name,type_name>                        actions;
    map<name,type_name>                        tables;
-   map<name, kv_table_def>                    kv_tables;
+   map<name, kv_table_def, std::less<>>       kv_tables;
    map<uint64_t, string>                      error_messages;
    map<type_name, variant_def, std::less<>>   variants;
    map<name,type_name>                        action_results;
@@ -179,6 +179,7 @@ namespace impl {
       map<type_name, variant_def>::const_iterator variant_itr;
    };
 
+
    using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
 
    struct empty_path_item {};
@@ -221,6 +222,7 @@ namespace impl {
       void hint_array_type_if_in_array();
       void hint_struct_type_if_in_array( const map<type_name, struct_def>::const_iterator& itr );
       void hint_variant_type_if_in_array( const map<type_name, variant_def>::const_iterator& itr );
+
 
       string get_path_string()const;
 
