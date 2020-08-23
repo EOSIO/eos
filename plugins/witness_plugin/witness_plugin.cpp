@@ -7,9 +7,13 @@ static appbase::abstract_plugin& _witness_plugin = app().register_plugin<witness
 
 struct witness_plugin_impl {
    signature_provider_plugin::signature_provider_type signature_provider;
-   unsigned staleness_limit = 600;
 
-   std::list<witness_plugin::witness_callback_func> callbacks;
+   struct callback_entry {
+      witness_plugin::witness_callback_func func;
+      std::weak_ptr<void> weakptr;
+   };
+
+   std::list<callback_entry> callbacks;
 
    boost::asio::io_context ctx;
    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard{ctx.get_executor()};
@@ -28,9 +32,6 @@ void witness_plugin::set_program_options(options_description& cli, options_descr
                   my->signature_provider = provider;
                }),
                app().get_plugin<signature_provider_plugin>().signature_provider_help_text())
-         ("witness-staleness-limit", boost::program_options::value<unsigned>()->default_value(my->staleness_limit)->notifier([this](const unsigned& v) {
-                  my->staleness_limit = v;
-               }), "Blocks older than this many seconds are not signed by the witness plugin")
          ;
 }
 
@@ -49,21 +50,28 @@ void witness_plugin::plugin_startup() {
 
 
    app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
-      if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
-         return;
+      std::list<std::pair<witness_plugin::witness_callback_func, std::shared_ptr<void>>> locks;
+      auto it = my->callbacks.begin();
+      while(it != my->callbacks.end()) {
+         auto lock = it->weakptr.lock();
+         if(!lock)
+            it = my->callbacks.erase(it);
+         else
+            locks.emplace_back(std::make_pair(it++->func, lock));
+      }
 
-      my->ctx.post([this, bsp]() {
+      my->ctx.post([this, bsp, locks]() {
          try {
             chain::signature_type mroot_sig = my->signature_provider(bsp->header.action_mroot);
-            for(const auto& cb : my->callbacks)
-               cb(bsp, mroot_sig);
+            for(const auto& cb : locks)
+               cb.first(bsp, mroot_sig);
          } FC_LOG_AND_DROP();
       });
    });
 }
 
-void witness_plugin::add_on_witness_sig(witness_callback_func&& func) {
-   my->callbacks.emplace_back(std::move(func));
+void witness_plugin::add_on_witness_sig(witness_callback_func&& func, std::weak_ptr<void> weak_ptr) {
+   my->callbacks.emplace_back(witness_plugin_impl::callback_entry{std::move(func), std::move(weak_ptr)});
 }
 
 void witness_plugin::plugin_shutdown() {
