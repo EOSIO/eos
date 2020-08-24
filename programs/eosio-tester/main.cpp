@@ -36,7 +36,6 @@ using eosio::chain::digest_type;
 using eosio::chain::kv_bad_db_id;
 using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
-using eosio::chain::kvdisk_id;
 using eosio::chain::kvram_id;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;

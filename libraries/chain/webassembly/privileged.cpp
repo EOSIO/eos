@@ -3,6 +3,7 @@
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 #include <vector>
 #include <set>
@@ -67,10 +68,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits(account, ram, net, cpu);
          manager.set_account_limits( account, ram, net, limit );
-      } else if( resource == string_to_name("disk") ) {
-         if( manager.set_account_disk_limit( account, limit ) ) {
-            context.trx_context.validate_disk_usage.insert( account );
-         }
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -90,8 +87,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits( account, ram, net, cpu );
          return cpu;
-      } else if( resource == string_to_name("disk") ) {
-         return manager.get_account_disk_limit( account );
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -208,12 +203,12 @@ namespace eosio { namespace chain { namespace webassembly {
    uint32_t interface::get_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
-      auto s = fc::raw::pack_size( gpo.configuration );
+      auto s = fc::raw::pack_size( gpo.configuration.v0() );
       if( packed_blockchain_parameters.size() == 0 ) return s;
 
       if ( s <= packed_blockchain_parameters.size() ) {
          datastream<char*> ds( packed_blockchain_parameters.data(), s );
-         fc::raw::pack(ds, gpo.configuration);
+         fc::raw::pack(ds, gpo.configuration.v0());
          return s;
       }
       return 0;
@@ -221,12 +216,47 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::set_blockchain_parameters_packed( legacy_span<const char> packed_blockchain_parameters ) {
       datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
-      chain::chain_config cfg;
+      chain::chain_config_v0 cfg;
       fc::raw::unpack(ds, cfg);
       cfg.validate();
       context.db.modify( context.control.get_global_properties(),
          [&]( auto& gprops ) {
               gprops.configuration = cfg;
+      });
+   }
+   
+   uint32_t interface::get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const{
+      datastream<const char*> ds_ids( packed_parameter_ids.data(), packed_parameter_ids.size() );
+
+      chain::chain_config cfg = context.control.get_global_properties().configuration;
+      std::vector<fc::unsigned_int> ids;
+      fc::raw::unpack(ds_ids, ids);
+      const config_range config_range(cfg, std::move(ids), {context.control});
+      
+      auto size = fc::raw::pack_size( config_range );
+      if( packed_parameters.size() == 0 ) return size;
+
+      EOS_ASSERT(size <= packed_parameters.size(),
+                 chain::config_parse_error,
+                 "get_parameters_packed: buffer size is smaller than ${size}", ("size", size));
+      
+      datastream<char*> ds( packed_parameters.data(), size );
+      fc::raw::pack( ds, config_range );
+      return size;
+   }
+
+   void interface::set_parameters_packed( span<const char> packed_parameters ){
+      datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
+
+      chain::chain_config cfg = context.control.get_global_properties().configuration;
+      config_range config_range(cfg, {context.control});
+
+      fc::raw::unpack(ds, config_range);
+      
+      config_range.config.validate();
+      context.db.modify( context.control.get_global_properties(),
+         [&]( auto& gprops ) {
+              gprops.configuration = config_range.config;
       });
    }
 

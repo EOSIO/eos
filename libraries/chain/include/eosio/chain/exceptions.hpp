@@ -565,6 +565,8 @@ namespace eosio { namespace chain {
                                     3160014, "Unknown kv_parameters version" )
       FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
                                     3160015, "Unknown wasm_config version" )
+      FC_DECLARE_DERIVED_EXCEPTION( config_parse_error,                   contract_exception,
+                                    3160015, "Parsing config error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )

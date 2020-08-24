@@ -68,13 +68,7 @@ class kv_tester : public tester {
          sys_abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
       }
 
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest1)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest2)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest3)) == "");
-      BOOST_TEST_REQUIRE(set_limit(N(eosio.kvdisk), -1, N(kvtest4)) == "");
       BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024*1024) == "");
-      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvdisk), 1024, 1024*1024) == "");
       produce_block();
    }
 
@@ -89,9 +83,7 @@ class kv_tester : public tester {
 
    action_result set_limit(name db, int64_t limit, name account = N(kvtest)) {
       action_name name;
-      if(db == N(eosio.kvdisk)) {
-         name = N(setdisklimit);
-      } else if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram)) {
          name = N(setramlimit);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -106,9 +98,7 @@ class kv_tester : public tester {
 
    action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       action_name name;
-      if(db == N(eosio.kvdisk)) {
-         name = N(diskkvlimits);
-      } else if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram)) {
          name = N(ramkvlimits);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -148,7 +138,7 @@ class kv_tester : public tester {
       action act;
       act.account = contract;
       act.name = N(setmany);
-      act.data = abi_ser.variant_to_binary("setmany", mvo()("db", db)("contract", contract)("kvs", kvs), abi_serializer_max_time);
+      act.data = abi_ser.variant_to_binary("setmany", mvo()("db", db)("contract", contract)("kvs", kvs), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }
@@ -157,7 +147,7 @@ class kv_tester : public tester {
       action act;
       act.account = contract;
       act.name = N(erase);
-      act.data = abi_ser.variant_to_binary("erase", mvo()("db", db)("contract", contract)("k", k), abi_serializer_max_time);
+      act.data = abi_ser.variant_to_binary("erase", mvo()("db", db)("contract", contract)("k", k), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }
@@ -202,8 +192,6 @@ class kv_tester : public tester {
    uint64_t get_usage(name db, name account=N(kvtest)) {
       if (db == N(eosio.kvram)) {
          return control->get_resource_limits_manager().get_account_ram_usage(account);
-      } else if (db == N(eosio.kvdisk)) {
-         return control->get_resource_limits_manager().get_account_disk_usage(account);
       }
       BOOST_FAIL("Wrong db");
       return 0;
@@ -488,8 +476,6 @@ class kv_tester : public tester {
 
    void test_ram_usage(name db) {
       uint64_t base_usage = get_usage(db);
-      // DISK should start at 0, because it's only used by the kv store.
-      if(db == N(eosio.kvdisk)) BOOST_TEST(base_usage == 0);
 
       get("", db, N(kvtest), "11", nullptr);
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
@@ -515,27 +501,12 @@ class kv_tester : public tester {
       BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
       BOOST_TEST(get_usage(db, N(kvtest1)) == base_usage1 + base_billable + 1);
 
-      // test unauthorized payer
-      if(db == N(eosio.kvdisk)) {
-         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest1" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
-      }
-      else
-      {
-         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
-      }
+      BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" ==
+                  set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
 
-      if(db == N(eosio.kvdisk)) {
-         BOOST_TEST("unprivileged contract cannot increase DISK usage of another account that has not authorized the action: kvtest2" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
-      }
-      else
-      {
-         BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" == 
-                     set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
-      }
-      
+
+      BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" ==
+                  set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
    }
 
    void test_resource_limit(name db) {
@@ -922,7 +893,6 @@ static const char kv_setup_wast[] =  R"=====(
       (then
          (drop (call $read_action_data (get_local $next_name_address) (get_local $bytes_remaining)))
          (loop
-            (call $set_resource_limit (i64.load (get_local $next_name_address)) (i64.const 5454140623722381312) (i64.const -1))            
             (set_local $bytes_remaining (i32.sub (get_local $bytes_remaining) (i32.const 8)))
             (set_local $next_name_address (i32.add (get_local $next_name_address) (i32.const 8)))
             (br_if 0 (i32.ge_s (get_local $bytes_remaining) (i32.const 8)))

@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    int64_t  interface::kv_erase(uint64_t db, uint64_t contract, span<const char> key) {
