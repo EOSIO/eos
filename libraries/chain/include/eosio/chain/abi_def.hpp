@@ -83,6 +83,10 @@ struct primary_index_def {
    bool operator==(const primary_index_def &other) const {
       return std::tie(name, type) == std::tie(other.name, other.type);
    }
+
+   bool operator!=(const primary_index_def &other) const {
+      return !operator==(other);
+   }
 };
 
 struct secondary_index_def
@@ -96,6 +100,10 @@ struct secondary_index_def
 
    bool operator==(const secondary_index_def &other) const {
       return type == other.type;
+   }
+
+   bool operator!=(const secondary_index_def &other) const {
+      return !operator==(other);
    }
 };
 
@@ -223,7 +231,7 @@ ST& operator << (ST& s, const eosio::chain::kv_tables_as_object<T>& v) {
 
 template<typename ST, typename T>
 ST& operator >> (ST& s, eosio::chain::kv_tables_as_object<T>& v) {
-   if (s.remaining())
+   if( s.remaining() )
       raw::unpack(s, v.value);
    return s;
 }
@@ -282,7 +290,7 @@ FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::primary_index_def                      , (name)(type) )
+FC_REFLECT( eosio::chain::primary_index_def                , (name)(type) )
 FC_REFLECT( eosio::chain::secondary_index_def              , (type) )
 FC_REFLECT( eosio::chain::kv_table_def                     , (type)(primary_index)(secondary_indices) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )

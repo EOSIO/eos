@@ -47,7 +47,6 @@ struct abi_serializer {
    int       get_integer_size(const std::string_view& type) const;
    bool      is_struct(const std::string_view& type)const;
    bool      is_kv_table(const std::string_view& type)const;
-   bool      is_string_valid_name(std::string_view str) const;
 
    /// @return string_view of `type`
    std::string_view fundamental_type(const std::string_view& type)const;
@@ -180,7 +179,6 @@ namespace impl {
       map<type_name, variant_def>::const_iterator variant_itr;
    };
 
-
    using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
 
    struct empty_path_item {};
@@ -223,7 +221,6 @@ namespace impl {
       void hint_array_type_if_in_array();
       void hint_struct_type_if_in_array( const map<type_name, struct_def>::const_iterator& itr );
       void hint_variant_type_if_in_array( const map<type_name, variant_def>::const_iterator& itr );
-
 
       string get_path_string()const;
 

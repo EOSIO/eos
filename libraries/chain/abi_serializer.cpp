@@ -174,7 +174,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( structs.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected" );
       EOS_ASSERT( actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected" );
       EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
-      EOS_ASSERT( kv_tables.size() == abi.kv_tables.value.size(), duplicate_abi_kv_table_def_exception, "duplicate table definition detected" );
+      EOS_ASSERT( kv_tables.size() == abi.kv_tables.value.size(), duplicate_abi_kv_table_def_exception, "duplicate kv table definition detected" );
       EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
       EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
       EOS_ASSERT( action_results.size() == abi.action_results.value.size(), duplicate_abi_action_results_def_exception, "duplicate action results definition detected" );
@@ -237,25 +237,6 @@ namespace eosio { namespace chain {
          return type;
    }
 
-   // true if std::string can be converted to name
-   bool abi_serializer::is_string_valid_name(std::string_view str) const
-   {
-      if (size_t len = str.size(); len > 13)
-         return false;
-
-      for( const char c : str ) {
-         if( c >= 'a' && c <= 'z' )
-            continue;
-         else if( c >= '1' && c <= '5' )
-            continue;
-         else if ( c == '.' )
-            continue;
-         else
-            return false;
-      }
-      return true;
-   }
-
    bool abi_serializer::_is_type(const std::string_view& rtype, impl::abi_traverse_context& ctx )const {
       auto h = ctx.enter_scope();
       auto type = fundamental_type(rtype);
@@ -263,7 +244,7 @@ namespace eosio { namespace chain {
       if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, ctx);
       if( structs.find(type) != structs.end() ) return true;
       if( variants.find(type) != variants.end() ) return true;
-      if( is_string_valid_name(rtype) ) {
+      if( eosio::chain::is_string_valid_name(type) ) {
          if( kv_tables.find(name(type)) != kv_tables.end() ) return true;
       }
       return false;
@@ -329,8 +310,8 @@ namespace eosio { namespace chain {
         ctx.check_deadline();
         EOS_ASSERT(_is_type(kt.second.type, ctx), invalid_type_inside_abi,
                    "Invalid reference in struct ${type}", ("type", impl::limit_size(kt.second.type)));
-        EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",kt.first.to_string()));
-      } FC_CAPTURE_AND_RETHROW( (kt)  ) }
+        EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",impl::limit_size(kt.first.to_string())));
+      } FC_CAPTURE_AND_RETHROW( (impl::limit_size(kt.first.to_string()))) }
 
       for( const auto& r : action_results ) { try {
         ctx.check_deadline();
@@ -440,11 +421,10 @@ namespace eosio { namespace chain {
             return vector<fc::variant>{v_itr->second.types[select], _binary_to_variant(v_itr->second.types[select], stream, ctx)};
          }
 
-         if(kv_tables.size() > 0 && is_string_valid_name(rtype)) {
-            auto kv_itr = kv_tables.find(name(rtype));
-            if( kv_itr != kv_tables.end() ) {
+         if( !kv_tables.empty() && is_string_valid_name(rtype) ) {
+            if( auto kv_itr = kv_tables.find(name(rtype)); kv_itr != kv_tables.end() ) {
                auto &kv_table = kv_itr->second;
-                  return _binary_to_variant(kv_table.type, stream, ctx);
+               return _binary_to_variant(kv_table.type, stream, ctx);
             }
          }
       }
@@ -576,12 +556,11 @@ namespace eosio { namespace chain {
             EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
          }
       } else if( var.is_object() ) {
-         if( kv_tables.size() > 0 && is_string_valid_name(rtype) ) {
-            auto kv_itr = kv_tables.find(name(rtype));
-            if( kv_itr != kv_tables.end() ) {
+         if( !kv_tables.empty() && is_string_valid_name(rtype) ) {
+            if( auto kv_itr = kv_tables.find(name(rtype));kv_itr != kv_tables.end() ) {
                auto& kv_table = kv_itr->second;
                _variant_to_binary( kv_table.type, var, ds, ctx );
-           }
+            }
          } else {
             EOS_THROW(invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
          }
@@ -628,8 +607,9 @@ namespace eosio { namespace chain {
    }
 
    type_name abi_serializer::get_kv_table_type(name action)const {
-      auto itr = kv_tables.find(action);
-      if( itr != kv_tables.end() ) return itr->second.type;
+      if( auto itr = kv_tables.find(action);itr != kv_tables.end() )
+         return itr->second.type;
+
       return type_name();
    }
 
