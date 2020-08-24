@@ -136,7 +136,7 @@ namespace eosio {
          virtual bool verify_max_requests_in_flight() = 0;
          virtual void handle_exception() = 0;
 
-         virtual void update_connection(const std::string & body, int code) = 0;
+         virtual void send_response(std::string body, int code) = 0;
       };
 
       using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
@@ -404,8 +404,8 @@ namespace eosio {
                http_plugin_impl::handle_exception<T>(_conn);
             }
 
-            void update_connection(const std::string & body, int code) override {
-               _conn->set_body(body);
+            void send_response(std::string body, int code) override {
+               _conn->set_body(std::move(body));
                _conn->set_status( websocketpp::http::status_code::value( code ) );
                _conn->send_http_response();
             }
@@ -568,7 +568,7 @@ namespace eosio {
                   try {
                      std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
-                     abstract_conn_ptr->update_connection(std::move(*(*tracked_json)), code);
+                     abstract_conn_ptr->send_response(std::move(*(*tracked_json)), code);
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
                   }
