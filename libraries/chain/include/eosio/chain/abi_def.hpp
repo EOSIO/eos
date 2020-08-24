@@ -71,8 +71,7 @@ struct table_def {
    type_name          type;        // type of binary data stored in this table
 };
 
-struct primary_index_def
-{
+struct primary_index_def {
    primary_index_def() = default;
    primary_index_def(const index_name &name, const type_name &type)
       : name(name), type(type)
@@ -81,8 +80,7 @@ struct primary_index_def
    index_name name;                // the name of primary index
    type_name  type;                // the kind of index
 
-   bool operator==(const primary_index_def &other) const
-   {
+   bool operator==(const primary_index_def &other) const {
       return std::tie(name, type) == std::tie(other.name, other.type);
    }
 };
@@ -96,8 +94,7 @@ struct secondary_index_def
 
    type_name  type;              // the kind of index
 
-   bool operator==(const secondary_index_def &other) const
-   {
+   bool operator==(const secondary_index_def &other) const {
       return type == other.type;
    }
 };
@@ -232,19 +229,18 @@ ST& operator >> (ST& s, eosio::chain::kv_tables_as_object<T>& v) {
 }
 
 template<typename T>
-void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v)
-{
+void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v) {
    const auto &kv_tables = o.value;
    mutable_variant_object mvo;
 
-   for (const auto &table : kv_tables) {
+   for( const auto &table : kv_tables ) {
       mutable_variant_object vo_table;
 
       variant primary_index;
       to_variant(table.second.primary_index, primary_index);
 
       mutable_variant_object secondary_indices;
-      for(const auto &sec_index : table.second.secondary_indices) {
+      for( const auto &sec_index : table.second.secondary_indices ) {
          variant sidx;
          to_variant(sec_index.second, sidx);
          secondary_indices(sec_index.first.to_string(), sidx);
@@ -263,14 +259,14 @@ void from_variant(const fc::variant& v, eosio::chain::kv_tables_as_object<T>& o)
     auto &kv_tables = o.value;
     const auto& tables = v.get_object();
 
-    for(const auto table_it : tables) {
+    for( const auto table_it : tables ) {
         const auto &table_obj = table_it.value().get_object();
         eosio::chain::kv_table_def kv_tbl_def;
         from_variant(table_obj["type"], kv_tbl_def.type);
         from_variant(table_obj["primary_index"], kv_tbl_def.primary_index);
-        if (const auto st_it = table_obj.find("secondary_indices"); st_it != table_obj.end()) {
+        if( const auto st_it = table_obj.find("secondary_indices"); st_it != table_obj.end() ) {
             const auto &sec_indices_obj = st_it->value().get_object();
-            for (const auto sidx_it : sec_indices_obj) {
+            for( const auto sidx_it : sec_indices_obj ) {
                 eosio::chain::secondary_index_def idx_def;
                 from_variant(sidx_it.value(), idx_def);
                 kv_tbl_def.secondary_indices[eosio::chain::index_name(sidx_it.key())] = idx_def;
