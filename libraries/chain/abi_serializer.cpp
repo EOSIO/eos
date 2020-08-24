@@ -306,12 +306,12 @@ namespace eosio { namespace chain {
         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(t.second)) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
 
-      for( const auto& kt : kv_tables ) { try {
+      for( const auto& kt : kv_tables ) {
         ctx.check_deadline();
         EOS_ASSERT(_is_type(kt.second.type, ctx), invalid_type_inside_abi,
                    "Invalid reference in struct ${type}", ("type", impl::limit_size(kt.second.type)));
-        EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",impl::limit_size(kt.first.to_string())));
-      } FC_CAPTURE_AND_RETHROW( (impl::limit_size(kt.first.to_string()))) }
+        EOS_ASSERT( !kt.second.primary_index.type.empty(), invalid_type_inside_abi, "missing primary index$ {p}", ("p",impl::limit_size(kt.first.to_string())));
+      }
 
       for( const auto& r : action_results ) { try {
         ctx.check_deadline();
