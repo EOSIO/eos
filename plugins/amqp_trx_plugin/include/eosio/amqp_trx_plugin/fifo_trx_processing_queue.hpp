@@ -157,7 +157,11 @@ public:
             try {
                q_item i;
                if( self->queue_.pop_and_pause(i) ) {
-                  auto trx_meta = i.fut.get();
+                  chain::transaction_metadata_ptr trx_meta;
+                  try {
+                     trx_meta = i.fut.get();
+                  } CATCH_AND_CALL(i.next);
+
                   dlog("posting trx: ${id}", ("id", trx_meta->id()));
                   app().post(priority::low, [self, trx{std::move(trx_meta)}, next{std::move(i.next)}](){
                      auto retry_later = [self](const chain::transaction_metadata_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr>& next) {
