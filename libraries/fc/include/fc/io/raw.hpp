@@ -584,6 +584,26 @@ namespace fc {
     }
 
     template<typename Stream, typename T>
+    inline void pack( Stream& s, const std::list<T>& value ) {
+      FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
+      fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+      for( const auto& i : value ) {
+         fc::raw::pack( s, i );
+      }
+    }
+
+    template<typename Stream, typename T>
+    inline void unpack( Stream& s, std::list<T>& value ) {
+      unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value <= MAX_NUM_ARRAY_ELEMENTS );
+      while( size.value-- ) {
+         T i;
+         fc::raw::unpack( s, i );
+         value.emplace_back( std::move( i ) );
+      }
+    }
+
+    template<typename Stream, typename T>
     inline void pack( Stream& s, const std::set<T>& value ) {
       FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
       fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
