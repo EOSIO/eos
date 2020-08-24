@@ -446,7 +446,7 @@ void application::print_default_config(std::ostream& os) {
          option_to_plug[opt->long_name()] = plug.second->name();
    }
 
-   for(const boost::shared_ptr<bpo::option_description> od : my->_cfg_options.options())
+   for(const auto& od : my->_cfg_options.options())
    {
       if(!od->description().empty()) {
          std::string desc = od->description();
