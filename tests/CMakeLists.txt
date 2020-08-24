@@ -114,6 +114,10 @@ add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.
 set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
+if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+   add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+   set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
+endif()
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
