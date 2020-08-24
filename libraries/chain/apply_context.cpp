@@ -103,7 +103,7 @@ void apply_context::exec_one()
             }
 
             _db_context = backing_store::create_db_chainbase_context(*this, receiver);
-         }
+        }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
             privileged = receiver_account->is_privileged();

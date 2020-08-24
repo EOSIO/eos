@@ -28,7 +28,7 @@ namespace eosio { namespace chain {
 
          optional<block_num_type>         proposed_schedule_block_num;
          producer_schedule_type           proposed_schedule;
-         chain_config                     configuration;
+         chain_config_v0                  configuration;
       };
       struct snapshot_global_property_object_v3 {
          static constexpr uint32_t minimum_version = 3;
@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
 
          optional<block_num_type>            proposed_schedule_block_num;
          producer_authority_schedule         proposed_schedule;
-         chain_config                        configuration;
+         chain_config_v0                     configuration;
          chain_id_type                       chain_id;
       };
    }

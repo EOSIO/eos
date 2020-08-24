@@ -467,7 +467,7 @@ class apply_context {
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
-      
+
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }

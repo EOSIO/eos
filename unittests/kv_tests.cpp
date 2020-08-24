@@ -95,7 +95,6 @@ class kv_tester : public tester {
       act.data    = sys_abi_ser.variant_to_binary(action_type_name, mvo()("account", account)("limit", limit), abi_serializer::create_yield_function(abi_serializer_max_time));
       return base_tester::push_action(std::move(act), config::system_account_name.to_uint64_t());
    }
-
    action_result set_kv_limits(uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       string action_type_name = sys_abi_ser.get_action_type(N(ramkvlimits));
       action act;
@@ -132,7 +131,7 @@ class kv_tester : public tester {
       action act;
       act.account = contract;
       act.name = N(setmany);
-      act.data = abi_ser.variant_to_binary("setmany", mvo()("contract", contract)("kvs", kvs), abi_serializer_max_time);
+      act.data = abi_ser.variant_to_binary("setmany", mvo()("contract", contract)("kvs", kvs), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }
@@ -141,7 +140,7 @@ class kv_tester : public tester {
       action act;
       act.account = contract;
       act.name = N(erase);
-      act.data = abi_ser.variant_to_binary("erase", mvo()("contract", contract)("k", k), abi_serializer_max_time);
+      act.data = abi_ser.variant_to_binary("erase", mvo()("contract", contract)("k", k), abi_serializer::create_yield_function(abi_serializer_max_time));
       act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
       return act;
    }

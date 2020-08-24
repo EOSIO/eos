@@ -10,8 +10,6 @@ enum it_stat : int32_t {
    iterator_end    = -2,
 };
 
-#define IMPORT extern "C" __attribute__((eosio_wasm_import))
-
 struct kv {
    std::vector<char> k;
    std::vector<char> v;
@@ -219,19 +217,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             uint32_t v_size = 0xffff'ffff;
             check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
                   "value has wrong size (d)");
-
-            { // use offset
-               std::vector<char> v(v_size - offset);
-               v.push_back(42);
-               v.push_back(53);
-               v_size = 0xffff'ffff;
-               check(kv_it_value(itr, offset, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
-                     "value has wrong size (e)");
-               check(!memcmp(exp.v.data() + offset, v.data(), v.size() - 2), "value has wrong content (e)");
                check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
-            }
-
-            { // offset=0, truncate
                std::vector<char> v(v_size - offset);
                v.push_back(42);
                v.push_back(53);
@@ -341,9 +327,6 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             case 3: {
                auto it2 = kv_it_create(contract.value, prefix.data(), prefix.size());
                kv_it_compare(it2, it); // abort
-               return;
-            }
-            case 4: {
                kv_it_compare(it, it); // abort
                return;
             }
