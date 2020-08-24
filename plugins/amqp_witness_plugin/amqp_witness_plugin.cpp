@@ -7,11 +7,9 @@ namespace eosio {
 static appbase::abstract_plugin& _amqp_witness_plugin = app().register_plugin<amqp_witness_plugin>();
 
 struct amqp_witness_plugin_impl {
-   signature_provider_plugin::signature_provider_type signature_provider;
-   unsigned staleness_limit = 600;
    std::string amqp_server = "amqp://";
    std::string exchange = "witness_signatures";
-   std::optional<std::string> routing_key;
+   std::string routing_key;
    bool delete_previous = false;
 
    std::unique_ptr<reliable_amqp_publisher> rqueue;
@@ -23,12 +21,6 @@ void amqp_witness_plugin::set_program_options(options_description& cli, options_
    auto default_priv_key = eosio::chain::private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("witness")));
 
    cfg.add_options()
-         ("witness-signature-provider", boost::program_options::value<string>()->default_value(
-               default_priv_key.get_public_key().to_string() + "=KEY:" + default_priv_key.to_string()),
-               app().get_plugin<signature_provider_plugin>().signature_provider_help_text())
-         ("witness-staleness-limit", boost::program_options::value<unsigned>()->default_value(my->staleness_limit)->notifier([this](const unsigned& v) {
-                  my->staleness_limit = v;
-               }), "Blocks older than this many seconds are not signed by the witness plugin")
          ("witness-amqp-server", boost::program_options::value<string>()->default_value(my->amqp_server)->notifier([this](const string& v) {
                   my->amqp_server = v;
                }), "AMQP server to send witness signatures in form of amqp://user:password@host:port/vhost")
@@ -44,13 +36,7 @@ void amqp_witness_plugin::set_program_options(options_description& cli, options_
          ("witness-delete-unsent", boost::program_options::bool_switch(&my->delete_previous), "Delete unsent witness signature messages retained from previous connections");
 }
 
-void amqp_witness_plugin::plugin_initialize(const variables_map& options) {
-   try {
-      const auto& [pubkey, provider] = app().get_plugin<signature_provider_plugin>().signature_provider_for_specification(options["witness-signature-provider"].as<std::string>());
-      my->signature_provider = provider;
-   }
-   FC_LOG_AND_RETHROW()
-}
+void amqp_witness_plugin::plugin_initialize(const variables_map& options) {}
 
 void amqp_witness_plugin::plugin_startup() {
    const boost::filesystem::path witness_data_file_path = appbase::app().data_dir() / "amqp" / "witness.bin";
@@ -58,19 +44,16 @@ void amqp_witness_plugin::plugin_startup() {
    if(boost::filesystem::exists(witness_data_file_path) && my->delete_previous)
       boost::filesystem::remove(witness_data_file_path);
 
-   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key ? *my->routing_key : "", witness_data_file_path, "eosio.node.witness_v0");
+   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key, witness_data_file_path, "eosio.node.witness_v0");
 
-   app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
-      if(bsp->block->timestamp.to_time_point() < fc::time_point::now() - fc::seconds(my->staleness_limit))
-         return;
-
-      my->rqueue->post_on_io_context([this, bsp]() {
-         try {
-            my->rqueue->publish_message(std::make_pair(bsp->header.action_mroot, my->signature_provider(bsp->header.action_mroot)));
-         }
-         FC_LOG_AND_DROP();
+   app().get_plugin<witness_plugin>().add_on_witness_sig([rqueue=my->rqueue.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
+      rqueue->post_on_io_context([rqueue, bsp, sig]() {
+         rqueue->publish_message(std::make_pair(bsp->header.action_mroot, sig));
       });
-   });
+
+      //amqp_witness_plugin may get destroyed nearly immediately after returning here if nodeos is shutting down. reliable_amqp_publisher
+      // ensures that any post_on_io_context() is called before its dtor returns though.
+   }, std::weak_ptr<amqp_witness_plugin_impl>(my));
 }
 
 void amqp_witness_plugin::plugin_shutdown() {}
