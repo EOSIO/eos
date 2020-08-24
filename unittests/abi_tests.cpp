@@ -2835,4 +2835,172 @@ BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
    } FC_LOG_AND_RETHROW()
 }
 
+template<class T>
+inline std::pair<action_trace, std::string> generate_action_trace(const fc::optional<T> &  return_value, const std::string &  return_value_hex, bool parsable = true)
+{
+   action_trace at;
+   at.action_ordinal = 0;
+   at.creator_action_ordinal = 1;
+   at.closest_unnotified_ancestor_action_ordinal = 2;
+   at.receipt = fc::optional<action_receipt>{};
+   at.receiver = action_name{"test"};
+   at.act = eosio::chain::action(
+      std::vector<eosio::chain::permission_level>{
+         eosio::chain::permission_level{
+            account_name{"acctest"},
+            permission_name{"active"}}},
+      account_name{"acctest"},
+      action_name{"acttest"},
+      bytes{fc::raw::pack(std::string{"test_data"})});
+   at.elapsed = fc::microseconds{3};
+   at.console = "console line";
+   at.trx_id = transaction_id_type{"5d039021cf3262c5036a6ad40a809ae1440ae6c6792a48e6e95abf083b108d5f"};
+   at.block_num = 4;
+   at.block_time = block_timestamp_type{5};
+   at.producer_block_id = fc::optional<block_id_type>{};
+   if (return_value.valid()) {
+      at.return_value = fc::raw::pack(*return_value);
+   }
+   std::stringstream expected_json;
+   expected_json
+      << "{"
+      <<     "\"action_traces\":{"
+      <<         "\"action_ordinal\":0,"
+      <<         "\"creator_action_ordinal\":1,"
+      <<         "\"closest_unnotified_ancestor_action_ordinal\":2,"
+      <<         "\"receipt\":null,"
+      <<         "\"receiver\":\"test\","
+      <<         "\"act\":{"
+      <<             "\"account\":\"acctest\","
+      <<             "\"name\":\"acttest\","
+      <<             "\"authorization\":[{"
+      <<                 "\"actor\":\"acctest\","
+      <<                 "\"permission\":\"active\""
+      <<             "}],"
+      <<             "\"data\":\"09746573745f64617461\""
+      <<         "},"
+      <<         "\"context_free\":false,"
+      <<         "\"elapsed\":3,"
+      <<         "\"console\":\"console line\","
+      <<         "\"trx_id\":\"5d039021cf3262c5036a6ad40a809ae1440ae6c6792a48e6e95abf083b108d5f\","
+      <<         "\"block_num\":4,"
+      <<         "\"block_time\":\"2000-01-01T00:00:02.500\","
+      <<         "\"producer_block_id\":null,"
+      <<         "\"account_ram_deltas\":[],"
+      <<         "\"account_disk_deltas\":[],"
+      <<         "\"except\":null,"
+      <<         "\"error_code\":null,"
+      <<         "\"return_value_hex_data\":\"" << return_value_hex << "\"";
+   if (return_value.valid() && parsable) {
+      if (std::is_same<T, std::string>::value) {
+         expected_json
+            <<   ",\"return_value_data\":\"" << *return_value << "\"";
+      }
+      else {
+         expected_json
+             <<  ",\"return_value_data\":" << *return_value;
+      }
+   }
+   expected_json
+      <<     "}"
+      << "}";
+
+   return std::make_pair(at, expected_json.str());
+}
+
+inline std::pair<action_trace, std::string> generate_action_trace() {
+   return generate_action_trace(fc::optional<char>(), "");
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__good_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace(fc::optional<uint16_t>{6}, "0600");
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "acttest", "base": "", "fields": [
+            {"name": "str", "type": "string"}
+         ]},
+      ],
+      "action_results": [
+         {
+            "name": "acttest",
+            "result_type": "uint16"
+         }
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__bad_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace(fc::optional<std::string>{"no return"}, "096e6f2072657475726e", false);
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "acttest", "base": "", "fields": [
+            {"name": "str", "type": "string"}
+         ]},
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__no_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace();
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {
+            "name": "acttest",
+            "base": "",
+            "fields": [
+               {"name": "str", "type": "string"}
+            ]
+         },
+      ],
+      "action_results": [
+         {
+            "name": "acttest",
+            "result_type": "uint16"
+         }
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

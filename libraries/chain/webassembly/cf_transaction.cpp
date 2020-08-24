@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::read_transaction( legacy_span<char> data ) const {
