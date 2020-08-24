@@ -2836,13 +2836,13 @@ BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
 }
 
 template<class T>
-inline std::pair<action_trace, std::string> generate_action_trace(const fc::optional<T> &  return_value, const std::string &  return_value_hex, bool parsable = true)
+inline std::pair<action_trace, std::string> generate_action_trace(const std::optional<T> &  return_value, const std::string &  return_value_hex, bool parsable = true)
 {
    action_trace at;
    at.action_ordinal = 0;
    at.creator_action_ordinal = 1;
    at.closest_unnotified_ancestor_action_ordinal = 2;
-   at.receipt = fc::optional<action_receipt>{};
+   at.receipt = std::optional<action_receipt>{};
    at.receiver = action_name{"test"};
    at.act = eosio::chain::action(
       std::vector<eosio::chain::permission_level>{
@@ -2857,8 +2857,8 @@ inline std::pair<action_trace, std::string> generate_action_trace(const fc::opti
    at.trx_id = transaction_id_type{"5d039021cf3262c5036a6ad40a809ae1440ae6c6792a48e6e95abf083b108d5f"};
    at.block_num = 4;
    at.block_time = block_timestamp_type{5};
-   at.producer_block_id = fc::optional<block_id_type>{};
-   if (return_value.valid()) {
+   at.producer_block_id = std::optional<block_id_type>{};
+   if (return_value.has_value()) {
       at.return_value = fc::raw::pack(*return_value);
    }
    std::stringstream expected_json;
@@ -2891,7 +2891,7 @@ inline std::pair<action_trace, std::string> generate_action_trace(const fc::opti
       <<         "\"except\":null,"
       <<         "\"error_code\":null,"
       <<         "\"return_value_hex_data\":\"" << return_value_hex << "\"";
-   if (return_value.valid() && parsable) {
+   if (return_value.has_value() && parsable) {
       if (std::is_same<T, std::string>::value) {
          expected_json
             <<   ",\"return_value_data\":\"" << *return_value << "\"";
@@ -2909,14 +2909,14 @@ inline std::pair<action_trace, std::string> generate_action_trace(const fc::opti
 }
 
 inline std::pair<action_trace, std::string> generate_action_trace() {
-   return generate_action_trace(fc::optional<char>(), "");
+   return generate_action_trace(std::optional<char>(), "");
 }
 
 BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__good_return_value)
 {
    action_trace at;
    std::string expected_json;
-   std::tie(at, expected_json) = generate_action_trace(fc::optional<uint16_t>{6}, "0600");
+   std::tie(at, expected_json) = generate_action_trace(std::optional<uint16_t>{6}, "0600");
 
    auto abi = R"({
       "version": "eosio::abi/1.0",
@@ -2947,7 +2947,7 @@ BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__bad_return_value)
 {
    action_trace at;
    std::string expected_json;
-   std::tie(at, expected_json) = generate_action_trace(fc::optional<std::string>{"no return"}, "096e6f2072657475726e", false);
+   std::tie(at, expected_json) = generate_action_trace(std::optional<std::string>{"no return"}, "096e6f2072657475726e", false);
 
    auto abi = R"({
       "version": "eosio::abi/1.0",
