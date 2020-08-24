@@ -193,9 +193,6 @@ void witness_trx_plugin::plugin_initialize(const variables_map& options) {
 
 void witness_trx_plugin::plugin_startup() {
    app().get_plugin<witness_plugin>().add_on_witness_sig([my=my.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
-      //if nodeos is shutting down, it is possible witness_trx_plugin_impl will be destroyed immediately after the callback returns before
-      // the post() below is actually dispatched. Prevent returning until certain post() has dispatched.
-
       boost::asio::post(my->from_witness_plugin_strand, [my, bsp, sig]() {
          std::vector<char> witness_action_data = fc::raw::pack(std::make_pair(bsp->header.action_mroot, sig));
 
