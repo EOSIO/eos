@@ -405,7 +405,7 @@ namespace eosio {
             }
 
             void update_connection(const std::string & body, int code) override {
-               _conn->set_body(std::move(body));
+               _conn->set_body(body);
                _conn->set_status( websocketpp::http::status_code::value( code ) );
                _conn->send_http_response();
             }
@@ -568,7 +568,7 @@ namespace eosio {
                   try {
                      std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
-                     abstract_conn_ptr->update_connection(*(*tracked_json) , code);
+                     abstract_conn_ptr->update_connection(std::move(*(*tracked_json)), code);
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
                   }
