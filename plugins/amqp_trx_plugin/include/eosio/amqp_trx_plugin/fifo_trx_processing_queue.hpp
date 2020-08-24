@@ -26,15 +26,17 @@ public:
          : max_depth_( max_depth ) {}
 
    /// blocks thread if queue is full
-   void push(T&& t) {
+   bool push(T&& t) {
       {
          std::unique_lock<std::mutex> lk(mtx_);
          full_cv_.wait(lk, [this]() {
-            return queue_.size() < max_depth_;
+            return (queue_.size() < max_depth_) || stopped_;
          });
+         if( stopped_ ) return false;
          queue_.emplace_back(std::move(t));
       }
       empty_cv_.notify_one();
+      return true;
    }
 
    /// non-blocking and does not respect max_depth_
@@ -84,6 +86,7 @@ public:
       stopped_ = true;
       mtx_.unlock();
       empty_cv_.notify_all();
+      full_cv_.notify_all();
    }
 
    /// also checks paused flag because a paused queue indicates processing is on-going
@@ -122,8 +125,6 @@ private:
    chain::chain_id_type chain_id_;
    uint32_t configured_subjective_signature_length_limit_ = 0;
    boost::asio::io_context& sig_thread_pool_;
-   // Doesn't look like we have strong guarantee that producer_plugin will live longer than app().post() call
-   // but various other places also use producer_plugin* & chain_plugin* in app().post().
    ProducerPlugin* prod_plugin_ = nullptr;
 
 public:
@@ -200,7 +201,9 @@ public:
       auto future = chain::transaction_metadata::start_recover_keys( trx, sig_thread_pool_, chain_id_, max_trx_cpu_usage,
                                                                      configured_subjective_signature_length_limit_ );
       q_item i{ std::move(future), std::move(next) };
-      queue_.push( std::move( i ) );
+      if( !queue_.push( std::move( i ) ) ) {
+         ilog( "Queue stopped, unable to process transaction ${id}, not ack'ed to AMQP", ("id", trx->id()) );
+      }
    }
 
    bool empty() const {

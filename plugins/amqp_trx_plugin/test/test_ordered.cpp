@@ -44,7 +44,7 @@ struct mock_producer_plugin {
                                      producer_plugin::next_function<chain::transaction_trace_ptr> next,
                                      retry_later_function_t retry_later) {
       static int num = 0;
-      if( num % 3 != 0 ) {
+      if( ++num % 3 != 0 ) {
          retry_later(trx, next);
          return false;
       } else {
