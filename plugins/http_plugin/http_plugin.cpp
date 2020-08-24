@@ -136,8 +136,7 @@ namespace eosio {
          virtual bool verify_max_requests_in_flight() = 0;
          virtual void handle_exception() = 0;
 
-         virtual const void* operator* () const = 0;
-         virtual void* operator* () = 0;
+         virtual void update_connection(const std::string & body, int code) = 0;
       };
 
       using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
@@ -329,7 +328,7 @@ namespace eosio {
          }
 
          template<typename T>
-         void report_429_error( const T& con, string what) {
+         void report_429_error( const T& con, const std::string & what) {
             error_results::error_info ei;
             ei.code = websocketpp::http::status_code::too_many_requests;
             ei.name = "Busy";
@@ -405,20 +404,10 @@ namespace eosio {
                http_plugin_impl::handle_exception<T>(_conn);
             }
 
-            /**
-             * const accessor
-             * @return const reference to the contained _conn
-             */
-            const void* operator* () const override {
-               return (const void *) &_conn;
-            }
-
-            /**
-             * mutable accessor (can be moved frmo)
-             * @return mutable reference to the contained _conn
-             */
-            void* operator* () override {
-               return (void *) &_conn;
+            void update_connection(const std::string & body, int code) override {
+               _conn->set_body(std::move(body));
+               _conn->set_status( websocketpp::http::status_code::value( code ) );
+               _conn->send_http_response();
             }
 
             detail::connection_ptr<T> _conn;
@@ -520,7 +509,7 @@ namespace eosio {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
                auto tracked_b = make_in_flight<string>(std::move(b), *this);
-               if (!conn->verify_max_bytes_in_flight()  || !conn->verify_max_requests_in_flight()) {
+               if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
 
@@ -570,7 +559,7 @@ namespace eosio {
          auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr ) {
             return [this, abstract_conn_ptr]( int code, fc::variant response ) {
                auto tracked_response = make_in_flight(std::move(response), *this);
-               if (!abstract_conn_ptr->verify_max_bytes_in_flight() || !abstract_conn_ptr->verify_max_requests_in_flight()) {
+               if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
                   return;
                }
 
@@ -579,10 +568,7 @@ namespace eosio {
                   try {
                      std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
                      auto tracked_json = make_in_flight(std::move(json), *this);
-                     auto con = *(static_cast<detail::connection_ptr<T>*>(*(*abstract_conn_ptr)));
-                     con->set_body( std::move( *(*tracked_json) ) );
-                     con->set_status( websocketpp::http::status_code::value( code ) );
-                     con->send_http_response();
+                     abstract_conn_ptr->update_connection(*(*tracked_json) , code);
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
                   }
