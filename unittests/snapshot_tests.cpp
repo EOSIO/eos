@@ -630,15 +630,15 @@ Lin*/
 
 static const char kv_snapshot_wast[] = R"=====(
 (module
-  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
-  (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
-  (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+  (func $kv_get (import "env" "kv_get") (param i64 i32 i32 i32) (result i32))
+  (func $kv_get_data (import "env" "kv_get_data") (param i32 i32 i32) (result i32))
+  (func $kv_set (import "env" "kv_set") (param i64 i32 i32 i32 i32 i64) (result i64))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
-    (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
-    (drop (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 8)))
+    (drop (call $kv_get (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
+    (drop (call $kv_get_data (i32.const 0) (i32.const 0) (i32.const 8)))
     (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
-    (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8)))
+    (drop (call $kv_set (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8) (get_local 0)))
   )
 )
 )=====";
@@ -646,12 +646,12 @@ static const char kv_snapshot_wast[] = R"=====(
 static const char kv_snapshot_bios[] = R"=====(
 (module
   (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
-  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
+  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i32 i32))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
-    (call $kv_set_parameters_packed (i64.const 6138663586874765568) (i32.const 0) (i32.const 16))
-    (call $kv_set_parameters_packed (i64.const 6138663586881971200) (i32.const 0) (i32.const 16))
-    (call $set_resource_limit (get_local 2) (i64.const 5454140623722381312) (i64.const -1))
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $set_resource_limit (get_local 0) (i64.const 13376816793197215744) (i64.const -1))
   )
   (data (i32.const 4) "\00\04\00\00")
   (data (i32.const 8) "\00\00\10\00")

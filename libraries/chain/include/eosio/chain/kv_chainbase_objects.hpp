@@ -49,21 +49,11 @@ namespace eosio { namespace chain {
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
                                    composite_key_compare<std::less<name>, unsigned_blob_less>>>>;
 
-   inline void use_rocksdb_for_disk(chainbase::database& db) {
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         return;
-      auto& idx = db.get_index<kv_index, by_kv_key>();
-      auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
-      EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
-                 "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb");
-      db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_disk = true; });
-   }
-
 namespace config {
    template<>
    struct billable_size<kv_object> {
       static constexpr uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;
-      static constexpr uint64_t serialized_kv_object_size = sizeof(kv_object) - 2*sizeof(shared_blob) + (4 * 2); ///< 8 for vector data 4 for vector size
+      static constexpr uint64_t serialized_kv_object_size = sizeof(kv_object) - 2*sizeof(shared_blob) + (8 + 4) * 2; ///< 8 for vector data 4 for vector size
       static constexpr uint64_t value = serialized_kv_object_size + overhead; 
    };
 } // namespace config
