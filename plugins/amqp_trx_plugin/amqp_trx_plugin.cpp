@@ -185,7 +185,9 @@ void amqp_trx_plugin::plugin_shutdown() {
          my->amqp_trx->stop();
       }
 
-      my->trx_queue_ptr->stop();
+      if( my->trx_queue_ptr ) {
+         my->trx_queue_ptr->stop();
+      }
 
       dlog( "exit amqp_trx_plugin" );
    }
