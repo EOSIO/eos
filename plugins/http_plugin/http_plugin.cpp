@@ -731,9 +731,9 @@ namespace eosio {
             ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024),
              "The maximum body size in bytes allowed for incoming RPC requests")
             ("http-max-bytes-in-flight-mb", bpo::value<uint32_t>()->default_value(500),
-             "Maximum size in megabytes http_plugin should use for processing http requests. 503 error response when exceeded." )
+             "Maximum size in megabytes http_plugin should use for processing http requests. 429 error response when exceeded." )
             ("http-max-in-flight-requests", bpo::value<int32_t>()->default_value(-1),
-             "Maximum number of requests http_plugin should use for processing http requests. 503 error response when exceeded." )
+             "Maximum number of requests http_plugin should use for processing http requests. 429 error response when exceeded." )
             ("http-max-response-time-ms", bpo::value<uint32_t>()->default_value(30),
              "Maximum time for processing a request.")
             ("verbose-http-errors", bpo::bool_switch()->default_value(false),
