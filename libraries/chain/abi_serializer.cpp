@@ -243,13 +243,12 @@ namespace eosio { namespace chain {
       if (size_t len = str.size(); len > 13)
          return false;
 
-      for (const char c : str)
-      {
-         if (c >= 'a' && c <= 'z')
+      for( const char c : str ) {
+         if( c >= 'a' && c <= 'z' )
             continue;
-         else if (c >= '1' && c <= '5')
+         else if( c >= '1' && c <= '5' )
             continue;
-         else if (c == '.')
+         else if ( c == '.' )
             continue;
          else
             return false;
