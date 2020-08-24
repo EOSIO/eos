@@ -444,14 +444,22 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "global_property_v0", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
-                { "type": "chain_config", "name": "configuration" }
+                { "type": "chain_config_v0", "name": "configuration" }
             ]
         },
         {
             "name": "global_property_v1", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_authority_schedule", "name": "proposed_schedule" },
-                { "type": "chain_config", "name": "configuration" },
+                { "type": "chain_config_v0", "name": "configuration" },
+                { "type": "checksum256", "name": "chain_id" }
+            ]
+        },
+        {
+            "name": "global_property_v2", "fields": [
+                { "type": "uint32?", "name": "proposed_schedule_block_num" },
+                { "type": "producer_authority_schedule", "name": "proposed_schedule" },
+                { "type": "chain_config_v1", "name": "configuration" },
                 { "type": "checksum256", "name": "chain_id" }
             ]
         },
@@ -635,8 +643,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "key_value", "types": ["key_value_v0"] },
-        { "name": "chain_config", "types": ["chain_config_v1"] },
-        { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
+        { "name": "chain_config", "types": ["chain_config_v0", "chain_config_v1"] },
+        { "name": "global_property", "types": ["global_property_v0", "global_property_v1", "global_property_v2"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
         { "name": "protocol_state", "types": ["protocol_state_v0"] },

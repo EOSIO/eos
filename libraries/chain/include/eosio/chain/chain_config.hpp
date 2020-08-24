@@ -65,24 +65,7 @@ struct chain_config_v0 {
    
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config_v0& c ) {
-      return out << "Max Block Net Usage: " << c.max_block_net_usage << ", "
-                 << "Target Block Net Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction Net Usage: " << c.max_transaction_net_usage << ", "
-                 << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
-                 << "Net Usage Leeway: " << c.net_usage_leeway << ", "
-                 << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
-
-                 << "Max Block CPU Usage: " << c.max_block_cpu_usage << ", "
-                 << "Target Block CPU Usage Percent: " << ((double)c.target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
-                 << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
-
-                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                 << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
-                 << "Max Transaction Delay: " << c.max_transaction_delay << ", "
-                 << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
-                 << "Max Authority Depth: " << c.max_authority_depth << "\n";
+      return c.log(out) << "\n";
    }
 
    friend inline bool operator ==( const chain_config_v0& lhs, const chain_config_v0& rhs ) {
@@ -127,6 +110,9 @@ struct chain_config_v0 {
 
    friend inline bool operator !=( const chain_config_v0& lhs, const chain_config_v0& rhs ) { return !(lhs == rhs); }
 
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const;
 };
 
 struct chain_config_v1 : chain_config_v0 {
@@ -148,7 +134,7 @@ struct chain_config_v1 : chain_config_v0 {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config_v1& c ) {
-      return out << c.base() << "Max Action Return Value Size" << c.max_action_return_value_size << "\n";
+      return c.log(out) << "\n";
    }
 
    friend inline bool operator == ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
@@ -165,6 +151,10 @@ struct chain_config_v1 : chain_config_v0 {
       Base::operator= (b);
       return *this;
    }
+
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const;
 };
 
 class controller;
