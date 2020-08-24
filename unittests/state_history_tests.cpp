@@ -442,15 +442,15 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    BOOST_REQUIRE_EQUAL(traces.size(), 1);
 
    auto trace_itr = std::find_if(traces.begin(), traces.end(), [tr_ptr](const state_history::transaction_trace& v) {
-      return v.get<state_history::transaction_trace_v0>().id == tr_ptr->id;
+      return std::get<state_history::transaction_trace_v0>(v).id == tr_ptr->id;
    });
 
    BOOST_REQUIRE(trace_itr != traces.end());
 
-   auto &action_traces = trace_itr->get<state_history::transaction_trace_v0>().action_traces;
+   auto &action_traces = std::get<state_history::transaction_trace_v0>(*trace_itr).action_traces;
 
    auto new_account_action_itr = std::find_if(action_traces.begin(), action_traces.end(), [](const state_history::action_trace& v) {
-      return v.get<state_history::action_trace_v1>().act.name == N(newaccount).to_uint64_t();
+      return std::get<state_history::action_trace_v1>(v).act.name == N(newaccount).to_uint64_t();
    });
 
    BOOST_REQUIRE(new_account_action_itr != action_traces.end());
