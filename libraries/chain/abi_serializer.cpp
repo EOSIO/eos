@@ -237,6 +237,26 @@ namespace eosio { namespace chain {
          return type;
    }
 
+   // true if std::string can be converted to name
+   bool abi_serializer::is_string_valid_name(std::string_view str) const
+   {
+      if (size_t len = str.size(); len > 13)
+         return false;
+
+      for (const char c : str)
+      {
+         if (c >= 'a' && c <= 'z')
+            continue;
+         else if (c >= '1' && c <= '5')
+            continue;
+         else if (c == '.')
+            continue;
+         else
+            return false;
+      }
+      return true;
+   }
+
    bool abi_serializer::_is_type(const std::string_view& rtype, impl::abi_traverse_context& ctx )const {
       auto h = ctx.enter_scope();
       auto type = fundamental_type(rtype);
@@ -309,8 +329,9 @@ namespace eosio { namespace chain {
 
       for( const auto& kt : kv_tables ) { try {
         ctx.check_deadline();
-        //EOS_ASSERT(_is_type(kt.second.type, ctx), invalid_type_inside_abi, "${type}", ("type",impl::limit_size(kt.second.type))) );
-        //EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",kt.first.to_string());
+        EOS_ASSERT(_is_type(kt.second.type, ctx), invalid_type_inside_abi,
+                   "Invalid reference in struct ${type}", ("type", impl::limit_size(kt.second.type)));
+        EOS_ASSERT( kt.second.primary_index.type.size() > 0, invalid_type_inside_abi, "missing primary index$ {p}", ("p",kt.first.to_string()));
       } FC_CAPTURE_AND_RETHROW( (kt)  ) }
 
       for( const auto& r : action_results ) { try {

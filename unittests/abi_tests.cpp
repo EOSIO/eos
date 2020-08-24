@@ -1396,10 +1396,8 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
 BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
 { try {
-
- /*
+   // mystruct doesn't exists in structs
    const char* abi_def_abi = R"=====(
-
    {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
     "version": "eosio::abi/1.2",
@@ -1425,8 +1423,8 @@ BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
    auto var = fc::json::from_string(abi_def_abi);
    BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
 
+   // testtable1_INVALID_NAME is not a valid eosio::name
    const char* abi_def_abi2 = R"=====(
-
    {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
     "version": "eosio::abi/1.2",
@@ -1451,9 +1449,87 @@ BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
 
    var = fc::json::from_string(abi_def_abi2);
    BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
-*/
 
-   const char* abi_def_abi3 = R"=====(
+   // testtable1.type is empty
+   const char *abi_def_abi3 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   // testtable1.primary_index is missing
+   const char *abi_def_abi4 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {}
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   const char* abi_def_abi5 = R"=====(
 
    {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
@@ -1469,18 +1545,48 @@ BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
    }
    )=====";
 
-   auto var = fc::json::from_string(abi_def_abi2);
+   var = fc::json::from_string(abi_def_abi5);
+   auto abi = var.as<abi_def>();
+
    BOOST_CHECK_NO_THROW();
 
+   abi_serializer abis(abi, abi_serializer::create_yield_function(max_serialization_time));
+   BOOST_TEST(abis.is_string_valid_name(""));
+   BOOST_TEST(abis.is_string_valid_name("1"));
+   BOOST_TEST(abis.is_string_valid_name("5"));
+   BOOST_TEST(abis.is_string_valid_name("a"));
+   BOOST_TEST(abis.is_string_valid_name("z"));
+   BOOST_TEST(abis.is_string_valid_name("abc"));
+   BOOST_TEST(abis.is_string_valid_name("123"));
+   BOOST_TEST(abis.is_string_valid_name(".abc"));
+   BOOST_TEST(abis.is_string_valid_name(".........abc"));
+   BOOST_TEST(abis.is_string_valid_name("123."));
+   BOOST_TEST(abis.is_string_valid_name("123........."));
+   BOOST_TEST(abis.is_string_valid_name(".a.b.c.1.2.3."));
+
+   BOOST_TEST(abis.is_string_valid_name("abc.123"));
+   BOOST_TEST(abis.is_string_valid_name("123.abc"));
+
+   BOOST_TEST(abis.is_string_valid_name("12345abcdefgj"));
+   BOOST_TEST(abis.is_string_valid_name("hijklmnopqrsj"));
+   BOOST_TEST(abis.is_string_valid_name("tuvwxyz.1234j"));
+   BOOST_TEST(abis.is_string_valid_name("111111111111j"));
+   BOOST_TEST(abis.is_string_valid_name("555555555555j"));
+   BOOST_TEST(abis.is_string_valid_name("aaaaaaaaaaaaj"));
+   BOOST_TEST(abis.is_string_valid_name("zzzzzzzzzzzzj"));
+
+   BOOST_TEST(abis.is_string_valid_name("-1") == false);
+   BOOST_TEST(abis.is_string_valid_name("0") == false);
+   BOOST_TEST(abis.is_string_valid_name("6") == false);
+   BOOST_TEST(abis.is_string_valid_name("1111111111111k") == false);
+   BOOST_TEST(abis.is_string_valid_name("zzzzzzzzzzzzzk") == false);
+   BOOST_TEST(abis.is_string_valid_name("12345abcdefghj") == false);
 } FC_LOG_AND_RETHROW() }
-
-
-
 
 BOOST_AUTO_TEST_CASE(setabi_test3)
 { try {
 
-   const char* abi_def_abi = R"=====(
+      const char *abi_def_abi = R"=====(
 
    {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
@@ -1524,6 +1630,10 @@ BOOST_AUTO_TEST_CASE(setabi_test3)
                 {
                     "name": "age",
                     "type": "uint32"
+                },
+                {
+                    "name": "rate",
+                    "type": "float64"
                 }
             ]
         },
@@ -1621,6 +1731,9 @@ BOOST_AUTO_TEST_CASE(setabi_test3)
                 },
                 "combo": {
                     "type": "tuple_string_uint32"
+                },
+                "rate": {
+                    "type": "float64"
                 }
             }
         },
@@ -1647,68 +1760,64 @@ BOOST_AUTO_TEST_CASE(setabi_test3)
    }
    )=====";
 
-   auto var = fc::json::from_string(abi_def_abi);
-   auto abi = var.as<abi_def>();
+      auto var = fc::json::from_string(abi_def_abi);
+      auto abi = var.as<abi_def>();
 
-   BOOST_TEST(2u == abi.kv_tables.value.size());
-   name tbl_name{"testtable1"};
-   auto &kv_tbl_def = abi.kv_tables.value[tbl_name];
-   BOOST_TEST("pid1" == kv_tbl_def.primary_index.name.to_string());
-   BOOST_TEST("name" == kv_tbl_def.primary_index.type);
-   BOOST_TEST(3u == kv_tbl_def.secondary_indices.size());
-   BOOST_TEST("string" == kv_tbl_def.secondary_indices[name("foo")].type);
-   BOOST_TEST("uint64" == kv_tbl_def.secondary_indices[name("bar")].type);
-   BOOST_TEST("tuple_string_uint32" == kv_tbl_def.secondary_indices[name("combo")].type);
+      BOOST_TEST(2u == abi.kv_tables.value.size());
+      name tbl_name{"testtable1"};
+      auto &kv_tbl_def = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid1" == kv_tbl_def.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def.primary_index.type);
+      BOOST_TEST(4u == kv_tbl_def.secondary_indices.size());
+      BOOST_TEST("string" == kv_tbl_def.secondary_indices[name("foo")].type);
+      BOOST_TEST("uint64" == kv_tbl_def.secondary_indices[name("bar")].type);
+      BOOST_TEST("tuple_string_uint32" == kv_tbl_def.secondary_indices[name("combo")].type);
 
-   tbl_name = name("testtable2");
-   auto &kv_tbl_def2 = abi.kv_tables.value[tbl_name];
-   BOOST_TEST("pid2" == kv_tbl_def2.primary_index.name.to_string());
-   BOOST_TEST("name" == kv_tbl_def2.primary_index.type);
-   BOOST_TEST(2u == kv_tbl_def2.secondary_indices.size());
+      tbl_name = name("testtable2");
+      auto &kv_tbl_def2 = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid2" == kv_tbl_def2.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def2.primary_index.type);
+      BOOST_TEST(2u == kv_tbl_def2.secondary_indices.size());
 
-   abi_serializer abis(abi, abi_serializer::create_yield_function( max_serialization_time ));
+      abi_serializer abis(abi, abi_serializer::create_yield_function(max_serialization_time));
 
-   const char* test_data = R"=====(
+      const char *test_data = R"=====(
    {
       "type": "mystruct",
       "primarykey": "hello",
       "foo":  "World",
-      "bar":  "1000",
+      "bar":  1000,
       "fullname": "Hello World",
-      "age":  "30",
+      "age":  30,
       "combo": {
          "field0": "welcome",
-         "field1": "99"
-      }
+         "field1": 99
+      },
+      "rate": 123.567
    }
    )=====";
 
-   auto var_data = fc::json::from_string(test_data);
-   auto var2 = verify_byte_round_trip_conversion( abis, "testtable1", var_data );
+      auto var_data = fc::json::from_string(test_data);
+      auto var2 = verify_byte_round_trip_conversion(abis, "testtable1", var_data);
 
-   fc::variant v1;
-   fc::variant v2;
-   kv_tables_as_object<map<table_name, kv_table_def>> kv_tables_obj;
+      fc::variant v1;
+      fc::variant v2;
+      kv_tables_as_object<map<table_name, kv_table_def>> kv_tables_obj;
 
-   to_variant(abi.kv_tables, v1);
-   from_variant(v1, kv_tables_obj);
-   to_variant(kv_tables_obj, v2);
+      to_variant(abi.kv_tables, v1);
+      from_variant(v1, kv_tables_obj);
+      to_variant(kv_tables_obj, v2);
 
-   std::stringstream ss1;
-   std::stringstream ss2;
-   ss1 << v1;
-   ss2 << v2;
-   string str1 = ss1.str();
-   string str2 = ss2.str();
+      std::stringstream ss1;
+      std::stringstream ss2;
+      ss1 << v1;
+      ss2 << v2;
+      string str1 = ss1.str();
+      string str2 = ss2.str();
 
-   BOOST_TEST(str1 == str2);
-
-std::cout << "BYE" << std::endl;
-
+      BOOST_TEST(str1 == str2);
+     
 } FC_LOG_AND_RETHROW() }
-
-
-
 
 struct action1 {
    action1() = default;

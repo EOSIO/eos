@@ -47,6 +47,7 @@ struct abi_serializer {
    int       get_integer_size(const std::string_view& type) const;
    bool      is_struct(const std::string_view& type)const;
    bool      is_kv_table(const std::string_view& type)const;
+   bool      is_string_valid_name(std::string_view str) const;
 
    /// @return string_view of `type`
    std::string_view fundamental_type(const std::string_view& type)const;

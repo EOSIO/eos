@@ -34,9 +34,7 @@ namespace eosio::chain {
 
       uint64_t n = 0;
       int i = 0;
-      int len = std::min(std::size_t(12), str.size());
-      for (; str[i] && i < len; ++i)
-      {
+      for ( ; str[i] && i < 12; ++i) {
          // NOTE: char_to_symbol() returns char type, and without this explicit
          // expansion to uint64 type, the compilation fails at the point of usage
          // of string_to_name(), where the usage requires constant (compile time) expression.
@@ -46,7 +44,7 @@ namespace eosio::chain {
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
       // if (strlen(str) > 12) then encode str[12] into the low (remaining)
       // 4 bits of 'name'
-      if (i == 12 && str.size() > 12 && str[12])
+      if (i == 12 && str[12])
       {
          uint64_t cur_v = char_to_symbol(str[12]);
          EOS_ASSERT(cur_v <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
@@ -101,26 +99,6 @@ namespace eosio::chain {
    {
       return name( string_to_uint64_t( str ) );
    }
-
-	// true if std::string can be converted to name
-	static bool is_string_valid_name(std::string_view str) {
-	 if (size_t len = str.size(); len == 0 || len > 13) return false;
-
-	 for(const char c : str) {
-		if (c >= 'a' && c <= 'z')
-		   continue;
-		else if (c >= '1' && c <= '5')
-		   continue;
-		else if (c == '.')
-		   continue;
-		else
-		   return false;
-	  }
-	 return true;
-	}
-
-
-
 
 #define N(X) eosio::chain::string_to_name(#X)
 
