@@ -527,8 +527,8 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION(duplicate_abi_kv_table_def_exception, abi_exception,
                                    3015018, "Duplicate kv_table definition in the ABI")
 
-      FC_DECLARE_DERIVED_EXCEPTION(contract_exception, chain_exception,
-                                   3160000, "Contract exception")
+   FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
+                                 3160000, "Contract exception" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_table_payer,             contract_exception,
                                     3160001, "The payer of the table data is invalid" )
       FC_DECLARE_DERIVED_EXCEPTION( table_access_violation,          contract_exception,
