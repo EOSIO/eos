@@ -273,6 +273,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "env.set_wasm_parameters_packed"_s,
 
    "env.push_data"_s,
+   "env.print_time_us"_s,
    "env.get_input_data"_s,
    "env.set_output_data"_s
 );
