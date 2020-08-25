@@ -653,7 +653,7 @@ ST& operator<<(
    if (include_packed_trx) {
       const auto& pt  = *obj.obj.packed_trx;
       const auto& trx = pt.get_transaction();
-      fc::raw::pack(ds, fc::unsigned_int( eosio::state_history::partial_transaction::tag<eosio::state_history::partial_transaction_v1>::value ));
+      fc::raw::pack(ds, fc::unsigned_int( fc::get_index<eosio::state_history::partial_transaction, eosio::state_history::partial_transaction_v1>() ));
       fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(trx.expiration));
       fc::raw::pack(ds, as_type<uint16_t>(trx.ref_block_num));
       fc::raw::pack(ds, as_type<uint32_t>(trx.ref_block_prefix));

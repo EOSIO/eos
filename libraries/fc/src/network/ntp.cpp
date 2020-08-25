@@ -100,10 +100,22 @@ namespace fc
           {
             throw;
           }
+          catch ( const std::bad_alloc& ) 
+          {
+            throw;
+          } 
+          catch ( const boost::interprocess::bad_alloc& ) 
+          {
+            throw;
+          } 
           // this could fail to resolve but we want to go on to other hosts..
           catch ( const fc::exception& e )
           {
             elog( "${e}", ("e",e.to_detail_string() ) );
+          }
+          catch ( const std::exception& e )
+          {
+            elog( "${e}", ("e",e.what() ) );
           }
         }
       } // request_now

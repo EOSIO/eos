@@ -494,8 +494,8 @@ namespace eosio {
             if( blk || chain.is_building_block() ) {
                const auto& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
-                    if (receipt.trx.contains<packed_transaction>()) {
-                        auto &pt = receipt.trx.get<packed_transaction>();
+                    if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                        auto &pt = std::get<packed_transaction>(receipt.trx);
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -509,7 +509,7 @@ namespace eosio {
                             break;
                         }
                     } else {
-                        auto &id = receipt.trx.get<transaction_id_type>();
+                        auto &id = std::get<transaction_id_type>(receipt.trx);
                         if (id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             result.trx = move(r);
@@ -523,8 +523,8 @@ namespace eosio {
             bool found = false;
             if (blk) {
                for (const auto& receipt: blk->transactions) {
-                  if (receipt.trx.contains<packed_transaction>()) {
-                     auto& pt = receipt.trx.get<packed_transaction>();
+                  if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                     auto& pt = std::get<packed_transaction>(receipt.trx);
                      const auto& id = pt.id();
                      if( txn_id_matched(id) ) {
                         result.id = id;
@@ -544,7 +544,7 @@ namespace eosio {
                         break;
                      }
                   } else {
-                     auto& id = receipt.trx.get<transaction_id_type>();
+                     auto& id = std::get<transaction_id_type>(receipt.trx);
                      if( txn_id_matched(id) ) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();

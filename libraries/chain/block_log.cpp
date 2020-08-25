@@ -92,11 +92,11 @@ namespace eosio { namespace chain {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
             std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                                 [&ds](const genesis_state& state) {
-                                    auto data = fc::raw::pack(state);
-                                    ds.write(data.data(), data.size());
-                                 }},
-                     chain_context);
+                                  [&ds](const genesis_state& state) {
+                                      auto data = fc::raw::pack(state);
+                                      ds.write(data.data(), data.size());
+                                  }}, 
+                       chain_context);
 
             auto totem = block_log::npos;
             ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
@@ -988,7 +988,7 @@ namespace eosio { namespace chain {
 
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
-         num_trx_pruned += trx.trx.visit(pruner);
+         num_trx_pruned += std::visit(pruner, trx.trx);
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);

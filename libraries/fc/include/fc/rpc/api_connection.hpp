@@ -7,7 +7,6 @@
 #include <functional>
 #include <utility>
 #include <fc/signals.hpp>
-//#include <fc/rpc/json_connection.hpp>
 
 namespace fc {
    class api_connection;

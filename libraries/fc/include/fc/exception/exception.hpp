@@ -54,7 +54,7 @@ namespace fc
     *  @see FC_RETHROW_EXCEPTION
     *  @see FC_RETHROW_EXCEPTIONS
     */
-   class exception
+   class exception : public std::exception
    {
       public:
          static constexpr fc::microseconds format_time_limit = fc::milliseconds( 10 ); // limit time spent formatting exceptions
@@ -83,7 +83,7 @@ namespace fc
 
          const char*          name()const throw();
          int64_t              code()const throw();
-         virtual const char*  what()const throw();
+         const char*          what()const noexcept override;
 
          /**
           *   @return a reference to log messages that have
@@ -185,6 +185,8 @@ namespace fc
                                        const std::string& what_value = "unspecified");
 
        std::exception_ptr get_inner_exception()const;
+
+       static std_exception_wrapper from_current_exception(const std::exception& e);
 
        virtual NO_RETURN void               dynamic_rethrow_exception()const;
        virtual std::shared_ptr<exception>   dynamic_copy_exception()const;

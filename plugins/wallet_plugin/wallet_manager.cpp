@@ -26,7 +26,7 @@ wallet_manager::wallet_manager() {
 #ifdef __APPLE__
    try {
       wallets.emplace("SecureEnclave", std::make_unique<se_wallet>());
-   } catch(fc::exception& ) {}
+   } catch(const std::exception& ) {}
 #endif
 }
 
