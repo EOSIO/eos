@@ -37,12 +37,12 @@ bool operator<(const secondary_key<T>& lhs, const secondary_key<T>& rhs) {
 }
 
 template<typename SecondaryKey>
-class db_key_value_iter_cache {
+class db_key_value_iter_store {
    public:
       using secondary_obj_type = secondary_key<SecondaryKey>;
       using secondary_key_type = SecondaryKey;
 
-      db_key_value_iter_cache(){
+      db_key_value_iter_store(){
          _end_iterator_to_table.reserve(8);
          _iterator_to_object.reserve(32);
       }
@@ -142,6 +142,6 @@ class db_key_value_iter_cache {
       inline size_t end_iterator_to_index( int ei )const { return (-ei - 2); }
       /// Precondition: indx < _end_iterator_to_table.size() <= std::numeric_limits<int>::max()
       inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
-}; /// class db_key_value_iter_cache
+}; /// class db_key_value_iter_store
 
 }}} // namespace eosio::chain::backing_store

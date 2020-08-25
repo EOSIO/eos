@@ -379,7 +379,7 @@ void verify_table(const T& table_cache, const unique_table& orig_table, int tabl
 }
 
 BOOST_AUTO_TEST_CASE(table_cache_test) {
-   db_key_value_iter_cache<uint64_t> i64_cache;
+   db_key_value_iter_store<uint64_t> i64_cache;
 
    const unique_table t1 = { name{0}, name{0}, name{0} };
    const auto t1_itr = i64_cache.cache_table(t1);
@@ -416,7 +416,7 @@ BOOST_AUTO_TEST_CASE(table_cache_test) {
 }
 
 BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
-   db_key_value_iter_cache<eosio::chain::uint128_t> i128_cache;
+   db_key_value_iter_store<eosio::chain::uint128_t> i128_cache;
    BOOST_CHECK_EXCEPTION(
       i128_cache.get( i128_cache.invalid_iterator() ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "invalid iterator" )
@@ -472,7 +472,7 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
 }
 
 template<typename T>
-void validate_get(const db_key_value_iter_cache<T>& cache, const secondary_key<T>& orig, int itr, bool check_payer = true) {
+void validate_get(const db_key_value_iter_store<T>& cache, const secondary_key<T>& orig, int itr, bool check_payer = true) {
    const auto& obj_in_cache = cache.get(itr);
    BOOST_CHECK_NE(&orig, &obj_in_cache);
    BOOST_CHECK_EQUAL(obj_in_cache.table_ei, orig.table_ei);
@@ -502,9 +502,9 @@ struct i128_values {
 using key_suite = boost::mpl::list<i64_values, i128_values>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
-   db_key_value_iter_cache<typename KEY_SUITE::key> key_cache;
+   db_key_value_iter_store<typename KEY_SUITE::key> key_cache;
    KEY_SUITE keys;
-   using key_type = typename db_key_value_iter_cache<typename KEY_SUITE::key>::secondary_obj_type;
+   using key_type = typename db_key_value_iter_store<typename KEY_SUITE::key>::secondary_obj_type;
    const unique_table t1 = { name{0}, name{0}, name{0} };
    const unique_table t2 = { name{0}, name{0}, name{1} };
    const auto t1_itr = key_cache.cache_table(t1);
