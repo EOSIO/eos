@@ -353,21 +353,21 @@ struct db_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::kv_erase>("env", "kv_erase");
-      Rft::template add<&Derived::kv_set>("env", "kv_set");
-      Rft::template add<&Derived::kv_get>("env", "kv_get");
-      Rft::template add<&Derived::kv_get_data>("env", "kv_get_data");
-      Rft::template add<&Derived::kv_it_create>("env", "kv_it_create");
-      Rft::template add<&Derived::kv_it_destroy>("env", "kv_it_destroy");
-      Rft::template add<&Derived::kv_it_status>("env", "kv_it_status");
-      Rft::template add<&Derived::kv_it_compare>("env", "kv_it_compare");
-      Rft::template add<&Derived::kv_it_key_compare>("env", "kv_it_key_compare");
-      Rft::template add<&Derived::kv_it_move_to_end>("env", "kv_it_move_to_end");
-      Rft::template add<&Derived::kv_it_next>("env", "kv_it_next");
-      Rft::template add<&Derived::kv_it_prev>("env", "kv_it_prev");
-      Rft::template add<&Derived::kv_it_lower_bound>("env", "kv_it_lower_bound");
-      Rft::template add<&Derived::kv_it_key>("env", "kv_it_key");
-      Rft::template add<&Derived::kv_it_value>("env", "kv_it_value");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_erase);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_set);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_get);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_get_data);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_create);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_destroy);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_status);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_compare);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_key_compare);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_move_to_end);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_next);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_prev);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_lower_bound);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_key);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, kv_it_value);
    }
 }; // db_callbacks
 
