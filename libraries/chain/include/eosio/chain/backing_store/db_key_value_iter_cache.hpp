@@ -19,31 +19,21 @@ struct secondary_key {
    uint64_t  payer;
 };
 
-struct unique_table_hash {
-   std::size_t operator()(const unique_table& t) const {
-      return std::hash<name>()(t.contract) ^ std::hash<name>()(t.scope) ^ std::hash<name>()(t.table);
-   }
-};
-
-bool operator==(const unique_table& lhs, const unique_table& rhs) {
-   return lhs.contract == rhs.contract &&
-          lhs.scope == rhs.scope &&
-          lhs.table == rhs.table;
+bool operator<(const unique_table& lhs, const unique_table& rhs) {
+   return lhs.contract < rhs.contract ||
+         (lhs.contract == rhs.contract && (lhs.scope < rhs.scope ||
+                                          (lhs.scope == rhs.scope && lhs.table < rhs.table)));
 }
 
 template<typename T>
-struct secondary_key_hash {
-   std::size_t operator()(const secondary_key<T>& t) const {
-      return std::hash<int>()(t.table_ei) ^ std::hash<T>()(t.secondary) ^ std::hash<uint64_t>()(t.primary);
-   }
-};
-
-template<typename T>
-bool operator==(const secondary_key<T>& lhs, const secondary_key<T>& rhs) {
-   return lhs.table_ei == rhs.table_ei &&
-          lhs.secondary == rhs.secondary &&
-          lhs.primary == rhs.primary;
-   // ignoring payer for uniqueness
+bool operator<(const secondary_key<T>& lhs, const secondary_key<T>& rhs) {
+   // checking primary second to optimize the search since a given primary key
+   // cannot have more than one secondary key with the same value (but keeping
+   // remainder of algorithm for consistency)
+   return lhs.table_ei < rhs.table_ei ||
+          (lhs.table_ei == rhs.table_ei && (lhs.primary < rhs.primary ||
+                                            (lhs.primary == rhs.primary && lhs.secondary < rhs.secondary)));
+   // ignoring payer, it does not contribute to uniqueness
 }
 
 template<typename SecondaryKey>
@@ -141,10 +131,10 @@ class db_key_value_iter_cache {
          EOS_ASSERT( iterator >= 0, table_operation_not_permitted, explanation_for_no_end_iterators );
          EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
       }
-      unordered_map<unique_table, int, unique_table_hash > _table_cache;
-      vector<unique_table>                                 _end_iterator_to_table;
-      vector<std::optional<secondary_obj_type> >           _iterator_to_object;
-      unordered_map<secondary_obj_type, int, secondary_key_hash<secondary_key_type>> _object_to_iterator;
+      map<unique_table, int>                    _table_cache;
+      vector<unique_table>                      _end_iterator_to_table;
+      vector<std::optional<secondary_obj_type>> _iterator_to_object;
+      map<secondary_obj_type, int>              _object_to_iterator;
 
       /// Precondition: std::numeric_limits<int>::min() < ei < -1
       /// Iterator of -1 is reserved for invalid iterators (i.e. when the appropriate table has not yet been created).
