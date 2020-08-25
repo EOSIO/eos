@@ -5,7 +5,6 @@
 #include <fc/time.hpp>
 #include <fc/variant.hpp>
 #include <fc/string.hpp>
-#include <fc/optional.hpp>
 #include <fc/exception/exception.hpp>
 
 namespace eosio { namespace chain {

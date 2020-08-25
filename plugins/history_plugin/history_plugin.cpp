@@ -141,7 +141,7 @@ namespace eosio {
          std::set<filter_entry> filter_on;
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
-         fc::optional<scoped_connection> applied_transaction_connection;
+         std::optional<scoped_connection> applied_transaction_connection;
 
           bool filter(const action_trace& act) {
             bool pass_on = false;
