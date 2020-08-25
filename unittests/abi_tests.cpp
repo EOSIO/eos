@@ -1770,7 +1770,7 @@ BOOST_AUTO_TEST_CASE(setabi_test3)
 
       fc::variant v1;
       fc::variant v2;
-      kv_tables_as_object<map<table_name, kv_table_def>> kv_tables_obj;
+      may_not_exist<map<table_name, kv_table_def>> kv_tables_obj;
 
       to_variant(abi.kv_tables, v1);
       from_variant(v1, kv_tables_obj);
