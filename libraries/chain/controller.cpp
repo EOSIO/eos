@@ -35,6 +35,10 @@
 
 #include <new>
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/vm/allocator.hpp>
+#endif
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;

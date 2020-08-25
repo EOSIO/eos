@@ -298,7 +298,7 @@ class undo_stack {
          throw exception("cannot set revision while there is an existing undo stack");
       if (revision > std::numeric_limits<int64_t>::max())
          throw exception("revision to set is too high");
-      if (revision < state.revision)
+      if (static_cast<int64_t>(revision) < state.revision)
          throw exception("revision cannot decrease");
       state.revision = revision;
       if (write_now)
@@ -382,7 +382,7 @@ class undo_stack {
    // Discard all undo history prior to revision
    void commit(int64_t revision) {
       revision            = std::min(revision, state.revision);
-      auto first_revision = state.revision - state.undo_stack.size();
+      int64_t first_revision = state.revision - state.undo_stack.size();
       if (first_revision < revision) {
          rocksdb::WriteBatch batch;
          state.undo_stack.erase(state.undo_stack.begin(), state.undo_stack.begin() + (revision - first_revision));

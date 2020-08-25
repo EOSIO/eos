@@ -524,7 +524,7 @@ namespace chainbase {
          if( revision > std::numeric_limits<int64_t>::max() )
             BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
 
-         if( revision < _revision )
+         if( static_cast<int64_t>(revision) < _revision )
             BOOST_THROW_EXCEPTION( std::logic_error("revision cannot decrease") );
 
          _revision = static_cast<int64_t>(revision);
@@ -542,7 +542,7 @@ namespace chainbase {
          if (revision == _revision) {
             dispose_undo();
             _undo_stack.clear();
-         } else if( (_revision - revision) < _undo_stack.size() ) {
+         } else if( (_revision - revision) < static_cast<int64_t>(_undo_stack.size()) ) {
             auto iter = _undo_stack.begin() + (_undo_stack.size() - (_revision - revision));
             dispose(get_old_values_end(*iter), get_removed_values_end(*iter));
             _undo_stack.erase(_undo_stack.begin(), iter);

@@ -14,7 +14,7 @@ namespace {
       std::string make_filename(const char* slice_prefix, const char* slice_ext, uint32_t slice_number, uint32_t slice_width) {
          char filename[_max_filename_size] = {};
          const uint32_t slice_start = slice_number * slice_width;
-         const int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + slice_width), slice_ext);
+         const unsigned int size_written = snprintf(filename, _max_filename_size, "%s%010d-%010d%s", slice_prefix, slice_start, (slice_start + slice_width), slice_ext);
          // assert that _max_filename_size is correct
          if ( size_written >= _max_filename_size ) {
             const std::string max_size_str = std::to_string(_max_filename_size - 1); // dropping null character from size
