@@ -185,14 +185,7 @@ if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( eosio-wasm-spec-tests/generated-tests )
 endif()
 
-
-if (ENABLE_UNITY_BUILD)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "OFF")
-  set_target_properties(eosio_chain chainbase fc rodeos_lib state_history unit_test wasm_spec_test trace_api_plugin
-                        PROPERTIES UNITY_BUILD TRUE)
-else()
-  set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
