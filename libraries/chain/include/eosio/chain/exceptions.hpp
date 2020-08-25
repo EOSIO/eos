@@ -524,6 +524,8 @@ namespace eosio { namespace chain {
                                     3015016, "ABI has an unsupported version" )
       FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_results_def_exception,  abi_exception,
                                     3015017, "Duplicate action results definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION(duplicate_abi_kv_table_def_exception, abi_exception,
+                                   3015018, "Duplicate kv_table definition in the ABI")
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -557,6 +559,8 @@ namespace eosio { namespace chain {
                                     3160014, "Unknown kv_parameters version" )
       FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
                                     3160015, "Unknown wasm_config version" )
+      FC_DECLARE_DERIVED_EXCEPTION( config_parse_error,                   contract_exception,
+                                    3160015, "Parsing config error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )

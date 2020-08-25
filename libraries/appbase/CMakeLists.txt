@@ -44,7 +44,6 @@ endif()
 
 add_library( appbase
              application.cpp
-             version.cpp
              ${HEADERS}
            )
 
@@ -64,6 +63,7 @@ else()
   set(VERSION_STRING "Unknown")
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/version.cpp @ONLY ESCAPE_QUOTES)
 endif()
+target_sources(appbase PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 set(CPACK_PACKAGING_INSTALL_PREFIX /)
 
