@@ -162,19 +162,24 @@ public:
                      trx_meta = i.fut.get();
                   } CATCH_AND_CALL(i.next);
 
-                  dlog("posting trx: ${id}", ("id", trx_meta->id()));
-                  app().post(priority::low, [self, trx{std::move(trx_meta)}, next{std::move(i.next)}](){
-                     auto retry_later = [self](const chain::transaction_metadata_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr>& next) {
-                        std::promise<chain::transaction_metadata_ptr> p;
-                        q_item i;
-                        i.fut = p.get_future();
-                        p.set_value(trx);
-                        i.next = next;
-                        self->queue_.push_front( std::move( i ) );
-                     };
-                     self->prod_plugin_->execute_incoming_transaction(trx, next, retry_later);
+                  if( trx_meta ) {
+                     dlog( "posting trx: ${id}", ("id", trx_meta->id()) );
+                     app().post( priority::low, [self, trx{std::move( trx_meta )}, next{std::move( i.next )}]() {
+                        auto retry_later = [self]( const chain::transaction_metadata_ptr& trx,
+                                                   producer_plugin::next_function<chain::transaction_trace_ptr>& next ) {
+                           std::promise<chain::transaction_metadata_ptr> p;
+                           q_item i;
+                           i.fut = p.get_future();
+                           p.set_value( trx );
+                           i.next = next;
+                           self->queue_.push_front( std::move( i ) );
+                        };
+                        self->prod_plugin_->execute_incoming_transaction( trx, next, retry_later );
+                        self->queue_.unpause();
+                     } );
+                  } else {
                      self->queue_.unpause();
-                  });
+                  }
                }
                continue;
             }
