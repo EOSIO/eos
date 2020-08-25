@@ -373,8 +373,7 @@ public:
             excp = std::make_shared<fc::exception>(err_var["code"].as_int64(), err_var["name"].as_string(), err_var["what"].as_string());
 
             if (err_var.contains("details")) {
-               auto details = err_var["details"].get_array();
-               for (const auto dvar : details) {
+               for (const auto& dvar : err_var["details"].get_array()) {
                   excp->append_log(FC_LOG_MESSAGE(error, dvar.get_object()["message"].as_string()));
                }
             }

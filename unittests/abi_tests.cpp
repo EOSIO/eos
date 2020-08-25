@@ -1394,6 +1394,398 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
 
 
+BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
+{ try {
+   // mystruct doesn't exists in structs
+   const char* abi_def_abi = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   auto var = fc::json::from_string(abi_def_abi);
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
+
+   // testtable1_INVALID_NAME is not a valid eosio::name
+   const char* abi_def_abi2 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1_INVALID_NAME": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   var = fc::json::from_string(abi_def_abi2);
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
+
+   // testtable1.type is empty
+   const char *abi_def_abi3 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   // testtable1.primary_index is missing
+   const char *abi_def_abi4 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {}
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   const char* abi_def_abi5 = R"=====(
+
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   var = fc::json::from_string(abi_def_abi5);
+   auto abi = var.as<abi_def>();
+
+   BOOST_CHECK_NO_THROW();
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(setabi_test3)
+{ try {
+
+      const char *abi_def_abi = R"=====(
+
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "get",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "iteration",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                },
+                {
+                    "name": "bar",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fullname",
+                    "type": "string"
+                },
+                {
+                    "name": "combo",
+                    "type": "tuple_string_uint32"
+                },
+                {
+                    "name": "age",
+                    "type": "uint32"
+                },
+                {
+                    "name": "rate",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "nonunique",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "tuple_string_uint32",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field0",
+                    "type": "string"
+                },
+                {
+                    "name": "field1",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "update",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "updateerr1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "updateerr2",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "iteration",
+            "type": "iteration",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "nonunique",
+            "type": "nonunique",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setup",
+            "type": "setup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "update",
+            "type": "update",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateerr1",
+            "type": "updateerr1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateerr2",
+            "type": "updateerr2",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "foo": {
+                    "type": "string"
+                },
+                "bar": {
+                    "type": "uint64"
+                },
+                "combo": {
+                    "type": "tuple_string_uint32"
+                },
+                "rate": {
+                    "type": "float64"
+                }
+            }
+        },
+        "testtable2": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid2",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "sid1": {
+                    "type": "string"
+                },
+                "sid2": {
+                    "type": "uint64"
+                }
+            }
+        }
+
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+      auto var = fc::json::from_string(abi_def_abi);
+      auto abi = var.as<abi_def>();
+
+      BOOST_TEST(2u == abi.kv_tables.value.size());
+      name tbl_name{"testtable1"};
+      auto &kv_tbl_def = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid1" == kv_tbl_def.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def.primary_index.type);
+      BOOST_TEST(4u == kv_tbl_def.secondary_indices.size());
+      BOOST_TEST("string" == kv_tbl_def.secondary_indices[name("foo")].type);
+      BOOST_TEST("uint64" == kv_tbl_def.secondary_indices[name("bar")].type);
+      BOOST_TEST("tuple_string_uint32" == kv_tbl_def.secondary_indices[name("combo")].type);
+
+      tbl_name = name("testtable2");
+      auto &kv_tbl_def2 = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid2" == kv_tbl_def2.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def2.primary_index.type);
+      BOOST_TEST(2u == kv_tbl_def2.secondary_indices.size());
+
+      abi_serializer abis(abi, abi_serializer::create_yield_function(max_serialization_time));
+
+      const char *test_data = R"=====(
+   {
+      "type": "mystruct",
+      "primarykey": "hello",
+      "foo":  "World",
+      "bar":  1000,
+      "fullname": "Hello World",
+      "age":  30,
+      "combo": {
+         "field0": "welcome",
+         "field1": 99
+      },
+      "rate": 123.567
+   }
+   )=====";
+
+      auto var_data = fc::json::from_string(test_data);
+      auto var2 = verify_byte_round_trip_conversion(abis, "testtable1", var_data);
+
+      fc::variant v1;
+      fc::variant v2;
+      kv_tables_as_object<map<table_name, kv_table_def>> kv_tables_obj;
+
+      to_variant(abi.kv_tables, v1);
+      from_variant(v1, kv_tables_obj);
+      to_variant(kv_tables_obj, v2);
+
+      std::stringstream ss1;
+      std::stringstream ss2;
+      ss1 << v1;
+      ss2 << v2;
+      string str1 = ss1.str();
+      string str2 = ss2.str();
+
+      BOOST_TEST(str1 == str2);
+     
+} FC_LOG_AND_RETHROW() }
 
 struct action1 {
    action1() = default;

@@ -119,14 +119,14 @@ struct building_block {
    ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
-   pending_block_header_state            _pending_block_header_state;
+   pending_block_header_state                 _pending_block_header_state;
    std::optional<producer_authority_schedule> _new_pending_producer_schedule;
-   vector<digest_type>                   _new_protocol_feature_activations;
-   size_t                                _num_new_protocol_features_that_have_activated = 0;
-   deque<transaction_metadata_ptr>       _pending_trx_metas;
-   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   std::variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
-   digests_t                             _action_receipt_digests;
+   vector<digest_type>                        _new_protocol_feature_activations;
+   size_t                                     _num_new_protocol_features_that_have_activated = 0;
+   deque<transaction_metadata_ptr>            _pending_trx_metas;
+   deque<transaction_receipt>                 _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
+   std::variant<checksum256_type, digests_t>  _trx_mroot_or_receipt_digests;
+   digests_t                                  _action_receipt_digests;
 };
 
 struct assembled_block {

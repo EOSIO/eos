@@ -222,7 +222,7 @@ struct transaction_trace_v0 {
    std::optional<std::string>   except            = {};
    std::optional<uint64_t>      error_code        = {};
 
-   // semantically, this should be optional<transaction_trace>;
+   // semantically, this should be std::optional<transaction_trace>;
    // it is represented as vector because optional cannot be used for incomplete type
    std::vector<transaction_trace_recurse> failed_dtrx_trace = {};
    std::optional<partial_transaction>     partial           = {};
