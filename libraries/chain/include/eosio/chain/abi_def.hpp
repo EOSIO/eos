@@ -158,15 +158,9 @@ struct may_not_exist {
    T value{};
 };
 
-// Needed for custom from_variant and to_variant of kv_table_def
-template<typename T>
-struct kv_tables_as_object {
-    T value{};
-};
-
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs, const kv_tables_as_object<map<table_name, kv_table_def>>& kv_tables)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs, const may_not_exist<map<table_name, kv_table_def>>& kv_tables)
    :types(types)
    ,structs(structs)
    ,actions(actions)
@@ -187,7 +181,7 @@ struct abi_def {
    extensions_type                           abi_extensions;
    may_not_exist<vector<variant_def>>        variants;
    may_not_exist<vector<action_result_def>>  action_results;
-   kv_tables_as_object<map<table_name, kv_table_def>> kv_tables;
+   may_not_exist<map<table_name, kv_table_def>> kv_tables;
 };
 
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
@@ -222,22 +216,10 @@ void from_variant(const fc::variant& v, eosio::chain::may_not_exist<T>& e) {
    from_variant( v, e.value );
 }
 
-
-template<typename ST, typename T>
-ST& operator << (ST& s, const eosio::chain::kv_tables_as_object<T>& v) {
-   raw::pack(s, v.value);
-   return s;
-}
-
-template<typename ST, typename T>
-ST& operator >> (ST& s, eosio::chain::kv_tables_as_object<T>& v) {
-   if( s.remaining() )
-      raw::unpack(s, v.value);
-   return s;
-}
-
-template<typename T>
-void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v) {
+//template <typename T, typename = std::enable_if_t<std::is_same_v<T, std::map<eosio::chain::name, eosio::chain::kv_table_def>>, void>>
+template <>
+inline void to_variant(const eosio::chain::may_not_exist<std::map<eosio::chain::name, eosio::chain::kv_table_def>> & o, fc::variant &v)
+{
    const auto &kv_tables = o.value;
    mutable_variant_object mvo;
 
@@ -260,9 +242,11 @@ void to_variant(const eosio::chain::kv_tables_as_object<T>& o, fc::variant& v) {
    v = variant(mvo);
 }
 
-template<typename T>
-void from_variant(const fc::variant& v, eosio::chain::kv_tables_as_object<T>& o) {
-    EOS_ASSERT( v.is_object(), eosio::chain::invalid_type_inside_abi, "variant is not an variant_object type");
+//template <typename T, typename = std::enable_if_t<std::is_same_v<T, std::map<eosio::chain::name, eosio::chain::kv_table_def>>, void>>
+template <>
+inline void from_variant(const fc::variant &v, eosio::chain::may_not_exist <std::map<eosio::chain::name, eosio::chain::kv_table_def>> & o)
+{
+   EOS_ASSERT(v.is_object(), eosio::chain::invalid_type_inside_abi, "variant is not an variant_object type");
 
     auto &kv_tables = o.value;
     const auto& tables = v.get_object();
