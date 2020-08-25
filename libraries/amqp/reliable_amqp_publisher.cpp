@@ -159,7 +159,7 @@ void reliable_amqp_publisher_impl::pump_queue() {
       envelope.setPersistent();
       if(message_id)
          envelope.setMessageID(*message_id);
-      channel->publish(exchange, msg.routing_key.empty() ? routing_key : msg.routing_key, envelope);
+      channel->publish(exchange, msg.routing_key.empty() ? routing_key : msg.routing_key, envelope, AMQP::mandatory);
 
       prev = msg.num;
    }
