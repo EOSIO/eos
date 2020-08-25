@@ -39,7 +39,6 @@ bool operator<(const secondary_key<T>& lhs, const secondary_key<T>& rhs) {
 template<typename SecondaryKey>
 class db_key_value_iter_cache {
    public:
-      const int _invalid_iterator = -1;
       using secondary_obj_type = secondary_key<SecondaryKey>;
       using secondary_key_type = SecondaryKey;
 
@@ -47,6 +46,8 @@ class db_key_value_iter_cache {
          _end_iterator_to_table.reserve(8);
          _iterator_to_object.reserve(32);
       }
+
+      constexpr int invalid_iterator() const { return -1; }
 
       /// Returns end iterator of the table.
       int cache_table( const unique_table& tobj ) {
@@ -67,7 +68,7 @@ class db_key_value_iter_cache {
       }
 
       const unique_table* find_table_by_end_iterator( int ei )const {
-         EOS_ASSERT( ei < _invalid_iterator, invalid_table_iterator, "not an end iterator" );
+         EOS_ASSERT( ei < invalid_iterator(), invalid_table_iterator, "not an end iterator" );
          auto indx = end_iterator_to_index(ei);
          if( indx >= _end_iterator_to_table.size() ) return nullptr;
          return &_end_iterator_to_table[indx];
@@ -116,7 +117,7 @@ class db_key_value_iter_cache {
          if( itr != _object_to_iterator.end() )
               return itr->second;
 
-         EOS_ASSERT( obj.table_ei < _invalid_iterator, invalid_table_iterator, "not an end iterator" );
+         EOS_ASSERT( obj.table_ei < invalid_iterator(), invalid_table_iterator, "not an end iterator" );
          const auto indx = end_iterator_to_index(obj.table_ei);
          EOS_ASSERT( indx < _end_iterator_to_table.size(), invalid_table_iterator, "an invariant was broken, table should be in cache" );
          _object_to_iterator.insert({ obj, _iterator_to_object.size() });
@@ -127,7 +128,7 @@ class db_key_value_iter_cache {
 
    private:
       void validate_object_iterator(int iterator, const char* explanation_for_no_end_iterators) const {
-         EOS_ASSERT( iterator != _invalid_iterator, invalid_table_iterator, "invalid iterator" );
+         EOS_ASSERT( iterator != invalid_iterator(), invalid_table_iterator, "invalid iterator" );
          EOS_ASSERT( iterator >= 0, table_operation_not_permitted, explanation_for_no_end_iterators );
          EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
       }

@@ -383,22 +383,22 @@ BOOST_AUTO_TEST_CASE(table_cache_test) {
 
    const unique_table t1 = { name{0}, name{0}, name{0} };
    const auto t1_itr = i64_cache.cache_table(t1);
-   BOOST_CHECK_LT(t1_itr, i64_cache._invalid_iterator);
+   BOOST_CHECK_LT(t1_itr, i64_cache.invalid_iterator());
    verify_table(i64_cache, t1, t1_itr);
 
    const unique_table t2 = { name{0}, name{0}, name{1} };
    const auto t2_itr = i64_cache.cache_table(t2);
-   BOOST_CHECK_LT(t2_itr, i64_cache._invalid_iterator);
+   BOOST_CHECK_LT(t2_itr, i64_cache.invalid_iterator());
    verify_table(i64_cache, t2, t2_itr);
 
    const unique_table t3 = { name{0}, name{1}, name{0} };
    const auto t3_itr = i64_cache.cache_table(t3);
-   BOOST_CHECK_LT(t3_itr, i64_cache._invalid_iterator);
+   BOOST_CHECK_LT(t3_itr, i64_cache.invalid_iterator());
    verify_table(i64_cache, t3, t3_itr);
 
    const unique_table t4 = { name{1}, name{0}, name{0} };
    const auto t4_itr = i64_cache.cache_table(t4);
-   BOOST_CHECK_LT(t4_itr, i64_cache._invalid_iterator);
+   BOOST_CHECK_LT(t4_itr, i64_cache.invalid_iterator());
    verify_table(i64_cache, t4, t4_itr);
 
    BOOST_CHECK_NE(t1_itr, t2_itr);
@@ -410,7 +410,7 @@ BOOST_AUTO_TEST_CASE(table_cache_test) {
 
    const unique_table t5 = { name{1}, name{0}, name{1} };
    BOOST_CHECK_THROW(i64_cache.get_end_iterator_by_table(t5), eosio::chain::table_not_in_cache);
-   BOOST_CHECK_THROW(i64_cache.find_table_by_end_iterator(i64_cache._invalid_iterator), eosio::chain::invalid_table_iterator);
+   BOOST_CHECK_THROW(i64_cache.find_table_by_end_iterator(i64_cache.invalid_iterator()), eosio::chain::invalid_table_iterator);
    const auto non_existent_itr = t4_itr - 1;
    BOOST_CHECK_EQUAL(nullptr, i64_cache.find_table_by_end_iterator(non_existent_itr));
 }
@@ -418,11 +418,11 @@ BOOST_AUTO_TEST_CASE(table_cache_test) {
 BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    db_key_value_iter_cache<eosio::chain::uint128_t> i128_cache;
    BOOST_CHECK_EXCEPTION(
-      i128_cache.get( i128_cache._invalid_iterator ), eosio::chain::invalid_table_iterator,
+      i128_cache.get( i128_cache.invalid_iterator() ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "invalid iterator" )
    );
    BOOST_CHECK_EXCEPTION(
-      i128_cache.get( i128_cache._invalid_iterator - 1 ), eosio::chain::table_operation_not_permitted,
+      i128_cache.get( i128_cache.invalid_iterator() - 1 ), eosio::chain::table_operation_not_permitted,
       eosio::testing::fc_exception_message_is( "dereference of end iterator" )
    );
    BOOST_CHECK_EXCEPTION(
@@ -431,11 +431,11 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    );
 
    BOOST_CHECK_EXCEPTION(
-      i128_cache.remove( i128_cache._invalid_iterator ), eosio::chain::invalid_table_iterator,
+      i128_cache.remove( i128_cache.invalid_iterator() ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "invalid iterator" )
    );
    BOOST_CHECK_EXCEPTION(
-      i128_cache.remove( i128_cache._invalid_iterator - 1 ), eosio::chain::table_operation_not_permitted,
+      i128_cache.remove( i128_cache.invalid_iterator() - 1 ), eosio::chain::table_operation_not_permitted,
       eosio::testing::fc_exception_message_is( "cannot call remove on end iterators" )
    );
    BOOST_CHECK_EXCEPTION(
@@ -446,11 +446,11 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    eosio::chain::uint128_t key = 0;
    uint64_t payer = 0;
    BOOST_CHECK_EXCEPTION(
-      i128_cache.swap( i128_cache._invalid_iterator, key, payer ), eosio::chain::invalid_table_iterator,
+      i128_cache.swap( i128_cache.invalid_iterator(), key, payer ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "invalid iterator" )
    );
    BOOST_CHECK_EXCEPTION(
-      i128_cache.swap( i128_cache._invalid_iterator - 1, key, payer ), eosio::chain::table_operation_not_permitted,
+      i128_cache.swap( i128_cache.invalid_iterator() - 1, key, payer ), eosio::chain::table_operation_not_permitted,
       eosio::testing::fc_exception_message_is( "cannot call swap on end iterators" )
    );
    BOOST_CHECK_EXCEPTION(
@@ -459,12 +459,12 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    );
 
    using i128_type = secondary_key<eosio::chain::uint128_t>;
-   const i128_type i128_1 = { .table_ei = i128_cache._invalid_iterator, .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
+   const i128_type i128_1 = { .table_ei = i128_cache.invalid_iterator(), .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
    BOOST_CHECK_EXCEPTION(
       i128_cache.add( i128_1 ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "not an end iterator" )
    );
-   const i128_type i128_2 = { .table_ei = i128_cache._invalid_iterator - 1, .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
+   const i128_type i128_2 = { .table_ei = i128_cache.invalid_iterator() - 1, .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
    BOOST_CHECK_EXCEPTION(
       i128_cache.add( i128_2 ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "an invariant was broken, table should be in cache" )
@@ -513,7 +513,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
 
    const key_type key_1 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = 0x0 };
    const auto key_1_itr = key_cache.add(key_1);
-   BOOST_CHECK_LT(key_cache._invalid_iterator, key_1_itr);
+   BOOST_CHECK_LT(key_cache.invalid_iterator(), key_1_itr);
    validate_get(key_cache, key_1, key_1_itr);
 
    // verify that payer isn't part of uniqueness
@@ -522,19 +522,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
 
    const key_type key_2 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x1, .payer = 0x0 };
    const auto key_2_itr = key_cache.add(key_2);
-   BOOST_CHECK_LT(key_cache._invalid_iterator, key_2_itr);
+   BOOST_CHECK_LT(key_cache.invalid_iterator(), key_2_itr);
    validate_get(key_cache, key_2, key_2_itr);
    BOOST_CHECK_LT(key_1_itr, key_2_itr);
 
    const key_type key_3 = { .table_ei = t1_itr, .secondary = keys.sec_val_2, .primary = 0x0, .payer = 0x0 };
    const auto key_3_itr = key_cache.add(key_3);
-   BOOST_CHECK_LT(key_cache._invalid_iterator, key_3_itr);
+   BOOST_CHECK_LT(key_cache.invalid_iterator(), key_3_itr);
    validate_get(key_cache, key_3, key_3_itr);
    BOOST_CHECK_LT(key_2_itr, key_3_itr);
 
    const key_type key_4 = { .table_ei = t2_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = 0x0 };
    const auto key_4_itr = key_cache.add(key_4);
-   BOOST_CHECK_LT(key_cache._invalid_iterator, key_4_itr);
+   BOOST_CHECK_LT(key_cache.invalid_iterator(), key_4_itr);
    validate_get(key_cache, key_4, key_4_itr);
    BOOST_CHECK_LT(key_3_itr, key_4_itr);
 
