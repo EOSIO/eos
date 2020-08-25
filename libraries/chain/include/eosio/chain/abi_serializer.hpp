@@ -46,6 +46,7 @@ struct abi_serializer {
    bool      is_integer(const std::string_view& type) const;
    int       get_integer_size(const std::string_view& type) const;
    bool      is_struct(const std::string_view& type)const;
+   bool      is_kv_table(const std::string_view& type)const;
 
    /// @return string_view of `type`
    std::string_view fundamental_type(const std::string_view& type)const;
@@ -54,6 +55,7 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+   type_name get_kv_table_type(name action)const;
    type_name get_action_result_type(name action_result)const;
 
    std::optional<string>  get_error_message( uint64_t error_code )const;
@@ -118,6 +120,7 @@ private:
    map<type_name, struct_def, std::less<>>    structs;
    map<name,type_name>                        actions;
    map<name,type_name>                        tables;
+   map<name, kv_table_def, std::less<>>       kv_tables;
    map<uint64_t, string>                      error_messages;
    map<type_name, variant_def, std::less<>>   variants;
    map<name,type_name>                        action_results;

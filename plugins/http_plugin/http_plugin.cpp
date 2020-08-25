@@ -195,13 +195,13 @@ namespace eosio {
 
          websocket_server_type    server;
 
-         uint16_t                                       thread_pool_size = 2;
-         std::optional<eosio::chain::named_thread_pool> thread_pool;
-         std::atomic<size_t>                            bytes_in_flight{0};
-         std::atomic<int32_t>                           requests_in_flight{0};
-         size_t                                         max_bytes_in_flight = 0;
-         int32_t                                        max_requests_in_flight = -1;
-         fc::microseconds                               max_response_time{30*1000};
+         uint16_t                                    thread_pool_size = 2;
+         std::optional<eosio::chain::named_thread_pool>   thread_pool;
+         std::atomic<size_t>                         bytes_in_flight{0};
+         std::atomic<int32_t>                        requests_in_flight{0};
+         size_t                                      max_bytes_in_flight = 0;
+         int32_t                                     max_requests_in_flight = -1;
+         fc::microseconds                            max_response_time{30*1000};
 
          std::optional<tcp::endpoint>  https_listen_endpoint;
          string                        https_cert_chain;

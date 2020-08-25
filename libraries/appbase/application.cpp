@@ -413,16 +413,18 @@ void application::set_thread_priority_max() {
 }
 
 void application::exec() {
-   boost::asio::io_service::work work(*io_serv);
-   (void)work;
-   bool more = true;
-   while( more || io_serv->run_one() ) {
-      while( io_serv->poll_one() ) {}
-      // execute the highest priority item
-      more = pri_queue.execute_highest();
-   }
+   {
+      boost::asio::io_service::work work( *io_serv );
+      (void) work;
+      bool more = true;
+      while( more || io_serv->run_one() ) {
+         while( io_serv->poll_one() ) {}
+         // execute the highest priority item
+         more = pri_queue.execute_highest();
+      }
 
-   shutdown(); /// perform synchronous shutdown
+      shutdown(); /// perform synchronous shutdown
+   }
    io_serv.reset();
 }
 
