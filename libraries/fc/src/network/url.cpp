@@ -60,7 +60,7 @@ namespace fc
            _path = fc::path( "/" ) / _lpath;
 #endif
            std::getline( ss, _largs );
-           if( _args.valid() && _args->size() ) 
+           if( _args && _args->size() ) 
            {
              // TODO: args = fc::move(_args);
               _query = fc::move(_largs);
@@ -74,7 +74,7 @@ namespace fc
          opath                     _path;
          ostring                   _query;
          ovariant_object           _args;
-         fc::optional<uint16_t>    _port;
+         std::optional<uint16_t>   _port;
     };
   }
 
@@ -91,17 +91,17 @@ namespace fc
   {
       std::stringstream ss;
       ss<<my->_proto<<"://";
-      if( my->_user.valid() ) {
+      if( my->_user ) {
         ss << *my->_user;
-        if( my->_pass.valid() ) {
+        if( my->_pass ) {
           ss<<":"<<*my->_pass;
         }
         ss<<"@";
       }
-      if( my->_host.valid() ) ss<<*my->_host;
-      if( my->_port.valid() ) ss<<":"<<*my->_port;
-      if( my->_path.valid() ) ss<<my->_path->generic_string();
-      if( my->_query.valid() ) ss<<"?"<<*my->_query;
+      if( my->_host ) ss<<*my->_host;
+      if( my->_port ) ss<<":"<<*my->_port;
+      if( my->_path ) ss<<my->_path->generic_string();
+      if( my->_query ) ss<<"?"<<*my->_query;
     //  if( my->_args ) ss<<"?"<<*my->_args;
       return ss.str();
   }
@@ -132,7 +132,7 @@ namespace fc
   }
 
   url::url( const string& proto, const ostring& host, const ostring& user, const ostring& pass,
-            const opath& path, const ostring& query, const ovariant_object& args, const fc::optional<uint16_t>& port)
+            const opath& path, const ostring& query, const ovariant_object& args, const std::optional<uint16_t>& port)
      :my( std::make_shared<detail::url_impl>() )
    {
       my->_proto = proto;
@@ -191,7 +191,7 @@ namespace fc
   {
     return my->_args;
   }
-  fc::optional<uint16_t>    url::port()const
+  std::optional<uint16_t>   url::port()const
   {
     return my->_port;
   }

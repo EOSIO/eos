@@ -95,14 +95,14 @@ bool se_wallet::remove_key(string key) {
    FC_THROW_EXCEPTION(chain::wallet_exception, "Given key to delete not found in Secure Enclave wallet");
 }
 
-fc::optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
+std::optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
    auto se_keys = secure_enclave::get_all_keys();
 
    for(auto it = se_keys.begin(); it != se_keys.end(); ++it)
       if(it->public_key() == public_key)
          return it->sign(digest);
 
-   return fc::optional<signature_type>{};
+   return std::optional<signature_type>();
 }
 
 }}

@@ -11,7 +11,7 @@ struct initialize_message {
 };
 
 struct initalize_response_message {
-   fc::optional<std::string> error_message; //no error message? everything groovy
+   std::optional<std::string> error_message; //no error message? everything groovy
 };
 
 struct code_tuple {

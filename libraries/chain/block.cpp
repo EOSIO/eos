@@ -133,7 +133,7 @@ namespace eosio { namespace chain {
       return validate_and_extract_block_extensions( block_extensions );
    }
 
-   fc::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
+   std::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
       if (prune_state != prune_state_type::complete_legacy)
          return {};
 

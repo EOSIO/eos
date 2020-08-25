@@ -77,7 +77,7 @@ void websocket_api_connection::send_notice(
    uint64_t callback_id,
    variants args /* = variants() */ )
 {
-   fc::rpc::request req{ optional<uint64_t>(), "notice", {callback_id, std::move(args)}};
+   fc::rpc::request req{ std::optional<uint64_t>(), "notice", {callback_id, std::move(args)}};
    _connection.send_message( fc::json::to_string(req) );
 }
 
