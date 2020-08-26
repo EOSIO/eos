@@ -64,8 +64,8 @@ namespace eosio::chain_apis {
          struct account_result {
             chain::name                            account_name;
             chain::name                            permission_name;
-            fc::optional<chain::permission_level>  authorizing_account;
-            fc::optional<chain::public_key_type>   authorizing_key;
+            std::optional<chain::permission_level> authorizing_account;
+            std::optional<chain::public_key_type>  authorizing_key;
             chain::weight_type                     weight;
             uint32_t                               threshold;
          };

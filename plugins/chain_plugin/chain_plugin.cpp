@@ -186,7 +186,7 @@ public:
    std::optional<scoped_connection>                                   accepted_transaction_connection;
    std::optional<scoped_connection>                                   applied_transaction_connection;
 
-   fc::optional<chain_apis::account_query_db>                        _account_query_db;
+   std::optional<chain_apis::account_query_db>                        _account_query_db;
 };
 
 chain_plugin::chain_plugin()
@@ -2741,7 +2741,7 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
 
 account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
 {
-   EOS_ASSERT(aqdb.valid(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
    return aqdb->get_accounts_by_authorizers(args);
 }  
   
