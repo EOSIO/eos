@@ -4,7 +4,7 @@
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/kv_context.hpp>
 #include <eosio/chain/backing_store/db_context.hpp>
-#include <eosio/chain/backing_store/db_chainbase_iter_cache.hpp>
+#include <eosio/chain/backing_store/db_chainbase_iter_store.hpp>
 #include <eosio/chain/backing_store/db_secondary_key_helper.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
@@ -335,7 +335,7 @@ class apply_context {
 
          private:
             apply_context&                                     context;
-            backing_store::db_chainbase_iter_cache<ObjectType> itr_cache;
+            backing_store::db_chainbase_iter_store<ObjectType> itr_cache;
       }; /// class generic_index
 
 
@@ -511,7 +511,7 @@ class apply_context {
 
    private:
 
-      backing_store::db_chainbase_iter_cache<key_value_object> keyval_cache;
+      backing_store::db_chainbase_iter_store<key_value_object> db_iter_store;
       vector< std::pair<account_name, uint32_t> >              _notified; ///< keeps track of new accounts to be notifed of current message
       vector<uint32_t>                                         _inline_actions; ///< action_ordinals of queued inline actions
       vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions

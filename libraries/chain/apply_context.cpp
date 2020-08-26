@@ -918,14 +918,14 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
       );
    }
 
-   keyval_cache.cache_table( tab );
-   return keyval_cache.add( obj );
+   db_iter_store.cache_table( tab );
+   return db_iter_store.add( obj );
 }
 
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
@@ -977,9 +977,9 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 }
 
 void apply_context::db_remove_i64( int iterator ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
@@ -1017,11 +1017,11 @@ void apply_context::db_remove_i64( int iterator ) {
       remove_table(table_obj);
    }
 
-   keyval_cache.remove( iterator );
+   db_iter_store.remove( iterator );
 }
 
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
    auto s = obj.value.size();
    if( buffer_size == 0 ) return s;
@@ -1035,16 +1035,16 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
    if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get( iterator ); // Check for iterator != -1 happens in this call
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
    ++itr;
 
-   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr == idx.end() || itr->t_id != obj.t_id ) return db_iter_store.get_end_iterator_by_table_id(obj.t_id);
 
    primary = itr->primary_key;
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
@@ -1052,7 +1052,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
 
    if( iterator < -1 ) // is end iterator
    {
-      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
+      auto tab = db_iter_store.find_table_by_end_iterator(iterator);
       EOS_ASSERT( tab, invalid_table_iterator, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
@@ -1063,10 +1063,10 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       if( itr->t_id != tab->id ) return -1; // Empty table
 
       primary = itr->primary_key;
-      return keyval_cache.add(*itr);
+      return db_iter_store.add(*itr);
    }
 
-   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get(iterator); // Check for iterator != -1 happens in this call
 
    auto itr = idx.iterator_to(obj);
    if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
@@ -1076,7 +1076,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
 
    primary = itr->primary_key;
-   return keyval_cache.add(*itr);
+   return db_iter_store.add(*itr);
 }
 
 int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
@@ -1085,12 +1085,12 @@ int apply_context::db_find_i64( name code, name scope, name table, uint64_t id )
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const key_value_object* obj = db.find<key_value_object, by_scope_primary>( boost::make_tuple( tab->id, id ) );
    if( !obj ) return table_end_itr;
 
-   return keyval_cache.add( *obj );
+   return db_iter_store.add( *obj );
 }
 
 int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
@@ -1099,14 +1099,14 @@ int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
@@ -1115,14 +1115,14 @@ int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_end_i64( name code, name scope, name table ) {
@@ -1131,7 +1131,7 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   return keyval_cache.cache_table( *tab );
+   return db_iter_store.cache_table( *tab );
 }
 
 int64_t apply_context::kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
