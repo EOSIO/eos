@@ -1288,9 +1288,9 @@ namespace LLVMJIT
 		if(module.tables.size()) {
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
 			llvm::Type* tableArrayTy = llvm::ArrayType::get(tableElementType, module.tables.defs[0].type.size.min);
-			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, true, llvm::GlobalValue::PrivateLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
+			defaultTablePointer = new llvm::GlobalVariable(*llvmModule, tableArrayTy, true, llvm::GlobalValue::ExternalLinkage, llvm::ConstantAggregateZero::get(tableArrayTy), getTableSymbolName());
+			defaultTablePointer->setVisibility(llvm::GlobalValue::ProtectedVisibility); // Don't use the GOT.
 			defaultTablePointer->setExternallyInitialized(true);
-			defaultTablePointer->setSection(".eosio_table");
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 			for(const TableSegment& table_segment : module.tableSegments)
 				for(Uptr i = 0; i < table_segment.indices.size(); ++i)
