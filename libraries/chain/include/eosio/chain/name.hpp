@@ -30,31 +30,7 @@ namespace eosio::chain {
    }
 
    // true if std::string can be converted to name
-   static bool is_string_valid_name(std::string_view str)
-   {
-      size_t slen = str.size();
-      if( slen > 13)
-         return false;
-
-      size_t len = (slen <= 12) ? slen : 12;
-      for( size_t i = 0; i < len; ++i ) {
-         char c = str[i];
-         if ((c >= 'a' && c <= 'z') || (c >= '1' && c <= '5') || (c == '.'))
-            continue;
-         else
-            return false;
-      }
-
-      if( slen == 13) {
-         char c = str[12];
-         if ((c >= 'a' && c <= 'j') || (c >= '1' && c <= '5') || (c == '.'))
-            return true;
-         else
-            return false;
-      }
-
-      return true;
-   }
+   bool is_string_valid_name(std::string_view str);
 
    static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
       EOS_ASSERT(str.size() <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
