@@ -286,6 +286,10 @@ namespace eosio::chain_apis {
                   auto data = at.act.data_as<chain::deleteauth>();
                   auto itr = deleted.emplace(chain::permission_level{data.account, data.permission}).first;
                   updated.erase(*itr);
+               } else if (at.act.name == chain::newaccount::get_name()) {
+                   auto data = at.act.data_as<chain::newaccount>();
+                   updated.emplace(chain::permission_level{data.name, N(owner)});
+                   updated.emplace(chain::permission_level{data.name, N(active)});
                }
             }
          };
