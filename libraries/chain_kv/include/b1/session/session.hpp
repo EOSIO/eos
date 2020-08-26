@@ -169,6 +169,7 @@ public:
     void write(key_value kv);
     bool contains(const bytes& key) const;
     void erase(const bytes& key);
+    void clear();
     
     // returns a pair containing the key_values found and the keys not found.
     template <typename iterable>
@@ -219,8 +220,9 @@ private:
         session_impl(persistent_data_store pds, cache_data_store cds);
         ~session_impl();
         
-        auto undo() -> void;
-        auto commit() -> void;
+        void undo();
+        void commit();
+        void clear();
  
         std::shared_ptr<session_impl> parent;
         std::weak_ptr<session_impl> child;
@@ -247,7 +249,7 @@ session<persistent_data_store, cache_data_store> make_session() {
     return session_type{};
 }
 
-template <typename persistent_data_store, typename cache_data_store>
+template <typename cache_data_store, typename persistent_data_store>
 session<persistent_data_store, cache_data_store> make_session(persistent_data_store store) {
     using session_type = session<persistent_data_store, cache_data_store>;
     return session_type{std::move(store)};
@@ -317,6 +319,7 @@ void session<persistent_data_store, cache_data_store>::session_impl::undo() {
     parent = nullptr;
     child.reset();
     backing_data_store = nullptr;
+    clear();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -341,6 +344,13 @@ void session<persistent_data_store, cache_data_store>::session_impl::commit() {
     
     // commit
     write_through(*backing_data_store);
+}
+
+template <typename persistent_data_store, typename cache_data_store>
+void session<persistent_data_store, cache_data_store>::session_impl::clear() {
+    deleted_keys.clear();
+    updated_keys.clear();
+    cache.clear();
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -504,6 +514,14 @@ void session<persistent_data_store, cache_data_store>::erase(const bytes& key) {
     m_impl->deleted_keys.emplace(key);
     m_impl->updated_keys.erase(key);
     m_impl->cache.erase(key);
+}
+
+template <typename persistent_data_store, typename cache_data_store>
+void session<persistent_data_store, cache_data_store>::clear() {
+    if (!m_impl) {
+        return;
+    }
+    m_impl->clear();
 }
 
 // Reads a batch of keys from the session.

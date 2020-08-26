@@ -248,7 +248,7 @@ inline bool bytes::operator!=(const bytes& other) const {
 namespace std {
 
 template <>
-class less<eosio::session::bytes> final {
+struct less<eosio::session::bytes> final {
 public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
@@ -256,7 +256,7 @@ public:
 };
 
 template <>
-class greater<eosio::session::bytes> final {
+struct greater<eosio::session::bytes> final {
 public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
@@ -264,7 +264,7 @@ public:
 };
 
 template <>
-class hash<eosio::session::bytes> final {
+struct hash<eosio::session::bytes> final {
 public:
   size_t operator()(const eosio::session::bytes& b) const {
     return std::hash<std::string_view>{}({reinterpret_cast<const char*>(b.data()), b.length()});
@@ -272,7 +272,7 @@ public:
 };
 
 template <>
-class equal_to<eosio::session::bytes> final
+struct equal_to<eosio::session::bytes> final
 {
 public:
     auto operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const -> bool

@@ -86,6 +86,7 @@ public:
     void write(key_value kv);
     bool contains(const bytes& key) const;
     void erase(const bytes& key);
+    void clear();
 
     template <typename iterable>
     const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read(const iterable& keys) const;
@@ -194,6 +195,11 @@ bool cache<allocator>::contains(const bytes& key) const {
 template <typename allocator>
 void cache<allocator>::erase(const bytes& key) {
     find_(key, [&](auto& it){ m_cache.erase(it); return false; }, [](){});
+}
+
+template <typename allocator>
+void cache<allocator>::clear() {
+    m_cache.clear();
 }
 
 // Reads a batch of keys from the cache.
