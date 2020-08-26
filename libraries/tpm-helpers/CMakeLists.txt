@@ -1,0 +1,18 @@
+find_path(TSS2_INCLUDE_DIR NAMES tss2_esys.h PATH_SUFFIXES tss2)
+if(NOT TSS2_INCLUDE_DIR)
+    message(STATUS "tpm2-tss headers not found, disabling TPM signing support")
+    return()
+endif()
+
+find_library(TSS2_LDR_LIBRARY NAMES tss2-tctildr)
+find_library(TSS2_ESYS_LIBRARY NAMES tss2-esys)
+find_library(TSS2_RC_LIBRARY NAMES tss2-rc)
+find_library(TSS2_MU_LIBRARY NAMES tss2-mu)
+if(NOT TSS2_LDR_LIBRARY OR NOT TSS2_ESYS_LIBRARY OR NOT TSS2_RC_LIBRARY OR NOT TSS2_MU_LIBRARY)
+    message(STATUS "tpm2-tss library not found, disabling TPM signing support")
+    return()
+endif()
+
+add_library(tpm-helpers tpm-helpers.cpp)
+target_include_directories(tpm-helpers PUBLIC include PRIVATE "${TSS2_INCLUDE_DIR}")
+target_link_libraries(tpm-helpers PUBLIC fc "${TSS2_LDR_LIBRARY}" "${TSS2_ESYS_LIBRARY}" "${TSS2_RC_LIBRARY}" "${TSS2_MU_LIBRARY}")
