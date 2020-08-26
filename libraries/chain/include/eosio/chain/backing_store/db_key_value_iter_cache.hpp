@@ -20,9 +20,7 @@ struct secondary_key {
 };
 
 bool operator<(const unique_table& lhs, const unique_table& rhs) {
-   return lhs.contract < rhs.contract ||
-         (lhs.contract == rhs.contract && (lhs.scope < rhs.scope ||
-                                          (lhs.scope == rhs.scope && lhs.table < rhs.table)));
+   return std::tie(lhs.contract, lhs.scope, lhs.table) < std::tie(rhs.contract, rhs.scope, rhs.table);
 }
 
 template<typename T>
@@ -30,9 +28,7 @@ bool operator<(const secondary_key<T>& lhs, const secondary_key<T>& rhs) {
    // checking primary second to optimize the search since a given primary key
    // cannot have more than one secondary key with the same value (but keeping
    // remainder of algorithm for consistency)
-   return lhs.table_ei < rhs.table_ei ||
-          (lhs.table_ei == rhs.table_ei && (lhs.primary < rhs.primary ||
-                                            (lhs.primary == rhs.primary && lhs.secondary < rhs.secondary)));
+   return std::tie(lhs.table_ei, lhs.primary, lhs.secondary) < std::tie(rhs.table_ei, rhs.primary, rhs.secondary);
    // ignoring payer, it does not contribute to uniqueness
 }
 
