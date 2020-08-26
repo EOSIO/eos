@@ -41,10 +41,10 @@ class kv_tester : public tester {
    kv_tester() {
       produce_blocks(2);
 
-      create_accounts({ N(kvtest), N(kvtest1), N(kvtest2), N(kvtest3), N(kvtest4) });
+      create_accounts({ "kvtest"_n, "kvtest1"_n, "kvtest2"_n, "kvtest3"_n, "kvtest4"_n });
       produce_blocks(2);
 
-      for(auto account : {N(kvtest), N(kvtest1), N(kvtest2), N(kvtest3), N(kvtest4)}) {
+      for(auto account : {"kvtest"_n, "kvtest1"_n, "kvtest2"_n, "kvtest3"_n, "kvtest4"_n}) {
          set_code(account, contracts::kv_test_wasm());
          set_abi(account, contracts::kv_test_abi().data());
       }
@@ -55,7 +55,7 @@ class kv_tester : public tester {
       produce_blocks();
 
       {
-         const auto& accnt = control->db().get<account_object, by_name>(N(kvtest));
+         const auto& accnt = control->db().get<account_object, by_name>("kvtest"_n);
          abi_def     abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
@@ -67,11 +67,11 @@ class kv_tester : public tester {
          sys_abi_ser.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
       }
 
-      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024*1024) == "");
+      BOOST_TEST_REQUIRE(set_kv_limits("eosio.kvram"_n, 1024, 1024*1024) == "");
       produce_block();
    }
 
-   action_result push_action(const action_name& name, const variant_object& data, chain::name account = N(kvtest), chain::name authorizer = N(kvtest)) {
+   action_result push_action(const action_name& name, const variant_object& data, chain::name account = "kvtest"_n, chain::name authorizer = "kvtest"_n) {
       string action_type_name = abi_ser.get_action_type(name);
       action act;
       act.account = account;
@@ -80,10 +80,10 @@ class kv_tester : public tester {
       return base_tester::push_action(std::move(act), authorizer.to_uint64_t());
    }
 
-   action_result set_limit(name db, int64_t limit, name account = N(kvtest)) {
+   action_result set_limit(name db, int64_t limit, name account = "kvtest"_n) {
       action_name name;
-      if(db == N(eosio.kvram)) {
-         name = N(setramlimit);
+      if(db == "eosio.kvram"_n) {
+         name = "setramlimit"_n;
       } else {
          BOOST_FAIL("Wrong database id");
       }
@@ -97,8 +97,8 @@ class kv_tester : public tester {
 
    action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       action_name name;
-      if(db == N(eosio.kvram)) {
-         name = N(ramkvlimits);
+      if(db == "eosio.kvram"_n) {
+         name = "ramkvlimits"_n;
       } else {
          BOOST_FAIL("Wrong database id");
       }
@@ -111,46 +111,46 @@ class kv_tester : public tester {
    }
 
    void erase(const char* error, name db, name contract, const char* k) {
-      BOOST_REQUIRE_EQUAL(error, push_action(N(erase), mvo()("db", db)("contract", contract)("k", k)));
+      BOOST_REQUIRE_EQUAL(error, push_action("erase"_n, mvo()("db", db)("contract", contract)("k", k)));
    }
 
    template <typename V>
    void get(const char* error, name db, name contract, const char* k, V v) {
-      BOOST_REQUIRE_EQUAL(error, push_action(N(get), mvo()("db", db)("contract", contract)("k", k)("v", v)));
+      BOOST_REQUIRE_EQUAL(error, push_action("get"_n, mvo()("db", db)("contract", contract)("k", k)("v", v)));
    }
 
    template <typename V>
    action_result set(name db, name contract, const char* k, V v, name payer, name authorizer) {
-      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", payer), contract, authorizer);
+      return push_action("set"_n, mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", payer), contract, authorizer);
    }
 
    template <typename V>
    action_result set(name db, name contract, const char* k, V v) {
-      return push_action(N(set), mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", contract));
+      return push_action("set"_n, mvo()("db", db)("contract", contract)("k", k)("v", v)("payer", contract));
    }
 
    action_result iterlimit(const std::vector<itparam>& params) {
-      return push_action(N(itlimit), mvo()("params", params));
+      return push_action("itlimit"_n, mvo()("params", params));
    }
 
    void setmany(const char* error, name db, name contract, const std::vector<kv>& kvs) {
-      BOOST_REQUIRE_EQUAL(error, push_action(N(setmany), mvo()("db", db)("contract", contract)("kvs", kvs), contract));
+      BOOST_REQUIRE_EQUAL(error, push_action("setmany"_n, mvo()("db", db)("contract", contract)("kvs", kvs), contract));
    }
 
    template <typename T>
    void scan(const char* error, name db, name contract, const char* prefix, T lower, const std::vector<kv>& expected) {
-      BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      BOOST_REQUIRE_EQUAL(error, push_action("scan"_n, mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                             "lower", lower)("expected", expected)));
-      BOOST_REQUIRE_EQUAL(error, push_action(N(scan), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      BOOST_REQUIRE_EQUAL(error, push_action("scan"_n, mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                             "lower", lower)("expected", expected), contract));
    }
 
    template <typename T>
    action_result scanrev(name db, name contract, const char* prefix, T lower,
                 const std::vector<kv>& expected) {
-      auto result1 = push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      auto result1 = push_action("scanrev"_n, mvo()("db", db)("contract", contract)("prefix", prefix)(
                                            "lower", lower)("expected", expected));
-      auto result2 = push_action(N(scanrev), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      auto result2 = push_action("scanrev"_n, mvo()("db", db)("contract", contract)("prefix", prefix)(
                                            "lower", lower)("expected", expected), contract);
       BOOST_TEST(result1 == result2);
       return result1;
@@ -158,12 +158,12 @@ class kv_tester : public tester {
 
    void itstaterased(const char* error, name db, name contract, const char* prefix, const char* k, const char* v,
                      int test_id, bool insert, bool reinsert) {
-      BOOST_REQUIRE_EQUAL(error, push_action(N(itstaterased), mvo()("db", db)("contract", contract)("prefix", prefix)(
+      BOOST_REQUIRE_EQUAL(error, push_action("itstaterased"_n, mvo()("db", db)("contract", contract)("prefix", prefix)(
                                                                     "k", k)("v", v)("test_id", test_id)("insert", insert)("reinsert", reinsert)));
    }
 
-   uint64_t get_usage(name db, name account=N(kvtest)) {
-      if (db == N(eosio.kvram)) {
+   uint64_t get_usage(name db, name account="kvtest"_n) {
+      if (db == "eosio.kvram"_n) {
          return control->get_resource_limits_manager().get_account_ram_usage(account);
       }
       BOOST_FAIL("Wrong db");
@@ -171,44 +171,44 @@ class kv_tester : public tester {
    }
 
    void test_basic(name db) {
-      get("", db, N(kvtest), "", nullptr);
-      BOOST_TEST("" == set(db, N(kvtest), "", ""));
-      get("", db, N(kvtest), "", "");
-      BOOST_TEST("" == set(db, N(kvtest), "", "1234"));
-      get("", db, N(kvtest), "", "1234");
-      get("", db, N(kvtest), "00", nullptr);
-      BOOST_TEST("" == set(db, N(kvtest), "00", "aabbccdd"));
-      get("", db, N(kvtest), "00", "aabbccdd");
-      get("", db, N(kvtest), "02", nullptr);
-      erase("", db, N(kvtest), "02");
-      get("", db, N(kvtest), "02", nullptr);
-      BOOST_TEST("" == set(db, N(kvtest), "02", "42"));
-      get("", db, N(kvtest), "02", "42");
-      get("", db, N(kvtest), "01020304", nullptr);
-      BOOST_TEST("" == set(db, N(kvtest), "01020304", "aabbccddee"));
-      erase("", db, N(kvtest), "02");
+      get("", db, "kvtest"_n, "", nullptr);
+      BOOST_TEST("" == set(db, "kvtest"_n, "", ""));
+      get("", db, "kvtest"_n, "", "");
+      BOOST_TEST("" == set(db, "kvtest"_n, "", "1234"));
+      get("", db, "kvtest"_n, "", "1234");
+      get("", db, "kvtest"_n, "00", nullptr);
+      BOOST_TEST("" == set(db, "kvtest"_n, "00", "aabbccdd"));
+      get("", db, "kvtest"_n, "00", "aabbccdd");
+      get("", db, "kvtest"_n, "02", nullptr);
+      erase("", db, "kvtest"_n, "02");
+      get("", db, "kvtest"_n, "02", nullptr);
+      BOOST_TEST("" == set(db, "kvtest"_n, "02", "42"));
+      get("", db, "kvtest"_n, "02", "42");
+      get("", db, "kvtest"_n, "01020304", nullptr);
+      BOOST_TEST("" == set(db, "kvtest"_n, "01020304", "aabbccddee"));
+      erase("", db, "kvtest"_n, "02");
 
-      get("", db, N(kvtest), "01020304", "aabbccddee");
-      get("", db, N(kvtest), "", "1234");
-      get("", db, N(kvtest), "00", "aabbccdd");
-      get("", db, N(kvtest), "02", nullptr);
-      get("", db, N(kvtest), "01020304", "aabbccddee");
+      get("", db, "kvtest"_n, "01020304", "aabbccddee");
+      get("", db, "kvtest"_n, "", "1234");
+      get("", db, "kvtest"_n, "00", "aabbccdd");
+      get("", db, "kvtest"_n, "02", nullptr);
+      get("", db, "kvtest"_n, "01020304", "aabbccddee");
    }
 
    void test_other_contract(name db) {
-      get("", db, N(missing), "", nullptr);
-      get("", db, N(kvtest1), "", nullptr);
-      BOOST_TEST(set(db, N(missing), "", "") == "Can not write to this key");
-      BOOST_TEST(set(db, N(kvtest1), "", "") == "Can not write to this key");
-      erase("Can not write to this key", db, N(missing), "");
-      erase("Can not write to this key", db, N(kvtest1), "");
+      get("", db, "missing"_n, "", nullptr);
+      get("", db, "kvtest1"_n, "", nullptr);
+      BOOST_TEST(set(db, "missing"_n, "", "") == "Can not write to this key");
+      BOOST_TEST(set(db, "kvtest1"_n, "", "") == "Can not write to this key");
+      erase("Can not write to this key", db, "missing"_n, "");
+      erase("Can not write to this key", db, "kvtest1"_n, "");
    }
 
    void test_get_data(name db) {
-      BOOST_TEST(push_action(N(getdata), mvo()("db", db)) == "");
+      BOOST_TEST(push_action("getdata"_n, mvo()("db", db)) == "");
    }
 
-   void test_scan(name db, name account = N(kvtest)) {
+   void test_scan(name db, name account = "kvtest"_n) {
       setmany("", db, account,
               {
                     kv{ {}, { 0x12 } },
@@ -383,7 +383,7 @@ class kv_tester : public tester {
    } // test_scanrev
 
    void test_scanrev2(name db) {
-      setmany("", db, N(kvtest),
+      setmany("", db, "kvtest"_n,
               {
                     kv{ { 0x00, char(0xFF), char(0xFF) }, { 0x10 } },
                     kv{ { 0x01 }, { 0x20 } },
@@ -391,7 +391,7 @@ class kv_tester : public tester {
               });
 
       // prefix = "00FFFF", no lower bound
-      BOOST_TEST("" == scanrev(db, N(kvtest), "00FFFF", nullptr,
+      BOOST_TEST("" == scanrev(db, "kvtest"_n, "00FFFF", nullptr,
               {
                     kv{ { 0x00, char(0xFF), char(0xFF) }, { 0x10 } },
               }));
@@ -402,84 +402,84 @@ class kv_tester : public tester {
          // pre-inserted
          for(bool insert : {false, true}) {
             for(int i = 0; i < 8; ++i) {
-               setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+               setmany("", db, "kvtest"_n, { kv{ { 0x22 }, { 0x12 } } });
                produce_block();
-               itstaterased("Iterator to erased element", db, N(kvtest), "", "22", "12", i, insert, reinsert );
+               itstaterased("Iterator to erased element", db, "kvtest"_n, "", "22", "12", i, insert, reinsert );
             }
-            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+            setmany("", db, "kvtest"_n, { kv{ { 0x22 }, { 0x12 } } });
             produce_block();
-            itstaterased("", db, N(kvtest), "", "22", "12", 8, insert, reinsert );
+            itstaterased("", db, "kvtest"_n, "", "22", "12", 8, insert, reinsert );
             if(!reinsert) {
-               setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+               setmany("", db, "kvtest"_n, { kv{ { 0x22 }, { 0x12 } } });
                produce_block();
-               itstaterased("", db, N(kvtest), "", "22", "12", 9, insert, reinsert );
+               itstaterased("", db, "kvtest"_n, "", "22", "12", 9, insert, reinsert );
             }
-            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } }, kv{ { 0x23 }, { 0x13 } } });
+            setmany("", db, "kvtest"_n, { kv{ { 0x22 }, { 0x12 } }, kv{ { 0x23 }, { 0x13 } } });
             produce_block();
-            itstaterased("", db, N(kvtest), "", "22", "12", 10, insert, reinsert );
-            erase("", db, N(kvtest), "23");
-            setmany("", db, N(kvtest), { kv{ { 0x22 }, { 0x12 } } });
+            itstaterased("", db, "kvtest"_n, "", "22", "12", 10, insert, reinsert );
+            erase("", db, "kvtest"_n, "23");
+            setmany("", db, "kvtest"_n, { kv{ { 0x22 }, { 0x12 } } });
             produce_block();
-            itstaterased("", db, N(kvtest), "", "22", "12", 11, insert, reinsert );
+            itstaterased("", db, "kvtest"_n, "", "22", "12", 11, insert, reinsert );
          }
          // inserted inside contract
          for(int i = 0; i < 8; ++i) {
-            erase("", db, N(kvtest), "22");
+            erase("", db, "kvtest"_n, "22");
             produce_block();
-            itstaterased("Iterator to erased element", db, N(kvtest), "", "22", "12", i, true, reinsert );
+            itstaterased("Iterator to erased element", db, "kvtest"_n, "", "22", "12", i, true, reinsert );
          }
-         erase("", db, N(kvtest), "22");
+         erase("", db, "kvtest"_n, "22");
          produce_block();
-         itstaterased("", db, N(kvtest), "", "22", "12", 8, true, reinsert );
+         itstaterased("", db, "kvtest"_n, "", "22", "12", 8, true, reinsert );
          if(!reinsert) {
-            erase("", db, N(kvtest), "22");
+            erase("", db, "kvtest"_n, "22");
             produce_block();
-            itstaterased("", db, N(kvtest), "", "22", "12", 9, true, reinsert );
+            itstaterased("", db, "kvtest"_n, "", "22", "12", 9, true, reinsert );
          }
-         erase("", db, N(kvtest), "22");
-         setmany("", db, N(kvtest), { kv{ { 0x23 }, { 0x13 } } });
+         erase("", db, "kvtest"_n, "22");
+         setmany("", db, "kvtest"_n, { kv{ { 0x23 }, { 0x13 } } });
          produce_block();
-         itstaterased("", db, N(kvtest), "", "22", "12", 10, true, reinsert );
-         erase("", db, N(kvtest), "23");
-         erase("", db, N(kvtest), "22");
+         itstaterased("", db, "kvtest"_n, "", "22", "12", 10, true, reinsert );
+         erase("", db, "kvtest"_n, "23");
+         erase("", db, "kvtest"_n, "22");
          produce_block();
-         itstaterased("", db, N(kvtest), "", "22", "12", 11, true, reinsert );
+         itstaterased("", db, "kvtest"_n, "", "22", "12", 11, true, reinsert );
       }
    }
 
    void test_ram_usage(name db) {
       uint64_t base_usage = get_usage(db);
 
-      get("", db, N(kvtest), "11", nullptr);
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
+      get("", db, "kvtest"_n, "11", nullptr);
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage);
 
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest), N(kvtest)));
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "", "kvtest"_n, "kvtest"_n));
 
       const int base_billable = config::billable_size_v<kv_object>;
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "1234", N(kvtest), N(kvtest)));
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 2);
-      BOOST_TEST("" == set(db, N(kvtest), "11", "12", N(kvtest), N(kvtest)));
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1 + 1);
-      erase("", db, N(kvtest), "11");
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage + base_billable + 1);
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "1234", "kvtest"_n, "kvtest"_n));
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage + base_billable + 1 + 2);
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "12", "kvtest"_n, "kvtest"_n));
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage + base_billable + 1 + 1);
+      erase("", db, "kvtest"_n, "11");
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage);
 
       // test payer changes
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest), N(kvtest)));
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage + base_billable + 1);
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "", "kvtest"_n, "kvtest"_n));
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage + base_billable + 1);
 
-      uint64_t base_usage1 = get_usage(db, N(kvtest1));
-      BOOST_TEST("" == set(db, N(kvtest), "11", "", N(kvtest1), N(kvtest1)));
+      uint64_t base_usage1 = get_usage(db, "kvtest1"_n);
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "", "kvtest1"_n, "kvtest1"_n));
 
-      BOOST_TEST(get_usage(db, N(kvtest)) == base_usage);
-      BOOST_TEST(get_usage(db, N(kvtest1)) == base_usage1 + base_billable + 1);
+      BOOST_TEST(get_usage(db, "kvtest"_n) == base_usage);
+      BOOST_TEST(get_usage(db, "kvtest1"_n) == base_usage1 + base_billable + 1);
 
       BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest1" ==
-                  set(db, N(kvtest), "11", "12", N(kvtest1), N(kvtest2)));
+                  set(db, "kvtest"_n, "11", "12", "kvtest1"_n, "kvtest2"_n));
 
 
       BOOST_TEST("unprivileged contract cannot increase RAM usage of another account that has not authorized the action: kvtest2" ==
-                  set(db, N(kvtest), "11", "12", N(kvtest2), N(kvtest1)));
+                  set(db, "kvtest"_n, "11", "12", "kvtest2"_n, "kvtest1"_n));
    }
 
    void test_resource_limit(name db) {
@@ -487,56 +487,56 @@ class kv_tester : public tester {
       // insert a new element
       const int base_billable = config::billable_size_v<kv_object>;
       BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable) == "");
-      BOOST_TEST(set(db, N(kvtest), "11", "").find("account kvtest has insufficient") == 0);
+      BOOST_TEST(set(db, "kvtest"_n, "11", "").find("account kvtest has insufficient") == 0);
       BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1) == "");
-      BOOST_TEST("" == set(db, N(kvtest), "11", ""));
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", ""));
       // increase the size of a value
       BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1 + 2 - 1) == "");
-      BOOST_TEST(set(db, N(kvtest), "11", "1234").find("account kvtest has insufficient") == 0);
+      BOOST_TEST(set(db, "kvtest"_n, "11", "1234").find("account kvtest has insufficient") == 0);
       BOOST_TEST_REQUIRE(set_limit(db, base_usage + base_billable + 1 + 2) == "");
-      BOOST_TEST("" == set(db, N(kvtest), "11", "1234"));
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", "1234"));
       // decrease the size of a value
-      BOOST_TEST("" == set(db, N(kvtest), "11", ""));
+      BOOST_TEST("" == set(db, "kvtest"_n, "11", ""));
       // decrease limits
       BOOST_TEST(set_limit(db, base_usage + base_billable).find("account kvtest has insufficient") == 0);
       BOOST_TEST(set_limit(db, base_usage + base_billable + 1) == "");
       // erase an element
-      erase("", db, N(kvtest), "11");
+      erase("", db, "kvtest"_n, "11");
    }
 
    void test_key_value_limit(name db) {
       BOOST_TEST_REQUIRE(set_kv_limits(db, 4, 4) == "");
-      setmany("", db, N(kvtest), {{bytes(4, 'a'), bytes(4, 'a')}});
-      setmany("Key too large", db, N(kvtest), {{bytes(4 + 1, 'a'), bytes()}});
-      setmany("Value too large", db, N(kvtest), {{bytes(), bytes(4 + 1, 'a')}});
+      setmany("", db, "kvtest"_n, {{bytes(4, 'a'), bytes(4, 'a')}});
+      setmany("Key too large", db, "kvtest"_n, {{bytes(4 + 1, 'a'), bytes()}});
+      setmany("Value too large", db, "kvtest"_n, {{bytes(), bytes(4 + 1, 'a')}});
 
       // The check happens at the point of calling set.  Changing the bad value later doesn't bypass errors.
-      setmany("Value too large", db, N(kvtest), {{bytes(4, 'b'), bytes(5, 'b')}, {bytes(4, 'b'), {}}});
+      setmany("Value too large", db, "kvtest"_n, {{bytes(4, 'b'), bytes(5, 'b')}, {bytes(4, 'b'), {}}});
 
       // The key is checked even if it already exists
-      setmany("Key too large", db, N(kvtest), {{bytes(1024, 'a'), {}}});
+      setmany("Key too large", db, "kvtest"_n, {{bytes(1024, 'a'), {}}});
 
-      scan("", db, N(kvtest), "00000000", "", {});
-      scan("Prefix too large", db, N(kvtest), "0000000000", "", {});
+      scan("", db, "kvtest"_n, "00000000", "", {});
+      scan("Prefix too large", db, "kvtest"_n, "0000000000", "", {});
    }
 
    action make_set_action(name db, std::size_t size) {
       std::vector<char> k;
       std::vector<char> v(size, 'a');
       action act;
-      act.account = N(kvtest);
-      act.name    = N(set);
-      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", N(kvtest))("k", k)("v", v)("payer", N(kvtest)), abi_serializer::create_yield_function(abi_serializer_max_time));
-      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      act.account = "kvtest"_n;
+      act.name    = "set"_n;
+      act.data    = abi_ser.variant_to_binary("set", mvo()("db", db)("contract", "kvtest"_n)("k", k)("v", v)("payer", "kvtest"_n), abi_serializer::create_yield_function(abi_serializer_max_time));
+      act.authorization = vector<permission_level>{{"kvtest"_n, config::active_name}};
       return act;
    }
 
    action make_set_limit_action(name db, int64_t limit) {
       action act;
-      act.account = N(eosio);
-      act.name    = db == N(eosio.kvram)?N(setramlimit):N(setdisklimit);
-      act.data    = sys_abi_ser.variant_to_binary(act.name.to_string(), mvo()("account", N(kvtest))("limit", limit), abi_serializer::create_yield_function(abi_serializer_max_time));
-      act.authorization = vector<permission_level>{{N(kvtest), config::active_name}};
+      act.account = "eosio"_n;
+      act.name    = db == "eosio.kvram"_n?"setramlimit"_n:"setdisklimit"_n;
+      act.data    = sys_abi_ser.variant_to_binary(act.name.to_string(), mvo()("account", "kvtest"_n)("limit", limit), abi_serializer::create_yield_function(abi_serializer_max_time));
+      act.authorization = vector<permission_level>{{"kvtest"_n, config::active_name}};
       return act;
    }
 
@@ -548,7 +548,7 @@ class kv_tester : public tester {
       trx.actions.push_back(make_set_action(db, 512));
       trx.actions.push_back(make_set_action(db, 0));
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      trx.sign(get_private_key("kvtest"_n, "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
    }
@@ -564,7 +564,7 @@ class kv_tester : public tester {
          trx.actions.push_back(make_set_limit_action(db, base_usage + 640));
       }
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      trx.sign(get_private_key("kvtest"_n, "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
    }
@@ -573,7 +573,7 @@ class kv_tester : public tester {
    void test_kv_dec_limit_and_usage(name db) {
       auto base_usage = get_usage(db);
       BOOST_TEST_REQUIRE(set_limit(db, base_usage + 1024) == "");
-      BOOST_TEST_REQUIRE(set(db, N(kvtest), "", std::vector<char>(512, 'a')) == "");
+      BOOST_TEST_REQUIRE(set(db, "kvtest"_n, "", std::vector<char>(512, 'a')) == "");
       produce_block();
       signed_transaction trx;
       {
@@ -581,16 +581,16 @@ class kv_tester : public tester {
          trx.actions.push_back(make_set_action(db, 0));
       }
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(kvtest), "active"), control->get_chain_id());
+      trx.sign(get_private_key("kvtest"_n, "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
    }
 
    void test_max_iterators() {
-      BOOST_TEST_REQUIRE(set_kv_limits(N(eosio.kvram), 1024, 1024, 5) == "");
+      BOOST_TEST_REQUIRE(set_kv_limits("eosio.kvram"_n, 1024, 1024, 5) == "");
       // individual limits
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 5, false}}) == "");
-      BOOST_TEST(iterlimit({{N(eosio.kvram), 6, false}}) == "Too many iterators");
+      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 5, false}}) == "");
+      BOOST_TEST(iterlimit({{"eosio.kvram"_n, 6, false}}) == "Too many iterators");
    }
 
    abi_serializer abi_ser;
@@ -600,72 +600,72 @@ class kv_tester : public tester {
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
 BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
-   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action(N(itlifetime), mvo()("db", N(oops))));
-   BOOST_REQUIRE_EQUAL("", push_action(N(itlifetime), mvo()("db", N(eosio.kvram))));
-   test_basic(N(eosio.kvram));
+   BOOST_REQUIRE_EQUAL("Bad key-value database ID", push_action("itlifetime"_n, mvo()("db", "oops"_n)));
+   BOOST_REQUIRE_EQUAL("", push_action("itlifetime"_n, mvo()("db", "eosio.kvram"_n)));
+   test_basic("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try { //
    // four possibilities depending on whether the next or previous contract table has elements
-   test_scan(N(eosio.kvram), N(kvtest2));
-   test_scan(N(eosio.kvram), N(kvtest4));
-   test_scan(N(eosio.kvram), N(kvtest3));
-   test_scan(N(eosio.kvram), N(kvtest1));
+   test_scan("eosio.kvram"_n, "kvtest2"_n);
+   test_scan("eosio.kvram"_n, "kvtest4"_n);
+   test_scan("eosio.kvram"_n, "kvtest3"_n);
+   test_scan("eosio.kvram"_n, "kvtest1"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scan_ram_after_disk, kv_tester) try { //
    // Make sure that the behavior of one database is not affected by having the other database populated.
-   test_scan(N(eosio.kvram), N(kvtest2));
-   test_scan(N(eosio.kvram), N(kvtest4));
-   test_scan(N(eosio.kvram), N(kvtest3));
-   test_scan(N(eosio.kvram), N(kvtest1));
+   test_scan("eosio.kvram"_n, "kvtest2"_n);
+   test_scan("eosio.kvram"_n, "kvtest4"_n);
+   test_scan("eosio.kvram"_n, "kvtest3"_n);
+   test_scan("eosio.kvram"_n, "kvtest1"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try { //
-   test_scanrev(N(eosio.kvram), N(kvtest2));
-   test_scanrev(N(eosio.kvram), N(kvtest4));
-   test_scanrev(N(eosio.kvram), N(kvtest3));
-   test_scanrev(N(eosio.kvram), N(kvtest1));
+   test_scanrev("eosio.kvram"_n, "kvtest2"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest4"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest3"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest1"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev_ram_after_disk, kv_tester) try { //
-   test_scanrev(N(eosio.kvram), N(kvtest2));
-   test_scanrev(N(eosio.kvram), N(kvtest4));
-   test_scanrev(N(eosio.kvram), N(kvtest3));
-   test_scanrev(N(eosio.kvram), N(kvtest1));
+   test_scanrev("eosio.kvram"_n, "kvtest2"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest4"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest3"_n);
+   test_scanrev("eosio.kvram"_n, "kvtest1"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
-   test_scanrev2(N(eosio.kvram));
+   test_scanrev2("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
-   test_iterase(N(eosio.kvram));
+   test_iterase("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
-   test_ram_usage(N(eosio.kvram));
+   test_ram_usage("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
-   test_resource_limit(N(eosio.kvram));
+   test_resource_limit("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
-   test_key_value_limit(N(eosio.kvram));
+   test_key_value_limit("eosio.kvram"_n);
 }
 FC_LOG_AND_RETHROW()
 
-constexpr name databases[] = { N(eosio.kvram) };
+constexpr name databases[] = { "eosio.kvram"_n };
 
 BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
    test_kv_inc_dec_usage(db);
@@ -784,15 +784,15 @@ static const char kv_notified_wast[] = R"=====(
 )=====";
 
 BOOST_DATA_TEST_CASE_F(tester, notify, bdata::make(databases), db) {
-   create_accounts({ N(setup), N(notified), N(notify) });
-   set_code( N(setup), kv_setup_wast );
-   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(setup))("is_priv", 1));
-   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, construct_names_payload({N(notified), N(notify)})), N(setup).to_uint64_t() ) == "");
+   create_accounts({ "setup"_n, "notified"_n, "notify"_n });
+   set_code( "setup"_n, kv_setup_wast );
+   push_action( "eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "setup"_n)("is_priv", 1));
+   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, db, construct_names_payload({"notified"_n, "notify"_n})), "setup"_n.to_uint64_t() ) == "");
 
-   set_code( N(notify), kv_notify_wast );
-   set_code( N(notified), kv_notified_wast );
+   set_code( "notify"_n, kv_notify_wast );
+   set_code( "notified"_n, kv_notified_wast );
 
-   BOOST_TEST_REQUIRE(push_action( action({}, N(notify), db, {}), N(notify).to_uint64_t() ) == "");
+   BOOST_TEST_REQUIRE(push_action( action({}, "notify"_n, db, {}), "notify"_n.to_uint64_t() ) == "");
 }
 
 // Check corner cases of alias checks for the kv_set and kv_get intrinsics
@@ -837,13 +837,13 @@ static const char kv_alias_general_wast[] = R"=====(
 )=====";
 
 BOOST_DATA_TEST_CASE_F(tester, alias, bdata::make(databases), db) {
-   const name alias_pass_account{N(alias.pass)};
-   const name alias_general_account{N(alias.gen)};
+   const name alias_pass_account{"alias.pass"_n};
+   const name alias_general_account{"alias.gen"_n};
 
-   create_accounts({ N(setup), alias_pass_account, alias_general_account });
-   set_code( N(setup), kv_setup_wast );
-   push_action( N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", N(setup))("is_priv", 1));
-   BOOST_TEST_REQUIRE(push_action( action({}, N(setup), db, construct_names_payload({alias_pass_account, alias_general_account})), N(setup).to_uint64_t() ) == "");
+   create_accounts({ "setup"_n, alias_pass_account, alias_general_account });
+   set_code( "setup"_n, kv_setup_wast );
+   push_action( "eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "setup"_n)("is_priv", 1));
+   BOOST_TEST_REQUIRE(push_action( action({}, "setup"_n, db, construct_names_payload({alias_pass_account, alias_general_account})), "setup"_n.to_uint64_t() ) == "");
 
    set_code( alias_pass_account, kv_alias_pass_wast );
    set_code( alias_general_account, kv_alias_general_wast );

@@ -127,20 +127,20 @@ BOOST_AUTO_TEST_CASE(reverse_endian_tests)
 BOOST_AUTO_TEST_CASE(name_suffix_tests)
 {
    BOOST_CHECK_EQUAL( name{name_suffix(name(0))}, name{0} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(..abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc..def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def.ghi))}, name{N(ghi)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij))}, name{N(abcdefghij)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij.1))}, name{N(1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij))}, name{N(bcdefghij)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij.1))}, name{N(1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(......a.b.c))}, name{N(c)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhi.123))}, name{N(123)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhij.123))}, name{N(123)} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdehijklmn"_n)}, name{"abcdehijklmn"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdehijklmn1"_n)}, name{"abcdehijklmn1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("..abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc..def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc.def.ghi"_n)}, name{"ghi"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abcdefghij"_n)}, name{"abcdefghij"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abcdefghij.1"_n)}, name{"1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("a.bcdefghij"_n)}, name{"bcdefghij"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("a.bcdefghij.1"_n)}, name{"1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("......a.b.c"_n)}, name{"c"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdefhi.123"_n)}, name{"123"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdefhij.123"_n)}, name{"123"_n} );
 }
 
 /// Test processing of unbalanced strings
@@ -981,10 +981,10 @@ BOOST_AUTO_TEST_CASE(prunable_transaction_data_test) {
 BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    tester t;
    signed_transaction trx;
-   trx.context_free_actions.push_back({ {}, N(eosio), N(), bytes() });
+   trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
    trx.context_free_data.push_back(bytes());
    t.set_transaction_headers(trx);
-   trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
+   trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
 
    packed_transaction_v0 packed(trx);
    packed_transaction pruned(std::move(trx), true);
@@ -1024,11 +1024,11 @@ static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& 
 BOOST_AUTO_TEST_CASE(pruned_block_test) {
    tester t;
    signed_transaction trx;
-   trx.actions.push_back({ { permission_level{ N(eosio), N(active) } }, N(eosio), N(), bytes() } );
-   trx.context_free_actions.push_back({ {}, N(eosio), N(), bytes() });
+   trx.actions.push_back({ { permission_level{ "eosio"_n, "active"_n } }, "eosio"_n, ""_n, bytes() } );
+   trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
    trx.context_free_data.push_back(bytes());
    t.set_transaction_headers(trx);
-   trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
+   trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
 
    t.push_transaction(trx);
    signed_block_ptr produced = t.produce_block();

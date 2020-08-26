@@ -37,12 +37,12 @@ BOOST_AUTO_TEST_SUITE(chain_plugin_tests)
 BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)} );
+   create_accounts( {"asserter"_n} );
    produce_block();
 
    // setup contract and abi
-   set_code( N(asserter), contracts::asserter_wasm() );
-   set_abi( N(asserter), contracts::asserter_abi().data() );
+   set_code( "asserter"_n, contracts::asserter_wasm() );
+   set_abi( "asserter"_n, contracts::asserter_abi().data() );
    produce_blocks(1);
 
    auto resolver = [&,this]( const account_name& name ) -> std::optional<abi_serializer> {
@@ -57,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    };
 
    // abi should be resolved
-   BOOST_REQUIRE_EQUAL(true, resolver(N(asserter)).has_value());
+   BOOST_REQUIRE_EQUAL(true, resolver("asserter"_n).has_value());
 
    // make an action using the valid contract & abi
    fc::variant pretty_trx = mutable_variant_object()
@@ -79,7 +79,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    signed_transaction trx;
    abi_serializer::from_variant(pretty_trx, trx, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
    set_transaction_headers(trx);
-   trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
+   trx.sign( get_private_key( "asserter"_n, "active" ), control->get_chain_id() );
    push_transaction( trx );
    produce_blocks(1);
 
@@ -104,11 +104,11 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    auto pos = abi2.find("int8");
    BOOST_TEST(pos != std::string::npos);
    abi2.replace(pos, 4, "xxxx");
-   set_abi(N(asserter), abi2.c_str());
+   set_abi("asserter"_n, abi2.c_str());
    produce_blocks(1);
 
    // resolving the invalid abi result in exception
-   BOOST_CHECK_THROW(resolver(N(asserter)), invalid_type_inside_abi);
+   BOOST_CHECK_THROW(resolver("asserter"_n), invalid_type_inside_abi);
 
    // get the same block as string, results in decode failed(invalid abi) but not exception
    std::string block_str2 = json::to_pretty_string(plugin.get_block(param));

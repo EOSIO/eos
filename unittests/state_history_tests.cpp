@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
          log.add_transaction(trace_ptr, transaction);
 
          // see issue #9159
-         if (!trace_ptr->action_traces.empty() && trace_ptr->action_traces[0].act.name == N(onblock)) {
+         if (!trace_ptr->action_traces.empty() && trace_ptr->action_traces[0].act.name == "onblock"_n) {
             BOOST_CHECK(chain::is_onblock(*trace_ptr));
             trace_ptr->action_traces.clear();
             BOOST_CHECK(!chain::is_onblock(*trace_ptr));
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    });
    chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
 
-   auto tr_ptr = chain.create_account(N(newacc));
+   auto tr_ptr = chain.create_account("newacc"_n);
 
    chain.produce_block();
 
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    auto &action_traces = std::get<state_history::transaction_trace_v0>(*trace_itr).action_traces;
 
    auto new_account_action_itr = std::find_if(action_traces.begin(), action_traces.end(), [](const state_history::action_trace& v) {
-      return std::get<state_history::action_trace_v1>(v).act.name == N(newaccount).to_uint64_t();
+      return std::get<state_history::action_trace_v1>(v).act.name == "newaccount"_n.to_uint64_t();
    });
 
    BOOST_REQUIRE(new_account_action_itr != action_traces.end());
@@ -496,7 +496,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
    BOOST_REQUIRE_EQUAL(chain.find_table_delta("account").first, false);
 
    // Create new account
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
 
    // Verify that a new record for the new account in the state delta of the block
    auto result = chain.find_table_delta("account");
@@ -511,7 +511,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_metadata) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
 
    // Spot onto account metadata
    auto result = chain.find_table_delta("account_metadata");
@@ -528,7 +528,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
 
    // Check that the permissions of this new account are in the delta
    vector<string> expected_permission_names{ "owner", "active" };
@@ -549,16 +549,16 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
 
    auto& authorization_manager = chain.control->get_authorization_manager();
-   const permission_object* ptr = authorization_manager.find_permission( {N(newacc), N(active)} );
+   const permission_object* ptr = authorization_manager.find_permission( {"newacc"_n, "active"_n} );
    BOOST_REQUIRE(ptr != nullptr);
 
    // Create new permission
-   chain.set_authority(N(newacc), N(mypermission), ptr->auth,  N(active));
+   chain.set_authority("newacc"_n, "mypermission"_n, ptr->auth,  "active"_n);
 
-   const permission_object* ptr_sub = authorization_manager.find_permission( {N(newacc), N(mypermission)} );
+   const permission_object* ptr_sub = authorization_manager.find_permission( {"newacc"_n, "mypermission"_n} );
    BOOST_REQUIRE(ptr_sub != nullptr);
 
    // Verify that the new permission is present in the state delta
@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
    chain.produce_block();
 
    // Delete the permission
-   chain.delete_authority(N(newacc), N(mypermission));
+   chain.delete_authority("newacc"_n, "mypermission"_n);
 
    result = chain.find_table_delta("permission");
    BOOST_REQUIRE(result.first);
@@ -593,7 +593,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
    chain.produce_block();
    public_key_type keys[] = {
          public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s), // Test for correct serialization of WA key, see issue #9087
@@ -604,7 +604,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
    for(auto &key: keys) {
       // Modify the permission authority
       auto wa_authority = authority(1, {key_weight{key, 1}}, {});
-      chain.set_authority(N(newacc), N(active), wa_authority, N(owner));
+      chain.set_authority("newacc"_n, "active"_n, wa_authority, "owner"_n);
 
       auto result = chain.find_table_delta("permission");
       BOOST_REQUIRE(result.first);
@@ -630,15 +630,15 @@ BOOST_AUTO_TEST_CASE(test_deltas_permission_link) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(newacc));
+   chain.create_account("newacc"_n);
 
    // Spot onto permission_link
-   const auto spending_priv_key = chain.get_private_key(N(newacc), "spending");
+   const auto spending_priv_key = chain.get_private_key("newacc"_n, "spending");
    const auto spending_pub_key = spending_priv_key.get_public_key();
 
-   chain.set_authority(N(newacc), N(spending), spending_pub_key, N(active));
-   chain.link_authority(N(newacc), N(eosio), N(spending), N(reqauth));
-   chain.push_reqauth(N(newacc), { permission_level{N(newacc), N(spending)} }, { spending_priv_key });
+   chain.set_authority("newacc"_n, "spending"_n, spending_pub_key, "active"_n);
+   chain.link_authority("newacc"_n, "eosio"_n, "spending"_n, "reqauth"_n);
+   chain.push_reqauth("newacc"_n, { permission_level{"newacc"_n, "spending"_n} }, { spending_priv_key });
 
    auto result = chain.find_table_delta("permission_link");
    BOOST_REQUIRE(result.first);
@@ -657,7 +657,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
    // Change max_transaction_delay to 60 sec
    auto params = chain.control->get_global_properties().configuration;
    params.max_transaction_delay = 60;
-   chain.push_action( config::system_account_name, N(setparams), config::system_account_name,
+   chain.push_action( config::system_account_name, "setparams"_n, config::system_account_name,
                              mutable_variant_object()
                              ("params", params) );
 
@@ -708,18 +708,18 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_account(N(tester));
+   chain.create_account("tester"_n);
 
-   chain.set_code(N(tester), contracts::get_table_test_wasm());
-   chain.set_abi(N(tester), contracts::get_table_test_abi().data());
+   chain.set_code("tester"_n, contracts::get_table_test_wasm());
+   chain.set_abi("tester"_n, contracts::get_table_test_abi().data());
 
    chain.produce_block();
 
-   auto trace = chain.push_action(N(tester), N(addhashobj), N(tester), mutable_variant_object()("hashinput", "hello" ));
+   auto trace = chain.push_action("tester"_n, "addhashobj"_n, "tester"_n, mutable_variant_object()("hashinput", "hello" ));
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
-   trace = chain.push_action(N(tester), N(addnumobj), N(tester), mutable_variant_object()("input", 2));
+   trace = chain.push_action("tester"_n, "addnumobj"_n, "tester"_n, mutable_variant_object()("input", 2));
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
@@ -759,21 +759,21 @@ BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
    table_deltas_tester chain;
    chain.produce_block();
 
-   chain.create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake)});
+   chain.create_accounts({ "eosio.token"_n, "eosio.ram"_n, "eosio.ramfee"_n, "eosio.stake"_n});
 
    chain.produce_blocks( 100 );
 
-   chain.set_code( N(eosio.token), contracts::eosio_token_wasm() );
-   chain.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
+   chain.set_code( "eosio.token"_n, contracts::eosio_token_wasm() );
+   chain.set_abi( "eosio.token"_n, contracts::eosio_token_abi().data() );
 
    chain.produce_block();
 
-   chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
+   chain.push_action("eosio.token"_n, "create"_n, "eosio.token"_n, mutable_variant_object()
       ("issuer", "eosio.token" )
       ("maximum_supply", core_from_string("1000000000.0000") )
    );
 
-   chain.push_action(N(eosio.token), N(issue), N(eosio.token), fc::mutable_variant_object()
+   chain.push_action("eosio.token"_n, "issue"_n, "eosio.token"_n, fc::mutable_variant_object()
       ("to",       "eosio")
       ("quantity", core_from_string("90.0000"))
       ("memo", "for stuff")
@@ -784,7 +784,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
    chain.set_code( config::system_account_name, contracts::eosio_system_wasm() );
    chain.set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
-   chain.push_action(config::system_account_name, N(init), config::system_account_name,
+   chain.push_action(config::system_account_name, "init"_n, config::system_account_name,
                         mutable_variant_object()
                         ("version", 0)
                         ("core", CORE_SYM_STR));
@@ -793,25 +793,25 @@ BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
    chain.set_transaction_headers(trx);
 
    authority owner_auth;
-   owner_auth =  authority( chain.get_public_key( N(alice), "owner" ) );
+   owner_auth =  authority( chain.get_public_key( "alice"_n, "owner" ) );
 
    trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
                                 newaccount{
                                     .creator  = config::system_account_name,
-                                    .name     =  N(alice),
+                                    .name     =  "alice"_n,
                                     .owner    = owner_auth,
-                                    .active   = authority( chain.get_public_key( N(alice), "active" ) )});
+                                    .active   = authority( chain.get_public_key( "alice"_n, "active" ) )});
 
-   trx.actions.emplace_back( chain.get_action( config::system_account_name, N(buyram), vector<permission_level>{{config::system_account_name,config::active_name}},
+   trx.actions.emplace_back( chain.get_action( config::system_account_name, "buyram"_n, vector<permission_level>{{config::system_account_name,config::active_name}},
                                                   mutable_variant_object()
                                                       ("payer", config::system_account_name)
-                                                      ("receiver",  N(alice))
+                                                      ("receiver",  "alice"_n)
                                                       ("quant", core_from_string("1.0000"))));
 
-   trx.actions.emplace_back( chain.get_action( config::system_account_name, N(delegatebw), vector<permission_level>{{config::system_account_name,config::active_name}},
+   trx.actions.emplace_back( chain.get_action( config::system_account_name, "delegatebw"_n, vector<permission_level>{{config::system_account_name,config::active_name}},
                                                   mutable_variant_object()
                                                       ("from", config::system_account_name)
-                                                      ("receiver",  N(alice))
+                                                      ("receiver",  "alice"_n)
                                                       ("stake_net_quantity", core_from_string("10.0000") )
                                                       ("stake_cpu_quantity", core_from_string("10.0000") )
                                                       ("transfer", 0 )));

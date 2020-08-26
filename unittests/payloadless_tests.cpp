@@ -34,11 +34,11 @@ BOOST_AUTO_TEST_SUITE(payloadless_tests)
 
 BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
    
-   create_accounts( {N(payloadless)} );
-   set_code( N(payloadless), contracts::payloadless_wasm() );
-   set_abi( N(payloadless), contracts::payloadless_abi().data() );
+   create_accounts( {"payloadless"_n} );
+   set_code( "payloadless"_n, contracts::payloadless_wasm() );
+   set_abi( "payloadless"_n, contracts::payloadless_abi().data() );
 
-   auto trace = push_action(N(payloadless), N(doit), N(payloadless), mutable_variant_object());
+   auto trace = push_action("payloadless"_n, "doit"_n, "payloadless"_n, mutable_variant_object());
    auto msg = trace->action_traces.front().console;
    BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
 }
@@ -47,18 +47,18 @@ BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
 // abi_serializer was failing when action data was empty.
 BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
 
-   create_accounts( {N(payloadless)} );
-   set_code( N(payloadless), contracts::payloadless_wasm() );
-   set_abi( N(payloadless), contracts::payloadless_abi().data() );
+   create_accounts( {"payloadless"_n} );
+   set_code( "payloadless"_n, contracts::payloadless_wasm() );
+   set_abi( "payloadless"_n, contracts::payloadless_abi().data() );
 
    fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", name(N(payloadless)))
+            ("account", name("payloadless"_n))
             ("name", "doit")
             ("authorization", fc::variants({
                fc::mutable_variant_object()
-                  ("actor", name(N(payloadless)))
+                  ("actor", name("payloadless"_n))
                   ("permission", name(config::active_name))
             }))
             ("data", fc::mutable_variant_object()
@@ -71,7 +71,7 @@ BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
    abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer::create_yield_function( abi_serializer_max_time ));
    set_transaction_headers(trx);
 
-   trx.sign( get_private_key( N(payloadless), "active" ), control->get_chain_id() );
+   trx.sign( get_private_key( "payloadless"_n, "active" ), control->get_chain_id() );
    auto trace = push_transaction( trx );
    auto msg = trace->action_traces.front().console;
    BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
