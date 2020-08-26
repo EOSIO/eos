@@ -38,6 +38,7 @@ remove_definitions( -w )
 
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
+add_subdirectory( tpm-helpers )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")
