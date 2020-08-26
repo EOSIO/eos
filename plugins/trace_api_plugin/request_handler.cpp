@@ -43,37 +43,31 @@ namespace {
          yield();
 
          const auto& a = actions.at(index);
-
-         auto action_variant = fc::mutable_variant_object();
-         if constexpr(std::is_same_v<ActionTrace, action_trace_v0>){
-            action_variant
-               ("global_sequence", a.global_sequence)
+         auto common_mvo = fc::mutable_variant_object();
+         common_mvo("global_sequence", a.global_sequence)
                ("receiver", a.receiver.to_string())
                ("account", a.account.to_string())
                ("action", a.action.to_string())
                ("authorization", process_authorizations(a.authorization, yield))
                ("data", fc::to_hex(a.data.data(), a.data.size()));
+         auto action_variant = fc::mutable_variant_object();
+         if constexpr(std::is_same_v<ActionTrace, action_trace_v0>){
+            action_variant(common_mvo);
             auto [params, return_data] = data_handler(a, yield);
             if (!params.is_null()) {
                action_variant("params", params);
             }
          }
          else if constexpr(std::is_same_v<ActionTrace, action_trace_v1>){
-            action_variant
-               ("global_sequence", a.global_sequence)
-               ("receiver", a.receiver.to_string())
-               ("account", a.account.to_string())
-               ("action", a.action.to_string())
-               ("authorization", process_authorizations(a.authorization, yield))
-               ("data", fc::to_hex(a.data.data(), a.data.size()))
-               ("return_value", fc::to_hex(a.return_value.data(),a.return_value.size())) ;
+            action_variant(common_mvo);
+            action_variant("return_value", fc::to_hex(a.return_value.data(),a.return_value.size())) ;
 
             auto [params, return_data] = data_handler(a, yield);
             if (!params.is_null()) {
                action_variant("params", params);
             }
-            if(return_data.valid()){
-               action_variant("return_data", return_data);
+            if(return_data.has_value()){
+               action_variant("return_data", *return_data);
             }
          }
 
@@ -96,29 +90,28 @@ namespace {
                fc::mutable_variant_object()
                   ("id", t.id.str())
                   ("actions", process_actions<action_trace_v0>(t.actions, data_handler, yield)));
-         }
-         else if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v0>>){
-            result.emplace_back(
-               fc::mutable_variant_object()
-                  ("id", t.id.str())
-                  ("actions", process_actions<action_trace_v0>(t.actions, data_handler, yield))
-                  ("status", t.status)
-                  ("cpu_usage_us", t.cpu_usage_us)
-                  ("net_usage_words", t.net_usage_words)
-                  ("signatures", t.signatures)
-                  ("transaction_header", t.trx_header));
+         } else {
+            auto common_mvo = fc::mutable_variant_object();
+            common_mvo("status", t.status)
+                     ("cpu_usage_us", t.cpu_usage_us)
+                     ("net_usage_words", t.net_usage_words)
+                     ("signatures", t.signatures)
+                     ("transaction_header", t.trx_header);
+            if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v0>>){
+               result.emplace_back(
+                  fc::mutable_variant_object()
+                     ("id", t.id.str())
+                     ("actions", process_actions<action_trace_v0>(t.actions, data_handler, yield))
+                     (common_mvo));
             }
-         else if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>){
-            result.emplace_back(
-               fc::mutable_variant_object()
-                  ("id", t.id.str())
-                  ("actions", process_actions<action_trace_v1>(t.actions, data_handler, yield))
-                  ("status", t.status)
-                  ("cpu_usage_us", t.cpu_usage_us)
-                  ("net_usage_words", t.net_usage_words)
-                  ("signatures", t.signatures)
-                  ("transaction_header", t.trx_header));
-           }
+            else if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>){
+               result.emplace_back(
+                  fc::mutable_variant_object()
+                     ("id", t.id.str())
+                     ("actions", process_actions<action_trace_v1>(t.actions, data_handler, yield))
+                     (common_mvo));
+            }
+         }
 
      }
      return result;
@@ -128,44 +121,35 @@ namespace {
 namespace eosio::trace_api::detail {
 
    fc::variant process_block_trace(const data_log_entry& trace, bool irreversible, const data_handler_function & data_handler,   const yield_function& yield ) {
-      if  (trace.contains<block_trace_v0<action_trace_v0>>()){
-         auto& block_trace = trace.get<block_trace_v0<action_trace_v0>>();
+      auto common_mvo  = std::visit([&](auto&& arg) -> fc::mutable_variant_object {
+         return fc::mutable_variant_object()
+            ("id", arg.id.str())
+            ("number", arg.number )
+            ("previous_id", arg.previous_id.str())
+            ("status", irreversible ? "irreversible" : "pending" )
+            ("timestamp", to_iso8601_datetime(arg.timestamp))
+            ("producer", arg.producer.to_string());}, trace);
+      if  (std::holds_alternative<block_trace_v0<action_trace_v0>> (trace)){
+         auto& block_trace = std::get<block_trace_v0<action_trace_v0>>(trace);
     	   return  fc::mutable_variant_object()
-            ("id", block_trace.id.str())
-            ("number", block_trace.number )
-            ("previous_id", block_trace.previous_id.str())
-            ("status", irreversible ? "irreversible" : "pending" )
-            ("timestamp", to_iso8601_datetime(block_trace.timestamp))
-            ("producer", block_trace.producer.to_string())
+            (common_mvo)
             ("transactions", process_transactions<transaction_trace_v0<action_trace_v0>>(block_trace.transactions, data_handler, yield ));
-      }
-      else if  (trace.contains<block_trace_v1<action_trace_v0>>()) {
-         auto& block_trace = trace.get<block_trace_v1<action_trace_v0>>();
-    	   return	fc::mutable_variant_object()
-            ("id", block_trace.id.str())
-            ("number", block_trace.number )
-            ("previous_id", block_trace.previous_id.str())
-            ("status", irreversible ? "irreversible" : "pending" )
-            ("timestamp", to_iso8601_datetime(block_trace.timestamp))
-            ("producer", block_trace.producer.to_string())
-            ("transaction_mroot", block_trace.transaction_mroot)
-            ("action_mroot", block_trace.action_mroot)
-            ("schedule_version", block_trace.schedule_version)
-            ("transactions", process_transactions<transaction_trace_v1<action_trace_v0>>( block_trace.transactions_v1, data_handler, yield )) ;
-      }
-      else if (trace.contains<block_trace_v1<action_trace_v1>>()){
-         auto& block_trace = trace.get<block_trace_v1<action_trace_v1>>();
-         return  fc::mutable_variant_object()
-            ("id", block_trace.id.str())
-            ("number", block_trace.number)
-            ("previous_id", block_trace.previous_id.str())
-            ("status", irreversible ? "irreversible" : "pending" )
-            ("timestamp", to_iso8601_datetime(block_trace.timestamp))
-            ("producer", block_trace.producer.to_string())
-            ("transaction_mroot", block_trace.transaction_mroot)
-            ("action_mroot", block_trace.action_mroot)
-            ("schedule_version", block_trace.schedule_version)
-            ("transactions", process_transactions<transaction_trace_v1<action_trace_v1>>(block_trace.transactions_v1, data_handler, yield )) ;
+      }else if(std::holds_alternative<block_trace_v1<action_trace_v0>> (trace) ){
+         auto& block_trace = std::get<block_trace_v1<action_trace_v0>>(trace);
+            return	fc::mutable_variant_object()
+               (common_mvo)
+               ("transaction_mroot", block_trace.transaction_mroot)
+               ("action_mroot", block_trace.action_mroot)
+               ("schedule_version", block_trace.schedule_version)
+               ("transactions", process_transactions<transaction_trace_v1<action_trace_v0>>( block_trace.transactions_v1, data_handler, yield )) ;
+      }else if (std::holds_alternative<block_trace_v1<action_trace_v1>> (trace)){
+         auto& block_trace = std::get<block_trace_v1<action_trace_v1>>(trace);
+            return  fc::mutable_variant_object()
+               (common_mvo)
+               ("transaction_mroot", block_trace.transaction_mroot)
+               ("action_mroot", block_trace.action_mroot)
+               ("schedule_version", block_trace.schedule_version)
+               ("transactions", process_transactions<transaction_trace_v1<action_trace_v1>>(block_trace.transactions_v1, data_handler, yield )) ;
       }
       else{
          return fc::mutable_variant_object();

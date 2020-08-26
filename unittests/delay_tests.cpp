@@ -76,7 +76,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
 
    auto billed_cpu_time_us = control->get_global_properties().configuration.min_transaction_cpu_usage;
    auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum(), billed_cpu_time_us, true);
-   BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
+   BOOST_REQUIRE_EQUAL(dtrace->except.has_value(), true);
    BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
 
 } FC_LOG_AND_RETHROW() }
@@ -2344,6 +2344,25 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //check that the transfer really happened
    auto liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("91.0000 CUR"), liquid_balance);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( test_blockchain_params_enabled ) { try {
+   //since validation_tester activates all features here we will test how setparams works without
+   //blockchain_parameters enabled
+   tester chain( setup_policy::preactivate_feature_and_new_bios );
+
+   //change max_transaction_delay to 60 sec
+   auto params = chain.control->get_global_properties().configuration;
+   params.max_transaction_delay = 60;
+   chain.push_action(config::system_account_name, 
+                     N(setparams), 
+                     config::system_account_name, 
+                     mutable_variant_object()("params", params) );
+   
+   BOOST_CHECK_EQUAL(chain.control->get_global_properties().configuration.max_transaction_delay, 60);
+
+   chain.produce_blocks();
 
 } FC_LOG_AND_RETHROW() }
 

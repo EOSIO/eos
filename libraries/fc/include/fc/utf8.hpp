@@ -8,7 +8,16 @@
 namespace fc
 {
 
-   std::string prune_invalid_utf8( const std::string& str );
+   /**
+    *  0x80-0x9F C1 control characters are considered invalid as well as invalid utf8 code points.
+    *  @return true if prune_invalid_utf8 should be called.
+    */
+   bool is_valid_utf8( const std::string_view& str );
+
+   /**
+    * Invalid utf8 code points are purned, 0x80-0x9F C1 control characters are escaped
+    */
+   std::string prune_invalid_utf8( const std::string_view& str );
 
    bool is_utf8( const std::string& str );
 

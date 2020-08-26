@@ -2,6 +2,7 @@
 #include <fc/filesystem.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/genesis_state.hpp>
+#include <eosio/chain/block_log_config.hpp>
 
 namespace eosio { namespace chain {
 
@@ -32,10 +33,14 @@ namespace eosio { namespace chain {
     * linear scan of the main file.
     */
 
+   namespace bfs = boost::filesystem;
+
    class block_log {
       public:
-         block_log(const fc::path& data_dir, fc::path backup_dir = fc::path(), uint64_t stride=1000, 
-                   uint16_t max_retained_files=10, bool fix_irreversible_blocks=false);
+
+         using config_type = block_log_config;
+
+         block_log(const config_type& config);
          block_log(block_log&& other) = default;
          ~block_log();
          
@@ -67,7 +72,7 @@ namespace eosio { namespace chain {
 
          static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX, const char* reversible_block_dir_name="" );
 
-         static fc::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
+         static std::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
 
          static chain_id_type extract_chain_id( const fc::path& data_dir );
 

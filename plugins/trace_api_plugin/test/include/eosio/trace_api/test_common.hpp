@@ -70,12 +70,20 @@ namespace eosio::trace_api {
          });
          return result;
       }
+      void print_kv(const std::map<std::string, std::string> & kv_map, std::string object_name = "")
+      {
+         std::cout << "KV map " << object_name << " has " <<  kv_map.size() << " pairs : begin ----------------------" << std::endl; 
+         for(auto & kv : kv_map)
+         {
+            std::cout << kv.first << " : " << kv.second << std::endl;
+         }
+         std::cout << "KV map end.------------------------------------------------------" << std::endl; 
+      }
    }
 
    // TODO: promote these to the main files?
    // I prefer not to have these operators but they are convenient for BOOST TEST integration
    //
-
    bool operator==(const authorization_trace_v0& lhs, const authorization_trace_v0& rhs) {
       return
          lhs.account == rhs.account &&
@@ -157,7 +165,6 @@ namespace eosio::trace_api {
       os << fc::json::to_string( bt, fc::time_point::maximum() );
       return os;
    }
-
    bool operator==(const block_entry_v0& lhs, const block_entry_v0& rhs) {
       return
          lhs.id == rhs.id &&
@@ -191,7 +198,7 @@ namespace eosio::trace_api {
 
 namespace fc {
    template<typename ...Ts>
-   std::ostream& operator<<(std::ostream &os, const fc::static_variant<Ts...>& v ) {
+   std::ostream& operator<<(std::ostream &os, const std::variant<Ts...>& v ) {
       os << fc::json::to_string(v, fc::time_point::maximum());
       return os;
    }
@@ -226,4 +233,5 @@ namespace std {
       os << entry.first + "=" + entry.second;
       return os;
    }
+
 }

@@ -1,7 +1,6 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
@@ -185,7 +184,7 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       for( int i = 0; i < 1024; ++i)
          b.data.push_back('b');
       variants c;
-      c.push_back(variant(a));
+      c.push_back(fc::variant(a));
       mu( "a", a );
       mu( "b", b );
       mu( "c", c );
@@ -700,7 +699,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -814,6 +813,19 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
+   // verify packed_transaction creation from packed data
+   auto packed = fc::raw::pack( static_cast<const transaction&>(pkt5.get_transaction()) );
+   packed_transaction_v0 pkt7( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt7.get_transaction().id());
+
+   packed.push_back('8'); packed.push_back('8'); // extra ignored
+   packed_transaction_v0 pkt8( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt8.get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt8.get_transaction()) ));
+   BOOST_CHECK( packed == pkt8.get_packed_transaction() ); // extra maintained
+
 } FC_LOG_AND_RETHROW() }
 
 
@@ -850,7 +862,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -1044,7 +1056,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
-   deserialized.transactions.back().trx.get<packed_transaction>().prune_all();
+   std::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
    deserialized.prune_state = signed_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());

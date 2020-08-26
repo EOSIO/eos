@@ -10,6 +10,7 @@
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
+#include <eosio/chain/block_log_config.hpp>
 
 namespace chainbase {
    class database;
@@ -65,8 +66,7 @@ namespace eosio { namespace chain {
             flat_set<account_name>   contract_blacklist;
             flat_set< pair<account_name, action_name> > action_blacklist;
             flat_set<public_key_type> key_blacklist;
-            path                     blocks_dir                 = chain::config::default_blocks_dir_name;
-            path                     blocks_archive_dir         = chain::config::default_blocks_archive_dir_name;
+            block_log_config         blog;
             path                     state_dir                  = chain::config::default_state_dir_name;
             uint64_t                 state_size                 = chain::config::default_state_size;
             uint64_t                 state_guard_size           = chain::config::default_state_guard_size;
@@ -74,15 +74,15 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
-            uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
-            uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
+            
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
+            uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
             bool                     force_all_checks           = false;
             bool                     disable_replay_opts        = false;
             bool                     contracts_console          = false;
             bool                     allow_ram_billing_in_notify = false;
-            bool                     fix_irreversible_blocks    = false;
+            
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for developer & testing purposes, can be configured using `disable-all-subjective-mitigations` when `EOSIO_DEVELOPER` build option is provided
             uint32_t                 terminate_at_block     = 0; //< primarily for testing purposes
@@ -189,6 +189,7 @@ namespace eosio { namespace chain {
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
          const protocol_feature_manager&       get_protocol_feature_manager()const;
+         uint32_t                              get_max_nonprivileged_inline_action_size()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
@@ -224,13 +225,13 @@ namespace eosio { namespace chain {
          time_point                     pending_block_time()const;
          account_name                   pending_block_producer()const;
          const block_signing_authority& pending_block_signing_authority()const;
-         optional<block_id_type>        pending_producer_block_id()const;
+         std::optional<block_id_type>   pending_producer_block_id()const;
 
          const deque<transaction_receipt>& get_pending_trx_receipts()const;
 
-         const producer_authority_schedule&    active_producers()const;
-         const producer_authority_schedule&    pending_producers()const;
-         optional<producer_authority_schedule> proposed_producers()const;
+         const producer_authority_schedule&         active_producers()const;
+         const producer_authority_schedule&         pending_producers()const;
+         std::optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -295,7 +296,7 @@ namespace eosio { namespace chain {
          uint32_t get_terminate_at_block()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
-         fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;
+         std::optional<fc::microseconds> get_subjective_cpu_leeway() const;
          void set_greylist_limit( uint32_t limit );
          uint32_t get_greylist_limit()const;
 
@@ -311,7 +312,7 @@ namespace eosio { namespace chain {
          vm::wasm_allocator&  get_wasm_allocator();
 #endif
 
-         static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
+         static std::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
          signal<void(uint32_t)>                        block_start; // block_num
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
@@ -336,7 +337,7 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
+         std::optional<abi_serializer> get_abi_serializer( account_name n, const abi_serializer::yield_function_t& yield )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
@@ -345,7 +346,7 @@ namespace eosio { namespace chain {
                      return abi_serializer( abi, yield );
                } FC_CAPTURE_AND_LOG((n))
             }
-            return optional<abi_serializer>();
+            return std::optional<abi_serializer>();
          }
 
          template<typename T>
@@ -368,7 +369,7 @@ namespace eosio { namespace chain {
 
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);
 
-      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
+      static std::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
 
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );

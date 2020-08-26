@@ -18,6 +18,12 @@ struct protocol_feature_activation : fc::reflect_init {
    :protocol_features( std::move(pf) )
    {}
 
+   protocol_feature_activation(const protocol_feature_activation&) = default;
+   protocol_feature_activation(protocol_feature_activation&&) = default;
+
+   protocol_feature_activation& operator=(protocol_feature_activation&&) = default;
+   protocol_feature_activation& operator=(const protocol_feature_activation&) = default;
+
    void reflector_init();
 
    vector<digest_type> protocol_features;

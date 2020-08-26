@@ -20,12 +20,12 @@ namespace fc { namespace crypto {
    };
 
    public_key::public_key( const signature& c, const sha256& digest, bool check_canonical )
-   :_storage(c._storage.visit(recovery_visitor(digest, check_canonical)))
+   :_storage(std::visit(recovery_visitor(digest, check_canonical), c._storage))
    {
    }
 
    int public_key::which() const {
-      return _storage.which();
+      return _storage.index();
    }
 
    static public_key::storage_type parse_base58(const std::string& base58str)
@@ -33,7 +33,7 @@ namespace fc { namespace crypto {
       constexpr auto legacy_prefix = config::public_key_legacy_prefix;
       if(prefix_matches(legacy_prefix, base58str) && base58str.find('_') == std::string::npos ) {
          auto sub_str = base58str.substr(const_strlen(legacy_prefix));
-         using default_type = typename public_key::storage_type::template type_at<0>;
+         using default_type = typename std::variant_alternative_t<0, public_key::storage_type>; //public_key::storage_type::template type_at<0>;
          using data_type = default_type::data_type;
          using wrapper = checksummed_data<data_type>;
          auto bin = fc::from_base58(sub_str);
@@ -69,14 +69,14 @@ namespace fc { namespace crypto {
 
    bool public_key::valid()const
    {
-      return _storage.visit(is_valid_visitor());
+      return std::visit(is_valid_visitor(), _storage);
    }
 
    std::string public_key::to_string(const fc::yield_function_t& yield) const
    {
-      auto data_str = _storage.visit(base58str_visitor<storage_type, config::public_key_prefix, 0>(yield));
+      auto data_str = std::visit(base58str_visitor<storage_type, config::public_key_prefix, 0>(yield), _storage);
 
-      auto which = _storage.which();
+      auto which = _storage.index();
       if (which == 0) {
          return std::string(config::public_key_legacy_prefix) + data_str;
       } else {

@@ -13,7 +13,7 @@ namespace eosio { namespace chain { namespace plugin_interface {
    using namespace appbase;
 
    template<typename T>
-   using next_function = std::function<void(const fc::static_variant<fc::exception_ptr, T>&)>;
+   using next_function = std::function<void(const std::variant<fc::exception_ptr, T>&)>;
 
    struct chain_plugin_interface;
 

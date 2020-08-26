@@ -83,7 +83,25 @@
         "net"
       ]
     },{
-      "name": "transaction_tracing",
+      "name": "transaction_success_tracing",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "transaction_failure_tracing",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "state_history",
       "level": "debug",
       "enabled": true,
       "additivity": false,

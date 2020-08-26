@@ -46,9 +46,6 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
    }
 
    r.actions.reserve( t.trace->action_traces.size());
-
-
-
    for( const auto& at : t.trace->action_traces ) {
       if( !at.context_free ) { // not including CFA at this time
          using action_trace_tc = std::conditional_t<std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>, action_trace_v1, action_trace_v0>;

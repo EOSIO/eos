@@ -32,11 +32,11 @@ struct response_test_fixture {
       response_test_fixture& fixture;
    };
 
-   constexpr static auto default_mock_data_handler_v0 = [](const action_trace_v0& a, const yield_function&) ->std::tuple<fc::variant, fc::optional<fc::variant>> {
+   constexpr static auto default_mock_data_handler_v0 = [](const action_trace_v0& a, const yield_function&) ->std::tuple<fc::variant, std::optional<fc::variant>> {
       return {fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size())),{}};
    };
 
-   constexpr static auto default_mock_data_handler_v1 = [](const action_trace_v1& a, const yield_function&) -> std::tuple<fc::variant, fc::optional<fc::variant>>{
+   constexpr static auto default_mock_data_handler_v1 = [](const action_trace_v1& a, const yield_function&) -> std::tuple<fc::variant, std::optional<fc::variant>>{
       return {fc::mutable_variant_object()("hex" , fc::to_hex(a.data.data(), a.data.size())), {fc::mutable_variant_object()("hex" , fc::to_hex(a.return_value.data(), a.return_value.size()))}};
    };
 
@@ -46,7 +46,7 @@ struct response_test_fixture {
       {}
 
       template<typename ActionTrace>
-      std::tuple<fc::variant, fc::optional<fc::variant>> process_data(const ActionTrace & action, const yield_function& yield) {
+      std::tuple<fc::variant, std::optional<fc::variant>> serialize_to_variant(const ActionTrace & action, const yield_function& yield) {
          if constexpr(std::is_same_v<ActionTrace, action_trace_v0>){
             return fixture.mock_data_handler_v0(action, yield);
          }
@@ -74,8 +74,8 @@ struct response_test_fixture {
 
    // fixture data and methods
    std::function<get_block_t(uint32_t, const yield_function&)> mock_get_block;
-   std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v0&, const yield_function&)> mock_data_handler_v0 = default_mock_data_handler_v0;
-   std::function<std::tuple<fc::variant, fc::optional<fc::variant>>(const action_trace_v1&, const yield_function&)> mock_data_handler_v1 = default_mock_data_handler_v1;
+   std::function<std::tuple<fc::variant, std::optional<fc::variant>>(const action_trace_v0&, const yield_function&)> mock_data_handler_v0 = default_mock_data_handler_v0;
+   std::function<std::tuple<fc::variant, std::optional<fc::variant>>(const action_trace_v1&, const yield_function&)> mock_data_handler_v1 = default_mock_data_handler_v1;
 
    response_impl_type response_impl;
 
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters
-      mock_data_handler_v0 = [](const action_trace_v0&, const yield_function&) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+      mock_data_handler_v0 = [](const action_trace_v0&, const yield_function&) -> std::tuple<fc::variant, std::optional<fc::variant>> {
          return {};
       };
 
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters
-      mock_data_handler_v0 = [](const action_trace_v0&, const yield_function&) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+      mock_data_handler_v0 = [](const action_trace_v0&, const yield_function&) -> std::tuple<fc::variant, std::optional<fc::variant>> {
          return {};
       };
 
@@ -742,7 +742,6 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       fc::variant actual_response = get_block_trace( 1 );
-
       BOOST_TEST(to_kv(expected_response) == to_kv(actual_response), boost::test_tools::per_element());
    }
 
@@ -830,7 +829,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters and return_data
-      mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+      mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> std::tuple<fc::variant, std::optional<fc::variant>> {
          return {};
       };
 
@@ -963,7 +962,7 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
       };
 
       // simulate an inability to parse the parameters and return_data
-      mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> std::tuple<fc::variant, fc::optional<fc::variant>> {
+      mock_data_handler_v1 = [](const action_trace_v1&, const yield_function&) -> std::tuple<fc::variant, std::optional<fc::variant>> {
          return {};
       };
 

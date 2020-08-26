@@ -9,7 +9,7 @@ namespace eosio::trace_api {
             std::make_shared<chain::abi_serializer>(abi, chain::abi_serializer::create_yield_function(fc::microseconds::maximum())));
    }
 
-    std::tuple<fc::variant, fc::optional<fc::variant>> abi_data_handler::process_data(const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield ) {
+    std::tuple<fc::variant, std::optional<fc::variant>> abi_data_handler::serialize_to_variant(const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield ) {
       chain::name  account = action.index() == 0 ? std::get<0>(action).account : std::get<1>(action).account;
       if (abi_serializer_by_account.count(account) > 0) {
          const auto& serializer_p = abi_serializer_by_account.at(account);
@@ -25,9 +25,7 @@ namespace eosio::trace_api {
                };
                if(action.index() == 0){
                    return {serializer_p->binary_to_variant(type_name, std::get<0>(action).data, abi_yield),{}};
-	         }
-               else 
-               {
+	         } else {
                    return {serializer_p->binary_to_variant(type_name, std::get<1>(action).data, abi_yield), {serializer_p->binary_to_variant(type_name, std::get<1>(action).return_value, abi_yield)}};
                }
 
@@ -36,10 +34,6 @@ namespace eosio::trace_api {
             }
          }
       }
-
       return {};
-  	
     }
-
-     
 }

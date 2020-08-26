@@ -103,16 +103,16 @@ struct get_blocks_ack_request_v0 {
 };
 
 struct get_blocks_result_v0 {
-   block_position               head;
-   block_position               last_irreversible;
-   fc::optional<block_position> this_block;
-   fc::optional<block_position> prev_block;
-   fc::optional<bytes>          block;
-   fc::optional<bytes>          traces;
-   fc::optional<bytes>          deltas;
+   block_position                head;
+   block_position                last_irreversible;
+   std::optional<block_position> this_block;
+   std::optional<block_position> prev_block;
+   std::optional<bytes>          block;
+   std::optional<bytes>          traces;
+   std::optional<bytes>          deltas;
 };
 
-using state_request = fc::static_variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
+using state_request = std::variant<get_status_request_v0, get_blocks_request_v0, get_blocks_ack_request_v0>;
 
 struct account_auth_sequence {
    uint64_t account  = {};
@@ -139,7 +139,7 @@ struct action_receipt_v0 {
    fc::unsigned_int                   abi_sequence    = {};
 };
 
-using action_receipt = fc::static_variant<action_receipt_v0>;
+using action_receipt = std::variant<action_receipt_v0>;
 
 struct action {
    uint64_t                      account       = {};
@@ -149,36 +149,36 @@ struct action {
 };
 
 struct action_trace_v0 {
-   fc::unsigned_int             action_ordinal         = {};
-   fc::unsigned_int             creator_action_ordinal = {};
-   fc::optional<action_receipt> receipt                = {};
-   uint64_t                     receiver               = {};
-   action                       act                    = {};
-   bool                         context_free           = {};
-   int64_t                      elapsed                = {};
-   std::string                  console                = {};
-   std::vector<account_delta>   account_ram_deltas     = {};
-   fc::optional<std::string>    except                 = {};
-   fc::optional<uint64_t>       error_code             = {};
+   fc::unsigned_int              action_ordinal         = {};
+   fc::unsigned_int              creator_action_ordinal = {};
+   std::optional<action_receipt> receipt                = {};
+   uint64_t                      receiver               = {};
+   action                        act                    = {};
+   bool                          context_free           = {};
+   int64_t                       elapsed                = {};
+   std::string                   console                = {};
+   std::vector<account_delta>    account_ram_deltas     = {};
+   std::optional<std::string>    except                 = {};
+   std::optional<uint64_t>       error_code             = {};
 };
 
 struct action_trace_v1 {
-   fc::unsigned_int             action_ordinal         = {};
-   fc::unsigned_int             creator_action_ordinal = {};
-   fc::optional<action_receipt> receipt                = {};
-   uint64_t                     receiver               = {};
-   action                       act                    = {};
-   bool                         context_free           = {};
-   int64_t                      elapsed                = {};
-   std::string                  console                = {};
-   std::vector<account_delta>   account_ram_deltas     = {};
-   std::vector<account_delta>   account_disk_deltas    = {};
-   fc::optional<std::string>    except                 = {};
-   fc::optional<uint64_t>       error_code             = {};
-   bytes                        return_value           = {};
+   fc::unsigned_int              action_ordinal         = {};
+   fc::unsigned_int              creator_action_ordinal = {};
+   std::optional<action_receipt> receipt                = {};
+   uint64_t                      receiver               = {};
+   action                        act                    = {};
+   bool                          context_free           = {};
+   int64_t                       elapsed                = {};
+   std::string                   console                = {};
+   std::vector<account_delta>    account_ram_deltas     = {};
+   std::vector<account_delta>    account_disk_deltas    = {};
+   std::optional<std::string>    except                 = {};
+   std::optional<uint64_t>       error_code             = {};
+   bytes                         return_value           = {};
 };
 
-using action_trace = fc::static_variant<action_trace_v0, action_trace_v1>;
+using action_trace = std::variant<action_trace_v0, action_trace_v1>;
 
 struct partial_transaction_v0 {
    eosio::chain::time_point_sec               expiration             = {};
@@ -201,34 +201,34 @@ struct partial_transaction_v1 {
    uint8_t                                    max_cpu_usage_ms       = {};
    fc::unsigned_int                           delay_sec              = {};
    std::vector<eosio::chain::extensions_type> transaction_extensions = {};
-   fc::optional<prunable_data_type>           prunable_data          = {};
+   std::optional<prunable_data_type>          prunable_data          = {};
 };
 
-using partial_transaction = fc::static_variant<partial_transaction_v0, partial_transaction_v1>;
+using partial_transaction = std::variant<partial_transaction_v0, partial_transaction_v1>;
 
 struct transaction_trace_recurse;
 
 struct transaction_trace_v0 {
-   using transaction_trace                       = fc::static_variant<transaction_trace_v0>;
-   eosio::chain::digest_type   id                = {};
-   uint8_t                     status            = {};
-   uint32_t                    cpu_usage_us      = {};
-   fc::unsigned_int            net_usage_words   = {};
-   int64_t                     elapsed           = {};
-   uint64_t                    net_usage         = {};
-   bool                        scheduled         = {};
-   std::vector<action_trace>   action_traces     = {};
-   fc::optional<account_delta> account_ram_delta = {};
-   fc::optional<std::string>   except            = {};
-   fc::optional<uint64_t>      error_code        = {};
+   using transaction_trace                        = std::variant<transaction_trace_v0>;
+   eosio::chain::digest_type    id                = {};
+   uint8_t                      status            = {};
+   uint32_t                     cpu_usage_us      = {};
+   fc::unsigned_int             net_usage_words   = {};
+   int64_t                      elapsed           = {};
+   uint64_t                     net_usage         = {};
+   bool                         scheduled         = {};
+   std::vector<action_trace>    action_traces     = {};
+   std::optional<account_delta> account_ram_delta = {};
+   std::optional<std::string>   except            = {};
+   std::optional<uint64_t>      error_code        = {};
 
-   // semantically, this should be optional<transaction_trace>;
+   // semantically, this should be std::optional<transaction_trace>;
    // it is represented as vector because optional cannot be used for incomplete type
    std::vector<transaction_trace_recurse> failed_dtrx_trace = {};
-   fc::optional<partial_transaction>      partial           = {};
+   std::optional<partial_transaction>     partial           = {};
 };
 
-using transaction_trace = fc::static_variant<transaction_trace_v0>;
+using transaction_trace = std::variant<transaction_trace_v0>;
 struct transaction_trace_recurse {
    transaction_trace recurse;
 };
@@ -236,16 +236,16 @@ struct transaction_trace_recurse {
 using optional_signed_block = std::variant<chain::signed_block_v0_ptr, chain::signed_block_ptr>;
 
 struct get_blocks_result_v1 {
-   block_position               head;
-   block_position               last_irreversible;
-   fc::optional<block_position> this_block;
-   fc::optional<block_position> prev_block;
-   optional_signed_block        block; // packed as fc::optional<fc::static_variant<signed_block_v0, signed_block>>
+   block_position                head;
+   block_position                last_irreversible;
+   std::optional<block_position> this_block;
+   std::optional<block_position> prev_block;
+   optional_signed_block         block; // packed as std::optional<fc::static_variant<signed_block_v0, signed_block>>
    opaque<std::vector<transaction_trace>> traces;
    opaque<std::vector<table_delta>>       deltas;
 };
 
-using state_result = fc::static_variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
+using state_result = std::variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1>;
 
 } // namespace state_history
 } // namespace eosio

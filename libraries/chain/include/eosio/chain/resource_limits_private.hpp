@@ -177,7 +177,6 @@ namespace eosio { namespace chain { namespace resource_limits {
       int64_t net_weight = -1;
       int64_t cpu_weight = -1;
       int64_t ram_bytes = -1;
-      int64_t disk_bytes = 0;
 
       using v3 = legacy::snapshot_resource_limits_object_v3;
       void initialize_from( const v3& legacy) {
@@ -186,7 +185,6 @@ namespace eosio { namespace chain { namespace resource_limits {
          net_weight = legacy.net_weight;
          cpu_weight = legacy.cpu_weight;
          ram_bytes = legacy.ram_bytes;
-         disk_bytes = 0;
       }
 
    };
@@ -217,14 +215,12 @@ namespace eosio { namespace chain { namespace resource_limits {
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
-      uint64_t                 disk_usage = 0;
       using v3 = legacy::snapshot_resource_usage_object_v3;
       void initialize_from( const v3& legacy ) {
          owner = legacy.owner;
          net_usage = legacy.net_usage;
          cpu_usage = legacy.cpu_usage;
          ram_usage = legacy.ram_usage;
-         disk_usage = 0;
       }
    };
 
@@ -286,7 +282,6 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t total_net_weight = 0ULL;
       uint64_t total_cpu_weight = 0ULL;
       uint64_t total_ram_bytes = 0ULL;
-      uint64_t total_disk_bytes = 0ULL;
 
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms
@@ -319,7 +314,6 @@ namespace eosio { namespace chain { namespace resource_limits {
          total_net_weight = legacy.total_net_weight;
          total_cpu_weight = legacy.total_cpu_weight;
          total_ram_bytes = legacy.total_ram_bytes;
-         total_disk_bytes = 0ULL;
          virtual_net_limit = legacy.virtual_net_limit;
          virtual_cpu_limit = legacy.virtual_cpu_limit;
       }
@@ -343,10 +337,10 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_ob
 FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
 // @ignore pending
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (owner)(net_weight)(cpu_weight)(ram_bytes)(disk_bytes))
-FC_REFLECT(eosio::chain::resource_limits::resource_usage_object,  (owner)(net_usage)(cpu_usage)(ram_usage)(disk_usage))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (owner)(net_weight)(cpu_weight)(ram_bytes))
+FC_REFLECT(eosio::chain::resource_limits::resource_usage_object,  (owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(total_disk_bytes)(virtual_net_limit)(virtual_cpu_limit))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))
 
 FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_limits_object_v3, (owner)(net_weight)(cpu_weight)(ram_bytes))
 FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_usage_object_v3,  (owner)(net_usage)(cpu_usage)(ram_usage))
