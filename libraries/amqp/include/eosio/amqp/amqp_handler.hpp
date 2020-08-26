@@ -98,7 +98,10 @@ public:
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
          boost::asio::post( *handler_->amqp_strand(), [&]() {
-            stop_promise.set_value();
+            auto& cb = channel_->close();
+            cb.onFinalize([&](){
+               stop_promise.set_value();
+            });
          } );
          future.wait();
 
