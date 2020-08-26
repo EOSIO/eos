@@ -253,7 +253,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
-      if (snapshot->snap.has_value()) {
+      if (snapshot->snap) {
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx,
                                      snapshot->snap->snapshot(), memory, true);
       } else {

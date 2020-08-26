@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
-         using transaction_extension_t = fc::static_variant< Ts... >;
+         using transaction_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -214,7 +214,7 @@ namespace eosio { namespace chain {
             digest_type                     prunable_digest() const;
          };
 
-         using segment_type = fc::static_variant<digest_type, bytes>;
+         using segment_type = std::variant<digest_type, bytes>;
 
          struct partial {
             std::vector<signature_type>     signatures;
@@ -235,10 +235,10 @@ namespace eosio { namespace chain {
             digest_type                     prunable_digest() const;
          };
 
-         using prunable_data_t = fc::static_variant< full_legacy,
-                                                     none,
-                                                     partial,
-                                                     full >;
+         using prunable_data_t = std::variant< full_legacy,
+                                               none,
+                                               partial,
+                                               full >;
 
          prunable_data_type prune_all() const;
          digest_type digest() const;

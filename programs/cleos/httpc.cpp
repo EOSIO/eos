@@ -149,7 +149,7 @@ namespace eosio { namespace client { namespace http {
       // non error results are guaranteed to return a non-empty range
       vector<string> resolved_addresses;
       resolved_addresses.reserve(result.size());
-      optional<uint16_t> resolved_port;
+      std::optional<uint16_t> resolved_port;
       bool is_loopback = true;
 
       for(const auto& r : result) {

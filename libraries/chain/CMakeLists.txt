@@ -50,7 +50,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
 endif()
 
 if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp" "webassembly/runtimes/host_function_registrator.cpp")
+   set(CHAIN_EOSVM_SOURCES "webassembly/runtimes/eos-vm.cpp")
    set(CHAIN_EOSVM_LIBRARIES eos-vm)
 endif()
 

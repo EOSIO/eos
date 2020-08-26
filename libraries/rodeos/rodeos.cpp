@@ -314,11 +314,17 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    } catch (...) {
       try {
          throw;
-      } catch (const std::exception& e) {
-         elog("std::exception processing filter wasm: ${e}", ("e", e.what()));
-      } catch (const fc::exception& e) {
-         elog("fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()));
-      } catch (...) { elog("unknown exception processing filter wasm"); }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
+      } catch( const fc::exception& e ) {
+         elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
+      } catch( const std::exception& e ) {
+         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
+      } catch( ... ) {
+         elog( "unknown exception processing filter wasm" );
+      }
       if (!filter_state->console.empty())
          ilog("filter ${n} console output before exception: <<<\n${c}>>>",
               ("n", name.to_string())("c", filter_state->console));

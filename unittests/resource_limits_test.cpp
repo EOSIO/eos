@@ -353,7 +353,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       constexpr int64_t unlimited = -1;
 
-      using get_account_limit_ex_func = std::function<std::pair<account_resource_limit, bool>(const resource_limits_manager*, const account_name&, uint32_t, const fc::optional<block_timestamp_type>&)>;
+      using get_account_limit_ex_func = std::function<std::pair<account_resource_limit, bool>(const resource_limits_manager*, const account_name&, uint32_t, const std::optional<block_timestamp_type>&)>;
       auto test_get_account_limit_ex = [this](const account_name& test_account, const uint32_t window, get_account_limit_ex_func get_account_limit_ex)
       {
          constexpr uint32_t delta_slot = 100;
