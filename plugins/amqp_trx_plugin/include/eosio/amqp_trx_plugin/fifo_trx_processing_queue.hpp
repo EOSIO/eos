@@ -126,6 +126,7 @@ private:
    detail::blocking_queue<q_item> queue_;
    std::thread thread_;
    std::atomic_bool running_ = true;
+   bool started_ = false;
    const chain::chain_id_type chain_id_;
    const uint32_t configured_subjective_signature_length_limit_ = 0;
    const bool allow_speculative_execution = false;
@@ -216,6 +217,7 @@ public:
 
    /// Should be called on each start block from app() thread
    void on_block_start() {
+      started_ = true;
       if( allow_speculative_execution || prod_plugin_->is_producing_block() ) {
          queue_.unpause();
       }
@@ -223,7 +225,7 @@ public:
 
    /// Should be called on each block finalize from app() thread
    void on_block_stop() {
-      if( allow_speculative_execution || prod_plugin_->is_producing_block() ) {
+      if( started_ && ( allow_speculative_execution || prod_plugin_->is_producing_block() ) ) {
          queue_.pause();
       }
    }
