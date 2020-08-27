@@ -1,7 +1,4 @@
-#pragma push_macro("N")
-#undef N
 #include <llvm/IR/IRBuilder.h>
-#pragma pop_macro("N")
 namespace eosio { namespace chain { namespace eosvmoc {
 namespace LLVMJIT {
 
