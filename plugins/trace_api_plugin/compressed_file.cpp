@@ -135,7 +135,7 @@ struct compressed_file_impl {
          });
 
          // special case when there is a seek point that is exact
-         if ( iter != seek_point_map.end() && std::get<0>(*iter) == static_cast<unsigned>(loc) ) {
+         if ( iter != seek_point_map.end() && std::get<0>(*iter) == static_cast<unsigned long>(loc) ) {
             file.seek(std::get<1>(*iter));
             return;
          }
