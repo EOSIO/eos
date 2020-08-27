@@ -88,12 +88,14 @@ public:
    // external interface for other plugins use
    //
 
+   bool                   has_producers() const;
+   bool                   is_producing_block() const;
    bool                   is_producer_key(const chain::public_key_type& key) const;
    chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
    void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const;
 
    using retry_later_function_t =
-         std::function<void(const chain::transaction_metadata_ptr& trx, next_function<chain::transaction_trace_ptr>& next)>;
+         std::function<void(const chain::transaction_metadata_ptr& trx, const next_function<chain::transaction_trace_ptr>& next)>;
    bool execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
                                      next_function<chain::transaction_trace_ptr> next,
                                      retry_later_function_t retry_later);
