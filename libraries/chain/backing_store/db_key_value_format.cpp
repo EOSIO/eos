@@ -49,4 +49,22 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  "DB intrinsic key-value store composite key is malformed, it is supposed to have a primary key");
    }
 
+   b1::chain_kv::bytes create_table_key(name scope, name table) {
+      b1::chain_kv::bytes composite_key;
+      const std::size_t no_key_size = 0;
+      detail::prepare_composite_key<uint64_t, key_type::table>(composite_key, scope, table, no_key_size);
+      return composite_key;
+   }
+
+   void get_table_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table) {
+      b1::chain_kv::bytes::const_iterator composite_loc;
+      key_type kt = key_type::primary;
+      std::tie(scope, table, composite_loc, kt) = detail::extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
+      EOS_ASSERT(kt == key_type::table, bad_composite_key_exception,
+                 "DB intrinsic key-value store composite key is malformed, it is supposed to be a table key, "
+                 "but it is a: " + detail::to_string(kt));
+      EOS_ASSERT(composite_loc == composite_key.cend(), bad_composite_key_exception,
+                 "DB intrinsic key-value store composite key is malformed, there should be no trailing primary/secondary key");
+   }
+
 }}}} // namespace eosio::chain::backing_store::db_key_value_format

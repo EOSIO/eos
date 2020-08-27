@@ -19,7 +19,8 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       sec_i128 = 2,
       sec_i256 = 3,
       sec_double = 4,
-      sec_long_double = 5
+      sec_long_double = 5,
+      table = std::numeric_limits<char>::max() // require to be highest value for a given scope/table
    };
 
    namespace detail {
@@ -88,5 +89,9 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  "DB intrinsic key-value store composite key is malformed, it is supposed to have a trailing primary key");
       return true;
    }
+
+   b1::chain_kv::bytes create_table_key(name scope, name table);
+
+   void get_table_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table);
 
 }}}} // ns eosio::chain::backing_store::db_key_value_format
