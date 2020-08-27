@@ -108,7 +108,7 @@ class maybe_session {
       };
 
    private:
-      optional<combined_session>     _session;
+      std::optional<combined_session>     _session;
 };
 
 struct building_block {
