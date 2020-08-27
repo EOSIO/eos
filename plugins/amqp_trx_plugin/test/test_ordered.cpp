@@ -60,6 +60,10 @@ struct mock_producer_plugin {
       return fc::microseconds( config::default_max_transaction_cpu_usage );
    }
 
+   bool is_producing_block() const {
+      return true;
+   }
+
    bool verify_equal( const std::deque<packed_transaction_ptr>& trxs) {
       if( trxs.size() != trxs_.size() ) {
          elog( "${lhs} != ${rhs}", ("lhs", trxs.size())("rhs", trxs_.size()) );
@@ -91,10 +95,12 @@ BOOST_AUTO_TEST_CASE(order) {
    auto queue =
          std::make_shared<fifo_trx_processing_queue<mock_producer_plugin>>(chain_id,
                                                                            config::default_max_variable_signature_length,
+                                                                           true,
                                                                            thread_pool.get_executor(),
                                                                            &mock_prod_plug,
                                                                            10);
    queue->run();
+   queue->on_block_start();
 
    std::deque<packed_transaction_ptr> trxs;
    std::atomic<size_t> next_calls = 0;

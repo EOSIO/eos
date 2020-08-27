@@ -32,7 +32,13 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    std::string amqp_trx_address;
    uint32_t trx_processing_queue_size = 1000;
+   bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
+
+   std::optional<scoped_connection> block_start_connection;
+   std::optional<scoped_connection> block_abort_connection;
+   std::optional<scoped_connection> accepted_block_connection;
+
 
    // called from amqp thread
    void consume_message( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
@@ -114,7 +120,9 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
       "Will consume from 'trx' queue.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
-      "The maximum number of transactions to pull from the AMQP queue.");
+      "The maximum number of transactions to pull from the AMQP queue at any given time.");
+   op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
+      "Allow non-ordered speculative execution of transactions");
 }
 
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
@@ -128,6 +136,7 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
 
       my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
+      my->allow_speculative_execution = options.at("amqp-trx-speculative-execution").as<bool>();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -148,13 +157,24 @@ void amqp_trx_plugin::plugin_startup() {
 
       ilog( "Starting amqp_trx_plugin" );
 
-      auto& controller = my->chain_plug->chain();
+      auto* prod_plugin = app().find_plugin<producer_plugin>();
+      EOS_ASSERT( prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
+      EOS_ASSERT( my->allow_speculative_execution || prod_plugin->has_producers(), chain::plugin_config_exception,
+                  "Must be a producer to run without amqp-trx-speculative-execution" );
+
+      auto& chain = my->chain_plug->chain();
       my->trx_queue_ptr =
-            std::make_shared<fifo_trx_processing_queue<producer_plugin>>( controller.get_chain_id(),
-                                                                          controller.configured_subjective_signature_length_limit(),
-                                                                          controller.get_thread_pool(),
-                                                                          app().find_plugin<producer_plugin>(),
+            std::make_shared<fifo_trx_processing_queue<producer_plugin>>( chain.get_chain_id(),
+                                                                          chain.configured_subjective_signature_length_limit(),
+                                                                          my->allow_speculative_execution,
+                                                                          chain.get_thread_pool(),
+                                                                          prod_plugin,
                                                                           my->trx_processing_queue_size );
+
+      my->block_start_connection.emplace(chain.block_start.connect( [this]( uint32_t bn ){ my->trx_queue_ptr->on_block_start(); } ));
+      my->block_abort_connection.emplace(chain.block_abort.connect( [this]( uint32_t bn ){ my->trx_queue_ptr->on_block_stop(); } ));
+      my->accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->trx_queue_ptr->on_block_stop(); } ));
+
       my->trx_queue_ptr->run();
 
       my->amqp_trx.emplace( my->amqp_trx_address, "trx",

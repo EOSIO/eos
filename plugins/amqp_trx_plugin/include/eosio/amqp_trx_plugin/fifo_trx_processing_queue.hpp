@@ -60,7 +60,7 @@ public:
          if( stopped_ ) return false;
          t = std::move(queue_.front());
          queue_.pop_front();
-         paused_ = true;
+         ++paused_;
       }
       full_cv_.notify_one();
       return true;
@@ -69,14 +69,18 @@ public:
    /// pause pop of queue. Does not pause/block push.
    void pause() {
       std::scoped_lock<std::mutex> lk(mtx_);
-      paused_ = true;
+      ++paused_;
    }
 
    /// unpause pop of queue.
    void unpause() {
-      mtx_.lock();
-      paused_ = false;
-      mtx_.unlock();
+      {
+         std::scoped_lock<std::mutex> lk( mtx_ );
+         --paused_;
+         if( paused_ < 0 ) {
+            throw std::logic_error("blocking_queue unpaused when not paused");
+         }
+      }
       empty_cv_.notify_all();
    }
 
@@ -98,7 +102,7 @@ public:
 private:
    mutable std::mutex mtx_;
    bool stopped_ = false;
-   bool paused_ = false;
+   int32_t paused_ = 0; // 0 is unpaused
    std::condition_variable full_cv_;
    std::condition_variable empty_cv_;
    std::deque<T> queue_;
@@ -122,8 +126,9 @@ private:
    detail::blocking_queue<q_item> queue_;
    std::thread thread_;
    std::atomic_bool running_ = true;
-   chain::chain_id_type chain_id_;
-   uint32_t configured_subjective_signature_length_limit_ = 0;
+   const chain::chain_id_type chain_id_;
+   const uint32_t configured_subjective_signature_length_limit_ = 0;
+   const bool allow_speculative_execution = false;
    boost::asio::io_context& sig_thread_pool_;
    ProducerPlugin* prod_plugin_ = nullptr;
 
@@ -138,12 +143,14 @@ public:
     */
    fifo_trx_processing_queue( const chain::chain_id_type& chain_id,
                               uint32_t configured_subjective_signature_length_limit,
+                              bool allow_speculative_execution,
                               boost::asio::io_context& sig_thread_pool,
                               ProducerPlugin* prod_plugin,
                               size_t max_depth )
    : queue_(max_depth)
    , chain_id_(chain_id)
    , configured_subjective_signature_length_limit_(configured_subjective_signature_length_limit)
+   , allow_speculative_execution(allow_speculative_execution)
    , sig_thread_pool_(sig_thread_pool)
    , prod_plugin_(prod_plugin)
    {
@@ -151,6 +158,7 @@ public:
 
    /// separate run() because of shared_from_this
    void run() {
+      queue_.pause(); // start paused, on_block_start will unpause
       thread_ = std::thread([self=this->shared_from_this()]() {
          fc::set_os_thread_name( "trxq" );
          while( self->running_ ) {
@@ -166,7 +174,7 @@ public:
                      dlog( "posting trx: ${id}", ("id", trx_meta->id()) );
                      app().post( priority::low, [self, trx{std::move( trx_meta )}, next{std::move( i.next )}]() {
                         auto retry_later = [self]( const chain::transaction_metadata_ptr& trx,
-                                                   producer_plugin::next_function<chain::transaction_trace_ptr>& next ) {
+                                                   const producer_plugin::next_function<chain::transaction_trace_ptr>& next ) {
                            std::promise<chain::transaction_metadata_ptr> p;
                            q_item i;
                            i.fut = p.get_future();
@@ -174,7 +182,11 @@ public:
                            i.next = next;
                            self->queue_.push_front( std::move( i ) );
                         };
-                        self->prod_plugin_->execute_incoming_transaction( trx, next, retry_later );
+                        if( !self->allow_speculative_execution && !self->prod_plugin_->is_producing_block() ) {
+                           retry_later( trx, next );
+                        } else {
+                           self->prod_plugin_->execute_incoming_transaction( trx, next, retry_later );
+                        }
                         self->queue_.unpause();
                      } );
                   } else {
@@ -199,6 +211,20 @@ public:
       queue_.stop();
       if( thread_.joinable() ) {
          thread_.join();
+      }
+   }
+
+   /// Should be called on each start block from app() thread
+   void on_block_start() {
+      if( allow_speculative_execution || prod_plugin_->is_producing_block() ) {
+         queue_.unpause();
+      }
+   }
+
+   /// Should be called on each block finalize from app() thread
+   void on_block_stop() {
+      if( allow_speculative_execution || prod_plugin_->is_producing_block() ) {
+         queue_.pause();
       }
    }
 
