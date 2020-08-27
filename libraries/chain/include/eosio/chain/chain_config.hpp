@@ -112,9 +112,34 @@ struct chain_config_v0 {
 
 protected:
    template<typename Stream>
-   Stream& log(Stream& out) const;
+   Stream& log(Stream& out) const{
+      return out << "Max Block Net Usage: " << max_block_net_usage << ", "
+                     << "Target Block Net Usage Percent: " << ((double)target_block_net_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction Net Usage: " << max_transaction_net_usage << ", "
+                     << "Base Per-Transaction Net Usage: " << base_per_transaction_net_usage << ", "
+                     << "Net Usage Leeway: " << net_usage_leeway << ", "
+                     << "Context-Free Data Net Usage Discount: " << (double)context_free_discount_net_usage_num * 100.0 / (double)context_free_discount_net_usage_den << "% , "
+
+                     << "Max Block CPU Usage: " << max_block_cpu_usage << ", "
+                     << "Target Block CPU Usage Percent: " << ((double)target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction CPU Usage: " << max_transaction_cpu_usage << ", "
+                     << "Min Transaction CPU Usage: " << min_transaction_cpu_usage << ", "
+
+                     << "Max Transaction Lifetime: " << max_transaction_lifetime << ", "
+                     << "Deferred Transaction Expiration Window: " << deferred_trx_expiration_window << ", "
+                     << "Max Transaction Delay: " << max_transaction_delay << ", "
+                     << "Max Inline Action Size: " << max_inline_action_size << ", "
+                     << "Max Inline Action Depth: " << max_inline_action_depth << ", "
+                     << "Max Authority Depth: " << max_authority_depth;
+   }
 };
 
+/**
+ * @brief v1 Producer-voted blockchain configuration parameters
+ *
+ * If Adding new parameters create chain_config_v[n] class instead of adding
+ * new parameters to v1 or v0. This is needed for snapshots backward compatibility
+ */
 struct chain_config_v1 : chain_config_v0 {
    using Base = chain_config_v0;
 
@@ -154,7 +179,9 @@ struct chain_config_v1 : chain_config_v0 {
 
 protected:
    template<typename Stream>
-   Stream& log(Stream& out) const;
+   Stream& log(Stream& out) const{
+      return base().log(out) << ", Max Action Return Value Size: " << max_action_return_value_size;
+   }
 };
 
 class controller;
@@ -276,6 +303,11 @@ inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosi
 
    //initial requirements were to skip packing field if it is not activated.
    //this approach allows to spam this function with big buffer so changing this behavior
+   //moreover:
+   //The contract has no way to know that the value was skipped and is likely to behave incorrectly.
+   //When the protocol feature is not activated, the old version of nodeos that doesn't know about 
+   //the entry MUST behave the same as the new version of nodeos that does.
+   //Skipping known but unactivated entries violates this.
    EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
    
    switch (entry.id){

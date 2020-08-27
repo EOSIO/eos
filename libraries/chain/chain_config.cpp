@@ -39,37 +39,10 @@ namespace eosio { namespace chain {
                   "max authority depth should be at least 1" );
 }
 
-template<typename Stream>
-Stream& chain_config_v0::log(Stream& out) const{
-   return out << "Max Block Net Usage: " << max_block_net_usage << ", "
-                  << "Target Block Net Usage Percent: " << ((double)target_block_net_usage_pct / (double)config::percent_1) << "%, "
-                  << "Max Transaction Net Usage: " << max_transaction_net_usage << ", "
-                  << "Base Per-Transaction Net Usage: " << base_per_transaction_net_usage << ", "
-                  << "Net Usage Leeway: " << net_usage_leeway << ", "
-                  << "Context-Free Data Net Usage Discount: " << (double)context_free_discount_net_usage_num * 100.0 / (double)context_free_discount_net_usage_den << "% , "
-
-                  << "Max Block CPU Usage: " << max_block_cpu_usage << ", "
-                  << "Target Block CPU Usage Percent: " << ((double)target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
-                  << "Max Transaction CPU Usage: " << max_transaction_cpu_usage << ", "
-                  << "Min Transaction CPU Usage: " << min_transaction_cpu_usage << ", "
-
-                  << "Max Transaction Lifetime: " << max_transaction_lifetime << ", "
-                  << "Deferred Transaction Expiration Window: " << deferred_trx_expiration_window << ", "
-                  << "Max Transaction Delay: " << max_transaction_delay << ", "
-                  << "Max Inline Action Size: " << max_inline_action_size << ", "
-                  << "Max Inline Action Depth: " << max_inline_action_depth << ", "
-                  << "Max Authority Depth: " << max_authority_depth;
-}
-
 void chain_config_v1::validate() const {
    chain_config_v0::validate();
    EOS_ASSERT( max_action_return_value_size <= MAX_SIZE_OF_BYTE_ARRAYS, action_validate_exception,
                "max action return value size should be less than MAX_SIZE_OF_BYTE_ARRAYS" );
-}
-
-template<typename Stream>
-Stream& chain_config_v1::log(Stream& out) const{
-   return base().log(out) << ", Max Action Return Value Size: " << max_action_return_value_size;
 }
 
 bool config_entry_validator::operator()(uint32_t id) const {

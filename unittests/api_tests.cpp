@@ -3676,8 +3676,53 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
 
    produce_blocks(1);
 
+   call_autoresret_and_check( N(test), N(test), N(retlim), [&]( const transaction_trace_ptr& res ) {
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+
+      auto &atrace = res->action_traces;
+      BOOST_REQUIRE_EQUAL( atrace[0].receipt.has_value(), true );
+      BOOST_REQUIRE_EQUAL( atrace[0].return_value.size(), 256 );
+      vector<char> expected_vec(256 - 2, '0');//2 bytes for size of type unsigned_int
+      vector<char> ret_vec = fc::raw::unpack<vector<char>>(atrace[0].return_value);
+
+      BOOST_REQUIRE_EQUAL_COLLECTIONS( ret_vec.begin(),
+                                       ret_vec.end(),
+                                       expected_vec.begin(),
+                                       expected_vec.end() );
+   } );
+
+   produce_blocks(1);
    BOOST_REQUIRE_THROW(call_autoresret_and_check( N(test), N(test), N(retoverlim), [&]( auto res ) {}),
                        action_return_value_exception);
+   produce_blocks(1);
+   BOOST_REQUIRE_THROW(call_autoresret_and_check( N(test), N(test), N(ret1overlim), [&]( auto res ) {}),
+                       action_return_value_exception);
+   produce_blocks(1);
+   set_code( config::system_account_name, contracts::action_results_wasm() );
+   produce_blocks(1);
+   call_autoresret_and_check( config::system_account_name,
+                              config::system_account_name, 
+                              N(retmaxlim), 
+                              [&]( const transaction_trace_ptr& res ) {
+                                 BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+
+                                 auto &atrace = res->action_traces;
+                                 BOOST_REQUIRE_EQUAL( atrace[0].receipt.has_value(), true );
+                                 BOOST_REQUIRE_EQUAL( atrace[0].return_value.size(), 20*1024*1024 );
+                                 vector<char> expected_vec(20*1024*1024, '1');
+
+                                 BOOST_REQUIRE_EQUAL_COLLECTIONS( atrace[0].return_value.begin(),
+                                                                  atrace[0].return_value.end(),
+                                                                  expected_vec.begin(),
+                                                                  expected_vec.end() );
+                              } );
+   produce_blocks(1);
+   BOOST_REQUIRE_THROW(call_autoresret_and_check( config::system_account_name, 
+                                                  config::system_account_name, 
+                                                  N(setliminv), 
+                                                  [&]( auto res ) {}),
+                       action_validate_exception);
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
