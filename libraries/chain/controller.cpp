@@ -213,6 +213,16 @@ struct pending_state {
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
+   uint32_t get_block_num()const {
+      if( _block_stage.contains<building_block>() )
+         return _block_stage.get<building_block>()._pending_block_header_state.block_num;
+
+      if( _block_stage.contains<assembled_block>() )
+         return _block_stage.get<assembled_block>()._pending_block_header_state.block_num;
+
+      return _block_stage.get<completed_block>()._block_state->block_num;
+   }
+
    void push() {
       _db_session.push();
    }
@@ -1606,9 +1616,8 @@ struct controller_impl {
 
       emit( self.block_start, head->block_num + 1 );
 
-      auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
-         protocol_features.popped_blocks_to( head_block_num );
-         pending.reset();
+      auto guard_pending = fc::make_scoped_exit([this](){
+         abort_block();
       });
 
       if (!self.skip_db_sessions(s)) {
@@ -2244,9 +2253,11 @@ struct controller_impl {
    deque<transaction_metadata_ptr> abort_block() {
       deque<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
+         uint32_t block_num = pending->get_block_num();
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
+         emit( self.block_abort, block_num );
       }
       return applied_trxs;
    }
