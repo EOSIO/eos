@@ -383,4 +383,40 @@ try {
    BOOST_TEST( name{"zzzzzzzzzzzzj"} == N(zzzzzzzzzzzzj) );
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_AUTO_TEST_CASE(is_string_valid_name_test) {
+try {
+   BOOST_TEST( is_string_valid_name("") );
+   BOOST_TEST( is_string_valid_name("1") );
+   BOOST_TEST( is_string_valid_name("5") );
+   BOOST_TEST( is_string_valid_name("a") );
+   BOOST_TEST( is_string_valid_name("z") );
+   BOOST_TEST( is_string_valid_name("abc") );
+   BOOST_TEST( is_string_valid_name("123") );
+   BOOST_TEST( is_string_valid_name(".abc") );
+   BOOST_TEST( is_string_valid_name(".........abc") );
+   BOOST_TEST( is_string_valid_name("123.") );
+   BOOST_TEST( is_string_valid_name("123.........") );
+   BOOST_TEST( is_string_valid_name(".a.b.c.1.2.3.") );
+
+   BOOST_TEST( is_string_valid_name("abc.123") );
+   BOOST_TEST( is_string_valid_name("123.abc") );
+
+   BOOST_TEST( is_string_valid_name("12345abcdefgj") );
+   BOOST_TEST( is_string_valid_name("hijklmnopqrsj") );
+   BOOST_TEST( is_string_valid_name("tuvwxyz.1234j") );
+   BOOST_TEST( is_string_valid_name("111111111111j") );
+   BOOST_TEST( is_string_valid_name("555555555555j") );
+   BOOST_TEST( is_string_valid_name("aaaaaaaaaaaaj") );
+   BOOST_TEST( is_string_valid_name("zzzzzzzzzzzzj") );
+
+   BOOST_TEST( is_string_valid_name("-1") == false );
+   BOOST_TEST( is_string_valid_name("0") == false );
+   BOOST_TEST( is_string_valid_name("6") == false );
+   BOOST_TEST( is_string_valid_name("abcde12345abj") == true );
+   BOOST_TEST( is_string_valid_name("abcde12345abk") == false );
+   BOOST_TEST( is_string_valid_name("abcdeabcde1234") == false );
+} FC_LOG_AND_RETHROW() }
+
+
 BOOST_AUTO_TEST_SUITE_END()

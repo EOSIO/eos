@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          {
             { "foo"_n, "foo", ""}
          },
-         {}, {}, {}
+         {}, {}, {}, {}
       );
       abi.version = "eosio::abi/1.";
 
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          {
             { "bar"_n, "foo", ""}
          },
-         {}, {}, {}
+         {}, {}, {}, {}
       );
       abi.version = "eosio::abi/1.";
 
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_SUITE(abi_data_handler_tests)
          {
             { "foo"_n, "foo", ""}
          },
-         {}, {}, {}
+         {}, {}, {}, {}
       );
       abi.version = "eosio::abi/1.";
 

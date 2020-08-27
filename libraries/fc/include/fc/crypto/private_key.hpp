@@ -19,7 +19,7 @@ namespace fc { namespace crypto {
    class private_key
    {
       public:
-         using storage_type = static_variant<ecc::private_key_shim, r1::private_key_shim>;
+         using storage_type = std::variant<ecc::private_key_shim, r1::private_key_shim>;
 
          private_key() = default;
          private_key( private_key&& ) = default;

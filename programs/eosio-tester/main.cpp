@@ -135,11 +135,11 @@ struct intrinsic_context {
 
 protocol_feature_set make_protocol_feature_set() {
    protocol_feature_set                                        pfs;
-   std::map<builtin_protocol_feature_t, optional<digest_type>> visited_builtins;
+   std::map<builtin_protocol_feature_t, std::optional<digest_type>> visited_builtins;
 
    std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
          [&pfs, &visited_builtins, &add_builtins](builtin_protocol_feature_t codename) -> digest_type {
-      auto res = visited_builtins.emplace(codename, optional<digest_type>());
+      auto res = visited_builtins.emplace(codename, std::optional<digest_type>());
       if (!res.second) {
          EOS_ASSERT(res.first->second, protocol_feature_exception,
                     "invariant failure: cycle found in builtin protocol feature dependencies");
@@ -182,10 +182,10 @@ struct test_chain {
    fc::temp_directory                                dir;
    std::unique_ptr<eosio::chain::controller::config> cfg;
    std::unique_ptr<eosio::chain::controller>         control;
-   fc::optional<scoped_connection>                   applied_transaction_connection;
-   fc::optional<scoped_connection>                   accepted_block_connection;
+   std::optional<scoped_connection>                  applied_transaction_connection;
+   std::optional<scoped_connection>                  accepted_block_connection;
    eosio::state_history::transaction_trace_cache     trace_cache;
-   fc::optional<block_position>                      prev_block;
+   std::optional<block_position>                     prev_block;
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
    std::set<test_chain_ref*>                         refs;
@@ -1232,8 +1232,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "tester wasm asserted: " << e.what() << "\n";
    } catch (eosio::vm::exception& e) {
       std::cerr << "vm::exception: " << e.detail() << "\n";
-   } catch (std::exception& e) { std::cerr << "std::exception: " << e.what() << "\n"; } catch (fc::exception& e) {
+   } catch (fc::exception& e) {
       std::cerr << "fc::exception: " << e.to_string() << "\n";
+   } catch (std::exception& e) { 
+     std::cerr << "std::exception: " << e.what() << "\n"; 
    }
    return 1;
 }
