@@ -70,7 +70,7 @@ struct mock_producer_plugin {
          return false;
       }
       for( size_t i = 0; i < trxs.size(); ++i ) {
-         if( trxs[0]->id() != trxs_[0]->id() ) return false;
+         if( trxs[i]->id() != trxs_[i]->id() ) return false;
       }
       return true;
    }
@@ -82,7 +82,7 @@ struct mock_producer_plugin {
 
 BOOST_AUTO_TEST_SUITE(ordered_trxs)
 
-BOOST_AUTO_TEST_CASE(order) {
+BOOST_AUTO_TEST_CASE(order_mock_producer_plugin) {
    std::thread app_thread( [](){
       appbase::app().exec();
    } );
