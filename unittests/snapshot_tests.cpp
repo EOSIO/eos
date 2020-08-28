@@ -493,10 +493,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
    tester base_chain(config, *genesis);
 
-   std::string current_version = "v4";
+   std::string current_version = "v5";
 
    int ordinal = 0;
-   for(std::string version : {"v2", "v3", "v4"})
+   for(std::string version : {"v2", "v3", "v4", "v5"})
    {
       if(save_snapshot && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
@@ -504,12 +504,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
       snapshotted_tester old_snapshot_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
       verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *old_snapshot_tester.control);
-
+      
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
       old_snapshot_tester.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
-
+      
       // load the latest snapshot
       snapshotted_tester latest_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
       verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *latest_tester.control);
