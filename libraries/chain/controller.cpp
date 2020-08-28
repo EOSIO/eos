@@ -1617,7 +1617,9 @@ struct controller_impl {
       emit( self.block_start, head->block_num + 1 );
 
       auto guard_pending = fc::make_scoped_exit([this](){
-         abort_block();
+         try {
+            abort_block();
+         } FC_LOG_AND_DROP()
       });
 
       if (!self.skip_db_sessions(s)) {
@@ -2547,7 +2549,9 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 }
 
 controller::~controller() {
-   my->abort_block();
+   try {
+      my->abort_block();
+   } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
