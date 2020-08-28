@@ -249,6 +249,7 @@ namespace eosio {
       chain_plugin*                         chain_plug = nullptr;
       producer_plugin*                      producer_plug = nullptr;
       bool                                  use_socket_read_watermark = false;
+      fc::microseconds                      tcp_keepalive = fc::microseconds(0);
       /** @} */
 
       mutable std::shared_mutex             connections_mtx;
@@ -546,6 +547,7 @@ namespace eosio {
       static const string unknown;
 
       void update_endpoints();
+      void set_tcp_keepalive();
 
       optional<peer_sync_state>    peer_requested;  // this peer is requesting info from us
 
@@ -813,6 +815,7 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
+      set_tcp_keepalive();
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
    }
 
@@ -825,7 +828,49 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
+      set_tcp_keepalive();
       fc_dlog( logger, "new connection object created" );
+   }
+
+   // from libraries/fc/src/network/tcp_socket.cpp
+   void connection::set_tcp_keepalive() {
+      fc::microseconds tcp_keepalive = my_impl->tcp_keepalive;
+      if( tcp_keepalive.count() > 0 ) {
+         boost::asio::socket_base::keep_alive option(true);
+         socket->set_option(option);
+#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
+         struct tcp_keepalive keepalive_settings;
+         keepalive_settings.onoff = 1;
+         keepalive_settings.keepalivetime = (ULONG)(tcp_keepalive.count() / fc::milliseconds(1).count());
+         keepalive_settings.keepaliveinterval = (ULONG)(tcp_keepalive.count() / fc::milliseconds(1).count());
+
+         DWORD dwBytesRet = 0;
+         if (WSAIoctl(socket->native_handle(), SIO_KEEPALIVE_VALS, &keepalive_settings, sizeof(keepalive_settings),
+                      NULL, 0, &dwBytesRet, NULL, NULL) == SOCKET_ERROR) {
+            wlog("Error setting TCP keepalive values");
+         }
+#elif !defined(__clang__) || (__clang_major__ >= 6)
+         // This should work for modern Linuxes and for OSX >= Mountain Lion
+         int timeout_sec = tcp_keepalive.count() / fc::seconds(1).count();
+         if (setsockopt(socket->native_handle(), IPPROTO_TCP,
+#if defined( __APPLE__ )
+               TCP_KEEPALIVE,
+#else
+               TCP_KEEPIDLE,
+#endif
+               (char*)&timeout_sec, sizeof(timeout_sec)) < 0) {
+            wlog("Error setting TCP keepalive idle time");
+         }
+# if !defined(__APPLE__) || defined(TCP_KEEPINTVL) // TCP_KEEPINTVL not defined before 10.9
+         if (setsockopt(socket->native_handle(), IPPROTO_TCP, TCP_KEEPINTVL,
+                        (char*)&timeout_sec, sizeof(timeout_sec)) < 0)
+            wlog("Error setting TCP keepalive interval");
+# endif // !__APPLE__ || TCP_KEEPINTVL
+#endif // !WIN32
+      } else {
+         boost::asio::socket_base::keep_alive option(false);
+         socket->set_option(option);
+      }
    }
 
    void connection::update_endpoints() {
@@ -3292,6 +3337,8 @@ namespace eosio {
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable experimental socket read watermark optimization")
+         ( "p2p-keepalive-time", bpo::value<int64_t>()->default_value(500000),
+           "Set socket TCP keepalive time in microseconds, 0 to disable." )
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
@@ -3326,6 +3373,7 @@ namespace eosio {
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
+         my->tcp_keepalive = options.at( "p2p-keepalive-time" ).as<microseconds>();
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
