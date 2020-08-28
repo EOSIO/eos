@@ -2000,7 +2000,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
        const auto &kv_tbl_def = table_it->second;
        // Check valid index_name
        bool is_primary_idx = p.index_name == kv_tbl_def.primary_index.name;
-       bool is_sec_idx = kv_tbl_def.secondary_indices.find(p.index_name) == kv_tbl_def.secondary_indices.end();
+       bool is_sec_idx = kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end();
        EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception,  "Unknown kv index: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
        // Is point query of ranged query?
