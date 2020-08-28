@@ -3,8 +3,6 @@
 #include <fc/fwd_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <Security/Security.h>
-
 namespace eosio::secure_enclave {
 
 static std::string string_for_cferror(CFErrorRef error) {
@@ -17,66 +15,59 @@ static std::string string_for_cferror(CFErrorRef error) {
    return ret;
 }
 
-struct secure_enclave_key::impl {
-   SecKeyRef key_ref = NULL;
-   fc::crypto::public_key pub_key;
+secure_enclave_key::impl::~impl() {
+  if(key_ref)
+      CFRelease(key_ref);
+  key_ref = NULL;
+}
 
-   ~impl() {
-      if(key_ref)
-         CFRelease(key_ref);
-      key_ref = NULL;
-   }
+void secure_enclave_key::impl::populate_public_key() {
+  //without a good way to create fc::public_key direct, create a serialized version to create a public_key from
+  char serialized_public_key[1 + sizeof(fc::crypto::r1::public_key_data)] = {fc::get_index<fc::crypto::public_key::storage_type, fc::crypto::r1::public_key_shim>()};
 
-   void populate_public_key() {
-      //without a good way to create fc::public_key direct, create a serialized version to create a public_key from
-      char serialized_public_key[1 + sizeof(fc::crypto::r1::public_key_data)] = {fc::crypto::public_key::storage_type::position<fc::crypto::r1::public_key_shim>()};
+  SecKeyRef pubkey = SecKeyCopyPublicKey(key_ref);
 
-      SecKeyRef pubkey = SecKeyCopyPublicKey(key_ref);
+  CFErrorRef error = NULL;
+  CFDataRef keyrep = NULL;
+  keyrep = SecKeyCopyExternalRepresentation(pubkey, &error);
 
-      CFErrorRef error = NULL;
-      CFDataRef keyrep = NULL;
-      keyrep = SecKeyCopyExternalRepresentation(pubkey, &error);
+  if(!error) {
+      const UInt8 *cfdata = CFDataGetBytePtr(keyrep);
+      memcpy(serialized_public_key + 2, cfdata + 1, 32);
+      serialized_public_key[1] = 0x02u + (cfdata[64] & 1u);
+  }
 
-      if(!error) {
-         const UInt8 *cfdata = CFDataGetBytePtr(keyrep);
-         memcpy(serialized_public_key + 2, cfdata + 1, 32);
-         serialized_public_key[1] = 0x02u + (cfdata[64] & 1u);
-      }
+  CFRelease(keyrep);
+  CFRelease(pubkey);
 
-      CFRelease(keyrep);
-      CFRelease(pubkey);
+  if(error) {
+      auto release_error = fc::make_scoped_exit([&error](){CFRelease(error);});
+      FC_ASSERT(false, "Failed to get public key from Secure Enclave: ${m}", ("m", string_for_cferror(error)));
+  }
 
-      if(error) {
-         auto release_error = fc::make_scoped_exit([&error](){CFRelease(error);});
-         FC_ASSERT(false, "Failed to get public key from Secure Enclave: ${m}", ("m", string_for_cferror(error)));
-      }
-
-      fc::datastream<const char*> ds(serialized_public_key, sizeof(serialized_public_key));
-      fc::raw::unpack(ds, pub_key);
-   }
-};
+  fc::datastream<const char*> ds(serialized_public_key, sizeof(serialized_public_key));
+  fc::raw::unpack(ds, pub_key);
+}
 
 secure_enclave_key::secure_enclave_key(void* seckeyref) {
-   static_assert(sizeof(impl) <= fwd_size);
-
-   my->key_ref = (SecKeyRef)(seckeyref);
-   my->populate_public_key();
-   CFRetain(my->key_ref);
+   my.key_ref = (SecKeyRef)(seckeyref);
+   my.populate_public_key();
+   CFRetain(my.key_ref);
 }
 
 secure_enclave_key::secure_enclave_key(const secure_enclave_key& o) {
-   my->key_ref = (SecKeyRef)CFRetain(o.my->key_ref);
-   my->pub_key = o.public_key();
+   my.key_ref = (SecKeyRef)CFRetain(o.my.key_ref);
+   my.pub_key = o.public_key();
 }
 
 secure_enclave_key::secure_enclave_key(secure_enclave_key&& o) {
-   my->key_ref = o.my->key_ref;
-   o.my->key_ref = NULL;
-   my->pub_key = o.my->pub_key;
+   my.key_ref = o.my.key_ref;
+   o.my.key_ref = NULL;
+   my.pub_key = o.my.pub_key;
 }
 
 const fc::crypto::public_key &secure_enclave_key::public_key() const {
-   return my->pub_key;
+   return my.pub_key;
 }
 
 fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
@@ -84,7 +75,7 @@ fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
    CFErrorRef error = NULL;
 
    CFDataRef digestData = CFDataCreateWithBytesNoCopy(NULL, (UInt8*)digest.data(), digest.data_size(), kCFAllocatorNull);
-   CFDataRef signature = SecKeyCreateSignature(my->key_ref, kSecKeyAlgorithmECDSASignatureDigestX962SHA256, digestData, &error);
+   CFDataRef signature = SecKeyCreateSignature(my.key_ref, kSecKeyAlgorithmECDSASignatureDigestX962SHA256, digestData, &error);
 
    auto cleanup = fc::make_scoped_exit([&digestData, &signature]() {
       CFRelease(digestData);
@@ -102,11 +93,11 @@ fc::crypto::signature secure_enclave_key::sign(const fc::sha256& digest) const {
    long derSize = CFDataGetLength(signature);
    d2i_ECDSA_SIG(&sig.obj, &der_bytes, derSize);
 
-   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::crypto::signature::storage_type::position<fc::crypto::r1::signature_shim>()};
+   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::get_index<fc::crypto::signature::storage_type, fc::crypto::r1::signature_shim>()};
 
    fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature *)(serialized_signature + 1);
    fc::ec_key key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-   *compact_sig = fc::crypto::r1::signature_from_ecdsa(key,my->pub_key._storage.get<fc::crypto::r1::public_key_shim>()._data, sig, digest);
+   *compact_sig = fc::crypto::r1::signature_from_ecdsa(key, std::get<fc::crypto::r1::public_key_shim>(my.pub_key._storage)._data, sig, digest);
 
    fc::crypto::signature final_signature;
    fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
@@ -194,7 +185,7 @@ std::set<secure_enclave_key> get_all_keys() {
 }
 
 void delete_key(secure_enclave_key&& key) {
-   CFDictionaryRef deleteDic = CFDictionaryCreate(NULL, (const void**)&kSecValueRef, (const void**)&key.my->key_ref, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+   CFDictionaryRef deleteDic = CFDictionaryCreate(NULL, (const void**)&kSecValueRef, (const void**)&key.my.key_ref, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
    OSStatus ret = SecItemDelete(deleteDic);
    CFRelease(deleteDic);

@@ -413,16 +413,18 @@ void application::set_thread_priority_max() {
 }
 
 void application::exec() {
-   boost::asio::io_service::work work(*io_serv);
-   (void)work;
-   bool more = true;
-   while( more || io_serv->run_one() ) {
-      while( io_serv->poll_one() ) {}
-      // execute the highest priority item
-      more = pri_queue.execute_highest();
-   }
+   {
+      boost::asio::io_service::work work( *io_serv );
+      (void) work;
+      bool more = true;
+      while( more || io_serv->run_one() ) {
+         while( io_serv->poll_one() ) {}
+         // execute the highest priority item
+         more = pri_queue.execute_highest();
+      }
 
-   shutdown(); /// perform synchronous shutdown
+      shutdown(); /// perform synchronous shutdown
+   }
    io_serv.reset();
 }
 
@@ -446,7 +448,7 @@ void application::print_default_config(std::ostream& os) {
          option_to_plug[opt->long_name()] = plug.second->name();
    }
 
-   for(const boost::shared_ptr<bpo::option_description> od : my->_cfg_options.options())
+   for(const auto& od : my->_cfg_options.options())
    {
       if(!od->description().empty()) {
          std::string desc = od->description();

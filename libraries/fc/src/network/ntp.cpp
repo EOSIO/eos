@@ -100,10 +100,22 @@ namespace fc
           {
             throw;
           }
+          catch ( const std::bad_alloc& ) 
+          {
+            throw;
+          } 
+          catch ( const boost::interprocess::bad_alloc& ) 
+          {
+            throw;
+          } 
           // this could fail to resolve but we want to go on to other hosts..
           catch ( const fc::exception& e )
           {
             elog( "${e}", ("e",e.to_detail_string() ) );
+          }
+          catch ( const std::exception& e )
+          {
+            elog( "${e}", ("e",e.what() ) );
           }
         }
       } // request_now
@@ -243,11 +255,11 @@ namespace fc
     my->_ntp_thread.async( [=](){ my->request_now(); } ).get();
   }
 
-  optional<time_point> ntp::get_time()const
+  std::optional<time_point> ntp::get_time()const
   {
     if( my->_last_ntp_delta_initialized )
       return fc::time_point::now() + fc::microseconds(my->_last_ntp_delta_microseconds);
-    return optional<time_point>();
+    return std::optional<time_point>();
   }
 
 } //namespace fc

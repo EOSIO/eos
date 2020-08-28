@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
       shared_vector<shared_key_weight>   keys;
    };
 
-   using shared_block_signing_authority = static_variant<shared_block_signing_authority_v0>;
+   using shared_block_signing_authority = std::variant<shared_block_signing_authority_v0>;
 
    struct shared_producer_authority {
       shared_producer_authority() = delete;
@@ -158,7 +158,7 @@ namespace eosio { namespace chain {
       }
    };
 
-   using block_signing_authority = static_variant<block_signing_authority_v0>;
+   using block_signing_authority = std::variant<block_signing_authority_v0>;
 
    struct producer_authority {
       name                    producer_name;
@@ -166,9 +166,9 @@ namespace eosio { namespace chain {
 
       template<typename Op>
       static void for_each_key( const block_signing_authority& authority, Op&& op ) {
-         authority.visit([&op](const auto &a){
+         std::visit([&op](const auto &a){
             a.for_each_key(std::forward<Op>(op));
-         });
+         }, authority);
       }
 
       template<typename Op>
@@ -177,9 +177,9 @@ namespace eosio { namespace chain {
       }
 
       static std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& keys, const block_signing_authority& authority ) {
-         return authority.visit([&keys](const auto &a){
+         return std::visit([&keys](const auto &a){
             return a.keys_satisfy_and_relevant(keys);
-         });
+         }, authority);
       }
 
       std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& presented_keys ) const {
@@ -187,9 +187,9 @@ namespace eosio { namespace chain {
       }
 
       auto to_shared(chainbase::allocator<char> alloc) const {
-         auto shared_auth = authority.visit([&alloc](const auto& a) {
+         auto shared_auth = std::visit([&alloc](const auto& a) {
             return a.to_shared(alloc);
-         });
+         }, authority);
 
          return shared_producer_authority(producer_name, std::move(shared_auth));
       }
@@ -197,11 +197,11 @@ namespace eosio { namespace chain {
       static auto from_shared( const shared_producer_authority& src ) {
          producer_authority result;
          result.producer_name = src.producer_name;
-         result.authority = src.authority.visit(overloaded {
+         result.authority = std::visit(overloaded {
             [](const shared_block_signing_authority_v0& a) {
                return block_signing_authority_v0::from_shared(a);
             }
-         });
+         }, src.authority);
 
          return result;
       }
@@ -299,6 +299,9 @@ namespace eosio { namespace chain {
       producer_schedule_change_extension(const producer_schedule_change_extension&) = default;
       producer_schedule_change_extension( producer_schedule_change_extension&& ) = default;
 
+      producer_schedule_change_extension& operator=(const producer_schedule_change_extension&) = default;
+      producer_schedule_change_extension& operator=(producer_schedule_change_extension&&) = default;
+
       producer_schedule_change_extension( const producer_authority_schedule& sched )
       :producer_authority_schedule(sched) {}
    };
@@ -307,14 +310,14 @@ namespace eosio { namespace chain {
    inline bool operator == ( const producer_authority& pa, const shared_producer_authority& pb )
    {
       if(pa.producer_name != pb.producer_name) return false;
-      if(pa.authority.which() != pb.authority.which()) return false;
+      if(pa.authority.index() != pb.authority.index()) return false;
 
-      bool authority_matches = pa.authority.visit([&pb]( const auto& lhs ){
-         return pb.authority.visit( [&lhs](const auto& rhs ) {
+      bool authority_matches = std::visit([&pb]( const auto& lhs ){
+         return std::visit( [&lhs](const auto& rhs ) {
             if (lhs.threshold != rhs.threshold) return false;
             return std::equal(lhs.keys.cbegin(), lhs.keys.cend(), rhs.keys.cbegin(), rhs.keys.cend());
-         });
-      });
+         }, pb.authority);
+      }, pa.authority);
 
       if (!authority_matches) return false;
       return true;

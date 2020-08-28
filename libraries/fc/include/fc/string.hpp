@@ -1,9 +1,9 @@
 #pragma once
 #include <fc/utility.hpp>
 #include <fc/fwd.hpp>
-#include <fc/optional.hpp>
 
 #ifndef USE_FC_STRING
+#include <optional>
 #include <string>
 namespace fc
 {
@@ -23,7 +23,7 @@ namespace fc
   inline fc::string to_string( size_t s) { return to_string(uint64_t(s)); }
 #endif
 
-  typedef fc::optional<fc::string> ostring;
+  typedef std::optional<fc::string> ostring;
   class variant_object;
   fc::string format_string( const fc::string&, const variant_object&, bool minimize = false );
   fc::string trim( const fc::string& );
@@ -143,7 +143,7 @@ namespace fc {
   fc::string to_string( uint64_t );
   fc::string to_string( int64_t );
 
-  typedef fc::optional<fc::string> ostring;
+  typedef std::optional<fc::string> ostring;
   class variant_object;
   fc::string format_string( const fc::string&, const variant_object& );
 

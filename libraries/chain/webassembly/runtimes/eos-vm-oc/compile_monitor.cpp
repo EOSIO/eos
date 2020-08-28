@@ -65,8 +65,7 @@ struct compile_monitor_session {
             connection_dead_signal();
             return;
          }
-
-         message.visit(overloaded {
+         std::visit(overloaded {
             [&, &fds=fds](const compile_wasm_message& compile) {
                if(fds.size() != 1) {
                   connection_dead_signal();
@@ -85,7 +84,7 @@ struct compile_monitor_session {
                connection_dead_signal();
                return;
             }
-         });
+         }, message);
 
          read_message_from_nodeos();
       });
@@ -124,8 +123,8 @@ struct compile_monitor_session {
          void* code_ptr = nullptr;
          void* mem_ptr = nullptr;
          try {
-            if(success && message.contains<code_compilation_result_message>() && fds.size() == 2) {
-               code_compilation_result_message& result = message.get<code_compilation_result_message>();
+            if(success && std::holds_alternative<code_compilation_result_message>(message) && fds.size() == 2) {
+               code_compilation_result_message& result = std::get<code_compilation_result_message>(message);
                code_ptr = _allocator->allocate(get_size_of_fd(fds[0]));
                mem_ptr = _allocator->allocate(get_size_of_fd(fds[1]));
 
@@ -201,7 +200,7 @@ struct compile_monitor {
             ctx.stop();
             return;
          }
-         if(!message.contains<initialize_message>() || fds.size() != 2) {
+         if(!std::holds_alternative<initialize_message>(message) || fds.size() != 2) {
             ctx.stop();
             return;
          }
@@ -216,7 +215,7 @@ struct compile_monitor {
             });
             write_message_with_fds(_nodeos_socket, initalize_response_message());
          }
-         catch(const fc::exception& e) {
+         catch(const std::exception& e) {
             write_message_with_fds(_nodeos_socket, initalize_response_message{e.what()});
          }
          catch(...) {
@@ -325,8 +324,8 @@ wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
 
    auto [success, message, fds] = read_message_with_fds(the_compile_monitor_trampoline.compile_manager_fd);
    EOS_ASSERT(success, misc_exception, "failed to read response from monitor process");
-   EOS_ASSERT(message.contains<initalize_response_message>(), misc_exception, "unexpected response from monitor process");
-   EOS_ASSERT(!message.get<initalize_response_message>().error_message, misc_exception, "Error message from monitor process: ${e}", ("e", *message.get<initalize_response_message>().error_message));
+   EOS_ASSERT(std::holds_alternative<initalize_response_message>(message), misc_exception, "unexpected response from monitor process");
+   EOS_ASSERT(!std::get<initalize_response_message>(message).error_message, misc_exception, "Error message from monitor process: ${e}", ("e", *std::get<initalize_response_message>(message).error_message));
    return socket_to_monitor_session;
 }
 

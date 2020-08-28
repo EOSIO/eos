@@ -83,7 +83,7 @@ class kv_tester : public tester {
 
    action_result set_limit(name db, int64_t limit, name account = N(kvtest)) {
       action_name name;
-      if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram) || db == N(eosio.kvdisk)) {
          name = N(setramlimit);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -98,7 +98,7 @@ class kv_tester : public tester {
 
    action_result set_kv_limits(name db, uint32_t klimit, uint32_t vlimit, uint32_t ilimit = 256) {
       action_name name;
-      if(db == N(eosio.kvram)) {
+      if(db == N(eosio.kvram) || db == N(eosio.kvdisk)) {
          name = N(ramkvlimits);
       } else {
          BOOST_FAIL("Wrong database id");
@@ -190,7 +190,7 @@ class kv_tester : public tester {
    }
 
    uint64_t get_usage(name db, name account=N(kvtest)) {
-      if (db == N(eosio.kvram)) {
+      if (db == N(eosio.kvram) || db == N(eosio.kvdisk)) {
          return control->get_resource_limits_manager().get_account_ram_usage(account);
       }
       BOOST_FAIL("Wrong db");
@@ -757,7 +757,7 @@ BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-constexpr name databases[] = { N(eosio.kvdisk) };
+constexpr name databases[] = { N(eosio.kvram) };
 
 BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
    test_kv_inc_dec_usage(db);

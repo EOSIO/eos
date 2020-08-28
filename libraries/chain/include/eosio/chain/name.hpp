@@ -29,6 +29,9 @@ namespace eosio::chain {
       return 0;
    }
 
+   // true if std::string can be converted to name
+   bool is_string_valid_name(std::string_view str);
+
    static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
       EOS_ASSERT(str.size() <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
 

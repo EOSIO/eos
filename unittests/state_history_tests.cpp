@@ -28,16 +28,16 @@ extern const char* const state_history_plugin_abi;
 prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<state_history::transaction_trace>& traces,
                                                                   const transaction_id_type&                     id) {
    auto cfd_trace_itr = std::find_if(traces.begin(), traces.end(), [id](const state_history::transaction_trace& v) {
-      return v.get<state_history::transaction_trace_v0>().id == id;
+      return std::get<state_history::transaction_trace_v0>(v).id == id;
    });
 
    // make sure the trace with cfd can be found
    BOOST_REQUIRE(cfd_trace_itr != traces.end());
-   BOOST_REQUIRE(cfd_trace_itr->contains<state_history::transaction_trace_v0>());
-   auto trace_v0 = cfd_trace_itr->get<state_history::transaction_trace_v0>();
+   BOOST_REQUIRE(std::holds_alternative<state_history::transaction_trace_v0>(*cfd_trace_itr));
+   auto trace_v0 = std::get<state_history::transaction_trace_v0>(*cfd_trace_itr);
    BOOST_REQUIRE(trace_v0.partial);
-   BOOST_REQUIRE(trace_v0.partial->contains<state_history::partial_transaction_v1>());
-   return trace_v0.partial->get<state_history::partial_transaction_v1>().prunable_data->prunable_data;
+   BOOST_REQUIRE(std::holds_alternative<state_history::partial_transaction_v1>(*trace_v0.partial));
+   return std::get<state_history::partial_transaction_v1>(*trace_v0.partial).prunable_data->prunable_data;
 }
 
 prunable_data_type::prunable_data_t get_prunable_data_from_traces_bin(const std::vector<char>&   entry,
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
 
    // Now deserialize the on disk trace log and make sure that the cfd exists
    auto& cfd_entry = on_disk_log_entries.at(cfd_trace->block_num);
-   BOOST_REQUIRE(!get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id)));
 
    // prune the cfd for the block
    std::vector<transaction_id_type> ids{cfd_trace->id};
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(test_trace_converter) {
    BOOST_CHECK(ids.size() == 0);
 
    // read the pruned trace and make sure it's pruned
-   BOOST_CHECK(get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces_bin(cfd_entry, cfd_trace->id)));
 }
 
 BOOST_AUTO_TEST_CASE(test_trace_log) {
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto traces = log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!get_prunable_data_from_traces(traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    log.prune_transactions(cfd_trace->block_num, ids);
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
 BOOST_AUTO_TEST_CASE(test_chain_state_log) {
@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto traces = chain.traces_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!get_prunable_data_from_traces(traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    chain.traces_log.prune_transactions(cfd_trace->block_num, ids);
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto                     pruned_traces = new_log.get_traces(cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(get_prunable_data_from_traces(pruned_traces, cfd_trace->id).contains<prunable_data_type::none>());
+   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
 BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
 
    transaction_trace_cache          trace_cache;
    std::map<uint32_t, chain::bytes> history;
-   fc::optional<block_position>     prev_block;
+   std::optional<block_position>    prev_block;
 
    chain.control->applied_transaction.connect(
        [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
@@ -442,15 +442,15 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    BOOST_REQUIRE_EQUAL(traces.size(), 1);
 
    auto trace_itr = std::find_if(traces.begin(), traces.end(), [tr_ptr](const state_history::transaction_trace& v) {
-      return v.get<state_history::transaction_trace_v0>().id == tr_ptr->id;
+      return std::get<state_history::transaction_trace_v0>(v).id == tr_ptr->id;
    });
 
    BOOST_REQUIRE(trace_itr != traces.end());
 
-   auto &action_traces = trace_itr->get<state_history::transaction_trace_v0>().action_traces;
+   auto &action_traces = std::get<state_history::transaction_trace_v0>(*trace_itr).action_traces;
 
    auto new_account_action_itr = std::find_if(action_traces.begin(), action_traces.end(), [](const state_history::action_trace& v) {
-      return v.get<state_history::action_trace_v1>().act.name == N(newaccount).to_uint64_t();
+      return std::get<state_history::action_trace_v1>(v).act.name == N(newaccount).to_uint64_t();
    });
 
    BOOST_REQUIRE(new_account_action_itr != action_traces.end());

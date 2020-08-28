@@ -53,67 +53,67 @@ namespace fc { namespace rpc  {
          void notice( const fc::string& method, const variant_object& named_args );
 
          /// args will be handled as named params
-         future<variant> async_call( const fc::string& method, 
-                                     const variant_object& args );
+         future<fc::variant> async_call( const fc::string& method, 
+                                         const variant_object& args );
 
-         future<variant> async_call( const fc::string& method, mutable_variant_object args );
+         future<fc::variant> async_call( const fc::string& method, mutable_variant_object args );
 
          /// Sending in an array of variants will be handled as positional arguments
-         future<variant> async_call( const fc::string& method, 
-                                     const variants& args );
+         future<fc::variant> async_call( const fc::string& method, 
+                                         const variants& args );
 
-         future<variant> async_call( const fc::string& method );
+         future<fc::variant> async_call( const fc::string& method );
 
-         future<variant> async_call( const fc::string& method, 
-                                     const variant& a1 );
+         future<fc::variant> async_call( const fc::string& method, 
+                                         const fc::variant& a1 );
 
-         future<variant> async_call( const fc::string& method, 
-                                     const variant& a1, 
-                                     const variant& a2 );
+         future<fc::variant> async_call( const fc::string& method, 
+                                         const fc::variant& a1, 
+                                         const fc::variant& a2 );
 
-         future<variant> async_call( const fc::string& method, 
-                                     const variant& a1, 
-                                     const variant& a2, 
-                                     const variant& a3 );
+         future<fc::variant> async_call( const fc::string& method, 
+                                         const fc::variant& a1, 
+                                         const fc::variant& a2, 
+                                         const fc::variant& a3 );
 
          template<typename Result>
          Result call( const fc::string& method, 
-                               const variant& a1, 
-                               const variant& a2, 
-                               const variant& a3,
-                               microseconds timeout = microseconds::maximum())
+                      const fc::variant& a1, 
+                      const fc::variant& a2, 
+                      const fc::variant& a3,
+                      microseconds timeout = microseconds::maximum())
          {
             return async_call( method, a1, a2, a3 ).wait(timeout).as<Result>();
          }
 
          template<typename Result>
          Result call( const fc::string& method, 
-                               const variant& a1, 
-                               const variant& a2, 
-                               microseconds timeout = microseconds::maximum())
+                      const fc::variant& a1, 
+                      const fc::variant& a2, 
+                      microseconds timeout = microseconds::maximum())
          {
             return async_call( method, a1, a2 ).wait(timeout).as<Result>();
          }
 
          template<typename Result>
          Result call( const fc::string& method, 
-                               const variant& a1, 
-                               microseconds timeout = microseconds::maximum())
+                      const fc::variant& a1, 
+                      microseconds timeout = microseconds::maximum())
          {
             return async_call( method, a1 ).wait(timeout).as<Result>();
          }
 
          template<typename Result>
          Result call( const fc::string& method, 
-                               variant_object a1, 
-                               microseconds timeout = microseconds::maximum())
+                      variant_object a1, 
+                      microseconds timeout = microseconds::maximum())
          {
             return async_call( method, fc::move(a1) ).wait(timeout).as<Result>();
          }
          template<typename Result>
          Result call( const fc::string& method, 
-                               mutable_variant_object a1, 
-                               microseconds timeout = microseconds::maximum())
+                      mutable_variant_object a1, 
+                      microseconds timeout = microseconds::maximum())
          {
             return async_call( method, variant_object( fc::move(a1) ) ).wait(timeout).as<Result>();
          }
