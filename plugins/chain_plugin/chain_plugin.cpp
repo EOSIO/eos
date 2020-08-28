@@ -2464,7 +2464,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, input_trx, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_trace = fc_create_trace("Transaction");
          auto trx_span = fc_create_span(trx_trace, "Processed");
          fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());

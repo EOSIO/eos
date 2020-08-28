@@ -9,7 +9,7 @@ struct transaction_trace_exception {
    int64_t error_code; ///< fc::exception code()
    std::string error_message;
 };
-using transaction_trace_msg = fc::static_variant<transaction_trace_exception, chain::transaction_trace>;
+using transaction_trace_msg = std::variant<transaction_trace_exception, chain::transaction_trace>;
 
 class amqp_trace_plugin : public appbase::plugin<amqp_trace_plugin> {
 

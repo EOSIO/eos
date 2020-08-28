@@ -91,9 +91,9 @@ struct witness_trx_plugin_impl {
          for(const chain::transaction_receipt& trx : bsp->block->transactions) {
             if(trx.status != chain::transaction_receipt_header::executed)
                continue;
-            if(!trx.trx.contains<chain::packed_transaction>())
+            if(!std::holds_alternative<chain::packed_transaction>(trx.trx))
                continue;
-            if(auto it = outstanding_witness_transaction_index.find(trx.trx.get<chain::packed_transaction>().id()); it != outstanding_witness_transaction_index.end())
+            if(auto it = outstanding_witness_transaction_index.find(std::get<chain::packed_transaction>(trx.trx).id()); it != outstanding_witness_transaction_index.end())
                outstanding_witness_transaction_index.erase(it);
          }
       });
@@ -117,12 +117,13 @@ struct witness_trx_plugin_impl {
       }
 
       app().post(priority::medium_low, [this, t=std::move(trx)]() {
-         chainplug.accept_transaction(std::make_shared<chain::packed_transaction>(chain::signed_transaction(t), true), [](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
-            if(result.contains<chain::transaction_trace_ptr>())
+         chainplug.accept_transaction(std::make_shared<chain::packed_transaction>(chain::signed_transaction(t), true),
+               [](const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+            if(std::holds_alternative<chain::transaction_trace_ptr>(result))
                return;
-            if(result.get<fc::exception_ptr>()->code() == chain::tx_duplicate::code_value)
+            if(std::get<fc::exception_ptr>(result)->code() == chain::tx_duplicate::code_value)
                return;
-            wlog("Failed to submit witness trx. Will retry later ${e}", ("e", result.get<fc::exception_ptr>()));
+            wlog("Failed to submit witness trx. Will retry later ${e}", ("e", std::get<fc::exception_ptr>(result)));
          });
       });
    }

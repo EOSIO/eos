@@ -440,7 +440,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             fc::variant result;
             eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
             auto buf = fc::raw::pack( msg );
-            const auto& tid = msg.get<packed_transaction>().id();
+            const auto& tid = std::get<packed_transaction>(msg).id();
             string id = tid.str();
             eosio::amqp qp_trx( amqp_address, "trx", []( const std::string& err ) {
                std::cerr << "AMQP trx error: " << err << std::endl;

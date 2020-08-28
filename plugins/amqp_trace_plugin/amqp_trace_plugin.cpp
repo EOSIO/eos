@@ -33,7 +33,7 @@ public:
    void publish_error( std::string tid, int64_t error_code, std::string error_message ) {
       try {
          transaction_trace_msg msg{transaction_trace_exception{error_code}};
-         msg.get<transaction_trace_exception>().error_message = std::move( error_message );
+         std::get<transaction_trace_exception>(msg).error_message = std::move( error_message );
          auto buf = fc::raw::pack( msg );
          amqp_trace->publish( amqp_trace_exchange, tid, std::move( buf ) );
       } FC_LOG_AND_DROP()
@@ -57,7 +57,7 @@ private:
             dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
          }
          amqp_trace->publish( amqp_trace_exchange, trx->id(), [trace]() {
-            fc::unsigned_int which = transaction_trace_msg::tag<chain::transaction_trace>::value;
+            fc::unsigned_int which = fc::get_index<transaction_trace_msg, chain::transaction_trace>();
             uint32_t payload_size = fc::raw::pack_size( which );
             payload_size += fc::raw::pack_size( *trace );
             std::vector<char> buf( payload_size );
