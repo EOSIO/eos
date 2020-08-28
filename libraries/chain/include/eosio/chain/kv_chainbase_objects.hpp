@@ -11,7 +11,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(kv_db_config_object)
 
       id_type id;
-      bool    using_rocksdb_for_disk = false;
+      bool    using_rocksdb_for_backing_store = false;
    };
 
    using kv_db_config_index = chainbase::shared_multi_index_container<
@@ -64,6 +64,6 @@ namespace config {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
-FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_disk))
+FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_backing_store))
 FC_REFLECT(eosio::chain::kv_object_view, (database_id)(contract)(kv_key)(kv_value))
 FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value)(payer))

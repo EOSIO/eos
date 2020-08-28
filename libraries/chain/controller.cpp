@@ -367,8 +367,6 @@ struct controller_impl {
          throw;
       }
 
-      //kv_db.commit( fork_head->dpos_irreversible_blocknum ); // redundant
-
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
       }

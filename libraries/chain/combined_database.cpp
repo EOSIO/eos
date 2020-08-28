@@ -25,17 +25,6 @@ namespace eosio { namespace chain {
       src.kv_undo_stack = nullptr;
    }
 
-   combined_session& combined_session::operator=(combined_session&& src) noexcept {
-      if (this != &src) {
-         type              = src.type;
-         cb_session        = std::move(src.cb_session);
-         kv_undo_stack     = src.kv_undo_stack;
-         src.type          = session_type::no_op;
-         src.kv_undo_stack = nullptr;
-      }
-      return *this;
-   }
-
    void combined_session::push() {
       switch (type) {
          default: /* session_type::no_op */ break;
@@ -126,16 +115,16 @@ namespace eosio { namespace chain {
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
       if (backing_store == backing_store_type::ROCKSDB) {
-         if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+         if (db.get<kv_db_config_object>().using_rocksdb_for_backing_store)
             return;
          auto& idx = db.get_index<kv_index, by_kv_key>();
          auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
          EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
                     "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to "
                     "rocksdb");
-         db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_disk = true; });
+         db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_backing_store = true; });
       }
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
+      if (db.get<kv_db_config_object>().using_rocksdb_for_backing_store)
          ilog("using rocksdb for eosio.kvdisk");
       else
          ilog("using chainbase for eosio.kvdisk");
@@ -230,7 +219,7 @@ namespace eosio { namespace chain {
             snapshot->write_section<value_t>([this](auto& section) {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
-               if (db.get<kv_db_config_object>().using_rocksdb_for_disk) {
+               if (db.get<kv_db_config_object>().using_rocksdb_for_backing_store) {
                   std::unique_ptr<rocksdb::Iterator> it{ kv_database.rdb->NewIterator(rocksdb::ReadOptions()) };
                   std::vector<char>                  prefix = rocksdb_contract_kv_prefix;
                   b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
@@ -397,7 +386,7 @@ namespace eosio { namespace chain {
                      }
                   }
                });
-               // TODO: Split the batch to avoid storing it all in memory at once.
+#warning TODO: Split the batch to avoid storing it all in memory at once.
                kv_database.write(batch);
                return;
             }
