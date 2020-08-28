@@ -177,6 +177,29 @@ namespace backing_store {
          virtual int32_t db_idx_long_double_next(int32_t iterator, uint64_t& primary) = 0;
 
          virtual int32_t db_idx_long_double_previous(int32_t iterator, uint64_t& primary) = 0;
+
+         static std::string table_event(name code, name scope, name table);
+         static std::string table_event(name code, name scope, name table, name qualifier);
+         static void write_insert_table(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table, account_name payer);
+         static void write_remove_table(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table, account_name payer);
+         static void write_row_insert(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table,
+                                      account_name payer, account_name primkey, const char* buffer, size_t buffer_size);
+         static void write_row_update(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table,
+                                      account_name old_payer, account_name new_payer, account_name primkey,
+                                      const char* old_buffer, size_t old_buffer_size, const char* new_buffer, size_t new_buffer_size);
+         static void write_row_remove(fc::logger& deep_mind_logger, uint32_t action_id, name code, name scope, name table,
+                                      account_name payer, account_name primkey, const char* buffer, size_t buffer_size);
+         static storage_usage_trace add_table_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace rem_table_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace row_add_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace row_update_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace row_update_add_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace row_update_rem_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace row_rem_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace secondary_add_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace secondary_rem_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace secondary_update_add_trace(uint32_t action_id, const std::string& event_id);
+         static storage_usage_trace secondary_update_rem_trace(uint32_t action_id, const std::string& event_id);
       };
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);

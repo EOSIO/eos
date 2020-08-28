@@ -17,6 +17,8 @@ using boost::container::flat_set;
 
 namespace eosio { namespace chain {
 
+using db_context = backing_store::db_context;
+
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
       auto prefix = fc::format_string(
@@ -733,14 +735,10 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}",
-         ("code", code)
-         ("scope", scope)
-         ("table", table)
-      );
+      event_id = db_context::table_event(code, scope, table);
    }
 
-   update_db_usage(payer, config::billable_size_v<table_id_object>, storage_usage_trace(get_action_id(), event_id.c_str(), "table", "add", "create_table"));
+   update_db_usage(payer, config::billable_size_v<table_id_object>, db_context::add_table_trace(get_action_id(), event_id.c_str()));
 
    return db.create<table_id_object>([&](table_id_object &t_id){
       t_id.code = code;
@@ -749,13 +747,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       t_id.payer = payer;
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
-            ("action_id", get_action_id())
-            ("code", code)
-            ("scope", scope)
-            ("table", table)
-            ("payer", payer)
-         );
+         db_context::write_insert_table(*dm_logger, get_action_id(), code, scope, table, payer);
       }
    });
 }
@@ -763,23 +755,13 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 void apply_context::remove_table( const table_id_object& tid ) {
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}",
-         ("code", tid.code)
-         ("scope", tid.scope)
-         ("table", tid.table)
-      );
+      event_id = db_context::table_event(tid.code, tid.scope, tid.table);
    }
 
-   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, storage_usage_trace(get_action_id(), event_id.c_str(), "table", "remove", "remove_table") );
+   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), event_id.c_str()) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
-         ("action_id", get_action_id())
-         ("code", tid.code)
-         ("scope", tid.scope)
-         ("table", tid.table)
-         ("payer", tid.payer)
-      );
+      db_context::write_remove_table(*dm_logger, get_action_id(), tid.code, tid.scope, tid.table, tid.payer);
    }
 
    db.remove(tid);
@@ -897,26 +879,13 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", tab.code)
-         ("scope", tab.scope)
-         ("table_name", tab.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(tab.code, tab.scope, tab.table, name(obj.primary_key));
    }
 
-   update_db_usage( payer, billable_size, storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "add", "primary_index_add") );
+   update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), event_id.c_str()) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
-         ("action_id", get_action_id())
-         ("payer", payer)
-         ("table_code", tab.code)
-         ("scope", tab.scope)
-         ("table_name", tab.table)
-         ("primkey", name(obj.primary_key))
-         ("ndata", to_hex(buffer, buffer_size))
-      );
+      db_context::write_row_insert(*dm_logger, get_action_id(), tab.code, tab.scope, tab.table, payer, name(obj.primary_key), buffer, buffer_size);
    }
 
    db_iter_store.cache_table( tab );
@@ -939,36 +908,23 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
    if( account_name(obj.payer) != payer ) {
       // refund the existing payer
-      update_db_usage( obj.payer, -(old_size), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "remove", "primary_index_update_remove_old_payer") );
+      update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), event_id.c_str()) );
       // charge the new payer
-      update_db_usage( payer,  (new_size), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "add", "primary_index_update_add_new_payer") );
+      update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), event_id.c_str()) );
    } else if(old_size != new_size) {
       // charge/refund the existing payer the difference
-      update_db_usage( obj.payer, new_size - old_size, storage_usage_trace(get_action_id(), event_id.c_str() , "table_row", "update", "primary_index_update") );
+      update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), event_id.c_str()) );
    }
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
-         ("action_id", get_action_id())
-         ("opayer", obj.payer)
-         ("npayer", payer)
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-         ("odata", to_hex(obj.value.data(),obj.value.size()))
-         ("ndata", to_hex(buffer, buffer_size))
-      );
+      db_context::write_row_update(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table,
+                                   obj.payer, payer, name(obj.primary_key), obj.value.data(), obj.value.size(),
+                                   buffer, buffer_size);
    }
 
    db.modify( obj, [&]( auto& o ) {
@@ -987,26 +943,13 @@ void apply_context::db_remove_i64( int iterator ) {
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "remove", "primary_index_remove") );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), event_id.c_str()) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
-         ("action_id", get_action_id())
-         ("payer", obj.payer)
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-         ("odata", to_hex(obj.value.data(), obj.value.size()))
-      );
+      db_context::write_row_remove(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table, obj.payer, name(obj.primary_key), obj.value.data(), obj.value.size());
    }
 
    db.modify( table_obj, [&]( auto& t ) {
@@ -1270,7 +1213,7 @@ void apply_context::increment_action_id() {
    trx_context.action_id.increment();
 }
 
-backing_store::db_context& apply_context::db_get_context() {
+db_context& apply_context::db_get_context() {
    EOS_ASSERT( _db_context, action_validate_exception,
                "context-free actions cannot access state" );
    return *_db_context;
