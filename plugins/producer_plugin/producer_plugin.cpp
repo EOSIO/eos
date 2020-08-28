@@ -2093,7 +2093,13 @@ bool producer_plugin::execute_incoming_transaction(const chain::transaction_meta
    };
 
    const bool persist_until_expired = false;
-   return my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func );
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func );
+   if( exhausted ) {
+      if( my->_pending_block_mode == pending_block_mode::producing ) {
+         my->schedule_maybe_produce_block( true );
+      }
+   }
+   return !exhausted;
 }
 
 fc::microseconds producer_plugin::get_max_transaction_time() const {
