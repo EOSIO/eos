@@ -118,7 +118,7 @@ namespace fc
    :my( fc::move(c.my) ){}
 
    const char*  exception::name()const throw() { return my->_name.c_str(); }
-   const char*  exception::what()const throw() { return my->_what.c_str(); }
+   const char*  exception::what()const noexcept { return my->_what.c_str(); }
    int64_t      exception::code()const throw() { return my->_code;         }
 
    exception::~exception(){}
@@ -330,6 +330,14 @@ namespace fc
    :exception( fc::move(m), exception_code::std_exception_code, name_value, what_value )
    {
       _inner = {std::move(e)};
+   }
+
+   std_exception_wrapper std_exception_wrapper::from_current_exception(const std::exception& e)
+   {
+     return std_exception_wrapper{FC_LOG_MESSAGE(warn, "rethrow ${what}: ", ("what",e.what())), 
+                                  std::current_exception(), 
+                                  BOOST_CORE_TYPEID(e).name(), 
+                                  e.what()};
    }
 
    std::exception_ptr std_exception_wrapper::get_inner_exception()const { return _inner; }
