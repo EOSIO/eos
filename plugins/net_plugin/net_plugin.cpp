@@ -815,7 +815,6 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
-      set_tcp_keepalive();
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
    }
 
@@ -828,7 +827,6 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent()
    {
-      set_tcp_keepalive();
       fc_dlog( logger, "new connection object created" );
    }
 
@@ -937,6 +935,7 @@ namespace eosio {
          start_read_message();
          return true;
       }
+      set_tcp_keepalive();
    }
 
    bool connection::connected() {
@@ -3373,7 +3372,9 @@ namespace eosio {
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
-         my->tcp_keepalive = options.at( "p2p-keepalive-time" ).as<microseconds>();
+         my->tcp_keepalive = fc::microseconds( options.at( "p2p-keepalive-time" ).as<int64_t>() );
+         EOS_ASSERT( my->tcp_keepalive.count() >= 0, chain::plugin_config_exception,
+                     "p2p-keepalive-time should be positive, 0 to disable" );
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
