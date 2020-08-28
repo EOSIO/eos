@@ -50,6 +50,32 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    context_free = trace.context_free;
 }
 
+template <typename Exception>
+void apply_context::check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas) {
+   const size_t checktime_interval    = 10;
+   const bool   not_in_notify_context = (receiver == act->account);
+   size_t counter = 0;
+   for (const auto& entry : deltas) {
+      if (counter == checktime_interval) {
+         trx_context.checktime();
+         counter = 0;
+      }
+      if (entry.delta > 0 && entry.account != receiver) {
+         EOS_ASSERT(not_in_notify_context, Exception,
+                     "unprivileged contract cannot increase ${resource} usage of another account within a notify context: "
+                     "${account}",
+                     ("resource", resource)
+                     ("account", entry.account));
+         EOS_ASSERT(has_authorization(entry.account), Exception,
+                     "unprivileged contract cannot increase ${resource} usage of another account that has not authorized the "
+                     "action: ${account}",
+                     ("resource", resource)
+                     ("account", entry.account));
+      }
+      ++counter;
+   }
+}
+
 void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
@@ -58,6 +84,16 @@ void apply_context::exec_one()
 
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
+
+   auto handle_exception = [&](const auto& e)
+   {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   };
+
    try {
       try {
          action_return_value.clear();
@@ -65,7 +101,6 @@ void apply_context::exec_one()
          kv_destroyed_iterators.clear();
          if (!context_free) {
             kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
          }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
@@ -95,26 +130,9 @@ void apply_context::exec_one()
                } catch( const wasm_exit& ) {}
             }
 
-            if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
-               const size_t checktime_interval = 10;
-               size_t counter = 0;
-               bool not_in_notify_context = (receiver == act->account);
-               const auto end = _account_ram_deltas.end();
-               for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
-                  if( counter == checktime_interval ) {
-                     trx_context.checktime();
-                     counter = 0;
-                  }
-                  if( itr->delta > 0 && itr->account != receiver ) {
-                     EOS_ASSERT( not_in_notify_context, unauthorized_ram_usage_increase,
-                                 "unprivileged contract cannot increase RAM usage of another account within a notify context: ${account}",
-                                 ("account", itr->account)
-                     );
-                     EOS_ASSERT( has_authorization( itr->account ), unauthorized_ram_usage_increase,
-                                 "unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${account}",
-                                 ("account", itr->account)
-                     );
-                  }
+            if (!privileged) {
+               if (control.is_builtin_activated(builtin_protocol_feature_t::ram_restrictions)) {
+                  check_unprivileged_resource_usage<unauthorized_ram_usage_increase>("RAM", _account_ram_deltas);
                }
             }
          }
@@ -131,12 +149,15 @@ void apply_context::exec_one()
       } else {
          act_digest = digest_type::hash(*act);
       }
-   } catch( const fc::exception& e ) {
-      action_trace& trace = trx_context.get_action_trace( action_ordinal );
-      trace.error_code = controller::convert_exception_to_error_code( e );
-      trace.except = e;
-      finalize_trace( trace, start );
+   } catch ( const std::bad_alloc& ) {
       throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch( const fc::exception& e ) {
+      handle_exception(e);
+   } catch ( const std::exception& e ) {
+      auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+      handle_exception(wrapper);
    }
 
    // Note: It should not be possible for receiver_account to be invalidated because:
@@ -422,7 +443,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
@@ -818,16 +839,16 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 {
    const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    const bytes* cfd = nullptr;
-   if( data.contains<packed_transaction::prunable_data_type::none>() ) {
-   } else if( data.contains<packed_transaction::prunable_data_type::partial>() ) {
-      if( index >= data.get<packed_transaction::prunable_data_type::partial>().context_free_segments.size() ) return -1;
+   if( std::holds_alternative<packed_transaction::prunable_data_type::none>(data) ) {
+   } else if( std::holds_alternative<packed_transaction::prunable_data_type::partial>(data) ) {
+      if( index >= std::get<packed_transaction::prunable_data_type::partial>(data).context_free_segments.size() ) return -1;
 
       cfd = trx_context.packed_trx.get_context_free_data(index);
    } else {
       const std::vector<bytes>& context_free_data =
-            data.contains<packed_transaction::prunable_data_type::full_legacy>() ?
-               data.get<packed_transaction::prunable_data_type::full_legacy>().context_free_segments :
-               data.get<packed_transaction::prunable_data_type::full>().context_free_segments;
+            std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
+               std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
+               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];
@@ -1118,8 +1139,8 @@ int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key,
    return kv_get_db(db).kv_erase(contract, key, key_size);
 }
 
-int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
-   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
+int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
+   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size, payer);
 }
 
 bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
@@ -1201,8 +1222,6 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
 kv_context& apply_context::kv_get_db(uint64_t db) {
    if (db == kvram_id.to_uint64_t())
       return *kv_ram;
-   else if (db == kvdisk_id.to_uint64_t())
-      return *kv_disk;
    EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
 }
 
@@ -1238,15 +1257,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    auto p = _account_ram_deltas.emplace( account, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
-   }
-}
-
-void apply_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
-   trx_context.add_disk_usage( account, disk_delta, trace );
-
-   auto p = _account_disk_deltas.emplace( account, disk_delta );
-   if( !p.second ) {
-      p.first->delta += disk_delta;
    }
 }
 

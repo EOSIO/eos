@@ -315,8 +315,14 @@ void faucet_testnet_plugin::plugin_startup() {
 void faucet_testnet_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
-   } catch(fc::exception& e) {
+   } catch ( const std::bad_alloc& ) {
+      throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch(const fc::exception& e) {
       edump((e.to_detail_string()));
+   } catch (const std::exception& e){
+      edump((fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
    }
 }
 

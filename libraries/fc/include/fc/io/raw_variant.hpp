@@ -119,6 +119,7 @@ namespace fc { namespace raw {
             blob val;
             raw::unpack(s,val);
             v = fc::move(val);
+            return;
          }
          default:
             FC_THROW_EXCEPTION( parse_error_exception, "Unknown Variant Type ${t}", ("t", t) );

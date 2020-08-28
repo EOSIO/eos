@@ -331,7 +331,7 @@ namespace fc
        uint64_t y[4];    // final result
        y[0] = sl;
 
-       uint128_t acc = sh;
+       uint128 acc = sh;
        acc += ql;
        acc += rl;
        y[1] = acc.lo;

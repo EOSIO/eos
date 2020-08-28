@@ -47,7 +47,7 @@ class signature_provider_plugin_impl {
          if(boost::algorithm::starts_with(url_str, "unix://"))
             //send the entire string after unix:// to http_plugin. It'll auto-detect which part
             // is the unix socket path, and which part is the url to hit on the server
-            keosd_url = fc::url("unix", url_str.substr(7), fc::ostring(), fc::ostring(), fc::ostring(), fc::ostring(), fc::ovariant_object(), fc::optional<uint16_t>());
+            keosd_url = fc::url("unix", url_str.substr(7), fc::ostring(), fc::ostring(), fc::ostring(), fc::ostring(), fc::ovariant_object(), std::optional<uint16_t>());
          else
             keosd_url = fc::url(url_str);
 

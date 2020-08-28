@@ -270,8 +270,8 @@ namespace eosio {
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 2;
-      optional<eosio::chain::named_thread_pool> thread_pool;
+      uint16_t                                       thread_pool_size = 2;
+      std::optional<eosio::chain::named_thread_pool> thread_pool;
 
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
@@ -392,10 +392,10 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
-   constexpr uint32_t signed_block_v0_which       = net_message::tag<signed_block_v0>::value;       // see protocol net_message
-   constexpr uint32_t packed_transaction_v0_which = net_message::tag<packed_transaction_v0>::value; // see protocol net_message
-   constexpr uint32_t signed_block_which          = net_message::tag<signed_block>::value;          // see protocol net_message
-   constexpr uint32_t trx_message_v1_which        = net_message::tag<trx_message_v1>::value;        // see protocol net_message
+   constexpr uint32_t signed_block_v0_which       = fc::get_index<net_message, signed_block_v0>();       // see protocol net_message
+   constexpr uint32_t packed_transaction_v0_which = fc::get_index<net_message, packed_transaction_v0>(); // see protocol net_message
+   constexpr uint32_t signed_block_which          = fc::get_index<net_message, signed_block>();          // see protocol net_message
+   constexpr uint32_t trx_message_v1_which        = fc::get_index<net_message, trx_message_v1>();        // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -552,7 +552,7 @@ namespace eosio {
 
       void update_endpoints();
 
-      optional<peer_sync_state> peer_requested; // this peer is requesting info from us
+      std::optional<peer_sync_state> peer_requested;  // this peer is requesting info from us
 
       std::atomic<bool>                         socket_open{false};
 
@@ -588,18 +588,18 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; //< mtx for last_req .. local_endpoint_port
-      optional<request_message>   last_req;
-      handshake_message           last_handshake_recv;
-      handshake_message           last_handshake_sent;
-      block_id_type               fork_head;
-      uint32_t                    fork_head_num{0};
-      fc::time_point              last_close;
-      fc::sha256                  conn_node_id;
-      string                      remote_endpoint_ip;
-      string                      remote_endpoint_port;
-      string                      local_endpoint_ip;
-      string                      local_endpoint_port;
+      mutable std::mutex               conn_mtx; //< mtx for last_req .. local_endpoint_port
+      std::optional<request_message>   last_req;
+      handshake_message                last_handshake_recv;
+      handshake_message                last_handshake_sent;
+      block_id_type                    fork_head;
+      uint32_t                         fork_head_num{0};
+      fc::time_point                   last_close;
+      fc::sha256                       conn_node_id;
+      string                           remote_endpoint_ip;
+      string                           remote_endpoint_port;
+      string                           local_endpoint_ip;
+      string                           local_endpoint_port;
 
       connection_status get_status()const;
 
@@ -936,7 +936,7 @@ namespace eosio {
       bool has_last_req = false;
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
-         has_last_req = !!self->last_req;
+         has_last_req = self->last_req.has_value();
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
          self->last_close = fc::time_point::now();
@@ -1145,10 +1145,14 @@ namespace eosio {
 
                c->enqueue_sync_block();
                c->do_queue_write();
-            } catch( const std::exception& ex ) {
-               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch( const fc::exception& ex ) {
                fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.to_string() ) );
+            } catch( const std::exception& ex ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
             } catch( ... ) {
                fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
@@ -1291,7 +1295,7 @@ namespace eosio {
    private:
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
-         static_assert( signed_block_which == net_message::position<signed_block>() );
+         static_assert( signed_block_which == fc::get_index<net_message, signed_block>() );
          // this implementation is to avoid copy of signed_block to net_message
          // matches which of net_message for signed_block
          fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
@@ -1299,7 +1303,7 @@ namespace eosio {
       }
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_v0& sb_v0 ) {
-         static_assert( signed_block_v0_which == net_message::position<signed_block_v0>() );
+         static_assert( signed_block_v0_which == fc::get_index<net_message, signed_block_v0>() );
          // this implementation is to avoid copy of signed_block_v0 to net_message
          // matches which of net_message for signed_block_v0
          fc_dlog( logger, "sending v0 block ${bn}", ("bn", sb_v0.block_num()) );
@@ -1333,8 +1337,8 @@ namespace eosio {
    private:
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_ptr& trx ) {
-         static_assert( trx_message_v1_which == net_message::position<trx_message_v1>() );
-         fc::optional<transaction_id_type> trx_id;
+         static_assert( trx_message_v1_which == fc::get_index<net_message, trx_message_v1>() );
+         std::optional<transaction_id_type> trx_id;
          if( trx->get_estimated_size() > 1024 ) { // simple guess on threshold
             fc_dlog( logger, "including trx id, est size: ${es}", ("es", trx->get_estimated_size()) );
             trx_id = trx->id();
@@ -1345,7 +1349,7 @@ namespace eosio {
       }
 
       static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction_v0& trx ) {
-         static_assert( packed_transaction_v0_which == net_message::position<packed_transaction_v0>() );
+         static_assert( packed_transaction_v0_which == fc::get_index<net_message, packed_transaction_v0>() );
          // this implementation is to avoid copy of packed_transaction_v0 to net_message
          // matches which of net_message for packed_transaction_v0
          return buffer_factory::create_send_buffer( packed_transaction_v0_which, trx );
@@ -1357,8 +1361,8 @@ namespace eosio {
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
-      if (m.contains<go_away_message>()) {
-         close_after_send = m.get<go_away_message>().reason;
+      if (std::holds_alternative<go_away_message>(m)) {
+         close_after_send = std::get<go_away_message>(m).reason;
       }
 
       buffer_factory buff_factory;
@@ -2009,8 +2013,8 @@ namespace eosio {
       update_block_num ubn( sb->block_num() );
       std::lock_guard<std::mutex> g( local_txns_mtx );
       for( const auto& recpt : sb->transactions ) {
-         const transaction_id_type& id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>()
-                                                                  : recpt.trx.get<packed_transaction>().id();
+         const transaction_id_type& id = (recpt.trx.index() == 0) ? std::get<transaction_id_type>(recpt.trx)
+                                                                  : std::get<packed_transaction>(recpt.trx).id();
          auto range = local_txns.get<by_id>().equal_range( id );
          for( auto itr = range.first; itr != range.second; ++itr ) {
             local_txns.modify( itr, ubn );
@@ -2476,13 +2480,22 @@ namespace eosio {
                      }
                      close_connection = true;
                   }
+               } 
+               catch ( const std::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch ( const boost::interprocess::bad_alloc& ) 
+               {
+                 throw;
+               } 
+               catch(const fc::exception &ex) 
+               {
+                  fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
+                  close_connection = true;
                }
                catch(const std::exception &ex) {
                   fc_elog( logger, "Exception in handling read data: ${s}", ("s",ex.what()) );
-                  close_connection = true;
-               }
-               catch(const fc::exception &ex) {
-                  fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
                   close_connection = true;
                }
                catch (...) {
@@ -2519,7 +2532,7 @@ namespace eosio {
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
-            msg.visit( m );
+            std::visit( m, msg );
          }
 
       } catch( const fc::exception& e ) {
@@ -2588,14 +2601,14 @@ namespace eosio {
       }
 
       auto is_webauthn_sig = []( const fc::crypto::signature& s ) {
-         return s.which() == fc::crypto::signature::storage_type::position<fc::crypto::webauthn::signature>();
+         return s.which() == fc::get_index<fc::crypto::signature::storage_type, fc::crypto::webauthn::signature>();
       };
       bool has_webauthn_sig = is_webauthn_sig( ptr->producer_signature );
 
       constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
       auto exts = ptr->validate_and_extract_extensions();
       if( exts.count( additional_sigs_eid ) ) {
-         const auto &additional_sigs = exts.lower_bound( additional_sigs_eid )->second.get<additional_block_signatures_extension>().signatures;
+         const auto &additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
          has_webauthn_sig |= std::any_of( additional_sigs.begin(), additional_sigs.end(), is_webauthn_sig );
       }
 
@@ -2632,7 +2645,7 @@ namespace eosio {
       unsigned_int which{};
       fc::raw::unpack( ds, which );
       if( which == trx_message_v1_which ) {
-         fc::optional<transaction_id_type> trx_id;
+         std::optional<transaction_id_type> trx_id;
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
             if (trx_in_progress_sz > def_max_trx_in_progress_size) {
@@ -2661,7 +2674,6 @@ namespace eosio {
                   report_dropping_trx(ptr->id(), trx_in_progress_sz);
                   return true;
                }
-
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
             }
             node_transaction_state nts = {ptr->id(), ptr->expiration(), 0, connection_id};
@@ -3064,12 +3076,12 @@ namespace eosio {
       trx_in_progress_size += calc_trx_size( trx );
       app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
+            [weak, trx](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
-         if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", std::get<fc::exception_ptr>(result)->what()) );
          } else {
-            const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
+            const transaction_trace_ptr& trace = std::get<transaction_trace_ptr>(result);
             if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
             } else {
@@ -3095,8 +3107,7 @@ namespace eosio {
             return;
          }
       }
-      auto priority = my_impl->sync_master->syncing_with_peer() ? priority::medium : priority::high;
-      app().post(priority, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
+      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
       });
    }
@@ -3397,7 +3408,7 @@ namespace eosio {
          try {
             peer_key = crypto::public_key(msg.sig, msg.token, true);
          }
-         catch (fc::exception& /*e*/) {
+         catch (const std::exception& /*e*/) {
             fc_elog( logger, "Peer ${peer} sent a handshake with an unrecoverable key.", ("peer", msg.p2p_address) );
             return false;
          }
@@ -3801,12 +3812,12 @@ namespace eosio {
       return "no known connection for host";
    }
 
-   optional<connection_status> net_plugin::status( const string& host )const {
+   std::optional<connection_status> net_plugin::status( const string& host )const {
       std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
-      return optional<connection_status>();
+      return std::optional<connection_status>();
    }
 
    vector<connection_status> net_plugin::connections()const {
