@@ -29,38 +29,38 @@ struct genesis_account {
 };
 
 std::vector<genesis_account> test_genesis( {
-  {N(b1),       100'000'000'0000ll},
-  {N(whale4),    40'000'000'0000ll},
-  {N(whale3),    30'000'000'0000ll},
-  {N(whale2),    20'000'000'0000ll},
-  {N(proda),      1'000'000'0000ll},
-  {N(prodb),      1'000'000'0000ll},
-  {N(prodc),      1'000'000'0000ll},
-  {N(prodd),      1'000'000'0000ll},
-  {N(prode),      1'000'000'0000ll},
-  {N(prodf),      1'000'000'0000ll},
-  {N(prodg),      1'000'000'0000ll},
-  {N(prodh),      1'000'000'0000ll},
-  {N(prodi),      1'000'000'0000ll},
-  {N(prodj),      1'000'000'0000ll},
-  {N(prodk),      1'000'000'0000ll},
-  {N(prodl),      1'000'000'0000ll},
-  {N(prodm),      1'000'000'0000ll},
-  {N(prodn),      1'000'000'0000ll},
-  {N(prodo),      1'000'000'0000ll},
-  {N(prodp),      1'000'000'0000ll},
-  {N(prodq),      1'000'000'0000ll},
-  {N(prodr),      1'000'000'0000ll},
-  {N(prods),      1'000'000'0000ll},
-  {N(prodt),      1'000'000'0000ll},
-  {N(produ),      1'000'000'0000ll},
-  {N(runnerup1),  1'000'000'0000ll},
-  {N(runnerup2),  1'000'000'0000ll},
-  {N(runnerup3),  1'000'000'0000ll},
-  {N(minow1),           100'0000ll},
-  {N(minow2),             1'0000ll},
-  {N(minow3),             1'0000ll},
-  {N(masses),   800'000'000'0000ll}
+  {"b1"_n,       100'000'000'0000ll},
+  {"whale4"_n,    40'000'000'0000ll},
+  {"whale3"_n,    30'000'000'0000ll},
+  {"whale2"_n,    20'000'000'0000ll},
+  {"proda"_n,      1'000'000'0000ll},
+  {"prodb"_n,      1'000'000'0000ll},
+  {"prodc"_n,      1'000'000'0000ll},
+  {"prodd"_n,      1'000'000'0000ll},
+  {"prode"_n,      1'000'000'0000ll},
+  {"prodf"_n,      1'000'000'0000ll},
+  {"prodg"_n,      1'000'000'0000ll},
+  {"prodh"_n,      1'000'000'0000ll},
+  {"prodi"_n,      1'000'000'0000ll},
+  {"prodj"_n,      1'000'000'0000ll},
+  {"prodk"_n,      1'000'000'0000ll},
+  {"prodl"_n,      1'000'000'0000ll},
+  {"prodm"_n,      1'000'000'0000ll},
+  {"prodn"_n,      1'000'000'0000ll},
+  {"prodo"_n,      1'000'000'0000ll},
+  {"prodp"_n,      1'000'000'0000ll},
+  {"prodq"_n,      1'000'000'0000ll},
+  {"prodr"_n,      1'000'000'0000ll},
+  {"prods"_n,      1'000'000'0000ll},
+  {"prodt"_n,      1'000'000'0000ll},
+  {"produ"_n,      1'000'000'0000ll},
+  {"runnerup1"_n,  1'000'000'0000ll},
+  {"runnerup2"_n,  1'000'000'0000ll},
+  {"runnerup3"_n,  1'000'000'0000ll},
+  {"minow1"_n,           100'0000ll},
+  {"minow2"_n,             1'0000ll},
+  {"minow3"_n,             1'0000ll},
+  {"masses"_n,   800'000'000'0000ll}
 });
 
 class bootseq_tester : public TESTER {
@@ -69,7 +69,7 @@ public:
       set_code( config::system_account_name, contracts::eosio_system_wasm() );
       set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
       if( call_init ) {
-         base_tester::push_action(config::system_account_name, N(init),
+         base_tester::push_action(config::system_account_name, "init"_n,
                                   config::system_account_name,  mutable_variant_object()
                                   ("version", 0)
                                   ("core", CORE_SYM_STR)
@@ -82,13 +82,13 @@ public:
    }
 
    fc::variant get_global_state() {
-      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, "global"_n, "global"_n );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer::create_yield_function( abi_serializer_max_time ) );
    }
 
     auto buyram( name payer, name receiver, asset ram ) {
-       auto r = base_tester::push_action(config::system_account_name, N(buyram), payer, mvo()
+       auto r = base_tester::push_action(config::system_account_name, "buyram"_n, payer, mvo()
                     ("payer", payer)
                     ("receiver", receiver)
                     ("quant", ram)
@@ -98,7 +98,7 @@ public:
     }
 
     auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
-       auto r = base_tester::push_action(config::system_account_name, N(delegatebw), from, mvo()
+       auto r = base_tester::push_action(config::system_account_name, "delegatebw"_n, from, mvo()
                     ("from", from )
                     ("receiver", receiver)
                     ("stake_net_quantity", net)
@@ -114,11 +114,11 @@ public:
                 ("issuer",       manager )
                 ("maximum_supply", maxsupply );
 
-        base_tester::push_action(contract, N(create), contract, act );
+        base_tester::push_action(contract, "create"_n, contract, act );
     }
 
     auto issue( name contract, name manager, name to, asset amount ) {
-       auto r = base_tester::push_action( contract, N(issue), manager, mutable_variant_object()
+       auto r = base_tester::push_action( contract, "issue"_n, manager, mutable_variant_object()
                 ("to",      to )
                 ("quantity", amount )
                 ("memo", "")
@@ -128,19 +128,19 @@ public:
     }
 
     auto claim_rewards( name owner ) {
-       auto r = base_tester::push_action( config::system_account_name, N(claimrewards), owner, mvo()("owner",  owner ));
+       auto r = base_tester::push_action( config::system_account_name, "claimrewards"_n, owner, mvo()("owner",  owner ));
        produce_block();
        return r;
     }
 
     auto set_privileged( name account ) {
-       auto r = base_tester::push_action(config::system_account_name, N(setpriv), config::system_account_name,  mvo()("account", account)("is_priv", 1));
+       auto r = base_tester::push_action(config::system_account_name, "setpriv"_n, config::system_account_name,  mvo()("account", account)("is_priv", 1));
        produce_block();
        return r;
     }
 
     auto register_producer(name producer) {
-       auto r = base_tester::push_action(config::system_account_name, N(regproducer), producer, mvo()
+       auto r = base_tester::push_action(config::system_account_name, "regproducer"_n, producer, mvo()
                        ("producer",  name(producer))
                        ("producer_key", get_public_key( producer, "active" ) )
                        ("url", "" )
@@ -152,7 +152,7 @@ public:
 
 
     auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
-       auto r = base_tester::push_action(config::system_account_name, N(undelegatebw), from, mvo()
+       auto r = base_tester::push_action(config::system_account_name, "undelegatebw"_n, from, mvo()
                     ("from", from )
                     ("receiver", receiver)
                     ("unstake_net_quantity", net)
@@ -163,7 +163,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
+         return get_currency_balance("eosio.token"_n, symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const vector<uint8_t>& wasm, const char* abi, const private_key_type* signer = nullptr) {
@@ -189,38 +189,38 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({"eosio.msig"_n, "eosio.token"_n, "eosio.ram"_n, "eosio.ramfee"_n, "eosio.stake"_n, "eosio.vpay"_n, "eosio.bpay"_n, "eosio.saving"_n });
         // Set code for the following accounts:
         //  - eosio (code: eosio.bios) (already set by tester constructor)
         //  - eosio.msig (code: eosio.msig)
         //  - eosio.token (code: eosio.token)
-        // set_code_abi(N(eosio.msig), contracts::eosio_msig_wasm(), contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-        // set_code_abi(N(eosio.token), contracts::eosio_token_wasm(), contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+        // set_code_abi("eosio.msig"_n, contracts::eosio_msig_wasm(), contracts::eosio_msig_abi().data());//, &eosio_active_pk);
+        // set_code_abi("eosio.token"_n, contracts::eosio_token_wasm(), contracts::eosio_token_abi().data()); //, &eosio_active_pk);
 
-        set_code_abi(N(eosio.msig),
+        set_code_abi("eosio.msig"_n,
                      contracts::eosio_msig_wasm(),
                      contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-        set_code_abi(N(eosio.token),
+        set_code_abi("eosio.token"_n,
                      contracts::eosio_token_wasm(),
                      contracts::eosio_token_abi().data()); //, &eosio_active_pk);
 
         // Set privileged for eosio.msig and eosio.token
-        set_privileged(N(eosio.msig));
-        set_privileged(N(eosio.token));
+        set_privileged("eosio.msig"_n);
+        set_privileged("eosio.token"_n);
 
         // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
+        const auto& eosio_msig_acc = get<account_metadata_object, by_name>("eosio.msig"_n);
         BOOST_TEST(eosio_msig_acc.is_privileged() == true);
-        const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
+        const auto& eosio_token_acc = get<account_metadata_object, by_name>("eosio.token"_n);
         BOOST_TEST(eosio_token_acc.is_privileged() == true);
 
 
         // Create SYS tokens in eosio.token, set its manager as eosio
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(eosio.token), config::system_account_name, max_supply);
+        create_currency("eosio.token"_n, config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+        issue("eosio.token"_n, config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -242,15 +242,15 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(config::system_account_name, a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(eosio.stake), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth("eosio.stake"_n, a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
         auto producer_candidates = {
-                N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
-                N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
-                N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
-                N(runnerup1), N(runnerup2), N(runnerup3)
+                "proda"_n, "prodb"_n, "prodc"_n, "prodd"_n, "prode"_n, "prodf"_n, "prodg"_n,
+                "prodh"_n, "prodi"_n, "prodj"_n, "prodk"_n, "prodl"_n, "prodm"_n, "prodn"_n,
+                "prodo"_n, "prodp"_n, "prodq"_n, "prodr"_n, "prods"_n, "prodt"_n, "produ"_n,
+                "runnerup1"_n, "runnerup2"_n, "runnerup3"_n
         };
 
         // Register producers
@@ -261,20 +261,20 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Vote for producers
         auto votepro = [&]( account_name voter, vector<account_name> producers ) {
           std::sort( producers.begin(), producers.end() );
-          base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
+          base_tester::push_action(config::system_account_name, "voteproducer"_n, voter, mvo()
                                 ("voter",  name(voter))
                                 ("proxy", name(0) )
                                 ("producers", producers)
                      );
         };
-        votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
-                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
-                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
-        votepro( N(whale2), {N(runnerup1), N(runnerup2), N(runnerup3)} );
-        votepro( N(whale3), {N(proda), N(prodb), N(prodc), N(prodd), N(prode)} );
+        votepro( "b1"_n, { "proda"_n, "prodb"_n, "prodc"_n, "prodd"_n, "prode"_n, "prodf"_n, "prodg"_n,
+                           "prodh"_n, "prodi"_n, "prodj"_n, "prodk"_n, "prodl"_n, "prodm"_n, "prodn"_n,
+                           "prodo"_n, "prodp"_n, "prodq"_n, "prodr"_n, "prods"_n, "prodt"_n, "produ"_n} );
+        votepro( "whale2"_n, {"runnerup1"_n, "runnerup2"_n, "runnerup3"_n} );
+        votepro( "whale3"_n, {"proda"_n, "prodb"_n, "prodc"_n, "prodd"_n, "prode"_n} );
 
         // Total Stakes = b1 + whale2 + whale3 stake = (100,000,000 - 1,000) + (20,000,000 - 1,000) + (30,000,000 - 1,000)
-        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
+        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, "global"_n, "global"_n );
 
         BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1499999997000);
 
@@ -287,10 +287,10 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
-        BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(claim_rewards("runnerup1"_n), eosio_assert_message_exception);
 
         // This will increase the total vote stake by (40,000,000 - 1,000)
-        votepro( N(whale4), {N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+        votepro( "whale4"_n, {"prodq"_n, "prodr"_n, "prods"_n, "prodt"_n, "produ"_n} );
         BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1899999996000);
 
         // Since the total vote stake is more than 150,000,000, the new producer set will be set
@@ -322,8 +322,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
-        claim_rewards(N(runnerup1));
-        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
+        claim_rewards("runnerup1"_n);
+        BOOST_TEST(get_balance("runnerup1"_n).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01
@@ -332,18 +332,18 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
 
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth("b1"_n, "b1"_n, core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
 
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
+        undelegate_bandwidth("b1"_n, "b1"_n, core_from_string("49999500.0000"), core_from_string("49999500.0000"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
         wlog("minow" );
-        votepro( N(minow1), {N(p1), N(p2)} );
+        votepro( "minow1"_n, {"p1"_n, "p2"_n} );
 
 
 // TODO: Complete this test

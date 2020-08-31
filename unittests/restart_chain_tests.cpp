@@ -63,19 +63,19 @@ struct restart_from_block_log_test_fixture {
    uint32_t cutoff_block_num;
    bool     fix_irreversible_blocks = false;
    restart_from_block_log_test_fixture() {
-      chain.create_account(N(replay1));
+      chain.create_account("replay1"_n);
       chain.produce_blocks(1);
-      chain.create_account(N(replay2));
+      chain.create_account("replay2"_n);
       chain.produce_blocks(1);
-      chain.create_account(N(replay3));
+      chain.create_account("replay3"_n);
       chain.produce_blocks(1);
       auto cutoff_block = chain.produce_block();
       cutoff_block_num  = cutoff_block->block_num();
       chain.produce_blocks(10);
 
-      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay1)));
-      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay2)));
-      BOOST_REQUIRE_NO_THROW(chain.control->get_account(N(replay3)));
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay1"_n));
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay2"_n));
+      BOOST_REQUIRE_NO_THROW(chain.control->get_account("replay3"_n));
 
       chain.close();
    }
@@ -88,9 +88,9 @@ struct restart_from_block_log_test_fixture {
       // remove the state files to make sure we are starting from block log
       remove_existing_states(copied_config);
       tester from_block_log_chain(copied_config, *genesis);
-      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay1)));
-      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay2)));
-      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account(N(replay3)));
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account("replay1"_n));
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account("replay2"_n));
+      BOOST_REQUIRE_NO_THROW(from_block_log_chain.control->get_account("replay3"_n));
    }
 };
 

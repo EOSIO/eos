@@ -53,24 +53,24 @@ BOOST_AUTO_TEST_SUITE(params_tests)
 
 BOOST_FIXTURE_TEST_CASE(main_test, params_tester){
    //no throw = success
-   action(N(maintest), mvo());
+   action("maintest"_n, mvo());
    //doesn't throw as we have all protocol features activated
-   action(N(throwrvia1), mvo());
-   action(N(throwrvia2), mvo());
+   action("throwrvia1"_n, mvo());
+   action("throwrvia2"_n, mvo());
 }
 
 BOOST_FIXTURE_TEST_CASE(throw_test, params_tester){
-   BOOST_CHECK_THROW( [&]{action(N(setthrow1), mvo());}(), chain::config_parse_error);
-   BOOST_CHECK_THROW( [&]{action(N(setthrow2), mvo());}(), fc::out_of_range_exception);
-   BOOST_CHECK_THROW( [&]{action(N(setthrow3), mvo());}(), chain::action_validate_exception);
-   BOOST_CHECK_THROW( [&]{action(N(getthrow1), mvo());}(), chain::config_parse_error);
-   BOOST_CHECK_THROW( [&]{action(N(getthrow2), mvo());}(), fc::out_of_range_exception);
-   BOOST_CHECK_THROW( [&]{action(N(getthrow3), mvo());}(), chain::config_parse_error);
+   BOOST_CHECK_THROW( [&]{action("setthrow1"_n, mvo());}(), chain::config_parse_error);
+   BOOST_CHECK_THROW( [&]{action("setthrow2"_n, mvo());}(), fc::out_of_range_exception);
+   BOOST_CHECK_THROW( [&]{action("setthrow3"_n, mvo());}(), chain::action_validate_exception);
+   BOOST_CHECK_THROW( [&]{action("getthrow1"_n, mvo());}(), chain::config_parse_error);
+   BOOST_CHECK_THROW( [&]{action("getthrow2"_n, mvo());}(), fc::out_of_range_exception);
+   BOOST_CHECK_THROW( [&]{action("getthrow3"_n, mvo());}(), chain::config_parse_error);
 }
 
 BOOST_FIXTURE_TEST_CASE(throw_test2, params_tester2){
-   BOOST_CHECK_THROW( [&]{action(N(throwrvia1), mvo());}(), chain::unsupported_feature);
-   BOOST_CHECK_THROW( [&]{action(N(throwrvia2), mvo());}(), chain::unsupported_feature);
+   BOOST_CHECK_THROW( [&]{action("throwrvia1"_n, mvo());}(), chain::unsupported_feature);
+   BOOST_CHECK_THROW( [&]{action("throwrvia2"_n, mvo());}(), chain::unsupported_feature);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
