@@ -37,19 +37,25 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::test::detail;
 
-auto make_unique_trx( const chain_id_type& chain_id, fc::time_point expire = fc::time_point::now() + fc::seconds( 120 ) ) {
+auto make_unique_trx( const chain_id_type& chain_id ) {
 
    static uint64_t nextid = 0;
    ++nextid;
 
    account_name creator = config::system_account_name;
-   auto priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("nathan")));
 
    signed_transaction trx;
-   trx.expiration = expire;
+   // if a transaction expires after it was aborted then it will not be included in a block
+   trx.expiration = fc::time_point::now() + fc::seconds( nextid % 20 == 0 ? 0 : 60 ); // fail some transactions via expired
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              testit{ nextid });
-   trx.sign(priv_key, chain_id);
+   if( nextid % 13 == 0 ) {
+      auto bad_priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("kevin")));
+      trx.sign( bad_priv_key, chain_id );
+   } else {
+      auto priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("nathan")));
+      trx.sign( priv_key, chain_id );
+   }
 
    return std::make_shared<packed_transaction>( std::move(trx), true, packed_transaction::compression_type::none);
 }
@@ -81,6 +87,9 @@ bool verify_equal( const std::deque<packed_transaction_ptr>& trxs, const std::de
          elog( "[${i}],[${j},${k}]: ${lhs} != ${rhs}", ("i", i)("j", j)("k", k)
                ("lhs", trxs[i]->get_transaction().actions.at(0).data_as<testit>().id)
                ("rhs", trx.actions.at(0).data_as<testit>().id) );
+         elog( "[${i}],[${j},${k}]: ${lhs} != ${rhs}", ("i", i)("j", j)("k", k)
+               ("lhs", trxs[i]->id())
+               ("rhs", trx.id()) );
          return false;
       } else {
          ++num_trxs;
@@ -97,7 +106,7 @@ BOOST_AUTO_TEST_SUITE(ordered_trxs_full)
 
 // Integration test of fifo_trx_processing_queue and producer_plugin
 // Test verifies that transactions are processed in the order they are submitted to the fifo_trx_processing_queue
-// even when blocks are aborted.
+// even when blocks are aborted and some transactions fail.
 BOOST_AUTO_TEST_CASE(order) {
    boost::filesystem::path temp = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path();
 
@@ -105,6 +114,7 @@ BOOST_AUTO_TEST_CASE(order) {
       std::promise<std::tuple<producer_plugin*, chain_plugin*>> plugin_promise;
       std::future<std::tuple<producer_plugin*, chain_plugin*>> plugin_fut = plugin_promise.get_future();
       std::thread app_thread( [&]() {
+         fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
          std::vector<const char*> argv =
                {"test", "--data-dir", temp.c_str(), "--config-dir", temp.c_str(),
                 "-p", "eosio", "-e", "--max-transaction-time", "500" };
@@ -159,12 +169,15 @@ BOOST_AUTO_TEST_CASE(order) {
       const size_t num_pushes = 4242;
       for( size_t i = 1; i <= num_pushes; ++i ) {
          auto ptrx = make_unique_trx( chain_id );
-         trxs.push_back( ptrx );
          queue->push( ptrx,
-                      [ptrx, &next_calls, &next_trx_match](
+                      [ptrx, &next_calls, &next_trx_match, &trxs](
                             const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
-                         if( result.contains<fc::exception_ptr>() || result.get<chain::transaction_trace_ptr>()->id != ptrx->id() ) {
-                            next_trx_match = false;
+                         if( !result.contains<fc::exception_ptr>() && !result.get<chain::transaction_trace_ptr>()->except ) {
+                            if( result.get<chain::transaction_trace_ptr>()->id == ptrx->id() ) {
+                               trxs.push_back( ptrx );
+                            } else {
+                               next_trx_match = false;
+                            }
                          }
                          ++next_calls;
                       } );
