@@ -699,7 +699,8 @@ bool producer_plugin::has_producers() const
 }
 
 bool producer_plugin::is_producing_block() const {
-   return my->_pending_block_mode == pending_block_mode::producing;
+   chain::controller& chain = my->chain_plug->chain();
+   return my->_pending_block_mode == pending_block_mode::producing && chain.is_building_block();
 }
 
 bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
@@ -1463,7 +1464,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          fc_dlog(_log, "Not producing block waiting for production window ${n} ${bt}", ("n", hbs->block_num + 1)("bt", block_time) );
          // start_block_time instead of block_time because schedule_delayed_production_loop calculates next block time from given time
          schedule_delayed_production_loop(weak_from_this(), calculate_producer_wake_up_time(start_block_time));
-         _pending_block_mode = pending_block_mode::speculating;
          return start_block_result::waiting_for_production;
       }
    } else if (previous_pending_mode == pending_block_mode::producing) {
