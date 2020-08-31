@@ -3656,7 +3656,7 @@ BOOST_FIXTURE_TEST_CASE(action_results_tests, TESTER) { try {
       checker( res );
    };
 
-   call_autoresret_and_check( "test"_n, "test"_n, [&]( const transaction_trace_ptr& res ) {
+   call_autoresret_and_check( "test"_n, "test"_n, "actionresret"_n, [&]( const transaction_trace_ptr& res ) {
       BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
 
       auto &atrace = res->action_traces;
