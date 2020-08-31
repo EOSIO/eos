@@ -1,6 +1,8 @@
 #pragma once
 
+#include <queue>
 #include <set>
+#include <unordered_map>
 #include <unordered_set>
 
 #include <b1/session/bytes.hpp>
@@ -89,7 +91,7 @@ public:
             std::unordered_set<bytes>* updated_keys;
         };
         
-        // State information needed for itering over the persistent data store.
+        // State information needed for iteratinging over the persistent data store.
         struct database_iterator_state final {
             typename persistent_data_store_type::iterator begin;
             typename persistent_data_store_type::iterator end;
@@ -233,8 +235,10 @@ private:
         // The cache used by this session instance.  This will include all new/update key_values
         // and may include values read from the persistent data store.
         cache_data_store cache;
+
         // keys that have been updated during this session.
         std::unordered_set<bytes> updated_keys;
+
         // keys that have been deleted during this session.
         std::unordered_set<bytes> deleted_keys;
     };
@@ -666,30 +670,9 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
     }
     
     auto new_iterator = iterator_type{};
-    
-    // Create the cache iterator states for levels from here up to the parent.
-    // We want the child at the front of the list and the parent at the end.
-    // TODO:  Should this walk over the entire session list or just from this session up to the parent.
-    auto* current = m_impl.get();
-    while (current) {
-        auto state = typename iterator_type::cache_iterator_state {
-          .begin = std::begin(current->cache),
-          .end = std::end(current->cache),
-          .current = p(current->cache),
-          .deleted_keys = &current->deleted_keys,
-          .updated_keys = &current->updated_keys
-        };
-        new_iterator.m_cache_iterator_states.emplace_back(std::move(state));
-        current = current->parent.get();
-    }
-    
-    new_iterator.m_database_iterator_state.begin = std::begin(*m_impl->backing_data_store);
-    new_iterator.m_database_iterator_state.end = std::end(*m_impl->backing_data_store);
-    new_iterator.m_database_iterator_state.current = p(*m_impl->backing_data_store);
 
-    // Find the current value of the iterator
     auto is_deleted = [&](auto& key, auto index) {
-        for (size_t i = 0; i <= index; ++i) {
+        for (size_t i = 0; i <= index && i < new_iterator.m_cache_iterator_states.size() ; ++i) {
             auto& current_state = new_iterator.m_cache_iterator_states[i];
 
             if (current_state.updated_keys->find(key) != std::end(*current_state.updated_keys)) {
@@ -703,65 +686,54 @@ iterator_type session<persistent_data_store, cache_data_store>::make_iterator_(c
         return false;
     };
 
-    new_iterator.m_current_value = key_value::invalid;
+    auto test_set = [&](auto& state, auto index) {
+        if (state.current == state.end) {
+            // This state doesn't participate.
+            return;
+        }
+        if (is_deleted((*state.current).key(), index)) {
+            // The current key is deleted.
+            return;
+        }
+        if (new_iterator.m_current_value.key() == (*state.current).key()) {
+            // Favor what is already set.
+            return;
+        }
+        if (new_iterator.m_current_value == key_value::invalid || c((*state.current).key(), new_iterator.m_current_value.key())) {
+            // We have a new current.
+            new_iterator.m_current_value = *state.current;
+            new_iterator.m_iterator_index = index;
+        }
+    };
 
-    // Get the first value not at the end.
-    auto index = size_t{0};
-    for (; index < new_iterator.m_cache_iterator_states.size(); ++index) {
-        auto& current_state = new_iterator.m_cache_iterator_states[index];
-        if (current_state.current == current_state.end) {
-            continue;
-        }
-        auto pending = *current_state.current;
-        if (is_deleted(pending.key(), index)) {
-            continue;
-        }
-        new_iterator.m_current_value = pending;
-        new_iterator.m_iterator_index = index;
-        break;
+    // Find the tail of the session list
+    auto child = m_impl;
+    while (!child->child.expired()) {
+        child = child->child.lock();
     }
 
-    // Determine what the initial key_value should be.
-    for (size_t i = index + 1; i < new_iterator.m_cache_iterator_states.size(); ++i) {
-        auto& current_state = new_iterator.m_cache_iterator_states[i];
-        if (current_state.current == current_state.end) {
-            continue;
-        }
-        
-        auto pending = *current_state.current;
-        auto& pending_key = pending.key();
-        auto& current_key = new_iterator.m_current_value.key();
-
-        if (is_deleted(pending_key, i)) {
-            continue;
-        }
-
-        if (!c(pending_key, current_key)) {
-            continue;
-        }
-
-        if (pending_key == current_key) {
-            // we want the first one found
-            continue;
-        }
-
-        new_iterator.m_current_value = std::move(pending);
-        new_iterator.m_iterator_index = i;
+    // Create the cache iterator states for levels from here up to the parent.
+    // We want the child at the front of the list and the parent at the end.
+    auto current = child;
+    while (current) {
+        auto state = typename iterator_type::cache_iterator_state {
+            .begin = std::begin(current->cache),
+            .end = std::end(current->cache),
+            .current = p(current->cache),
+            .deleted_keys = &current->deleted_keys,
+            .updated_keys = &current->updated_keys
+        };
+        new_iterator.m_cache_iterator_states.emplace_back(std::move(state));
+        current = current->parent;
+        auto& back = new_iterator.m_cache_iterator_states.back();
+        auto index = new_iterator.m_cache_iterator_states.size() - 1;
+        test_set(back, index);
     }
-
-    if (new_iterator.m_database_iterator_state.current != new_iterator.m_database_iterator_state.end) {
-        auto pending = *new_iterator.m_database_iterator_state.current;
-        auto& pending_key = pending.key();
-        auto& current_key = new_iterator.m_current_value.key();
-
-        if (!is_deleted(pending_key, new_iterator.m_cache_iterator_states.size() - 1)
-            && pending_key != current_key
-            && c(pending_key, current_key)) {
-
-            new_iterator.m_current_value = pending;
-            new_iterator.m_iterator_index = new_iterator.m_cache_iterator_states.size();
-        }
-    }
+    
+    new_iterator.m_database_iterator_state.begin = std::begin(*m_impl->backing_data_store);
+    new_iterator.m_database_iterator_state.end = std::end(*m_impl->backing_data_store);
+    new_iterator.m_database_iterator_state.current = p(*m_impl->backing_data_store);
+    test_set(new_iterator.m_database_iterator_state, new_iterator.m_cache_iterator_states.size());
     
     return new_iterator;
 }
