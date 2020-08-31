@@ -699,8 +699,7 @@ bool producer_plugin::has_producers() const
 }
 
 bool producer_plugin::is_producing_block() const {
-   chain::controller& chain = my->chain_plug->chain();
-   return my->_pending_block_mode == pending_block_mode::producing && chain.is_building_block();
+   return my->_pending_block_mode == pending_block_mode::producing;
 }
 
 bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
