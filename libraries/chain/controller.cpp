@@ -937,7 +937,6 @@ struct controller_impl {
                if (conf.backing_store == backing_store_type::ROCKSDB) {
                   std::unique_ptr<rocksdb::Iterator> it{kv_database.rdb->NewIterator(rocksdb::ReadOptions())};
                   std::vector<char> prefix = rocksdb_contract_kv_prefix;
-                  b1::chain_kv::append_key(prefix);
                   it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
                   while(it->Valid()) {
                      auto key = it->key();
@@ -1093,7 +1092,6 @@ struct controller_impl {
             if (conf.backing_store == backing_store_type::ROCKSDB) {
                rocksdb::WriteBatch batch;
                vector<char> prefix = rocksdb_contract_kv_prefix;
-               b1::chain_kv::append_key(prefix);
                snapshot->read_section<value_t>([this, &batch, &prefix]( auto& section ) {
                   bool more = !section.empty();
                   while (more) {
