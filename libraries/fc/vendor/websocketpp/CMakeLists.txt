@@ -139,6 +139,7 @@ if (BUILD_TESTS OR BUILD_EXAMPLES)
         endif()
         set (WEBSOCKETPP_PLATFORM_TLS_LIBS ssl crypto)
         set (WEBSOCKETPP_BOOST_LIBS system thread)
+        set (CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++0x -stdlib=libc++") # todo: is libc++ really needed here?
         if (NOT APPLE)
             add_definitions (-DNDEBUG -Wall -Wno-padded) # todo: should we use CMAKE_C_FLAGS for these?
         endif ()
