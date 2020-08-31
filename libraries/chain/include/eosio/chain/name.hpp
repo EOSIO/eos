@@ -36,22 +36,19 @@ namespace eosio::chain {
       EOS_ASSERT(str.size() <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
 
       uint64_t n = 0;
-      int i = 0;
-      for ( ; str[i] && i < 12; ++i) {
-         // NOTE: char_to_symbol() returns char type, and without this explicit
-         // expansion to uint64 type, the compilation fails at the point of usage
-         // of string_to_name(), where the usage requires constant (compile time) expression.
-         n |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
-      }
+      int i = (int) str.size();
+      if (i >= 13) {
+         // Only the first 12 characters can be full-range ([.1-5a-z]).
+         i = 12;
 
-      // The for-loop encoded up to 60 high bits into uint64 'name' variable,
-      // if (strlen(str) > 12) then encode str[12] into the low (remaining)
-      // 4 bits of 'name'
-      if (i == 12 && str[12])
-      {
-         uint64_t cur_v = char_to_symbol(str[12]);
-         EOS_ASSERT(cur_v <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
-         n |= cur_v;
+         // The 13th character must be in the range [.1-5a-j] because it needs to be encoded
+         // using only four bits (64_bits - 5_bits_per_char * 12_chars).
+         n = char_to_symbol(str[12]);
+         EOS_ASSERT(n <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
+      }
+      // Encode full-range characters.
+      while (--i >= 0) {
+         n |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
       }
       return n;
    }
@@ -104,9 +101,14 @@ namespace eosio::chain {
    }
 
    inline namespace literals {
-      constexpr name operator""_n(const char* str, std::size_t size) {
-         return string_to_name(std::string_view(str, size));
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+      template <typename T, T... Str>
+      inline constexpr name operator""_n() {
+         constexpr const char buf[] = {Str...};
+         return name{std::integral_constant<uint64_t, string_to_uint64_t(std::string_view{buf, sizeof(buf)})>::value};
       }
+#pragma clang diagnostic pop
    } // namespace literals
 
 } // eosio::chain
