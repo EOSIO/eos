@@ -21,7 +21,7 @@ Navigate the sections below to configure and use `nodeos`.
 * [Logging](06_logging/index.md) - Logging config/usage, loggers, appenders, logging levels.
 * [Concepts](07_concepts/index.md) - `nodeos` concepts, explainers, implementation aspects.
 * [Troubleshooting](08_troubleshooting/index.md) - Common `nodeos` troubleshooting questions.
-* [Deprecation Notices](09_deprecation-notices.md) - Lists `nodeos` deprecated functionality.
+* [Deprecation Notices](https://github.com/EOSIO/eos/issues/7597) - Lists `nodeos` deprecated functionality.
 
 [[info | Access Node]]
 | A local or remote EOSIO access node running `nodeos` is required for a client application or smart contract to interact with the blockchain.
