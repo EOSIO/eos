@@ -52,14 +52,14 @@ namespace {
                ("data", fc::to_hex(a.data.data(), a.data.size()));
          auto action_variant = fc::mutable_variant_object();
          if constexpr(std::is_same_v<ActionTrace, action_trace_v0>){
-            action_variant(common_mvo);
+            action_variant(std::move(common_mvo));
             auto [params, return_data] = data_handler(a, yield);
             if (!params.is_null()) {
                action_variant("params", params);
             }
          }
          else if constexpr(std::is_same_v<ActionTrace, action_trace_v1>){
-            action_variant(common_mvo);
+            action_variant(std::move(common_mvo));
             action_variant("return_value", fc::to_hex(a.return_value.data(),a.return_value.size())) ;
 
             auto [params, return_data] = data_handler(a, yield);
@@ -102,14 +102,14 @@ namespace {
                   fc::mutable_variant_object()
                      ("id", t.id.str())
                      ("actions", process_actions<action_trace_v0>(t.actions, data_handler, yield))
-                     (common_mvo));
+                     (std::move(common_mvo)));
             }
             else if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1<action_trace_v1>>){
                result.emplace_back(
                   fc::mutable_variant_object()
                      ("id", t.id.str())
                      ("actions", process_actions<action_trace_v1>(t.actions, data_handler, yield))
-                     (common_mvo));
+                     (std::move(common_mvo)));
             }
          }
 
@@ -132,12 +132,12 @@ namespace eosio::trace_api::detail {
       if  (std::holds_alternative<block_trace_v0<action_trace_v0>> (trace)){
          auto& block_trace = std::get<block_trace_v0<action_trace_v0>>(trace);
     	   return  fc::mutable_variant_object()
-            (common_mvo)
+            (std::move(common_mvo))
             ("transactions", process_transactions<transaction_trace_v0<action_trace_v0>>(block_trace.transactions, data_handler, yield ));
       }else if(std::holds_alternative<block_trace_v1<action_trace_v0>> (trace) ){
          auto& block_trace = std::get<block_trace_v1<action_trace_v0>>(trace);
             return	fc::mutable_variant_object()
-               (common_mvo)
+               (std::move(common_mvo))
                ("transaction_mroot", block_trace.transaction_mroot)
                ("action_mroot", block_trace.action_mroot)
                ("schedule_version", block_trace.schedule_version)
@@ -145,7 +145,7 @@ namespace eosio::trace_api::detail {
       }else if (std::holds_alternative<block_trace_v1<action_trace_v1>> (trace)){
          auto& block_trace = std::get<block_trace_v1<action_trace_v1>>(trace);
             return  fc::mutable_variant_object()
-               (common_mvo)
+               (std::move(common_mvo))
                ("transaction_mroot", block_trace.transaction_mroot)
                ("action_mroot", block_trace.action_mroot)
                ("schedule_version", block_trace.schedule_version)
