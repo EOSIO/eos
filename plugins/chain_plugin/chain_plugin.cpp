@@ -1945,8 +1945,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
    string tbl_name = p.table.to_string();
 
    // Check valid table name
@@ -2114,8 +2112,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    }
 
    return result;
-
-#pragma GCC diagnostic pop
 }
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
