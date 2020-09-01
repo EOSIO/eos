@@ -120,7 +120,7 @@ namespace eosio { namespace chain {
       b1::chain_kv::undo_stack kv_undo_stack;
    };
 
-   fc::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
+   std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
 
    std::vector<char> make_rocksdb_contract_kv_prefix();
 

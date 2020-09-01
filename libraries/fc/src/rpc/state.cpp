@@ -45,7 +45,7 @@ void  state::handle_reply( const response& response )
 request state::start_remote_call( const string& method_name, variants args )
 {
    request request{ _next_id++, method_name, std::move(args) };
-   _awaiting[*request.id].reset( new boost::fibers::promise<variant>() );
+   _awaiting[*request.id].reset( new boost::fibers::promise<fc::variant>() );
    return request;
 }
 variant state::wait_for_response( uint64_t request_id )

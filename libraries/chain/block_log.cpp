@@ -92,11 +92,11 @@ namespace eosio { namespace chain {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
             std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                                 [&ds](const genesis_state& state) {
-                                    auto data = fc::raw::pack(state);
-                                    ds.write(data.data(), data.size());
-                                 }},
-                     chain_context);
+                                  [&ds](const genesis_state& state) {
+                                      auto data = fc::raw::pack(state);
+                                      ds.write(data.data(), data.size());
+                                  }}, 
+                       chain_context);
 
             auto totem = block_log::npos;
             ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
@@ -296,9 +296,9 @@ namespace eosio { namespace chain {
       uint64_t      first_block_position() const { return first_block_pos; }
       chain_id_type chain_id() const { return preamble.chain_id(); }
 
-      fc::optional<genesis_state> get_genesis_state() const {
-         return std::visit(overloaded{[](const chain_id_type&) { return fc::optional<genesis_state>{}; },
-                                      [](const genesis_state& state) { return fc::optional<genesis_state>{state}; }},
+      std::optional<genesis_state> get_genesis_state() const {
+         return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>{}; },
+                                      [](const genesis_state& state) { return std::optional<genesis_state>{state}; }},
                            preamble.chain_context);
       }
 
@@ -952,7 +952,7 @@ namespace eosio { namespace chain {
       return backup_dir;
    }
 
-   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
+   std::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
       boost::filesystem::path p(block_dir / "blocks.log");
       for_each_file_in_dir_matches(block_dir, R"(blocks-1-\d+\.log)", [&p](boost::filesystem::path log_path) { p = log_path; });
       return block_log_data(p).get_genesis_state();
@@ -988,7 +988,7 @@ namespace eosio { namespace chain {
 
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
-         num_trx_pruned += trx.trx.visit(pruner);
+         num_trx_pruned += std::visit(pruner, trx.trx);
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);

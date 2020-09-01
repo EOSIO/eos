@@ -29,9 +29,9 @@ namespace fc
   class gelf_appender::impl
   {
   public:
-    config                                    cfg;
-    optional<boost::asio::ip::udp::endpoint>  gelf_endpoint;
-    udp_socket                                gelf_socket;
+    config                                         cfg;
+    std::optional<boost::asio::ip::udp::endpoint>  gelf_endpoint;
+    udp_socket                                     gelf_socket;
 
     impl(const config& c) :
       cfg(c)

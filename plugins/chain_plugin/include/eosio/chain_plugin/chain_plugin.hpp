@@ -16,6 +16,8 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include <eosio/chain_plugin/account_query_db.hpp>
+
 #include <fc/static_variant.hpp>
 
 namespace fc { class variant; }
@@ -30,7 +32,6 @@ namespace eosio {
    using chain::public_key_type;
    using chain::transaction;
    using chain::transaction_id_type;
-   using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
    using chain::symbol;
@@ -78,15 +79,16 @@ string convert_to_string(const float128_t& source, const string& key_type, const
 
 class read_only {
    const controller& db;
+   const std::optional<account_query_db>& aqdb;
    const fc::microseconds abi_serializer_max_time;
    bool  shorten_abi_errors = true;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
-      : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
-
+   read_only(const controller& db, const std::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time)
+      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time) {}
+   
    void validate() const {}
 
    void set_shorten_abi_errors( bool f ) { shorten_abi_errors = f; }
@@ -94,40 +96,40 @@ public:
    using get_info_params = empty;
 
    struct get_info_results {
-      string                  server_version;
-      chain::chain_id_type    chain_id;
-      uint32_t                head_block_num = 0;
-      uint32_t                last_irreversible_block_num = 0;
-      chain::block_id_type    last_irreversible_block_id;
-      chain::block_id_type    head_block_id;
-      fc::time_point          head_block_time;
-      account_name            head_block_producer;
+      string                               server_version;
+      chain::chain_id_type                 chain_id;
+      uint32_t                             head_block_num = 0;
+      uint32_t                             last_irreversible_block_num = 0;
+      chain::block_id_type                 last_irreversible_block_id;
+      chain::block_id_type                 head_block_id;
+      fc::time_point                       head_block_time;
+      account_name                         head_block_producer;
 
-      uint64_t                virtual_block_cpu_limit = 0;
-      uint64_t                virtual_block_net_limit = 0;
+      uint64_t                             virtual_block_cpu_limit = 0;
+      uint64_t                             virtual_block_net_limit = 0;
 
-      uint64_t                block_cpu_limit = 0;
-      uint64_t                block_net_limit = 0;
-      //string                  recent_slots;
-      //double                  participation_rate = 0;
-      optional<string>        server_version_string;
-      optional<uint32_t>              fork_db_head_block_num;
-      optional<chain::block_id_type>  fork_db_head_block_id;
-      optional<string>        server_full_version_string;
+      uint64_t                             block_cpu_limit = 0;
+      uint64_t                             block_net_limit = 0;
+      //string                               recent_slots;
+      //double                               participation_rate = 0;
+      std::optional<string>                server_version_string;
+      std::optional<uint32_t>              fork_db_head_block_num;
+      std::optional<chain::block_id_type>  fork_db_head_block_id;
+      std::optional<string>                server_full_version_string;
    };
    get_info_results get_info(const get_info_params&) const;
 
    struct get_activated_protocol_features_params {
-      optional<uint32_t>  lower_bound;
-      optional<uint32_t>  upper_bound;
-      uint32_t            limit = 10;
-      bool                search_by_block_num = false;
-      bool                reverse = false;
+      std::optional<uint32_t>  lower_bound;
+      std::optional<uint32_t>  upper_bound;
+      uint32_t                 limit = 10;
+      bool                     search_by_block_num = false;
+      bool                     reverse = false;
    };
 
    struct get_activated_protocol_features_results {
-      fc::variants        activated_protocol_features;
-      optional<uint32_t>  more;
+      fc::variants             activated_protocol_features;
+      std::optional<uint32_t>  more;
    };
 
    get_activated_protocol_features_results get_activated_protocol_features( const get_activated_protocol_features_params& params )const;
@@ -141,8 +143,8 @@ public:
       int64_t used = 0;
       int64_t available = 0;
       int64_t max = 0;
-      optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
-      optional<int64_t> current_used;  // optional for backward nodeos support
+      std::optional<chain::block_timestamp_type> last_usage_update_time;    // optional for backward nodeos support
+      std::optional<int64_t> current_used;  // optional for backward nodeos support
       void set( const chain::resource_limits::account_resource_limit& arl)
       {
          used = arl.used;
@@ -162,7 +164,7 @@ public:
       fc::time_point             last_code_update;
       fc::time_point             created;
 
-      optional<asset>            core_liquid_balance;
+      std::optional<asset>       core_liquid_balance;
 
       int64_t                    ram_quota  = 0;
       int64_t                    net_weight = 0;
@@ -182,8 +184,8 @@ public:
    };
 
    struct get_account_params {
-      name             account_name;
-      optional<symbol> expected_core_symbol;
+      name                  account_name;
+      std::optional<symbol> expected_core_symbol;
    };
    get_account_results get_account( const get_account_params& params )const;
 
@@ -193,7 +195,7 @@ public:
       string                 wast;
       string                 wasm;
       fc::sha256             code_hash;
-      optional<abi_def>      abi;
+      std::optional<abi_def> abi;
    };
 
    struct get_code_params {
@@ -212,7 +214,7 @@ public:
 
    struct get_abi_results {
       name                   account_name;
-      optional<abi_def>      abi;
+      std::optional<abi_def> abi;
    };
 
    struct get_abi_params {
@@ -230,15 +232,15 @@ public:
    };
 
    struct get_raw_abi_params {
-      name                   account_name;
-      optional<fc::sha256>   abi_hash;
+      name                      account_name;
+      std::optional<fc::sha256> abi_hash;
    };
 
    struct get_raw_abi_results {
-      name                   account_name;
-      fc::sha256             code_hash;
-      fc::sha256             abi_hash;
-      optional<chain::blob>  abi;
+      name                       account_name;
+      fc::sha256                 code_hash;
+      fc::sha256                 abi_hash;
+      std::optional<chain::blob> abi;
    };
 
 
@@ -308,19 +310,19 @@ public:
    fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 
    struct get_table_rows_params {
-      bool        json = false;
-      name        code;
-      string      scope;
-      name        table;
-      string      table_key;
-      string      lower_bound;
-      string      upper_bound;
-      uint32_t    limit = 10;
-      string      key_type;  // type of key specified by index_position
-      string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
-      string      encode_type{"dec"}; //dec, hex , default=dec
-      optional<bool>  reverse;
-      optional<bool>  show_payer; // show RAM pyer
+      bool                 json = false;
+      name                 code;
+      string               scope;
+      name                 table;
+      string               table_key;
+      string               lower_bound;
+      string               upper_bound;
+      uint32_t             limit = 10;
+      string               key_type;  // type of key specified by index_position
+      string               index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      string               encode_type{"dec"}; //dec, hex , default=dec
+      std::optional<bool>  reverse;
+      std::optional<bool>  show_payer; // show RAM pyer
     };
 
    struct get_table_rows_result {
@@ -332,12 +334,12 @@ public:
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
    struct get_table_by_scope_params {
-      name        code; // mandatory
-      name        table; // optional, act as filter
-      string      lower_bound; // lower bound of scope, optional
-      string      upper_bound; // upper bound of scope, optional
-      uint32_t    limit = 10;
-      optional<bool>  reverse;
+      name                 code; // mandatory
+      name                 table; // optional, act as filter
+      string               lower_bound; // lower bound of scope, optional
+      string               upper_bound; // upper bound of scope, optional
+      uint32_t             limit = 10;
+      std::optional<bool>  reverse;
    };
    struct get_table_by_scope_result_row {
       name        code;
@@ -354,9 +356,9 @@ public:
    get_table_by_scope_result get_table_by_scope( const get_table_by_scope_params& params )const;
 
    struct get_currency_balance_params {
-      name             code;
-      name             account;
-      optional<string> symbol;
+      name                  code;
+      name                  account;
+      std::optional<string> symbol;
    };
 
    vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
@@ -605,6 +607,10 @@ public:
       return result;
    }
 
+   using get_accounts_by_authorizers_result = account_query_db::get_accounts_by_authorizers_result;
+   using get_accounts_by_authorizers_params = account_query_db::get_accounts_by_authorizers_params;
+   get_accounts_by_authorizers_result get_accounts_by_authorizers( const get_accounts_by_authorizers_params& args) const;
+
    chain::symbol extract_core_symbol()const;
 
    friend struct resolver_factory<read_only>;
@@ -726,15 +732,15 @@ public:
    void plugin_shutdown();
    void handle_sighup() override;
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
    chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time(), api_accept_transactions()); }
-
+   chain_apis::read_only get_read_only_api() const;
+   
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
    static bool recover_reversible_blocks( const fc::path& db_dir,
                                           uint32_t cache_size,
-                                          optional<fc::path> new_db_dir = optional<fc::path>(),
+                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
                                           uint32_t truncate_at_block = 0
                                         );
 
@@ -764,6 +770,8 @@ public:
 
    static void handle_db_exhaustion();
    static void handle_bad_alloc();
+   
+   bool account_queries_enabled() const;
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 

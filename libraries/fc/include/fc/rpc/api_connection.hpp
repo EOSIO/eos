@@ -1,6 +1,5 @@
 #pragma once
 #include <fc/variant.hpp>
-#include <fc/optional.hpp>
 #include <fc/api.hpp>
 #include <fc/any.hpp>
 #include <memory>
@@ -8,7 +7,6 @@
 #include <functional>
 #include <utility>
 #include <fc/signals.hpp>
-//#include <fc/rpc/json_connection.hpp>
 
 namespace fc {
    class api_connection;
@@ -174,7 +172,7 @@ namespace fc {
             std::function<variant(const fc::variants&)> to_generic( const std::function<api<Interface,Adaptor>(Args...)>& f )const;
 
             template<typename Interface, typename Adaptor, typename ... Args>
-            std::function<variant(const fc::variants&)> to_generic( const std::function<fc::optional<api<Interface,Adaptor>>(Args...)>& f )const;
+            std::function<variant(const fc::variants&)> to_generic( const std::function<std::optional<api<Interface,Adaptor>>(Args...)>& f )const;
 
             template<typename ... Args>
             std::function<variant(const fc::variants&)> to_generic( const std::function<fc::api_ptr(Args...)>& f )const;
@@ -393,7 +391,7 @@ namespace fc {
    }
    template<typename Interface, typename Adaptor, typename ... Args>
    std::function<variant(const fc::variants&)> generic_api::api_visitor::to_generic( 
-                                               const std::function<fc::optional<fc::api<Interface,Adaptor>>(Args...)>& f )const
+                                               const std::function<std::optional<fc::api<Interface,Adaptor>>(Args...)>& f )const
    {
       auto api_con = _api_con;
       auto gapi = &_api;

@@ -327,7 +327,7 @@ namespace eosio { namespace chain {
             using v3 = legacy::snapshot_global_property_object_v3;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version) {
-               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
+               std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
                EOS_ASSERT(genesis, snapshot_exception,
                           "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
                           "It must be corrupted.");
@@ -471,8 +471,8 @@ namespace eosio { namespace chain {
       });
    }
 
-   fc::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version) {
-      fc::optional<eosio::chain::genesis_state> genesis;
+   std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version) {
+      std::optional<eosio::chain::genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version) {

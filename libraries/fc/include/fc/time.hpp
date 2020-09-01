@@ -1,7 +1,6 @@
 #pragma once
 #include <stdint.h>
 #include <fc/string.hpp>
-#include <fc/optional.hpp>
 
 #ifdef _MSC_VER
   #pragma warning (push)
@@ -121,7 +120,7 @@ namespace fc {
         uint32_t utc_seconds;
   };
 
-  typedef fc::optional<time_point> otime_point;
+  typedef std::optional<time_point> otime_point;
 
   /** return a human-readable approximate time, relative to now()
    * e.g., "4 hours ago", "2 months ago", etc.
