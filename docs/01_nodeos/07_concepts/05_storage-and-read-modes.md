@@ -1,5 +1,5 @@
 ---
-content_title: Nodeos Implementation
+content_title: Storage and Read Modes
 ---
 
 The EOSIO platform stores blockchain information in various data structures at various stages of a transaction's lifecycle. Some of these are described below. The producing node is the `nodeos` instance run by the block producer who is currently creating blocks for the blockchain (which changes every 6 seconds, producing 12 blocks in sequence before switching to another producer.)

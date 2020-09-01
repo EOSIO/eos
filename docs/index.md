@@ -12,5 +12,8 @@ The basic relationship between these components is illustrated in the diagram be
 
 ![EOSIO components](eosio_components.png)
 
+Additional EOSIO Resources:
+* [Upgrade Guides](20_upgrade-guides/index.md) - EOSIO version/protocol upgrade guides.
+
 [[info | What's Next?]]
 | [Install the EOSIO Software](00_install/index.md) before exploring the sections above.
