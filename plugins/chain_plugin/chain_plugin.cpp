@@ -1931,63 +1931,20 @@ void read_only::make_prefix(eosio::name table_name,  eosio::name index_name, uin
    }
 }
 
-// next_prefix:  status|table_name|index_name + 1
-vector<char> read_only::get_next_prefix(const vector<char> &prefix)const {
-   size_t prefix_size = prefix.size();
-   EOS_ASSERT(prefix_size == 2 * sizeof(uint64_t) + 1, chain::contract_table_query_exception,  "Invalid prefix");
+read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p )const {
+   name database_id = chain::kvram_id;
+   auto& gp = db.get_global_properties();
+   auto& kv_config = gp.kv_configuration;
+   const chain::kv_database_config& limits = kv_config.kvram;
 
-   vector<unsigned char> next_prefix;
-   next_prefix.resize(prefix_size);
-   memcpy(next_prefix.data(), prefix.data(), prefix_size);
+   auto&database = db.db();
+   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database&>(database), database_id, chain::name{0}, {}, limits);
+   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
 
-   // check overflow in prefix value
-   bool overflow = std::all_of(next_prefix.begin(), next_prefix.end(), [](unsigned char c) {return c == 255;});
-   EOS_ASSERT(!overflow, chain::contract_table_query_exception,  "prefix overflow");
-
-   unsigned char raised = 0;
-   unsigned char delta_incr = 1;
-   for (int i = prefix_size - 1; i >= 0; --i) {
-      unsigned int incr = next_prefix[i] + raised + delta_incr;
-      if (delta_incr == 1) {
-         delta_incr = 0;
-      }
-      next_prefix[i] = incr % 256;
-      if( incr <= 255 ) {
-         break;
-      }
-      raised = 1;
-    }
-    return *(reinterpret_cast<vector<char>*>(&next_prefix));
+   return get_kv_table_rows_context( p, *kv_context, abi );
 }
 
-read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p, bool use_rocksdb )const {
-    if( !use_rocksdb ) {
-       name database_id = chain::kvram_id;
-       auto& gp = db.get_global_properties();
-       auto& kv_config = gp.kv_configuration;
-       const chain::kv_database_config& limits = kv_config.kvram;
-
-       auto&database = db.db();
-       auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database&>(database), database_id, chain::name{0}, {}, limits);
-       const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-
-       return get_kv_table_rows_context( p, kv_context, abi );
-
-    }
-
-    /*
-     TO DO: Add kv_rocksdb_context
-    auto& mutable_controller = const_cast<controller&>(db);
-    auto& kv_database = mutable_controller.kv_database();
-    auto& undo_stack = mutable_controller.kv_undo_stack();
-    auto kv_context = chain::create_kv_rocksdb_context(const_cast<b1::chain_kv::database&>(kv_database),
-    const_cast<b1::chain_kv::undo_stack&>(undo_stack), database_id, chain::name{0}, {}, limits);
-
-    return get_kv_table_rows_context( p, kv_context );
-    */
-}
-
-read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, unique_ptr<kv_context> &kv_context, const abi_def &abi )const {
+read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
        string tbl_name = p.table.to_string();
@@ -2006,16 +1963,14 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
        // Is point query of ranged query?
        bool point_query = p.index_value.has_value() && !p.index_value.value().empty();
 
-       bool valid_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
-       bool valid_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-
-       // prefix
+       // compose prefix
+       size_t prefix_size = 1 + sizeof(uint64_t) * 2;
        vector<char> prefix;
-       prefix.resize( 1 + sizeof(uint64_t) * 2);
+       prefix.resize( prefix_size );
        make_prefix(p.table, p.index_name, 1, prefix);
 
-       //abi_serializer abis;
-       //abis.set_abi(abi, abi_serializer_max_time);
+       abi_serializer abis;
+       abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
 
        get_table_rows_result result;
        uint32_t value_size;
@@ -2023,25 +1978,23 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
        ///////////////////////////////////////////////////////////
        // point query
        ///////////////////////////////////////////////////////////
-       if(point_query) {
+       if( point_query ) {
            const string &index_value = *p.index_value;
            vector<char> key;
-           // To do:check index_value size if it is too big
            key.resize(prefix.size() + index_value.size());
            memcpy(key.data(), prefix.data(), prefix.size());
            memcpy(key.data() + prefix.size(), index_value.data(), index_value.size());
 
-           auto success = kv_context->kv_get(p.code.to_uint64_t(), key.data(), key.size(), value_size);
-           if (success) {
+           auto success = kv_context.kv_get(p.code.to_uint64_t(), key.data(), key.size(), value_size);
+           if( success ) {
                vector<char> value;
-               value.reserve(value_size);
-               auto return_size = kv_context->kv_get_data(0, value.data(), value_size);
+               value.resize(value_size);
+               auto return_size = kv_context.kv_get_data(0, value.data(), value_size);
                EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception,  "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
 
                fc::variant row_var;
                if( p.json ) {
-                   // To do check abis.get_table_type
-                  //row_var = abis.binary_to_variant( abis.get_table_type(p.table), value, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+                 row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
                } else {
                   row_var = fc::variant( value );
                }
@@ -2053,147 +2006,112 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
        ///////////////////////////////////////////////////////////
        // ranged query
        ///////////////////////////////////////////////////////////
+       bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
+       bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
 
-       vector<char> lb;
-       if (valid_lower_bound) {
-           const string &lower_bound = *p.lower_bound;
-           lb.resize(prefix.size() + lower_bound.size());
-           memcpy(lb.data(), prefix.data(), prefix.size());
-           if (lower_bound.size() > 0) {
-               memcpy(lb.data() + prefix.size(), lower_bound.data(), lower_bound.size());
-           }
-       } else {
-           lb.resize(prefix.size());
-           memcpy(lb.data(), prefix.data(), prefix.size());
-       }
+       EOS_ASSERT(has_lower_bound && has_upper_bound, chain::contract_table_query_exception,  "Unknown range: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-       vector<char> *ub_prefix = &prefix;
-       vector<char> ub;
-       if (valid_upper_bound) {
-           const string &upper_bound = *p.upper_bound;
-           ub.resize(prefix.size() + upper_bound.size());
-           memcpy(ub.data(), prefix.data(), prefix.size());
-           if (upper_bound.size() > 0) {
-               memcpy(ub.data() + prefix.size(), upper_bound.data(), upper_bound.size());
-           }
-       } else {
-           // next prefix value
-           ub = get_next_prefix(prefix);
-           ub_prefix = &ub;
-       }
-
-       auto lb_itr = kv_context->kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-       // ub_itr may belong to the next prefix
-       auto ub_itr = kv_context->kv_it_create(p.code.to_uint64_t(), ub_prefix->data(), ub_prefix->size());
-
-       uint32_t lb_found_key_size = 0;
-       uint32_t lb_found_value_size = 0;
-       uint32_t lb_key_actual_size = 0;
-
-       uint32_t ub_found_key_size = 0;
-       uint32_t ub_found_value_size = 0;
-       uint32_t ub_key_actual_size = 0;
-
-       // Find lower bound iterator
-       auto status_lb = lb_itr->kv_it_lower_bound(lb.data(), lb.size(), &lb_found_key_size, &lb_found_value_size);
-       if (status_lb == chain::kv_it_stat::iterator_erased) {
-           EOS_ASSERT(false, chain::contract_table_query_exception,  "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-       } else if (status_lb == chain::kv_it_stat::iterator_end) {
-           return result;
-       }
-
-       // lower bound key
        vector<char> lb_key;
-       lb_key.reserve(lb_found_key_size);
-       status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_found_key_size, lb_key_actual_size);
-       const char *lb_key_data = lb_key.data();
+       const string &lower_bound = *p.lower_bound;
+       lb_key.resize(prefix.size() + lower_bound.size());
+       memcpy(lb_key.data(), prefix.data(), prefix.size());
+       memcpy(lb_key.data() + prefix.size(), lower_bound.data(), lower_bound.size());
 
-       // Find upper bound iterator
-       auto status_ub = ub_itr->kv_it_lower_bound(ub.data(), ub.size(), &ub_found_key_size, &ub_found_value_size);
-       if (status_ub == chain::kv_it_stat::iterator_erased) {
-           EOS_ASSERT(false, chain::contract_table_query_exception,  "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-       } else if (status_ub == chain::kv_it_stat::iterator_end) {
-           return result;
-       }
-
-       //upper bound key
        vector<char> ub_key;
-       ub_key.reserve(ub_found_key_size);
-       status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_found_key_size, ub_key_actual_size);
-       const char *ub_key_data = ub_key.data();
-
+       const string &upper_bound = *p.upper_bound;
+       ub_key.resize(prefix.size() + upper_bound.size());
+       memcpy(ub_key.data(), prefix.data(), prefix.size());
+       memcpy(ub_key.data() + prefix.size(), upper_bound.data(), upper_bound.size());
 
        // Iterate the range
        vector<char> row_key;
        vector<char> row_value;
 
-       if (!p.reverse) {
-           uint32_t key_size = lb_found_key_size;
-           uint32_t val_size = lb_found_value_size;
-           uint32_t actual_size = 0;
+       auto lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+       auto ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
 
-           // iterator is not the end and less than upper bound
-           auto cmp = (status_lb == chain::kv_it_stat::iterator_ok) ? lb_itr->kv_it_key_compare(ub_key_data, key_size) : 1;
-           while (cmp < 0) {
-               // check if result has enough number of rows
-              if (result.rows.size() > p.limit) {
-                  result.more = true;
-                  status_lb = lb_itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-                  result.next_key = string(row_key.data(), key_size);
-                  return result;
-              }
+       uint32_t lb_key_size = 0;
+       uint32_t lb_value_size = 0;
+       uint32_t lb_key_actual_size = 0;
+       uint32_t ub_key_size = 0;
+       uint32_t ub_value_size = 0;
+       uint32_t ub_key_actual_size = 0;
 
+       // Find lower bound iterator
+       auto status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
+       EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+       // Find upper bound iterator
+       auto status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
+       EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+
+       lb_key.resize(lb_key_size);
+       status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+
+       ub_key.resize(ub_key_size);
+       status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+
+       // iterate the range
+       auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
+          auto cur_time = fc::time_point::now();
+          auto end_time = cur_time + fc::microseconds(1000 * 1000);
+
+          uint32_t actual_size = 0;
+          uint32_t key_size;
+          uint32_t val_size;
+          const vector<char> &end_key = (reverse ? lb_key : ub_key);
+          if( reverse ) {
+              key_size = ub_key_size;
+              val_size = ub_value_size;
+          } else {
+              key_size = lb_key_size;
+              val_size = lb_value_size;
+          }
+          auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+          if(reverse) cmp *= -1;
+
+          unsigned int count = 0;
+          for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
               row_value.clear();
-              row_value.reserve(val_size);
-              status_lb = lb_itr->kv_it_value(0, row_value.data(), val_size, actual_size);
+              row_value.resize(val_size);
+              auto status = itr->kv_it_value(0, row_value.data(), val_size, actual_size);
 
-
-              fc::variant row_var;
-              if ( p.json ) {
-                 //row_var = abis.binary_to_variant( abis.get_kv_table_type(p.table), row_value, abi_serializer_max_time, shorten_abi_errors );
-              } else {
-                 row_var = fc::variant( row_value );
-              }
-              result.rows.emplace_back( std::move(row_var) );
-
-              status_lb = lb_itr->kv_it_next(&key_size, &value_size);
-              cmp = (status_lb == chain::kv_it_stat::iterator_ok) ? lb_itr->kv_it_key_compare(ub_key_data, key_size) : 1;
-           }
-       } else  {
-           uint32_t key_size = ub_found_key_size;
-           uint32_t val_size = ub_found_value_size;
-           uint32_t actual_size = 0;
-
-            status_ub = ub_itr->kv_it_prev(&key_size, &value_size);
-
-            // iterator is not the end and greater or equal to lower bound
-           auto cmp = (status_ub == chain::kv_it_stat::iterator_ok) ? ub_itr->kv_it_key_compare(lb_key_data, lb_found_key_size) : -1;
-           while( cmp >= 0 ) {
-               // check if result has enough number of rows
-              if (result.rows.size() > p.limit) {
-                  result.more = true;
-                  auto ub_key_status = ub_itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-                  result.next_key = string(row_key.data(), key_size);
-                  return result;
-              }
-               row_value.clear();
-               row_value.reserve(val_size);
-
-              status_ub = ub_itr->kv_it_value(0, row_value.data(), val_size, actual_size);
-
-              fc::variant row_var;
-              if ( p.json ) {
-                 //row_var = abis.binary_to_variant( abis.get_kv_table_type(p.table), row_value, abi_serializer_max_time, shorten_abi_errors );
+             fc::variant row_var;
+             if( p.json ) {
+                row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
               } else {
                  row_var = fc::variant( row_value );
               }
 
               result.rows.emplace_back( std::move(row_var) );
+             ++count;
 
-              status_ub = ub_itr->kv_it_prev(&key_size, &value_size);
+             if(reverse) {
+                 status = itr->kv_it_prev(&key_size, &value_size);
+             } else {
+                 status = itr->kv_it_next(&key_size, &value_size);
+             }
+             EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-              cmp = (status_ub == chain::kv_it_stat::iterator_ok) ? ub_itr->kv_it_key_compare(lb_key_data, lb_found_key_size) : -1;
-           }
+             cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+             if(reverse) cmp *= -1;
+          }
+          if( count == p.limit && cmp < 0  ) {
+             result.more = true;
+
+             row_key.resize(key_size);
+             auto status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
+             EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && actual_size >= prefix_size, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+             result.next_key = string(&row_key.data()[prefix_size], row_key.size() - prefix_size);
+          }
+       };
+
+       if( p.reverse ) {
+          walk_table_row_range( ub_itr, lb_itr, true);
+       } else {
+          walk_table_row_range( lb_itr, ub_itr, false );
        }
 
        return result;
