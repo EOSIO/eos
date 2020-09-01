@@ -1974,6 +1974,9 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    get_table_rows_result result;
    uint32_t value_size;
 
+   auto cur_time = fc::time_point::now();
+   auto end_time = cur_time + fc::microseconds(1000 * 10);
+   auto wait_time = end_time - cur_time;
    ///////////////////////////////////////////////////////////
    // point query
    ///////////////////////////////////////////////////////////
@@ -1993,9 +1996,14 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
          fc::variant row_var;
          if( p.json ) {
-          row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+            try {
+               row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( wait_time ), shorten_abi_errors );
+            } catch (fc::exception &e) {
+               elog( "Error occurred while converting binary to variant in get_kv_table_rows: '${t}') to: ${i}", ("t", p.table.to_string())("i", p.index_name.to_string()));
+               row_var = fc::variant( value );
+            }
          } else {
-           row_var = fc::variant( value );
+            row_var = fc::variant( value );
          }
          result.rows.emplace_back( std::move(row_var) );
       }
@@ -2049,9 +2057,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
    // iterate the range
    auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
-      auto cur_time = fc::time_point::now();
-      auto end_time = cur_time + fc::microseconds(1000 * 1000);
-
       uint32_t actual_size = 0;
       uint32_t key_size;
       uint32_t val_size;
@@ -2074,7 +2079,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
          fc::variant row_var;
          if( p.json ) {
-            row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+            auto time_left = end_time - cur_time;
+            row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
          } else {
             row_var = fc::variant( row_value );
          }
