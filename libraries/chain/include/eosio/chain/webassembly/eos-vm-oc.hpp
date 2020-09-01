@@ -209,10 +209,10 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
      return { l, r, size };
    }
 
-   EOS_VM_FROM_WASM(memset_params, (vm::wasm_ptr_t dst, uint32_t val, vm::wasm_size_t size)) {
+   EOS_VM_FROM_WASM(memset_params, (vm::wasm_ptr_t dst, int32_t val, vm::wasm_size_t size)) {
      auto d = array_ptr_impl<char>(dst, size);
      array_ptr_impl<char>(dst, 1);
-     return { d, static_cast<int32_t>(val), size };
+     return { d, val, size };
    }
 
    template <typename T>
@@ -243,7 +243,7 @@ struct eos_vm_oc_type_converter : public eosio::vm::type_converter<webassembly::
       -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
                            std::is_pointer_v<typename T::proxy_type>, T> {
       if constexpr(T::is_legacy()) {
-         EOS_ASSERT(ptr != 0, wasm_execution_error, "references cannot be created for null pointers");
+         EOS_WASM_ASSERT(ptr != 0, wasm_execution_error, "references cannot be created for null pointers");
       }
       void* p = array_ptr_impl<typename T::pointee_type>(ptr, 1);
       return {p};
@@ -312,9 +312,9 @@ auto fn(A... a) {
    }
    catch(...) {
       *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::current_exception();
-   }
-   siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
-   __builtin_unreachable();
+      siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
+      __builtin_unreachable();
+   }  
 }
 
 template<auto F, bool is_injected, typename ...Precondition>

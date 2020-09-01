@@ -22,6 +22,15 @@ namespace eosio { namespace chain {
    class apply_context;
    class transaction_context;
 
+   template <typename Exception>
+   void __attribute__ ((noinline)) throw_wasm_excpetion(const char* message) {
+      FC_THROW_EXCEPTION(Exception, message);
+   }
+
+#define EOS_WASM_ASSERT(condition, exception, message) \
+   if (!(condition)) throw_wasm_excpetion<exception>(message)
+
+
    inline static constexpr auto eosio_injected_module_name = EOSIO_INJECTED_MODULE_NAME;
 
    template <typename T, std::size_t Extent = eosio::vm::dynamic_extent>
@@ -100,7 +109,7 @@ namespace eosio { namespace chain {
          -> std::enable_if_t< vm::is_argument_proxy_type_v<T> &&
                               std::is_pointer_v<typename T::proxy_type>, T> {
          if constexpr(T::is_legacy()) {
-            EOS_ASSERT(ptr != this->get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
+            EOS_WASM_ASSERT(ptr != this->get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
          }
          this->template validate_pointer<typename T::pointee_type>(ptr, 1);
          return {ptr};
