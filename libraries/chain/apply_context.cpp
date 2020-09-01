@@ -104,7 +104,7 @@ void apply_context::exec_one()
          if (!context_free) {
             switch (control.get_config().backing_store) {
                case backing_store_type::ROCKSDB:
-                  kv_backing_store = create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::view::iterator, b1::chain_kv::write_session, kv_resource_manager>(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+                  kv_backing_store = create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
                   break;
                case backing_store_type::NATIVE:
                   kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);

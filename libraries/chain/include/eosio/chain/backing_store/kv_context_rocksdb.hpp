@@ -22,12 +22,12 @@ namespace eosio { namespace chain {
       return data + kv_payer_size;
    }
 
-   template <typename View, typename Iterator>
+   template <typename View>
    struct kv_iterator_rocksdb : kv_iterator {
       uint32_t&                num_iterators;
       View&                    view;
       uint64_t                 contract;
-      Iterator                 kv_it;
+      typename View::iterator  kv_it;
 
       kv_iterator_rocksdb(uint32_t& num_iterators, View& view, uint64_t contract, const char* prefix,
                           uint32_t size)
@@ -190,7 +190,7 @@ namespace eosio { namespace chain {
       }
    }; // kv_iterator_rocksdb
 
-   template<typename View, typename Iterator, typename Write_session, typename Resource_manager>
+   template<typename View, typename Write_session, typename Resource_manager>
    struct kv_context_rocksdb : kv_context {
       b1::chain_kv::database&                  database;
       b1::chain_kv::undo_stack&                undo_stack;
@@ -334,7 +334,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
          try {
             try {
-               return std::make_unique<kv_iterator_rocksdb<View, Iterator>>(num_iterators, view, contract, prefix, size);
+               return std::make_unique<kv_iterator_rocksdb<View>>(num_iterators, view, contract, prefix, size);
             }
             FC_LOG_AND_RETHROW()
          }
@@ -342,14 +342,14 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_rocksdb
 
-   template <typename View, typename Iterator, typename Write_session, typename Resource_manager>
+   template <typename View, typename Write_session, typename Resource_manager>
    std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database&   kv_database,
                                                          b1::chain_kv::undo_stack& kv_undo_stack,
                                                          name receiver, Resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {
          try {
-            return std::make_unique<kv_context_rocksdb<View, Iterator, Write_session, Resource_manager>>(kv_database, kv_undo_stack, receiver,
+            return std::make_unique<kv_context_rocksdb<View, Write_session, Resource_manager>>(kv_database, kv_undo_stack, receiver,
                                                         resource_manager, limits);
          }
          FC_LOG_AND_RETHROW()
