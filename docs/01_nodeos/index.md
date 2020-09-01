@@ -19,7 +19,6 @@ Navigate the sections below to configure and use `nodeos`.
 * [Replays](04_replays/index.md) - Replaying the chain from a snapshot or a blocks.log file.
 * [RPC APIs](05_rpc_apis/index.md) - Remote Procedure Call API reference for plugin HTTP endpoints.
 * [Logging](06_logging/index.md) - Logging config/usage, loggers, appenders, logging levels.
-* [Upgrade Guides](07_upgrade-guides/index.md) - EOSIO version/consensus upgrade guides.
 * [Troubleshooting](08_troubleshooting/index.md) - Common `nodeos` troubleshooting questions.
 
 [[info | Access Node]]
