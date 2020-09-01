@@ -66,10 +66,6 @@ namespace eosio { namespace chain {
       void undo();
 
     private:
-      enum class session_type { no_op, chainbase_only, chainbase_and_chain_kv };
-
-      session_type type = session_type::no_op;
-
       std::unique_ptr<chainbase::database::session> cb_session    = {};
       b1::chain_kv::undo_stack*                     kv_undo_stack = {};
    };

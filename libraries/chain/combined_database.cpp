@@ -4,11 +4,10 @@
 namespace eosio { namespace chain {
 
    combined_session::combined_session(chainbase::database& cb_database)
-       : type{ session_type::chainbase_only }, cb_session{ std::make_unique<chainbase::database::session>(
-                                                     cb_database.start_undo_session(true)) } {}
+       : cb_session{ std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true)) } {}
 
    combined_session::combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack)
-       : type{ session_type::chainbase_and_chain_kv }, kv_undo_stack{ &kv_undo_stack } {
+       : kv_undo_stack{ &kv_undo_stack } {
       try {
          try {
             cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
@@ -20,84 +19,66 @@ namespace eosio { namespace chain {
    }
 
    combined_session::combined_session(combined_session&& src) noexcept
-       : type(src.type), cb_session(std::move(src.cb_session)), kv_undo_stack(src.kv_undo_stack) {
-      src.type          = session_type::no_op;
+       : cb_session(std::move(src.cb_session)), kv_undo_stack(src.kv_undo_stack) {
       src.kv_undo_stack = nullptr;
    }
 
    void combined_session::push() {
-      switch (type) {
-         default: /* session_type::no_op */ break;
-
-         case session_type::chainbase_only:
-            if (cb_session)
-               cb_session->push();
+      if (cb_session) {
+         if (!kv_undo_stack) {
+            cb_session->push();
             cb_session = nullptr;
-            break;
-
-         case session_type::chainbase_and_chain_kv:
+         } else {
             try {
                try {
-                  if (cb_session)
-                     cb_session->push();
+                  cb_session->push();
                   cb_session    = nullptr;
                   kv_undo_stack = nullptr;
                }
                FC_LOG_AND_RETHROW()
             }
             CATCH_AND_EXIT_DB_FAILURE()
+         }
       }
    }
 
    void combined_session::squash() {
-      switch (type) {
-         default: /* session_type::no_op */ break;
-
-         case session_type::chainbase_only:
-            if (cb_session)
-               cb_session->squash();
+      if (cb_session) {
+         if (!kv_undo_stack) {
+            cb_session->squash();
             cb_session = nullptr;
-            break;
-
-         case session_type::chainbase_and_chain_kv:
+         } else {
             try {
                try {
-                  if (cb_session)
-                     cb_session->squash();
-                  if (kv_undo_stack)
-                     kv_undo_stack->squash(false);
+                  cb_session->squash();
+                  kv_undo_stack->squash(false);
                   cb_session    = nullptr;
                   kv_undo_stack = nullptr;
                }
                FC_LOG_AND_RETHROW()
             }
             CATCH_AND_EXIT_DB_FAILURE()
+         }
       }
    }
 
    void combined_session::undo() {
-      switch (type) {
-         default: /* session_type::no_op */ break;
-
-         case session_type::chainbase_only:
-            if (cb_session)
-               cb_session->undo();
+      if (cb_session) {
+         if (!kv_undo_stack) {
+            cb_session->undo();
             cb_session = nullptr;
-            break;
-
-         case session_type::chainbase_and_chain_kv:
+         } else {
             try {
                try {
-                  if (cb_session)
-                     cb_session->undo();
-                  if (kv_undo_stack)
-                     kv_undo_stack->undo(false);
+                  cb_session->undo();
+                  kv_undo_stack->undo(false);
                   cb_session    = nullptr;
                   kv_undo_stack = nullptr;
                }
                FC_LOG_AND_RETHROW()
             }
             CATCH_AND_EXIT_DB_FAILURE()
+         }
       }
    }
 
@@ -332,7 +313,7 @@ namespace eosio { namespace chain {
                           "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
                           "It must be corrupted.");
                snapshot->read_section<global_property_object>(
-                     [& db = this->db, gs_chain_id = genesis->compute_chain_id()](auto& section) {
+                     [&db = this->db, gs_chain_id = genesis->compute_chain_id()](auto& section) {
                         v2 legacy_global_properties;
                         section.read_row(legacy_global_properties, db);
 
@@ -345,7 +326,7 @@ namespace eosio { namespace chain {
             }
 
             if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version) {
-               snapshot->read_section<global_property_object>([& db = this->db](auto& section) {
+               snapshot->read_section<global_property_object>([&db = this->db](auto& section) {
                   v3 legacy_global_properties;
                   section.read_row(legacy_global_properties, db);
 
@@ -471,14 +452,15 @@ namespace eosio { namespace chain {
       });
    }
 
-   std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version) {
+   std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot,
+                                                                           uint32_t         version) {
       std::optional<eosio::chain::genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version) {
          genesis.emplace();
          snapshot.read_section<eosio::chain::genesis_state>(
-               [& genesis = *genesis](auto& section) { section.read_row(genesis); });
+               [&genesis = *genesis](auto& section) { section.read_row(genesis); });
       }
       return genesis;
    }
