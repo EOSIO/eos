@@ -2,6 +2,6 @@
 content_title: Nodeos Concepts
 ---
 
-This section provides additional insights, explainers, and implementation considerations about `nodeos`.
+This section contains `nodeos` explainers, additional insights, and implementation considerations.
 
-* [Nodeos Implementation](05_nodeos-implementation.md) - Blockchain state and storage, `nodeos` read modes.
+* [Storage and Read Modes](05_storage-and-read-modes.md) - Blockchain state and storage, `nodeos` read modes.
