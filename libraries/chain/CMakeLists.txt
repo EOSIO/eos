@@ -121,8 +121,7 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
-             kv_context.cpp
-             kv_context_rocksdb.cpp
+             backing_store/kv_context.cpp
              kv_context_chainbase.cpp
              backing_store/db_context_chainbase.cpp
              backing_store/db_context_rocksdb.cpp
@@ -159,6 +158,8 @@ if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")
    target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
 endif()
+
+add_subdirectory ( backing_store/tests )
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

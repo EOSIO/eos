@@ -2,7 +2,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/chain/backing_store/db_context.hpp>
 #include <eosio/chain/backing_store/db_chainbase_iter_store.hpp>
 #include <eosio/chain/backing_store/db_secondary_key_helper.hpp>

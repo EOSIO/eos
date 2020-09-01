@@ -77,7 +77,6 @@ namespace eosio { namespace chain {
       }
 
       kv_it_stat kv_it_move_to_end() override {
-         EOS_ASSERT(!kv_it.is_erased(), kv_bad_iter, "Iterator to erased element");
          try {
             try {
                kv_it.move_to_end();
@@ -215,14 +214,6 @@ namespace eosio { namespace chain {
            write_session{ database }, view(std::move(view_)), 
            receiver{ receiver },
            resource_manager{ resource_manager }, limits{ limits } {}
-
-      /*
-      kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
-                         name receiver, kv_resource_manager resource_manager, const kv_database_config& limits)
-          : database{ database }, undo_stack{ undo_stack },
-            write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
-            resource_manager{ resource_manager }, limits{ limits } {}
-            */
 
       ~kv_context_rocksdb() override {
          try {
