@@ -76,8 +76,13 @@ private:
    uint64_t max_transaction_queue_size = 1024*1024*1024; // enforced for incoming
    uint64_t size_in_bytes = 0;
    size_t incoming_count = 0;
+   bool isBeingDestroyed = false;
 
 public:
+   ~unapplied_transaction_queue() {
+      isBeingDestroyed = true;
+      clear();
+   }
 
    void set_max_transaction_queue_size( uint64_t v ) { max_transaction_queue_size = v; }
 
@@ -162,6 +167,9 @@ public:
    }
 
    void add_forked( const branch_type& forked_branch ) {
+      if (isBeingDestroyed)
+         return;
+
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
@@ -176,6 +184,9 @@ public:
    }
 
    void add_aborted( deque<transaction_metadata_ptr> aborted_trxs ) {
+      if (isBeingDestroyed)
+         return;
+
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
@@ -185,6 +196,9 @@ public:
    }
 
    void add_persisted( const transaction_metadata_ptr& trx ) {
+      if (isBeingDestroyed)
+         return;
+
       if( mode == process_mode::non_speculative ) return;
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
@@ -201,6 +215,9 @@ public:
    }
 
    void add_incoming( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t next ) {
+      if (isBeingDestroyed)
+         return;
+
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
