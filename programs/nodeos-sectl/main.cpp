@@ -36,9 +36,21 @@ int main(int argc, char** argv) {
    try {
       bpo::store(bpo::parse_command_line(argc, argv, cli), varmap);
       bpo::notify(varmap);
-   }
-   catch(fc::exception& e) {
+   } 
+   catch ( const std::bad_alloc& ) {
+     elog("bad alloc");
+     return BAD_ALLOC;
+   } 
+   catch ( const boost::interprocess::bad_alloc& ) {
+     elog("bad alloc");
+     return BAD_ALLOC;
+   } 
+   catch(const fc::exception& e) {
       elog("${e}", ("e", e.to_detail_string()));
+      return 1;
+   }
+   catch(const std::exception& e) {
+      elog("${e}", ("e", fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
       return 1;
    }
 

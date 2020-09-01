@@ -214,6 +214,10 @@
                 {
                     "name": "v",
                     "type": "bytes"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
                 }
             ]
         },

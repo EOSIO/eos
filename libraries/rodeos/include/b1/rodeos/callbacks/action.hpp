@@ -3,6 +3,7 @@
 #include <b1/rodeos/callbacks/vm_types.hpp>
 #include <eosio/name.hpp>
 #include <eosio/stream.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace b1::rodeos {
 
@@ -31,7 +32,12 @@ struct action_callbacks {
    uint64_t current_receiver() { return derived().get_state().receiver.value; }
 
    void set_action_return_value(eosio::vm::span<const char> packed_blob) {
-      // todo: limit size
+      uint32_t max_action_return_value_size = 
+         derived().get_state().shared->max_action_return_value_size;
+      EOS_ASSERT(packed_blob.size() <= max_action_return_value_size,
+                 eosio::chain::action_return_value_exception, 
+                 "action return value size must be less than ${s} bytes", 
+                 ("s", max_action_return_value_size));
       derived().get_state().action_return_value.assign(packed_blob.begin(), packed_blob.end());
    }
 

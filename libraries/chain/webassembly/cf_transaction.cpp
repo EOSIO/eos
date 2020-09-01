@@ -1,16 +1,15 @@
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    int32_t interface::read_transaction( legacy_span<char> data ) const {
       if( data.size() == 0 ) return transaction_size();
 
+      // always pack the transaction here as exact pack format is part of consensus
+      // and an alternative packed format could be stored in get_packed_transaction()
       const packed_transaction& packed_trx = context.trx_context.packed_trx;
-      const bytes& trx =
-            packed_trx.get_compression() == packed_transaction::compression_type::none ?
-               packed_trx.get_packed_transaction() :
-               fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
-
+      bytes trx = fc::raw::pack( static_cast<const transaction&>( packed_trx.get_transaction() ) );
       size_t copy_size = std::min( static_cast<size_t>(data.size()), trx.size() );
       std::memcpy( data.data(), trx.data(), copy_size );
 
@@ -19,11 +18,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    int32_t interface::transaction_size() const {
       const packed_transaction& packed_trx = context.trx_context.packed_trx;
-      if( packed_trx.get_compression() == packed_transaction::compression_type::none) {
-         return packed_trx.get_packed_transaction().size();
-      } else {
-         return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
-      }
+      return fc::raw::pack_size( static_cast<const transaction&>( packed_trx.get_transaction() ) );
    }
 
    int32_t interface::expiration() const {

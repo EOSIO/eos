@@ -16,12 +16,15 @@
 [submodule "libraries/rocksdb"]
 	path = libraries/rocksdb
 	url = https://github.com/facebook/rocksdb.git
-[submodule "libraries/fc/secp256k1/upstream"]
-	path = libraries/fc/secp256k1/upstream
-	url = https://github.com/cryptonomex/secp256k1-zkp.git
-[submodule "libraries/fc/include/fc/crypto/webauthn_json"]
-	path = libraries/fc/include/fc/crypto/webauthn_json
-	url = https://github.com/Tencent/rapidjson/
 [submodule "libraries/amqp-cpp"]
 	path = libraries/amqp-cpp
 	url = https://github.com/CopernicaMarketingSoftware/AMQP-CPP
+[submodule "libraries/fc"]
+	path = libraries/fc
+	url = https://github.com/eosio/fc
+[submodule "libraries/chainbase"]
+	path = libraries/chainbase
+	url = https://github.com/eosio/chainbase
+[submodule "libraries/appbase"]
+	path = libraries/appbase
+	url = https://github.com/eosio/appbase

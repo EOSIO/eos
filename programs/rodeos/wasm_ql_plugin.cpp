@@ -90,6 +90,7 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
    op("wql-checkpoint-dir", bpo::value<boost::filesystem::path>(),
       "Directory to place checkpoints. Caution: this allows anyone to create a checkpoint using RPC (default: "
       "disabled)");
+   op("wql-max-action-return-value", bpo::value<uint32_t>()->default_value(MAX_SIZE_OF_BYTE_ARRAYS), "Max action return value size (bytes)");
 }
 
 void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
@@ -113,6 +114,7 @@ void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
       http_config->max_request_size  = options.at("wql-max-request-size").as<uint32_t>();
       http_config->idle_timeout_ms   = options.at("wql-idle-timeout").as<uint64_t>();
       shared_state->max_exec_time_ms = options.at("wql-exec-time").as<uint64_t>();
+      shared_state->max_action_return_value_size = options.at("wql-max-action-return-value").as<uint32_t>();
       if (options.count("wql-contract-dir"))
          shared_state->contract_dir = options.at("wql-contract-dir").as<std::string>();
       if (options.count("wql-allow-origin"))

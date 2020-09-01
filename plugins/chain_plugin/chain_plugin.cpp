@@ -148,16 +148,16 @@ public:
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
    bool                             accept_transactions = false;
    bool                             api_accept_transactions = true;
+   bool                             account_queries_enabled = false;
 
-
-   fc::optional<fork_database>      fork_db;
-   fc::optional<controller::config> chain_config;
-   fc::optional<controller>         chain;
-   fc::optional<genesis_state>      genesis;
+   std::optional<fork_database>      fork_db;
+   std::optional<controller::config> chain_config;
+   std::optional<controller>         chain;
+   std::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
-   fc::optional<vm_type>            wasm_runtime;
-   fc::microseconds                 abi_serializer_max_time_us;
-   fc::optional<bfs::path>          snapshot_path;
+   std::optional<vm_type>            wasm_runtime;
+   fc::microseconds                  abi_serializer_max_time_us;
+   std::optional<bfs::path>          snapshot_path;
 
 
    // retained references to channels for easy publication
@@ -167,7 +167,7 @@ public:
    channels::irreversible_block::channel_type&     irreversible_block_channel;
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
-   incoming::channels::block::channel_type&         incoming_block_channel;
+   incoming::channels::block::channel_type&        incoming_block_channel;
 
    // retained references to methods for easy calling
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
@@ -180,13 +180,14 @@ public:
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
    // scoped connections for chain controller
-   fc::optional<scoped_connection>                                   pre_accepted_block_connection;
-   fc::optional<scoped_connection>                                   accepted_block_header_connection;
-   fc::optional<scoped_connection>                                   accepted_block_connection;
-   fc::optional<scoped_connection>                                   irreversible_block_connection;
-   fc::optional<scoped_connection>                                   accepted_transaction_connection;
-   fc::optional<scoped_connection>                                   applied_transaction_connection;
+   std::optional<scoped_connection>                                   pre_accepted_block_connection;
+   std::optional<scoped_connection>                                   accepted_block_header_connection;
+   std::optional<scoped_connection>                                   accepted_block_connection;
+   std::optional<scoped_connection>                                   irreversible_block_connection;
+   std::optional<scoped_connection>                                   accepted_transaction_connection;
+   std::optional<scoped_connection>                                   applied_transaction_connection;
 
+   std::optional<chain_apis::account_query_db>                        _account_query_db;
 };
 
 chain_plugin::chain_plugin()
@@ -333,6 +334,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          }), "Number of threads to use for EOS VM OC tier-up")
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
+         ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
          ("max-nonprivileged-inline-action-size", bpo::value<uint32_t>()->default_value(config::default_max_nonprivileged_inline_action_size), "maximum allowed size (in bytes) of an inline action for a nonprivileged account")
          ;
 
@@ -429,7 +431,7 @@ void clear_chainbase_files( const fc::path& p ) {
    fc::remove( p / "shared_memory.meta" );
 }
 
-optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
+std::optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
    try {
       return fc::json::from_file<builtin_protocol_feature>( p );
    } catch( const fc::exception& e ) {
@@ -501,7 +503,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
    map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
    // The bool in the pair is set to true if the builtin protocol feature has already been visited to add
-   map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+   map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
    // Read all builtin protocol features
    if( directory_exists ) {
@@ -591,7 +593,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    std::function<digest_type(builtin_protocol_feature_t)> add_missing_builtins =
    [&pfs, &visited_builtins, &output_protocol_feature, &log_recognized_protocol_feature, &add_missing_builtins, populate_missing_builtins]
    ( builtin_protocol_feature_t codename ) -> digest_type {
-      auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+      auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
       if( !res.second ) {
          EOS_ASSERT( res.first->second, protocol_feature_exception,
                      "invariant failure: cycle found in builtin protocol feature dependencies"
@@ -655,7 +657,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    try {
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
-      } catch ( const fc::exception& ) {
+      } catch ( const std::exception& ) {
          elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
                ("root_key", genesis_state::eosio_root_key));
          throw;
@@ -818,7 +820,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->terminate_at_block = options.at( "terminate-at-block" ).as<uint32_t>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         fc::optional<genesis_state> gs;
+         std::optional<genesis_state> gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
@@ -893,7 +895,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
          if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                          my->chain_config->reversible_cache_size,
-                                         optional<fc::path>(),
+                                         std::optional<fc::path>(),
                                          options.at( "truncate-at-block" ).as<uint32_t>())) {
             ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
          } else {
@@ -917,7 +919,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
@@ -968,8 +970,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
 
-         fc::optional<genesis_state> block_log_genesis;
-         fc::optional<chain_id_type> block_log_chain_id;
+         std::optional<genesis_state> block_log_genesis;
+         std::optional<chain_id_type> block_log_chain_id;
 
          if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
             block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
@@ -1112,6 +1114,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_tierup = true;
 #endif
 
+      my->account_queries_enabled = options.at("enable-account-queries").as<bool>();
+
       my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
       // initialize deep mind logging
@@ -1189,6 +1193,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("blk", blk)
             );
          }
+         
+          if (my->_account_query_db) {
+            my->_account_query_db->commit_block(blk);
+          }
 
          my->accepted_block_channel.publish( priority::high, blk );
       } );
@@ -1211,6 +1219,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   );
                }
 
+               if (my->_account_query_db) {
+                  my->_account_query_db->cache_transaction_trace(std::get<0>(t));
+               }
+               
                my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 
@@ -1258,6 +1270,17 @@ void chain_plugin::plugin_startup()
    }
 
    my->chain_config.reset();
+  
+   if (my->account_queries_enabled) {
+      my->account_queries_enabled = false;
+      try {
+         my->_account_query_db.emplace(*my->chain);
+         my->account_queries_enabled = true;
+      } FC_LOG_AND_DROP(("Unable to enable account queries"));
+   }
+
+
+
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
@@ -1288,6 +1311,11 @@ void chain_apis::read_write::validate() const {
                "Not allowed, node has api-accept-transactions = false" );
 }
 
+chain_apis::read_only chain_plugin::get_read_only_api() const {
+   return chain_apis::read_only(chain(), my->_account_query_db, get_abi_serializer_max_time());
+}
+
+  
 bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_type& id ) {
    return my->incoming_block_sync_method(block, id);
 }
@@ -1297,7 +1325,7 @@ void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, 
 }
 
 bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
+                                              std::optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
    try {
       chainbase::database reversible( db_dir, database::read_only); // Test if dirty
       // If it reaches here, then the reversible database is not dirty
@@ -1346,7 +1374,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   optional<chainbase::database> old_reversible;
+   std::optional<chainbase::database> old_reversible;
 
    try {
       old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
@@ -1562,6 +1590,11 @@ void chain_plugin::handle_bad_alloc() {
    //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
    std::_Exit(-2);
 }
+  
+bool chain_plugin::account_queries_enabled() const {
+   return my->account_queries_enabled;
+}
+
 
 namespace chain_apis {
 
@@ -1931,7 +1964,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
    (void)get_table_type( abi, name("accounts") );
 
    vector<asset> results;
-   walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, p.account, "accounts"_n, [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
@@ -1959,7 +1992,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_key_value_table(p.code, name(scope), N(stat), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, name(scope), "stat"_n, [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -1977,24 +2010,24 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 }
 
 fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_us, bool shorten_abi_errors ) {
-   const auto table_type = get_table_type(abi, N(global));
+   const auto table_type = get_table_type(abi, "global"_n);
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
-   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
+   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, "global"_n));
    EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
-   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global).to_uint64_t()));
+   const auto it = kv_index.find(boost::make_tuple(table_id->id, "global"_n.to_uint64_t()));
    EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer::create_yield_function( abi_serializer_max_time_us ), shorten_abi_errors );
+   return abis.binary_to_variant(abis.get_table_type("global"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time_us ), shorten_abi_errors );
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
-   const auto table_type = get_table_type(abi, N(producers));
+   const auto table_type = get_table_type(abi, "producers"_n);
    const abi_serializer abis{ abi, abi_serializer::create_yield_function( abi_serializer_max_time ) };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
@@ -2003,9 +2036,9 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
 
    static const uint8_t secondary_index_num = 0;
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
+           boost::make_tuple(config::system_account_name, config::system_account_name, "producers"_n));
    const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, name(N(producers).to_uint64_t() | secondary_index_num)));
+           boost::make_tuple(config::system_account_name, config::system_account_name, name("producers"_n.to_uint64_t() | secondary_index_num)));
    EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
@@ -2034,7 +2067,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       if (p.json)
-         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(N(producers)), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors ) );
+         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type("producers"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors ) );
       else
          result.rows.emplace_back(fc::variant(data));
    }
@@ -2052,8 +2085,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          ("total_votes", 0.0f);
 
       // detect a legacy key and maintain API compatibility for those entries
-      if (p.authority.contains<block_signing_authority_v0>()) {
-         const auto& auth = p.authority.get<block_signing_authority_v0>();
+      if (std::holds_alternative<block_signing_authority_v0>(p.authority)) {
+         const auto& auth = std::get<block_signing_authority_v0>(p.authority);
          if (auth.keys.size() == 1 && auth.keys.back().weight == auth.threshold) {
             row("producer_key", auth.keys.back().key);
          }
@@ -2079,7 +2112,7 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api* api, abi_serializer::yield_function_t yield) {
-      return [api, yield{std::move(yield)}](const account_name &name) -> optional<abi_serializer> {
+      return [api, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
          const auto* accnt = api->db.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
@@ -2088,7 +2121,7 @@ struct resolver_factory {
             }
          }
 
-         return optional<abi_serializer>();
+         return std::optional<abi_serializer>();
       };
    }
 };
@@ -2174,7 +2207,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
-   optional<uint64_t> block_num;
+   std::optional<uint64_t> block_num;
 
    EOS_ASSERT( !params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
                chain::block_id_type_exception,
@@ -2185,7 +2218,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num ) {
       block = db.fetch_block_by_number( *block_num );
    } else {
       try {
@@ -2240,13 +2273,13 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
 
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
-   optional<uint64_t> block_num;
+   std::optional<uint64_t> block_num;
    std::exception_ptr e;
    try {
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num ) {
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
@@ -2288,18 +2321,18 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, input_trx, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
          auto trx_trace = fc_create_trace("Transaction");
          auto trx_span = fc_create_span(trx_trace, "Processed");
          fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
 
-         if (result.contains<fc::exception_ptr>()) {
-            auto& eptr = result.get<chain::exception_ptr>();
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            auto& eptr = std::get<chain::exception_ptr>(result);
             fc_add_str_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
-            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
 
             fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
             fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
@@ -2379,12 +2412,12 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 }
 
 static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
-   auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
-      if (result.contains<fc::exception_ptr>()) {
-         const auto& e = result.get<fc::exception_ptr>();
+   auto wrapped_next = [=](const std::variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
+      if (std::holds_alternative<fc::exception_ptr>(result)) {
+         const auto& e = std::get<fc::exception_ptr>(result);
          results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
       } else {
-         const auto& r = result.get<read_write::push_transaction_results>();
+         const auto& r = std::get<read_write::push_transaction_results>(result);
          results->emplace_back( r );
       }
 
@@ -2431,17 +2464,17 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, input_trx, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_trace = fc_create_trace("Transaction");
          auto trx_span = fc_create_span(trx_trace, "Processed");
          fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
 
-         if (result.contains<fc::exception_ptr>()) {
-            auto& eptr = result.get<chain::exception_ptr>();
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            auto& eptr = std::get<chain::exception_ptr>(result);
             fc_add_str_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
-            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
 
             fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
             fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
@@ -2576,11 +2609,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.net_limit.last_usage_update_time.valid() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.net_limit.last_usage_update_time && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.net_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.cpu_limit.set( rm.get_account_cpu_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.cpu_limit.last_usage_update_time.valid() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.cpu_limit.last_usage_update_time && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
@@ -2610,14 +2643,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
 
-      const auto token_code = N(eosio.token);
+      const auto token_code = "eosio.token"_n;
 
       auto core_symbol = extract_core_symbol();
 
-      if (params.expected_core_symbol.valid())
+      if (params.expected_core_symbol)
          core_symbol = *(params.expected_core_symbol);
 
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, "accounts"_n ));
       if( t_id != nullptr ) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
@@ -2632,7 +2665,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "userres"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2643,7 +2676,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "delband"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2654,7 +2687,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "refunds"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2665,7 +2698,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "voters"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2676,7 +2709,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(rexbal) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "rexbal"_n ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
@@ -2690,8 +2723,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    return result;
 }
 
-static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
-   variant v;
+static fc::variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
+   fc::variant v;
    auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});
    if( it != abi.structs.end() )
       to_variant( it->fields,  v );
@@ -2750,6 +2783,12 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
+account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
+{
+   EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
+   return aqdb->get_accounts_by_authorizers(args);
+}  
+  
 namespace detail {
    struct ram_market_exchange_state_t {
       asset  ignore1;
@@ -2765,7 +2804,7 @@ chain::symbol read_only::extract_core_symbol()const {
 
    // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( "eosio"_n, "eosio"_n, "rammarket"_n ));
    if( t_id != nullptr ) {
       const auto &idx = d.get_index<key_value_index, by_scope_primary>();
       auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
