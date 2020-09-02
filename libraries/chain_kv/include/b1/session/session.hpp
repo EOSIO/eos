@@ -134,6 +134,7 @@ public:
         static cache_iterator_state cache_iterator_(iterator_state& v);
         static size_t index_(iterator_state& v);
         bool is_deleted_(const bytes& key, size_t index);
+        void rebuild_queues_(const session_iterator& other);
 
     private:
         
@@ -935,19 +936,20 @@ using session_iterator_alias = typename session<persistent_data_store, cache_dat
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
-session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::session_iterator(const session_iterator& it) 
-: m_iterator_states{it.m_iterator_states},
-  m_active_session{it.m_active_session} {
-    // Rebuild the queues
+void session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::rebuild_queues_(const session_iterator& other) {
+    m_previous = decltype(m_previous){};
+    m_next = decltype(m_next){};
+    m_current = nullptr;
+
     for (auto& state : m_iterator_states) {
         m_previous.push(&state);
         m_next.push(&state);
     }
 
-    if (it.m_current) {
-        if (it.m_current == it.m_previous.top()) {
+    if (other.m_current) {
+        if (other.m_current == other.m_previous.top()) {
             m_current = m_previous.top();
-        } else if (it.m_current == it.m_next.top()) {
+        } else if (other.m_current == other.m_next.top()) {
             m_current = m_next.top();
         }
     }
@@ -955,24 +957,18 @@ session<persistent_data_store, cache_data_store>::session_iterator<iterator_trai
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
+session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::session_iterator(const session_iterator& it) 
+: m_iterator_states{it.m_iterator_states},
+  m_active_session{it.m_active_session} {
+    rebuild_queues_(it);
+}
+
+template <typename persistent_data_store, typename cache_data_store>
+template <typename iterator_traits>
 session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::session_iterator(session_iterator&& it)
 : m_iterator_states{it.m_iterator_states},
   m_active_session{it.m_active_session} {
-    // Rebuild the queues
-    for (auto& state : m_iterator_states) {
-        m_previous.push(&state);
-        m_next.push(&state);
-    }
-
-    m_current = nullptr;
-    if (it.m_current) {
-        if (it.m_current == it.m_previous.top()) {
-            m_current = m_previous.top();
-        } else if (it.m_current == it.m_next.top()) {
-            m_current = m_next.top();
-        }
-    }
-
+    rebuild_queues_(it);
     it.m_iterator_states.clear();
     it.m_active_session = nullptr;
     it.m_current =  nullptr;
@@ -991,20 +987,7 @@ session_iterator_alias<persistent_data_store, cache_data_store, iterator_traits>
     m_iterator_states = it.m_iterator_states;
     m_previous = decltype(m_previous){};
     m_next = decltype(m_next){};
-
-    for (auto& state : m_iterator_states) {
-        m_previous.push(&state);
-        m_next.push(&state);
-    }
-
-    m_current = nullptr;
-    if (it.m_current) {
-        if (it.m_current == it.m_previous.top()) {
-            m_current = m_previous.top();
-        } else if (it.m_current == it.m_next.top()) {
-            m_current = m_next.top();
-        }
-    }
+    rebuild_queues_(it);
 
     return *this;
 }
@@ -1020,20 +1003,7 @@ session_iterator_alias<persistent_data_store, cache_data_store, iterator_traits>
     m_iterator_states = it.m_iterator_states;
     m_previous = decltype(m_previous){};
     m_next = decltype(m_next){};
-
-    for (auto& state : m_iterator_states) {
-        m_previous.push(&state);
-        m_next.push(&state);
-    }
-
-    if (it.m_current) {
-        if (it.m_current == it.m_previous.top()) {
-            m_current = m_previous.top();
-        } else if (it.m_current == it.m_next.top()) {
-            m_current = m_next.top();
-        }
-    }
-
+    rebuild_queues_(it);
     it.m_iterator_states.clear();
     it.m_active_session = nullptr;
     it.m_current =  nullptr;
