@@ -15,20 +15,14 @@ namespace eosio { namespace chain {
 namespace fc {
 template <>
 inline void to_variant(const eosio::chain::backing_store_type& store, fc::variant& v) {
-   switch (store) {
-      case eosio::chain::backing_store_type::NATIVE: v = "NATIVE"; break;
-      case eosio::chain::backing_store_type::ROCKSDB: v = "ROCKSDB";
-   }
+   v = (uint64_t)store;
 }
 template <>
 inline void from_variant(const fc::variant& v, eosio::chain::backing_store_type& store) {
-   const std::string& val = v.as_string();
-   if (val == "NATIVE") {
-      store = eosio::chain::backing_store_type::NATIVE;
-   } else if (val == "ROCKSDB") {
-      store = eosio::chain::backing_store_type::ROCKSDB;
-   } else {
-      throw std::runtime_error("Invalid backing store name: " + val);
+   switch (store = (eosio::chain::backing_store_type)v.as_uint64()) {
+      case eosio::chain::backing_store_type::NATIVE: /* FALL THROUGH */
+      case eosio::chain::backing_store_type::ROCKSDB: return;
    }
+   throw std::runtime_error("Invalid backing store name: " + v.as_string());
 }
 } // namespace fc
