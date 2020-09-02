@@ -40,19 +40,18 @@
     // files. A passing test means nodeos initialized at the same LIB the
     // previous version left off on.
     //
-    // You would want to update the state files any time you intentionally make
-    // a change which breaks compatibility with the existing state files. In
-    // that case, you'd kick off an eosio-snapshot build to collect a disk
-    // image with state files from the new version of nodeos, then update the
-    // git reference for the eosio-resume-from-state pipeline here. This
-    // reference can be a branch, commit, or tag, and you can also have more
-    // than one.
+    // To generate inputs for this test, please kick off a build against this
+    // commit in the eosio-snapshot Buildkite pipline and wait ~40 minutes for
+    // the asynchronous snapshot collection to take place before retrying this
+    // test. The eosio-snapshot pipeline requires that the container images
+    // have been already built by the regular, automatically triggered eosio
+    // pipeline.
     "eosio-resume-from-state":
     {
         "test":
         [
             {
-                "commit": "febadedb6683857a76815846443727e5d280624e"
+                "commit": "8776a453e4b083f20ce90601fee636cac9eb7dc4"
             }
         ]
     }
