@@ -1997,7 +1997,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
             try {
                row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( wait_time ), shorten_abi_errors );
             } catch (fc::exception &e) {
-               elog( "Error occurred while converting binary to variant in get_kv_table_rows: '${t}') to: ${i}", ("t", p.table.to_string())("i", p.index_name.to_string()));
                row_var = fc::variant( value );
             }
          } else {
