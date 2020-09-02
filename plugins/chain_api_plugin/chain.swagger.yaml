@@ -680,7 +680,7 @@ paths:
                   more:
                     type: integer
                     description: "In case there's more activated protocol features than the input parameter `limit` requested, returns the ordinal of the next activated protocol feature which was not returned, otherwise zero."
- /get_accounts_by_authorizers:
+  /get_accounts_by_authorizers:
     post:
       description: Given a set of account names and public keys, find all account permission authorities that are, in part or whole, satisfiable
       operationId: get_accounts_by_authorizers
