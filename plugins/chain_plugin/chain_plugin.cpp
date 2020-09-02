@@ -1941,6 +1941,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database&>(database), database_id, chain::name{0}, {}, limits);
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
 
+   // TO DO: Once rocksdb change is available, we need to add rocksdb context support here
+
    return get_kv_table_rows_context( p, *kv_context, abi );
 }
 
