@@ -321,6 +321,8 @@ class PluginHttpTest(unittest.TestCase):
                                                               "\"key_type\":\"i128\"",
                                                               "\"lower_bound\":\"0x0000000000000000D0F2A472A8EB6A57\"",
                                                               "\"upper_bound\":\"0xFFFFFFFFFFFFFFFFD0F2A472A8EB6A57\"")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
 
         # get_kv_table_rows with empty parameter
         default_cmd = cmd_base + "get_kv_table_rows"
@@ -345,6 +347,18 @@ class PluginHttpTest(unittest.TestCase):
                                                               "\"table\":\"vote\"",
                                                               "\"index_name\":\"primarykey\"",
                                                               "\"index_value\":\"pid1\"")
+
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid4\"",)
 
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
