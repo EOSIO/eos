@@ -130,9 +130,9 @@ public:
         void move_next_();
         void move_previous_();
         
-        static bytes key_(iterator_state& v);
-        static cache_iterator_state cache_iterator_(iterator_state& v);
-        static size_t index_(iterator_state& v);
+        static bytes key_(const iterator_state& v);
+        static cache_iterator_state cache_iterator_(const iterator_state& v);
+        static size_t index_(const iterator_state& v);
         bool is_deleted_(const bytes& key, size_t index);
         void rebuild_queues_(const session_iterator& other);
 
@@ -147,8 +147,8 @@ public:
                     return false;
                 }
 
-                auto left_key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *lhs);
-                auto right_key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *rhs);
+                auto left_key = session_iterator::key_(*lhs);
+                auto right_key = session_iterator::key_(*rhs);
                 return std::less<bytes>{}(left_key, right_key);
             }
         };
@@ -162,8 +162,8 @@ public:
                     return false;
                 }
 
-                auto left_key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *lhs);
-                auto right_key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *rhs);
+                auto left_key = session_iterator::key_(*lhs);
+                auto right_key = session_iterator::key_(*rhs);
                 return std::greater<bytes>{}(left_key, right_key);
             }
         };
@@ -1015,28 +1015,28 @@ session_iterator_alias<persistent_data_store, cache_data_store, iterator_traits>
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
-bytes session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::key_(iterator_state& v) {
-    return std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, v);
+bytes session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::key_(const iterator_state& v) {
+    return std::visit(overloaded {[](const auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, v);
 };
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
-typename session_iterator_alias<persistent_data_store, cache_data_store, iterator_traits>::cache_iterator_state session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::cache_iterator_(iterator_state& v) {
-    return std::visit(overloaded {[](cache_iterator_state& state) { return state; },
-                                  [](auto& state) { return cache_iterator_state{}; }}, v);
+typename session_iterator_alias<persistent_data_store, cache_data_store, iterator_traits>::cache_iterator_state session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::cache_iterator_(const iterator_state& v) {
+    return std::visit(overloaded {[](const cache_iterator_state& state) { return state; },
+                                  [](const auto& state) { return cache_iterator_state{}; }}, v);
 };
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
-size_t session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::index_(iterator_state& v) {
-    return std::visit(overloaded {[](database_iterator_state& state) { return state.index - 1; },
-                                  [](auto& state) { return state.index; }}, v);
+size_t session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::index_(const iterator_state& v) {
+    return std::visit(overloaded {[](const database_iterator_state& state) { return state.index - 1; },
+                                  [](const auto& state) { return state.index; }}, v);
 };
 
 template <typename persistent_data_store, typename cache_data_store>
 template <typename iterator_traits>
 bool session<persistent_data_store, cache_data_store>::session_iterator<iterator_traits>::is_deleted_(const bytes& key, size_t index) {
-    for (size_t i = 0; i <= index && i < m_iterator_states.size() ; ++i) {
+    for (size_t i = 0; i <= index; ++i) {
         auto& current_state = m_iterator_states[i];
         auto it = cache_iterator_(current_state);
 
