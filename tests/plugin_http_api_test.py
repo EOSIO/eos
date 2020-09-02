@@ -338,7 +338,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["code"], 400)
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # get_kv_table_rows with valid parameter
-        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % (  default_cmd,
                                                               self.http_post_str,
                                                               "\"json\":true",
                                                               "\"code\":\"cancancan345\"",
