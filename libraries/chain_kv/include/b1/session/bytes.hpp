@@ -255,10 +255,10 @@ public:
             return false;
         }
         if (lhs == eosio::session::bytes::invalid) {
-            return false;
+            return true;
         }
         if (rhs == eosio::session::bytes::invalid) {
-            return true;
+            return false;
         }
 
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
@@ -273,10 +273,10 @@ public:
             return false;
         }
         if (lhs == eosio::session::bytes::invalid) {
-            return false;
+            return true;
         }
         if (rhs == eosio::session::bytes::invalid) {
-            return true;
+            return false;
         }
 
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};

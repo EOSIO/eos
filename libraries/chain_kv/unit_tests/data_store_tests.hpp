@@ -361,12 +361,12 @@ void verify_session_key_order(T& ds) {
         auto kv = *kv_it;
         if (current_key == eosio::session::bytes::invalid) {
             current_key = kv.key();
+            ++kv_it;
             continue;
         }
 
         BOOST_REQUIRE(compare(current_key, kv.key()) == true);
         current_key = kv.key();
-
         ++kv_it;
     } while (kv_it != begin);
 }
