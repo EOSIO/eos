@@ -93,7 +93,7 @@ public:
       full_cv_.notify_all();
    }
 
-   /// also checks paused flag because a paused queue indicates processing is on-going
+   /// also checks paused flag because a paused queue indicates processing is on-going or explicitly paused
    bool empty() const {
       std::scoped_lock<std::mutex> lk(mtx_);
       return queue_.empty() && !paused_;
