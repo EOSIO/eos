@@ -1113,7 +1113,7 @@ void session<persistent_data_store, cache_data_store>::session_iterator<iterator
         // Just move to the next key and try again.
         // If the key at the top is coming from a session where that key has been deleted in a child session
         // Just move to the next key and try again.
-        if (is_deleted_(top_key, index_(*top)) || top_key == previous_key) {
+        if (top_key == previous_key || is_deleted_(top_key, index_(*top))) {
           move_top();
           continue;
         }
@@ -1230,8 +1230,7 @@ typename session_iterator_alias<persistent_data_store, cache_data_store, iterato
     if (!m_current) {
         return key_value::invalid;
     }
-    auto key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *m_current);
-    return m_active_session->read(key);
+    return m_active_session->read(key_(*m_current));
 }
 
 template <typename persistent_data_store, typename cache_data_store>
@@ -1240,8 +1239,7 @@ typename session_iterator_alias<persistent_data_store, cache_data_store, iterato
     if (!m_current) {
         return key_value::invalid;
     }
-    auto key = std::visit(overloaded {[](auto& state) { return state.current == state.end ? bytes::invalid : (*state.current).key(); }}, *m_current);
-    return m_active_session->read(key);
+    return m_active_session->read(key_(*m_current));
 }
 
 template <typename persistent_data_store, typename cache_data_store>
