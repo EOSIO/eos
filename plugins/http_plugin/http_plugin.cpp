@@ -444,17 +444,17 @@ namespace eosio {
           */
          template<typename T>
          struct in_flight {
-            in_flight(T&& object, http_plugin_impl& impl)
+            in_flight(T&& object, std::shared_ptr<http_plugin_impl> impl)
             :object(std::move(object))
-            ,impl(impl)
+            ,impl(std::move(impl))
             {
                count = detail::in_flight_sizeof(this->object);
-               impl.bytes_in_flight += count;
+               impl->bytes_in_flight += count;
             }
 
             ~in_flight() {
                if (count) {
-                  impl.bytes_in_flight -= count;
+                  impl->bytes_in_flight -= count;
                }
             }
 
@@ -473,7 +473,7 @@ namespace eosio {
             in_flight& operator=(in_flight&& from) {
                object = std::move(from.object);
                count = from.count;
-               impl = from.impl;
+               impl = std::move(from.impl);
                from.count = 0;
             }
 
@@ -495,15 +495,15 @@ namespace eosio {
 
             T object;
             size_t count;
-            http_plugin_impl& impl;
+            std::shared_ptr<http_plugin_impl> impl;
          };
 
          /**
           * convenient wrapper to make an in_flight<T>
           */
          template<typename T>
-         static auto make_in_flight(T&& object, http_plugin_impl& impl) {
-            return std::make_shared<in_flight<T>>(std::forward<T>(object), impl);
+         static auto make_in_flight(T&& object, std::shared_ptr<http_plugin_impl> impl) {
+            return std::make_shared<in_flight<T>>(std::forward<T>(object), std::move(impl));
          }
 
          /**
@@ -515,10 +515,10 @@ namespace eosio {
           * @param next - the next handler for responses
           * @return the constructed internal_url_handler
           */
-         detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next ) {
+         detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next, std::shared_ptr<http_plugin_impl> my ) {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
-            return [this, priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
-               auto tracked_b = make_in_flight<string>(std::move(b), *this);
+            return [my=std::move(my), priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
+               auto tracked_b = make_in_flight<string>(std::move(b), std::move(my));
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
@@ -566,18 +566,19 @@ namespace eosio {
           * @return lambda suitable for url_response_callback
           */
          template<typename T>
-         auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr ) {
-            return [this, abstract_conn_ptr]( int code, fc::variant response ) {
-               auto tracked_response = make_in_flight(std::move(response), *this);
+         auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr, std::shared_ptr<http_plugin_impl> my ) {
+            return [my=std::move(my), abstract_conn_ptr=std::move(abstract_conn_ptr)]( int code, fc::variant response ) mutable {
+               auto tracked_response = make_in_flight(std::move(response), my);
                if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
                   return;
                }
 
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
-               boost::asio::post( thread_pool->get_executor(), [this, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
+               boost::asio::post( my->thread_pool->get_executor(),
+                                  [my, abstract_conn_ptr=std::move(abstract_conn_ptr), code, tracked_response=std::move(tracked_response)]() mutable {
                   try {
-                     std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + max_response_time );
-                     auto tracked_json = make_in_flight(std::move(json), *this);
+                     std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + my->max_response_time );
+                     auto tracked_json = make_in_flight(std::move(json), std::move(my));
                      abstract_conn_ptr->send_response(std::move(*(*tracked_json)), code);
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
@@ -622,7 +623,7 @@ namespace eosio {
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   std::string body = con->get_request_body();
-                  handler_itr->second( abstract_conn_ptr, std::move( resource ), std::move( body ), make_http_response_handler<T>(abstract_conn_ptr) );
+                  handler_itr->second( abstract_conn_ptr, std::move( resource ), std::move( body ), make_http_response_handler<T>(abstract_conn_ptr, my) );
                } else {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
@@ -955,7 +956,7 @@ namespace eosio {
 
    void http_plugin::add_handler(const string& url, const url_handler& handler, int priority) {
       fc_ilog( logger, "add api url: ${c}", ("c", url) );
-      my->url_handlers[url] = my->make_app_thread_url_handler(priority, handler);
+      my->url_handlers[url] = my->make_app_thread_url_handler(priority, handler, my);
    }
 
    void http_plugin::add_async_handler(const string& url, const url_handler& handler) {
