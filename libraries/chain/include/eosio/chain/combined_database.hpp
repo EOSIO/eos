@@ -30,8 +30,7 @@
 #define CATCH_AND_EXIT_DB_FAILURE()                                                                                    \
    catch (...) {                                                                                                       \
       elog("Error while using database");                                                                              \
-      /* return -2 -- it's what programs/nodeos/main.cpp reports for std::exception */                                 \
-      std::_Exit(-2);                                                                                                  \
+      std::abort();                                                                                                    \
    }
 
 namespace eosio { namespace chain {

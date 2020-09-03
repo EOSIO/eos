@@ -195,7 +195,7 @@ namespace eosio { namespace chain {
             return;
          }
 
-#warning TODO: Revisit this and adpat to new design
+#warning TODO: Revisit this and adapt to new design
          if constexpr (std::is_same_v<value_t, kv_object>) {
             snapshot->write_section<value_t>([this](auto& section) {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
