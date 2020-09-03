@@ -7,8 +7,6 @@
 #include <eosio/vm/span.hpp>
 #include <eosio/vm/types.hpp>
 
-using namespace fc;
-
 namespace eosio { namespace chain { namespace webassembly {
    // forward declaration
    class interface;
