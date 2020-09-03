@@ -518,7 +518,7 @@ namespace eosio {
          detail::internal_url_handler make_app_thread_url_handler( int priority, url_handler next, std::shared_ptr<http_plugin_impl> my ) {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [my=std::move(my), priority, next_ptr=std::move(next_ptr)]( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) mutable {
-               auto tracked_b = make_in_flight<string>(std::move(b), std::move(my));
+               auto tracked_b = make_in_flight<string>(std::move(b), my);
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
