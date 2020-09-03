@@ -161,7 +161,7 @@ namespace eosio { namespace chain {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
             return create_kv_rocksdb_context(kv_database, kv_undo_stack, receiver, resource_manager, limits);
-         case backing_store_type::NATIVE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+         case backing_store_type::CHAINBASE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
          default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
    }

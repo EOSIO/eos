@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(kv_db_config_object)
 
       id_type            id;
-      backing_store_type backing_store = backing_store_type::NATIVE;
+      backing_store_type backing_store = backing_store_type::CHAINBASE;
    };
 
    using kv_db_config_index = chainbase::shared_multi_index_container<
