@@ -2079,11 +2079,14 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          fc::variant row_var;
          if( p.json ) {
             auto time_left = end_time - cur_time;
-            row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
+            try {
+               row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
+            } catch (fc::exception &e) {
+               row_var = fc::variant( row_value );
+            }
          } else {
             row_var = fc::variant( row_value );
          }
-
          result.rows.emplace_back( std::move(row_var) );
          ++count;
 
