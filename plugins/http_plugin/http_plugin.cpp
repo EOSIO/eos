@@ -182,8 +182,16 @@ namespace eosio {
 
    static bool verbose_http_errors = false;
 
-   class http_plugin_impl : std::enable_shared_from_this<http_plugin_impl> {
+   class http_plugin_impl {
       public:
+         http_plugin_impl() = default;
+
+         http_plugin_impl(const http_plugin_impl&) = delete;
+         http_plugin_impl(http_plugin_impl&&) = delete;
+
+         http_plugin_impl& operator=(const http_plugin_impl&) = delete;
+         http_plugin_impl& operator=(http_plugin_impl&&) = delete;
+
          // key -> priority, url_handler
          map<string,detail::internal_url_handler>  url_handlers;
          std::optional<tcp::endpoint>  listen_endpoint;
@@ -579,7 +587,7 @@ namespace eosio {
          }
 
          template<class T>
-         void handle_http_request(detail::connection_ptr<T> con) {
+         void handle_http_request(detail::connection_ptr<T> con, const std::shared_ptr<http_plugin_impl>& my) {
             try {
                auto& req = con->get_request();
 
@@ -607,7 +615,7 @@ namespace eosio {
                con->append_header( "Content-type", "application/json" );
                con->defer_http_response();
 
-               auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, shared_from_this());
+               auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, my);
                if( !verify_max_bytes_in_flight( con ) || !verify_max_requests_in_flight( con ) ) return;
 
                std::string resource = con->get_uri()->get_resource();
@@ -629,7 +637,9 @@ namespace eosio {
          }
 
          template<class T>
-         void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
+         void create_server_for_endpoint(const tcp::endpoint& ep,
+                                         websocketpp::server<detail::asio_with_stub_log<T>>& ws,
+                                         const std::shared_ptr<http_plugin_impl>& my) {
             try {
                ws.clear_access_channels(websocketpp::log::alevel::all);
                ws.init_asio( &thread_pool->get_executor() );
@@ -637,7 +647,7 @@ namespace eosio {
                ws.set_max_http_body_size(max_body_size);
                // capture server_ioc shared_ptr in http handler to keep it alive while in use
                ws.set_http_handler([&](connection_hdl hdl) {
-                  handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
+                  handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl), my);
                });
             } catch ( const fc::exception& e ){
                fc_elog( logger, "http: ${e}", ("e", e.to_detail_string()) );
@@ -841,7 +851,7 @@ namespace eosio {
             my->thread_pool.emplace( "http", my->thread_pool_size );
             if(my->listen_endpoint) {
                try {
-                  my->create_server_for_endpoint(*my->listen_endpoint, my->server);
+                  my->create_server_for_endpoint(*my->listen_endpoint, my->server, my);
 
                   fc_ilog( logger, "start listening for http requests" );
                   my->server.listen(*my->listen_endpoint);
@@ -866,7 +876,7 @@ namespace eosio {
                   my->unix_server.set_max_http_body_size(my->max_body_size);
                   my->unix_server.listen(*my->unix_endpoint);
                   my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
-                     my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
+                     my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl), my );
                   });
                   my->unix_server.start_accept();
                } catch ( const fc::exception& e ){
@@ -883,7 +893,7 @@ namespace eosio {
 #endif
             if(my->https_listen_endpoint) {
                try {
-                  my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
+                  my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server, my );
                   my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
                      return my->on_tls_init(hdl);
                   });
