@@ -182,7 +182,7 @@ namespace eosio {
 
    static bool verbose_http_errors = false;
 
-   class http_plugin_impl {
+   class http_plugin_impl : std::enable_shared_from_this<http_plugin_impl> {
       public:
          // key -> priority, url_handler
          map<string,detail::internal_url_handler>  url_handlers;
@@ -375,29 +375,31 @@ namespace eosio {
           */
          template<typename T>
          struct abstract_conn_impl : public detail::abstract_conn {
-            abstract_conn_impl(detail::connection_ptr<T> conn, http_plugin_impl& impl)
+            abstract_conn_impl(detail::connection_ptr<T> conn, std::shared_ptr<http_plugin_impl> impl)
             :_conn(std::move(conn))
-            ,_impl(impl)
+            ,_impl(std::move(impl))
             {
-                _impl.requests_in_flight += 1;
+                _impl->requests_in_flight += 1;
             }
 
             ~abstract_conn_impl() {
-                _impl.requests_in_flight -= 1;
+                _impl->requests_in_flight -= 1;
             }
 
             // No copy constructor and no move
-            abstract_conn_impl(abstract_conn_impl&) = delete;
+            abstract_conn_impl(const abstract_conn_impl&) = delete;
             abstract_conn_impl(abstract_conn_impl&&) = delete;
 
+            abstract_conn_impl& operator=(const abstract_conn_impl&) = delete;
             abstract_conn_impl& operator=(abstract_conn_impl&&) noexcept = default;
 
+
             bool verify_max_bytes_in_flight() override {
-               return _impl.verify_max_bytes_in_flight(_conn);
+               return _impl->verify_max_bytes_in_flight(_conn);
             }
 
             bool verify_max_requests_in_flight() override {
-               return _impl.verify_max_requests_in_flight(_conn);
+               return _impl->verify_max_requests_in_flight(_conn);
             }
 
             void handle_exception()override {
@@ -411,19 +413,19 @@ namespace eosio {
             }
 
             detail::connection_ptr<T> _conn;
-            http_plugin_impl &_impl;
+            std::shared_ptr<http_plugin_impl> _impl;
          };
 
          /**
           * Helper to construct an abstract_conn_impl for a given connection and instance of http_plugin_impl
           * @tparam T - The downstream parameter for the connection_ptr
           * @param conn - existing connection_ptr<T>
-          * @param impl - reference to the ownint http_plugin_impl
+          * @param impl - the owning http_plugin_impl
           * @return abstract_conn_ptr backed by type specific implementations of the methods
           */
          template<typename T>
-         static detail::abstract_conn_ptr make_abstract_conn_ptr( detail::connection_ptr<T> conn, http_plugin_impl& impl ) {
-            return std::make_shared<abstract_conn_impl<T>>(conn, impl);
+         static detail::abstract_conn_ptr make_abstract_conn_ptr( detail::connection_ptr<T> conn, std::shared_ptr<http_plugin_impl> impl ) {
+            return std::make_shared<abstract_conn_impl<T>>(conn, std::move(impl));
          }
 
          /**
@@ -605,7 +607,7 @@ namespace eosio {
                con->append_header( "Content-type", "application/json" );
                con->defer_http_response();
 
-               auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, *this);
+               auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, shared_from_this());
                if( !verify_max_bytes_in_flight( con ) || !verify_max_requests_in_flight( con ) ) return;
 
                std::string resource = con->get_uri()->get_resource();
