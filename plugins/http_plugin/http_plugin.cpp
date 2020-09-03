@@ -463,7 +463,7 @@ namespace eosio {
             in_flight(in_flight&& from)
             :object(std::move(from.object))
             ,count(from.count)
-            ,impl(from.impl)
+            ,impl(std::move(from.impl))
             {
                from.count = 0;
             }
@@ -567,7 +567,7 @@ namespace eosio {
           */
          template<typename T>
          auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr, std::shared_ptr<http_plugin_impl> my ) {
-            return [my=std::move(my), abstract_conn_ptr=std::move(abstract_conn_ptr)]( int code, fc::variant response ) mutable {
+            return [my=std::move(my), abstract_conn_ptr=std::move(abstract_conn_ptr)]( int code, fc::variant response ) {
                auto tracked_response = make_in_flight(std::move(response), my);
                if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
                   return;
@@ -575,10 +575,10 @@ namespace eosio {
 
                // post  back to an HTTP thread to to allow the response handler to be called from any thread
                boost::asio::post( my->thread_pool->get_executor(),
-                                  [my, abstract_conn_ptr=std::move(abstract_conn_ptr), code, tracked_response=std::move(tracked_response)]() mutable {
+                                  [my, abstract_conn_ptr=std::move(abstract_conn_ptr), code, tracked_response=std::move(tracked_response)]() {
                   try {
                      std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + my->max_response_time );
-                     auto tracked_json = make_in_flight(std::move(json), std::move(my));
+                     auto tracked_json = make_in_flight(std::move(json), my);
                      abstract_conn_ptr->send_response(std::move(*(*tracked_json)), code);
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
