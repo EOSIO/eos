@@ -125,6 +125,36 @@ struct kv_rocksdb_fixture {
       std::string value;
    };
 
+   enum class it_dir {
+      NEXT,
+      PREV
+   };
+
+   enum class it_pos {
+      NOT_END,
+      END
+   };
+
+   enum class it_state {
+      NOT_ERASED,
+      ERASED
+   };
+
+   enum class it_keys_equal {
+      YES,
+      NO
+   };
+
+   enum class it_key_existing {
+      YES,
+      NO
+   };
+
+   enum class it_exception_expected {
+      YES,
+      NO
+   };
+
    void check_set_new_value(const kv_pair& kv) {
       uint32_t key_size = kv.key.size();
       uint32_t value_size = kv.value.size();
@@ -141,47 +171,31 @@ struct kv_rocksdb_fixture {
       BOOST_CHECK(my_kv_context->kv_set(contract, kv.key.c_str(), key_size, kv.value.c_str(), value_size, payer) == resource_delta);
    }
 
-   struct it_status {
-      bool is_erased = false;
-      bool is_end = false;
-   };
-
-   void check_test_kv_it_status(const it_status& status, kv_it_stat expected_status) {
-      mock_is_end = [status]( ) -> bool {
-         return status.is_end;
+   void check_test_kv_it_status(it_state state, it_pos pos, kv_it_stat expected_status) {
+      mock_is_end = [pos]( ) -> bool {
+         return pos == it_pos::END;
       };
 
-      mock_is_erased = [status]( ) -> bool {
-         return status.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
       std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
       BOOST_CHECK(it->kv_it_status() == expected_status);
    }
 
-   enum it_dir {
-      NEXT,
-      PREV
-   };
-
-   struct check_kv_it_move_params {
-      it_dir direction = NEXT;
-      bool is_erased = false;
-      bool is_end = false;
-   };
-
-   void check_kv_it_move(const check_kv_it_move_params& params, kv_it_stat expected_status)
+   void check_kv_it_move(it_dir dir, it_state state, it_pos pos, kv_it_stat expected_status)
    {
-      mock_is_erased = [params]( ) -> bool {
-         return params.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
-      mock_is_end = [params]() -> bool {
-         return params.is_end;
+      mock_is_end = [pos]() -> bool {
+         return pos == it_pos::END;
       };
 
-      mock_is_valid = [params]( ) -> bool {
-         return !params.is_erased && !params.is_end;
+      mock_is_valid = [pos, state]( ) -> bool {
+         return state == it_state::NOT_ERASED && pos == it_pos::NOT_END;
       };
 
       mock_get_kv = []() -> std::optional<b1::chain_kv::key_value> {
@@ -190,8 +204,8 @@ struct kv_rocksdb_fixture {
 
       std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
       uint32_t found_key_size, found_value_size;
-      if (params.is_erased) {
-         if (params.direction == NEXT) {
+      if (state == it_state::ERASED) {
+         if (dir == it_dir::NEXT) {
             BOOST_CHECK_THROW(it->kv_it_next(&found_key_size, &found_value_size), kv_bad_iter);
          } else {
             BOOST_CHECK_THROW(it->kv_it_prev(&found_key_size, &found_value_size), kv_bad_iter);
@@ -199,13 +213,13 @@ struct kv_rocksdb_fixture {
          return;
       }
 
-      if (params.direction == NEXT) {
+      if (dir == it_dir::NEXT) {
          BOOST_CHECK(it->kv_it_next(&found_key_size, &found_value_size) == expected_status);
       } else {
          BOOST_CHECK(it->kv_it_prev(&found_key_size, &found_value_size) == expected_status);
       }
 
-      if (!params.is_erased && !params.is_end) { // means valid
+      if (state == it_state::NOT_ERASED && pos == it_pos::NOT_END) { // means valid
          BOOST_CHECK(found_key_size == 3);    // "key"
          BOOST_CHECK(found_value_size == 7);  // "Myvalue"
       } else {
@@ -214,22 +228,17 @@ struct kv_rocksdb_fixture {
       }
    }
 
-   struct check_kv_it_key_value_params {
-      bool is_erased = false;
-      bool has_key = true;
-   };
-
-   void check_kv_it_key(const check_kv_it_key_value_params& params, kv_it_stat expected_status)
+   void check_kv_it_key(it_state state, it_key_existing key_existing, kv_it_stat expected_status)
    {
-      mock_is_erased = [params]( ) -> bool {
-         return params.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
       std::string key = "key";
       constexpr uint32_t key_size = 3;
       b1::chain_kv::key_value sample_key_value {key, "value"};
-      mock_get_kv = [params, sample_key_value]( ) -> std::optional<b1::chain_kv::key_value> {
-         if (params.has_key) {
+      mock_get_kv = [key_existing, sample_key_value]( ) -> std::optional<b1::chain_kv::key_value> {
+         if (key_existing == it_key_existing::YES) {
             return sample_key_value;
          } else {
             return {};
@@ -242,7 +251,7 @@ struct kv_rocksdb_fixture {
       uint32_t size = key_size;
       uint32_t actual_size;
 
-      if (params.is_erased) {
+      if (state == it_state::ERASED) {
          BOOST_CHECK_THROW(it->kv_it_key(offset, dest, key_size, actual_size), kv_bad_iter);
          return;
       }
@@ -257,17 +266,17 @@ struct kv_rocksdb_fixture {
       }
    }
 
-   void check_kv_it_value(const check_kv_it_key_value_params& params, kv_it_stat expected_status)
+   void check_kv_it_value(it_state state, it_key_existing key_existing, kv_it_stat expected_status)
    {
-      mock_is_erased = [params]( ) -> bool {
-         return params.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
       std::string value = "payernamMyvalue";
       constexpr uint32_t value_size = 7;  // Myvalue
       b1::chain_kv::key_value sample_key_value {"key", value};
-      mock_get_kv = [params, sample_key_value]( ) -> std::optional<b1::chain_kv::key_value> {
-         if (params.has_key) {
+      mock_get_kv = [key_existing, sample_key_value]( ) -> std::optional<b1::chain_kv::key_value> {
+         if (key_existing == it_key_existing::YES) {
             return sample_key_value;
          } else {
             return {};
@@ -279,7 +288,7 @@ struct kv_rocksdb_fixture {
       char dest[value_size];
       uint32_t actual_size;
 
-      if (params.is_erased) {
+      if (state == it_state::ERASED) {
          BOOST_CHECK_THROW(it->kv_it_value(offset, dest, value_size, actual_size), kv_bad_iter);
          return;
       }
@@ -294,15 +303,10 @@ struct kv_rocksdb_fixture {
       }
    }
 
-   struct check_kv_it_compare_params {
-      bool is_erased = false;
-      bool to_throw = false;
-   };
-
-   void check_kv_it_compare(const check_kv_it_compare_params& params,uint64_t rhs_contract)
+   void check_kv_it_compare(it_state state, it_exception_expected exception_expected, uint64_t rhs_contract)
    {
-      mock_is_erased = [params]( ) -> bool {
-         return params.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
       std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
@@ -311,22 +315,17 @@ struct kv_rocksdb_fixture {
       uint32_t size = 10;
       kv_iterator_rocksdb<mock_view_provider> rhs {num_iterators, my_kv_context->view, rhs_contract, prefix.c_str(), size};
 
-      if (params.to_throw) {
+      if (exception_expected == it_exception_expected::YES) {
          BOOST_CHECK_THROW(it->kv_it_compare(rhs), kv_bad_iter);
       } else {
          BOOST_CHECK(it->kv_it_compare(rhs));
       }
    }
 
-   struct check_kv_it_key_compare_params {
-      bool is_erased = false;
-      bool keys_equal = true;
-   };
-
-   void check_kv_it_key_compare(const check_kv_it_key_compare_params& params, const std::string& mykey)
+   void check_kv_it_key_compare(it_state state, it_keys_equal keys_equal, const std::string& mykey)
    {
-      mock_is_erased = [params]( ) -> bool {
-         return params.is_erased;
+      mock_is_erased = [state]( ) -> bool {
+         return state == it_state::ERASED;
       };
 
       mock_get_kv = []( ) -> std::optional<b1::chain_kv::key_value> {
@@ -334,10 +333,10 @@ struct kv_rocksdb_fixture {
       };
 
       std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
-      if (params.is_erased) {
+      if (state == it_state::ERASED) {
          BOOST_CHECK_THROW(it->kv_it_key_compare(mykey.c_str(), mykey.size()), kv_bad_iter);
       } else {
-         if (params.keys_equal) {
+         if (keys_equal == it_keys_equal::YES) {
             BOOST_CHECK(it->kv_it_key_compare(mykey.c_str(), mykey.size()) == 0);
          } else {
             BOOST_CHECK(it->kv_it_key_compare(mykey.c_str(), mykey.size()) != 0);
@@ -609,48 +608,48 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_compare, kv_rocksdb_fixture)
    {
-      check_kv_it_compare({}, contract);
+      check_kv_it_compare(it_state::NOT_ERASED, it_exception_expected::NO, contract);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_compare_different_contract, kv_rocksdb_fixture)
    {
-      check_kv_it_compare({.to_throw=true}, contract + 1); // +1 to make contract different
+      check_kv_it_compare(it_state::NOT_ERASED, it_exception_expected::YES, contract + 1); // +1 to make contract different
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_compare_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_compare({.is_erased=true, .to_throw=true}, contract);
+      check_kv_it_compare(it_state::ERASED, it_exception_expected::YES, contract);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_equal, kv_rocksdb_fixture)
    {
-      check_kv_it_key_compare({}, "key");
+      check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::YES, "key");
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_non_equal, kv_rocksdb_fixture)
    {
-      check_kv_it_key_compare({.keys_equal=false}, "randomkey");
+      check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::NO, "randomkey");
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_key_compare({.is_erased=true}, "key"); // no use for last 2 argument when is_erased is true
+      check_kv_it_key_compare(it_state::ERASED, it_keys_equal::YES, "key");
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_status_end, kv_rocksdb_fixture)
    {
-      check_test_kv_it_status({.is_erased=true, .is_end=true}, kv_it_stat::iterator_end);
-      check_test_kv_it_status({.is_end=true}, kv_it_stat::iterator_end);
+      check_test_kv_it_status(it_state::ERASED, it_pos::END, kv_it_stat::iterator_end);
+      check_test_kv_it_status(it_state::NOT_ERASED, it_pos::END, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_status_erased, kv_rocksdb_fixture)
    {
-      check_test_kv_it_status({.is_erased=true}, kv_it_stat::iterator_erased);
+      check_test_kv_it_status(it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_erased);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_status_ok, kv_rocksdb_fixture)
    {
-      check_test_kv_it_status({}, kv_it_stat::iterator_ok);
+      check_test_kv_it_status(it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_move_to_end, kv_rocksdb_fixture)
@@ -664,62 +663,62 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_next_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_move({.is_erased=true}, kv_it_stat::iterator_ok);
+      check_kv_it_move(it_dir::NEXT, it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_next_noterased_notend, kv_rocksdb_fixture)
    {
-      check_kv_it_move({}, kv_it_stat::iterator_ok);
+      check_kv_it_move(it_dir::NEXT, it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_next_noterased_end, kv_rocksdb_fixture)
    {
-      check_kv_it_move({.is_end=true}, kv_it_stat::iterator_end);
+      check_kv_it_move(it_dir::NEXT, it_state::NOT_ERASED, it_pos::END, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_prev_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_move({.direction=PREV, .is_erased=true}, kv_it_stat::iterator_ok);
+      check_kv_it_move(it_dir::PREV, it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_prev_noterased_notend, kv_rocksdb_fixture)
    {
-      check_kv_it_move({.direction=PREV}, kv_it_stat::iterator_ok);
+      check_kv_it_move(it_dir::PREV, it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_prev_noterased_end, kv_rocksdb_fixture)
    {
-      check_kv_it_move({.direction=PREV, .is_end=true}, kv_it_stat::iterator_end);
+      check_kv_it_move(it_dir::PREV, it_state::NOT_ERASED, it_pos::END, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_has_key, kv_rocksdb_fixture)
    {
-      check_kv_it_key({}, kv_it_stat::iterator_ok);
+      check_kv_it_key(it_state::NOT_ERASED, it_key_existing::YES, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_no_key, kv_rocksdb_fixture)
    {
-      check_kv_it_key({.has_key=false}, kv_it_stat::iterator_end);
+      check_kv_it_key(it_state::NOT_ERASED, it_key_existing::NO, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_key_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_key({.is_erased=true, .has_key=false}, kv_it_stat::iterator_end);
+      check_kv_it_key(it_state::ERASED, it_key_existing::NO, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_value_has_key, kv_rocksdb_fixture)
    {
-      check_kv_it_value({}, kv_it_stat::iterator_ok);
+      check_kv_it_value(it_state::NOT_ERASED, it_key_existing::YES, kv_it_stat::iterator_ok);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_value_no_key, kv_rocksdb_fixture)
    {
-      check_kv_it_value({.has_key=false}, kv_it_stat::iterator_end);
+      check_kv_it_value(it_state::NOT_ERASED, it_key_existing::NO, kv_it_stat::iterator_end);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_it_value_erased, kv_rocksdb_fixture)
    {
-      check_kv_it_value({.is_erased=true, .has_key=false}, kv_it_stat::iterator_end);
+      check_kv_it_value(it_state::ERASED, it_key_existing::NO, kv_it_stat::iterator_end);
    }
 
 BOOST_AUTO_TEST_SUITE_END()
