@@ -497,11 +497,11 @@ std::pair<bytes, bytes> session<persistent_data_store, cache_data_store>::bounds
     }
 
     if (auto lower_bound_key_ = lower_bound(*m_impl->backing_data_store, key); lower_bound_key_ != bytes::invalid) {
-        test_set(lower_bound_key_, lower_bound_key, std::greater<bytes>{});
+        test_set(lower_bound_key, lower_bound_key_, std::greater<bytes>{});
     }
 
     if (auto upper_bound_key_ = upper_bound(*m_impl->backing_data_store, key); upper_bound_key_ != bytes::invalid) {
-        test_set(upper_bound_key_, upper_bound_key, std::less<bytes>{});
+        test_set(upper_bound_key, upper_bound_key_, std::less<bytes>{});
     }
 
     return std::pair{lower_bound_key, upper_bound_key};

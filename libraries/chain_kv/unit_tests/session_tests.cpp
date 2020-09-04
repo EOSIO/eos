@@ -595,8 +595,8 @@ BOOST_AUTO_TEST_CASE(session_iteration) {
     // Commit some data to the database.
     root_session.commit();
 
-    root_session_kvs = generate_kvs(5000);
-    write(root_session, root_session_kvs);
+    auto root_session_kvs_2 = generate_kvs(5000);
+    write(root_session, root_session_kvs_2);
 
     auto block_session_kvs = generate_kvs(5000);
     auto block_session = eosio::session::make_session(root_session);
@@ -606,6 +606,8 @@ BOOST_AUTO_TEST_CASE(session_iteration) {
     auto transaction_session = eosio::session::make_session(block_session);
     write(transaction_session, transaction_session_kvs);
     
+    auto set = collapse({root_session_kvs, root_session_kvs_2, block_session_kvs, transaction_session_kvs});
+
     // Iterate a few times just for a time measurement.
     for (size_t i = 0; i < 50; ++i) {
         auto begin = std::begin(transaction_session);
