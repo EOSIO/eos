@@ -71,8 +71,11 @@ namespace eosio { namespace chain {
 
    class combined_database {
     public:
-      combined_database(backing_store_type backing_store, chainbase::database& chain_db,
-                        const std::string& rocksdb_path, bool rocksdb_create_if_missing, uint32_t rocksdb_threads,
+      combined_database(backing_store_type backing_store,
+                        chainbase::database& chain_db,
+                        const std::string& rocksdb_path,
+                        bool rocksdb_create_if_missing,
+                        uint32_t rocksdb_threads,
                         int rocksdb_max_open_files);
 
       void set_backing_store(backing_store_type backing_store);

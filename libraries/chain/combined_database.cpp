@@ -87,9 +87,12 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
-   combined_database::combined_database(backing_store_type backing_store_, chainbase::database& chain_db,
-                                        const std::string& rocksdb_path, bool rocksdb_create_if_missing,
-                                        uint32_t rocksdb_threads, int rocksdb_max_open_files)
+   combined_database::combined_database(backing_store_type backing_store_,
+                                        chainbase::database& chain_db,
+                                        const std::string& rocksdb_path,
+                                        bool rocksdb_create_if_missing,
+                                        uint32_t rocksdb_threads,
+                                        int rocksdb_max_open_files)
        : backing_store(backing_store_), db(chain_db),
          kv_database(rocksdb_path.c_str(), rocksdb_create_if_missing, rocksdb_threads, rocksdb_max_open_files),
          kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
@@ -156,20 +159,24 @@ namespace eosio { namespace chain {
       CATCH_AND_EXIT_DB_FAILURE()
    }
 
-   std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
+   std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver,
+                                                                    kv_resource_manager resource_manager,
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
             return create_kv_rocksdb_context(kv_database, kv_undo_stack, receiver, resource_manager, limits);
-         case backing_store_type::CHAINBASE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
-         default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
+         case backing_store_type::CHAINBASE:
+            return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+         default:
+            EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
    }
 
    void combined_database::add_to_snapshot(
-         const eosio::chain::snapshot_writer_ptr& snapshot, const eosio::chain::block_state& head,
-         const eosio::chain::authorization_manager&                    authorization,
-         const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const {
+                                 const eosio::chain::snapshot_writer_ptr& snapshot,
+                                 const eosio::chain::block_state& head,
+                                 const eosio::chain::authorization_manager& authorization,
+                                 const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const {
 
       snapshot->write_section<chain_snapshot_header>(
             [this](auto& section) { section.add_row(chain_snapshot_header(), db); });
@@ -241,12 +248,15 @@ namespace eosio { namespace chain {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start,
-                                              uint32_t blog_end, backing_store_type backing_store_,
-                                              eosio::chain::authorization_manager&                    authorization,
+   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot,
+                                              uint32_t blog_start,
+                                              uint32_t blog_end,
+                                              backing_store_type backing_store_,
+                                              eosio::chain::authorization_manager& authorization,
                                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
-                                              eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
-                                              uint32_t&                          snapshot_head_block,
+                                              eosio::chain::fork_database& fork_db,
+                                              eosio::chain::block_state_ptr& head,
+                                              uint32_t& snapshot_head_block,
                                               const eosio::chain::chain_id_type& chain_id) {
       chain_snapshot_header header;
       snapshot->read_section<chain_snapshot_header>([this, &header](auto& section) {
@@ -453,7 +463,7 @@ namespace eosio { namespace chain {
    }
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot,
-                                                                           uint32_t         version) {
+                                                                           uint32_t version) {
       std::optional<eosio::chain::genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
