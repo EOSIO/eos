@@ -35,6 +35,7 @@ set( NODE_EXECUTABLE_NAME nodeos )
 set( KEY_STORE_EXECUTABLE_NAME keosd )
 set( RODEOS_EXECUTABLE_NAME rodeos )
 set( TESTER_EXECUTABLE_NAME eosio-tester )
+set( BLOCKVAULTD_EXECUTABLE_NAME blockvaultd )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")

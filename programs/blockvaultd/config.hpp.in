@@ -1,0 +1,9 @@
+/**
+ * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
+ */
+#pragma once
+
+namespace eosio { namespace blockvault { namespace config {
+  constexpr uint64_t version = 0x${blockvaultd_BUILD_VERSION};
+  const std::string blockvaultd_executable_name = "${BLOCKVAULTD_EXECUTABLE_NAME}";
+}}}
