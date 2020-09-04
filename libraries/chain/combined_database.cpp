@@ -1,3 +1,4 @@
+#include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
@@ -164,7 +165,8 @@ namespace eosio { namespace chain {
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context(kv_database, kv_undo_stack, receiver, resource_manager, limits);
+            return create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
+                  kv_database, kv_undo_stack, receiver, resource_manager, limits);
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context(db, receiver, resource_manager, limits);
          default:
@@ -475,6 +477,7 @@ namespace eosio { namespace chain {
       return genesis;
    }
 
+   std::vector<char> make_rocksdb_undo_prefix() { return rocksdb_undo_prefix; }
    std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
 
 }} // namespace eosio::chain
