@@ -579,4 +579,41 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
     });
 }
 
+BOOST_AUTO_TEST_CASE(session_iteration) {
+    using rocks_db_type = rocks_data_store<boost_memory_allocator>;
+    using cache_type = cache<boost_memory_allocator>;
+    using session_type = session<rocks_db_type, cache_type>;
+
+    auto memory_allocator = boost_memory_allocator::make();
+    auto cache_ds = eosio::session::make_cache(memory_allocator);
+    auto rocksdb = make_rocks_db("testdb");
+    auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+
+    auto root_session = eosio::session::make_session(rocks_ds, cache_ds);
+    auto root_session_kvs = generate_kvs(500);
+    write(root_session, root_session_kvs);
+    // Commit some data to the database.
+    root_session.commit();
+
+    root_session_kvs = generate_kvs(500);
+    write(root_session, root_session_kvs);
+
+    auto block_session_kvs = generate_kvs(500);
+    auto block_session = eosio::session::make_session(root_session);
+    write(block_session, block_session_kvs);
+
+    auto transaction_session_kvs = generate_kvs(500);
+    auto transaction_session = eosio::session::make_session(block_session);
+    write(transaction_session, transaction_session_kvs);
+    
+    // Iterate a few times just for a time measurement.
+    for (size_t i = 0; i < 100; ++i) {
+        auto begin = std::begin(transaction_session);
+        auto current = std::begin(transaction_session);
+        do {
+            ++current;
+        } while (current != begin);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END();

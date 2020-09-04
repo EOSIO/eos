@@ -369,7 +369,7 @@ void session<persistent_data_store, cache_data_store>::session_impl::commit() {
     auto write_through = [&](auto& ds) {
         ds.erase(deleted_keys);
         cache.write_to(ds, updated_keys);
-        undo();
+        clear();
     };
     
     if (parent) {
