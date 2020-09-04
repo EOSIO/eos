@@ -62,7 +62,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
 
 auto get_resolver(const abi_def& abi = abi_def())
 {
-   return [&abi](const account_name &name) -> optional<abi_serializer> {
+   return [&abi](const account_name &name) -> std::optional<abi_serializer> {
       return abi_serializer(eosio_contract_abi(abi), abi_serializer::create_yield_function( max_serialization_time ));
    };
 }
@@ -1394,6 +1394,398 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
 
 
+BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
+{ try {
+   // mystruct doesn't exists in structs
+   const char* abi_def_abi = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   auto var = fc::json::from_string(abi_def_abi);
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
+
+   // testtable1_INVALID_NAME is not a valid eosio::name
+   const char* abi_def_abi2 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1_INVALID_NAME": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   var = fc::json::from_string(abi_def_abi2);
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time )), fc::exception );
+
+   // testtable1.type is empty
+   const char *abi_def_abi3 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   // testtable1.primary_index is missing
+   const char *abi_def_abi4 = R"=====(
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {}
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+   var = fc::json::from_string(abi_def_abi3);
+   BOOST_CHECK_THROW(abi_serializer abis(fc::json::from_string(abi_def_abi).as<abi_def>(), abi_serializer::create_yield_function(max_serialization_time)), fc::exception);
+
+   const char* abi_def_abi5 = R"=====(
+
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [],
+    "actions": [],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+   var = fc::json::from_string(abi_def_abi5);
+   auto abi = var.as<abi_def>();
+
+   BOOST_CHECK_NO_THROW();
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(setabi_test3)
+{ try {
+
+      const char *abi_def_abi = R"=====(
+
+   {
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "get",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "iteration",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "mystruct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primarykey",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "string"
+                },
+                {
+                    "name": "bar",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fullname",
+                    "type": "string"
+                },
+                {
+                    "name": "combo",
+                    "type": "tuple_string_uint32"
+                },
+                {
+                    "name": "age",
+                    "type": "uint32"
+                },
+                {
+                    "name": "rate",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "nonunique",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "tuple_string_uint32",
+            "base": "",
+            "fields": [
+                {
+                    "name": "field0",
+                    "type": "string"
+                },
+                {
+                    "name": "field1",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "update",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "updateerr1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "updateerr2",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "iteration",
+            "type": "iteration",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "nonunique",
+            "type": "nonunique",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setup",
+            "type": "setup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "update",
+            "type": "update",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateerr1",
+            "type": "updateerr1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateerr2",
+            "type": "updateerr2",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "testtable1": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid1",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "foo": {
+                    "type": "string"
+                },
+                "bar": {
+                    "type": "uint64"
+                },
+                "combo": {
+                    "type": "tuple_string_uint32"
+                },
+                "rate": {
+                    "type": "float64"
+                }
+            }
+        },
+        "testtable2": {
+            "type": "mystruct",
+            "primary_index": {
+                "name": "pid2",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "sid1": {
+                    "type": "string"
+                },
+                "sid2": {
+                    "type": "uint64"
+                }
+            }
+        }
+
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+   }
+   )=====";
+
+      auto var = fc::json::from_string(abi_def_abi);
+      auto abi = var.as<abi_def>();
+
+      BOOST_TEST(2u == abi.kv_tables.value.size());
+      name tbl_name{"testtable1"};
+      auto &kv_tbl_def = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid1" == kv_tbl_def.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def.primary_index.type);
+      BOOST_TEST(4u == kv_tbl_def.secondary_indices.size());
+      BOOST_TEST("string" == kv_tbl_def.secondary_indices[name("foo")].type);
+      BOOST_TEST("uint64" == kv_tbl_def.secondary_indices[name("bar")].type);
+      BOOST_TEST("tuple_string_uint32" == kv_tbl_def.secondary_indices[name("combo")].type);
+
+      tbl_name = name("testtable2");
+      auto &kv_tbl_def2 = abi.kv_tables.value[tbl_name];
+      BOOST_TEST("pid2" == kv_tbl_def2.primary_index.name.to_string());
+      BOOST_TEST("name" == kv_tbl_def2.primary_index.type);
+      BOOST_TEST(2u == kv_tbl_def2.secondary_indices.size());
+
+      abi_serializer abis(abi, abi_serializer::create_yield_function(max_serialization_time));
+
+      const char *test_data = R"=====(
+   {
+      "type": "mystruct",
+      "primarykey": "hello",
+      "foo":  "World",
+      "bar":  1000,
+      "fullname": "Hello World",
+      "age":  30,
+      "combo": {
+         "field0": "welcome",
+         "field1": 99
+      },
+      "rate": 123.567
+   }
+   )=====";
+
+      auto var_data = fc::json::from_string(test_data);
+      auto var2 = verify_byte_round_trip_conversion(abis, "testtable1", var_data);
+
+      fc::variant v1;
+      fc::variant v2;
+      kv_tables_as_object<map<table_name, kv_table_def>> kv_tables_obj;
+
+      to_variant(abi.kv_tables, v1);
+      from_variant(v1, kv_tables_obj);
+      to_variant(kv_tables_obj, v2);
+
+      std::stringstream ss1;
+      std::stringstream ss2;
+      ss1 << v1;
+      ss2 << v2;
+      string str1 = ss1.str();
+      string str2 = ss2.str();
+
+      BOOST_TEST(str1 == str2);
+     
+} FC_LOG_AND_RETHROW() }
 
 struct action1 {
    action1() = default;
@@ -1401,8 +1793,8 @@ struct action1 {
    uint64_t blah1;
    uint32_t blah2;
    uint8_t blah3;
-   static account_name get_account() { return N(acount1); }
-   static account_name get_name() { return N(action1); }
+   static account_name get_account() { return "acount1"_n; }
+   static account_name get_name() { return "action1"_n; }
 
    template<typename Stream>
    friend Stream& operator<<( Stream& ds, const action1& act ) {
@@ -1423,8 +1815,8 @@ struct action2 {
    uint32_t blah1;
    uint64_t blah2;
    uint8_t blah3;
-   static account_name get_account() { return N(acount2); }
-   static account_name get_name() { return N(action2); }
+   static account_name get_account() { return "acount2"_n; }
+   static account_name get_name() { return "action2"_n; }
 
    template<typename Stream>
    friend Stream& operator<<( Stream& ds, const action2& act ) {
@@ -1473,9 +1865,9 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.ref_block_num = 1;
    txn.ref_block_prefix = 2;
    txn.expiration.from_iso_string("2021-12-20T15:30");
-   name a = N(alice);
+   name a = "alice"_n;
    txn.context_free_actions.emplace_back(
-         vector<permission_level>{{N(testapi1), config::active_name}},
+         vector<permission_level>{{"testapi1"_n, config::active_name}},
          newaccount{
                .creator  = config::system_account_name,
                .name     = a,
@@ -1483,13 +1875,13 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
                .active   = authority( get_public_key( a, "active" ) )
          });
    txn.context_free_actions.emplace_back(
-         vector<permission_level>{{N(testapi2), config::active_name}},
+         vector<permission_level>{{"testapi2"_n, config::active_name}},
          action1{ 15, 23, (uint8_t)3});
    txn.actions.emplace_back(
-         vector<permission_level>{{N(testapi3), config::active_name}},
+         vector<permission_level>{{"testapi3"_n, config::active_name}},
          action2{ 42, 67, (uint8_t)1});
    txn.actions.emplace_back(
-         vector<permission_level>{{N(testapi4), config::active_name}},
+         vector<permission_level>{{"testapi4"_n, config::active_name}},
          action2{ 61, 23, (uint8_t)2});
    txn.max_net_usage_words = 15;
    txn.max_cpu_usage_ms = 43;
@@ -2269,7 +2661,7 @@ BOOST_AUTO_TEST_CASE(variants)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(variant_abi).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       // duplicate variant definition detected
       BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(duplicate_variant_abi).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ), duplicate_abi_variant_def_exception );
@@ -2319,7 +2711,7 @@ BOOST_AUTO_TEST_CASE(aliased_variants)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       verify_round_trip_conversion(abis, "foo", R"(["int8",21])", "0015");
    } FC_LOG_AND_RETHROW()
@@ -2345,7 +2737,7 @@ BOOST_AUTO_TEST_CASE(variant_of_aliases)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
+      abi_serializer abis(fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) );
 
       verify_round_trip_conversion(abis, "foo", R"(["foo_0",21])", "0015");
    } FC_LOG_AND_RETHROW()
@@ -2388,7 +2780,7 @@ BOOST_AUTO_TEST_CASE(action_results)
       // json -> variant -> abi_def -> bin
       auto bin = fc::raw::pack(fc::json::from_string(action_results_abi).as<abi_def>());
       // bin -> abi_def -> variant -> abi_def
-      auto def = variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>();
+      auto def = fc::variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>();
 
       BOOST_REQUIRE_EQUAL(def.action_results.value.size(), 2);
       BOOST_REQUIRE_EQUAL(def.action_results.value[0].name, name{"act1"});
@@ -2833,6 +3225,174 @@ BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
       verify_round_trip_conversion(abis, "s?", R"(null)", "00");
 
    } FC_LOG_AND_RETHROW()
+}
+
+template<class T>
+inline std::pair<action_trace, std::string> generate_action_trace(const std::optional<T> &  return_value, const std::string &  return_value_hex, bool parsable = true)
+{
+   action_trace at;
+   at.action_ordinal = 0;
+   at.creator_action_ordinal = 1;
+   at.closest_unnotified_ancestor_action_ordinal = 2;
+   at.receipt = std::optional<action_receipt>{};
+   at.receiver = action_name{"test"};
+   at.act = eosio::chain::action(
+      std::vector<eosio::chain::permission_level>{
+         eosio::chain::permission_level{
+            account_name{"acctest"},
+            permission_name{"active"}}},
+      account_name{"acctest"},
+      action_name{"acttest"},
+      bytes{fc::raw::pack(std::string{"test_data"})});
+   at.elapsed = fc::microseconds{3};
+   at.console = "console line";
+   at.trx_id = transaction_id_type{"5d039021cf3262c5036a6ad40a809ae1440ae6c6792a48e6e95abf083b108d5f"};
+   at.block_num = 4;
+   at.block_time = block_timestamp_type{5};
+   at.producer_block_id = std::optional<block_id_type>{};
+   if (return_value.has_value()) {
+      at.return_value = fc::raw::pack(*return_value);
+   }
+   std::stringstream expected_json;
+   expected_json
+      << "{"
+      <<     "\"action_traces\":{"
+      <<         "\"action_ordinal\":0,"
+      <<         "\"creator_action_ordinal\":1,"
+      <<         "\"closest_unnotified_ancestor_action_ordinal\":2,"
+      <<         "\"receipt\":null,"
+      <<         "\"receiver\":\"test\","
+      <<         "\"act\":{"
+      <<             "\"account\":\"acctest\","
+      <<             "\"name\":\"acttest\","
+      <<             "\"authorization\":[{"
+      <<                 "\"actor\":\"acctest\","
+      <<                 "\"permission\":\"active\""
+      <<             "}],"
+      <<             "\"data\":\"09746573745f64617461\""
+      <<         "},"
+      <<         "\"context_free\":false,"
+      <<         "\"elapsed\":3,"
+      <<         "\"console\":\"console line\","
+      <<         "\"trx_id\":\"5d039021cf3262c5036a6ad40a809ae1440ae6c6792a48e6e95abf083b108d5f\","
+      <<         "\"block_num\":4,"
+      <<         "\"block_time\":\"2000-01-01T00:00:02.500\","
+      <<         "\"producer_block_id\":null,"
+      <<         "\"account_ram_deltas\":[],"
+      <<         "\"account_disk_deltas\":[],"
+      <<         "\"except\":null,"
+      <<         "\"error_code\":null,"
+      <<         "\"return_value_hex_data\":\"" << return_value_hex << "\"";
+   if (return_value.has_value() && parsable) {
+      if (std::is_same<T, std::string>::value) {
+         expected_json
+            <<   ",\"return_value_data\":\"" << *return_value << "\"";
+      }
+      else {
+         expected_json
+             <<  ",\"return_value_data\":" << *return_value;
+      }
+   }
+   expected_json
+      <<     "}"
+      << "}";
+
+   return std::make_pair(at, expected_json.str());
+}
+
+inline std::pair<action_trace, std::string> generate_action_trace() {
+   return generate_action_trace(std::optional<char>(), "");
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__good_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace(std::optional<uint16_t>{6}, "0600");
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "acttest", "base": "", "fields": [
+            {"name": "str", "type": "string"}
+         ]},
+      ],
+      "action_results": [
+         {
+            "name": "acttest",
+            "result_type": "uint16"
+         }
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__bad_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace(std::optional<std::string>{"no return"}, "096e6f2072657475726e", false);
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "acttest", "base": "", "fields": [
+            {"name": "str", "type": "string"}
+         ]},
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
+}
+
+BOOST_AUTO_TEST_CASE(abi_to_variant__add_action__no_return_value)
+{
+   action_trace at;
+   std::string expected_json;
+   std::tie(at, expected_json) = generate_action_trace();
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {
+            "name": "acttest",
+            "base": "",
+            "fields": [
+               {"name": "str", "type": "string"}
+            ]
+         },
+      ],
+      "action_results": [
+         {
+            "name": "acttest",
+            "result_type": "uint16"
+         }
+      ]
+   })";
+   auto abidef = fc::json::from_string(abi).as<abi_def>();
+   abi_serializer abis(abidef, abi_serializer::create_yield_function(max_serialization_time));
+
+   mutable_variant_object mvo;
+   eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
+   eosio::chain::impl::abi_to_variant::add(mvo, "action_traces", at, get_resolver(abidef), ctx);
+   std::string res = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+
+   BOOST_CHECK_EQUAL(res, expected_json);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

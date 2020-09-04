@@ -59,13 +59,13 @@ namespace eosio::trace_api {
       std::optional<uint64_t> trace_offset;
       bool irreversible = false;
       uint64_t offset = scan_metadata_log_from(block_height, 0, [&block_height, &trace_offset, &irreversible](const metadata_log_entry& e) -> bool {
-         if (e.contains<block_entry_v0>()) {
-            const auto& block = e.get<block_entry_v0>();
+         if (std::holds_alternative<block_entry_v0>(e)) {
+            const auto& block = std::get<block_entry_v0>(e);
             if (block.number == block_height) {
                trace_offset = block.offset;
             }
-         } else if (e.contains<lib_entry_v0>()) {
-            auto lib = e.get<lib_entry_v0>().lib;
+         } else if (std::holds_alternative<lib_entry_v0>(e)) {
+            auto lib = std::get<lib_entry_v0>(e).lib;
             if (lib >= block_height) {
                irreversible = true;
                return false;

@@ -505,6 +505,60 @@ paths:
                     type: array
                     items: {}
 
+  /get_kv_table_rows:
+    post:
+      description: Returns an object containing rows from the specified kv table.
+      operationId: get_kv_table_rows
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - table
+                - index_name
+              properties:
+                code:
+                  type: string
+                  description: The name of the smart contract that controls the provided kv table
+                table:
+                  type: string
+                  description: The name of the kv table to query
+                index_name:
+                  type: string
+                  description: The name of primary or secondary index
+                encode_type:
+                  type: string ( 'bytes' for arbitray binary index value )
+                  description: Type of key specified by index_position (for example - `uint64_t` or `name`)
+                index_value:
+                  type: string
+                  description: index value used for point query encoded as 'encode_type'
+                lower_bound:
+                  type: string
+                  description:  lower bound index value for ranged query. Query result includes rows specified with lower_bound
+                upper_bound:
+                  type: string
+                  description:  upper bound index value for ranged query. Query result doesn't include rows specified with upper_bound
+                limit:
+                  type: integer
+                  description: Limit number of results returned.
+                  format: int32
+                reverse:
+                  type: boolean
+                  description: Reverse the order of returned results
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items: {}
+
   /abi_json_to_bin:
     post:
       description: Returns an object containing rows from the specified table.
@@ -680,3 +734,63 @@ paths:
                   more:
                     type: integer
                     description: "In case there's more activated protocol features than the input parameter `limit` requested, returns the ordinal of the next activated protocol feature which was not returned, otherwise zero."
+  /get_accounts_by_authorizers:
+    post:
+      description: Given a set of account names and public keys, find all account permission authorities that are, in part or whole, satisfiable
+      operationId: get_accounts_by_authorizers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accounts:
+                  type: array
+                  description: List of authorizing accounts and/or actor/permissions
+                  items:
+                    anyOf:
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                      - $ref: "https://eosio.github.io/schemata/v2.0/oas/Authority.yaml"
+                keys:
+                  type: array
+                  description: List of authorizing keys
+                  items:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Result containing a list of accounts which are authorized, in whole or part, by the provided accounts and keys
+                required:
+                  - accounts
+                properties:
+                  accounts:
+                    type: array
+                    description: An array of each account,permission,authorizing-data triplet in the response
+                    items:
+                      type: object
+                      description: the information for a single account,permission,authorizing-data triplet
+                      required:
+                        - account_name
+                        - permission_name
+                        - authorizer
+                        - weight
+                        - threshold
+                      properties:
+                        account_name:
+                          $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                        permission_name:
+                          $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                        authorizer:
+                          oneOf:
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/PublicKey.yaml"
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/Authority.yaml"
+                        weight:
+                          type: "integer"
+                          description: the weight that this authorizer adds to satisfy the permission
+                        threshold:
+                          type: "integer"
+                          description: the sum of weights that must be met or exceeded to satisfy the permission

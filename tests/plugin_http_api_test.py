@@ -324,6 +324,56 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
+        # get_kv_table_rows with empty parameter
+        default_cmd = cmd_base + "get_kv_table_rows"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"index_value\":\"pid1\"")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid4\"",)
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid5\"",
+                                                              "\"limit\":\"2\"")
+
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+
         # get_table_by_scope with empty parameter
         default_cmd = cmd_base + "get_table_by_scope"
         ret_json = Utils.runCmdReturnJson(default_cmd)
@@ -893,7 +943,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # update_runtime_options with valid parameter
         valid_cmd = default_cmd + self.http_post_str + ("'{%s, %s, %s, %s, %s, %s, %s, %s}'") % ("\"max_transaction_time\":30",
-                                                                                                 "\"max_irreversible_block_age\":1",
+                                                                                                 "\"max_irreversible_block_age\":-1",
                                                                                                  "\"produce_time_offset_us\":10000",
                                                                                                  "\"last_block_time_offset_us\":0",
                                                                                                  "\"max_scheduled_transaction_time_per_block_ms\":10000",
@@ -1025,23 +1075,8 @@ class PluginHttpTest(unittest.TestCase):
         # create_snapshot with empty parameter
         default_cmd = cmd_base + "create_snapshot"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"content-type: application/x-www-form-urlencoded; charset=UTF-8\"}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
+        self.assertIn("head_block_id", ret_json)
+        self.assertIn("snapshot_name", ret_json)
 
         # get_scheduled_protocol_feature_activations with empty parameter
         default_cmd = cmd_base + "get_scheduled_protocol_feature_activations"
