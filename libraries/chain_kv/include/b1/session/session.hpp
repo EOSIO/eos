@@ -515,6 +515,10 @@ void session<persistent_data_store, cache_data_store>::update_iterator_cache_(co
         it->second.deleted = erase;
     }
 
+    if (it->second.next_in_cache && it->second.previous_in_cache) {
+        return;
+    }
+
     auto [lower_bound, upper_bound] = bounds_(key);
 
     if (lower_bound != bytes::invalid) {
