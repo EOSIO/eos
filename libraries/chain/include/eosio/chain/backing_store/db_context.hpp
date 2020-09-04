@@ -203,5 +203,8 @@ namespace backing_store {
       };
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);
+      std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
+                                                            b1::chain_kv::database& database,
+                                                            b1::chain_kv::undo_stack& kv_undo_stack);
 
 }}} // ns eosio::chain::backing_store

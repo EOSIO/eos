@@ -5,43 +5,82 @@
 #include <boost/test/unit_test.hpp>
 #include <cstring>
 
+#include <boost/algorithm/string/predicate.hpp> //REMOVE
+
 using key_type = eosio::chain::backing_store::db_key_value_format::key_type;
 using name = eosio::chain::name;
 
 BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 
-constexpr uint64_t overhead_size = sizeof(name) * 2 + 1; // 8 (scope) + 8 (table) + 1 (key type)
+constexpr uint64_t overhead_size_without_type = eosio::chain::backing_store::db_key_value_format::prefix_size; // 8 (scope) + 8 (table)
+constexpr uint64_t overhead_size = overhead_size_without_type + 1; // ... + 1 (key type)
 
-template<typename Type>
-void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key) {
-   name scope;
-   name table;
-   Type key;
-   uint64_t primary_key = 0;
-   BOOST_CHECK(!eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, scope, table, key, primary_key));
+float128_t to_softfloat128( double d ) {
+   return f64_to_f128(to_softfloat64(d));
 }
 
-void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key, key_type except) {
+constexpr eosio::chain::uint128_t create_uint128(uint64_t upper, uint64_t lower) {
+   return (eosio::chain::uint128_t(upper) << 64) + lower;
+}
+
+constexpr eosio::chain::key256_t create_key256(eosio::chain::uint128_t upper, eosio::chain::uint128_t lower) {
+   return { upper, lower };
+}
+
+template <typename T>
+T init();
+
+template<>
+uint64_t init<uint64_t>() { return 0; }
+template<>
+eosio::chain::uint128_t init<eosio::chain::uint128_t>() { return create_uint128(0, 0); }
+template<>
+eosio::chain::key256_t init<eosio::chain::key256_t>() { return create_key256(create_uint128(0, 0), create_uint128(0, 0)); }
+template<>
+float64_t init<float64_t>() { return to_softfloat64(0.0); }
+template<>
+float128_t init<float128_t>() { return to_softfloat128(0.0); }
+
+template<typename Type>
+void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key, const name exp_scope, const name exp_table) {
+   name scope;
+   name table;
+   Type key = init<Type>();
+   const Type exp_key = key;
+   uint64_t primary_key = 0;
+   BOOST_CHECK(!eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, scope, table, key, primary_key));
+   BOOST_CHECK_EQUAL(exp_scope.to_string(), scope.to_string());
+   BOOST_CHECK_EQUAL(exp_table.to_string(), table.to_string());
+   BOOST_CHECK(exp_key == key);
+}
+
+void verify_other_gets(const b1::chain_kv::bytes& composite_key, key_type except, const name exp_scope, const name exp_table) {
    if (except != key_type::primary) {
       name scope;
       name table;
       uint64_t key = 0;
-      BOOST_CHECK_THROW(eosio::chain::backing_store::db_key_value_format::get_primary_key(composite_key, scope, table, key), eosio::chain::bad_composite_key_exception);
+      BOOST_CHECK(!eosio::chain::backing_store::db_key_value_format::get_primary_key(composite_key, scope, table, key));
+      BOOST_CHECK_EQUAL(exp_scope.to_string(), scope.to_string());
+      BOOST_CHECK_EQUAL(exp_table.to_string(), table.to_string());
+      BOOST_CHECK(0 == key);
    }
-   if (except != key_type::sec_i64) { verify_secondary_wont_convert<uint64_t>(composite_key); }
-   if (except != key_type::sec_i128) { verify_secondary_wont_convert<eosio::chain::uint128_t>(composite_key); }
-   if (except != key_type::sec_i256) { verify_secondary_wont_convert<eosio::chain::key256_t>(composite_key); }
-   if (except != key_type::sec_double) { verify_secondary_wont_convert<float64_t>(composite_key); }
-   if (except != key_type::sec_long_double) { verify_secondary_wont_convert<float128_t>(composite_key); }
+   if (except != key_type::sec_i64) { verify_secondary_wont_convert<uint64_t>(composite_key, exp_scope, exp_table); }
+   if (except != key_type::sec_i128) { verify_secondary_wont_convert<eosio::chain::uint128_t>(composite_key, exp_scope, exp_table); }
+   if (except != key_type::sec_i256) { verify_secondary_wont_convert<eosio::chain::key256_t>(composite_key, exp_scope, exp_table); }
+   if (except != key_type::sec_double) { verify_secondary_wont_convert<float64_t>(composite_key, exp_scope, exp_table); }
+   if (except != key_type::sec_long_double) { verify_secondary_wont_convert<float128_t>(composite_key, exp_scope, exp_table); }
    if (except != key_type::table) {
       name scope;
       name table;
-      BOOST_CHECK_THROW(eosio::chain::backing_store::db_key_value_format::get_table_key(composite_key, scope, table), eosio::chain::bad_composite_key_exception);
+      BOOST_CHECK(!eosio::chain::backing_store::db_key_value_format::get_table_key(composite_key, scope, table));
+      BOOST_CHECK_EQUAL(exp_scope.to_string(), scope.to_string());
+      BOOST_CHECK_EQUAL(exp_table.to_string(), table.to_string());
    }
-}
-
-float128_t to_softfloat128( double d ) {
-   return f64_to_f128(to_softfloat64(d));
+   name scope;
+   name table;
+   BOOST_CHECK_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_prefix_key(composite_key, scope, table));
+   BOOST_CHECK_EQUAL(exp_scope.to_string(), scope.to_string());
+   BOOST_CHECK_EQUAL(exp_table.to_string(), table.to_string());
 }
 
 std::pair<int, unsigned int> compare_composite_keys(const std::vector<b1::chain_kv::bytes>& keys, uint64_t lhs_index) {
@@ -138,7 +177,7 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    BOOST_CHECK_EQUAL(scope.to_string(), decomposed_scope.to_string());
    BOOST_CHECK_EQUAL(table.to_string(), decomposed_table.to_string());
    BOOST_CHECK_EQUAL(key, decomposed_key);
-   verify_secondary_wont_convert(composite_key, key_type::primary);
+   verify_other_gets(composite_key, key_type::primary, scope, table);
 
    std::vector<uint64_t> keys;
    keys.push_back(0x0);
@@ -162,7 +201,7 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    BOOST_CHECK_EQUAL(table2.to_string(), decomposed_table.to_string());
    BOOST_CHECK_EQUAL(key2, decomposed_key);
    BOOST_CHECK_EQUAL(primary_key2, decomposed_primary_key);
-   verify_secondary_wont_convert(composite_key2, key_type::sec_i64);
+   verify_other_gets(composite_key2, key_type::sec_i64, scope2, table2);
 
    std::vector<uint64_t> keys2;
    keys2.push_back(0x0);
@@ -171,10 +210,6 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    keys2.push_back(0x8000'0000'0000'0000);
    keys2.push_back(0xFFFF'FFFF'FFFF'FFFF);
    check_ordered_keys(keys2, &eosio::chain::backing_store::db_key_value_format::create_secondary_key<uint64_t>);
-}
-
-constexpr eosio::chain::uint128_t create_uint128(uint64_t upper, uint64_t lower) {
-   return (eosio::chain::uint128_t(upper) << 64) + lower;
 }
 
 BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
@@ -196,7 +231,7 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
    BOOST_CHECK(key == decomposed_key);
    BOOST_CHECK_EQUAL(primary_key, decomposed_primary_key);
 
-   verify_secondary_wont_convert(composite_key, key_type::sec_i128);
+   verify_other_gets(composite_key, key_type::sec_i128, scope, table);
 
    std::vector<eosio::chain::uint128_t> keys;
    keys.push_back(create_uint128(0x0, 0x0));
@@ -210,10 +245,6 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
    keys.push_back(create_uint128(0x8000'0000'0000'0000, 0xFFFF'FFFF'FFFF'FFFF));
    keys.push_back(create_uint128(0xFFFF'FFFF'FFFF'FFFF, 0xFFFF'FFFF'FFFF'FFFF));
    check_ordered_keys(keys, &eosio::chain::backing_store::db_key_value_format::create_secondary_key<eosio::chain::uint128_t>);
-}
-
-constexpr eosio::chain::key256_t create_key256(eosio::chain::uint128_t upper, eosio::chain::uint128_t lower) {
-   return { upper, lower };
 }
 
 BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
@@ -236,7 +267,7 @@ BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
    BOOST_CHECK(key == decomposed_key);
    BOOST_CHECK_EQUAL(primary_key, decomposed_primary_key);
 
-   verify_secondary_wont_convert(composite_key, key_type::sec_i256);
+   verify_other_gets(composite_key, key_type::sec_i256, scope, table);
 
    std::vector<eosio::chain::key256_t> keys;
    keys.push_back(create_key256(create_uint128(0x0, 0x0), create_uint128(0x0, 0x0)));
@@ -272,7 +303,7 @@ BOOST_AUTO_TEST_CASE(float64_key_conversions_test) {
    BOOST_CHECK_EQUAL(key, decomposed_key);
    BOOST_CHECK_EQUAL(primary_key, decomposed_primary_key);
 
-   verify_secondary_wont_convert(composite_key, key_type::sec_double);
+   verify_other_gets(composite_key, key_type::sec_double, scope, table);
 
    std::vector<float64_t> keys;
    keys.push_back(to_softfloat64(-100000.0));
@@ -305,7 +336,7 @@ BOOST_AUTO_TEST_CASE(float128_key_conversions_test) {
    BOOST_CHECK_EQUAL(key, decomposed_key);
    BOOST_CHECK_EQUAL(primary_key, decomposed_primary_key);
 
-   verify_secondary_wont_convert(composite_key, key_type::sec_long_double);
+   verify_other_gets(composite_key, key_type::sec_long_double, scope, table);
 
    std::vector<float128_t> keys;
    keys.push_back(to_softfloat128(-100000.001));
@@ -380,7 +411,20 @@ BOOST_AUTO_TEST_CASE(table_key_conversions_test) {
    BOOST_REQUIRE_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_table_key(composite_key, decomposed_scope, decomposed_table));
    BOOST_CHECK_EQUAL(scope.to_string(), decomposed_scope.to_string());
    BOOST_CHECK_EQUAL(table.to_string(), decomposed_table.to_string());
-   verify_secondary_wont_convert(composite_key, key_type::table);
+   verify_other_gets(composite_key, key_type::table, scope, table);
+}
+
+BOOST_AUTO_TEST_CASE(prefix_key_conversions_test) {
+   const name scope = N(myscope);
+   const name table = N(thisscope);
+   const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_prefix_key(scope, table);
+   BOOST_REQUIRE_EQUAL(overhead_size_without_type, composite_key.size());  //
+
+   name decomposed_scope;
+   name decomposed_table;
+   BOOST_REQUIRE_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_prefix_key(composite_key, decomposed_scope, decomposed_table));
+   BOOST_CHECK_EQUAL(scope.to_string(), decomposed_scope.to_string());
+   BOOST_CHECK_EQUAL(table.to_string(), decomposed_table.to_string());
 }
 
 BOOST_AUTO_TEST_CASE(compare_key_type_order_test) {
@@ -388,20 +432,92 @@ BOOST_AUTO_TEST_CASE(compare_key_type_order_test) {
    // enforce the order for the different key types with the same scope and table
    const name scope;
    const name table;
-   const uint64_t prim_key = 0x0;
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_primary_key(scope, table, prim_key));
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, uint64_t(0x0), prim_key));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 0).first);
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, create_uint128(0x0, 0x0), prim_key));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 1).first);
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, create_key256(create_uint128(0x0, 0x0), create_uint128(0x0, 0x0)), prim_key));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 2).first);
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, to_softfloat64(0.0), prim_key));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 3).first);
-   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, to_softfloat128(0.0), prim_key));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 4).first);
+   uint64_t next = 0;
+   const uint64_t max = std::numeric_limits<uint64_t>::max();
+   const eosio::chain::uint128_t max_i128 = create_uint128(max, max);
+   const eosio::chain::key256_t max_i256 = create_key256(create_uint128(max, max), create_uint128(max, max));
+   const float64_t max_f64 = to_softfloat64(std::numeric_limits<double>::max());
+   const float128_t max_f128 = to_softfloat128(std::numeric_limits<double>::max()); // close enough
+   using key_type = eosio::chain::backing_store::db_key_value_format::key_type;
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_prefix_key(scope, table));
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_primary_key(scope, table, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_primary_key(scope, table, max));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_prim_key(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, uint64_t(0x0), 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, max, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_sec_key<uint64_t>(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, create_uint128(0x0, 0x0), 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, max_i128, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_sec_key<eosio::chain::uint128_t>(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, create_key256(create_uint128(0x0, 0x0), create_uint128(0x0, 0x0)), 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, max_i256, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_sec_key<eosio::chain::key256_t>(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, to_softfloat64(0.0), 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, max_f64, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_sec_key<float64_t>(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, to_softfloat128(0.0), 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, max_f128, 0x0));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+   composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_upper_bound_sec_key<float128_t>(scope, table));
+   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, next++).first);
+
+   // upper_bound for float128_t is
    composite_keys.push_back(eosio::chain::backing_store::db_key_value_format::create_table_key(scope, table));
-   BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 5).first);
+   BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_keys, next++).first);
+}
+
+template <typename Exception>
+void verify_primary_exception(const b1::chain_kv::bytes& composite_key, const std::string& starts_with) {
+   uint64_t decomposed_key;
+   name decomposed_scope;
+   name decomposed_table;
+   BOOST_CHECK_EXCEPTION(
+         eosio::chain::backing_store::db_key_value_format::get_primary_key(composite_key, decomposed_scope, decomposed_table, decomposed_key),
+         Exception,
+         eosio::testing::fc_exception_message_starts_with(starts_with)
+   );
+}
+
+template <typename Key, typename Exception>
+void verify_secondary_exception(const b1::chain_kv::bytes& composite_key, const std::string& starts_with) {
+   name decomposed_scope;
+   name decomposed_table;
+   Key decomposed_key = init<Key>();
+   uint64_t decomposed_primary_key = 0;
+   BOOST_CHECK_EXCEPTION(
+         eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, decomposed_scope, decomposed_table, decomposed_key, decomposed_primary_key),
+         Exception,
+         eosio::testing::fc_exception_message_starts_with(starts_with)
+   );
+}
+
+BOOST_AUTO_TEST_CASE(verify_no_type_in_key_test) {
+   const name scope = N(myscope);
+   const name table = N(thisscope);
+   const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_prefix_key(scope, table);
+   const std::string starts_with = "DB intrinsic key-value store composite key is malformed, it does not contain an indication of the type of the db-key";
+   verify_primary_exception<eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
+   verify_secondary_exception<uint64_t, eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
+   verify_secondary_exception<eosio::chain::uint128_t, eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
+   verify_secondary_exception<eosio::chain::key256_t, eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
+   verify_secondary_exception<float64_t, eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
+   verify_secondary_exception<float128_t, eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
 }
 
 using namespace eosio::chain::backing_store;
@@ -484,7 +600,7 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    );
 
    eosio::chain::uint128_t key = 0;
-   uint64_t payer = 0;
+   eosio::chain::account_name payer;
    BOOST_CHECK_EXCEPTION(
       i128_cache.swap( i128_cache.invalid_iterator(), key, payer ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "invalid iterator" )
@@ -499,12 +615,12 @@ BOOST_AUTO_TEST_CASE(invalid_itr_cache_test) {
    );
 
    using i128_type = secondary_key<eosio::chain::uint128_t>;
-   const i128_type i128_1 = { .table_ei = i128_cache.invalid_iterator(), .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
+   const i128_type i128_1 = { .table_ei = i128_cache.invalid_iterator(), .secondary = 0x0, .primary = 0x0, .payer = name{} };
    BOOST_CHECK_EXCEPTION(
       i128_cache.add( i128_1 ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "not an end iterator" )
    );
-   const i128_type i128_2 = { .table_ei = i128_cache.invalid_iterator() - 1, .secondary = 0x0, .primary = 0x0, .payer = 0x0 };
+   const i128_type i128_2 = { .table_ei = i128_cache.invalid_iterator() - 1, .secondary = 0x0, .primary = 0x0, .payer = name{} };
    BOOST_CHECK_EXCEPTION(
       i128_cache.add( i128_2 ), eosio::chain::invalid_table_iterator,
       eosio::testing::fc_exception_message_is( "an invariant was broken, table should be in cache" )
@@ -518,8 +634,14 @@ void validate_get(const db_key_value_iter_store<T>& cache, const secondary_key<T
    BOOST_CHECK_EQUAL(obj_in_cache.table_ei, orig.table_ei);
    BOOST_CHECK(obj_in_cache.secondary == orig.secondary);
    BOOST_CHECK_EQUAL(obj_in_cache.primary, orig.primary);
+   const int found_itr = cache.find(orig);
+   BOOST_CHECK_EQUAL(itr, found_itr);
    if (check_payer) {
       BOOST_CHECK_EQUAL(obj_in_cache.payer, orig.payer);
+   }
+   else {
+      // invariant needed to ensure payer not required, if this fails either that has changed, or check_payer was incorrectly set to false
+      BOOST_CHECK_NE(obj_in_cache.payer, orig.payer);
    }
 }
 
@@ -551,28 +673,28 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
    const auto t2_itr = key_cache.cache_table(t2);
    const bool dont_check_payer = false;
 
-   const key_type key_1 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = 0x0 };
+   const key_type key_1 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = name{0x0} };
    const auto key_1_itr = key_cache.add(key_1);
    BOOST_CHECK_LT(key_cache.invalid_iterator(), key_1_itr);
    validate_get(key_cache, key_1, key_1_itr);
 
    // verify that payer isn't part of uniqueness
-   const key_type key_1_diff_payer = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = 0x1 };
+   const key_type key_1_diff_payer = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = name{0x1} };
    validate_get(key_cache, key_1_diff_payer, key_1_itr, dont_check_payer);
 
-   const key_type key_2 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x1, .payer = 0x0 };
+   const key_type key_2 = { .table_ei = t1_itr, .secondary = keys.sec_val_1, .primary = 0x1, .payer = name{0x0} };
    const auto key_2_itr = key_cache.add(key_2);
    BOOST_CHECK_LT(key_cache.invalid_iterator(), key_2_itr);
    validate_get(key_cache, key_2, key_2_itr);
    BOOST_CHECK_LT(key_1_itr, key_2_itr);
 
-   const key_type key_3 = { .table_ei = t1_itr, .secondary = keys.sec_val_2, .primary = 0x0, .payer = 0x0 };
+   const key_type key_3 = { .table_ei = t1_itr, .secondary = keys.sec_val_2, .primary = 0x0, .payer = name{0x0} };
    const auto key_3_itr = key_cache.add(key_3);
    BOOST_CHECK_LT(key_cache.invalid_iterator(), key_3_itr);
    validate_get(key_cache, key_3, key_3_itr);
    BOOST_CHECK_LT(key_2_itr, key_3_itr);
 
-   const key_type key_4 = { .table_ei = t2_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = 0x0 };
+   const key_type key_4 = { .table_ei = t2_itr, .secondary = keys.sec_val_1, .primary = 0x0, .payer = name{0x0} };
    const auto key_4_itr = key_cache.add(key_4);
    BOOST_CHECK_LT(key_cache.invalid_iterator(), key_4_itr);
    validate_get(key_cache, key_4, key_4_itr);
@@ -586,13 +708,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
    // verify remove of an iterator that previously existed is fine
    key_cache.remove(key_1_itr);
    // verify swap of an iterator that previously existed is fine
-   key_cache.swap(key_1_itr, keys.sec_val_3, 0x2);
+   key_cache.swap(key_1_itr, keys.sec_val_3, name{0x2});
    // validate that the repeat of key_1 w/ different payer can be added now
    const auto key_1_diff_payer_itr = key_cache.add(key_1_diff_payer);
    BOOST_CHECK_LT(key_4_itr, key_1_diff_payer_itr);
    validate_get(key_cache, key_1_diff_payer, key_1_diff_payer_itr);
 
-   const key_type key_2_swap_payer = { .table_ei = key_2.table_ei, .secondary = key_2.secondary, .primary = key_2.primary, .payer = 0x2 };
+   const key_type key_2_swap_payer = { .table_ei = key_2.table_ei, .secondary = key_2.secondary, .primary = key_2.primary, .payer = name{0x2} };
    key_cache.swap(key_2_itr, key_2.secondary, key_2_swap_payer.payer); // same key, different payer
    validate_get(key_cache, key_2_swap_payer, key_2_itr);
    const auto key_2_swap_payer_itr = key_cache.add(key_2_swap_payer);
@@ -600,7 +722,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(itr_cache_test, KEY_SUITE, key_suite) {
    const key_type key_2_swap_key = { .table_ei = key_2.table_ei, .secondary = keys.sec_val_3, .primary = key_2.primary, .payer = key_2_swap_payer.payer };
    key_cache.swap(key_2_itr, key_2_swap_key.secondary, key_2_swap_key.payer); // same key, different payer
    validate_get(key_cache, key_2_swap_key, key_2_itr);
-   const key_type key_2_swap_both = { .table_ei = key_2.table_ei, .secondary = keys.sec_val_4, .primary = key_2.primary, .payer = 0x3 };
+   const key_type key_2_swap_both = { .table_ei = key_2.table_ei, .secondary = keys.sec_val_4, .primary = key_2.primary, .payer = name{0x3} };
    key_cache.swap(key_2_itr, key_2_swap_both.secondary, key_2_swap_both.payer); // same key, different payer
    validate_get(key_cache, key_2_swap_both, key_2_itr);
    const auto key_2_reload_itr = key_cache.add(key_2);

@@ -3,6 +3,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
+#include <eosio/chain/backing_store/chain_kv_payer.hpp>
 
 namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);
@@ -164,9 +165,9 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (kv) {
-            actual_size = actual_value_size( kv->value.size() );
+            actual_size = backing_store::actual_value_size( kv->value.size() );
             if (offset < actual_size)
-               memcpy(dest, actual_value_start(kv->value.data()) + offset, std::min(size, actual_size - offset));
+               memcpy(dest, backing_store::actual_value_start(kv->value.data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -181,7 +182,7 @@ namespace eosio { namespace chain {
             auto kv = kv_it.get_kv();
 
             // kv is always non-null due to the check of is_valid()
-            *found_value_size = actual_value_size( kv->value.size() ); // This must be before *found_key_size in case actual_value_size throws
+            *found_value_size = backing_store::actual_value_size( kv->value.size() ); // This must be before *found_key_size in case actual_value_size throws
             *found_key_size = kv->key.size();
          } else {
             *found_key_size = 0;
@@ -236,14 +237,14 @@ namespace eosio { namespace chain {
                old_value = view.get(contract, { key, key_size });
                if (!old_value)
                   return 0;
-               actual_old_value_size = actual_value_size(old_value->size()); 
+               actual_old_value_size = backing_store::actual_value_size(old_value->size());
                view.erase(contract, { key, key_size });
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = get_payer(old_value->data());
+         account_name payer = backing_store::get_payer(old_value->data());
 
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
@@ -261,18 +262,18 @@ namespace eosio { namespace chain {
             try {
                old_value = view.get(contract, { key, key_size });
                if (old_value) {
-                  old_value_size = actual_value_size(old_value->size());
+                  old_value_size = backing_store::actual_value_size(old_value->size());
                }
 
                // need to store payer to properly credit this
                // account when storage is removed or changed
                // to another payer
                bytes total_value;
-               const uint32_t total_value_size = kv_payer_size + value_size;
+               const uint32_t total_value_size = backing_store::payer_in_value_size + value_size;
                total_value.reserve(total_value_size);
 
-               char buf[kv_payer_size];
-               memcpy(buf, &payer, kv_payer_size);
+               char buf[backing_store::payer_in_value_size];
+               memcpy(buf, &payer, backing_store::payer_in_value_size);
                total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
 
                total_value.insert(total_value.end(), value, value + value_size); 
@@ -285,7 +286,7 @@ namespace eosio { namespace chain {
 
          int64_t resource_delta;
          if (old_value) {
-            account_name old_payer = get_payer(old_value->data());
+            account_name old_payer = backing_store::get_payer(old_value->data());
 
             resource_delta = update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
@@ -305,7 +306,7 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (temp_data_buffer) {
-            value_size = actual_value_size(temp_data_buffer->size());
+            value_size = backing_store::actual_value_size(temp_data_buffer->size());
             return true;
          } else {
             value_size = 0;
@@ -317,8 +318,8 @@ namespace eosio { namespace chain {
          const char* temp      = nullptr;
          uint32_t    temp_size = 0;
          if (temp_data_buffer) {
-            temp      = actual_value_start(temp_data_buffer->data());
-            temp_size = actual_value_size(temp_data_buffer->size());
+            temp      = backing_store::actual_value_start(temp_data_buffer->data());
+            temp_size = backing_store::actual_value_size(temp_data_buffer->size());
          }
          if (offset < temp_size)
             memcpy(data, temp + offset, std::min(data_size, temp_size - offset));

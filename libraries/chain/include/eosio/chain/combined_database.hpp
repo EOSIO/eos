@@ -44,6 +44,13 @@ namespace eosio { namespace chain {
    using contract_database_index_set = index_set<key_value_index, index64_index, index128_index, index256_index,
                                                  index_double_index, index_long_double_index>;
 
+   class apply_context;
+
+   namespace backing_store {
+      struct db_context;
+   }
+   using db_context = backing_store::db_context;
+
    class combined_session {
     public:
       combined_session() = default;
@@ -97,6 +104,8 @@ namespace eosio { namespace chain {
 
       std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
                                                     const kv_database_config& limits);
+
+      std::unique_ptr<db_context> create_db_context(apply_context& context, name receiver);
 
       void add_to_snapshot(const eosio::chain::snapshot_writer_ptr& snapshot, const eosio::chain::block_state& head,
                            const eosio::chain::authorization_manager&                    authorization,
