@@ -224,7 +224,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          websocket_local_server_type unix_server;
 #endif
 
-         bool                     validate_host;
+         bool                     validate_host = true;
          set<string>              valid_hosts;
 
          bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
@@ -398,7 +398,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             // No copy constructor and no move
             abstract_conn_impl(const abstract_conn_impl&) = delete;
             abstract_conn_impl(abstract_conn_impl&&) = delete;
-            abstract_conn_impl& operator=(const abstract_conn_impl&) = default;
+            abstract_conn_impl& operator=(const abstract_conn_impl&) = delete;
 
             abstract_conn_impl& operator=(abstract_conn_impl&&) noexcept = default;
 
@@ -645,6 +645,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                ws.init_asio( &thread_pool->get_executor() );
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
+               // captures `this` & ws, my needs to live as long as server is handling requests
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
@@ -874,7 +875,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   my->unix_server.init_asio( &my->thread_pool->get_executor() );
                   my->unix_server.set_max_http_body_size(my->max_body_size);
                   my->unix_server.listen(*my->unix_endpoint);
-                  my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
+                  // captures `this`, my needs to live as long as unix_server is handling requests
+                  my->unix_server.set_http_handler([this](connection_hdl hdl) {
                      my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
                   });
                   my->unix_server.start_accept();
@@ -949,7 +951,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          my->thread_pool->stop();
       }
 
-      // release my shared_ptrs
+      // release http_plugin_impl_ptr shared_ptrs captured in url handlers
       my->url_handlers.clear();
 
       app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
