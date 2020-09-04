@@ -607,12 +607,11 @@ BOOST_AUTO_TEST_CASE(session_iteration) {
     write(transaction_session, transaction_session_kvs);
     
     // Iterate a few times just for a time measurement.
-    for (size_t i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 10; ++i) {
         auto begin = std::begin(transaction_session);
         auto current = std::begin(transaction_session);
         do {
-            ++current;
-        } while (current != begin);
+        } while (++current != begin);
     }
 }
 
