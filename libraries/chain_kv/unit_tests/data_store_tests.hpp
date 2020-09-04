@@ -190,7 +190,7 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
 
 template <typename pds, typename cds, typename Key, typename Value>
 void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_map<Key, Value>& container, string_t) {
-  auto verify_key_value = [&](auto kv) {
+    auto verify_key_value = [&](auto kv) {
         auto key = std::string{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
         auto it = container.find(key);
         BOOST_REQUIRE(it != std::end(container));
@@ -361,12 +361,12 @@ void verify_session_key_order(T& ds) {
         auto kv = *kv_it;
         if (current_key == eosio::session::bytes::invalid) {
             current_key = kv.key();
+            ++kv_it;
             continue;
         }
 
         BOOST_REQUIRE(compare(current_key, kv.key()) == true);
         current_key = kv.key();
-
         ++kv_it;
     } while (kv_it != begin);
 }
@@ -466,7 +466,7 @@ void verify_read_from_datastore(eosio::session::session<pds, cds>& ds, eosio::se
             BOOST_REQUIRE(left.contains(kv.key()) == true);
             BOOST_REQUIRE(left.read(kv.key()) == kv);
             ++kv_it2;
-        } while (kv_it2 != begin1);
+        } while (kv_it2 != begin2);
     };
 
     auto keys = std::vector<eosio::session::bytes>{};
@@ -529,7 +529,7 @@ void verify_write_to_datastore(eosio::session::session<pds, cds>& ds, eosio::ses
             BOOST_REQUIRE(left.contains(kv.key()) == true);
             BOOST_REQUIRE(left.read(kv.key()) == kv);
             ++kv_it2;
-        } while (kv_it2 != begin1);
+        } while (kv_it2 != begin2);
     };
 
     auto keys = std::vector<eosio::session::bytes>{};

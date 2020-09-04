@@ -251,6 +251,16 @@ template <>
 struct less<eosio::session::bytes> final {
 public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
+        if (lhs == eosio::session::bytes::invalid && rhs == eosio::session::bytes::invalid) {
+            return false;
+        }
+        if (lhs == eosio::session::bytes::invalid) {
+            return true;
+        }
+        if (rhs == eosio::session::bytes::invalid) {
+            return false;
+        }
+
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
@@ -259,6 +269,16 @@ template <>
 struct greater<eosio::session::bytes> final {
 public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
+        if (lhs == eosio::session::bytes::invalid && rhs == eosio::session::bytes::invalid) {
+            return false;
+        }
+        if (lhs == eosio::session::bytes::invalid) {
+            return true;
+        }
+        if (rhs == eosio::session::bytes::invalid) {
+            return false;
+        }
+
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     };
 };
