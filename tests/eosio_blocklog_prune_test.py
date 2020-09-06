@@ -110,6 +110,7 @@ try:
     Utils.Print("verify the context free transaction from producer node")
     trans_from_full = producerNode.getTransaction(cfTrxId)
     assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
+    Utils.Print("trans:\n%s" % (json.dumps(trans_from_full, indent=2)))
 
     producerNode.kill(signal.SIGTERM)
 
@@ -137,6 +138,7 @@ try:
     assert trans, "Failed to get the transaction with context free data from the producer node"
     # check whether the transaction has been pruned based on the tag of prunable_data, if the tag is 1, then it's a prunable_data_t::none
     assert trans["trx"]["receipt"]["trx"][1]["prunable_data"]["prunable_data"][0] == 1, "the the transaction with context free data has not been pruned"
+    Utils.Print("pruned trans:\n%s" % (json.dumps(trans, indent=2)))
 
     producerNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="producerNode LIB did not advance")
     assert producerNode.waitForHeadToAdvance(), "the producer node stops producing"
