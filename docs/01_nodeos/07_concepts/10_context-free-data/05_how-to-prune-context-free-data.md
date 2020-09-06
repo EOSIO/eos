@@ -1,49 +1,47 @@
 ---
-content_title: How to prune context-free data (CFD)
+content_title: How to prune context-free data
 link_text: How to prune context-free data
 ---
 
 ## Summary
 
-This how-to procedure showcases how to prune context-free data from a transaction.
+This how-to procedure showcases how to prune context-free data (CFD) from a transaction. The process involves launching the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility with the `--prune-transactions` option, the transaction ID(s) that contain(s) the context-free data, and additional options as specified below.
 
-[[info | Pruning on Public Chains]]
-| This procedure is not suitable for public EOSIO blockchains, unless previously agreed through EOSIO consensus by a supermajority of producers. Even if a rogue producing node on a public EOSIO network contains a pruned transaction, only their node would be affected. The integrity of the blockchain would not be compromised.
+[[info | Data Pruning on Public Chains]]
+| Pruning transaction data is not suitable for public EOSIO blockchains, unless previously agreed upon through EOSIO consensus by a supermajority of producers. Even if a producing node on a public EOSIO network prunes context-free data from a transaction, only their node would be affected. The integrity of the blockchain would not be compromised.
 
-In summary, to prune context-free data within a transaction, invoke the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility with the `--prune-transactions` option, the transaction ID(s) that contain(s) the context-free data, and additional options as specified below.
+## Prerequisites
 
-## Prerequites
-
-* A transaction of `pruned_transaction` type with context-free data in a finalized block.
-* Get familiar with the [context-free data](index.md) section within a transaction.
+* The ID of a retired transaction with context-free data in a finalized block.
+* Get familiar with the [context-free data](index.md) section of a transaction.
 * Read the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) command-line utility reference.
 
 ## Procedure
 
 Complete the following steps to prune the context-free data from the transaction:
 
-1. Locate the transaction ID first used to get the transaction from the chain, say `<trx_id>`. The transaction ID can also be found on the `id` field of the transaction.
+1. Locate the transaction ID you want to prune the context-free data from, say `<trx_id>`. The transaction ID can also be found on the `id` field of the transaction.
 2. Locate the block number that contains the transaction, say `<block_num>`. The block number can also be found on the `block_num` field of the transaction.
 3. Find the blocks directory and state history directory (if applicable), say `<blocks_dir>` and `<state_hist_dir>`, respectively.
-4. Invoke the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
+4. Launch the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
 
-   `eosio-blocklog [--blocks-dir <blocks_dir>] [--state-history-dir <state_hist_dir>] --prune-transactions   --block-num <block_num> --transaction <trx_id>  [--transaction <trx_id2> ...]`
+   `eosio-blocklog [--blocks-dir <blocks_dir>] [--state-history-dir <state_hist_dir>] --prune-transactions --block-num <block_num> --transaction <trx_id> [--transaction <trx_id2> ...]`
 
    If successful:
-   * The [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility will terminate silently with a zero error code (no error).
-   * The following fields will be updated within the pruned transaction from the block logs:
-      * the `prunable_data["prunable_data"][0]` field will be set from 0 to 1.
-      * the `signatures` field will contain an empty array.
-      * the `context_free_data` field will contain an empty array.
-      * the `packed_context_free_data` field, if any, will be removed.
+   * The [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility terminates silently with a zero error code (no error).
+   * The following fields are updated within the pruned transaction from the block logs:
+      * the `prunable_data["prunable_data"][0]` field is set from 0 to 1.
+      * the `signatures` field is set to an empty array.
+      * the `context_free_data` field is set to an empty array.
+      * the `packed_context_free_data` field, if any, is removed.
 
    If unsuccessful:
-   * The [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility will output an error to `stderr` and terminate with a non-zero error code (indicating an error).
+   * The [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility outputs an error to `stderr` and terminates with a non-zero error code (indicating an error).
 
 ## Notes
 
-* You can pass multiple transactions to [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) if they are within the same specified block.
-* You can also use [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) to get and display the block that contains the pruned transactions.
+* You can pass multiple transactions to [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) if they are within the same block.
+* You can use [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) to display the block that contains the pruned transactions.
 
 ## Example
 
@@ -202,13 +200,13 @@ Using the above transaction and recreating the steps listed above:
 1. Locate the transaction ID: `7add73de37bbd9072bf76c62aa8ec1dd1b17a0fa8e368162a4a950905cfbe1e6`.
 2. Locate the block number: `116`.
 3. Find the blocks directory and state history directory (if applicable), say `<blocks_dir>` and `<state_hist_dir>`.
-4. Invoke the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
+4. Launch the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
 
-   `eosio-blocklog [--blocks-dir <blocks_dir>] [--state-history-dir <state_hist_dir>] --prune-transactions   --block-num 116 --transaction 7add73de37bbd9072bf76c62aa8ec1dd1b17a0fa8e368162a4a950905cfbe1e6`
+   `eosio-blocklog --blocks-dir <blocks_dir> --state-history-dir <state_hist_dir> --prune-transactions --block-num 116 --transaction 7add73de37bbd9072bf76c62aa8ec1dd1b17a0fa8e368162a4a950905cfbe1e6`
 
 The utility will return silently if successful, or output an error to `stdout` otherwise.
 
-After retrieving the same transaction, the pruned transaction will look as follows:
+After retrieving the transaction a second time, the pruned transaction looks as follows:
 
 ```json
 {

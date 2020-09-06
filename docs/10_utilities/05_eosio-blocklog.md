@@ -3,7 +3,7 @@ content_title: eosio-blocklog
 link_text: eosio-blocklog
 ---
 
-`eosio-blocklog` is a command-line interface (CLI) utility that allows node operators to perform low-level tasks on the block logs created by a `nodeos` instance. In particular, `eosio-blocklog` performs one of the following operations when run:
+`eosio-blocklog` is a command-line interface (CLI) utility that allows node operators to perform low-level tasks on the block logs created by a `nodeos` instance. In particular, `eosio-blocklog` can perform one of the following operations when launched:
 
 * Convert a range of blocks to JSON format, as single objects or array.
 * Generate `blocks.index` from `blocks.log` in blocks directory.
@@ -14,6 +14,8 @@ link_text: eosio-blocklog
 * Output the results of the operation to a file or `stdout` (default).
 
 ## Options
+
+`eosio-blocklog` supports the following options:
 
 Option (=default) | Description
 -|-
@@ -32,3 +34,9 @@ Option (=default) | Description
 `-t [ --transaction ] arg` | The transaction id to be pruned
 `--prune-transactions` | Prune the context free data and signatures from specified transactions of specified block-num
 `-h [ --help ]` | Print this help message and exit
+
+## Remarks
+
+When `eosio-blocklog` is launched, the utility attempts to perform the selected operation, yielding the following possible outcomes:
+* If successful, the selected operation is performed and the utility terminates silently with a zero error code (no error).
+* If unsuccessful, the utility outputs an error to `stderr` and terminates with a non-zero error code (indicating an error).
