@@ -3,6 +3,7 @@ content_title: Context-Free Data (CFD)
 link_text: Context-Free Data
 ---
 
+## Overview
 The immutable nature of the blockchain allows data to be stored securely while also enforcing the integrity of such data. However, this benefit also complicates the removal of non-essential data from the blockchain. Consequently, EOSIO blockchains contain a special section within the transaction, called the *context-free data*, which allows the potential removal of such data, as long as the contents are free from previous contexts or dependencies. More importantly, such removal can be performed safely without compromising the integrity of the blockchain.
 
 [[info | Blockchain Integrity]]
@@ -26,7 +27,7 @@ Blockchain applications that use context-free data might also want to remove the
 Pruning of context-free data only allows light block validation between trusted nodes. Full block validation, which involves transaction signature verification and permission authorization checks, is not fully feasible without violating the integrity checks of blocks and transactions where the pruning occurred.
 
 [[info | Pruning on Private Blockchains]]
-| Private EOSIO blockchains can benefit the most from context-free data pruning. Their controlled environment allows for trusted nodes to operate in light validation mode, which makes this powerful feature possible.
+| Private EOSIO blockchains can benefit the most from context-free data pruning. Their controlled environment allows for trusted nodes to operate in light validation mode. This allows blockchain applications to use private EOSIO blockchains for this powerful feature.
 
 ### Pruning Support
 `nodeos` supports the pruning of context-free data by meeting the following requirements:
