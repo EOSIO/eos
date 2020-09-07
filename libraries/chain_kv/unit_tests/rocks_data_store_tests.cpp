@@ -7,10 +7,10 @@ using namespace eosio::session_tests;
 
 namespace eosio::session_tests {
 
-template <typename allocator>
-rocks_data_store<allocator> make_rocks_data_store(const std::string name = "testdb")
+template <typename Allocator>
+rocks_data_store<Allocator> make_rocks_data_store(const std::string name = "testdb")
 {
-  auto a = allocator::make();
+  auto a = Allocator::make();
   auto rocksdb = make_rocks_db(name);
   return eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(a));
 }

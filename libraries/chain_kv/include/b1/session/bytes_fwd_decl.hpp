@@ -9,11 +9,11 @@ using free_function_type = std::function<void(void* data, size_t length_bytes)>;
 
 class bytes;
 
-template <typename T, typename allocator>
-bytes make_bytes(const T* data, size_t length, allocator& a);
+template <typename T, typename Allocator>
+bytes make_bytes(const T* data, size_t length, Allocator& a);
 
-template <typename allocator>
-bytes make_bytes(const void* data, size_t length, allocator& a);
+template <typename Allocator>
+bytes make_bytes(const void* data, size_t length, Allocator& a);
 
 template <typename T>
 bytes make_bytes(const T* data, size_t length);

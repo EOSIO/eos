@@ -16,25 +16,25 @@ class bytes final {
 public:
     friend class key_value;
     
-    template <typename T, typename allocator>
-    friend bytes make_bytes(const T* data, size_t length, allocator& a);
+    template <typename T, typename Allocator>
+    friend bytes make_bytes(const T* data, size_t length, Allocator& a);
 
-    template <typename allocator>
-    friend bytes make_bytes(const void* data, size_t length, allocator& a);
+    template <typename Allocator>
+    friend bytes make_bytes(const void* data, size_t length, Allocator& a);
     
     template <typename T>
     friend bytes make_bytes(const T* data, size_t length);
     
     friend key_value make_kv(bytes key, bytes value);
 
-    template <typename key, typename value, typename allocator>
-    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
+    template <typename Key, typename Value, typename Allocator>
+    friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length, Allocator& a);
     
-    template <typename key, typename value>
-    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
+    template <typename Key, typename Value>
+    friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
 
-    template <typename allocator>
-    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
+    template <typename Allocator>
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a);
     
     friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 
@@ -78,13 +78,13 @@ private:
 // \param data A pointer to an array of items to store in a bytes instance.
 // \param length The number of items in the array.
 // \param a The memory allocator used to instantiate the memory used by the bytes instance.
-template <typename T, typename allocator>
-bytes make_bytes(const T* data, size_t length, allocator& a) {
+template <typename T, typename Allocator>
+bytes make_bytes(const T* data, size_t length, Allocator& a) {
     return make_bytes(reinterpret_cast<const void*>(data), length * sizeof(T), a);
 }
 
-template <typename allocator>
-bytes make_bytes(const void* data, size_t length, allocator& a) {
+template <typename Allocator>
+bytes make_bytes(const void* data, size_t length, Allocator& a) {
     auto result = bytes{};
     
     if (!data || length == 0) {
@@ -115,7 +115,7 @@ inline bytes make_bytes(const void* data, size_t length) {
     result.m_use_count_address = nullptr;
     // encode the length as the pointer address of this data member.
     result.m_length = reinterpret_cast<size_t*>(length);
-    result.m_data = reinterpret_cast<void*>(const_cast<void*>(data));
+    result.m_data = const_cast<void*>(data);
     
     return result;
 }
@@ -249,54 +249,34 @@ namespace std {
 
 template <>
 struct less<eosio::session::bytes> final {
-public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
-        if (lhs == eosio::session::bytes::invalid && rhs == eosio::session::bytes::invalid) {
-            return false;
+        if (lhs != eosio::session::bytes::invalid && rhs != eosio::session::bytes::invalid) {
+            return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
         }
-        if (lhs == eosio::session::bytes::invalid) {
-            return true;
-        }
-        if (rhs == eosio::session::bytes::invalid) {
-            return false;
-        }
-
-        return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} < std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
+        return lhs == eosio::session::bytes::invalid;
     };
 };
 
 template <>
 struct greater<eosio::session::bytes> final {
-public:
     bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
-        if (lhs == eosio::session::bytes::invalid && rhs == eosio::session::bytes::invalid) {
-            return false;
+        if (lhs != eosio::session::bytes::invalid && rhs != eosio::session::bytes::invalid) {
+            return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
         }
-        if (lhs == eosio::session::bytes::invalid) {
-            return true;
-        }
-        if (rhs == eosio::session::bytes::invalid) {
-            return false;
-        }
-
-        return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} > std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
+        return lhs == eosio::session::bytes::invalid;
     };
 };
 
 template <>
 struct hash<eosio::session::bytes> final {
-public:
   size_t operator()(const eosio::session::bytes& b) const {
     return std::hash<std::string_view>{}({reinterpret_cast<const char*>(b.data()), b.length()});
   }
 };
 
 template <>
-struct equal_to<eosio::session::bytes> final
-{
-public:
-    auto operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const -> bool
-    {
+struct equal_to<eosio::session::bytes> final {
+    bool operator()(const eosio::session::bytes& lhs, const eosio::session::bytes& rhs) const {
         return std::string_view{reinterpret_cast<const char*>(lhs.data()), lhs.length()} == std::string_view{reinterpret_cast<const char*>(rhs.data()), rhs.length()};
     }
 };

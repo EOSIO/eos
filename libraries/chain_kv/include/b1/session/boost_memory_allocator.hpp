@@ -21,8 +21,8 @@ public:
 
     static std::shared_ptr<boost_memory_allocator> make();
 
-    template <typename other>
-    bool equals(const other& right) const;
+    template <typename Other>
+    bool equals(const Other& right) const;
 
 protected:
     boost_memory_allocator() = default;
@@ -35,8 +35,8 @@ private:
     free_function_type m_free_function;
 };
 
-template <typename other>
-bool boost_memory_allocator::equals(const other& right) const {
+template <typename Other>
+bool boost_memory_allocator::equals(const Other& right) const {
   // Just pointer comparision for now.
   return this == &right;
 }

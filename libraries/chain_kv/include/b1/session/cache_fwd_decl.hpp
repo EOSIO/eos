@@ -2,10 +2,10 @@
 
 namespace eosio::session {
 
-template <typename allocator>
+template <typename Allocator>
 class cache;
 
-template <typename allocator>
-cache<allocator> make_cache(std::shared_ptr<allocator> a);
+template <typename Allocator>
+cache<Allocator> make_cache(std::shared_ptr<Allocator> a);
 
 }

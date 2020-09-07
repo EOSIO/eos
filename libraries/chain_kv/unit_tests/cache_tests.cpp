@@ -7,9 +7,9 @@ using namespace eosio::session_tests;
 
 namespace eosio::session_tests {
 
-template <typename allocator>
-cache<allocator> make_cache() {
-  auto a = allocator::make();
+template <typename Allocator>
+cache<Allocator> make_cache() {
+  auto a = Allocator::make();
   return eosio::session::make_cache(std::move(a));
 }
 

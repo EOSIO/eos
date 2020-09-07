@@ -8,14 +8,14 @@ class key_value;
 
 inline key_value make_kv(bytes key, bytes value);
 
-template <typename key, typename value, typename allocator>
-key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
+template <typename Key, typename Value, typename Allocator>
+key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length, Allocator& a);
 
-template <typename key, typename value>
-key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
+template <typename Key, typename Value>
+key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
 
-template <typename allocator>
-key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
+template <typename Allocator>
+key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a);
 
 inline key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 

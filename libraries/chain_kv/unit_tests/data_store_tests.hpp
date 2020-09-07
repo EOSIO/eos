@@ -188,8 +188,8 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
     }
 }
 
-template <typename pds, typename cds, typename Key, typename Value>
-void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_map<Key, Value>& container, string_t) {
+template <typename PDS, typename CDS, typename Key, typename Value>
+void verify_equal(eosio::session::session<PDS, CDS>& ds, const std::unordered_map<Key, Value>& container, string_t) {
     auto verify_key_value = [&](auto kv) {
         auto key = std::string{reinterpret_cast<const char*>(kv.key().data()), kv.key().length()};
         auto it = container.find(key);
@@ -262,8 +262,8 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
     }
 }
 
-template <typename pds, typename cds, typename Key, typename Value>
-void verify_equal(eosio::session::session<pds, cds>& ds, const std::unordered_map<Key, Value>& container, int_t) {
+template <typename PDS, typename CDS, typename Key, typename Value>
+void verify_equal(eosio::session::session<PDS, CDS>& ds, const std::unordered_map<Key, Value>& container, int_t) {
     auto verify_key_value = [&](auto kv) {
         auto it = container.find(*reinterpret_cast<const Key*>(kv.key().data()));
         BOOST_REQUIRE(it != std::end(container));
@@ -385,8 +385,8 @@ void verify_rwd(T& ds, const eosio::session::key_value& kv) {
     BOOST_REQUIRE(ds.contains(kv.key()) == false);
 }
 
-template <typename T, typename iterable>
-void verify_rwd_batch(T& ds, const iterable& kvs) {
+template <typename T, typename Iterable>
+void verify_rwd_batch(T& ds, const Iterable& kvs) {
     auto keys = std::vector<eosio::session::bytes>{};
     for (const auto& kv : kvs) {
         keys.emplace_back(kv.key());
@@ -444,8 +444,8 @@ void verify_read_from_datastore(T& ds, U& other_ds) {
     compare_ds(other_ds, ds);
 }
 
-template <typename pds, typename cds>
-void verify_read_from_datastore(eosio::session::session<pds, cds>& ds, eosio::session::session<pds, cds>& other_ds) {
+template <typename PDS, typename CDS>
+void verify_read_from_datastore(eosio::session::session<PDS, CDS>& ds, eosio::session::session<PDS, CDS>& other_ds) {
     auto compare_ds = [](auto& left, auto& right) {
         // The data stores are equal if all the key_values in left are in right
         // and all the key_values in right are in left.
@@ -507,8 +507,8 @@ void verify_write_to_datastore(T& ds, U& other_ds) {
     compare_ds(other_ds, ds);
 }
 
-template <typename pds, typename cds>
-void verify_write_to_datastore(eosio::session::session<pds, cds>& ds, eosio::session::session<pds, cds>& other_ds) {
+template <typename PDS, typename CDS>
+void verify_write_to_datastore(eosio::session::session<PDS, CDS>& ds, eosio::session::session<PDS, CDS>& other_ds) {
     auto compare_ds = [](auto& left, auto& right) {
         // The data stores are equal if all the key_values in left are in right
         // and all the key_values in right are in left.

@@ -10,14 +10,14 @@ class key_value final
 public:
     friend key_value make_kv(bytes key, bytes value);
 
-    template <typename key, typename value, typename allocator>
-    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a);
+    template <typename Key, typename Value, typename Allocator>
+    friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length, Allocator& a);
     
-    template <typename allocator>
-    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a);
+    template <typename Allocator>
+    friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a);
     
-    template <typename key, typename value>
-    friend key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length);
+    template <typename Key, typename Value>
+    friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
 
     friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 public:
@@ -52,9 +52,9 @@ inline key_value make_kv(bytes key, bytes value) {
 
 // Instantiaties a key_value instance from the given key/value pointers.
 //
-// \tparam key The pointer type of the key.
-// \tparam value The pointer type of the value.
-// \tparam allocator The memory allocator type used to manage the bytes memory. This type mush implement the "memory allocator" concept.
+// \tparam Key The pointer type of the key.
+// \tparam Value The pointer type of the value.
+// \tparam Allocator The memory allocator type used to manage the bytes memory. This type mush implement the "memory allocator" concept.
 // \param the_key A pointer to the key.
 // \param key_length The size of the memory pointed by the key.
 // \param the_value A pointer to the value.
@@ -62,16 +62,16 @@ inline key_value make_kv(bytes key, bytes value) {
 // \param a The memory allocator used to managed the memory used by the key_value instance.
 // \returns A key_value instance.
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
-template <typename key, typename value, typename allocator>
-key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length, allocator& a) {
-    auto total_key_length = key_length * sizeof(key);
-    auto total_value_length = value_length * sizeof(value);
+template <typename Key, typename Value, typename Allocator>
+key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length, Allocator& a) {
+    auto total_key_length = key_length * sizeof(Key);
+    auto total_value_length = value_length * sizeof(Value);
     return make_kv(reinterpret_cast<const void*>(the_key), total_key_length, reinterpret_cast<const void*>(the_value), total_value_length, a);
 }
 
-template <typename key, typename value>
-key_value make_kv(const key* the_key, size_t key_length, const value* the_value, size_t value_length) {
-    return make_kv(reinterpret_cast<const void*>(the_key), key_length * sizeof(key), reinterpret_cast<const void*>(the_value), value_length * sizeof(key));
+template <typename Key, typename Value>
+key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length) {
+    return make_kv(reinterpret_cast<const void*>(the_key), key_length * sizeof(Key), reinterpret_cast<const void*>(the_value), value_length * sizeof(Key));
 }
 
 inline key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length) {
@@ -84,7 +84,7 @@ inline key_value make_kv(const void* key, size_t key_length, const void* value, 
 
 // Instantiaties a key_value instance from the given key/value pointers.
 //
-// \tparam allocator The memory allocator type used to manage the bytes memory. This type mush implement the "memory allocator" concept.
+// \tparam Allocator The memory allocator type used to manage the bytes memory. This type mush implement the "memory allocator" concept.
 // \param key A pointer to the key.
 // \param key_length The size of the memory pointed by the key.
 // \param value A pointer to the value.
@@ -92,8 +92,8 @@ inline key_value make_kv(const void* key, size_t key_length, const void* value, 
 // \param a The memory allocator used to managed the memory used by the key_value instance.
 // \returns A key_value instance.
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
-template <typename allocator>
-key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, allocator& a) {
+template <typename Allocator>
+key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a) {
     // TODO:  Not quite sure how to manage this memory chunk.
     // auto key_chunk_length = key_length == 0 ? key_length : key_length + 3 * sizeof(size_t);
     // auto value_chunk_length = value_length == 0 ? value_length : value_length + 3 * sizeof(size_t);
