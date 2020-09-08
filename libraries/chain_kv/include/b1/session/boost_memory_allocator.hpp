@@ -59,7 +59,7 @@ inline void* boost_memory_allocator::allocate(size_t length_bytes) const {
 //
 // \param data A pointer to the memory to free.
 // \param length_bytes The size of the memory, in bytes.
-inline void boost_memory_allocator::deallocate(void* data, size_t length_bytes) const {
+inline void boost_memory_allocator::deallocate(void* data, size_t /*length_bytes*/) const {
     const_cast<boost::pool<>&>(m_pool).ordered_free(data);
 }
 
