@@ -49,16 +49,13 @@ namespace eosio { namespace chain {
                                              fc::time_point s )
    :control(c)
    ,packed_trx(t)
-   ,undo_session()
+   ,undo_session(!c.skip_db_sessions() ? c.kv_db().make_session() : c.kv_db().make_no_op_session())
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
    ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
    {
-      if (!c.skip_db_sessions()) {
-         undo_session.emplace(c.mutable_db(), c.kv_undo_stack());
-      }
       trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
@@ -364,11 +361,11 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::squash() {
-      if (undo_session) undo_session->squash();
+      undo_session.squash();
    }
 
    void transaction_context::undo() {
-      if (undo_session) undo_session->undo();
+      undo_session.undo();
    }
 
    void transaction_context::check_net_usage()const {

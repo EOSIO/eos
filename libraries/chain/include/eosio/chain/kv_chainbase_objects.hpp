@@ -5,13 +5,14 @@
 #include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/backing_store.hpp>
 
 namespace eosio { namespace chain {
    class kv_db_config_object : public chainbase::object<kv_db_config_object_type, kv_db_config_object> {
       OBJECT_CTOR(kv_db_config_object)
 
-      id_type id;
-      bool    using_rocksdb_for_disk = false;
+      id_type            id;
+      backing_store_type backing_store = backing_store_type::CHAINBASE;
    };
 
    using kv_db_config_index = chainbase::shared_multi_index_container<
@@ -51,16 +52,6 @@ namespace eosio { namespace chain {
                                                  member<kv_object, shared_blob, &kv_object::kv_key>>,
                                    composite_key_compare<std::less<name>, std::less<name>, unsigned_blob_less>>>>;
 
-   inline void use_rocksdb_for_disk(chainbase::database& db) {
-      if (db.get<kv_db_config_object>().using_rocksdb_for_disk)
-         return;
-      auto& idx = db.get_index<kv_index, by_kv_key>();
-      auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
-      EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
-                 "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb");
-      db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.using_rocksdb_for_disk = true; });
-   }
-
 namespace config {
    template<>
    struct billable_size<kv_object> {
@@ -76,6 +67,6 @@ namespace config {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
-FC_REFLECT(eosio::chain::kv_db_config_object, (using_rocksdb_for_disk))
+FC_REFLECT(eosio::chain::kv_db_config_object, (backing_store))
 FC_REFLECT(eosio::chain::kv_object_view, (database_id)(contract)(kv_key)(kv_value))
 FC_REFLECT(eosio::chain::kv_object, (database_id)(contract)(kv_key)(kv_value)(payer))

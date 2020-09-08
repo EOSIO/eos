@@ -96,7 +96,7 @@ struct kv_rocksdb_fixture {
    kv_rocksdb_fixture()
    {
       b1::chain_kv::database    kv_database{"kvrdb-tmp", true/*create_if_missing*/};
-      b1::chain_kv::undo_stack  kv_undo_stack{kv_database, vector<char>{rocksdb_undo_prefix}};
+      b1::chain_kv::undo_stack  kv_undo_stack{kv_database, vector<char>{make_rocksdb_undo_prefix()}};
       account_name              receiver{N(kvrdb)};
       mock_resource_manager     resource_manager;
       my_kv_context = std::make_unique<kv_context_rocksdb<mock_view_provider, mock_write_session, mock_resource_manager>>(mock_view_provider(*this), kv_database, kv_undo_stack, receiver, resource_manager, limits);

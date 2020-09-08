@@ -205,7 +205,7 @@ namespace eosio { namespace chain {
       kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
                          name receiver, Resource_manager /*kv_resource_manager*/ resource_manager, const kv_database_config& limits)
           : database{ database }, undo_stack{ undo_stack },
-            write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
+            write_session{ database }, view{ write_session, make_rocksdb_contract_kv_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
 
       // A hook for unit testing. Do not use this for any other purpose.
@@ -223,10 +223,6 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
-      }
-
-      std::vector<char> make_prefix() {
-         return rocksdb_contract_kv_prefix;
       }
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {

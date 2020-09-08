@@ -12,7 +12,6 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
-#include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 
 using boost::container::flat_set;
 
@@ -102,16 +101,7 @@ void apply_context::exec_one()
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            switch (control.get_config().backing_store) {
-               case backing_store_type::ROCKSDB:
-                  kv_backing_store = create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-                  break;
-               case backing_store_type::NATIVE:
-                  kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-                  break;
-               default:
-                  EOS_ASSERT( false, action_validate_exception, "Unknown backing store." );
-            }
+            kv_backing_store = control.kv_db().create_kv_context(receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
 
             _db_context = backing_store::create_db_chainbase_context(*this, receiver);
         }

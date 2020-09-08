@@ -737,7 +737,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             if (rocks_load) {
                cfg.backing_store = eosio::chain::backing_store_type::ROCKSDB;
             } else {
-               cfg.backing_store = eosio::chain::backing_store_type::NATIVE;
+               cfg.backing_store = eosio::chain::backing_store_type::CHAINBASE;
             }
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
