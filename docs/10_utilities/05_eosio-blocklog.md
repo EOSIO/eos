@@ -25,3 +25,9 @@ Option (=default) | Description
 `--trim-blocklog` | Trim `blocks.log` and `blocks.index`. Must give `blocks-dir` and `first` and/or `last`.
 `--smoke-test` | Quick test that `blocks.log` and `blocks.index` are well formed and agree with each other
 `-h [ --help ]` | Print this help message and exit
+
+## Remarks
+
+When `eosio-blocklog` is launched, the utility attempts to perform the selected operation, yielding the following possible outcomes:
+* If successful, the selected operation is performed and the utility terminates silently with a zero error code (no error).
+* If unsuccessful, the utility outputs an error to `stderr` and terminates with a non-zero error code (indicating an error).
