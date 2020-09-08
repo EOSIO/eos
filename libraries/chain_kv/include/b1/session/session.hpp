@@ -158,8 +158,8 @@ public:
     session detach();
 
     // undo stack operations
-    auto undo() -> void;
-    auto commit() -> void;
+    void undo();
+    void commit();
     
     // this part also identifies a concept.  don't know what to call it yet
     const key_value read(const shared_bytes& key) const;

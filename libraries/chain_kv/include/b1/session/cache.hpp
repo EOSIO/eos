@@ -79,8 +79,8 @@ public:
     cache(cache&&) = default;
     cache(std::shared_ptr<Allocator> memory_allocator);
     
-    auto operator=(const cache&) -> cache& = default;
-    auto operator=(cache&&) -> cache& = default;
+    cache& operator=(const cache&) = default;
+    cache& operator=(cache&&) = default;
     
     const key_value& read(const shared_bytes& key) const;
     void write(key_value kv);
