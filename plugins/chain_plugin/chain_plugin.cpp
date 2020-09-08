@@ -118,8 +118,8 @@ void validate(boost::any& v,
 }
 
 std::ostream& operator<<(std::ostream& osm, eosio::chain::backing_store_type b) {
-   if ( b == eosio::chain::backing_store_type::NATIVE ) {
-      osm << "native";
+   if ( b == eosio::chain::backing_store_type::CHAINBASE ) {
+      osm << "chainbase";
    } else if ( b == eosio::chain::backing_store_type::ROCKSDB ) {
       osm << "rocksdb";
    }
@@ -141,8 +141,8 @@ void validate(boost::any& v,
   // one string, it's an error, and exception will be thrown.
   std::string const& s = validators::get_single_string(values);
 
-  if ( s == "native" ) {
-     v = boost::any(eosio::chain::backing_store_type::NATIVE);
+  if ( s == "chainbase" ) {
+     v = boost::any(eosio::chain::backing_store_type::CHAINBASE);
   } else if ( s == "rocksdb" ) {
      v = boost::any(eosio::chain::backing_store_type::ROCKSDB);
   } else {
@@ -298,7 +298,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
          ("backing-store", boost::program_options::value<eosio::chain::backing_store_type>()->default_value(eosio::chain::backing_store_type::ROCKSDB),
-          "The storage for state, NATIVE or ROCKSDB")
+          "The storage for state, CHAINBASE or ROCKSDB")
          ("rocksdb-threads", bpo::value<uint16_t>()->default_value(config::default_rocksdb_threads),
           "Number of rocksdb threads for flush and compaction")
          ("rocksdb-files", bpo::value<int>()->default_value(config::default_rocksdb_max_open_files),

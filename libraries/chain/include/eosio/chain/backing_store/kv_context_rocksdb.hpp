@@ -2,7 +2,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);
@@ -14,7 +14,7 @@ namespace eosio { namespace chain {
 
    static account_name get_payer(const char* data) {
       account_name payer;
-      memcpy(&payer, data, kv_payer_size);
+      memcpy(&payer, data, kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
       return payer;
    }
 
@@ -22,13 +22,14 @@ namespace eosio { namespace chain {
       return data + kv_payer_size;
    }
 
+   template <typename View>
    struct kv_iterator_rocksdb : kv_iterator {
       uint32_t&                num_iterators;
-      b1::chain_kv::view&          view;
+      View&                    view;
       uint64_t                 contract;
-      b1::chain_kv::view::iterator kv_it;
+      typename View::iterator  kv_it;
 
-      kv_iterator_rocksdb(uint32_t& num_iterators, b1::chain_kv::view& view, uint64_t contract, const char* prefix,
+      kv_iterator_rocksdb(uint32_t& num_iterators, View& view, uint64_t contract, const char* prefix,
                           uint32_t size)
           : num_iterators(num_iterators), view{ view }, contract{ contract }, //
             kv_it{ view, contract, { prefix, size } } {
@@ -189,22 +190,30 @@ namespace eosio { namespace chain {
       }
    }; // kv_iterator_rocksdb
 
+   template<typename View, typename Write_session, typename Resource_manager>
    struct kv_context_rocksdb : kv_context {
       b1::chain_kv::database&                  database;
       b1::chain_kv::undo_stack&                undo_stack;
-      b1::chain_kv::write_session              write_session;
-      b1::chain_kv::view                       view;
+      Write_session                            write_session;
+      View                                     view;
       name                                     receiver;
-      kv_resource_manager                      resource_manager;
+      Resource_manager                         resource_manager;
       const kv_database_config&                limits;
       uint32_t                                 num_iterators = 0;
       std::shared_ptr<const std::vector<char>> temp_data_buffer;
 
       kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
-                         name receiver, kv_resource_manager resource_manager, const kv_database_config& limits)
+                         name receiver, Resource_manager /*kv_resource_manager*/ resource_manager, const kv_database_config& limits)
           : database{ database }, undo_stack{ undo_stack },
-            write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
+            write_session{ database }, view{ write_session, make_rocksdb_contract_kv_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
+
+      // A hook for unit testing. Do not use this for any other purpose.
+      kv_context_rocksdb(View&& view_, b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack, name receiver, Resource_manager resource_manager, const kv_database_config& limits)
+         : database{ database }, undo_stack{ undo_stack },
+           write_session{ database }, view(std::move(view_)), 
+           receiver{ receiver },
+           resource_manager{ resource_manager }, limits{ limits } {}
 
       ~kv_context_rocksdb() override {
          try {
@@ -214,10 +223,6 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
-      }
-
-      std::vector<char> make_prefix() {
-         return rocksdb_contract_kv_prefix;
       }
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
@@ -272,6 +277,7 @@ namespace eosio { namespace chain {
 
                total_value.insert(total_value.end(), value, value + value_size); 
                view.set(contract, { key, key_size }, { total_value.data(), total_value_size });
+
             }
             FC_LOG_AND_RETHROW()
          }
@@ -324,7 +330,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
          try {
             try {
-               return std::make_unique<kv_iterator_rocksdb>(num_iterators, view, contract, prefix, size);
+               return std::make_unique<kv_iterator_rocksdb<View>>(num_iterators, view, contract, prefix, size);
             }
             FC_LOG_AND_RETHROW()
          }
@@ -332,13 +338,14 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_rocksdb
 
+   template <typename View, typename Write_session, typename Resource_manager>
    std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database&   kv_database,
                                                          b1::chain_kv::undo_stack& kv_undo_stack,
-                                                         name receiver, kv_resource_manager resource_manager,
+                                                         name receiver, Resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {
          try {
-            return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, receiver,
+            return std::make_unique<kv_context_rocksdb<View, Write_session, Resource_manager>>(kv_database, kv_undo_stack, receiver,
                                                         resource_manager, limits);
          }
          FC_LOG_AND_RETHROW()

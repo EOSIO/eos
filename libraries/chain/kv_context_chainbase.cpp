@@ -1,7 +1,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 namespace eosio { namespace chain {
 
