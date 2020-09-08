@@ -3,6 +3,7 @@ content_title: Context-Free Data (CFD)
 link_text: Context-Free Data
 ---
 
+## Overview
 The immutable nature of the blockchain allows data to be stored securely while also enforcing the integrity of such data. However, this benefit also complicates the removal of non-essential data from the blockchain. Consequently, EOSIO blockchains contain a special section within the transaction, called the *context-free data*, which would allow the potential removal of such data, as long as the contents are free from previous contexts or dependencies. More importantly, such removal must be performed safely without compromising the integrity of the blockchain.
 
 ## Concept
