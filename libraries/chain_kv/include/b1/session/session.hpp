@@ -8,9 +8,9 @@
 #include <unordered_set>
 #include <variant>
 
-#include <b1/session/bytes.hpp>
 #include <b1/session/key_value.hpp>
 #include <b1/session/session_fwd_decl.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
 
@@ -51,14 +51,14 @@ public:
 
     using persistent_data_store_type = Persistent_data_store;
     using cache_data_store_type = Cache_data_store;
-    using iterator_cache_type = std::map<bytes, iterator_state>;
+    using iterator_cache_type = std::map<shared_bytes, iterator_state>;
     
     static const session invalid;
 
     template <typename T, typename Allocator>
-    friend bytes make_bytes(const T* data, size_t length, Allocator& a);
+    friend shared_bytes make_shared_bytes(const T* data, size_t length, Allocator& a);
         
-    friend key_value make_kv(bytes key, bytes value);
+    friend key_value make_kv(shared_bytes key, shared_bytes value);
 
     template <typename Key, typename Value, typename Allocator>
     friend key_value make_kv(const Key* key, size_t key_length, const Value* value, size_t value_length, Allocator& a);
@@ -162,15 +162,15 @@ public:
     auto commit() -> void;
     
     // this part also identifies a concept.  don't know what to call it yet
-    const key_value read(const bytes& key) const;
+    const key_value read(const shared_bytes& key) const;
     void write(key_value kv);
-    bool contains(const bytes& key) const;
-    void erase(const bytes& key);
+    bool contains(const shared_bytes& key) const;
+    void erase(const shared_bytes& key);
     void clear();
     
     // returns a pair containing the key_values found and the keys not found.
     template <typename Iterable>
-    const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read(const Iterable& keys) const;
+    const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> read(const Iterable& keys) const;
     
     template <typename Iterable>
     void write(const Iterable& key_values);
@@ -185,16 +185,16 @@ public:
     template <typename Data_store, typename Iterable>
     void read_from(const Data_store& ds, const Iterable& keys);
     
-    iterator find(const bytes& key);
-    const_iterator find(const bytes& key) const;
+    iterator find(const shared_bytes& key);
+    const_iterator find(const shared_bytes& key) const;
     iterator begin();
     const_iterator begin() const;
     iterator end();
     const_iterator end() const;
-    iterator lower_bound(const bytes& key);
-    const_iterator lower_bound(const bytes& key) const;
-    iterator upper_bound(const bytes& key);
-    const_iterator upper_bound(const bytes& key) const;
+    iterator lower_bound(const shared_bytes& key);
+    const_iterator lower_bound(const shared_bytes& key) const;
+    iterator upper_bound(const shared_bytes& key);
+    const_iterator upper_bound(const shared_bytes& key) const;
     
     const std::shared_ptr<typename Persistent_data_store::allocator_type>& memory_allocator();
     const std::shared_ptr<const typename Persistent_data_store::allocator_type> memory_allocator() const;
@@ -210,9 +210,9 @@ private:
     template <typename Iterator_type, typename Predicate, typename Comparator>
     Iterator_type make_iterator_(const Predicate& p, const Comparator& c) const;
 
-    std::pair<bytes, bytes> bounds_(const bytes& key) const;
-    void update_iterator_cache_(const bytes& key, bool overwrite = true, bool erase = false) const;
-    bool is_deleted_(const bytes& key, const std::shared_ptr<session_impl>& current_session) const;
+    std::pair<shared_bytes, shared_bytes> bounds_(const shared_bytes& key) const;
+    void update_iterator_cache_(const shared_bytes& key, bool overwrite = true, bool erase = false) const;
+    bool is_deleted_(const shared_bytes& key, const std::shared_ptr<session_impl>& current_session) const;
 
     struct session_impl final : public std::enable_shared_from_this<session_impl> {
         session_impl();
@@ -241,10 +241,10 @@ private:
         iterator_cache_type iterator_cache;
 
         // keys that have been updated during this session.
-        std::unordered_set<bytes> updated_keys;
+        std::unordered_set<shared_bytes> updated_keys;
 
         // keys that have been deleted during this session.
-        std::unordered_set<bytes> deleted_keys;
+        std::unordered_set<shared_bytes> deleted_keys;
     };
     
     // session implement the PIMPL idiom to allow for stack based semantics.
@@ -430,9 +430,9 @@ void session<Persistent_data_store, Cache_data_store>::undo() {
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-std::pair<bytes, bytes> session<Persistent_data_store, Cache_data_store>::bounds_(const bytes& key) const {
-    auto lower_bound_key = bytes::invalid;
-    auto upper_bound_key = bytes::invalid;
+std::pair<shared_bytes, shared_bytes> session<Persistent_data_store, Cache_data_store>::bounds_(const shared_bytes& key) const {
+    auto lower_bound_key = shared_bytes::invalid;
+    auto upper_bound_key = shared_bytes::invalid;
 
     auto lower_bound = [&, this](const auto& session, const auto& container, const auto& key) {
         auto it = container.lower_bound(key);
@@ -440,25 +440,25 @@ std::pair<bytes, bytes> session<Persistent_data_store, Cache_data_store>::bounds
             --it;
             while (is_deleted_((*it).key(), session)) {
                 if (it == std::begin(container)) {
-                    return bytes::invalid;
+                    return shared_bytes::invalid;
                 }
                 --it;
             }
             return (*it).key();
         }
-        return bytes::invalid;
+        return shared_bytes::invalid;
     };
 
     auto upper_bound = [&, this](const auto& session, const auto& container, const auto& key) {
         auto it = container.upper_bound(key);
         if (it == std::end(container)) {
-            return bytes::invalid;
+            return shared_bytes::invalid;
         }
 
         while (is_deleted_((*it).key(), session)) {
             ++it;
             if (it == std::end(container)) {
-                return bytes::invalid;
+                return shared_bytes::invalid;
             }
         }
 
@@ -466,11 +466,11 @@ std::pair<bytes, bytes> session<Persistent_data_store, Cache_data_store>::bounds
     };
 
     auto test_set = [&](auto& current_key, const auto& pending_key, const auto& comparator) {
-        if (current_key == bytes::invalid && pending_key == bytes::invalid) {
+        if (current_key == shared_bytes::invalid && pending_key == shared_bytes::invalid) {
             return;
         }
 
-        if (current_key == bytes::invalid) {
+        if (current_key == shared_bytes::invalid) {
             current_key = pending_key;
             return;
         }
@@ -484,30 +484,30 @@ std::pair<bytes, bytes> session<Persistent_data_store, Cache_data_store>::bounds
     auto parent = m_impl;
     auto current = m_impl;
     while (current) {
-        if (auto lower_bound_key_ = lower_bound(current, current->cache, key); lower_bound_key_ != bytes::invalid) {
-            test_set(lower_bound_key, lower_bound_key_, std::greater<bytes>{});
+        if (auto lower_bound_key_ = lower_bound(current, current->cache, key); lower_bound_key_ != shared_bytes::invalid) {
+            test_set(lower_bound_key, lower_bound_key_, std::greater<shared_bytes>{});
         }
-        if (auto upper_bound_key_ = upper_bound(current, current->cache, key); upper_bound_key_ != bytes::invalid) {
-            test_set(upper_bound_key, upper_bound_key_, std::less<bytes>{});
+        if (auto upper_bound_key_ = upper_bound(current, current->cache, key); upper_bound_key_ != shared_bytes::invalid) {
+            test_set(upper_bound_key, upper_bound_key_, std::less<shared_bytes>{});
         }
 
         parent = current;
         current = current->parent;
     }
 
-    if (auto lower_bound_key_ = lower_bound(parent, *m_impl->backing_data_store, key); lower_bound_key_ != bytes::invalid) {
-        test_set(lower_bound_key, lower_bound_key_, std::greater<bytes>{});
+    if (auto lower_bound_key_ = lower_bound(parent, *m_impl->backing_data_store, key); lower_bound_key_ != shared_bytes::invalid) {
+        test_set(lower_bound_key, lower_bound_key_, std::greater<shared_bytes>{});
     }
 
-    if (auto upper_bound_key_ = upper_bound(parent, *m_impl->backing_data_store, key); upper_bound_key_ != bytes::invalid) {
-        test_set(upper_bound_key, upper_bound_key_, std::less<bytes>{});
+    if (auto upper_bound_key_ = upper_bound(parent, *m_impl->backing_data_store, key); upper_bound_key_ != shared_bytes::invalid) {
+        test_set(upper_bound_key, upper_bound_key_, std::less<shared_bytes>{});
     }
 
     return std::pair{lower_bound_key, upper_bound_key};
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-void session<Persistent_data_store, Cache_data_store>::update_iterator_cache_(const bytes& key, bool overwrite, bool erase) const {
+void session<Persistent_data_store, Cache_data_store>::update_iterator_cache_(const shared_bytes& key, bool overwrite, bool erase) const {
     auto it = m_impl->iterator_cache.emplace(key, iterator_state{}).first;
 
     if (overwrite) {
@@ -521,7 +521,7 @@ void session<Persistent_data_store, Cache_data_store>::update_iterator_cache_(co
 
     auto [lower_bound, upper_bound] = bounds_(key);
 
-    if (lower_bound != bytes::invalid) {
+    if (lower_bound != shared_bytes::invalid) {
         auto lower_it = m_impl->iterator_cache.find(lower_bound);
         if (lower_it == std::end(m_impl->iterator_cache)) {
             lower_it = m_impl->iterator_cache.emplace(lower_bound, iterator_state{}).first;
@@ -530,7 +530,7 @@ void session<Persistent_data_store, Cache_data_store>::update_iterator_cache_(co
         it->second.previous_in_cache = true;
     }
 
-    if (upper_bound != bytes::invalid) {
+    if (upper_bound != shared_bytes::invalid) {
         auto upper_it = m_impl->iterator_cache.find(upper_bound);
         if (upper_it == std::end(m_impl->iterator_cache)) {
             upper_it = m_impl->iterator_cache.emplace(upper_bound, iterator_state{}).first;
@@ -581,7 +581,7 @@ void session<Persistent_data_store, Cache_data_store>::commit() {
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-const key_value session<Persistent_data_store, Cache_data_store>::read(const bytes& key) const {
+const key_value session<Persistent_data_store, Cache_data_store>::read(const shared_bytes& key) const {
     if (!m_impl) {
         return key_value::invalid;
     }
@@ -634,7 +634,7 @@ void session<Persistent_data_store, Cache_data_store>::write(key_value kv) {
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-bool session<Persistent_data_store, Cache_data_store>::contains(const bytes& key) const {
+bool session<Persistent_data_store, Cache_data_store>::contains(const shared_bytes& key) const {
     if (!m_impl) {
         return false;
     }
@@ -660,7 +660,7 @@ bool session<Persistent_data_store, Cache_data_store>::contains(const bytes& key
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-void session<Persistent_data_store, Cache_data_store>::erase(const bytes& key) {
+void session<Persistent_data_store, Cache_data_store>::erase(const shared_bytes& key) {
     if (!m_impl) {
         return;
     }
@@ -680,17 +680,17 @@ void session<Persistent_data_store, Cache_data_store>::clear() {
 
 // Reads a batch of keys from the session.
 //
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
-// \param keys An iterable instance that returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
+// \param keys An iterable instance that returns shared_bytes instances in its iterator.
 // \returns An std::pair where the first item is list of the found key_values and the second item is a set of the keys not found.
 template <typename Persistent_data_store, typename Cache_data_store>
 template <typename Iterable>
-const std::pair<std::vector<key_value>, std::unordered_set<bytes>> session<Persistent_data_store, Cache_data_store>::read(const Iterable& keys) const {
+const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> session<Persistent_data_store, Cache_data_store>::read(const Iterable& keys) const {
     if (!m_impl) {
         return {};
     }
     
-    auto not_found = std::unordered_set<bytes>{};
+    auto not_found = std::unordered_set<shared_bytes>{};
     auto kvs = std::vector<key_value>{};
     
     for (const auto& key : keys) {
@@ -757,8 +757,8 @@ void session<Persistent_data_store, Cache_data_store>::write(const Iterable& key
 
 // Erases a batch of key_values from the session.
 //
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
-// \param keys An iterable instance that returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
+// \param keys An iterable instance that returns shared_bytes instances in its iterator.
 template <typename Persistent_data_store, typename Cache_data_store>
 template <typename Iterable>
 void session<Persistent_data_store, Cache_data_store>::erase(const Iterable& keys) {
@@ -812,7 +812,7 @@ void session<Persistent_data_store, Cache_data_store>::read_from(const Data_stor
 
 // Given a session and a key read from that session, check if it has been deleted by any child sessions.
 template <typename Persistent_data_store, typename Cache_data_store>
-bool session<Persistent_data_store, Cache_data_store>::is_deleted_(const bytes& key, const std::shared_ptr<session_impl>& current_session) const {
+bool session<Persistent_data_store, Cache_data_store>::is_deleted_(const shared_bytes& key, const std::shared_ptr<session_impl>& current_session) const {
     if (current_session->child.expired()) {
         return false;
     }
@@ -857,16 +857,16 @@ Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(c
 
     // So start at the database. 
     auto it = p(*m_impl->backing_data_store);
-    auto current_key = it != std::end(*m_impl->backing_data_store) ? (*it).key() : bytes::invalid;
+    auto current_key = it != std::end(*m_impl->backing_data_store) ? (*it).key() : shared_bytes::invalid;
 
     // Check the other levels to see which key we should start at.
     auto current = parent;
     while (current) {
         auto pending = p(current->cache);
 
-        if (current_key != bytes::invalid && current->deleted_keys.find(current_key) != std::end(current->deleted_keys)) {
+        if (current_key != shared_bytes::invalid && current->deleted_keys.find(current_key) != std::end(current->deleted_keys)) {
             // Key is deleted at this level
-            current_key = bytes::invalid;
+            current_key = shared_bytes::invalid;
         }
 
         if (pending == std::end(current->cache)) {
@@ -882,7 +882,7 @@ Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(c
             continue;
         }
 
-        if (current_key == bytes::invalid || c(pending_key, current_key)) {
+        if (current_key == shared_bytes::invalid || c(pending_key, current_key)) {
             current_key = pending_key;
         }
 
@@ -890,7 +890,7 @@ Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(c
     }
 
     // Update the iterator cache.
-    if (current_key != bytes::invalid) {
+    if (current_key != shared_bytes::invalid) {
         new_iterator.m_active_iterator = m_impl->iterator_cache.find(current_key);
         if (new_iterator.m_active_iterator->second.deleted) {
             new_iterator.m_active_iterator = std::end(m_impl->iterator_cache);
@@ -903,14 +903,14 @@ Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(c
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::find(const bytes& key) {
+typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::find(const shared_bytes& key) {
     // This comparator just chooses the one that isn't invalid.
     static auto comparator = [](const auto& left, const auto& right) {
-        if (left == bytes::invalid && right == bytes::invalid) {
+        if (left == shared_bytes::invalid && right == shared_bytes::invalid) {
             return true;
         }
         
-        if (left == bytes::invalid) {
+        if (left == shared_bytes::invalid) {
             return false;
         }
         
@@ -921,14 +921,14 @@ typename session<Persistent_data_store, Cache_data_store>::iterator session<Pers
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::find(const bytes& key) const {
+typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::find(const shared_bytes& key) const {
     // This comparator just chooses the one that isn't invalid.
     static auto comparator = [](const auto& left, const auto& right) {
-        if (left == bytes::invalid && right == bytes::invalid) {
+        if (left == shared_bytes::invalid && right == shared_bytes::invalid) {
             return true;
         }
         
-        if (left == bytes::invalid) {
+        if (left == shared_bytes::invalid) {
             return false;
         }
         
@@ -940,42 +940,42 @@ typename session<Persistent_data_store, Cache_data_store>::const_iterator sessio
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::begin() {
-    return make_iterator_<iterator>([](auto& ds) { return std::begin(ds); }, std::less<bytes>{});
+    return make_iterator_<iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::begin() const {
-    return make_iterator_<const_iterator>([](auto& ds) { return std::begin(ds); }, std::less<bytes>{});
+    return make_iterator_<const_iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::end() {
-    return make_iterator_<iterator>([](auto& ds) { return std::end(ds); }, std::greater<bytes>{});
+    return make_iterator_<iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::end() const {
-    return make_iterator_<const_iterator>([](auto& ds) { return std::end(ds); }, std::greater<bytes>{});
+    return make_iterator_<const_iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::lower_bound(const bytes& key) {
-    return make_iterator_<iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<bytes>{});
+typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::lower_bound(const shared_bytes& key) {
+    return make_iterator_<iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::lower_bound(const bytes& key) const {
-    return make_iterator_<const_iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<bytes>{});
+typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::lower_bound(const shared_bytes& key) const {
+    return make_iterator_<const_iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::upper_bound(const bytes& key) {
-    return make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<bytes>{});
+typename session<Persistent_data_store, Cache_data_store>::iterator session<Persistent_data_store, Cache_data_store>::upper_bound(const shared_bytes& key) {
+    return make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::upper_bound(const bytes& key) const {
-    return make_iterator_<const_iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<bytes>{});
+typename session<Persistent_data_store, Cache_data_store>::const_iterator session<Persistent_data_store, Cache_data_store>::upper_bound(const shared_bytes& key) const {
+    return make_iterator_<const_iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{});
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>

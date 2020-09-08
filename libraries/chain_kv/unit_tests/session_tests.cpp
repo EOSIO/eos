@@ -347,8 +347,8 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
 
 BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
     auto verify_key_value = [](auto& ds, uint16_t key, uint16_t expected_value) {
-        auto key_ = eosio::session::make_bytes(&key, 1, ds.memory_allocator());
-        auto value = eosio::session::make_bytes(&expected_value, 1, ds.memory_allocator());
+        auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
+        auto value = eosio::session::make_shared_bytes(&expected_value, 1, ds.memory_allocator());
         auto key_value = ds.read(key_);
         BOOST_REQUIRE(key_value.value() == value);
 
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
 BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
     auto verify_keys_deleted = [](auto& ds, const auto& keys) {
         for (const uint16_t& key : keys) {
-          auto key_ = eosio::session::make_bytes(&key, 1, ds.memory_allocator());
+          auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
           BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
           BOOST_REQUIRE(ds.find(key_) == std::end(ds));
           BOOST_REQUIRE(ds.contains(key_) == false);
@@ -449,7 +449,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
     auto verify_keys_deleted_datastore = [](auto& ds, const auto& keys) {
         for (const uint16_t& key : keys) {
-            auto key_ = eosio::session::make_bytes(&key, 1, ds.memory_allocator());
+            auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
             BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
             BOOST_REQUIRE(ds.find(key_) == std::end(ds));
             BOOST_REQUIRE(ds.contains(key_) == false);
@@ -462,7 +462,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
     auto verify_keys_exist = [](auto& ds, const auto& key_values) {
         for (const auto& key_value : key_values) {
-            auto key = eosio::session::make_bytes(&key_value.first, 1, ds.memory_allocator());
+            auto key = eosio::session::make_shared_bytes(&key_value.first, 1, ds.memory_allocator());
             auto value = eosio::session::make_kv(&key_value.first, 1, &key_value.second, 1, ds.memory_allocator());
             BOOST_REQUIRE(ds.read(key) == value);
             BOOST_REQUIRE(ds.find(key) != std::end(ds));
@@ -490,7 +490,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
     auto verify_keys_exist_datastore = [](auto& ds, const auto& key_values) {
         for (const auto& key_value : key_values) {
-            auto key = eosio::session::make_bytes(&key_value.first, 1, ds.memory_allocator());
+            auto key = eosio::session::make_shared_bytes(&key_value.first, 1, ds.memory_allocator());
             auto value = eosio::session::make_kv(&key_value.first, 1, &key_value.second, 1, ds.memory_allocator());
             BOOST_REQUIRE(ds.read(key) == value);
             BOOST_REQUIRE(ds.find(key) != std::end(ds));
@@ -512,7 +512,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
     };
 
     auto delete_key = [](auto& ds, uint16_t key) {
-        auto key_ = eosio::session::make_bytes(&key, 1, ds.memory_allocator());
+        auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
         ds.erase(key_);
     };
 

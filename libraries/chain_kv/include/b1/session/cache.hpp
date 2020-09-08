@@ -4,9 +4,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include <b1/session/bytes.hpp>
 #include <b1/session/cache_fwd_decl.hpp>
 #include <b1/session/key_value.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
 
@@ -20,7 +20,7 @@ private:
     // Currently there are some constraints that require the use of a std::map.
     // Namely, we need to be able to iterator over the entries in lexigraphical ordering on the keys.
     // It also provides us with lower bound and upper bound out of the box.
-    using cache_type = std::map<bytes, key_value>;
+    using cache_type = std::map<shared_bytes, key_value>;
 
 public:
     using allocator_type = Allocator;
@@ -82,14 +82,14 @@ public:
     auto operator=(const cache&) -> cache& = default;
     auto operator=(cache&&) -> cache& = default;
     
-    const key_value& read(const bytes& key) const;
+    const key_value& read(const shared_bytes& key) const;
     void write(key_value kv);
-    bool contains(const bytes& key) const;
-    void erase(const bytes& key);
+    bool contains(const shared_bytes& key) const;
+    void erase(const shared_bytes& key);
     void clear();
 
     template <typename Iterable>
-    const std::pair<std::vector<key_value>, std::unordered_set<bytes>> read(const Iterable& keys) const;
+    const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> read(const Iterable& keys) const;
 
     template <typename Iterable>
     void write(const Iterable& key_values);
@@ -103,23 +103,23 @@ public:
     template <typename Data_store, typename Iterable>
     void read_from(const Data_store& ds, const Iterable& keys);
     
-    iterator find(const bytes& key);
-    const_iterator find(const bytes& key) const;
+    iterator find(const shared_bytes& key);
+    const_iterator find(const shared_bytes& key) const;
     iterator begin();
     const_iterator begin() const;
     iterator end();
     const_iterator end() const;
-    iterator lower_bound(const bytes& key);
-    const_iterator lower_bound(const bytes& key) const;
-    iterator upper_bound(const bytes& key);
-    const_iterator upper_bound(const bytes& key) const;
+    iterator lower_bound(const shared_bytes& key);
+    const_iterator lower_bound(const shared_bytes& key) const;
+    iterator upper_bound(const shared_bytes& key);
+    const_iterator upper_bound(const shared_bytes& key) const;
     
     const std::shared_ptr<Allocator>& memory_allocator();
     const std::shared_ptr<const Allocator> memory_allocator() const;
 
 private:
     template <typename On_cache_hit, typename On_cache_miss>
-    const key_value& find_(const bytes& key, const On_cache_hit& cache_hit, const On_cache_miss& cache_miss) const;
+    const key_value& find_(const shared_bytes& key, const On_cache_hit& cache_hit, const On_cache_miss& cache_miss) const;
     
 private:
     std::shared_ptr<Allocator> m_allocator;
@@ -156,7 +156,7 @@ const std::shared_ptr<const Allocator> cache<Allocator>::memory_allocator() cons
 // \return A reference to the key_value instance if found, key_value::invalid otherwise.
 template <typename Allocator>
 template <typename on_cache_hit, typename on_cache_miss>
-const key_value& cache<Allocator>::find_(const bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const {
+const key_value& cache<Allocator>::find_(const shared_bytes& key, const on_cache_hit& cache_hit, const on_cache_miss& cache_miss) const {
     auto it = m_cache.find(key);
     
     if (it == std::end(m_cache)) {
@@ -172,7 +172,7 @@ const key_value& cache<Allocator>::find_(const bytes& key, const on_cache_hit& c
 }
 
 template <typename Allocator>
-const key_value& cache<Allocator>::read(const bytes& key) const {
+const key_value& cache<Allocator>::read(const shared_bytes& key) const {
     return find_(key, [](auto& it){ return true; }, [](){});
 }
 
@@ -188,12 +188,12 @@ void cache<Allocator>::write(key_value kv) {
 }
 
 template <typename Allocator>
-bool cache<Allocator>::contains(const bytes& key) const {
+bool cache<Allocator>::contains(const shared_bytes& key) const {
     return find_(key, [](auto& it){ return true; }, [](){}) != key_value::invalid;
 }
 
 template <typename Allocator>
-void cache<Allocator>::erase(const bytes& key) {
+void cache<Allocator>::erase(const shared_bytes& key) {
     find_(key, [&](auto& it){ m_cache.erase(it); return false; }, [](){});
 }
 
@@ -204,13 +204,13 @@ void cache<Allocator>::clear() {
 
 // Reads a batch of keys from the cache.
 //
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
-// \param keys An Iterable instance that returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
+// \param keys An Iterable instance that returns shared_bytes instances in its iterator.
 // \returns An std::pair where the first item is list of the found key_values and the second item is a set of the keys not found.
 template <typename Allocator>
 template <typename Iterable>
-const std::pair<std::vector<key_value>, std::unordered_set<bytes>> cache<Allocator>::read(const Iterable& keys) const {
-    auto not_found = std::unordered_set<bytes>{};
+const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> cache<Allocator>::read(const Iterable& keys) const {
+    auto not_found = std::unordered_set<shared_bytes>{};
     auto kvs = std::vector<key_value>{};
     
     for (const auto& key : keys) {
@@ -239,8 +239,8 @@ void cache<Allocator>::write(const Iterable& key_values) {
 
 // Erases a batch of key_values from the cache.
 //
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
-// \param keys An Iterable instance that returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
+// \param keys An Iterable instance that returns shared_bytes instances in its iterator.
 template <typename Allocator>
 template <typename Iterable>
 void cache<Allocator>::erase(const Iterable& keys) {
@@ -252,9 +252,9 @@ void cache<Allocator>::erase(const Iterable& keys) {
 // Writes a batch of key_values from this cache into the given data_store instance.
 //
 // \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that concept.
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
 // \param ds A data store instance.
-// \param keys An Iterable instance that returns bytes instances in its iterator.
+// \param keys An Iterable instance that returns shared_bytes instances in its iterator.
 template <typename Allocator>
 template <typename Data_store, typename Iterable>
 void cache<Allocator>::write_to(Data_store& ds, const Iterable& keys) const {
@@ -280,9 +280,9 @@ void cache<Allocator>::write_to(Data_store& ds, const Iterable& keys) const {
 // Reads a batch of key_values from the given data store into the cache.
 //
 // \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that concept.
-// \tparam Iterable Any type that can be used within a range based for loop and returns bytes instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its iterator.
 // \param ds A data store instance.
-// \param keys An Iterable instance that returns bytes instances in its iterator.
+// \param keys An Iterable instance that returns shared_bytes instances in its iterator.
 template <typename Allocator>
 template <typename Data_store, typename Iterable>
 void cache<Allocator>::read_from(const Data_store& ds, const Iterable& keys) {
@@ -307,12 +307,12 @@ void cache<Allocator>::read_from(const Data_store& ds, const Iterable& keys) {
 }
 
 template <typename Allocator>
-typename cache<Allocator>::iterator cache<Allocator>::find(const bytes& key) {
+typename cache<Allocator>::iterator cache<Allocator>::find(const shared_bytes& key) {
     return {m_cache.find(key)};
 }
 
 template <typename Allocator>
-typename cache<Allocator>::const_iterator cache<Allocator>::find(const bytes& key) const {
+typename cache<Allocator>::const_iterator cache<Allocator>::find(const shared_bytes& key) const {
     return {m_cache.find(key)};
 }
 
@@ -337,22 +337,22 @@ typename cache<Allocator>::const_iterator cache<Allocator>::end() const {
 }
 
 template <typename Allocator>
-typename cache<Allocator>::iterator cache<Allocator>::lower_bound(const bytes& key) {
+typename cache<Allocator>::iterator cache<Allocator>::lower_bound(const shared_bytes& key) {
     return {m_cache.lower_bound(key)};
 }
 
 template <typename Allocator>
-typename cache<Allocator>::const_iterator cache<Allocator>::lower_bound(const bytes& key) const {
+typename cache<Allocator>::const_iterator cache<Allocator>::lower_bound(const shared_bytes& key) const {
     return {m_cache.lower_bound(key)};
 }
 
 template <typename Allocator>
-typename cache<Allocator>::iterator cache<Allocator>::upper_bound(const bytes& key) {
+typename cache<Allocator>::iterator cache<Allocator>::upper_bound(const shared_bytes& key) {
     return {m_cache.upper_bound(key)};
 }
 
 template <typename Allocator>
-typename cache<Allocator>::const_iterator cache<Allocator>::upper_bound(const bytes& key) const {
+typename cache<Allocator>::const_iterator cache<Allocator>::upper_bound(const shared_bytes& key) const {
     return {m_cache.upper_bound(key)};
 }
 

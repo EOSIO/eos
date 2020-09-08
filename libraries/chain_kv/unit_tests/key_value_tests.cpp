@@ -12,30 +12,30 @@ BOOST_AUTO_TEST_CASE(make_key_value_test)  {
   static constexpr auto int_key = uint64_t{100000000};
   static constexpr auto int_value = uint64_t{123456789};
 
-  static const auto char_key_bytes = make_bytes(char_key, strlen(char_key));
-  static const auto char_value_bytes = make_bytes(char_value, strlen(char_value));
-  static const auto int_key_bytes = make_bytes(&int_key, 1);
-  static const auto int_value_bytes = make_bytes(&int_value, 1);
+  static const auto char_key_bytes = make_shared_bytes(char_key, strlen(char_key));
+  static const auto char_value_bytes = make_shared_bytes(char_value, strlen(char_value));
+  static const auto int_key_bytes = make_shared_bytes(&int_key, 1);
+  static const auto int_value_bytes = make_shared_bytes(&int_value, 1);
 
   auto allocator = boost_memory_allocator::make();
 
-  auto kv1 = make_kv(make_bytes(char_key, strlen(char_key)), 
-                     make_bytes(char_value, strlen(char_value)));
+  auto kv1 = make_kv(make_shared_bytes(char_key, strlen(char_key)), 
+                     make_shared_bytes(char_value, strlen(char_value)));
   BOOST_REQUIRE(kv1.key() == char_key_bytes);
   BOOST_REQUIRE(kv1.value() == char_value_bytes);
 
-  auto kv2 = make_kv(make_bytes(&int_key, 1), 
-                     make_bytes(&int_value, 1));
+  auto kv2 = make_kv(make_shared_bytes(&int_key, 1), 
+                     make_shared_bytes(&int_value, 1));
   BOOST_REQUIRE(kv2.key() == int_key_bytes);
   BOOST_REQUIRE(kv2.value() == int_value_bytes);
 
-  auto kv3 = make_kv(make_bytes(char_key, strlen(char_key), allocator), 
-                     make_bytes(char_value, strlen(char_value), allocator));
+  auto kv3 = make_kv(make_shared_bytes(char_key, strlen(char_key), allocator), 
+                     make_shared_bytes(char_value, strlen(char_value), allocator));
   BOOST_REQUIRE(kv3.key() == char_key_bytes);
   BOOST_REQUIRE(kv3.value() == char_value_bytes);
 
-  auto kv4 = make_kv(make_bytes(&int_key, 1, allocator), 
-                     make_bytes(&int_value, 1, allocator));
+  auto kv4 = make_kv(make_shared_bytes(&int_key, 1, allocator), 
+                     make_shared_bytes(&int_value, 1, allocator));
   BOOST_REQUIRE(kv4.key() == int_key_bytes);
   BOOST_REQUIRE(kv4.value() == int_value_bytes);
 

@@ -9,11 +9,11 @@ BOOST_AUTO_TEST_CASE(malloc_free_test)  {
     auto allocator = boost_memory_allocator::make();
 
     auto size = size_t{512};
-    auto* chunk = allocator->malloc(size);
+    auto* chunk = allocator->allocate(size);
     BOOST_REQUIRE(chunk);
-    allocator->free(chunk, size);
+    allocator->deallocate(chunk, size);
 
-    chunk = allocator->malloc(size);
+    chunk = allocator->allocate(size);
     BOOST_REQUIRE(chunk);
     allocator->free_function()(chunk, size);
 }
@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE(multiple_allocations) {
   auto allocator = boost_memory_allocator::make();
   for (size_t i = 0; i < 256; ++i) {
     static auto size = size_t{40};
-    auto* chunk = allocator->malloc(size);
+    auto* chunk = allocator->allocate(size);
     BOOST_REQUIRE(chunk);
   }
 }

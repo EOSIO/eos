@@ -1,12 +1,12 @@
 #pragma once
 
-#include <b1/session/bytes_fwd_decl.hpp>
+#include <b1/session/shared_bytes_fwd_decl.hpp>
 
 namespace eosio::session {
 
 class key_value;
 
-inline key_value make_kv(bytes key, bytes value);
+inline key_value make_kv(shared_bytes key, shared_bytes value);
 
 template <typename Key, typename Value, typename Allocator>
 key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length, Allocator& a);
