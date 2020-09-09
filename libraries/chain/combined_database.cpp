@@ -1,4 +1,5 @@
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
+#include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
@@ -168,7 +169,7 @@ namespace eosio { namespace chain {
             return create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
                   kv_database, kv_undo_stack, receiver, resource_manager, limits);
          case backing_store_type::CHAINBASE:
-            return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+            return create_kv_chainbase_context<kv_resource_manager>(db, receiver, resource_manager, limits);
          default:
             EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
