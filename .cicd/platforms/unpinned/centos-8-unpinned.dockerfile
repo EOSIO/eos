@@ -37,4 +37,4 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN yum install -y nodejs
-
+RUN ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
