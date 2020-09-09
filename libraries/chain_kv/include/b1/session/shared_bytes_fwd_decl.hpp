@@ -18,7 +18,7 @@ shared_bytes make_shared_bytes(const void* data, size_t length, Allocator& a);
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
 
-}
+} // namespace eosio::session
 
 namespace std {
 
@@ -34,4 +34,4 @@ struct hash<eosio::session::shared_bytes>;
 template <>
 struct equal_to<eosio::session::shared_bytes>;
 
-}
+} // namespace std

@@ -19,4 +19,4 @@ key_value make_kv(const void* key, size_t key_length, const void* value, size_t 
 
 inline key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
 
-}
+} // namespace eosio::session

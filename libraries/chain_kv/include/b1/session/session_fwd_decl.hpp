@@ -1,7 +1,6 @@
 #pragma once
 
-namespace eosio::session
-{
+namespace eosio::session {
 
 template <typename Persistent_data_store, typename Cache_data_store>
 class session;
@@ -18,4 +17,4 @@ session<Persistent_data_store, Cache_data_store> make_session(Persistent_data_st
 template <typename Persistent_data_store, typename Cache_data_store>
 session<Persistent_data_store, Cache_data_store> make_session(session<Persistent_data_store, Cache_data_store>& s);
 
-}
+} // namespace eosio::session
