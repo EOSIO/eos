@@ -305,15 +305,14 @@ session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(ses
 
 template <typename Persistent_data_store, typename Cache_data_store>
 session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(Persistent_data_store pds)
-: backing_data_store{std::make_shared<Persistent_data_store>(std::move(pds))},
-  cache{pds.memory_allocator()} {
-    // Prime the iterator cache with the begin and end values from the database.
-    auto begin = std::begin(*backing_data_store);
-    auto end = std::end(*backing_data_store);
-    if (begin != end) {
-        iterator_cache.emplace((*begin).key(), iterator_state{});
-        iterator_cache.emplace((*--end).key(), iterator_state{});
-    }
+    : backing_data_store{ std::make_shared<Persistent_data_store>(std::move(pds)) }, cache{ pds.memory_allocator() } {
+   // Prime the iterator cache with the begin and end values from the database.
+   auto begin = std::begin(*backing_data_store);
+   auto end   = std::end(*backing_data_store);
+   if (begin != end) {
+      iterator_cache.emplace((*begin).key(), iterator_state{});
+      iterator_cache.emplace((*--end).key(), iterator_state{});
+   }
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
