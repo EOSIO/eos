@@ -99,16 +99,6 @@ namespace eosio { namespace chain {
          kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
-      if (backing_store == backing_store_type::ROCKSDB) {
-         if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
-            return;
-         auto& idx = db.get_index<kv_index, by_kv_key>();
-         auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
-         EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
-                    "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
-                    "rocksdb");
-         db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
-      }
       if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
          ilog("using rocksdb for backing store");
       else
@@ -212,7 +202,6 @@ namespace eosio { namespace chain {
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
                   std::unique_ptr<rocksdb::Iterator> it{ kv_database.rdb->NewIterator(rocksdb::ReadOptions()) };
                   std::vector<char>                  prefix = rocksdb_contract_kv_prefix;
-                  b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
                   it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
                   while (it->Valid()) {
                      auto key = it->key();
@@ -225,8 +214,7 @@ namespace eosio { namespace chain {
                      std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size,
                                        reinterpret_cast<char*>(&contract));
                      auto           value = it->value();
-                     kv_object_view row{ kvdisk_id,
-                                         name(contract),
+                     kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
                                          { { value.data(), value.data() + value.size() } } };
                      section.add_row(row, db);
@@ -358,16 +346,13 @@ namespace eosio { namespace chain {
             if (backing_store == backing_store_type::ROCKSDB) {
                rocksdb::WriteBatch batch;
                vector<char>        prefix = rocksdb_contract_kv_prefix;
-               b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
                snapshot->read_section<value_t>([this, &batch, &prefix](auto& section) {
                   bool more = !section.empty();
                   while (more) {
                      kv_object* move_to_rocks = nullptr;
                      decltype(utils)::create(db, [this, &section, &more, &move_to_rocks](auto& row) {
                         more = section.read_row(row, db);
-                        if (row.database_id == kvdisk_id) {
-                           move_to_rocks = &row;
-                        }
+                        move_to_rocks = &row;
                      });
                      if (move_to_rocks) {
                         rocksdb::Slice key   = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
