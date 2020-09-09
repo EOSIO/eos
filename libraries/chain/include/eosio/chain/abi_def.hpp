@@ -216,7 +216,6 @@ void from_variant(const fc::variant& v, eosio::chain::may_not_exist<T>& e) {
    from_variant( v, e.value );
 }
 
-//template <typename T, typename = std::enable_if_t<std::is_same_v<T, std::map<eosio::chain::name, eosio::chain::kv_table_def>>, void>>
 template <>
 inline void to_variant(const eosio::chain::may_not_exist<std::map<eosio::chain::name, eosio::chain::kv_table_def>> & o, fc::variant &v)
 {
@@ -242,7 +241,6 @@ inline void to_variant(const eosio::chain::may_not_exist<std::map<eosio::chain::
    v = variant(mvo);
 }
 
-//template <typename T, typename = std::enable_if_t<std::is_same_v<T, std::map<eosio::chain::name, eosio::chain::kv_table_def>>, void>>
 template <>
 inline void from_variant(const fc::variant &v, eosio::chain::may_not_exist <std::map<eosio::chain::name, eosio::chain::kv_table_def>> & o)
 {
