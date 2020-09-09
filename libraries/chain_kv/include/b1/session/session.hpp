@@ -309,8 +309,8 @@ session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(Per
     auto begin = std::begin(*backing_data_store);
     auto end = std::end(*backing_data_store);
     if (begin != end) {
-        iterator_cache.emplace(begin.first, iterator_state{});
-        iterator_cache.emplace((--end).first, iterator_state{});
+        iterator_cache.emplace((*begin).key(), iterator_state{});
+        iterator_cache.emplace((*--end).key(), iterator_state{});
     }
 }
 
@@ -1231,4 +1231,3 @@ bool session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator
 }
 
 }
-
