@@ -19,7 +19,7 @@ namespace fc { namespace crypto {
    class signature
    {
       public:
-         using storage_type = static_variant<ecc::signature_shim, r1::signature_shim, webauthn::signature>;
+         using storage_type = std::variant<ecc::signature_shim, r1::signature_shim, webauthn::signature>;
 
          signature() = default;
          signature( signature&& ) = default;

@@ -49,16 +49,13 @@ namespace eosio { namespace chain {
                                              fc::time_point s )
    :control(c)
    ,packed_trx(t)
-   ,undo_session()
+   ,undo_session(!c.skip_db_sessions() ? c.kv_db().make_session() : c.kv_db().make_no_op_session())
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
    ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
    {
-      if (!c.skip_db_sessions()) {
-         undo_session.emplace(c.mutable_db(), c.kv_undo_stack());
-      }
       trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
@@ -324,9 +321,6 @@ namespace eosio { namespace chain {
       for( auto a : validate_ram_usage ) {
          rl.verify_account_ram_usage( a );
       }
-      for( auto a : validate_disk_usage ) {
-         rl.verify_account_disk_usage( a );
-      }
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
@@ -367,11 +361,11 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::squash() {
-      if (undo_session) undo_session->squash();
+      undo_session.squash();
    }
 
    void transaction_context::undo() {
-      if (undo_session) undo_session->undo();
+      undo_session.undo();
    }
 
    void transaction_context::check_net_usage()const {
@@ -497,14 +491,6 @@ namespace eosio { namespace chain {
       rl.add_pending_ram_usage( account, ram_delta, trace );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
-      }
-   }
-
-   void transaction_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
-      auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_disk_usage( account, disk_delta, trace );
-      if( disk_delta > 0 ) {
-         validate_disk_usage.insert( account );
       }
    }
 

@@ -2,16 +2,34 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 namespace eosio { namespace chain {
+   static constexpr auto kv_payer_size = sizeof(account_name);
+
+   static uint32_t actual_value_size(const uint32_t raw_value_size) {
+      EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
+      return (raw_value_size - kv_payer_size);
+   }
+
+   static account_name get_payer(const char* data) {
+      account_name payer;
+      memcpy(&payer, data, kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
+      return payer;
+   }
+
+   static const char* actual_value_start(const char* data) {
+      return data + kv_payer_size;
+   }
+
+   template <typename View>
    struct kv_iterator_rocksdb : kv_iterator {
       uint32_t&                num_iterators;
-      b1::chain_kv::view&          view;
+      View&                    view;
       uint64_t                 contract;
-      b1::chain_kv::view::iterator kv_it;
+      typename View::iterator  kv_it;
 
-      kv_iterator_rocksdb(uint32_t& num_iterators, b1::chain_kv::view& view, uint64_t contract, const char* prefix,
+      kv_iterator_rocksdb(uint32_t& num_iterators, View& view, uint64_t contract, const char* prefix,
                           uint32_t size)
           : num_iterators(num_iterators), view{ view }, contract{ contract }, //
             kv_it{ view, contract, { prefix, size } } {
@@ -146,9 +164,9 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (kv) {
-            if (offset < kv->value.size())
-               memcpy(dest, kv->value.data() + offset, std::min((size_t)size, kv->value.size() - offset));
-            actual_size = kv->value.size();
+            actual_size = actual_value_size( kv->value.size() );
+            if (offset < actual_size)
+               memcpy(dest, actual_value_start(kv->value.data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -163,8 +181,8 @@ namespace eosio { namespace chain {
             auto kv = kv_it.get_kv();
 
             // kv is always non-null due to the check of is_valid()
+            *found_value_size = actual_value_size( kv->value.size() ); // This must be before *found_key_size in case actual_value_size throws
             *found_key_size = kv->key.size();
-            *found_value_size = kv->value.size();
          } else {
             *found_key_size = 0;
             *found_value_size = 0;
@@ -172,22 +190,30 @@ namespace eosio { namespace chain {
       }
    }; // kv_iterator_rocksdb
 
+   template<typename View, typename Write_session, typename Resource_manager>
    struct kv_context_rocksdb : kv_context {
       b1::chain_kv::database&                  database;
       b1::chain_kv::undo_stack&                undo_stack;
-      b1::chain_kv::write_session              write_session;
-      b1::chain_kv::view                       view;
+      Write_session                            write_session;
+      View                                     view;
       name                                     receiver;
-      kv_resource_manager                      resource_manager;
+      Resource_manager                         resource_manager;
       const kv_database_config&                limits;
       uint32_t                                 num_iterators = 0;
       std::shared_ptr<const std::vector<char>> temp_data_buffer;
 
       kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
-                         name receiver, kv_resource_manager resource_manager, const kv_database_config& limits)
+                         name receiver, Resource_manager /*kv_resource_manager*/ resource_manager, const kv_database_config& limits)
           : database{ database }, undo_stack{ undo_stack },
-            write_session{ database }, view{ write_session, make_prefix() }, receiver{ receiver },
+            write_session{ database }, view{ write_session, make_rocksdb_contract_kv_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
+
+      // A hook for unit testing. Do not use this for any other purpose.
+      kv_context_rocksdb(View&& view_, b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack, name receiver, Resource_manager resource_manager, const kv_database_config& limits)
+         : database{ database }, undo_stack{ undo_stack },
+           write_session{ database }, view(std::move(view_)), 
+           receiver{ receiver },
+           resource_manager{ resource_manager }, limits{ limits } {}
 
       ~kv_context_rocksdb() override {
          try {
@@ -199,30 +225,27 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
       }
 
-      std::vector<char> make_prefix() {
-         return rocksdb_contract_kv_prefix;
-      }
-
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
          temp_data_buffer = nullptr;
 
          std::shared_ptr<const bytes> old_value;
+         uint32_t actual_old_value_size;
          try {
             try {
                old_value = view.get(contract, { key, key_size });
                if (!old_value)
                   return 0;
+               actual_old_value_size = actual_value_size(old_value->size()); 
                view.erase(contract, { key, key_size });
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         int64_t resource_delta = -(static_cast<int64_t>(resource_manager.billable_size) + key_size + old_value->size());
-# warning TODO: Investigate where to store payer
-         //resource_manager.update_table_usage(resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::erase));
-         return resource_delta;
+         account_name payer = get_payer(old_value->data());
+
+         return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
@@ -233,10 +256,28 @@ namespace eosio { namespace chain {
          temp_data_buffer = nullptr;
 
          std::shared_ptr<const bytes> old_value;
+         int64_t old_value_size = 0;
          try {
             try {
                old_value = view.get(contract, { key, key_size });
-               view.set(contract, { key, key_size }, { value, value_size });
+               if (old_value) {
+                  old_value_size = actual_value_size(old_value->size());
+               }
+
+               // need to store payer to properly credit this
+               // account when storage is removed or changed
+               // to another payer
+               bytes total_value;
+               const uint32_t total_value_size = kv_payer_size + value_size;
+               total_value.reserve(total_value_size);
+
+               char buf[kv_payer_size];
+               memcpy(buf, &payer, kv_payer_size);
+               total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
+
+               total_value.insert(total_value.end(), value, value + value_size); 
+               view.set(contract, { key, key_size }, { total_value.data(), total_value_size });
+
             }
             FC_LOG_AND_RETHROW()
          }
@@ -244,12 +285,13 @@ namespace eosio { namespace chain {
 
          int64_t resource_delta;
          if (old_value) {
-            // 64-bit arithmetic cannot overflow, because both the key and value are limited to 32-bits
-            resource_delta = static_cast<int64_t>(value_size) - static_cast<int64_t>(old_value->size());
+            account_name old_payer = get_payer(old_value->data());
+
+            resource_delta = update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
-            resource_delta = static_cast<int64_t>(resource_manager.billable_size) + key_size + value_size;
+            resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
          }
-         resource_manager.update_table_usage(payer, resource_delta, kv_resource_trace(key, key_size, kv_resource_trace::operation::update));
+
          return resource_delta;
       }
 
@@ -263,7 +305,7 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (temp_data_buffer) {
-            value_size = temp_data_buffer->size();
+            value_size = actual_value_size(temp_data_buffer->size());
             return true;
          } else {
             value_size = 0;
@@ -275,8 +317,8 @@ namespace eosio { namespace chain {
          const char* temp      = nullptr;
          uint32_t    temp_size = 0;
          if (temp_data_buffer) {
-            temp      = temp_data_buffer->data();
-            temp_size = temp_data_buffer->size();
+            temp      = actual_value_start(temp_data_buffer->data());
+            temp_size = actual_value_size(temp_data_buffer->size());
          }
          if (offset < temp_size)
             memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
@@ -288,7 +330,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(size <= limits.max_key_size, kv_bad_iter, "Prefix too large");
          try {
             try {
-               return std::make_unique<kv_iterator_rocksdb>(num_iterators, view, contract, prefix, size);
+               return std::make_unique<kv_iterator_rocksdb<View>>(num_iterators, view, contract, prefix, size);
             }
             FC_LOG_AND_RETHROW()
          }
@@ -296,13 +338,14 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_rocksdb
 
+   template <typename View, typename Write_session, typename Resource_manager>
    std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database&   kv_database,
                                                          b1::chain_kv::undo_stack& kv_undo_stack,
-                                                         name receiver, kv_resource_manager resource_manager,
+                                                         name receiver, Resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {
          try {
-            return std::make_unique<kv_context_rocksdb>(kv_database, kv_undo_stack, receiver,
+            return std::make_unique<kv_context_rocksdb<View, Write_session, Resource_manager>>(kv_database, kv_undo_stack, receiver,
                                                         resource_manager, limits);
          }
          FC_LOG_AND_RETHROW()

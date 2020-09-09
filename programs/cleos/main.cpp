@@ -347,14 +347,14 @@ chain::action generate_nonce_action() {
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
-  static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
+auto abi_serializer_resolver = [](const name& account) -> std::optional<abi_serializer> {
+  static unordered_map<account_name, std::optional<abi_serializer> > abi_cache;
   auto it = abi_cache.find( account );
   if ( it == abi_cache.end() ) {
     const auto raw_abi_result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
     const auto raw_abi_blob = raw_abi_result["abi"].as_blob().data;
 
-    fc::optional<abi_serializer> abis;
+    std::optional<abi_serializer> abis;
     if (raw_abi_blob.size() != 0) {
       abis.emplace(fc::raw::unpack<abi_def>(raw_abi_blob), abi_serializer::create_yield_function( abi_serializer_max_time ));
     } else {
@@ -368,8 +368,8 @@ auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_seria
   return it->second;
 };
 
-auto abi_serializer_resolver_empty = [](const name& account) -> fc::optional<abi_serializer> {
-   return fc::optional<abi_serializer>();
+auto abi_serializer_resolver_empty = [](const name& account) -> std::optional<abi_serializer> {
+   return std::optional<abi_serializer>();
 };
 
 void prompt_for_wallet_password(string& pw, const string& name) {
@@ -471,6 +471,27 @@ fc::variant push_actions(std::vector<chain::action>&& actions, const std::vector
    return push_transaction(trx, signing_keys);
 }
 
+void print_return_value( const fc::variant& at ) {
+   std::string return_value, return_value_prefix{"return value: "};
+   const auto  & iter_value = at.get_object().find("return_value_data");
+   const auto  & iter_hex   = at.get_object().find("return_value_hex_data");
+
+   if( iter_value != at.get_object().end() ) {
+      return_value = fc::json::to_string(iter_value->value(), fc::time_point::maximum());
+   }
+   else if( iter_hex != at.get_object().end() ) {
+      return_value = iter_hex->value().as_string();
+      return_value_prefix = "return value (hex): ";
+   }
+
+   if( !return_value.empty() ) {
+      if( return_value.size() > 100 ) {
+         return_value = return_value.substr(0, 100) + "...";
+      }
+      cout << "=>" << std::setw(46) << std::right << return_value_prefix << return_value << "\n";
+   }
+}
+
 void print_action( const fc::variant& at ) {
    auto receiver = at["receiver"].as_string();
    const auto& act = at["act"].get_object();
@@ -487,6 +508,7 @@ void print_action( const fc::variant& at ) {
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
    cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   print_return_value(at);
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
@@ -500,7 +522,7 @@ void print_action( const fc::variant& at ) {
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -509,7 +531,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis, "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -581,7 +603,7 @@ void print_result( const fc::variant& result ) { try {
          cerr << " us\n";
 
          if( status == "failed" ) {
-            auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
+            auto soft_except = processed["except"].as<std::optional<fc::exception>>();
             if( soft_except ) {
                edump((soft_except->to_detail_string()));
             }
@@ -1143,7 +1165,7 @@ struct create_account_subcommand {
 
             if( active_key_str.empty() ) {
                active = owner;
-            } else if ( active_key_str.find('{') != string::npos ) { 
+            } else if ( active_key_str.find('{') != string::npos ) {
                try{
                   active = parse_json_authority_or_key(active_key_str);
                } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active authority: ${authority}", ("authority", owner_key_str) )
@@ -1402,9 +1424,9 @@ struct get_schedule_subcommand {
          } else {
             printf( "    %-13s ", row["producer_name"].as_string().c_str() );
             auto a = row["authority"].as<block_signing_authority>();
-            static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
+            static_assert( std::is_same<decltype(a), std::variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
-            block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            block_signing_authority_v0 auth = std::get<block_signing_authority_v0>(a);
             printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
          }
       }
@@ -2191,7 +2213,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       asset staked;
       asset unstaking;
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
@@ -2411,7 +2433,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
@@ -2628,7 +2650,7 @@ int main( int argc, char** argv ) {
    });
 
    // validate subcommand
-   auto validate = app.add_subcommand("validate", localized("Validate transactions")); 
+   auto validate = app.add_subcommand("validate", localized("Validate transactions"));
    validate->require_subcommand();
 
    // validate signatures
@@ -2647,7 +2669,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
@@ -2683,13 +2705,13 @@ int main( int argc, char** argv ) {
    getBlock->callback([&blockArg, &get_bhs, &get_binfo] {
       EOSC_ASSERT( !(get_bhs && get_binfo), "ERROR: Either --header-state or --info can be set" );
       if (get_binfo) {
-         fc::optional<int64_t> block_num;
+         std::optional<int64_t> block_num;
          try {
             block_num = fc::to_int64(blockArg);
          } catch (...) {
             // error is handled in assertion below
          }
-         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
+         EOSC_ASSERT( block_num && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
          const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
          std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {
@@ -3474,7 +3496,7 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'",
                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
 
-      fc::optional<chain_id_type> chain_id;
+      std::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
@@ -3553,7 +3575,7 @@ int main( int argc, char** argv ) {
       try {
          signed_transaction trx = trx_var.as<signed_transaction>();
          std::cout << fc::json::to_pretty_string( push_transaction( trx, signing_keys_opt.get_keys() )) << std::endl;
-      } catch( fc::exception& ) {
+      } catch( const std::exception& ) {
          // unable to convert so try via abi
          signed_transaction trx;
          abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -4081,6 +4103,17 @@ int main( int argc, char** argv ) {
    auto rexexec        = rexexec_subcommand(rex);
    auto closerex       = closerex_subcommand(rex);
 
+   auto handle_error = [&](const auto& e)
+   {
+      // attempt to extract the error code if one is present
+      if (!print_recognized_errors(e, verbose)) {
+         // Error is not recognized
+         if (!print_help_text(e) || verbose) {
+            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
+         }
+      }
+      return 1;
+   };
 
    try {
        app.parse(argc, argv);
@@ -4093,15 +4126,14 @@ int main( int argc, char** argv ) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
       return 1;
+   } catch ( const std::bad_alloc& ) {
+     elog("bad alloc");
+   } catch( const boost::interprocess::bad_alloc& ) {
+     elog("bad alloc");
    } catch (const fc::exception& e) {
-      // attempt to extract the error code if one is present
-      if (!print_recognized_errors(e, verbose)) {
-         // Error is not recognized
-         if (!print_help_text(e) || verbose) {
-            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
-         }
-      }
-      return 1;
+     return handle_error(e);
+   } catch (const std::exception& e) {
+      return handle_error(fc::std_exception_wrapper::from_current_exception(e)); 
    }
 
    return 0;

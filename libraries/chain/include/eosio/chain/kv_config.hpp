@@ -27,3 +27,4 @@ namespace eosio { namespace chain {
 }}
 
 FC_REFLECT(eosio::chain::kv_database_config, (max_key_size)(max_value_size)(max_iterators))
+

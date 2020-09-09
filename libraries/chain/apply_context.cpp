@@ -85,25 +85,26 @@ void apply_context::exec_one()
 
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
+
+   auto handle_exception = [&](const auto& e)
+   {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   };
+
    try {
       try {
          action_return_value.clear();
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            switch (control.get_config().backing_store) {
-               case backing_store_type::ROCKSDB:
-                  kv_backing_store = create_kv_rocksdb_context(control.kv_database(), control.kv_undo_stack(), receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-                  break;
-               case backing_store_type::NATIVE:
-                  kv_backing_store = create_kv_chainbase_context(db, receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-                  break;
-               default:
-                  EOS_ASSERT( false, action_validate_exception, "Unknown backing store." );
-            }
+            kv_backing_store = control.kv_db().create_kv_context(receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
 
-            _db_context = create_db_chainbase_context(*this, receiver);
-         }
+            _db_context = backing_store::create_db_chainbase_context(*this, receiver);
+        }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
             privileged = receiver_account->is_privileged();
@@ -136,8 +137,6 @@ void apply_context::exec_one()
                if (control.is_builtin_activated(builtin_protocol_feature_t::ram_restrictions)) {
                   check_unprivileged_resource_usage<unauthorized_ram_usage_increase>("RAM", _account_ram_deltas);
                }
-
-               check_unprivileged_resource_usage<unauthorized_disk_usage_increase>("DISK", _account_disk_deltas);
             }
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
@@ -153,12 +152,15 @@ void apply_context::exec_one()
       } else {
          act_digest = digest_type::hash(*act);
       }
-   } catch( const fc::exception& e ) {
-      action_trace& trace = trx_context.get_action_trace( action_ordinal );
-      trace.error_code = controller::convert_exception_to_error_code( e );
-      trace.except = e;
-      finalize_trace( trace, start );
+   } catch ( const std::bad_alloc& ) {
       throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch( const fc::exception& e ) {
+      handle_exception(e);
+   } catch ( const std::exception& e ) {
+      auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+      handle_exception(wrapper);
    }
 
    // Note: It should not be possible for receiver_account to be invalidated because:
@@ -444,7 +446,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
@@ -840,16 +842,16 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 {
    const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
    const bytes* cfd = nullptr;
-   if( data.contains<packed_transaction::prunable_data_type::none>() ) {
-   } else if( data.contains<packed_transaction::prunable_data_type::partial>() ) {
-      if( index >= data.get<packed_transaction::prunable_data_type::partial>().context_free_segments.size() ) return -1;
+   if( std::holds_alternative<packed_transaction::prunable_data_type::none>(data) ) {
+   } else if( std::holds_alternative<packed_transaction::prunable_data_type::partial>(data) ) {
+      if( index >= std::get<packed_transaction::prunable_data_type::partial>(data).context_free_segments.size() ) return -1;
 
       cfd = trx_context.packed_trx.get_context_free_data(index);
    } else {
       const std::vector<bytes>& context_free_data =
-            data.contains<packed_transaction::prunable_data_type::full_legacy>() ?
-               data.get<packed_transaction::prunable_data_type::full_legacy>().context_free_segments :
-               data.get<packed_transaction::prunable_data_type::full>().context_free_segments;
+            std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
+               std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
+               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
       if( index >= context_free_data.size() ) return -1;
 
       cfd = &context_free_data[index];
@@ -920,14 +922,14 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
       );
    }
 
-   keyval_cache.cache_table( tab );
-   return keyval_cache.add( obj );
+   db_iter_store.cache_table( tab );
+   return db_iter_store.add( obj );
 }
 
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
@@ -979,9 +981,9 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 }
 
 void apply_context::db_remove_i64( int iterator ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
@@ -1019,11 +1021,11 @@ void apply_context::db_remove_i64( int iterator ) {
       remove_table(table_obj);
    }
 
-   keyval_cache.remove( iterator );
+   db_iter_store.remove( iterator );
 }
 
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+   const key_value_object& obj = db_iter_store.get( iterator );
 
    auto s = obj.value.size();
    if( buffer_size == 0 ) return s;
@@ -1037,16 +1039,16 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
    if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get( iterator ); // Check for iterator != -1 happens in this call
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
    ++itr;
 
-   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr == idx.end() || itr->t_id != obj.t_id ) return db_iter_store.get_end_iterator_by_table_id(obj.t_id);
 
    primary = itr->primary_key;
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
@@ -1054,7 +1056,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
 
    if( iterator < -1 ) // is end iterator
    {
-      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
+      auto tab = db_iter_store.find_table_by_end_iterator(iterator);
       EOS_ASSERT( tab, invalid_table_iterator, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
@@ -1065,10 +1067,10 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       if( itr->t_id != tab->id ) return -1; // Empty table
 
       primary = itr->primary_key;
-      return keyval_cache.add(*itr);
+      return db_iter_store.add(*itr);
    }
 
-   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get(iterator); // Check for iterator != -1 happens in this call
 
    auto itr = idx.iterator_to(obj);
    if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
@@ -1078,7 +1080,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
 
    primary = itr->primary_key;
-   return keyval_cache.add(*itr);
+   return db_iter_store.add(*itr);
 }
 
 int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
@@ -1087,12 +1089,12 @@ int apply_context::db_find_i64( name code, name scope, name table, uint64_t id )
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const key_value_object* obj = db.find<key_value_object, by_scope_primary>( boost::make_tuple( tab->id, id ) );
    if( !obj ) return table_end_itr;
 
-   return keyval_cache.add( *obj );
+   return db_iter_store.add( *obj );
 }
 
 int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
@@ -1101,14 +1103,14 @@ int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
@@ -1117,14 +1119,14 @@ int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
 int apply_context::db_end_i64( name code, name scope, name table ) {
@@ -1133,7 +1135,7 @@ int apply_context::db_end_i64( name code, name scope, name table ) {
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   return keyval_cache.cache_table( *tab );
+   return db_iter_store.cache_table( *tab );
 }
 
 int64_t apply_context::kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
@@ -1254,16 +1256,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    }
 }
 
-void apply_context::add_disk_usage( account_name payer, int64_t disk_delta, const storage_usage_trace& trace ) {
-
-   trx_context.add_disk_usage( payer, disk_delta, trace );
-
-   auto p = _account_disk_deltas.emplace( payer, disk_delta );
-   if( !p.second ) {
-      p.first->delta += disk_delta;
-   }
-}
-
 action_name apply_context::get_sender() const {
    const action_trace& trace = trx_context.get_action_trace( action_ordinal );
    if (trace.creator_action_ordinal > 0) {
@@ -1281,7 +1273,7 @@ void apply_context::increment_action_id() {
    trx_context.action_id.increment();
 }
 
-db_context& apply_context::db_get_context() {
+backing_store::db_context& apply_context::db_get_context() {
    EOS_ASSERT( _db_context, action_validate_exception,
                "context-free actions cannot access state" );
    return *_db_context;

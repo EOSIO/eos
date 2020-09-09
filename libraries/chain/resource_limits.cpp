@@ -283,52 +283,8 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    }
 }
 
-void resource_limits_manager::add_pending_disk_usage( const account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
-   if (disk_delta == 0) {
-      return;
-   }
-
-   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
-
-   EOS_ASSERT( disk_delta <= 0 || UINT64_MAX - usage.disk_usage >= (uint64_t)disk_delta, transaction_exception,
-              "Disk usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(disk_delta >= 0 || usage.disk_usage >= (uint64_t)(-disk_delta), transaction_exception,
-              "Disk usage delta would underflow UINT64_MAX");
-
-   _db.modify( usage, [&]( auto& u ) {
-     u.disk_usage += disk_delta;
-
-      if (auto dm_logger = _get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "DISK_OP ${action_id} ${event_id} ${family} ${operation} ${payer} ${new_usage} ${delta}",
-            ("action_id", trace.action_id)
-            ("event_id", trace.event_id)
-            ("family", trace.family)
-            ("operation", trace.operation)
-            ("payer", account)
-            ("new_usage", u.disk_usage)
-            ("delta", disk_delta)
-         );
-      }
-   });
-}
-
-void resource_limits_manager::verify_account_disk_usage( const account_name account ) const {
-   int64_t disk_bytes = get_account_disk_limit( account );
-
-   if( disk_bytes >= 0 ) {
-      const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
-      EOS_ASSERT( usage.disk_usage <= static_cast<uint64_t>(disk_bytes), disk_usage_exceeded,
-                  "account ${account} has insufficient disk; needs ${needs} bytes has ${available} bytes",
-                  ("account", account)("needs",usage.disk_usage)("available",disk_bytes)              );
-   }
-}
-
 int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
    return _db.get<resource_usage_object,by_owner>( name ).ram_usage;
-}
-
-int64_t resource_limits_manager::get_account_disk_usage( const account_name& name )const {
-   return _db.get<resource_usage_object,by_owner>( name ).disk_usage;
 }
 
 const resource_limits_object& resource_limits_manager::get_or_create_pending_account_limits( const account_name& account ) {
@@ -345,7 +301,6 @@ const resource_limits_object& resource_limits_manager::get_or_create_pending_acc
          pending_limits.ram_bytes = limits.ram_bytes;
          pending_limits.net_weight = limits.net_weight;
          pending_limits.cpu_weight = limits.cpu_weight;
-         pending_limits.disk_bytes = limits.disk_bytes;
          pending_limits.pending = true;
       });
    } else {
@@ -395,20 +350,6 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
    cpu_weight = buo.cpu_weight;
 }
 
-bool resource_limits_manager::set_account_disk_limit( const account_name& account, int64_t disk_bytes ) {
-   auto& limits = get_or_create_pending_account_limits( account );
-   bool decreased_limit = disk_bytes >= 0 && (limits.disk_bytes < 0 || disk_bytes < limits.disk_bytes);
-   _db.modify(limits, [disk_bytes]( resource_limits_object& pending_limits ) {
-      pending_limits.disk_bytes = disk_bytes;
-   });
-   return decreased_limit;
-}
-
-int64_t resource_limits_manager::get_account_disk_limit( const account_name& account ) const {
-   return get_account_limits(account).disk_bytes;
-}
-
-
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
    auto& by_owner_index = multi_index.indices().get<by_owner>();
@@ -439,7 +380,6 @@ void resource_limits_manager::process_account_limit_updates() {
          const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
          _db.modify(actual_entry, [&](resource_limits_object& rlo){
             update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
-            update_state_and_value(rso.total_disk_bytes, rlo.disk_bytes, itr->disk_bytes, "disk_bytes");
             update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
             update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_weight");
          });
@@ -506,7 +446,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_cpu_limit( const a
 }
 
 std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -552,7 +492,7 @@ resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.cpu_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.valid() ) {
+   if ( current_time ) {
       if (current_time->slot > usage.cpu_usage.last_ordinal) {
          auto history_usage = usage.cpu_usage;
          history_usage.add(0, current_time->slot, window_size);
@@ -568,7 +508,7 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_net_limit( const a
 }
 
 std::pair<account_resource_limit, bool>
-resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const fc::optional<block_timestamp_type>& current_time) const {
+resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -613,7 +553,7 @@ resource_limits_manager::get_account_net_limit_ex( const account_name& name, uin
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    arl.last_usage_update_time = block_timestamp_type(usage.net_usage.last_ordinal);
    arl.current_used = arl.used;
-   if ( current_time.valid() ) {
+   if ( current_time ) {
       if (current_time->slot > usage.net_usage.last_ordinal) {
          auto history_usage = usage.net_usage;
          history_usage.add(0, current_time->slot, window_size);

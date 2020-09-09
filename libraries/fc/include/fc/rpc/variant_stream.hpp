@@ -28,7 +28,7 @@ namespace fc
         int64_t   wait(); // wait for variants to be posted
 
      private:
-        std::vector<variant>  _variants;
+        std::vector<fc::variant>  _variants;
         uint64_t              _read_pos;
         uint64_t              _write_pos;
    };

@@ -3,13 +3,13 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/varint.hpp>
-#include <fc/optional.hpp>
 #include <fc/fwd.hpp>
 #include <fc/array.hpp>
 #include <fc/time.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/safe.hpp>
+#include <fc/static_variant.hpp>
 #include <fc/io/raw_fwd.hpp>
 #include <array>
 #include <map>
@@ -27,11 +27,12 @@ namespace fc {
     namespace bip = boost::interprocess;
     using shared_string = bip::basic_string< char, std::char_traits< char >, bip::allocator<char, bip::managed_mapped_file::segment_manager> >;
 
-    using namespace boost::multiprecision;
     template<size_t Size>
-    using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
+    using UInt = boost::multiprecision::number<
+          boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void> >;
     template<size_t Size>
-    using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
+    using Int = boost::multiprecision::number<
+          boost::multiprecision::cpp_int_backend<Size, Size, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void> >;
     template<typename Stream> void pack( Stream& s, const UInt<256>& n );
     template<typename Stream> void unpack( Stream& s,  UInt<256>& n );
     template<typename Stream> void pack( Stream& s, const Int<256>& n );
@@ -267,13 +268,13 @@ namespace fc {
 
     // optional
     template<typename Stream, typename T>
-    void pack( Stream& s, const fc::optional<T>& v ) {
-      fc::raw::pack( s, bool(!!v) );
-      if( !!v ) fc::raw::pack( s, *v );
+    void pack( Stream& s, const std::optional<T>& v ) {
+      fc::raw::pack( s, v.has_value() );
+      if( v ) fc::raw::pack( s, *v );
     }
 
     template<typename Stream, typename T>
-    void unpack( Stream& s, fc::optional<T>& v )
+    void unpack( Stream& s, std::optional<T>& v )
     { try {
       bool b; fc::raw::unpack( s, b );
       if( b ) { v = T(); fc::raw::unpack( s, *v ); }
@@ -584,6 +585,26 @@ namespace fc {
     }
 
     template<typename Stream, typename T>
+    inline void pack( Stream& s, const std::list<T>& value ) {
+      FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
+      fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+      for( const auto& i : value ) {
+         fc::raw::pack( s, i );
+      }
+    }
+
+    template<typename Stream, typename T>
+    inline void unpack( Stream& s, std::list<T>& value ) {
+      unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value <= MAX_NUM_ARRAY_ELEMENTS );
+      while( size.value-- ) {
+         T i;
+         fc::raw::unpack( s, i );
+         value.emplace_back( std::move( i ) );
+      }
+    }
+
+    template<typename Stream, typename T>
     inline void pack( Stream& s, const std::set<T>& value ) {
       FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
       fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
@@ -746,18 +767,18 @@ namespace fc {
 
 
     template<typename Stream, typename... T>
-    void pack( Stream& s, const static_variant<T...>& sv )
+    void pack( Stream& s, const std::variant<T...>& sv )
     {
-       fc::raw::pack( s, unsigned_int(sv.which()) );
-       sv.visit( pack_static_variant<Stream>(s) );
+       fc::raw::pack( s, unsigned_int(sv.index()) );
+       std::visit( pack_static_variant<Stream>(s), sv );
     }
 
-    template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv )
+    template<typename Stream, typename... T> void unpack( Stream& s, std::variant<T...>& sv )
     {
        unsigned_int w;
        fc::raw::unpack( s, w );
-       sv.set_which(w.value);
-       sv.visit( unpack_static_variant<Stream>(s) );
+       fc::from_index(sv, w.value);
+       std::visit( unpack_static_variant<Stream>(s), sv );
     }
 
 

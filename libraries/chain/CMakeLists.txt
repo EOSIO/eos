@@ -34,7 +34,6 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc.cpp
                              webassembly/runtimes/eos-vm-oc/default_real_main.cpp)
 
-
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
       list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.llvmwar)
@@ -84,6 +83,7 @@ add_library( eosio_chain
              block_header_state.cpp
              block_state.cpp
              fork_database.cpp
+             combined_database.cpp
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp
@@ -122,11 +122,11 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
-             kv_context.cpp
-             kv_context_rocksdb.cpp
+             backing_store/kv_context.cpp
              kv_context_chainbase.cpp
-             db_context_chainbase.cpp
-             kv_context_rocksdb.cpp
+             backing_store/db_context_chainbase.cpp
+             backing_store/db_context_rocksdb.cpp
+             backing_store/db_key_value_format.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
@@ -159,6 +159,8 @@ if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")
    target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
 endif()
+
+add_subdirectory ( backing_store/tests )
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

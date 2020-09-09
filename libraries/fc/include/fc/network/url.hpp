@@ -1,6 +1,5 @@
 #pragma once
 #include <fc/string.hpp>
-#include <fc/optional.hpp>
 #include <stdint.h>
 #include <fc/filesystem.hpp>
 #include <fc/variant_object.hpp>
@@ -8,9 +7,9 @@
 
 namespace fc {
 
-  typedef fc::optional<fc::string>           ostring;
-  typedef fc::optional<fc::path>             opath;
-  typedef fc::optional<fc::variant_object>   ovariant_object;
+  typedef std::optional<fc::string>           ostring;
+  typedef std::optional<fc::path>             opath;
+  typedef std::optional<fc::variant_object>   ovariant_object;
 
   namespace detail { class url_impl; }
 
@@ -28,7 +27,7 @@ namespace fc {
       url( const url& c );
       url( url&& c );
       url( const string& proto, const ostring& host, const ostring& user, const ostring& pass,
-           const opath& path, const ostring& query, const ovariant_object& args, const fc::optional<uint16_t>& port);
+           const opath& path, const ostring& query, const ovariant_object& args, const std::optional<uint16_t>& port);
       ~url();
       
       url& operator=( const url& c );
@@ -49,7 +48,7 @@ namespace fc {
       opath                     path()const;
       ostring                   query()const;
       ovariant_object           args()const;
-      fc::optional<uint16_t>    port()const;
+      std::optional<uint16_t>   port()const;
 
     private:
       friend class mutable_url;

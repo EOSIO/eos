@@ -5,25 +5,11 @@
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/code_object.hpp>
-#include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
-#include <eosio/chain/genesis_intrinsics.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
-#include <eosio/chain/database_header_object.hpp>
-#include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/platform_timer.hpp>
 
@@ -40,77 +26,6 @@ namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
 
-using controller_index_set = index_set<
-   account_index,
-   account_metadata_index,
-   account_ram_correction_index,
-   global_property_multi_index,
-   protocol_state_multi_index,
-   dynamic_global_property_multi_index,
-   block_summary_multi_index,
-   transaction_multi_index,
-   generated_transaction_multi_index,
-   table_id_multi_index,
-   code_index,
-   database_header_multi_index,
-   kv_db_config_index,
-   kv_index
->;
-
-using contract_database_index_set = index_set<
-   key_value_index,
-   index64_index,
-   index128_index,
-   index256_index,
-   index_double_index,
-   index_long_double_index
->;
-
-class maybe_session {
-   public:
-      maybe_session() = default;
-
-      maybe_session( maybe_session&& other)
-      :_session(move(other._session))
-      {
-      }
-
-      explicit maybe_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack) {
-         _session.emplace(cb_database, kv_undo_stack);
-      }
-
-      maybe_session(const maybe_session&) = delete;
-
-      void squash() {
-         if (_session)
-            _session->squash();
-      }
-
-      void undo() {
-         if (_session)
-            _session->undo();
-      }
-
-      void push() {
-         if (_session)
-            _session->push();
-      }
-
-      maybe_session& operator = ( maybe_session&& mv ) {
-         if (mv._session) {
-            _session = move(*mv._session);
-            mv._session.reset();
-         } else {
-            _session.reset();
-         }
-
-         return *this;
-      };
-
-   private:
-      optional<combined_session>     _session;
-};
-
 struct building_block {
    building_block( const block_header_state& prev,
                    block_timestamp_type when,
@@ -121,14 +36,14 @@ struct building_block {
    ,_trx_mroot_or_receipt_digests( digests_t{} )
    {}
 
-   pending_block_header_state            _pending_block_header_state;
-   optional<producer_authority_schedule> _new_pending_producer_schedule;
-   vector<digest_type>                   _new_protocol_feature_activations;
-   size_t                                _num_new_protocol_features_that_have_activated = 0;
-   deque<transaction_metadata_ptr>       _pending_trx_metas;
-   deque<transaction_receipt>            _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
-   static_variant<checksum256_type, digests_t> _trx_mroot_or_receipt_digests;
-   digests_t                             _action_receipt_digests;
+   pending_block_header_state                 _pending_block_header_state;
+   std::optional<producer_authority_schedule> _new_pending_producer_schedule;
+   vector<digest_type>                        _new_protocol_feature_activations;
+   size_t                                     _num_new_protocol_features_that_have_activated = 0;
+   deque<transaction_metadata_ptr>            _pending_trx_metas;
+   deque<transaction_receipt>                 _pending_trx_receipts; // boost deque in 1.71 with 1024 elements performs better
+   std::variant<checksum256_type, digests_t>  _trx_mroot_or_receipt_digests;
+   digests_t                                  _action_receipt_digests;
 };
 
 struct assembled_block {
@@ -138,17 +53,17 @@ struct assembled_block {
    signed_block_ptr                  _unsigned_block;
 
    // if the _unsigned_block pre-dates block-signing authorities this may be present.
-   optional<producer_authority_schedule> _new_producer_authority_cache;
+   std::optional<producer_authority_schedule> _new_producer_authority_cache;
 };
 
 struct completed_block {
    block_state_ptr                   _block_state;
 };
 
-using block_stage_type = fc::static_variant<building_block, assembled_block, completed_block>;
+using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
 struct pending_state {
-   pending_state( maybe_session&& s, const block_header_state& prev,
+   pending_state( combined_session&& s, const block_header_state& prev,
                   block_timestamp_type when,
                   uint16_t num_prev_blocks_to_confirm,
                   const vector<digest_type>& new_protocol_feature_activations )
@@ -156,42 +71,42 @@ struct pending_state {
    ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
-   maybe_session                      _db_session;
+   combined_session                   _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
-   optional<block_id_type>            _producer_block_id;
+   std::optional<block_id_type>       _producer_block_id;
 
    /** @pre _block_stage cannot hold completed_block alternative */
    const pending_block_header_state& get_pending_block_header_state()const {
-      if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_block_header_state;
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return _block_stage.get<assembled_block>()._pending_block_header_state;
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
-      if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_trx_receipts;
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_trx_receipts;
 
-      if( _block_stage.contains<assembled_block>() )
-         return _block_stage.get<assembled_block>()._unsigned_block->transactions;
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::get<assembled_block>(_block_stage)._unsigned_block->transactions;
 
-      return _block_stage.get<completed_block>()._block_state->block->transactions;
-   }
+      return std::get<completed_block>(_block_stage)._block_state->block->transactions;
+    }
 
    deque<transaction_metadata_ptr> extract_trx_metas() {
-      if( _block_stage.contains<building_block>() )
-         return std::move( _block_stage.get<building_block>()._pending_trx_metas );
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::move( std::get<building_block>(_block_stage)._pending_trx_metas );
 
-      if( _block_stage.contains<assembled_block>() )
-         return std::move( _block_stage.get<assembled_block>()._trx_metas );
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::move( std::get<assembled_block>(_block_stage)._trx_metas );
 
-      return _block_stage.get<completed_block>()._block_state->extract_trxs_metas();
+      return std::get<completed_block>(_block_stage)._block_state->extract_trxs_metas();
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
-      if( _block_stage.contains<building_block>() ) {
-         auto& bb = _block_stage.get<building_block>();
+      if( std::holds_alternative<building_block>(_block_stage) ) {
+        auto& bb = std::get<building_block>(_block_stage);
          const auto& activated_features = bb._pending_block_header_state.prev_activated_protocol_features->protocol_features;
 
          if( activated_features.find( feature_digest ) != activated_features.end() ) return true;
@@ -202,7 +117,7 @@ struct pending_state {
          return (std::find( bb._new_protocol_feature_activations.begin(), end, feature_digest ) != end);
       }
 
-      if( _block_stage.contains<assembled_block>() ) {
+      if( std::holds_alternative<assembled_block>(_block_stage) ) {
          // Calling is_protocol_feature_activated during the assembled_block stage is not efficient.
          // We should avoid doing it.
          // In fact for now it isn't even implemented.
@@ -211,7 +126,7 @@ struct pending_state {
          // TODO: implement this
       }
 
-      const auto& activated_features = _block_stage.get<completed_block>()._block_state->activated_protocol_features->protocol_features;
+      const auto& activated_features = std::get<completed_block>(_block_stage)._block_state->activated_protocol_features->protocol_features;
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
@@ -228,73 +143,38 @@ struct controller_impl {
       reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
    };
 
-   reset_new_handler              rnh; // placed here to allow for this to be set before constructing the other fields
-   controller&                    self;
-   std::function<void()>          shutdown;
-   chainbase::database            db;
-   chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
-   b1::chain_kv::database         kv_database;
-   b1::chain_kv::undo_stack       kv_undo_stack;
-   block_log                      blog;
-   optional<pending_state>        pending;
-   block_state_ptr                head;
-   fork_database                  fork_db;
-   wasm_interface                 wasmif;
-   resource_limits_manager        resource_limits;
-   authorization_manager          authorization;
-   protocol_feature_manager       protocol_features;
-   controller::config             conf;
-   const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
-   optional<fc::time_point>       replay_head_time;
-   db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
-   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
-   optional<fc::microseconds>     subjective_cpu_leeway;
-   bool                           trusted_producer_light_validation = false;
-   uint32_t                       snapshot_head_block = 0;
-   named_thread_pool              thread_pool;
-   platform_timer                 timer;
-   fc::logger*                    deep_mind_logger = nullptr;
+   reset_new_handler                   rnh; // placed here to allow for this to be set before constructing the other fields
+   controller&                         self;
+   std::function<void()>               shutdown;
+   chainbase::database                 db;
+   chainbase::database                 reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+   combined_database                   kv_db;
+   block_log                           blog;
+   std::optional<pending_state>        pending;
+   block_state_ptr                     head;
+   fork_database                       fork_db;
+   wasm_interface                      wasmif;
+   resource_limits_manager             resource_limits;
+   authorization_manager               authorization;
+   protocol_feature_manager            protocol_features;
+   controller::config                  conf;
+   const chain_id_type                 chain_id; // read by thread_pool threads, value will not be changed
+   std::optional<fc::time_point>       replay_head_time;
+   db_read_mode                        read_mode = db_read_mode::SPECULATIVE;
+   bool                                in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
+   std::optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                                trusted_producer_light_validation = false;
+   uint32_t                            snapshot_head_block = 0;
+   named_thread_pool                   thread_pool;
+   platform_timer                      timer;
+   fc::logger*                         deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-   vm::wasm_allocator                 wasm_alloc;
+   vm::wasm_allocator               wasm_alloc;
 #endif
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
-
-   void set_revision(uint64_t revision) {
-      try {
-         try {
-            db.set_revision(revision);
-# warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restart
-            //kv_undo_stack.set_revision(revision, false);
-         }
-         FC_LOG_AND_RETHROW()
-      }
-      CATCH_AND_EXIT_DB_FAILURE()
-   }
-
-   void undo() {
-      try {
-         try {
-            db.undo();
-            kv_undo_stack.undo(false);
-         }
-         FC_LOG_AND_RETHROW()
-      }
-      CATCH_AND_EXIT_DB_FAILURE()
-   }
-
-   void commit(int64_t revision) {
-      try {
-         try {
-            db.commit(revision);
-            kv_undo_stack.commit(revision);
-         }
-         FC_LOG_AND_RETHROW()
-      }
-      CATCH_AND_EXIT_DB_FAILURE()
-   }
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -315,7 +195,7 @@ struct controller_impl {
 
       head = prev;
 
-      undo();
+      kv_db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
    }
@@ -348,8 +228,8 @@ struct controller_impl {
     reversible_blocks( cfg.blog.log_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    kv_database( (cfg.state_dir/"chain-kv").string().c_str(), !cfg.read_only, cfg.rocksdb_threads, cfg.rocksdb_max_open_files ),
-    kv_undo_stack( kv_database, vector<char>{rocksdb_undo_prefix} ),
+    kv_db(cfg.backing_store, db, (cfg.state_dir / "chain-kv").string(), !cfg.read_only,
+          cfg.rocksdb_threads, cfg.rocksdb_max_open_files),
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -375,6 +255,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::action_return_value>();
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
+      set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -471,7 +352,7 @@ struct controller_impl {
             // Do it before commit so that in case it throws, DB can be rolled back.
             blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
-            commit( (*bitr)->block_num );
+            kv_db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
             auto rbitr = rbi.begin();
@@ -480,14 +361,12 @@ struct controller_impl {
                rbitr = rbi.begin();
             }
          }
-      } catch( fc::exception& ) {
+      } catch( std::exception& ) {
          if( root_id != fork_db.root()->id ) {
             fork_db.advance_root( root_id );
          }
          throw;
       }
-
-      //commit( fork_head->dpos_irreversible_blocknum ); // redundant
 
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
@@ -516,7 +395,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*head) = genheader;
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
-      set_revision( head->block_num );
+      kv_db.set_revision( head->block_num );
       initialize_database(genesis);
    }
 
@@ -563,7 +442,7 @@ struct controller_impl {
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
-            set_revision( head->block_num );
+            kv_db.set_revision( head->block_num );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -603,9 +482,13 @@ struct controller_impl {
       try {
          snapshot->validate();
          if( blog.head() ) {
-            read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num() );
+            kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
+                                      conf.backing_store, authorization, resource_limits,
+                                      fork_db, head, snapshot_head_block, chain_id );
          } else {
-            read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max() );
+            kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
+                                      conf.backing_store, authorization, resource_limits,
+                                      fork_db, head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
             EOS_ASSERT( lib_num > 0, snapshot_exception,
                         "Snapshot indicates controller head at block number 0, but that is not allowed. "
@@ -731,6 +614,8 @@ struct controller_impl {
          });
       }
 
+      kv_db.set_backing_store(conf.backing_store);
+
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -745,7 +630,7 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
-         undo();
+         kv_db.undo();
       }
 
       protocol_features.init( db );
@@ -848,308 +733,10 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section("contract_tables", [this]( auto& section ) {
-         index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
-            // add a row for the table
-            section.add_row(table_row, db);
-
-            // followed by a size row and then N data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
-               using utils_t = decltype(utils);
-               using value_t = typename decltype(utils)::index_t::value_type;
-               using by_table_id = object_to_table_id_tag_t<value_t>;
-
-               auto tid_key = boost::make_tuple(table_row.id);
-               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
-
-               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
-               section.add_row(size, db);
-
-               utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
-                  section.add_row(row, db);
-               });
-            });
-         });
-      });
-   }
-
-   void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section("contract_tables", [this]( auto& section ) {
-         bool more = !section.empty();
-         while (more) {
-            // read the row for the table
-            table_id_object::id_type t_id;
-            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
-               section.read_row(row, db);
-               t_id = row.id;
-            });
-
-            // read the size and data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
-               using utils_t = decltype(utils);
-
-               unsigned_int size;
-               more = section.read_row(size, db);
-
-               for (size_t idx = 0; idx < size.value; idx++) {
-                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
-                     row.t_id = t_id;
-                     more = section.read_row(row, db);
-                  });
-               }
-            });
-         }
-      });
-   }
-
-   void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section<chain_snapshot_header>([this]( auto &section ){
-         section.add_row(chain_snapshot_header(), db);
-      });
-
-      snapshot->write_section<block_state>([this]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head(), db);
-      });
-
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         // skip the database_header as it is only relevant to in-memory database
-         if (std::is_same<value_t, database_header_object>::value) {
-            return;
-         }
-
-         // skip the kv_db_config as it only determines where the kv-database is stored
-         if (std::is_same_v<value_t, kv_db_config_object>) {
-            return;
-         }
-
-# warning TODO: Revisit this and adpat to new design
-         if constexpr (std::is_same_v<value_t, kv_object>) {
-            snapshot->write_section<value_t>([this]( auto& section ){
-               // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be stored in rocksdb.
-               if (db.get<kv_db_config_object>().using_rocksdb_for_disk) {
-                  std::unique_ptr<rocksdb::Iterator> it{kv_database.rdb->NewIterator(rocksdb::ReadOptions())};
-                  std::vector<char> prefix = rocksdb_contract_kv_prefix;
-                  b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
-                  it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
-                  while(it->Valid()) {
-                     auto key = it->key();
-                     if(key.size() < rocksdb_contract_kv_prefix.size() || !std::equal(prefix.begin(), prefix.end(), key.data()))
-                        break;
-                     uint64_t contract;
-                     char buf[sizeof(contract)];
-                     std::size_t key_prefix_size = prefix.size() + sizeof(contract);
-                     EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size, buf);
-                     std::memcpy(&contract, buf, sizeof(contract));
-                     auto value = it->value();
-                     kv_object_view row{
-                        kvdisk_id,
-                        name(contract),
-                        { { key.data() + key_prefix_size, key.data() + key.size() } },
-                        { { value.data(), value.data() + value.size() } }
-                     };
-                     section.add_row(row, db);
-                     it->Next();
-                  }
-               }
-               decltype(utils)::template walk<by_kv_key>(db, [this, &section]( const auto &row ) {
-                  section.add_row(row, db);
-               });
-            });
-            return;
-         }
-
-         snapshot->write_section<value_t>([this]( auto& section ){
-            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
-               section.add_row(row, db);
-            });
-         });
-      });
-
-      add_contract_tables_to_snapshot(snapshot);
-
-      authorization.add_to_snapshot(snapshot);
-      resource_limits.add_to_snapshot(snapshot);
-   }
-
-   static fc::optional<genesis_state> extract_legacy_genesis_state( snapshot_reader& snapshot, uint32_t version ) {
-      fc::optional<genesis_state> genesis;
-      using v2 = legacy::snapshot_global_property_object_v2;
-
-      if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
-         genesis.emplace();
-         snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            section.read_row(genesis);
-         });
-      }
-      return genesis;
-   }
-
-   void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end ) {
-      chain_snapshot_header header;
-      snapshot->read_section<chain_snapshot_header>([this, &header]( auto &section ){
-         section.read_row(header, db);
-         header.validate();
-      });
-
-      db.create<kv_db_config_object>([](auto&){});
-
-      { /// load and upgrade the block header state
-         block_header_state head_header_state;
-         using v2 = legacy::snapshot_block_header_state_v2;
-
-         if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-            snapshot->read_section<block_state>([this, &head_header_state]( auto &section ) {
-               legacy::snapshot_block_header_state_v2 legacy_header_state;
-               section.read_row(legacy_header_state, db);
-               head_header_state = block_header_state(std::move(legacy_header_state));
-            });
-         } else {
-            snapshot->read_section<block_state>([this,&head_header_state]( auto &section ){
-               section.read_row(head_header_state, db);
-            });
-         }
-
-         snapshot_head_block = head_header_state.block_num;
-         EOS_ASSERT( blog_start <= (snapshot_head_block + 1) && snapshot_head_block <= blog_end,
-                     block_log_exception,
-                     "Block log is provided with snapshot but does not contain the head block from the snapshot nor a block right after it",
-                     ("snapshot_head_block", snapshot_head_block)
-                     ("block_log_first_num", blog_start)
-                     ("block_log_last_num", blog_end)
-         );
-
-         fork_db.reset( head_header_state );
-         head = fork_db.head();
-         snapshot_head_block = head->block_num;
-
-      }
-
-      controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         // skip the database_header as it is only relevant to in-memory database
-         if (std::is_same<value_t, database_header_object>::value) {
-            return;
-         }
-
-         // skip the kv_db_config as it only determines where the kv-database is stored
-         if (std::is_same_v<value_t, kv_db_config_object>) {
-            return;
-         }
-
-         // special case for in-place upgrade of global_property_object
-         if (std::is_same<value_t, global_property_object>::value) {
-            using v2 = legacy::snapshot_global_property_object_v2;
-            using v3 = legacy::snapshot_global_property_object_v3;
-
-            if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
-               EOS_ASSERT( genesis, snapshot_exception,
-                           "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
-                           "It must be corrupted.");
-               snapshot->read_section<global_property_object>([&db=this->db,gs_chain_id=genesis->compute_chain_id()]( auto &section ) {
-                  v2 legacy_global_properties;
-                  section.read_row(legacy_global_properties, db);
-
-                  db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_database_config{},
-                                        genesis_state::default_initial_wasm_configuration);
-                  });
-               });
-               return; // early out to avoid default processing
-            }
-
-            if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version ) {
-               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
-                  v3 legacy_global_properties;
-                  section.read_row(legacy_global_properties, db);
-
-                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, kv_database_config{},
-                                        genesis_state::default_initial_wasm_configuration);
-                  });
-               });
-               return; // early out to avoid default processing
-            }
-         }
-
-         // skip the kv index if the snapshot doesn't contain it
-         if constexpr (std::is_same_v<value_t, kv_object>) {
-            if ( header.version < kv_object::minimum_snapshot_version )
-               return;
-            if (conf.backing_store == backing_store_type::ROCKSDB) {
-               rocksdb::WriteBatch batch;
-               vector<char> prefix = rocksdb_contract_kv_prefix;
-               b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
-               snapshot->read_section<value_t>([this, &batch, &prefix]( auto& section ) {
-                  bool more = !section.empty();
-                  while (more) {
-                     kv_object* move_to_rocks = nullptr;
-                     decltype(utils)::create(db, [this, &section, &more, &move_to_rocks]( auto &row ) {
-                        more = section.read_row(row, db);
-                        if (row.database_id == kvdisk_id) {
-                           move_to_rocks = &row;
-                        }
-                     });
-                     if(move_to_rocks) {
-                        rocksdb::Slice key = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
-                        rocksdb::Slice value = { move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size() };
-                        batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(prefix, move_to_rocks->contract.to_uint64_t(), key)), value);
-                        db.remove(*move_to_rocks);
-                     }
-                  }
-               });
-               // TODO: Split the batch to avoid storing it all in memory at once.
-               kv_database.write(batch);
-               return;
-            }
-         }
-
-         snapshot->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
-      });
-
-      read_contract_tables_from_snapshot(snapshot);
-
-      authorization.read_from_snapshot(snapshot);
-      resource_limits.read_from_snapshot(snapshot, header.version);
-
-      set_revision( head->block_num );
-      db.create<database_header_object>([](const auto& header){
-         // nothing to do
-      });
-
-      const auto& gpo = db.get<global_property_object>();
-      EOS_ASSERT( gpo.chain_id == chain_id, chain_id_type_exception,
-                  "chain ID in snapshot (${snapshot_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
-                  ("snapshot_chain_id", gpo.chain_id)("controller_chain_id", chain_id)
-      );
-   }
-
    sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
-      add_to_snapshot(hash_writer);
+      kv_db.add_to_snapshot(hash_writer, *fork_db.head(), authorization, resource_limits);
       hash_writer->finalize();
 
       return enc.result();
@@ -1255,11 +842,11 @@ struct controller_impl {
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
       auto orig_trx_receipts_size           = bb._pending_trx_receipts.size();
       auto orig_trx_metas_size              = bb._pending_trx_metas.size();
-      auto orig_trx_receipt_digests_size    = bb._trx_mroot_or_receipt_digests.contains<digests_t>() ?
-            bb._trx_mroot_or_receipt_digests.get<digests_t>().size() : 0;
+      auto orig_trx_receipt_digests_size    = std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) ?
+            std::get<digests_t>(bb._trx_mroot_or_receipt_digests).size() : 0;
       auto orig_action_receipt_digests_size = bb._action_receipt_digests.size();
 
       std::function<void()> callback = [this,
@@ -1268,11 +855,11 @@ struct controller_impl {
             orig_trx_receipt_digests_size,
             orig_action_receipt_digests_size]()
       {
-         auto& bb = pending->_block_stage.get<building_block>();
+        auto& bb = std::get<building_block>(pending->_block_stage);
          bb._pending_trx_receipts.resize(orig_trx_receipts_size);
          bb._pending_trx_metas.resize(orig_trx_metas_size);
-         if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
-            bb._trx_mroot_or_receipt_digests.get<digests_t>().resize(orig_trx_receipt_digests_size);
+        if( std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) )
+            std::get<digests_t>(bb._trx_mroot_or_receipt_digests).resize(orig_trx_receipt_digests_size);
          bb._action_receipt_digests.resize(orig_action_receipt_digests_size);
       };
 
@@ -1316,6 +903,15 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
       transaction_trace_ptr trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+      };
+
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
@@ -1325,7 +921,7 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trx_context.squash();
@@ -1333,11 +929,15 @@ struct controller_impl {
          return trace;
       } catch( const objective_block_validation_exception& ) {
          throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
+         handle_exception(e);
+      } catch ( const std::exception& e ) {
+         auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+         handle_exception(wrapper);
       }
       return trace;
    }
@@ -1394,9 +994,7 @@ struct controller_impl {
       const bool validating = !self.is_producing_block();
       EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
-      maybe_session undo_session;
-      if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db, kv_undo_stack);
+      combined_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
 
       auto gtrx = generated_transaction(gto);
 
@@ -1451,6 +1049,22 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : !sender_avoids_whitelist_blacklist_enforcement( gtrx.sender );
       trace = trx_context.trace;
+
+      auto handle_exception = [&](const auto& e)
+      {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
+         trace->elapsed = fc::time_point::now() - trx_context.start;
+
+         if (auto dm_logger = get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
+               ("action_id", trx_context.get_action_id())
+            );
+         }
+      };
+
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
 
@@ -1474,7 +1088,7 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+         fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                           std::move(trx_context.executed_action_receipt_digests) );
 
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
@@ -1490,19 +1104,17 @@ struct controller_impl {
          return trace;
       } catch( const objective_block_validation_exception& ) {
          throw;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch( const fc::exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
-         trace->elapsed = fc::time_point::now() - trx_context.start;
-
-         if (auto dm_logger = get_deep_mind_logger()) {
-            fc_dlog(*dm_logger, "DTRX_OP FAILED ${action_id}",
-               ("action_id", trx_context.get_action_id())
-            );
-         }
+        handle_exception(e);
+      } catch ( const std::exception& e) {
+        auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+        handle_exception(wrapper);
       }
+
       trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
@@ -1579,15 +1191,15 @@ struct controller_impl {
                                             uint64_t cpu_usage_us, uint64_t net_usage ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
-      auto& receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+      auto& receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
       receipts.emplace_back( trx );
       transaction_receipt& r = receipts.back();
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
-      auto& bb = pending->_block_stage.get<building_block>();
-      if( bb._trx_mroot_or_receipt_digests.contains<digests_t>() )
-         bb._trx_mroot_or_receipt_digests.get<digests_t>().emplace_back( r.digest() );
+      auto& bb = std::get<building_block>(pending->_block_stage);
+      if( std::holds_alternative<digests_t>(bb._trx_mroot_or_receipt_digests) )
+         std::get<digests_t>(bb._trx_mroot_or_receipt_digests).emplace_back( r.digest() );
       return r;
    }
 
@@ -1600,7 +1212,7 @@ struct controller_impl {
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
                                            bool explicit_billed_cpu_time,
-                                           fc::optional<uint32_t> explicit_net_usage_words )
+                                           std::optional<uint32_t> explicit_net_usage_words )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1629,10 +1241,18 @@ struct controller_impl {
          trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
+
+         auto handle_exception =[&](const auto& e)
+         {
+            trace->error_code = controller::convert_exception_to_error_code( e );
+            trace->except = e;
+            trace->except_ptr = std::current_exception();
+         };
+
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
             if( trx->implicit ) {
-               EOS_ASSERT( !explicit_net_usage_words.valid(), transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
+               EOS_ASSERT( !explicit_net_usage_words, transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
                trx_context.enforce_whiteblacklist = false;
             } else {
@@ -1669,7 +1289,7 @@ struct controller_impl {
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                trx->billed_cpu_time_us = trx_context.billed_cpu_time_us;
-               pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
+               std::get<building_block>(pending->_block_stage)._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
@@ -1678,7 +1298,7 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append( pending->_block_stage.get<building_block>()._action_receipt_digests,
+            fc::move_append( std::get<building_block>(pending->_block_stage)._action_receipt_digests,
                              std::move(trx_context.executed_action_receipt_digests) );
 
             // call the accept signal but only once for this transaction
@@ -1701,10 +1321,15 @@ struct controller_impl {
             return trace;
          } catch( const objective_block_validation_exception& ) {
             throw;
+         } catch ( const std::bad_alloc& ) {
+           throw;
+         } catch ( const boost::interprocess::bad_alloc& ) {
+           throw;
          } catch (const fc::exception& e) {
-            trace->error_code = controller::convert_exception_to_error_code( e );
-            trace->except = e;
-            trace->except_ptr = std::current_exception();
+           handle_exception(e);
+         } catch (const std::exception& e) {
+           auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+           handle_exception(wrapper);
          }
 
          emit( self.accepted_transaction, trx );
@@ -1718,7 +1343,7 @@ struct controller_impl {
                      uint16_t confirm_block_count,
                      const vector<digest_type>& new_protocol_feature_activations,
                      controller::block_status s,
-                     const optional<block_id_type>& producer_block_id )
+                     const std::optional<block_id_type>& producer_block_id )
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
@@ -1738,15 +1363,15 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( maybe_session(db, kv_undo_stack), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( kv_db.make_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
-         pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( kv_db.make_no_op_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
 
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
       const auto& pbhs = bb._pending_block_header_state;
 
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
@@ -1819,7 +1444,7 @@ struct controller_impl {
 
          const auto& gpo = self.get_global_properties();
 
-         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
+         if( gpo.proposed_schedule_block_num && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
          )
@@ -1835,9 +1460,9 @@ struct controller_impl {
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
                         producer_schedule_exception, "wrong producer schedule version specified" );
 
-            pending->_block_stage.get<building_block>()._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
+            std::get<building_block>(pending->_block_stage)._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
-               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule_block_num = std::optional<block_num_type>();
                gp.proposed_schedule.version=0;
                gp.proposed_schedule.producers.clear();
             });
@@ -1861,6 +1486,9 @@ struct controller_impl {
          } catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
+         } catch( const std::exception& e ) {
+            wlog( "on block transaction failed due to unexpected exception" );
+            edump((e.what()));
          } catch( ... ) {
             elog( "on block transaction failed due to unknown exception" );
          }
@@ -1875,7 +1503,7 @@ struct controller_impl {
    void finalize_block()
    {
       EOS_ASSERT( pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
-      EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
+      EOS_ASSERT( std::holds_alternative<building_block>(pending->_block_stage), block_validate_exception, "already called finalize_block");
 
       try {
 
@@ -1891,14 +1519,14 @@ struct controller_impl {
       );
       resource_limits.process_block_usage(pbhs.block_num);
 
-      auto& bb = pending->_block_stage.get<building_block>();
+      auto& bb = std::get<building_block>(pending->_block_stage);
 
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         bb._trx_mroot_or_receipt_digests.contains<checksum256_type>() ?
-               bb._trx_mroot_or_receipt_digests.get<checksum256_type>() :
-               merkle( std::move( bb._trx_mroot_or_receipt_digests.get<digests_t>() ) ),
-         merkle( std::move( pending->_block_stage.get<building_block>()._action_receipt_digests ) ),
+         std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests) ?
+               std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests) :
+               merkle( std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
+         merkle( std::move( std::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
@@ -1943,10 +1571,10 @@ struct controller_impl {
       });
 
       try {
-         EOS_ASSERT( pending->_block_stage.contains<completed_block>(), block_validate_exception,
+         EOS_ASSERT( std::holds_alternative<completed_block>(pending->_block_stage), block_validate_exception,
                      "cannot call commit_block until pending block is completed" );
 
-         auto bsp = pending->_block_stage.get<completed_block>()._block_state;
+         auto bsp = std::get<completed_block>(pending->_block_stage)._block_state;
 
          if( add_to_fork_db ) {
             fork_db.add( bsp );
@@ -2050,7 +1678,7 @@ struct controller_impl {
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
          // validated in create_block_state_future()
-         pending->_block_stage.get<building_block>()._trx_mroot_or_receipt_digests = b->transaction_mroot;
+         std::get<building_block>(pending->_block_stage)._trx_mroot_or_receipt_digests = b->transaction_mroot;
 
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
@@ -2062,8 +1690,8 @@ struct controller_impl {
          } else {
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
-               if( receipt.trx.contains<packed_transaction>()) {
-                  const auto& pt = receipt.trx.get<packed_transaction>();
+               if( std::holds_alternative<packed_transaction>(receipt.trx)) {
+                  const auto& pt = std::get<packed_transaction>(receipt.trx);
                   transaction_metadata_ptr trx_meta_ptr = trx_lookup ? trx_lookup( pt.id() ) : transaction_metadata_ptr{};
                   if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
                      trx_metas.emplace_back( std::move( trx_meta_ptr ), recover_keys_future{} );
@@ -2087,28 +1715,28 @@ struct controller_impl {
          bool explicit_net = self.skip_trx_checks();
 
          size_t packed_idx = 0;
-         const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+         const auto& trx_receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = trx_receipts.size();
-            if( receipt.trx.contains<packed_transaction>() ) {
+            if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
                const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
                                                        : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
                                                              std::get<0>( trx_metas.at( packed_idx ) )
                                                              : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
-               fc::optional<uint32_t> explicit_net_usage_words;
+               std::optional<uint32_t> explicit_net_usage_words;
                if( explicit_net ) {
                   explicit_net_usage_words = receipt.net_usage_words.value;
                }
                trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, explicit_net_usage_words );
                ++packed_idx;
-            } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+            } else if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
+               trace = push_scheduled_transaction( std::get<transaction_id_type>(receipt.trx), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
             bool transaction_failed =  trace && trace->except;
-            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && std::holds_alternative<transaction_id_type>(receipt.trx);
             if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
@@ -2130,7 +1758,7 @@ struct controller_impl {
 
          finalize_block();
 
-         auto& ab = pending->_block_stage.get<assembled_block>();
+         auto& ab = std::get<assembled_block>(pending->_block_stage);
 
          // this implicitly asserts that all header fields (less the signature) are identical
          EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
@@ -2144,8 +1772,16 @@ struct controller_impl {
 
          commit_block(false);
          return;
+      } catch ( const std::bad_alloc& ) {
+         throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
+         abort_block();
+         throw;
+      } catch ( const std::exception& e ) {
+         edump((e.what()));
          abort_block();
          throw;
       }
@@ -2291,7 +1927,7 @@ struct controller_impl {
             apply_block( new_head, s, trx_lookup );
             fork_db.mark_valid( new_head );
             head = new_head;
-         } catch ( const fc::exception& e ) {
+         } catch ( const std::exception& e ) {
             fork_db.remove( new_head->id );
             throw;
          }
@@ -2320,18 +1956,25 @@ struct controller_impl {
          }
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
-            optional<fc::exception> except;
+            auto except = std::exception_ptr{};
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
                                                        : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
+            } catch ( const std::bad_alloc& ) {
+              throw;
+            } catch ( const boost::interprocess::bad_alloc& ) {
+              throw;
             } catch (const fc::exception& e) {
-               except = e;
+               elog("exception thrown while switching forks ${e}", ("e", e.to_detail_string()));
+               except = std::current_exception();
+            } catch (const std::exception& e) {
+               elog("exception thrown while switching forks ${e}", ("e", e.what()));
+               except = std::current_exception();
             }
-            if( except ) {
-               elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
 
+            if( except ) {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
                fork_db.remove( (*ritr)->id );
@@ -2350,7 +1993,7 @@ struct controller_impl {
                   apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/, trx_lookup );
                   head = *ritr;
                }
-               throw *except;
+               std::rethrow_exception(except);
             } // end if exception
          } /// end for each block in branch
 
@@ -2672,14 +2315,7 @@ controller::~controller() {
    my->fork_db.close();
    */
 
-   try {
-      try {
-         my->kv_undo_stack.write_state();
-         my->kv_database.flush(true, true);
-      }
-      FC_LOG_AND_RETHROW()
-   }
-   CATCH_AND_EXIT_DB_FAILURE()
+   my->kv_db.flush();
 }
 
 void controller::add_indices() {
@@ -2703,8 +2339,7 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
-b1::chain_kv::database& controller::kv_database() { return my->kv_database; }
-b1::chain_kv::undo_stack& controller::kv_undo_stack() { return my->kv_undo_stack; }
+eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
@@ -2860,7 +2495,7 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, std::optional<block_id_type>() );
 }
 
 void controller::start_block( block_timestamp_type when,
@@ -2874,7 +2509,7 @@ void controller::start_block( block_timestamp_type when,
    }
 
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
-                    block_status::incomplete, optional<block_id_type>() );
+                    block_status::incomplete, std::optional<block_id_type>() );
 }
 
 block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
@@ -2882,7 +2517,7 @@ block_state_ptr controller::finalize_block( const signer_callback_type& signer_c
 
    my->finalize_block();
 
-   auto& ab = my->pending->_block_stage.get<assembled_block>();
+   auto& ab = std::get<assembled_block>(my->pending->_block_stage);
 
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
@@ -3039,8 +2674,8 @@ account_name  controller::fork_db_pending_head_block_producer()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->header.timestamp;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->header.timestamp;
 
    return my->pending->get_pending_block_header_state().timestamp;
 }
@@ -3048,8 +2683,8 @@ time_point controller::pending_block_time()const {
 account_name controller::pending_block_producer()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->header.producer;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->header.producer;
 
    return my->pending->get_pending_block_header_state().producer;
 }
@@ -3057,13 +2692,13 @@ account_name controller::pending_block_producer()const {
 const block_signing_authority& controller::pending_block_signing_authority()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->valid_block_signing_authority;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->valid_block_signing_authority;
 
    return my->pending->get_pending_block_header_state().valid_block_signing_authority;
 }
 
-optional<block_id_type> controller::pending_producer_block_id()const {
+std::optional<block_id_type> controller::pending_producer_block_id()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_producer_block_id;
 }
@@ -3170,7 +2805,7 @@ sha256 controller::calculate_integrity_hash()const { try {
 
 void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
    EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
-   return my->add_to_snapshot(snapshot);
+   return my->kv_db.add_to_snapshot(snapshot, *my->fork_db.head(), my->authorization, my->resource_limits);
 }
 
 int64_t controller::set_proposed_producers( vector<producer_authority> producers ) {
@@ -3181,7 +2816,7 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
       return -1;
    }
 
-   if( gpo.proposed_schedule_block_num.valid() ) {
+   if( gpo.proposed_schedule_block_num ) {
       if( *gpo.proposed_schedule_block_num != cur_block_num )
          return -1; // there is already a proposed schedule set in a previous block, wait for it to become pending
 
@@ -3228,8 +2863,8 @@ const producer_authority_schedule&    controller::active_producers()const {
    if( !(my->pending) )
       return  my->head->active_schedule;
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->active_schedule;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->active_schedule;
 
    return my->pending->get_pending_block_header_state().active_schedule;
 }
@@ -3238,17 +2873,17 @@ const producer_authority_schedule& controller::pending_producers()const {
    if( !(my->pending) )
       return  my->head->pending_schedule.schedule;
 
-   if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
+   if( std::holds_alternative<completed_block>(my->pending->_block_stage) )
+      return std::get<completed_block>(my->pending->_block_stage)._block_state->pending_schedule.schedule;
 
-   if( my->pending->_block_stage.contains<assembled_block>() ) {
-      const auto& new_prods_cache = my->pending->_block_stage.get<assembled_block>()._new_producer_authority_cache;
+   if( std::holds_alternative<assembled_block>(my->pending->_block_stage) ) {
+      const auto& new_prods_cache = std::get<assembled_block>(my->pending->_block_stage)._new_producer_authority_cache;
       if( new_prods_cache ) {
          return *new_prods_cache;
       }
    }
 
-   const auto& bb = my->pending->_block_stage.get<building_block>();
+   const auto& bb = std::get<building_block>(my->pending->_block_stage);
 
    if( bb._new_pending_producer_schedule )
       return *bb._new_pending_producer_schedule;
@@ -3256,10 +2891,10 @@ const producer_authority_schedule& controller::pending_producers()const {
    return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
-optional<producer_authority_schedule> controller::proposed_producers()const {
+std::optional<producer_authority_schedule> controller::proposed_producers()const {
    const auto& gpo = get_global_properties();
-   if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_authority_schedule>();
+   if( !gpo.proposed_schedule_block_num )
+      return std::optional<producer_authority_schedule>();
 
    return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }
@@ -3370,7 +3005,7 @@ void controller::check_key_list( const public_key_type& key )const {
 }
 
 bool controller::is_building_block()const {
-   return my->pending.valid();
+   return my->pending.has_value();
 }
 
 bool controller::is_producing_block()const {
@@ -3450,7 +3085,7 @@ void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
 }
 
-fc::optional<fc::microseconds> controller::get_subjective_cpu_leeway() const {
+std::optional<fc::microseconds> controller::get_subjective_cpu_leeway() const {
     return my->subjective_cpu_leeway;
 }
 
@@ -3535,7 +3170,7 @@ vm::wasm_allocator& controller::get_wasm_allocator() {
 }
 #endif
 
-fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
+std::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
    const chain_exception* e_ptr = dynamic_cast<const chain_exception*>( &e );
 
    if( e_ptr == nullptr ) return {};
@@ -3553,7 +3188,7 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    });
 
    // check if this is a legacy version of the snapshot, which has a genesis state instead of chain id
-   fc::optional<genesis_state> genesis = controller_impl::extract_legacy_genesis_state(snapshot, header.version);
+   std::optional<genesis_state> genesis = extract_legacy_genesis_state(snapshot, header.version);
    if (genesis) {
       return genesis->compute_chain_id();
    }
@@ -3567,7 +3202,7 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    return chain_id;
 }
 
-fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
+std::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
    try {
       chainbase::database db( state_dir, chainbase::database::read_only );
 
@@ -3599,10 +3234,10 @@ void controller::replace_producer_keys( const public_key_type& key ) {
    my->head->pending_schedule.schedule.version = version;
    for (auto& prod: my->head->active_schedule.producers ) {
       ilog("${n}", ("n", prod.producer_name));
-      prod.authority.visit([&](auto &auth) {
+      std::visit([&](auto &auth) {
          auth.threshold = 1;
          auth.keys = {key_weight{key, 1}};
-      });
+      }, prod.authority);
    }
 }
 
@@ -3714,6 +3349,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::configurable_was
    } );
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_parameters>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_parameters_packed" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_parameters_packed" );
+   } );
+}
 
 /// End of protocol feature activation handlers
 

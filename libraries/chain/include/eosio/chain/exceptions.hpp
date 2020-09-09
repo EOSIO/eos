@@ -125,7 +125,7 @@
        { if( code() == CODE ) throw *this;\
          else fc::exception::dynamic_rethrow_exception(); \
        } \
-       fc::optional<uint64_t> error_code; \
+       std::optional<uint64_t> error_code; \
    };
 
 namespace eosio { namespace chain {
@@ -330,6 +330,10 @@ namespace eosio { namespace chain {
                                     3060006, "Chainbase and chain-kv databases are at different revisions" )
       FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
                                     3060007, "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_rocksdb_bad_value_size_exception, database_exception,
+                                    3060008, "The size of value returned from RocksDB is less than payer's size" )
+      FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
+                                    3060009, "Retrieved composite key from key/value store that was formatted incorrectly" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
@@ -528,6 +532,8 @@ namespace eosio { namespace chain {
                                     3015016, "ABI has an unsupported version" )
       FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_results_def_exception,  abi_exception,
                                     3015017, "Duplicate action results definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION(duplicate_abi_kv_table_def_exception, abi_exception,
+                                   3015018, "Duplicate kv_table definition in the ABI")
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -561,6 +567,8 @@ namespace eosio { namespace chain {
                                     3160014, "Unknown kv_parameters version" )
       FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
                                     3160015, "Unknown wasm_config version" )
+      FC_DECLARE_DERIVED_EXCEPTION( config_parse_error,                   contract_exception,
+                                    3160015, "Parsing config error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
