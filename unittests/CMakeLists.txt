@@ -39,7 +39,7 @@ add_custom_command(
 )
 
 ### BUILD UNIT TEST EXECUTABLE ###
-file(GLOB UNIT_TESTS "main.cpp state_history_tests.cpp test_cfd_transaction.cpp") # find all unit test suites
+file(GLOB UNIT_TESTS main.cpp state_history_tests.cpp test_cfd_transaction.cpp) # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS} protocol_feature_digest_tests.cpp) # build unit tests as one executable
 
 target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history abieos ${PLATFORM_SPECIFIC_LIBS} )
