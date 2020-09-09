@@ -99,6 +99,16 @@ namespace eosio { namespace chain {
          kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
+      if (backing_store == backing_store_type::ROCKSDB) {
+         if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
+            return;
+         auto& idx = db.get_index<kv_index, by_kv_key>();
+         auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
+         EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
+                    "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
+                    "rocksdb");
+         db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
+      }
       if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
          ilog("using rocksdb for backing store");
       else
