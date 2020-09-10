@@ -449,8 +449,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    // all digits name search
    const std::string all_digits_name_1 = "1234";
    const std::string all_digits_name_2 = "2345";
-   bidname(N(inita), name(all_digits_name_1), eosio::chain::asset::from_string("1.0000 SYS"));
-   bidname(N(inita), name(all_digits_name_2), eosio::chain::asset::from_string("1.0000 SYS"));
+   bidname("inita"_n, name(all_digits_name_1), eosio::chain::asset::from_string("1.0000 SYS"));
+   bidname("inita"_n, name(all_digits_name_2), eosio::chain::asset::from_string("1.0000 SYS"));
    produce_blocks(1);
    p.lower_bound = all_digits_name_1;
    p.upper_bound = all_digits_name_1;
