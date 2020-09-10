@@ -3,7 +3,7 @@ content_title: eosio-blocklog
 link_text: eosio-blocklog
 ---
 
-`eosio-blocklog` is a command-line interface (CLI) utility that allows node operators to perform low-level tasks on the block logs created by a `nodeos` instance. When launched, `eosio-blocklog` can perform one of the following operations:
+`eosio-blocklog` is a command-line interface (CLI) utility that allows node operators to perform low-level tasks on the block logs created by a `nodeos` instance. `eosio-blocklog` can perform one of the following operations:
 
 * Convert a range of blocks to JSON format, as single objects or array.
 * Generate `blocks.index` from `blocks.log` in blocks directory.
@@ -37,6 +37,6 @@ Option (=default) | Description
 
 ## Remarks
 
-When `eosio-blocklog` is launched, the utility attempts to perform the selected operation, which yields the following possible outcomes:
-* If successful, the selected operation is performed and the utility terminates silently with a zero error code (no error).
+When `eosio-blocklog` is launched, the utility attempts to perform the specified operation, then yields the following possible outcomes:
+* If successful, the selected operation is performed and the utility terminates with a zero error code (no error).
 * If unsuccessful, the utility outputs an error to `stderr` and terminates with a non-zero error code (indicating an error).
