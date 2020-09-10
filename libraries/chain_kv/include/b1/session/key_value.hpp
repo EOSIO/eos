@@ -91,43 +91,26 @@ inline key_value make_kv(const void* key, size_t key_length, const void* value, 
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
 template <typename Allocator>
 key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a) {
-   auto  prefix_size        = 2 * sizeof(uint64_t) + 2 * sizeof(size_t);
-   auto  key_chunk_length   = key_length == 0 ? key_length : key_length + prefix_size;
-   auto  value_chunk_length = value_length == 0 ? value_length : value_length + prefix_size;
-   auto* chunk              = reinterpret_cast<char*>(a->allocate(key_chunk_length + value_chunk_length));
+   auto  chunk_size = sizeof(shared_bytes::control_block) + key_length + value_length;
+   auto* chunk      = reinterpret_cast<int8_t*>(a->allocate(chunk_size));
 
-   auto populate_bytes = [&a](const void* data, size_t length, char* chunk) mutable {
-      auto result = shared_bytes{};
+   auto key_bytes                                      = shared_bytes{};
+   key_bytes.m_chunk_start                             = chunk;
+   key_bytes.m_chunk_end                               = chunk + chunk_size;
+   key_bytes.m_control_block                           = reinterpret_cast<shared_bytes::control_block*>(chunk);
+   key_bytes.m_control_block->memory_allocator_address = reinterpret_cast<uint64_t>(&a->free_function());
+   key_bytes.m_control_block->use_count                = 2;
+   key_bytes.m_data_start                              = chunk + sizeof(shared_bytes::control_block);
+   key_bytes.m_data_end                                = key_bytes.m_data_start + key_length;
+   memcpy(key_bytes.m_data_start, key, key_length);
 
-      if (!data || length == 0) {
-         return result;
-      }
-
-      result.m_chunk_start              = reinterpret_cast<uint64_t*>(chunk);
-      result.m_memory_allocator_address = reinterpret_cast<uint64_t*>(chunk + sizeof(uint64_t));
-      result.m_use_count_address        = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t));
-      result.m_length                   = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t) + sizeof(size_t));
-      result.m_data                     = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t) + 2 * sizeof(size_t));
-
-      *(result.m_memory_allocator_address) = reinterpret_cast<uint64_t>(&a->free_function());
-      *(result.m_use_count_address)        = 1;
-      *(result.m_length)                   = length;
-      memcpy(result.m_data, data, length);
-
-      return result;
-   };
-
-   auto key_bytes   = populate_bytes(reinterpret_cast<const void*>(key), key_length, chunk);
-   auto value_bytes = populate_bytes(reinterpret_cast<const void*>(value), value_length,
-                                     chunk + 2 * sizeof(uint64_t) + 2 * sizeof(size_t) + key_length);
-
-   // Keep track of the start of the chunk.
-   *(key_bytes.m_chunk_start)   = reinterpret_cast<uint64_t>(chunk);
-   *(value_bytes.m_chunk_start) = reinterpret_cast<uint64_t>(chunk);
-
-   // Share the use counts
-   *(key_bytes.m_use_count_address) = 2;
-   value_bytes.m_use_count_address  = key_bytes.m_use_count_address;
+   auto value_bytes            = shared_bytes{};
+   value_bytes.m_chunk_start   = key_bytes.m_chunk_start;
+   value_bytes.m_chunk_end     = key_bytes.m_chunk_end;
+   value_bytes.m_control_block = key_bytes.m_control_block;
+   value_bytes.m_data_start    = key_bytes.m_data_end;
+   value_bytes.m_data_end      = value_bytes.m_data_start + value_length;
+   memcpy(value_bytes.m_data_start, value, value_length);
 
    return make_kv(std::move(key_bytes), std::move(value_bytes));
 }

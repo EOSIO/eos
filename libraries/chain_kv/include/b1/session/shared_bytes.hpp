@@ -47,8 +47,8 @@ class shared_bytes final {
    shared_bytes& operator=(const shared_bytes& b);
    shared_bytes& operator=(shared_bytes&& b);
 
-   const void* const data() const;
-   size_t            length() const;
+   const int8_t* const data() const;
+   size_t              length() const;
 
    bool operator==(const shared_bytes& other) const;
    bool operator!=(const shared_bytes& other) const;
@@ -59,20 +59,24 @@ class shared_bytes final {
    shared_bytes() = default;
 
  private:
+   struct control_block {
+      // The encoded address of the memory allocator that instantiated the memory this instance points to.
+      // \warning The memory allocator MUST stay in scope during the lifetime of this instance.
+      uint64_t memory_allocator_address{ 0 };
+      // \brief A counter to keep track of the number of shared_bytes instances that point to the memory
+      // address.
+      // \remark When the counter reaches 0, the last instance will free the memory by invoking the free method on
+      // the memory allocator.
+      // \warning Assuming that this type will be accessed synchronously.
+      size_t use_count{ 0 };
+   };
    // To allow for sharing a chunk of memory across multiple shared_byte instances, we need to keep track
    // of the chunk start in each instance to pass back to the allocator.
-   uint64_t* m_chunk_start{ nullptr };
-   // The encoded address of the memory allocator that instantiated the memory this instance points to.
-   // \warning The memory allocator MUST stay in scope during the lifetime of this instance.
-   uint64_t* m_memory_allocator_address{ nullptr };
-   // \brief A pointer to a counter to keep track of the number of shared_bytes instances that point to the memory
-   // address. \remark When the counter reaches 0, the last instance will free the memory by invoking the free method on
-   // the memory allocator. \warning Assuming that this type will be accessed synchronously.
-   size_t* m_use_count_address{ nullptr };
-   // The size of the memory pointed to by m_data, in bytes.
-   size_t* m_length{ nullptr };
-   // A pointer to a chunk of memory.
-   void* m_data{ nullptr };
+   int8_t*        m_chunk_start{ nullptr };
+   int8_t*        m_chunk_end{ nullptr };
+   control_block* m_control_block{ nullptr };
+   int8_t*        m_data_start{ nullptr };
+   int8_t*        m_data_end{ nullptr };
 };
 
 // \brief Creates a new shared_bytes instance with the given pointer and length.
@@ -95,20 +99,16 @@ shared_bytes make_shared_bytes(const void* data, size_t length, Allocator& a) {
       return result;
    }
 
-   auto  chunk_length = 2 * sizeof(uint64_t) + 2 * sizeof(size_t) + length;
-   auto* chunk        = reinterpret_cast<char*>(a->allocate(chunk_length));
-
-   result.m_chunk_start              = reinterpret_cast<uint64_t*>(chunk);
-   result.m_memory_allocator_address = reinterpret_cast<uint64_t*>(chunk + sizeof(uint64_t));
-   result.m_use_count_address        = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t));
-   result.m_length                   = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t) + sizeof(size_t));
-   result.m_data                     = reinterpret_cast<size_t*>(chunk + 2 * sizeof(uint64_t) + 2 * sizeof(size_t));
-
-   *(result.m_chunk_start)              = reinterpret_cast<uint64_t>(chunk);
-   *(result.m_memory_allocator_address) = reinterpret_cast<uint64_t>(&a->free_function());
-   *(result.m_use_count_address)        = 1;
-   *(result.m_length)                   = length;
-   memcpy(result.m_data, data, length);
+   auto  chunk_length                               = sizeof(shared_bytes::control_block) + length;
+   auto* chunk                                      = reinterpret_cast<int8_t*>(a->allocate(chunk_length));
+   result.m_chunk_start                             = chunk;
+   result.m_chunk_end                               = chunk + chunk_length;
+   result.m_control_block                           = reinterpret_cast<shared_bytes::control_block*>(chunk);
+   result.m_control_block->memory_allocator_address = reinterpret_cast<uint64_t>(&a->free_function());
+   result.m_control_block->use_count                = 1;
+   result.m_data_start                              = chunk + sizeof(shared_bytes::control_block);
+   result.m_data_end                                = result.m_data_start + length;
+   memcpy(result.m_data_start, data, length);
 
    return result;
 }
@@ -117,9 +117,9 @@ template <>
 inline shared_bytes make_shared_bytes(const void* data, size_t length) {
    auto result = shared_bytes{};
 
-   // encode the length as the pointer address of this data member.
-   result.m_length = reinterpret_cast<size_t*>(length);
-   result.m_data   = const_cast<void*>(data);
+   // This is a "shared_bytes view".  Encode the date using the chunk start and chunk end data members.
+   result.m_data_start = reinterpret_cast<int8_t*>(const_cast<void*>(data));
+   result.m_data_end   = result.m_data_start + length;
 
    return result;
 }
@@ -142,38 +142,36 @@ shared_bytes make_shared_bytes(const T* data, size_t length) {
 inline const shared_bytes shared_bytes::invalid{};
 
 inline shared_bytes::shared_bytes(const shared_bytes& b)
-    : m_chunk_start{ b.m_chunk_start }, m_memory_allocator_address{ b.m_memory_allocator_address },
-      m_use_count_address{ b.m_use_count_address }, m_length{ b.m_length }, m_data{ b.m_data } {
+    : m_chunk_start{ b.m_chunk_start }, m_chunk_end{ b.m_chunk_end }, m_control_block{ b.m_control_block },
+      m_data_start{ b.m_data_start }, m_data_end{ b.m_data_end } {
 
-   if (m_use_count_address) {
-      ++(*m_use_count_address);
+   if (m_control_block) {
+      ++(m_control_block->use_count);
    }
 }
 
 inline shared_bytes::shared_bytes(shared_bytes&& b)
-    : m_chunk_start{ b.m_chunk_start }, m_memory_allocator_address{ std::move(b.m_memory_allocator_address) },
-      m_use_count_address{ std::move(b.m_use_count_address) }, m_length{ std::move(b.m_length) }, m_data{ std::move(
-                                                                                                        b.m_data) } {
-   b.m_chunk_start              = nullptr;
-   b.m_memory_allocator_address = nullptr;
-   b.m_use_count_address        = nullptr;
-   b.m_length                   = nullptr;
-   b.m_data                     = nullptr;
+    : m_chunk_start{ b.m_chunk_start }, m_chunk_end{ b.m_chunk_end }, m_control_block{ b.m_control_block },
+      m_data_start{ b.m_data_start }, m_data_end{ b.m_data_end } {
+   b.m_chunk_start   = nullptr;
+   b.m_chunk_end     = nullptr;
+   b.m_control_block = nullptr;
+   b.m_data_start    = nullptr;
+   b.m_data_end      = nullptr;
 }
 
 inline shared_bytes::~shared_bytes() {
-   if (!m_chunk_start || !m_data || !m_length || !m_use_count_address) {
+   if (!m_chunk_start || !m_chunk_end || !m_control_block || !m_data_start || !m_data_end) {
       return;
    }
 
-   if (--(*m_use_count_address) != 0) {
+   if (--(m_control_block->use_count) != 0) {
       return;
    }
 
    // The memory pool must remain in scope for the lifetime of this instance.
-   auto* free_function = reinterpret_cast<free_function_type*>(*m_memory_allocator_address);
-   (*free_function)(reinterpret_cast<void*>(*m_chunk_start),
-                    sizeof(free_function_type) + 3 * sizeof(size_t) + *m_length);
+   auto* free_function = reinterpret_cast<free_function_type*>(m_control_block->memory_allocator_address);
+   (*free_function)(m_chunk_start, m_chunk_end - m_chunk_start);
 }
 
 inline shared_bytes& shared_bytes::operator=(const shared_bytes& b) {
@@ -181,14 +179,14 @@ inline shared_bytes& shared_bytes::operator=(const shared_bytes& b) {
       return *this;
    }
 
-   m_chunk_start              = b.m_chunk_start;
-   m_memory_allocator_address = b.m_memory_allocator_address;
-   m_use_count_address        = b.m_use_count_address;
-   m_length                   = b.m_length;
-   m_data                     = b.m_data;
+   m_chunk_start   = b.m_chunk_start;
+   m_chunk_end     = b.m_chunk_end;
+   m_control_block = b.m_control_block;
+   m_data_start    = b.m_data_start;
+   m_data_end      = b.m_data_end;
 
-   if (m_use_count_address) {
-      ++(*m_use_count_address);
+   if (m_control_block) {
+      ++(m_control_block->use_count);
    }
 
    return *this;
@@ -199,47 +197,44 @@ inline shared_bytes& shared_bytes::operator=(shared_bytes&& b) {
       return *this;
    }
 
-   m_chunk_start              = b.m_chunk_start;
-   m_memory_allocator_address = b.m_memory_allocator_address;
-   m_use_count_address        = b.m_use_count_address;
-   m_length                   = b.m_length;
-   m_data                     = b.m_data;
+   m_chunk_start   = b.m_chunk_start;
+   m_chunk_end     = b.m_chunk_end;
+   m_control_block = b.m_control_block;
+   m_data_start    = b.m_data_start;
+   m_data_end      = b.m_data_end;
 
-   b.m_chunk_start              = nullptr;
-   b.m_memory_allocator_address = nullptr;
-   b.m_use_count_address        = nullptr;
-   b.m_length                   = nullptr;
-   b.m_data                     = nullptr;
+   b.m_chunk_start   = nullptr;
+   b.m_chunk_end     = nullptr;
+   b.m_control_block = nullptr;
+   b.m_data_start    = nullptr;
+   b.m_data_end      = nullptr;
 
    return *this;
 }
 
-inline const void* const shared_bytes::data() const { return m_data; }
+inline const int8_t* const shared_bytes::data() const { return m_data_start; }
 
-inline size_t shared_bytes::length() const {
-   if (!m_memory_allocator_address) {
-      // The size was encoded as the address of this data member.
-      return reinterpret_cast<size_t>(m_length);
-   }
-
-   if (!m_length) {
-      return 0;
-   }
-
-   return *m_length;
-}
+inline size_t shared_bytes::length() const { return m_data_end - m_data_start; }
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
-   if (m_length && other.m_length && m_data && other.m_data) {
-      if (length() != other.length()) {
+   auto compare = [](auto* left_start, auto* left_end, auto* right_start, auto* right_end) {
+      auto left_length  = left_end - left_start;
+      auto right_length = right_end - right_start;
+
+      if (left_length != right_length) {
          return false;
       }
 
-      return memcmp(m_data, other.m_data, length()) == 0 ? true : false;
+      return memcmp(left_start, right_start, left_length) == 0 ? true : false;
+   };
+
+   if (m_data_start && other.m_data_start) {
+      return compare(m_data_start, m_data_end, other.m_data_start, other.m_data_end);
    }
 
-   // This is just checking if all the pointers are null or not.
-   return m_length == other.m_length && m_data == other.m_data;
+   return m_chunk_start == other.m_chunk_start && m_chunk_end == other.m_chunk_end &&
+          m_control_block == other.m_control_block && m_data_start == other.m_data_start &&
+          m_data_end == other.m_data_end;
 }
 
 inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
