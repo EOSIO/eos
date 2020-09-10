@@ -1,6 +1,7 @@
 #pragma once
 
 #include <b1/session/shared_bytes.hpp>
+#include <cassert>
 
 namespace eosio::session {
 
@@ -91,6 +92,9 @@ inline key_value make_kv(const void* key, size_t key_length, const void* value, 
 // \remarks This factory guarentees that the memory needed for the key and value will be contiguous in memory.
 template <typename Allocator>
 key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a) {
+   assert(key && key_length > 0);
+   assert(value && value_length > 0);
+
    auto  chunk_size = sizeof(shared_bytes::control_block) + key_length + value_length;
    auto* chunk      = reinterpret_cast<int8_t*>(a->allocate(chunk_size));
 
