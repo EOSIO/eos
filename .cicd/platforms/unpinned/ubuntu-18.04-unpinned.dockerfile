@@ -24,10 +24,27 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-# install eosio cppkin
-RUN curl -LO https://github.com/EOSIO/cppKin/releases/download/v1.2.0/cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-    apt install -y ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-    rm ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb
+# build libCore needed by cppkin
+RUN git clone --single-branch --branch master https://github.com/Dudi119/Core.git && \
+    cd Core && \
+    mkdir build && \
+    cd build && \
+    cmake -G 'Unix Makefiles' .. -DCORE_COMPILE_STEP=ON -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    cd .. && \
+    cp bin/libCore.so /usr/local/lib && \
+    cd / && \
+    rm -rf Core
+# build eosio cppkin
+RUN git clone --single-branch --branch master https://github.com/EOSIO/cppKin.git && \
+    cd cppKin && \
+    mkdir build && \
+    cd build && \
+    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local -DCORE_LIBRARY_DIR=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    cd / && \
+    rm -rf cppKin
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

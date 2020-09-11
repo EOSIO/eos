@@ -41,6 +41,9 @@ else # Linux
     if [[ "$IMAGE_TAG" == centos* ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable"
     fi
+    if [[ "$IMAGE_TAG" == ubuntu-18.04* ]]; then
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DENABLE_CPPKIN=true"
+    fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then

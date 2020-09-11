@@ -8,7 +8,8 @@ RUN apt-get update && \
     autotools-dev python2.7 python2.7-dev python3 \
     python3-dev python-configparser python-requests python-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch vim-common jq rabbitmq-server
+    libcurl4-gnutls-dev pkg-config patch vim-common jq rabbitmq-server \
+    rapidjson-dev
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
@@ -44,10 +45,27 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
-# install eosio cppkin
-RUN curl -LO https://github.com/EOSIO/cppKin/releases/download/v1.2.0/cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-    apt install -y ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-    rm ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb
+# build libCore needed by cppkin
+RUN git clone --single-branch --branch master https://github.com/Dudi119/Core.git && \
+    cd Core && \
+    mkdir build && \
+    cd build && \
+    cmake -G 'Unix Makefiles' .. -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCORE_COMPILE_STEP=ON -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    cd .. && \
+    cp bin/libCore.so /usr/local/lib && \
+    cd / && \
+    rm -rf Core
+# build eosio cppkin
+RUN git clone --single-branch --branch master https://github.com/EOSIO/cppKin.git && \
+    cd cppKin && \
+    mkdir build && \
+    cd build && \
+    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCORE_LIBRARY_DIR=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    cd / && \
+    rm -rf cppKin
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
