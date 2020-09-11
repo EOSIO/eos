@@ -208,9 +208,6 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
 
-   trace.account_disk_deltas = std::move( _account_disk_deltas );
-   _account_disk_deltas.clear();
-
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
 

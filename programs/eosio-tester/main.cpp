@@ -970,24 +970,24 @@ struct callbacks {
    // DB_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
    // clang-format on
 
-   int64_t kv_erase(uint64_t db, uint64_t contract, span<const char> key) {
+   int64_t kv_erase(uint64_t contract, span<const char> key) {
       throw std::runtime_error("kv_erase not implemented in tester");
    }
 
-   int64_t kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value) {
+   int64_t kv_set(uint64_t contract, span<const char> key, span<const char> value) {
       throw std::runtime_error("kv_set not implemented in tester");
    }
 
-   bool kv_get(uint64_t db, uint64_t contract, span<const char> key, wasm_ptr<uint32_t> value_size) {
-      return kv_get_db(db).kv_get(contract, key.data(), key.size(), *value_size);
+   bool kv_get(uint64_t contract, span<const char> key, wasm_ptr<uint32_t> value_size) {
+      return kv_get_db().kv_get(contract, key.data(), key.size(), *value_size);
    }
 
-   uint32_t kv_get_data(uint64_t db, uint32_t offset, span<char> data) {
-      return kv_get_db(db).kv_get_data(offset, data.data(), data.size());
+   uint32_t kv_get_data(uint32_t offset, span<char> data) {
+      return kv_get_db().kv_get_data(offset, data.data(), data.size());
    }
 
-   uint32_t kv_it_create(uint64_t db, uint64_t contract, span<const char> prefix) {
-      auto&    kdb = kv_get_db(db);
+   uint32_t kv_it_create(uint64_t contract, span<const char> prefix) {
+      auto&    kdb = kv_get_db();
       uint32_t itr;
       if (!selected().kv_destroyed_iterators.empty()) {
          itr = selected().kv_destroyed_iterators.back();
@@ -1058,7 +1058,7 @@ struct callbacks {
             selected().kv_iterators[itr]->kv_it_value(offset, dest.data(), dest.size(), *actual_size));
    }
 
-   kv_context& kv_get_db(uint64_t db) {
+   kv_context& kv_get_db() {
       return selected().kv_get_backing_store();
    }
 
