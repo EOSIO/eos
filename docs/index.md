@@ -14,7 +14,7 @@ The basic relationship between these components is illustrated in the diagram be
 
 Additional EOSIO Resources:
 * [EOSIO Utilities](10_utilities/index.md) - Utilities that complement the EOSIO software.
-* [Upgrade Guides](20_upgrade-guides/index.md) - EOSIO version/protocol upgrade guides.
+* [Upgrade Guide](20_upgrade-guide/index.md) - EOSIO version/protocol upgrade guide.
 
 [[info | What's Next?]]
 | [Install the EOSIO Software](00_install/index.md) before exploring the sections above.
