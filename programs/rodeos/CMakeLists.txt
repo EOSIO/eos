@@ -43,7 +43,7 @@ target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
 if(ENABLE_CPPKIN)
   target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
           PRIVATE -Wl,${whole_archive_flag} cppkin_plugin -Wl,${no_whole_archive_flag}
-          PRIVATE cppkin.so libCore.so )
+          PRIVATE cppkin.a )
 endif()
 
 

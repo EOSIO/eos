@@ -132,7 +132,7 @@ target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
                        softfloat builtins ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS} ${CHAIN_RT_LINKAGE}
                      )
 if(ENABLE_CPPKIN)
-   target_link_libraries( eosio_chain cppkin.so libCore.so )
+   target_link_libraries( eosio_chain cppkin.a )
 endif()
 
 target_include_directories( eosio_chain

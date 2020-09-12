@@ -45,23 +45,13 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
-# build libCore needed by cppkin
-RUN git clone --single-branch --branch master https://github.com/Dudi119/Core.git && \
-    cd Core && \
-    mkdir build && \
-    cd build && \
-    cmake -G 'Unix Makefiles' .. -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCORE_COMPILE_STEP=ON -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
-    cd .. && \
-    cp bin/libCore.so /usr/local/lib && \
-    cd / && \
-    rm -rf Core
-# build eosio cppkin
-RUN git clone --single-branch --branch master https://github.com/EOSIO/cppKin.git && \
+# build eosio cppkin, switch to master once remove-core merged
+RUN git clone --single-branch --branch remove-core https://github.com/EOSIO/cppKin.git && \
     cd cppKin && \
+    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
-    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCORE_LIBRARY_DIR=/usr/local && \
+    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' && \
     make -j$(nproc) && \
     make install && \
     cd / && \
