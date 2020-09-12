@@ -30,7 +30,7 @@ RUN git clone --single-branch --branch remove-core https://github.com/EOSIO/cppK
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
-    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local -DCORE_LIBRARY_DIR=/usr/local && \
+    cmake -G 'Unix Makefiles' .. -DPRE_COMPILE_STEP=ON -D3RD_PARTY_INSTALL_STEP=ON -DCOMPILATION_STEP=ON -DCMAKE_BUILD_TYPE=Release -DPROJECT_3RD_LOC:STRING=/usr/local -DOUTPUT_DIR:STRING=/usr/local && \
     make -j$(nproc) && \
     make install && \
     cd / && \
