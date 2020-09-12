@@ -5,6 +5,7 @@
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -15,22 +16,19 @@ namespace kv_benchmark {
 constexpr account_name receiver = N(kvrdb);
 constexpr uint64_t contract = receiver.to_uint64_t();
 constexpr account_name payer = N(payer);
-std::string prefix = "prefix";
 constexpr uint32_t it_key_size = 10;
 constexpr uint64_t default_billable_size = 12;
 
 constexpr uint32_t default_value_size = 1024;
-std::string default_operation = "get";
 struct cmd_args {
-   uint32_t num_keys = 0;
    uint32_t value_size = default_value_size;
-   bool is_rocksdb = true; // false means chainbase
-   std::string operation = default_operation;
+   bool is_rocksdb = false; // false means chainbase
+   std::string operation = "get";
    std::string key_file = "";
+   std::string workset_file = "";
+   std::string creation_mode = "random";
+   uint32_t num_repeats = 10000;
 };
-
-constexpr uint32_t work_set_size = 10000;
-constexpr uint32_t num_iterations = 100;
 
 struct dummy_control {
    fc::logger* get_deep_mind_logger() {
@@ -60,154 +58,117 @@ struct mock_resource_manager {
    dummy_context* _context;
 };
 
-using wall_clock_t = std::chrono::time_point<std::chrono::steady_clock>;
-
 // resource_manager, receiver, limits in kv_context are 
 // initialzed as a reference.  Place them globally to avoid 
 // going out of scope
 constexpr uint32_t max_key_size   = 100;
 constexpr uint32_t max_value_size = 1020*1024;
-constexpr uint32_t max_iterators  = 3;
+constexpr uint32_t max_iterators  = 100;
 kv_database_config limits { max_key_size, max_value_size, max_iterators };
 mock_resource_manager resource_manager;
 
 // Main purpose of this program is to microbenchmark individual
 // KV API over RocksDB and ChainKV.
 
-void print_usage(char* program_name) {
-   std::cout << program_name << " - Microbenchmark KV APIs over RocksDb and Chainbase\n\n"
-      << "   -f=FILENAME, file storing keys one per line \n"
-      << "   -o=OPERATION, operation to be benchmarked: get, get_data, set, it_next, it_key_value, Default " << default_operation << std::endl
-      << "   -c, use Chainbase. Without this option: use RocksDb\n"
-      << "   -h, print this help\n"
-      << "   -v=NUMBER, value size. Default " << default_value_size << std::endl
-      << std::endl;
-}
+std::vector<std::string> read_workset(const cmd_args& args, uint32_t& workset_size) {
+   std::ifstream workset_ifs(args.workset_file);
 
-// As this program is only for internal use,
-// we don't use sophisticated library to parse command line
-void parse_cmd_line(int argc, char* argv[], cmd_args& args) {
-   for (auto i = 1; i < argc; ++i) {
-      std::string arg = argv[i];
-      if (arg == "-h") {
-         print_usage(argv[0]);
-         exit(0);
-      } else if (arg == "-f") {
-         if (i + 1 < argc) { 
-            args.key_file = argv[++i];
-         } else {
-            std::cerr << "-f option needs key file name" << std::endl;
-            print_usage(argv[0]);
-            exit(1);
-         }  
-      } else if (arg == "-o") {
-         if (i + 1 < argc) { 
-            args.operation = argv[++i];
-         } else {
-            std::cerr << "-o option needs operation (get, get_data, set)" << std::endl;
-            print_usage(argv[0]);
-            exit(1);
-         }  
-      } else if (arg == "-c") {  // use chainbase
-         args.is_rocksdb = false;
-      } else {
-         std::cout << "Unknown option: " << arg << std::endl;
-         print_usage(argv[0]);
-         exit(1);
-      }
-   }
-}
-
-std::vector<std::string> get_work_set_keys(const cmd_args& args) {
-   std::ifstream key_file(args.key_file);
-   if (!key_file.is_open()) {
-      std::cout << "Failed to open key file " << args.key_file << std::endl;
+   if (!workset_ifs.is_open()) {
+      std::cerr << "Failed to open workset file " << args.workset_file << std::endl;
       exit(2);
    }
 
    std::string key;
-   auto i = 0;
-   std::unordered_set<std::string> unordered_keys;
-   while (i < work_set_size && getline(key_file, key)) {
-      unordered_keys.insert(key);  // randomize
-      ++i;
+   std::vector<std::string> workset;
+   workset_size = 0;
+   while (getline(workset_ifs, key)) {
+      ++workset_size;
+      workset.push_back(key);
    }
-   key_file.close();
 
-   std::vector<std::string> keys;
-   for (auto& k: unordered_keys) {
-      keys.push_back(k);
-   }
-   return keys;
+   workset_ifs.close();
+   return workset;
 }
 
-void create_key_values(cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
+void create_key_values(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t& num_keys) {
    std::ifstream key_file(args.key_file);
 
    if (!key_file.is_open()) {
-      std::cout << "Failed to open key file " << args.key_file << std::endl;
+      std::cerr << "Failed to open key file " << args.key_file << std::endl;
       exit(2);
    }
 
    std::string value(args.value_size, 'a');
    std::string key;
+   num_keys = 0;
    while (getline(key_file, key)) {
       kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
-      ++args.num_keys;
+      ++num_keys;
    }
 
    key_file.close();
 }
 
-void benchmark_get(cmd_args& args, const std::unique_ptr<kv_context> kv_context_ptr, std::vector<std::string> work_set, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
-   start = std::chrono::steady_clock::now();
+void benchmark_get(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
    getrusage(RUSAGE_SELF, &usage_start);
 
-   for (auto i = 0; i < num_iterations; ++i) {
-      for (auto& key: work_set) {
+   for (auto i = 0; i < args.num_repeats; ++i) {
+      for (auto& key: workset) {
          uint32_t actual_value_size;
          kv_context_ptr->kv_get(contract, key.c_str(), key.size(),actual_value_size);
       }
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
-   end = std::chrono::steady_clock::now();
 }
 
-void benchmark_get_data(cmd_args& args, const std::unique_ptr<kv_context> kv_context_ptr, std::vector<std::string> work_set, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
+void benchmark_get_data(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
    char* data = new char[args.value_size];
 
-   start = std::chrono::steady_clock::now();
    getrusage(RUSAGE_SELF, &usage_start);
 
-   for (auto i = 0; i < num_iterations; ++i) {
-      for (auto& key: work_set) {
+   for (auto i = 0; i < args.num_repeats; ++i) {
+      for (auto& key: workset) {
          kv_context_ptr->kv_get_data(0, data, default_value_size);
       }
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
-   end = std::chrono::steady_clock::now();
 }
 
-void benchmark_set(cmd_args& args, const std::unique_ptr<kv_context> kv_context_ptr, std::vector<std::string> work_set, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
+void benchmark_set(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
    std::string value(args.value_size, 'b');
 
-   start = std::chrono::steady_clock::now();
    getrusage(RUSAGE_SELF, &usage_start);
 
-   for (auto i = 0; i < num_iterations; ++i) {
-      for (auto& key: work_set) {
+   for (auto i = 0; i < args.num_repeats; ++i) {
+      for (auto& key: workset) {
          kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
       }
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
-   end = std::chrono::steady_clock::now();
 }
 
-void benchmark_it_next(cmd_args& args, const std::unique_ptr<kv_context> kv_context_ptr, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
-   start = std::chrono::steady_clock::now();
+void benchmark_it_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
+   getrusage(RUSAGE_SELF, &usage_start);
+
+   auto i = 0;
+   std::string prefix = "a";
+   while (i < args.num_repeats) {
+      kv_context_ptr->kv_it_create(contract, prefix.c_str(), 0);
+      ++i;
+      if (prefix[0] != 'z') {
+         prefix[0] = static_cast<char>(prefix[0] + 1);
+      } else {
+         prefix[0] = 'a';
+      }
+   }
+
+   getrusage(RUSAGE_SELF, &usage_end);
+}
+
+void benchmark_it_next(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
    getrusage(RUSAGE_SELF, &usage_start);
 
    uint32_t found_key_size, found_value_size;
@@ -219,16 +180,14 @@ void benchmark_it_next(cmd_args& args, const std::unique_ptr<kv_context> kv_cont
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
-   end = std::chrono::steady_clock::now();
 }
 
-void benchmark_it_key_value(cmd_args& args, const std::unique_ptr<kv_context> kv_context_ptr, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
+void benchmark_it_key_value(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
    uint32_t offset = 0;
    char* dest = new char[args.value_size];
    uint32_t actual_size;
    uint32_t found_key_size, found_value_size;
 
-   start = std::chrono::steady_clock::now();
    getrusage(RUSAGE_SELF, &usage_start);
 
    auto it = kv_context_ptr->kv_it_create(contract, "", 0);
@@ -242,48 +201,9 @@ void benchmark_it_key_value(cmd_args& args, const std::unique_ptr<kv_context> kv
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
-   end = std::chrono::steady_clock::now();
 }
 
-void benchmark_operation(cmd_args& args, std::unique_ptr<kv_context> kv_context_ptr, wall_clock_t& start, wall_clock_t& end, rusage& usage_start, rusage& usage_end) {
-   create_key_values(args, kv_context_ptr);
-   std::vector<std::string> work_set = get_work_set_keys(args);
-
-   if (args.operation == "get" ) {
-      benchmark_get(args, std::move(kv_context_ptr), work_set, start, end, usage_start, usage_end);
-   } else if (args.operation == "get_data" ) {
-      benchmark_get_data(args, std::move(kv_context_ptr), work_set, start, end, usage_start, usage_end);
-   } else if (args.operation == "set" ) {
-      benchmark_set(args, std::move(kv_context_ptr), work_set, start, end, usage_start, usage_end);
-   } else if (args.operation == "it_next" ) {
-      benchmark_it_next(args, std::move(kv_context_ptr), start, end, usage_start, usage_end);
-   } else if (args.operation == "it_key_value" ) {
-      benchmark_it_key_value(args, std::move(kv_context_ptr), start, end, usage_start, usage_end);
-   };
-}
-
-void print_results(cmd_args& args, wall_clock_t& start, wall_clock_t& end, const rusage& usage_start, const rusage& usage_end) {
-   std::string title = "Benchmarked \"" + args.operation + "\" for ";
-
-   if (args.operation == "it_next" || args.operation == "it_key_value") {
-      title += " one time over ";
-   } else {
-      title += std::to_string(num_iterations);
-      title += " times on ";
-      title += std::to_string(work_set_size);
-      title += " keys from ";
-   }
-
-   title += std::to_string(args.num_keys);
-   title += " total keys ";
-
-   if (args.is_rocksdb) {
-      title += "on RocksDb:";
-   } else {
-      title += "on Chainbase:";
-   }
-
-   uint32_t clock_duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+void print_results(const cmd_args& args, const uint32_t num_keys, const uint32_t workset_size, const rusage& usage_start, const rusage& usage_end) {
    uint32_t user_duration_us = 1000000 * (usage_end.ru_utime.tv_sec - usage_start.ru_utime.tv_sec) + usage_end.ru_utime.tv_usec - usage_start.ru_utime.tv_usec;;
    uint32_t system_duration_us = 1000000 * (usage_end.ru_stime.tv_sec - usage_start.ru_stime.tv_sec) + usage_end.ru_stime.tv_usec - usage_start.ru_stime.tv_usec;;
    uint32_t minor_faults = uint32_t(usage_end.ru_minflt  - usage_start.ru_minflt);
@@ -291,22 +211,64 @@ void print_results(cmd_args& args, wall_clock_t& start, wall_clock_t& end, const
    uint32_t blocks_in = uint32_t(usage_end.ru_inblock - usage_start.ru_inblock);
    uint32_t blocks_out = uint32_t(usage_end.ru_oublock - usage_start.ru_oublock);
 
-   std::cout << title << std::endl 
-      << "   clock_duration_us: " << clock_duration_us
-      << ", user_duration_us: " << user_duration_us 
-      << ", system_duration_us: " << system_duration_us 
-      << ", minor_faults: " << minor_faults 
-      << ", major_faults: " << major_faults 
-      << ", blocks_in: " << blocks_in  
-      << ", blocks_out: " << blocks_out 
+   std::cout 
+      << "operation: " << args.operation
+      << ", backing_store: " << (args.is_rocksdb ? "rocksdb" : "chainbase")
+      << ", creation_mode: " << args.creation_mode
+      << ", num_keys: " << num_keys
+      << ", value_size: " << args.value_size;
+
+   if (args.operation == "get" || args.operation == "get_data" || args.operation == "set" || args.operation == "it_create") {
+      std::cout
+      << ", num_repeats: " << args.num_repeats;
+   }
+
+   if (args.operation == "it_create" || args.operation == "it_next" || args.operation == "it_key_value") {
+      std::cout
+      << ", user_duration_us_total: " << user_duration_us
+      << ", system_duration_us_total: " << system_duration_us;
+   } else {
+      std::cout
+      << ", workset_size: " << workset_size
+      << ", user_duration_us_avg: " << (double)user_duration_us/(args.num_repeats*workset_size)
+      << ", system_duration_us_avg: " << (double)system_duration_us/(args.num_repeats*workset_size);
+   };
+
+   std::cout
+      << ", minor_faults_total: " << minor_faults 
+      << ", major_faults_total: " << major_faults 
+      << ", blocks_in_total: " << blocks_in  
+      << ", blocks_out_total: " << blocks_out 
       << std::endl << std::endl;
 }
 
-void benchmark(cmd_args& args) {
+void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
    uint32_t clock_duration_us;
-   wall_clock_t start, end;
    struct rusage usage_start, usage_end;
+   uint32_t num_keys, workset_size;
 
+   create_key_values(args, kv_context_ptr, num_keys);
+   std::vector<std::string> workset = read_workset(args, workset_size);
+
+   if (args.operation == "get" ) {
+      benchmark_get(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
+   } else if (args.operation == "get_data" ) {
+      benchmark_get_data(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
+   } else if (args.operation == "set" ) {
+      benchmark_set(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
+   } else if (args.operation == "it_create" ) {
+      benchmark_it_create(args, std::move(kv_context_ptr), usage_start, usage_end);
+   } else if (args.operation == "it_next" ) {
+      benchmark_it_next(args, std::move(kv_context_ptr), usage_start, usage_end);
+   } else if (args.operation == "it_key_value" ) {
+      benchmark_it_key_value(args, std::move(kv_context_ptr), usage_start, usage_end);
+   };
+   
+   print_results(args, num_keys, workset_size, usage_start, usage_end);
+}
+
+
+void benchmark(const cmd_args& args) {
    if (args.is_rocksdb) {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
@@ -314,23 +276,81 @@ void benchmark(cmd_args& args) {
       b1::chain_kv::undo_stack    kv_undo_stack{kv_db, vector<char>{make_rocksdb_undo_prefix()}};
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, mock_resource_manager>(kv_db, kv_undo_stack, receiver, resource_manager, limits); 
-      benchmark_operation(args, std::move(kv_context_ptr), start, end, usage_start, usage_end); // kv_context_ptr must be in the same scope as kv_db and usage_start, since they are references in create_kv_rocksdb_context
+      benchmark_operation(args, std::move(kv_context_ptr)); // kv_context_ptr must be in the same scope as kv_db and usage_start, since they are references in create_kv_rocksdb_context
    } else {
       boost::filesystem::remove_all(chain::config::default_state_dir_name);  // Use a clean Chainbase
       chainbase::database chainbase_db(chain::config::default_state_dir_name, database::read_write, chain::config::default_state_size); // 1024*1024*1024ll == 1073741824
       chainbase_db.add_index<kv_index >();
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_chainbase_context<mock_resource_manager>(chainbase_db, receiver, resource_manager, limits);
-      benchmark_operation(args, std::move(kv_context_ptr), start, end, usage_start, usage_end);
+      benchmark_operation(args, std::move(kv_context_ptr));
    }
-   
-   print_results(args, start, end, usage_start, usage_end);
 }
 } // namespace kv_benchmark
 
+namespace bpo = boost::program_options;
+using bpo::options_description;
+using bpo::variables_map;
+
 int main(int argc, char* argv[]) {
    kv_benchmark::cmd_args args;
-   kv_benchmark::parse_cmd_line(argc, argv, args);
+
+   variables_map vmap;
+   options_description cli ("kv_benchmark command line options");
+   
+   std::string gts;
+   cli.add_options()
+     ("keyfile,k", bpo::value<string>()->required(), "the file storing all the keys")
+     ("workset,w", bpo::value<string>(), "the file storing workset keys")
+     ("operation,o", bpo::value<string>(), "operation to be benchmarked: get, get_data, set, it_create, it_next, it_key_value")
+     ("valuesize,v", bpo::value<uint32_t>(), "value size for the keys")
+     ("numrepeats,n", bpo::value<uint32_t>(), "number of repeats of test run over workset and number of iterator creations in it_create")
+     ("rocksdb,r", "rocksdb to be backing store.")
+     ("sorted,s", "keys in keyfile are sorted.")
+     ("help,h","print this list");
+
+   try {
+      bpo::store(bpo::parse_command_line(argc, argv, cli), vmap);
+      bpo::notify(vmap);
+
+      if (vmap.count("help") > 0) {
+         cli.print(std::cerr);
+         return 0;
+      }
+
+      if (vmap.count("keyfile") > 0) {
+         args.key_file = vmap["keyfile"].as<std::string>();
+      }
+      if (vmap.count("workset") > 0) {
+         args.workset_file = vmap["workset"].as<std::string>();
+      }
+      if (vmap.count("operation") > 0) {
+         args.operation = vmap["operation"].as<std::string>();
+      }
+      if (vmap.count("valuesize") > 0) {
+         args.value_size = vmap["valuesize"].as<uint32_t>();
+      }
+      if (vmap.count("numrepeats") > 0) {
+         args.num_repeats = vmap["numrepeats"].as<uint32_t>();
+      }
+      if (vmap.count("rocksdb") > 0) {
+         args.is_rocksdb = true;
+      }
+      if (vmap.count("sorted") > 0) {
+         args.creation_mode = "sorted";
+      }
+   } catch (bpo::unknown_option &ex) {
+      std::cerr << ex.what() << std::endl;
+      cli.print (std::cerr);
+      return 1;
+   }
+
+   if ((args.operation == "get" || args.operation == "get_data" || args.operation == "set") && args.workset_file.empty()) {
+      std::cerr << "workset argument is required for get, get_data, or set" << std::endl;
+      cli.print(std::cerr);
+      return 1;
+   }
+
    kv_benchmark::benchmark(args);
 
    return 0;
