@@ -141,19 +141,20 @@ namespace eosio { namespace chain {
       }
    }; // kv_iterator_chainbase
 
+   template<typename Resource_manager>
    struct kv_context_chainbase : kv_context {
       using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
       chainbase::database&         db;
       tracker_type                 tracker = db.get_mutable_index<kv_index>().track_removed();
       name                         database_id;
       name                         receiver;
-      kv_resource_manager          resource_manager;
+      Resource_manager             resource_manager;
       const kv_database_config&    limits;
       uint32_t                     num_iterators = 0;
       std::optional<shared_blob>   temp_data_buffer;
 
       kv_context_chainbase(chainbase::database& db, name database_id, name receiver,
-                           kv_resource_manager resource_manager, const kv_database_config& limits)
+                           Resource_manager resource_manager, const kv_database_config& limits)
          : db{ db }, database_id{ database_id }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
@@ -268,13 +269,14 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_chainbase
 
+   template<typename Resource_manager>
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
-                                                           kv_resource_manager resource_manager, const kv_database_config& limits)
+                                                           Resource_manager resource_manager, const kv_database_config& limits)
    {
       // Preparing to remove db specifier. Hardcode original database_id to 
       // kvdisk_id for now. It will be removed in the last phase of 
       // the removing db specifier activity.
-      return std::make_unique<kv_context_chainbase>(db, kvdisk_id, receiver, resource_manager, limits);
+      return std::make_unique<kv_context_chainbase<Resource_manager>>(db, kvdisk_id, receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain
