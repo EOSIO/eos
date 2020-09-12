@@ -45,7 +45,7 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
-# build eosio cppkin, switch to master once remove-core merged
+# build eosio cppkin, switch to master branch once remove-core merged
 RUN git clone --single-branch --branch remove-core https://github.com/EOSIO/cppKin.git && \
     cd cppKin && \
     git submodule update --init --recursive && \
