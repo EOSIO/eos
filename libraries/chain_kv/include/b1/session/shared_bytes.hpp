@@ -250,7 +250,10 @@ struct less<eosio::session::shared_bytes> final {
          return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.length() } <
                 std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.length() };
       }
-      return lhs == eosio::session::shared_bytes::invalid;
+      if (lhs == eosio::session::shared_bytes::invalid) {
+         return false;
+      }
+      return true;
    };
 };
 
@@ -261,7 +264,10 @@ struct greater<eosio::session::shared_bytes> final {
          return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.length() } >
                 std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.length() };
       }
-      return lhs == eosio::session::shared_bytes::invalid;
+      if (lhs == eosio::session::shared_bytes::invalid) {
+         return false;
+      }
+      return true;
    };
 };
 

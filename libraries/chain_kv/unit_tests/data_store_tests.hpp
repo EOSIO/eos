@@ -1,6 +1,7 @@
 #include <b1/session/key_value.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <random>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -10,6 +11,8 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
+#include <b1/session/cache.hpp>
+#include <b1/session/rocks_data_store.hpp>
 #include <b1/session/session.hpp>
 
 namespace eosio::session_tests {
@@ -170,15 +173,18 @@ void verify_equal(eosio::session::session<PDS, CDS>& ds, const std::unordered_ma
    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
+   auto count = size_t{ 0 };
    do {
       verify_key_value(*kv_it);
       ++kv_it;
+      ++count;
    } while (kv_it != begin);
+   BOOST_REQUIRE(count == container.size());
 
    auto end = std::end(ds);
    kv_it    = end;
    --kv_it;
-   auto count = size_t{ 0 };
+   count = 0;
    while (true) {
       verify_key_value(*kv_it);
       ++count;
@@ -242,15 +248,18 @@ void verify_equal(eosio::session::session<PDS, CDS>& ds, const std::unordered_ma
    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
+   auto count = size_t{ 0 };
    do {
       verify_key_value(*kv_it);
       ++kv_it;
+      ++count;
    } while (kv_it != begin);
+   BOOST_REQUIRE(count == container.size());
 
    auto end = std::end(ds);
    kv_it    = end;
    --kv_it;
-   auto count = size_t{ 0 };
+   count = 0;
    while (true) {
       verify_key_value(*kv_it);
       ++count;
@@ -513,5 +522,64 @@ void verify_write_to_datastore(eosio::session::session<PDS, CDS>& ds, eosio::ses
    ds.write_to(other_ds, keys);
    compare_ds(other_ds, ds);
 }
+
+template <typename Allocator>
+eosio::session::session<eosio::session::rocks_data_store<Allocator>, eosio::session::cache<Allocator>>
+make_session(const std::string& name = "testdb") {
+   auto a                = Allocator::make();
+   auto rocksdb          = make_rocks_db(name);
+   auto rocks_data_store = eosio::session::make_rocks_data_store(rocksdb, a);
+   auto cache            = eosio::session::make_cache(a);
+   return eosio::session::make_session(std::move(rocks_data_store), std::move(cache));
+}
+
+template <typename Data_store, typename Container>
+void verify(const Data_store& ds, const Container& kvs) {
+   for (auto kv : ds) {
+      auto current_key   = *reinterpret_cast<const uint16_t*>(kv.key().data());
+      auto current_value = *reinterpret_cast<const uint16_t*>(kv.value().data());
+
+      auto it = kvs.find(current_key);
+      BOOST_REQUIRE(it != std::end(kvs));
+      BOOST_REQUIRE(it->first == current_key);
+      BOOST_REQUIRE(it->second == current_value);
+   }
+
+   for (auto kv : kvs) {
+      auto key_value        = eosio::session::make_kv(&kv.first, 1, &kv.second, 1, ds.memory_allocator());
+      auto result_key_value = ds.read(key_value.key());
+      BOOST_REQUIRE(result_key_value != eosio::session::key_value::invalid);
+      BOOST_REQUIRE(key_value == result_key_value);
+   }
+};
+
+template <typename Data_store, typename Container>
+void write(Data_store& ds, const Container& kvs) {
+   for (auto kv : kvs) { ds.write(eosio::session::make_kv(&kv.first, 1, &kv.second, 1, ds.memory_allocator())); }
+};
+
+inline std::unordered_map<uint16_t, uint16_t> generate_kvs(size_t size) {
+   std::random_device                      random_device;
+   std::mt19937                            generator{ random_device() };
+   std::uniform_int_distribution<uint16_t> distribution{ 0, std::numeric_limits<uint16_t>::max() };
+
+   auto container = std::unordered_map<uint16_t, uint16_t>{};
+   for (size_t i = 0; i < size; ++i) { container.emplace(distribution(generator), distribution(generator)); }
+   return container;
+};
+
+inline std::unordered_map<uint16_t, uint16_t> collapse(const std::vector<std::unordered_map<uint16_t, uint16_t>>& kvs_list) {
+   if (kvs_list.empty()) {
+      return std::unordered_map<uint16_t, uint16_t>{};
+   }
+
+   auto merged = kvs_list[0];
+   for (size_t i = 1; i < kvs_list.size(); ++i) {
+      auto& list = kvs_list[i];
+
+      for (auto kv : list) { merged.insert_or_assign(kv.first, kv.second); }
+   }
+   return merged;
+};
 
 } // namespace eosio::session_tests

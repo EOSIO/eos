@@ -111,8 +111,8 @@ class session final {
       bool              operator!=(const session_iterator& other) const;
 
     protected:
-      template <typename Test_predicate, typename DB_test_predicate, typename Move_predicate>
-      void move_(const Test_predicate& test, const DB_test_predicate& db_test, const Move_predicate& move);
+      template <typename Test_predicate, typename Move_predicate>
+      void move_(const Test_predicate& test, const Move_predicate& move);
       void move_next_();
       void move_previous_();
 
@@ -209,12 +209,9 @@ class session final {
    session();
    session(std::shared_ptr<session_impl> impl);
 
-   template <typename Iterator_type, typename Predicate, typename Comparator>
-   Iterator_type make_iterator_(const Predicate& p, const Comparator& c) const;
-
-   std::pair<shared_bytes, shared_bytes> bounds_(const shared_bytes& key) const;
-   void update_iterator_cache_(const shared_bytes& key, bool overwrite = true, bool erase = false) const;
-   bool is_deleted_(const shared_bytes& key, const std::shared_ptr<session_impl>& current_session) const;
+   template <typename Iterator_type, typename Predicate, typename Comparator, typename Move>
+   Iterator_type make_iterator_(const Predicate& predicate, const Comparator& comparator, const Move& move,
+                                bool prime_cache_only = false) const;
 
    struct session_impl final : public std::enable_shared_from_this<session_impl> {
       session_impl();
@@ -222,6 +219,17 @@ class session final {
       session_impl(Persistent_data_store pds);
       session_impl(Persistent_data_store pds, Cache_data_store cds);
       ~session_impl();
+
+      void                                  prime_cache();
+      std::pair<shared_bytes, shared_bytes> bounds(const shared_bytes& key);
+
+      struct iterator_cache_params final {
+         bool prime_only{ false };
+         bool recalculate{ false };
+         bool mark_deleted{ false };
+         bool overwrite{ true };
+      };
+      void update_iterator_cache(const shared_bytes& key, const iterator_cache_params& params);
 
       void undo();
       void commit();
@@ -293,56 +301,46 @@ session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(ses
       child_ptr->backing_data_store = nullptr;
       child_ptr->parent             = nullptr;
    }
-
-   // Prime the iterator cache with the begin and end values from the parent.
-   auto begin = std::begin(parent_.iterator_cache);
-   auto end   = std::end(parent_.iterator_cache);
-   if (begin != end) {
-      iterator_cache.emplace(begin->first, iterator_state{});
-      iterator_cache.emplace((--end)->first, iterator_state{});
-   }
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(Persistent_data_store pds)
-    : backing_data_store{ std::make_shared<Persistent_data_store>(std::move(pds)) }, cache{ pds.memory_allocator() } {
-   // Prime the iterator cache with the begin and end values from the database.
-   auto begin = std::begin(*backing_data_store);
-   auto end   = std::end(*backing_data_store);
-   if (begin != end) {
-      iterator_cache.emplace((*begin).key(), iterator_state{});
-      iterator_cache.emplace((*--end).key(), iterator_state{});
-   }
-}
+    : backing_data_store{ std::make_shared<Persistent_data_store>(std::move(pds)) }, cache{ pds.memory_allocator() } {}
 
 template <typename Persistent_data_store, typename Cache_data_store>
 session<Persistent_data_store, Cache_data_store>::session_impl::session_impl(Persistent_data_store pds,
                                                                              Cache_data_store      cds)
-    : backing_data_store{ std::make_shared<Persistent_data_store>(std::move(pds)) }, cache{ std::move(cds) } {
-   auto emplace_bounds = [&](const auto& container) {
-      auto begin = std::begin(container);
-      auto end   = std::end(container);
-      if (begin != end) {
-         iterator_cache.emplace((*begin).key(), iterator_state{});
-         iterator_cache.emplace((*--end).key(), iterator_state{});
+    : backing_data_store{ std::make_shared<Persistent_data_store>(std::move(pds)) }, cache{ std::move(cds) } {}
+
+template <typename Persistent_data_store, typename Cache_data_store>
+void session<Persistent_data_store, Cache_data_store>::session_impl::prime_cache() {
+   iterator_cache.clear();
+
+   auto keys_to_remove = std::set<shared_bytes>{};
+   for (const auto& kv : cache) {
+      auto key     = kv.key();
+      auto updated = updated_keys.find(key);
+      if (updated == std::end(updated_keys)) {
+         keys_to_remove.emplace(key);
       }
-   };
-   // Prime the iterator cache with the begin and end values from cache and the database.
-   emplace_bounds(*backing_data_store);
-   emplace_bounds(cache);
+   }
+   if (!keys_to_remove.empty()) {
+      cache.erase(keys_to_remove);
+   }
+
+   if (auto child_ptr = child.lock()) {
+      child_ptr->prime_cache();
+   }
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 session<Persistent_data_store, Cache_data_store>::session_impl::~session_impl() {
-   // When this goes out of scope:
-   // 1.  If there is no parent and no backing data store, then this session has been abandoned (undo)
-   // 2.  If there is no parent, then this session is being committed to the data store. (commit)
-   // 3.  If there is a parent, then this session is being merged into the parent. (squash)
    commit();
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 void session<Persistent_data_store, Cache_data_store>::session_impl::undo() {
+   // TODO:  Should I connect the child of this to the parent of this?
    if (parent) {
       parent->child = child;
    }
@@ -361,6 +359,11 @@ template <typename Persistent_data_store, typename Cache_data_store>
 void session<Persistent_data_store, Cache_data_store>::session_impl::commit() {
    if (!parent && !backing_data_store) {
       // undo
+      return;
+   }
+
+   if (updated_keys.empty() && deleted_keys.empty()) {
+      // Nothing to commit.
       return;
    }
 
@@ -425,118 +428,78 @@ void session<Persistent_data_store, Cache_data_store>::undo() {
 
 template <typename Persistent_data_store, typename Cache_data_store>
 std::pair<shared_bytes, shared_bytes>
-session<Persistent_data_store, Cache_data_store>::bounds_(const shared_bytes& key) const {
+session<Persistent_data_store, Cache_data_store>::session_impl::bounds(const shared_bytes& key) {
    auto lower_bound_key = shared_bytes::invalid;
    auto upper_bound_key = shared_bytes::invalid;
 
-   auto lower_bound = [&, this](const auto& session, const auto& container, const auto& key) {
-      auto it = container.lower_bound(key);
-      if (it != std::end(container) && it != std::begin(container)) {
-         --it;
-         while (is_deleted_((*it).key(), session)) {
-            if (it == std::begin(container)) {
-               return shared_bytes::invalid;
-            }
-            --it;
-         }
-         return (*it).key();
+   auto s = session{ this->shared_from_this() };
+
+   // We need to be careful about requesting iterators on the session since it will be rentrant into this
+   // method.  Ask for the iterator in a way that isn't reentrant.  We can do this by invoking the make_iterator_
+   // method directly.
+   auto lower = [&](auto& ds) {
+      auto it = ds.lower_bound(key);
+      if (it != std::begin(ds) && it != std::end(ds)) {
+         return --it;
       }
-      return shared_bytes::invalid;
+      return std::end(ds);
    };
+   auto lower_bound = s.template make_iterator_<iterator>(
+         lower, std::less<shared_bytes>{}, [](auto& it, auto& end) { ++it; }, true);
+   auto upper_bound =
+         s.template make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{},
+                                             [](auto& it, auto& end) { ++it; }, true);
+   auto end = s.template make_iterator_<iterator>([&](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
+                                                  [](auto& it, auto& end) { it = end; }, true);
 
-   auto upper_bound = [&, this](const auto& session, const auto& container, const auto& key) {
-      auto it = container.upper_bound(key);
-      if (it == std::end(container)) {
-         return shared_bytes::invalid;
-      }
-
-      while (is_deleted_((*it).key(), session)) {
-         ++it;
-         if (it == std::end(container)) {
-            return shared_bytes::invalid;
-         }
-      }
-
-      return (*it).key();
-   };
-
-   auto test_set = [&](auto& current_key, const auto& pending_key, const auto& comparator) {
-      if (current_key == shared_bytes::invalid && pending_key == shared_bytes::invalid) {
-         return;
-      }
-
-      if (current_key == shared_bytes::invalid) {
-         current_key = pending_key;
-         return;
-      }
-
-      if (comparator(pending_key, current_key)) {
-         current_key = pending_key;
-         return;
-      }
-   };
-
-   auto parent  = m_impl;
-   auto current = m_impl;
-   while (current) {
-      if (auto lower_bound_key_ = lower_bound(current, current->cache, key);
-          lower_bound_key_ != shared_bytes::invalid) {
-         test_set(lower_bound_key, lower_bound_key_, std::greater<shared_bytes>{});
-      }
-      if (auto upper_bound_key_ = upper_bound(current, current->cache, key);
-          upper_bound_key_ != shared_bytes::invalid) {
-         test_set(upper_bound_key, upper_bound_key_, std::less<shared_bytes>{});
-      }
-
-      parent  = current;
-      current = current->parent;
+   if (lower_bound != end) {
+      lower_bound_key = lower_bound.m_active_iterator->first;
    }
 
-   if (auto lower_bound_key_ = lower_bound(parent, *m_impl->backing_data_store, key);
-       lower_bound_key_ != shared_bytes::invalid) {
-      test_set(lower_bound_key, lower_bound_key_, std::greater<shared_bytes>{});
-   }
-
-   if (auto upper_bound_key_ = upper_bound(parent, *m_impl->backing_data_store, key);
-       upper_bound_key_ != shared_bytes::invalid) {
-      test_set(upper_bound_key, upper_bound_key_, std::less<shared_bytes>{});
+   if (upper_bound != end) {
+      upper_bound_key = upper_bound.m_active_iterator->first;
    }
 
    return std::pair{ lower_bound_key, upper_bound_key };
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
-void session<Persistent_data_store, Cache_data_store>::update_iterator_cache_(const shared_bytes& key, bool overwrite,
-                                                                              bool erase) const {
-   auto it = m_impl->iterator_cache.emplace(key, iterator_state{}).first;
+void session<Persistent_data_store, Cache_data_store>::session_impl::update_iterator_cache(
+      const shared_bytes& key, const iterator_cache_params& params) {
+   auto result = iterator_cache.try_emplace(key, iterator_state{});
 
-   if (overwrite) {
-      it->second.deleted = erase;
-   }
-
-   if (it->second.next_in_cache && it->second.previous_in_cache) {
-      // The bounds have already been set.  No need to search for them again.
+   if (params.prime_only) {
+      // We only want to make sure the key exists in the iterator cache.
       return;
    }
 
-   auto [lower_bound, upper_bound] = bounds_(key);
+   auto& it = result.first;
+
+   if (params.overwrite) {
+      // Force an overwrite
+      it->second.deleted = params.mark_deleted;
+   }
+
+   if (!params.recalculate && it->second.next_in_cache && it->second.previous_in_cache) {
+      // Only find the previous and next keys if we are forced to or if the current
+      // key has one of the flags markes as false.  We check when the flags are false
+      // because a new key might have come through that could change that result.  We may
+      // do a recalculation on a deletion to also change the flags.
+      return;
+   }
+
+   auto [lower_bound, upper_bound] = bounds(key);
 
    if (lower_bound != shared_bytes::invalid) {
-      auto lower_it = m_impl->iterator_cache.find(lower_bound);
-      if (lower_it == std::end(m_impl->iterator_cache)) {
-         lower_it = m_impl->iterator_cache.emplace(lower_bound, iterator_state{}).first;
-      }
-      lower_it->second.next_in_cache = true;
-      it->second.previous_in_cache   = true;
+      auto lower_it                        = iterator_cache.try_emplace(lower_bound, iterator_state{});
+      lower_it.first->second.next_in_cache = true;
+      it->second.previous_in_cache         = true;
    }
 
    if (upper_bound != shared_bytes::invalid) {
-      auto upper_it = m_impl->iterator_cache.find(upper_bound);
-      if (upper_it == std::end(m_impl->iterator_cache)) {
-         upper_it = m_impl->iterator_cache.emplace(upper_bound, iterator_state{}).first;
-      }
-      upper_it->second.previous_in_cache = true;
-      it->second.next_in_cache           = true;
+      auto upper_it                            = iterator_cache.try_emplace(upper_bound, iterator_state{});
+      upper_it.first->second.previous_in_cache = true;
+      it->second.next_in_cache                 = true;
    }
 }
 
@@ -552,6 +515,8 @@ session<Persistent_data_store, Cache_data_store>::attach(session child) {
    child.m_impl->parent             = m_impl;
    child.m_impl->backing_data_store = m_impl->backing_data_store;
    m_impl->child                    = child.m_impl;
+
+   child.m_impl->prime_cache();
 
    return current_child;
 }
@@ -601,7 +566,8 @@ const key_value session<Persistent_data_store, Cache_data_store>::read(const sha
       if (kv != key_value::invalid) {
          if (parent != m_impl.get()) {
             m_impl->cache.write(kv);
-            update_iterator_cache_(kv.key(), false);
+            m_impl->update_iterator_cache(
+                  kv.key(), { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
          }
          return kv;
       }
@@ -614,7 +580,8 @@ const key_value session<Persistent_data_store, Cache_data_store>::read(const sha
       auto kv = m_impl->backing_data_store->read(key);
       if (kv != key_value::invalid) {
          m_impl->cache.write(kv);
-         update_iterator_cache_(kv.key(), false);
+         m_impl->update_iterator_cache(
+               kv.key(), { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
          return kv;
       }
    }
@@ -631,7 +598,8 @@ void session<Persistent_data_store, Cache_data_store>::write(key_value kv) {
    m_impl->updated_keys.emplace(key);
    m_impl->deleted_keys.erase(key);
    m_impl->cache.write(std::move(kv));
-   update_iterator_cache_(key);
+   m_impl->update_iterator_cache(
+         key, { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = true });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
@@ -649,7 +617,8 @@ bool session<Persistent_data_store, Cache_data_store>::contains(const shared_byt
       }
 
       if (parent->cache.contains(key)) {
-         update_iterator_cache_(key, false);
+         m_impl->update_iterator_cache(
+               key, { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
          return true;
       }
 
@@ -669,7 +638,8 @@ void session<Persistent_data_store, Cache_data_store>::erase(const shared_bytes&
    m_impl->deleted_keys.emplace(key);
    m_impl->updated_keys.erase(key);
    m_impl->cache.erase(key);
-   update_iterator_cache_(key, true, true);
+   m_impl->update_iterator_cache(key,
+                                 { .prime_only = false, .recalculate = true, .mark_deleted = true, .overwrite = true });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
@@ -713,7 +683,8 @@ session<Persistent_data_store, Cache_data_store>::read(const Iterable& keys) con
             // We found the key.  Write it to our cache and bail out.
             if (parent != m_impl.get()) {
                m_impl->cache.write(kv);
-               update_iterator_cache_(kv.key(), false);
+               m_impl->update_iterator_cache(
+                     kv.key(), { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
             }
             found = true;
             kvs.emplace_back(kv);
@@ -810,38 +781,23 @@ void session<Persistent_data_store, Cache_data_store>::read_from(const Data_stor
    ds.write_to(*this, keys);
 }
 
-// Given a session and a key read from that session, check if it has been deleted by any child sessions.
-template <typename Persistent_data_store, typename Cache_data_store>
-bool session<Persistent_data_store, Cache_data_store>::is_deleted_(
-      const shared_bytes& key, const std::shared_ptr<session_impl>& current_session) const {
-   if (current_session->child.expired()) {
-      return false;
-   }
-
-   auto current = current_session->child.lock();
-   while (current) {
-      if (current->updated_keys.find(key) != std::end(current->updated_keys)) {
-         return false;
-      }
-
-      if (current->deleted_keys.find(key) != std::end(current->deleted_keys)) {
-         return true;
-      }
-
-      current = current->child.lock();
-   }
-   return false;
-}
-
 // Factor for creating the initial session iterator.
 //
 // \tparam Predicate A functor used for getting the starting iterating in the cache list and the persistent data store.
 // \tparam Comparator A functor for determining if the "current" iterator points to the cache list or the persistent
 // data store.
 template <typename Persistent_data_store, typename Cache_data_store>
-template <typename Iterator_type, typename Predicate, typename Comparator>
-Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(const Predicate&  p,
-                                                                               const Comparator& c) const {
+template <typename Iterator_type, typename Predicate, typename Comparator, typename Move>
+Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(const Predicate&  predicate,
+                                                                               const Comparator& comparator,
+                                                                               const Move&       move,
+                                                                               bool prime_cache_only) const {
+   // This method is the workhorse of the iterator and iterator cache updating.
+   // It will search through all the session levels to find the best key that matches
+   // the requested iterator.  Once that key has been identified, it will force an update
+   // on the iterator cache by inserting that key and (possibly) the previous key from that key
+   // and the next key from that key.
+
    if (!m_impl) {
       // For some reason the pimpl is nullptr.  Return an "invalid" iterator.
       return Iterator_type{};
@@ -856,48 +812,85 @@ Iterator_type session<Persistent_data_store, Cache_data_store>::make_iterator_(c
    auto parent = m_impl;
    while (parent->parent) { parent = parent->parent; }
 
-   // So start at the database.
-   auto it          = p(*m_impl->backing_data_store);
-   auto current_key = it != std::end(*m_impl->backing_data_store) ? (*it).key() : shared_bytes::invalid;
+   auto deleted = [&](auto& session, auto& key) {
+      // Checks if a given key has been deleted in any descendants of the given session
+      // or if the key has been added in any descendent after it has been deleted.
+      auto child  = session->child.lock();
+      auto result = false;
+      while (child) {
+         if (child->deleted_keys.find(key) != std::end(child->deleted_keys)) {
+            result = true;
+         } else if (child->updated_keys.find(key) != std::end(child->updated_keys)) {
+            result = false;
+         }
 
-   // Check the other levels to see which key we should start at.
+         if (child == m_impl) {
+            break;
+         }
+         child = child->child.lock();
+      }
+      return result;
+   };
+
+   auto find_first_not = [&](auto& session, auto& it, auto end_it, const auto& predicate) {
+      // Return the first key that does passes the give predicate.
+      if (it == end_it) {
+         return shared_bytes::invalid;
+      }
+      auto pending_key = (*it).key();
+      while (true) {
+         if (!predicate(session, pending_key)) {
+            return pending_key;
+         }
+         move(it, end_it);
+         if (it == end_it) {
+            return shared_bytes::invalid;
+         }
+         pending_key = (*it).key();
+      }
+   };
+
+   // Start at the database.
+   auto it          = predicate(*m_impl->backing_data_store);
+   auto end         = std::end(*m_impl->backing_data_store);
+   auto current_key = find_first_not(parent, it, end, deleted);
+
+   // Check the other sessin levels to see which key we should start at.
+   // We start at the parent and work our way down to "this" session.
    auto current = parent;
    while (current) {
-      auto pending = p(current->cache);
+      auto pending     = predicate(current->cache);
+      auto end         = std::end(current->cache);
+      auto pending_key = find_first_not(parent, pending, end, deleted);
 
-      if (current_key != shared_bytes::invalid &&
-          current->deleted_keys.find(current_key) != std::end(current->deleted_keys)) {
-         // Key is deleted at this level
-         current_key = shared_bytes::invalid;
-      }
-
-      if (pending == std::end(current->cache)) {
+      if (pending == end) {
          current = current->child.lock();
          continue;
       }
 
-      auto pending_key = (*pending).key();
-      auto it          = current->iterator_cache.find(pending_key);
-
-      if (it->second.deleted) {
-         current = current->child.lock();
-         continue;
-      }
-
-      if (current_key == shared_bytes::invalid || c(pending_key, current_key)) {
+      if (current_key == shared_bytes::invalid || comparator(pending_key, current_key)) {
          current_key = pending_key;
+      }
+
+      // Stop at this session.
+      if (current == m_impl) {
+         break;
       }
 
       current = current->child.lock();
    }
 
-   // Update the iterator cache.
    if (current_key != shared_bytes::invalid) {
+      // Update the iterator cache with this key.  It has to exist in the cache before
+      // we can get an iterator to it.  In some cases, we will only be inserting the new
+      // key and bypassing the search for its previous and next key.
+      m_impl->update_iterator_cache(
+            current_key,
+            { .prime_only = prime_cache_only, .recalculate = true, .mark_deleted = false, .overwrite = false });
       new_iterator.m_active_iterator = m_impl->iterator_cache.find(current_key);
+
       if (new_iterator.m_active_iterator->second.deleted) {
          new_iterator.m_active_iterator = std::end(m_impl->iterator_cache);
-      } else {
-         session{ m_impl }.update_iterator_cache_(current_key, false);
       }
    }
 
@@ -920,7 +913,8 @@ session<Persistent_data_store, Cache_data_store>::find(const shared_bytes& key) 
       return true;
    };
 
-   return make_iterator_<iterator>([&](auto& ds) { return ds.find(key); }, comparator);
+   return make_iterator_<iterator>([&](auto& ds) { return ds.find(key); }, comparator,
+                                   [](auto& it, auto& end) { it = end; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
@@ -939,55 +933,64 @@ session<Persistent_data_store, Cache_data_store>::find(const shared_bytes& key) 
       return true;
    };
 
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.find(key); }, comparator);
+   return make_iterator_<const_iterator>([&](auto& ds) { return ds.find(key); }, comparator,
+                                         [](auto& it, auto& end) { it = end; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator
 session<Persistent_data_store, Cache_data_store>::begin() {
-   return make_iterator_<iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{});
+   return make_iterator_<iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
+                                   [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator
 session<Persistent_data_store, Cache_data_store>::begin() const {
-   return make_iterator_<const_iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{});
+   return make_iterator_<const_iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
+                                         [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator
 session<Persistent_data_store, Cache_data_store>::end() {
-   return make_iterator_<iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{});
+   return make_iterator_<iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
+                                   [](auto& it, auto& end) { it = end; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator
 session<Persistent_data_store, Cache_data_store>::end() const {
-   return make_iterator_<const_iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{});
+   return make_iterator_<const_iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
+                                         [](auto& it, auto& end) { it = end; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator
 session<Persistent_data_store, Cache_data_store>::lower_bound(const shared_bytes& key) {
-   return make_iterator_<iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<shared_bytes>{});
+   return make_iterator_<iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::less<shared_bytes>{},
+                                   [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator
 session<Persistent_data_store, Cache_data_store>::lower_bound(const shared_bytes& key) const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::greater<shared_bytes>{});
+   return make_iterator_<const_iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::less<shared_bytes>{},
+                                         [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::iterator
 session<Persistent_data_store, Cache_data_store>::upper_bound(const shared_bytes& key) {
-   return make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{});
+   return make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{},
+                                   [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
 typename session<Persistent_data_store, Cache_data_store>::const_iterator
 session<Persistent_data_store, Cache_data_store>::upper_bound(const shared_bytes& key) const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{});
+   return make_iterator_<const_iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{},
+                                         [](auto& it, auto& end) { ++it; });
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
@@ -1067,57 +1070,29 @@ const std::shared_ptr<const Cache_data_store>& session<Persistent_data_store, Ca
 // \tparam Comparator A functor used to determine what the current iterator is.
 template <typename Persistent_data_store, typename Cache_data_store>
 template <typename Iterator_traits>
-template <typename Test_predicate, typename DB_test_predicate, typename Move_predicate>
+template <typename Test_predicate, typename Move_predicate>
 void session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator_traits>::move_(
-      const Test_predicate& test, const DB_test_predicate& db_test, const Move_predicate& move) {
-   auto set = false;
+      const Test_predicate& test, const Move_predicate& move) {
 
-   if (test(m_active_iterator)) {
-      // If the next/previous value is in the active session's cache, just increment/decrement the iterator
-      // until one is encountered that is not deleted.
-      move(m_active_iterator);
-      while (m_active_iterator->second.deleted) { move(m_active_iterator); }
-      set = true;
-   } else {
-      auto current = m_active_session->m_impl->parent;
-      while (current) {
-         // The next/previous key isn't in the active session's cache, move up to the head of the session list
-         // until we find the next/previous key.
-         auto it = current->iterator_cache.find(m_active_iterator->first);
-         if (test(it)) {
-            move(it);
-
-            while (it->second.deleted) { move(it); }
-
-            m_active_session->update_iterator_cache_(it->first, false);
-            m_active_iterator = m_active_session->m_impl->iterator_cache.find(it->first);
-            set               = true;
+   do {
+      if (!test(m_active_iterator)) {
+         // Force an update to see if we pull in a next or previous key from the current key.
+         m_active_session->m_impl->update_iterator_cache(
+               m_active_iterator->first, { .recalculate = true, .mark_deleted = false, .overwrite = false });
+         if (!test(m_active_iterator)) {
+            // The test still fails.  We are at the end.
+            m_active_iterator = std::end(m_active_session->m_impl->iterator_cache);
             break;
          }
-         current = current->parent;
       }
-
-      if (!current) {
-         // We didn't find the key in any of the caches.  The database will tell us what is next.
-         auto it = m_active_session->m_impl->backing_data_store->find(m_active_iterator->first);
-         if (db_test(it)) {
-            move(it);
-            if (it != std::end(*m_active_session->m_impl->backing_data_store)) {
-               // We don't need to check if the key is deleted.  That information should have been encoded in the
-               // sessions above this one and those keys would have been skipped.
-               auto key = (*it).key();
-               m_active_session->update_iterator_cache_(key, false);
-               m_active_iterator = m_active_session->m_impl->iterator_cache.find(key);
-               set               = true;
-            }
-         }
+      // Mpve to the next iterator in the cache.
+      move(m_active_iterator);
+      if (!m_active_iterator->second.deleted ||
+          m_active_iterator == std::end(m_active_session->m_impl->iterator_cache)) {
+         // We either found a key that hasn't been deleted or we hit the end of the iterator cache.
+         break;
       }
-   }
-
-   if (!set) {
-      // We didn't find a value. Or we moved to the end iterator.
-      m_active_iterator = std::end(m_active_session->m_impl->iterator_cache);
-   }
+   } while (true);
 }
 
 template <typename Persistent_data_store, typename Cache_data_store>
@@ -1125,7 +1100,6 @@ template <typename Iterator_traits>
 void session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator_traits>::move_next_() {
    auto move     = [](auto& it) { ++it; };
    auto test     = [](auto& it) { return it->second.next_in_cache; };
-   auto db_test  = [&](auto& it) { return it != std::end(*m_active_session->m_impl->backing_data_store); };
    auto rollover = [&]() {
       if (m_active_iterator == std::end(m_active_session->m_impl->iterator_cache)) {
          // Rollover...
@@ -1133,7 +1107,7 @@ void session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator
       }
    };
 
-   move_(test, db_test, move);
+   move_(test, move);
    rollover();
 }
 
@@ -1147,7 +1121,6 @@ void session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator
       }
       return true;
    };
-   auto db_test  = [&](auto& it) { return it != std::begin(*m_active_session->m_impl->backing_data_store); };
    auto rollover = [&]() {
       if (m_active_iterator == std::begin(m_active_session->m_impl->iterator_cache)) {
          // Rollover...
@@ -1159,7 +1132,7 @@ void session<Persistent_data_store, Cache_data_store>::session_iterator<Iterator
    };
 
    rollover();
-   move_(test, db_test, move);
+   move_(test, move);
 }
 
 template <typename Persistent_data_store, typename Cache_data_store, typename Iterator_traits>

@@ -13,9 +13,9 @@ namespace eosio::session {
 // \remarks Intended to follow the concept of an std allocator.
 class boost_memory_allocator : public std::enable_shared_from_this<boost_memory_allocator> {
  public:
-   void*               allocate(size_t length_bytes) const;
-   void                deallocate(void* data, size_t length_bytes) const;
-   free_function_type& free_function();
+   void*                     allocate(size_t length_bytes) const;
+   void                      deallocate(void* data, size_t length_bytes) const;
+   const free_function_type& free_function() const;
 
    static std::shared_ptr<boost_memory_allocator> make();
 
@@ -63,7 +63,7 @@ inline void boost_memory_allocator::deallocate(void* data, size_t /*length_bytes
    const_cast<boost::pool<>&>(m_pool).ordered_free(data);
 }
 
-inline free_function_type& boost_memory_allocator::free_function() { return m_free_function; }
+inline const free_function_type& boost_memory_allocator::free_function() const { return m_free_function; }
 
 inline std::shared_ptr<boost_memory_allocator> boost_memory_allocator::make() {
    struct boost_memory_allocator_ : public boost_memory_allocator {};
