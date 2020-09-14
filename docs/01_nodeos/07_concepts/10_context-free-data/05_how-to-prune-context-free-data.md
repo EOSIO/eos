@@ -7,7 +7,7 @@ link_text: How to prune context-free data
 
 This how-to procedure showcases the steps to prune context-free data (CFD) from a transaction. The process involves launching the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility with the `--prune-transactions` option, the transaction ID(s) that contain(s) the context-free data, and additional options as specified below.
 
-[[info | Data Pruning on Public Chains]]
+[[caution | Data Pruning on Public Chains]]
 | Pruning transaction data is not suitable for public EOSIO blockchains, unless previously agreed upon through EOSIO consensus by a supermajority of producers. Even if a producing node on a public EOSIO network prunes context-free data from a transaction, only their node would be affected. The integrity of the blockchain would not be compromised.
 
 ## Prerequisites
@@ -22,7 +22,7 @@ The following items must be known in advance or completed before starting the pr
 
 Complete the following steps to prune the context-free data from the transaction:
 
-1. Locate the transaction ID you want to prune the context-free data from, say `<trx_id>`. The transaction ID can also be found on the `id` field of the transaction.
+1. Locate the transaction ID you want to prune the context-free data from, e.g. `<trx_id>`. The transaction ID can also be found on the `id` field of the transaction.
 2. Locate the block number that contains the transaction, e.g. `<block_num>`. Make sure the block number matches the `block_num` field of the transaction.
 3. Find the blocks directory and state history directory (if applicable), e.g. `<blocks_dir>` and `<state_hist_dir>`, respectively.
 4. Launch the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
@@ -51,7 +51,7 @@ Some additional considerations are in order:
 
 In this example, we reproduce the steps listed in the [Procedure](#procedure) section above.
 
-### Input - transaction before
+### Transaction sample (before)
 
 Refer to the following transaction sample with context-free data:
 
@@ -209,14 +209,14 @@ Using the above transaction to recreate the steps above:
 
 1. Locate the transaction ID: `1b9a9c53f9b692d3382bcc19c0c21eb22207e2f51a30fe88dabbb45376b6ff23`.
 2. Locate the block number: `119`.
-3. Find the blocks directory and state history directory (if applicable), say `<blocks_dir>` and `<state_hist_dir>`.
+3. Find the blocks directory and state history directory (if applicable), e.g. `<blocks_dir>` and `<state_hist_dir>`.
 4. Launch the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility as follows:
 
-   `eosio-blocklog --blocks-dir <blocks_dir> --state-history-dir <state_hist_dir> --prune-transactions --block-num 116 --transaction 1b9a9c53f9b692d3382bcc19c0c21eb22207e2f51a30fe88dabbb45376b6ff23`
+   `eosio-blocklog --blocks-dir <blocks_dir> --state-history-dir <state_hist_dir> --prune-transactions --block-num 119 --transaction 1b9a9c53f9b692d3382bcc19c0c21eb22207e2f51a30fe88dabbb45376b6ff23`
 
 If *successful*, the utility returns silently. If *unsuccessful*, it outputs an error to `stderr`.
 
-### Results - transaction after
+### Transaction sample (after)
 
 After retrieving the transaction a second time, the pruned transaction looks as follows:
 
@@ -362,7 +362,7 @@ After retrieving the transaction a second time, the pruned transaction looks as 
 
 ### Remarks
 
-Notice the following modified fields from the pruned transaction:
+Notice the following modified fields within the pruned transaction:
    * The `prunable_data["prunable_data"][0]` field is 1.
    * The `signatures` field now contains an empty array.
    * The `context_free_data` field contains an empty array.
