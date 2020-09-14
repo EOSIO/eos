@@ -113,6 +113,9 @@ Once the value is no longer `-1`, only `N` number of blocks before the current L
 
 If resource usage cannot be effectively managed via the `trace-minimum-irreversible-history-blocks` configuration option, then there might be a need for ongoing maintenance. In that case, the user may prefer to manage resources with an external system or process.
 
+[[info | Compression of trace `log` files]
+| The trace `log` files can be compressed manually with the [trace_api_util](../../../10_utilities/trace_api_util.md) utility.
+
 ### Manual Filesystem Management
 
 The `trace-dir` configuration option defines a location on the filesystem where all artefacts created by the `trace_api_plugin` are stored. These files are stable once the LIB block has progressed past that slice and then can be deleted at any time to reclaim filesystem space. The conventions regarding these files are to be determined. However, the remainder of the system will tolerate any out-of-process management system that removes some or all of these files in this directory regardless of what data they represent, or whether there is a running `nodeos` instance accessing them or not.  Data which would nominally be available, but is no longer so due to manual maintenance, will result in a HTTP 404 response from the appropriate API endpoint(s).
