@@ -28,7 +28,7 @@ Option (=default) | Description
 `--as-json-array` | Print out JSON blocks wrapped in JSON array (otherwise the output is free-standing JSON objects)
 `--make-index` | Create `blocks.index` from `blocks.log`. Must give `blocks-dir` location. Give `output-file` relative to current directory or absolute path (default is `<blocks-dir>/blocks.index`)
 `--trim-blocklog` | Trim `blocks.log` and `blocks.index`. Must give `blocks-dir` and `first` and/or `last` options.
-`--fix-irreversible-blocks` | When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index
+`--fix-irreversible-blocks` | When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - it takes the highest indexed block if valid; otherwise, it repairs the block log and reconstructs the index
 `--smoke-test` | Quick test that `blocks.log` and `blocks.index` are well formed and agree with each other
 `--block-num arg (=0)` | The block number which contains the transactions to be pruned
 `-t [ --transaction ] arg` | The transaction id to be pruned
