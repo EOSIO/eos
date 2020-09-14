@@ -36,6 +36,15 @@ enum msg_type {
     reconnect_response              = 27,
     custom_notification_request     = 28,
     custom_notification_response    = 29,
+
+    ///////////////////////////////////////////////////////
+    //// below message type is for debug and test only.
+    fake_http_request               = 101,
+    fake_http_response              = 102,
+    fake_https_request              = 103,
+    fake_https_response             = 104,
+    fake_rpc_call                   = 105,
+    fake_rpc_return                 = 106,
 };
 
 static bool is_valid_msg(msg_type type) {
