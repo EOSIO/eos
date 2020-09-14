@@ -1,29 +1,14 @@
-#ifndef BOOST_BEAST_EXAMPLE_COMMON_SERVER_CERTIFICATE_HPP
-#define BOOST_BEAST_EXAMPLE_COMMON_SERVER_CERTIFICATE_HPP
+#ifndef TEST_SERVER_CERTIFICATE_HPP
+#define TEST_SERVER_CERTIFICATE_HPP
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <cstddef>
 #include <memory>
 
-/*  Load a signed certificate into the ssl context, and configure
-    the context for use with a server.
-    For this to work with the browser or operating system, it is
-    necessary to import the "Beast Test CA" certificate into
-    the local certificate store, browser, or operating system
-    depending on your environment Please see the documentation
-    accompanying the Beast certificate for more details.
-*/
-inline
-void
-load_server_certificate(boost::asio::ssl::context& ctx)
-{
-    /*
-        The certificate was generated from CMD.EXE on Windows 10 using:
-        winpty openssl dhparam -out dh.pem 2048
-        winpty openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 10000 -out cert.pem -subj "//C=US\ST=CA\L=Los Angeles\O=Beast\CN=www.example.com"
-    */
 
+inline void load_server_certificate(boost::asio::ssl::context& ctx)
+{   
     std::string const cert =
         "-----BEGIN CERTIFICATE-----\n"
         "MIIDaDCCAlCgAwIBAgIJAO8vBu8i8exWMA0GCSqGSIb3DQEBCwUAMEkxCzAJBgNV\n"
