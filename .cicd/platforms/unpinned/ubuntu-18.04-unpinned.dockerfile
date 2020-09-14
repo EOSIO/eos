@@ -26,7 +26,7 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build eosio cppkin
-RUN git clone --single-branch --branch remove-core https://github.com/EOSIO/cppKin.git && \
+RUN git clone --single-branch --branch master https://github.com/EOSIO/cppKin.git && \
     cd cppKin && \
     git submodule update --init --recursive && \
     mkdir build && \
