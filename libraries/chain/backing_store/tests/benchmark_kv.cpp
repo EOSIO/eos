@@ -1,4 +1,5 @@
 #include <sys/resource.h>
+#include <sys/time.h>
 
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
@@ -16,18 +17,25 @@ namespace kv_benchmark {
 constexpr account_name receiver = N(kvrdb);
 constexpr uint64_t contract = receiver.to_uint64_t();
 constexpr account_name payer = N(payer);
-constexpr uint32_t it_key_size = 10;
 constexpr uint64_t default_billable_size = 12;
 
-constexpr uint32_t default_value_size = 1024;
 struct cmd_args {
-   uint32_t value_size = default_value_size;
-   bool is_rocksdb = false; // false means chainbase
-   std::string operation = "get";
+   std::string operation = "";
+   std::string backing_store = "";
    std::string key_file = "";
    std::string workset_file = "";
-   std::string creation_mode = "random";
-   uint32_t num_repeats = 10000;
+   uint32_t value_size = 1024;
+   uint64_t num_runs = 1000000;
+};
+
+struct measurement_t {
+   double user_duration_us_avg;
+   double system_duration_us_avg;
+   uint64_t actual_num_runs;
+   uint32_t minor_faults;
+   uint32_t major_faults;
+   uint32_t blocks_in;
+   uint32_t blocks_out;
 };
 
 struct dummy_control {
@@ -70,7 +78,32 @@ mock_resource_manager resource_manager;
 // Main purpose of this program is to microbenchmark individual
 // KV API over RocksDB and ChainKV.
 
-std::vector<std::string> read_workset(const cmd_args& args, uint32_t& workset_size) {
+// Loads keys and returns number of keys as an argument.
+// This is mainly used to benchmark key creation and erase.
+std::vector<std::string> load_keys(const cmd_args& args, uint32_t& num_keys) {
+   std::vector<std::string> keys; 
+   std::ifstream key_file(args.key_file);
+
+   if (!key_file.is_open()) {
+      std::cerr << "Failed to open key file " << args.key_file << std::endl;
+      exit(2);
+   }
+
+   std::string key;
+   num_keys = 0;
+   while (getline(key_file, key)) {
+      keys.push_back(key);
+      ++num_keys;
+   }
+
+   key_file.close();
+
+   return keys;
+}
+
+// Load workset. Benchmarking "get", "get_data", and "set" 
+// requires it.
+std::vector<std::string> load_workset(const cmd_args& args, uint32_t& workset_size) {
    std::ifstream workset_ifs(args.workset_file);
 
    if (!workset_ifs.is_open()) {
@@ -90,6 +123,8 @@ std::vector<std::string> read_workset(const cmd_args& args, uint32_t& workset_si
    return workset;
 }
 
+// Read keys from key file and create key-values pairs 
+// on backing store.
 void create_key_values(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t& num_keys) {
    std::ifstream key_file(args.key_file);
 
@@ -109,167 +144,284 @@ void create_key_values(const cmd_args& args, const std::unique_ptr<kv_context>& 
    key_file.close();
 }
 
-void benchmark_get(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
-   getrusage(RUSAGE_SELF, &usage_start);
+// Returns the number of loops required to perform total_runs
+// for runs_per_loop
+uint32_t get_num_loops(const uint64_t total_runs, const uint32_t runs_per_loop) {
+   if (total_runs <= runs_per_loop) {
+      return 1; // one loop is sufficient
+   } else {
+      return total_runs/runs_per_loop + 1 ;
+   }
+}
 
-   for (auto i = 0; i < args.num_repeats; ++i) {
+// Returns difference between two timevals
+double time_diff_us(const timeval& start, const timeval& end) {
+   timeval diff;
+   timersub(&end, &start, &diff);
+   return (1000000 * diff.tv_sec + diff.tv_usec);
+}
+
+// Returns calculated measurement based on raw data
+measurement_t calculated_measurement(const uint64_t actual_num_runs, const rusage& usage_start, const rusage& usage_end) {
+   measurement_t m;
+
+   m.actual_num_runs = actual_num_runs;
+   m.user_duration_us_avg = time_diff_us(usage_start.ru_utime, usage_end.ru_utime)/actual_num_runs;
+   m.system_duration_us_avg = time_diff_us(usage_start.ru_stime, usage_end.ru_stime)/actual_num_runs;
+   m.minor_faults = uint32_t(usage_end.ru_minflt  - usage_start.ru_minflt);
+   m.major_faults = uint32_t(usage_end.ru_majflt  - usage_start.ru_majflt);
+   m.blocks_in = uint32_t(usage_end.ru_inblock - usage_start.ru_inblock);
+   m.blocks_out = uint32_t(usage_end.ru_oublock - usage_start.ru_oublock);
+
+   return m;
+}
+
+// Benchmark "get" operation
+measurement_t benchmark_get(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset) {
+   uint32_t num_loops = get_num_loops(args.num_runs, workset.size()); 
+   rusage usage_start, usage_end;
+
+   getrusage(RUSAGE_SELF, &usage_start);
+   for (auto i = 0; i < num_loops; ++i) {
       for (auto& key: workset) {
          uint32_t actual_value_size;
          kv_context_ptr->kv_get(contract, key.c_str(), key.size(),actual_value_size);
       }
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
+
+   return calculated_measurement(num_loops*workset.size(), usage_start, usage_end);
 }
 
-void benchmark_get_data(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
+// Benchmark "get_data" operation
+measurement_t benchmark_get_data(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset) {
    char* data = new char[args.value_size];
+   uint32_t num_loops = get_num_loops(args.num_runs, workset.size()); 
+   rusage usage_start, usage_end;
 
    getrusage(RUSAGE_SELF, &usage_start);
-
-   for (auto i = 0; i < args.num_repeats; ++i) {
+   for (auto i = 0; i < num_loops; ++i) {
       for (auto& key: workset) {
-         kv_context_ptr->kv_get_data(0, data, default_value_size);
+         kv_context_ptr->kv_get_data(0, data, args.value_size);
       }
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
+
+   return calculated_measurement(num_loops*workset.size(), usage_start, usage_end);
 }
 
-void benchmark_set(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset, rusage& usage_start, rusage& usage_end) {
+// Benchmark "set" operation
+measurement_t benchmark_set(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, const std::vector<std::string>& workset) {
    std::string value(args.value_size, 'b');
+   uint32_t num_loops = get_num_loops(args.num_runs, workset.size()); 
+   rusage usage_start, usage_end;
 
    getrusage(RUSAGE_SELF, &usage_start);
-
-   for (auto i = 0; i < args.num_repeats; ++i) {
+   for (auto i = 0; i < num_loops; ++i) {
       for (auto& key: workset) {
          kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
       }
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
+
+   return calculated_measurement(num_loops*workset.size(), usage_start, usage_end);
 }
 
-void benchmark_it_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
+// Benchmark "create" operation
+measurement_t benchmark_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t& num_keys) {
+   // read keys from the key file
+   std::vector<std::string> keys = load_keys(args, num_keys); 
+   std::string value(args.value_size, 'a');
+   rusage usage_start, usage_end;
+
+   getrusage(RUSAGE_SELF, &usage_start);
+   for (auto& key: keys) {
+      kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
+   }
+   getrusage(RUSAGE_SELF, &usage_end);
+
+   return calculated_measurement(keys.size(), usage_start, usage_end);
+}
+
+// Benchmark "erase" operation
+measurement_t benchmark_erase(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t& num_keys) {
+   // create keys in backing store first
+   std::vector<std::string> keys = load_keys(args, num_keys); 
+   std::string value(args.value_size, 'a');
+   for (auto& key: keys) {
+      kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
+   }
+
+   rusage usage_start, usage_end;
+   getrusage(RUSAGE_SELF, &usage_start);
+   for (auto& key: keys) {
+      kv_context_ptr->kv_erase(contract, key.c_str(), key.size());
+   }
+   getrusage(RUSAGE_SELF, &usage_end);
+
+   return calculated_measurement(keys.size(), usage_start, usage_end);
+}
+
+// Benchmark "it_create" operation
+measurement_t benchmark_it_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
+   rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
 
    auto i = 0;
    std::string prefix = "a";
-   while (i < args.num_repeats) {
-      kv_context_ptr->kv_it_create(contract, prefix.c_str(), 0);
+   while (i < args.num_runs) {
+      kv_context_ptr->kv_it_create(contract, prefix.c_str(), 0); // kv_it_create creates a unique pointer. Will be destoryed at the end of the scope.
       ++i;
-      if (prefix[0] != 'z') {
-         prefix[0] = static_cast<char>(prefix[0] + 1);
-      } else {
-         prefix[0] = 'a';
-      }
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
+   return calculated_measurement(args.num_runs, usage_start, usage_end);
 }
 
-void benchmark_it_next(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
+// Benchmark "it_next" operation
+measurement_t benchmark_it_next(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
+   rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
 
    uint32_t found_key_size, found_value_size;
    auto it = kv_context_ptr->kv_it_create(contract, "", 0);
    it->kv_it_next(&found_key_size, &found_value_size);
 
+   uint32_t num_runs = 0;
    while (it->kv_it_status() != kv_it_stat::iterator_end) {
       it->kv_it_next(&found_key_size, &found_value_size);
+      ++num_runs;
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
+   return calculated_measurement(num_runs, usage_start, usage_end);
 }
 
-void benchmark_it_key_value(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, rusage& usage_start, rusage& usage_end) {
+// Benchmark "it_key_value" operation
+measurement_t benchmark_it_key_value(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
    uint32_t offset = 0;
    char* dest = new char[args.value_size];
    uint32_t actual_size;
    uint32_t found_key_size, found_value_size;
 
+   rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
 
    auto it = kv_context_ptr->kv_it_create(contract, "", 0);
-   it->kv_it_next(&found_key_size, &found_value_size);
+   it->kv_it_next(&found_key_size, &found_value_size);  // move to the first position
 
+   uint64_t num_runs = 0;
    while (it->kv_it_status() != kv_it_stat::iterator_end) {
       it->kv_it_key(offset, dest, found_key_size, actual_size);
       it->kv_it_value(offset, dest, found_value_size, actual_size);
 
       it->kv_it_next(&found_key_size, &found_value_size);
+      ++num_runs;
    }
 
    getrusage(RUSAGE_SELF, &usage_end);
+   return calculated_measurement(num_runs, usage_start, usage_end);
 }
 
-void print_results(const cmd_args& args, const uint32_t num_keys, const uint32_t workset_size, const rusage& usage_start, const rusage& usage_end) {
-   uint32_t user_duration_us = 1000000 * (usage_end.ru_utime.tv_sec - usage_start.ru_utime.tv_sec) + usage_end.ru_utime.tv_usec - usage_start.ru_utime.tv_usec;;
-   uint32_t system_duration_us = 1000000 * (usage_end.ru_stime.tv_sec - usage_start.ru_stime.tv_sec) + usage_end.ru_stime.tv_usec - usage_start.ru_stime.tv_usec;;
-   uint32_t minor_faults = uint32_t(usage_end.ru_minflt  - usage_start.ru_minflt);
-   uint32_t major_faults = uint32_t(usage_end.ru_majflt  - usage_start.ru_majflt);
-   uint32_t blocks_in = uint32_t(usage_end.ru_inblock - usage_start.ru_inblock);
-   uint32_t blocks_out = uint32_t(usage_end.ru_oublock - usage_start.ru_oublock);
-
+// Print out benchmarking results
+void print_results(const cmd_args& args, const uint32_t num_keys, const uint32_t workset_size, const measurement_t& m) {
    std::cout 
       << "operation: " << args.operation
-      << ", backing_store: " << (args.is_rocksdb ? "rocksdb" : "chainbase")
-      << ", creation_mode: " << args.creation_mode
-      << ", num_keys: " << num_keys
-      << ", value_size: " << args.value_size;
+      << ", backing_store: " << args.backing_store
+      << ", key_file: " << args.key_file
+      << ", num_keys: " << num_keys;
 
-   if (args.operation == "get" || args.operation == "get_data" || args.operation == "set" || args.operation == "it_create") {
+   if (args.operation == "get" || args.operation == "get_data" || args.operation == "set") {
       std::cout
-      << ", num_repeats: " << args.num_repeats;
+      << ", workset_file: " << args.workset_file
+      << ", workset_size: " << workset_size;
    }
 
-   if (args.operation == "it_create" || args.operation == "it_next" || args.operation == "it_key_value") {
-      std::cout
-      << ", user_duration_us_total: " << user_duration_us
-      << ", system_duration_us_total: " << system_duration_us;
-   } else {
-      std::cout
-      << ", workset_size: " << workset_size
-      << ", user_duration_us_avg: " << (double)user_duration_us/(args.num_repeats*workset_size)
-      << ", system_duration_us_avg: " << (double)system_duration_us/(args.num_repeats*workset_size);
-   };
-
    std::cout
-      << ", minor_faults_total: " << minor_faults 
-      << ", major_faults_total: " << major_faults 
-      << ", blocks_in_total: " << blocks_in  
-      << ", blocks_out_total: " << blocks_out 
+      << ", value_size: " << args.value_size
+      << ", actual_num_runs: " << m.actual_num_runs
+      << ", user_duration_us_avg: " << m.user_duration_us_avg
+      << ", system_duration_us_avg: " << m.system_duration_us_avg
+      << ", minor_faults_total: " << m.minor_faults 
+      << ", major_faults_total: " << m.major_faults 
+      << ", blocks_in_total: " << m.blocks_in  
+      << ", blocks_out_total: " << m.blocks_out 
       << std::endl << std::endl;
 }
 
+// Dispatcher to benchmark individual operation
 void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
-   uint32_t clock_duration_us;
-   struct rusage usage_start, usage_end;
-   uint32_t num_keys, workset_size;
+   measurement_t m;
+   uint32_t num_keys {0}, workset_size {0};
 
-   create_key_values(args, kv_context_ptr, num_keys);
-   std::vector<std::string> workset = read_workset(args, workset_size);
+   // Benchmarking "create" and "erase" creates key values
+   // on their own
+   if (args.operation != "create" && args.operation != "erase") {
+      create_key_values(args, kv_context_ptr, num_keys);
+   }
 
-   if (args.operation == "get" ) {
-      benchmark_get(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
-   } else if (args.operation == "get_data" ) {
-      benchmark_get_data(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
-   } else if (args.operation == "set" ) {
-      benchmark_set(args, std::move(kv_context_ptr), workset, usage_start, usage_end);
-   } else if (args.operation == "it_create" ) {
-      benchmark_it_create(args, std::move(kv_context_ptr), usage_start, usage_end);
-   } else if (args.operation == "it_next" ) {
-      benchmark_it_next(args, std::move(kv_context_ptr), usage_start, usage_end);
-   } else if (args.operation == "it_key_value" ) {
-      benchmark_it_key_value(args, std::move(kv_context_ptr), usage_start, usage_end);
+   if (args.operation == "get" || args.operation == "get_data" || args.operation == "set") {
+      std::vector<std::string> workset = load_workset(args, workset_size);
+      
+      if (args.operation == "get" ) {
+         m = benchmark_get(args, std::move(kv_context_ptr), workset);
+      } else if (args.operation == "get_data" ) {
+         m = benchmark_get_data(args, std::move(kv_context_ptr), workset);
+      } else if (args.operation == "set" ) {
+         m = benchmark_set(args, std::move(kv_context_ptr), workset);
+      }
+   } else {
+      // workset is not used.
+      if (args.operation == "it_create" ) {
+         m = benchmark_it_create(args, std::move(kv_context_ptr));
+      } else if (args.operation == "it_next" ) {
+         m = benchmark_it_next(args, std::move(kv_context_ptr));
+      } else if (args.operation == "it_key_value" ) {
+         m = benchmark_it_key_value(args, std::move(kv_context_ptr));
+      } else if (args.operation == "create" ) {
+         m = benchmark_create(args, std::move(kv_context_ptr), num_keys);
+      } else if (args.operation == "erase" ) {
+         m = benchmark_erase(args, std::move(kv_context_ptr), num_keys);
+      } else {
+         std::cerr << "Unknown operation: " << args.operation << std::endl;
+         exit(3);
+      }
    };
    
-   print_results(args, num_keys, workset_size, usage_start, usage_end);
+   print_results(args, num_keys, workset_size, m);
 }
 
+// Chainbase has a limited storage. value size needs to be
+// adjusted based on number of keys.
+uint32_t adjusted_value_size(const cmd_args& args) {
+   // Find number of keys
+   std::vector<std::string> keys; 
+   std::ifstream key_file(args.key_file);
+   if (!key_file.is_open()) {
+      std::cerr << "Failed to open key file " << args.key_file << std::endl;
+      exit(2);
+   }
+   std::string key;
+   uint32_t num_keys = 0;
+   while (getline(key_file, key)) {
+      ++num_keys;
+   }
+   key_file.close();
 
+   if (num_keys >= 5000000) {
+      return 128;
+   } else if (num_keys >= 2500000) {
+      return 256;
+   } else if (num_keys >= 1000000) {
+      return 512;
+   } else {
+      return 1024;
+   }
+}
+
+// The driver
 void benchmark(const cmd_args& args) {
-   if (args.is_rocksdb) {
+   if (args.backing_store == "rocksdb") {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
       b1::chain_kv::database      kv_db{"kvrdb-tmp", true};
@@ -279,7 +431,7 @@ void benchmark(const cmd_args& args) {
       benchmark_operation(args, std::move(kv_context_ptr)); // kv_context_ptr must be in the same scope as kv_db and usage_start, since they are references in create_kv_rocksdb_context
    } else {
       boost::filesystem::remove_all(chain::config::default_state_dir_name);  // Use a clean Chainbase
-      chainbase::database chainbase_db(chain::config::default_state_dir_name, database::read_write, chain::config::default_state_size); // 1024*1024*1024ll == 1073741824
+      chainbase::database chainbase_db(chain::config::default_state_dir_name, database::read_write, 2*chain::config::default_state_size); // 2*1024*1024*1024ll == 2*1073741824
       chainbase_db.add_index<kv_index >();
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_chainbase_context<mock_resource_manager>(chainbase_db, receiver, resource_manager, limits);
@@ -300,13 +452,12 @@ int main(int argc, char* argv[]) {
    
    std::string gts;
    cli.add_options()
-     ("keyfile,k", bpo::value<string>()->required(), "the file storing all the keys")
-     ("workset,w", bpo::value<string>(), "the file storing workset keys")
-     ("operation,o", bpo::value<string>(), "operation to be benchmarked: get, get_data, set, it_create, it_next, it_key_value")
-     ("valuesize,v", bpo::value<uint32_t>(), "value size for the keys")
-     ("numrepeats,n", bpo::value<uint32_t>(), "number of repeats of test run over workset and number of iterator creations in it_create")
-     ("rocksdb,r", "rocksdb to be backing store.")
-     ("sorted,s", "keys in keyfile are sorted.")
+     ("key-file,k", bpo::value<string>()->required(), "the file storing all the keys")
+     ("workset,w", bpo::value<string>(), "the file storing workset keys, required for get, get_data, set")
+     ("operation,o", bpo::value<string>()->required(), "operation to be benchmarked: get, get_data, set, create, erase, it_create, it_next, it_key_value")
+     ("backing-store,b", bpo::value<string>()->required(), "the database where kay vlaues are stored, rocksdb or chainbase .")
+     ("value-size,v", bpo::value<uint32_t>(), "value size for the keys")
+     ("num-runs,n", bpo::value<uint64_t>(), "minimum number of runs over the operation to be benchmarked")
      ("help,h","print this list");
 
    try {
@@ -318,26 +469,32 @@ int main(int argc, char* argv[]) {
          return 0;
       }
 
-      if (vmap.count("keyfile") > 0) {
-         args.key_file = vmap["keyfile"].as<std::string>();
+      if (vmap.count("key-file") > 0) {
+         args.key_file = vmap["key-file"].as<std::string>();
       }
       if (vmap.count("workset") > 0) {
          args.workset_file = vmap["workset"].as<std::string>();
       }
       if (vmap.count("operation") > 0) {
          args.operation = vmap["operation"].as<std::string>();
+         if (args.operation != "get" && args.operation != "get_data" && args.operation != "set" && args.operation != "create" && args.operation != "erase" && args.operation != "it_create" && args.operation != "it_next" && args.operation != "it_key_value") {
+            std::cerr << "\'--operation\' must be get, get_data, set, create, erase, it_create, it_next, or it_key_value" << std::endl;
+            return 1;
+         }
       }
-      if (vmap.count("valuesize") > 0) {
-         args.value_size = vmap["valuesize"].as<uint32_t>();
+      if (vmap.count("value-size") > 0) {
+         args.value_size = vmap["value-size"].as<uint32_t>();
       }
-      if (vmap.count("numrepeats") > 0) {
-         args.num_repeats = vmap["numrepeats"].as<uint32_t>();
+      if (vmap.count("num-runs") > 0) {
+         args.num_runs = vmap["num-runs"].as<uint64_t>();
       }
-      if (vmap.count("rocksdb") > 0) {
-         args.is_rocksdb = true;
-      }
-      if (vmap.count("sorted") > 0) {
-         args.creation_mode = "sorted";
+      if (vmap.count("backing-store") > 0) {
+         args.backing_store = vmap["backing-store"].as<std::string>();
+
+         if (args.backing_store != "rocksdb" && args.backing_store != "chainbase") {
+            std::cerr << "\'--backing-store\' must be rocksdb or chainbase" << std::endl;
+            return 1;
+         }
       }
    } catch (bpo::unknown_option &ex) {
       std::cerr << ex.what() << std::endl;
@@ -346,9 +503,15 @@ int main(int argc, char* argv[]) {
    }
 
    if ((args.operation == "get" || args.operation == "get_data" || args.operation == "set") && args.workset_file.empty()) {
-      std::cerr << "workset argument is required for get, get_data, or set" << std::endl;
+      std::cerr << "\'workset\' is required for get, get_data, or set" << std::endl;
       cli.print(std::cerr);
       return 1;
+   }
+
+   // chainbase has limited storage. value size needs to be
+   // adjusted based on number of keys
+   if (args.backing_store == "chainbase") {
+      args.value_size = adjusted_value_size(args);
    }
 
    kv_benchmark::benchmark(args);
