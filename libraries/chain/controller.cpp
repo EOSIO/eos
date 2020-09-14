@@ -312,7 +312,7 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
+    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config, !cfg.profile_accounts.empty() ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
     authorization( s, db ),
     protocol_features( std::move(pfs), [&s]() { return s.get_deep_mind_logger(); } ),
@@ -3245,6 +3245,10 @@ bool controller::is_trusted_producer( const account_name& producer) const {
 
 bool controller::contracts_console()const {
    return my->conf.contracts_console;
+}
+
+bool controller::is_profiling(account_name account) const {
+   return my->conf.profile_accounts.find(account) != my->conf.profile_accounts.end();
 }
 
 chain_id_type controller::get_chain_id()const {
