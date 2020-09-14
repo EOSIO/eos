@@ -9,4 +9,7 @@ if(EOSIO_ENABLE_DEVELOPER_OPTIONS)
 endif()
 
 target_link_libraries( chain_plugin eosio_chain appbase resource_monitor_plugin )
+if(ENABLE_CPPKIN)
+    target_link_libraries( chain_plugin PRIVATE curl )
+endif()
 target_include_directories( chain_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include" "${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/appbase/include" "${CMAKE_CURRENT_SOURCE_DIR}/../resource_monitor_plugin/include")
