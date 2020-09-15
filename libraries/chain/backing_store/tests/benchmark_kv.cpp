@@ -26,6 +26,7 @@ struct cmd_args {
    std::string workset_file = "";
    uint32_t value_size = 1024;
    uint64_t num_runs = 1000000;
+   uint32_t state_size_multiples = 1; // For Chainbase. Multiples of 1GB 
 };
 
 struct measurement_t {
@@ -168,10 +169,10 @@ measurement_t calculated_measurement(const uint64_t actual_num_runs, const rusag
    m.actual_num_runs = actual_num_runs;
    m.user_duration_us_avg = time_diff_us(usage_start.ru_utime, usage_end.ru_utime)/actual_num_runs;
    m.system_duration_us_avg = time_diff_us(usage_start.ru_stime, usage_end.ru_stime)/actual_num_runs;
-   m.minor_faults = uint32_t(usage_end.ru_minflt  - usage_start.ru_minflt);
-   m.major_faults = uint32_t(usage_end.ru_majflt  - usage_start.ru_majflt);
-   m.blocks_in = uint32_t(usage_end.ru_inblock - usage_start.ru_inblock);
-   m.blocks_out = uint32_t(usage_end.ru_oublock - usage_start.ru_oublock);
+   m.minor_faults = uint64_t(usage_end.ru_minflt  - usage_start.ru_minflt);
+   m.major_faults = uint64_t(usage_end.ru_majflt  - usage_start.ru_majflt);
+   m.blocks_in = uint64_t(usage_end.ru_inblock - usage_start.ru_inblock);
+   m.blocks_out = uint64_t(usage_end.ru_oublock - usage_start.ru_oublock);
 
    return m;
 }
@@ -326,27 +327,21 @@ measurement_t benchmark_it_key_value(const cmd_args& args, const std::unique_ptr
 // Print out benchmarking results
 void print_results(const cmd_args& args, const uint32_t num_keys, const uint32_t workset_size, const measurement_t& m) {
    std::cout 
-      << "operation: " << args.operation
-      << ", backing_store: " << args.backing_store
+      << "backing_store: " << args.backing_store
+      << ", operation: " << args.operation
       << ", key_file: " << args.key_file
-      << ", num_keys: " << num_keys;
-
-   if (args.operation == "get" || args.operation == "get_data" || args.operation == "set") {
-      std::cout
+      << ", num_keys: " << num_keys
       << ", workset_file: " << args.workset_file
-      << ", workset_size: " << workset_size;
-   }
-
-   std::cout
+      << ", workset_size: " << workset_size
       << ", value_size: " << args.value_size
-      << ", actual_num_runs: " << m.actual_num_runs
-      << ", user_duration_us_avg: " << m.user_duration_us_avg
-      << ", system_duration_us_avg: " << m.system_duration_us_avg
+      << ", num_runs: " << m.actual_num_runs
+      << ", user_cpu_us_avg: " << m.user_duration_us_avg
+      << ", system_cpu_us_avg: " << m.system_duration_us_avg
       << ", minor_faults_total: " << m.minor_faults 
       << ", major_faults_total: " << m.major_faults 
       << ", blocks_in_total: " << m.blocks_in  
       << ", blocks_out_total: " << m.blocks_out 
-      << std::endl << std::endl;
+      << std::endl;
 }
 
 // Dispatcher to benchmark individual operation
@@ -391,34 +386,6 @@ void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>
    print_results(args, num_keys, workset_size, m);
 }
 
-// Chainbase has a limited storage. value size needs to be
-// adjusted based on number of keys.
-uint32_t adjusted_value_size(const cmd_args& args) {
-   // Find number of keys
-   std::vector<std::string> keys; 
-   std::ifstream key_file(args.key_file);
-   if (!key_file.is_open()) {
-      std::cerr << "Failed to open key file " << args.key_file << std::endl;
-      exit(2);
-   }
-   std::string key;
-   uint32_t num_keys = 0;
-   while (getline(key_file, key)) {
-      ++num_keys;
-   }
-   key_file.close();
-
-   if (num_keys >= 5000000) {
-      return 128;
-   } else if (num_keys >= 2500000) {
-      return 256;
-   } else if (num_keys >= 1000000) {
-      return 512;
-   } else {
-      return 1024;
-   }
-}
-
 // The driver
 void benchmark(const cmd_args& args) {
    if (args.backing_store == "rocksdb") {
@@ -431,7 +398,7 @@ void benchmark(const cmd_args& args) {
       benchmark_operation(args, std::move(kv_context_ptr)); // kv_context_ptr must be in the same scope as kv_db and usage_start, since they are references in create_kv_rocksdb_context
    } else {
       boost::filesystem::remove_all(chain::config::default_state_dir_name);  // Use a clean Chainbase
-      chainbase::database chainbase_db(chain::config::default_state_dir_name, database::read_write, 2*chain::config::default_state_size); // 2*1024*1024*1024ll == 2*1073741824
+      chainbase::database chainbase_db(chain::config::default_state_dir_name, database::read_write, args.state_size_multiples * chain::config::default_state_size); // Default is 1024*1024*1024ll == 1073741824
       chainbase_db.add_index<kv_index >();
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_chainbase_context<mock_resource_manager>(chainbase_db, receiver, resource_manager, limits);
@@ -457,6 +424,7 @@ int main(int argc, char* argv[]) {
      ("operation,o", bpo::value<string>()->required(), "operation to be benchmarked: get, get_data, set, create, erase, it_create, it_next, it_key_value")
      ("backing-store,b", bpo::value<string>()->required(), "the database where kay vlaues are stored, rocksdb or chainbase .")
      ("value-size,v", bpo::value<uint32_t>(), "value size for the keys")
+     ("state-size-mul,s", bpo::value<uint32_t>(), "multiples of 1GB for Chainbase state")
      ("num-runs,n", bpo::value<uint64_t>(), "minimum number of runs over the operation to be benchmarked")
      ("help,h","print this list");
 
@@ -485,6 +453,9 @@ int main(int argc, char* argv[]) {
       if (vmap.count("value-size") > 0) {
          args.value_size = vmap["value-size"].as<uint32_t>();
       }
+      if (vmap.count("state-size-mul") > 0) {
+         args.state_size_multiples = vmap["state-size-mul"].as<uint32_t>();
+      }
       if (vmap.count("num-runs") > 0) {
          args.num_runs = vmap["num-runs"].as<uint64_t>();
       }
@@ -506,12 +477,6 @@ int main(int argc, char* argv[]) {
       std::cerr << "\'workset\' is required for get, get_data, or set" << std::endl;
       cli.print(std::cerr);
       return 1;
-   }
-
-   // chainbase has limited storage. value size needs to be
-   // adjusted based on number of keys
-   if (args.backing_store == "chainbase") {
-      args.value_size = adjusted_value_size(args);
    }
 
    kv_benchmark::benchmark(args);
