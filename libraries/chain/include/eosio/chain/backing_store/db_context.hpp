@@ -15,6 +15,8 @@ namespace eosio { namespace chain {
       constexpr name dbram_id  = N(eosio.dbram);
 namespace backing_store {
       struct db_context {
+         db_context(apply_context& c, name recv) : context(c), receiver(recv) {}
+
          virtual ~db_context() {}
 
          virtual int32_t db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* buffer , size_t buffer_size) = 0;
@@ -200,6 +202,9 @@ namespace backing_store {
          static storage_usage_trace secondary_rem_trace(uint32_t action_id, const std::string& event_id);
          static storage_usage_trace secondary_update_add_trace(uint32_t action_id, const std::string& event_id);
          static storage_usage_trace secondary_update_rem_trace(uint32_t action_id, const std::string& event_id);
+         void update_db_usage(const account_name& payer, int64_t delta, const storage_usage_trace& trace);
+         apply_context& context;
+         const name     receiver;
       };
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);

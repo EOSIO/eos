@@ -128,6 +128,7 @@ add_library( eosio_chain
              backing_store/db_context_chainbase.cpp
              backing_store/db_context_rocksdb.cpp
              backing_store/db_key_value_format.cpp
+             backing_store/db_key_value_any_lookup.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )

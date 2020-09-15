@@ -127,4 +127,8 @@ storage_usage_trace db_context::secondary_update_rem_trace(uint32_t action_id, c
    return storage_usage_trace(action_id, event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer");
 }
 
+void db_context::update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace ) {
+   context.update_db_usage(payer, delta, trace);
+}
+
 }}} // namespace eosio::chain::backing_store
