@@ -23,7 +23,7 @@ Command | Description
 `compress` | Compress a trace file to into the `clog` format
 
 ### compress
-Compress a trace file to into the `clog` format.  By default the name of the compressed file will the the same as the input-path with a changing the extension to `clog`.
+Compress a trace `log` file into the `clog` format.  By default the name of the compressed file will be the same as the `input-path` but with the file extension changed to `clog`.
 
 #### Usage
 ```sh
