@@ -3259,6 +3259,10 @@ validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
 }
 
+const flat_set<account_name>& controller::get_trusted_producers()const {
+   return my->conf.trusted_producers;
+}
+
 uint32_t controller::get_terminate_at_block()const {
    return my->conf.terminate_at_block;
 }
