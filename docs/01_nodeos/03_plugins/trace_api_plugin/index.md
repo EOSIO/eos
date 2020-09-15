@@ -113,7 +113,7 @@ Once the value is no longer `-1`, only `N` number of blocks before the current L
 
 If resource usage cannot be effectively managed via the `trace-minimum-irreversible-history-blocks` configuration option, then there might be a need for ongoing maintenance. In that case, the user may prefer to manage resources with an external system or process.
 
-[[info | Compression of trace `log` files]
+[[info | Compression of trace `log` files]]
 | The trace `log` files can be compressed manually with the [trace_api_util](../../../10_utilities/trace_api_util.md) utility.
 
 ### Manual Filesystem Management
