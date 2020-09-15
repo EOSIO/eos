@@ -16,28 +16,277 @@ namespace webassembly {
          inline apply_context& get_context() { return context; }
          inline const apply_context& get_context() const { return context; }
 
-         // context free api
+         /**
+          * Retrieve the signed_transaction.context_free_data[index].
+          *
+          * @ingroup context-free
+          * @param index - the index of the context_free_data entry to retrieve.
+          * @param[out] buffer - output buffer of the context_free_data entry.
+          *
+          * @retval -1 if the index is not valid
+          * @retval size of the cfd if the buffer is empty, otherwise return the amount of data copied onto the buffer.
+         */
          int32_t get_context_free_data(uint32_t index, legacy_span<char> buffer) const;
 
-         // privileged api
+         /**
+          * Check if a feature is found on the activation set.
+          *
+          * @ingroup privileged
+          * @param feature_name - 256-bit digest representing the feature to query.
+          *
+          * @return false (deprecated)
+          *
+          * @deprecated
+         */
          int32_t is_feature_active(int64_t feature_name) const;
+
+         /**
+          * Activate a a consensus protocol upgrade.
+          *
+          * @ingroup privileged
+          * @param feature_name - 256-bit digest representing the feature to activate.
+          *
+          * @deprecated
+         */
          void activate_feature(int64_t feature_name) const;
-         void preactivate_feature(legacy_ptr<const digest_type>);
+
+         /**
+          * Allows a privileged smart contract, e.g. the system contract, to pre-activate a consensus protocol upgrade feature.
+          *
+          * @ingroup privileged
+          * @param digest_type - 256-bit digest representing the feature to pre-activate.
+         */
+         void preactivate_feature(legacy_ptr<const digest_type> feature_digest);
+
+         /*
+          * Set the resource limits of an account.
+          *
+          * @ingroup privileged
+          *
+          * @param account - name of the account whose resource limit to be set.
+          * @param ram_bytes -ram limit in absolute bytes.
+          * @param net_weight - fractionally proportionate net limit of available resources based on (weight / total_weight_of_all_accounts).
+          * @param cpu_weight - fractionally proportionate cpu limit of available resources based on (weight / total_weight_of_all_accounts).
+         */
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
+
+         /*
+          * Get the resource limits of an account
+          *
+          * @ingroup privileged
+          *
+          * @param account - name of the account whose resource limit to get.
+          * @param[out] ram_bytes -  output to hold retrieved ram limit in absolute bytes.
+          * @param[out] net_weight - output to hold net weight.
+          * @param[out] cpu_weight - output to hold cpu weight.
+         */
          void get_resource_limits(account_name account, legacy_ptr<int64_t, 8> ram_bytes, legacy_ptr<int64_t, 8> net_weight, legacy_ptr<int64_t, 8> cpu_weight) const;
-         void set_resource_limit(account_name, name, int64_t);
+
+          /**
+           * Get the current wasm limits configuration.
+           *
+           * The structure of the parameters is as follows:
+           *
+           * - max_mutable_global_bytes
+           * The maximum total size (in bytes) used for mutable globals.
+           * i32 and f32 consume 4 bytes and i64 and f64 consume 8 bytes.
+           * Const globals are not included in this count.
+           *
+           * - max_table_elements
+           * The maximum number of elements of a table.
+           *
+           * - max_section_elements
+           * The maximum number of elements in each section.
+           *
+           * - max_linear_memory_init
+           * The size (in bytes) of the range of memory that may be initialized.
+           * Data segments may use the range [0, max_linear_memory_init).
+           *
+           * - max_func_local_bytes
+           * The maximum total size (in bytes) used by parameters and local variables in a function.
+           *
+           * - max_nested_structures
+           * The maximum nesting depth of structured control instructions.
+           * The function itself is included in this count.
+           *
+           * - max_symbol_bytes
+           * The maximum size (in bytes) of names used for import and export.
+           *
+           * - max_module_bytes
+           * The maximum total size (in bytes) of a wasm module.
+           *
+           * - max_code_bytes
+           * The maximum size (in bytes) of each function body.
+           *
+           * - max_pages
+           * The maximum number of 64 KiB pages of linear memory that a contract can use.
+           * Enforced when an action is executed. The initial size of linear memory is also checked at setcode.
+           *
+           * - max_call_depth
+           * The maximum number of functions that may be on the stack. Enforced when an action is executed.
+           *
+           * @ingroup privileged
+           *
+           * @param[out] packed_parameters the ouput for the parameters.
+           * @param max_version has no effect, but should be 0.
+           *
+           * @retval the size of the packed parameters if packed_parameters is empty.
+           * @retval the amount of data written in packed_parameters.
+         */
          uint32_t get_wasm_parameters_packed( span<char> packed_parameters, uint32_t max_version ) const;
+
+         /**
+           * Set the configuration for wasm limits.
+           *
+           * See get_wasm_parameters_packed documentation for more details on the structure of the packed_parameters.
+           *
+           * @ingroup privileged
+           *
+           * @param packed_parameters - a span containing the packed configuration to set.
+         */
          void set_wasm_parameters_packed( span<const char> packed_parameters );
-         int64_t get_resource_limit(account_name, name) const;
+
+         /**
+          * Update a single resource limit associated with an account.
+          *
+          * @ingroup privileged
+          *
+          * @param account - the account whose limits are being modified.
+          * @param resource - the resource to update, which should be either ram, cpu, or net.
+          * @param limit - the new limit.  A value of -1 means unlimited.
+          *
+          * @pre limit >= -1
+         */
+         void set_resource_limit(account_name account, name resource, int64_t limit);
+
+         /**
+          * Get a single resource limit associated with an account.
+          *
+          * @ingroup privileged
+          *
+          * @param account - the account whose limits are being modified
+          * @param resource - the name of the resource limit which should be either ram, cpu, or net.
+          *
+          * @return the limit on the resource requested.
+         */
+         int64_t get_resource_limit(account_name account, name resource) const;
+
+         /**
+          * Proposes a schedule change using the legacy producer key format.
+          *
+          * @ingroup privileged
+          *
+          * @param packed_producer_schedule - vector of producer keys
+          *
+          * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule.
+         */
          int64_t set_proposed_producers(legacy_span<const char> packed_producer_schedule);
+
+         /**
+          * Proposes a schedule change with extended features.
+          *
+          * Valid formats:
+          * 0 : serialized array of producer_keys. Using this format is exactly equivalent to set_proposed_producers
+          * 1 : serialized array of producer_authority's
+          *
+          * @ingroup privileged
+          *
+          * @param packed_producer_format - format of the producer data blob
+          * @param packed_producer_schedule - packed data of representing the producer schedule in the format indicated.
+          *
+          * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule.
+         */
          int64_t set_proposed_producers_ex(uint64_t packed_producer_format, legacy_span<const char> packed_producer_schedule);
+
+         /**
+          * Retrieve the blockchain config parameters.
+          *
+          * @ingroup privileged
+          *
+          * @param[out] packed_blockchain_parameters - output buffer of the blockchain parameters.
+          *
+          * return the number of bytes copied to the buffer, or number of bytes required if the buffer is empty.
+         */
          uint32_t get_blockchain_parameters_packed(legacy_span<char> packed_blockchain_parameters) const;
+
+         /**
+          * Set the blockchain parameters.
+          *
+          * @ingroup privileged
+          *
+          * @param packed_parameters - a span containing the packed blockchain config parameters.
+         */
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
+
+         /**
+          * Update a single resource limit associated with an account.
+          *
+          * @ingroup privileged
+          *
+          * @param packed_parameters - a span containing the parameters to the function, for a complete reference check https://github.com/EOSIO/spec-repo/blob/master/esr_configurable_wasm_limits.md
+          * @param max_version - the resource to update, which should be either ram, disk, cpu, or net.
+         */
          uint32_t get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const;
+
+         /**
+          * Update a single resource limit associated with an account.
+          *
+          * @ingroup privileged
+          *
+          * @param packed_parameters - a span containing the parameters to the function, for a complete reference check https://github.com/EOSIO/spec-repo/blob/master/esr_configurable_wasm_limits.md
+          * @param max_version - the resource to update, which should be either ram, disk, cpu, or net.
+         */
          void set_parameters_packed( span<const char> packed_parameters );
-         uint32_t get_kv_parameters_packed(name, span<char>, uint32_t) const;
-         void set_kv_parameters_packed(name, span<const char>);
+
+         /**
+          * Gets the maximum key size, maximum value size, and maximum iterators of a kv database and returns the size of the data.
+          * The kv parameters are encoded as 16 bytes, representing four 32-bit little-endian values.
+          * +-------+---------------+---------------+---------------+---------------+
+          * | byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |10 |11 |12 |13 |14 |15 |
+          * +-------+---------------+---------------+---------------+---------------+
+          * | field |   version     |   key limit   |  value limit  | max iterators |
+          * +-------+---------------+---------------+---------------+---------------+
+          * | type  |      0        |   32-bits LE  |  32-bits LE   |  32-bits LE   |
+          * +-------+---------------+---------------+---------------+---------------+
+          *
+          * @ingroup privileged
+          * @param[out] packed_kv_parameters - the buffer containing the packed kv parameters.
+          * @param max_version - has no effect, but should be 0.
+          *
+          * @return Returns the size required in the buffer (if the buffer is too small, nothing is written).
+          *
+         */
+         uint32_t get_kv_parameters_packed(name db, span<char> packed_kv_parameters, uint32_t max_version) const;
+
+         /**
+          * Sets the maximum key size, and maximum value size, and maximum iterators of a kv database.
+          * Each database has independent limits. The key and value limits only apply to new items.
+          * They do not apply to items written before they were applied.
+          * If the database is invalid, if version is non-zero, or if buffer_size is less than 16, aborts the transaction.
+          *
+          * @ingroup privileged
+          * @param packed_kv_parameters - the buffer containing the packed kv parameters to be set.
+         */
+         void set_kv_parameters_packed(name db, span<const char> packed_kv_parameters);
+
+         /**
+          * Check if an account is privileged
+          *
+          * @ingroup privileged
+          * @param account - name of the account to be checked
+          *
+          * @retval true if the account is privileged
+          * @retval false otherwise
+         */
          bool is_privileged(account_name account) const;
+
+         /**
+          * Set the privileged status of an account
+          *
+          * @ingroup privileged
+          * @param account - name of the account that we want to give the privileged status.
+          * @param is_priv - privileged status (true or false).
+         */
          void set_privileged(account_name account, bool is_priv);
 
          // softfloat api
@@ -100,89 +349,649 @@ namespace webassembly {
          double _eosio_ui32_to_f64(uint32_t) const;
          double _eosio_ui64_to_f64(uint64_t) const;
 
-         // producer api
-         int32_t get_active_producers(legacy_span<account_name>) const;
+         /**
+          * Get the list of active producer names.
+          *
+          * @ingroup producer
+          * @param[out] producers - output buffer containing the names of the current active producer names.
+          *
+          * @return number of bytes required (if the buffer is empty), or the number of bytes written to the buffer.
+         */
+         int32_t get_active_producers(legacy_span<account_name> producers) const;
 
-         // crypto api
-         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<const char>) const;
-         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<char>) const;
-         void assert_sha256(legacy_span<const char>, legacy_ptr<const fc::sha256>) const;
-         void assert_sha1(legacy_span<const char>, legacy_ptr<const fc::sha1>) const;
-         void assert_sha512(legacy_span<const char>, legacy_ptr<const fc::sha512>) const;
-         void assert_ripemd160(legacy_span<const char>, legacy_ptr<const fc::ripemd160>) const;
-         void sha256(legacy_span<const char>, legacy_ptr<fc::sha256>) const;
-         void sha1(legacy_span<const char>, legacy_ptr<fc::sha1>) const;
-         void sha512(legacy_span<const char>, legacy_ptr<fc::sha512>) const;
-         void ripemd160(legacy_span<const char>, legacy_ptr<fc::ripemd160>) const;
+         /**
+          * Tests a given public key with the recovered public key from digest and signature.
+          *
+          * @ingroup crypto
+          * @param digest - digest of the message that was signed.
+          * @param sig - signature.
+          * @param pub - public key.
+         */
+         void assert_recover_key(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_span<const char> pub) const;
 
-         // permission api
-         bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>) const;
-         bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t) const;
-         int64_t get_permission_last_used(account_name, permission_name) const;
-         int64_t get_account_creation_time(account_name) const;
+         /**
+          * Calculates the public key used for a given signature on a given digest.
+          *
+          * @ingroup crypto
+          * @param digest - digest of the message that was signed.
+          * @param sig - signature.
+          * @param[out] pub - output buffer for the public key result.
+          *
+          * @return size of data written on the buffer.
+         */
+         int32_t recover_key(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_span<char> pub) const;
 
-         // authorization api
-         void require_auth(account_name) const;
-         void require_auth2(account_name, permission_name) const;
-         bool has_auth(account_name) const;
-         void require_recipient(account_name);
-         bool is_account(account_name) const;
+         /**
+          * Tests if the sha256 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha256(legacy_span<const char> data, legacy_ptr<const fc::sha256> hash_val) const;
 
-         // system api
+         /**
+          * Tests if the sha1 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha1(legacy_span<const char> data, legacy_ptr<const fc::sha1> hash_val) const;
+
+         /**
+          * Tests if the sha512 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha512(legacy_span<const char> data, legacy_ptr<const fc::sha512> hash_val) const;
+
+         /**
+          * Tests if the ripemd160 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_ripemd160(legacy_span<const char> data, legacy_ptr<const fc::ripemd160> hash_val) const;
+
+         /**
+          * Hashes data using SHA256.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param[out] hash_val - the resulting digest.
+         */
+         void sha256(legacy_span<const char> data, legacy_ptr<fc::sha256> hash_val) const;
+
+         /**
+          * Hashes data using SHA1.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param hash_val - the resulting digest.
+         */
+         void sha1(legacy_span<const char> data, legacy_ptr<fc::sha1> hash_val) const;
+
+         /**
+          * Hashes data using SHA512.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param hash_val - the hash
+         */
+         void sha512(legacy_span<const char> data, legacy_ptr<fc::sha512> hash_val) const;
+
+         /**
+          * Tests if the ripemd160 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data
+          * @param hash_val - the resulting digest.
+         */
+         void ripemd160(legacy_span<const char> data, legacy_ptr<fc::ripemd160> hash_val) const;
+
+         /**
+          * Checks if a transaction is authorized by a provided set of keys and permissions.
+          *
+          * @ingroup permission
+          * @param trx_data - serialized transaction.
+          * @param pubkeys_data - serialized vector of provided public keys.
+          * @param perms_data - serialized vector of provided permissions (empty permission name acts as wildcard).
+          *
+          * @retval true if transaction is authorized.
+          * @retval false otherwise.
+         */
+         bool check_transaction_authorization(legacy_span<const char> trx_data, legacy_span<const char> pubkeys_data, legacy_span<const char> perms_data) const;
+
+         /**
+          * Checks if a permission is authorized by a provided delay and a provided set of keys and permissions.
+          *
+          * @ingroup permission
+          * @param account - the account owner of the permission.
+          * @param permission - the name of the permission to check for authorization.
+          * @param pubkeys_data - serialized vector of provided public keys.
+          * @param perms_data - serialized vector of provided permissions (empty permission name acts as wildcard).
+          * @param delay_us - the provided delay in microseconds (cannot exceed INT64_MAX)
+          *
+          * @retval true if permission is authorized.
+          * @retval false otherwise.
+         */
+         bool check_permission_authorization(account_name account, permission_name permission, legacy_span<const char> pubkeys_data, legacy_span<const char> perms_data, uint64_t delay_us) const;
+
+         /**
+          * Returns the last used time of a permission.
+          *
+          * @ingroup permission
+          * @param account - the account owner of the permission.
+          * @param permission - the name of the permission.
+          *
+          * @return the last used time (in microseconds since Unix epoch) of the permission.
+         */
+         int64_t get_permission_last_used(account_name account, permission_name permission) const;
+
+         /**
+          * Returns the creation time of an account.
+          *
+          * @ingroup permission
+          * @param account - the account name.
+          *
+          * @return the creation time (in microseconds since Unix epoch) of the account.
+         */
+         int64_t get_account_creation_time(account_name account) const;
+
+         /**
+          * Verifies that Name exists in the set of provided auths on a action. Fails if not found.
+          *
+          * @ingroup authorization
+          * @param account - name of the account to be verified
+         */
+         void require_auth(account_name account) const;
+
+         /**
+          * Verifies that the account exists in the set of provided auths on a action
+          *
+          * @ingroup authorization
+          * @param account -
+          * @param permission -
+         */
+         void require_auth2(account_name account, permission_name permission) const;
+
+         /**
+          * Verifies that an account has auth.
+          *
+          * @ingroup authorization
+          * @param account - name of the account to be verified.
+          *
+          * @retval true if the account has auth.
+          * @retval false otherwise.
+         */
+         bool has_auth(account_name account) const;
+
+         /**
+          * Add the specified account to set of accounts to be notified.
+          *
+          * @ingroup authorization
+          * @param recipient - account to be notified.
+         */
+         void require_recipient(account_name recipient);
+
+         /**
+          * Verifies that n is an existing account.
+          *
+          * @ingroup authorization
+          * @param account - name of the account to check
+          *
+          * @return true if the account exists.
+          * @return false otherwise.
+         */
+         bool is_account(account_name account) const;
+
+         /**
+          * Returns the time in microseconds from 1970 of the current block.
+          *
+          * @ingroup system
+          *
+          * @return time in microseconds from 1970 of the current block
+         */
          uint64_t current_time() const;
+
+         /**
+          * Returns the transaction's publication time.
+          *
+          * @ingroup system
+          *
+          * @return time in microseconds from 1970 of the publication_time.
+         */
          uint64_t publication_time() const;
-         bool is_feature_activated(legacy_ptr<const digest_type>) const;
+
+         /**
+          * Check if specified protocol feature has been activated.
+          *
+          * @ingroup system
+          * @param feature_digest - digest of the protocol feature.
+          *
+          * @retval true if the specified protocol feature has been activated.
+          * @retval false otherwise
+         */
+         bool is_feature_activated(legacy_ptr<const digest_type> feature_digest) const;
+
+         /**
+          * Return the name of the account that sent the current inline action.
+          *
+          * @ingroup system
+          * @return name of account that sent the current inline action (empty name if not called from inline action).
+         */
          name get_sender() const;
 
-         // context-free system api
+         /**
+          * Aborts processing of this action and unwinds all pending changes if the test condition is true
+          *
+          * @ingroup context-free
+         */
          void abort() const;
-         void eosio_assert(bool, null_terminated_ptr) const;
-         void eosio_assert_message(bool, legacy_span<const char>) const;
-         void eosio_assert_code(bool, uint64_t) const;
-         void eosio_exit(int32_t) const;
 
-         // action api
-         int32_t read_action_data(legacy_span<char>) const;
+         /**
+          * Aborts processing of this action if the test condition is true.
+          *
+          * @ingroup context-free
+          * @param condition - test condition.
+          * @return name of account that sent current inline action
+         */
+         void eosio_assert(bool condition, null_terminated_ptr msg) const;
+
+         /**
+          * Aborts processing of this action if the test condition is true.
+          *
+          * @ingroup context-free
+          * @param condition - test condition.
+          * @param msg - string explaining the reason for failure.
+          */
+         void eosio_assert_message(bool condition, legacy_span<const char> msg) const;
+
+         /**
+          * Aborts processing of this action if the test condition is true.
+          *
+          * @ingroup context-free
+          * @param condition - test condition.
+          * @param error_code -
+         */
+         void eosio_assert_code(bool condition, uint64_t error_code) const;
+
+         /**
+          * This method will abort execution of wasm without failing the contract
+          *
+          * @ingroup context-free
+          * @param code - the exit code
+         */
+         void eosio_exit(int32_t code) const;
+
+         /**
+          * Copy up to length bytes of current action data to the specified location
+          *
+          * @ingroup action
+          * @param memory - a pointer where up to length bytes of the current action data will be copied
+          *
+          * @return the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed
+         */
+         int32_t read_action_data(legacy_span<char> memory) const;
+
+         /**
+          * Get the length of the current action's data field. This method is useful for dynamically sized actions
+          *
+          * @ingroup action
+          * @return the length of the current action's data field
+         */
          int32_t action_data_size() const;
-         name current_receiver() const;
-         void set_action_return_value(span<const char>);
 
-         // console api
-         void prints(null_terminated_ptr);
-         void prints_l(legacy_span<const char>);
-         void printi(int64_t);
-         void printui(uint64_t);
-         void printi128(legacy_ptr<const __int128>);
-         void printui128(legacy_ptr<const unsigned __int128>);
-         void printsf(float32_t);
-         void printdf(float64_t);
-         void printqf(legacy_ptr<const float128_t>);
-         void printn(name);
-         void printhex(legacy_span<const char>);
+         /**
+          * Get the current receiver of the action.
+          *
+          * @ingroup action
+          * @return the name of the receiver
+         */
+         name current_receiver() const;
+
+         /**
+          * Sets a value (packed blob char array) to be included in the action receipt.
+          *
+          * @ingroup action
+          * @param packed_blob - the packed blob
+         */
+         void set_action_return_value(span<const char> packed_blob);
+
+         /**
+          * Print a string.
+          *
+          * @ingroup console
+          * @param str - the string to print
+         */
+         void prints(null_terminated_ptr str);
+
+         /**
+          * Prints string up to given length.
+          *
+          * @ingroup console
+          * @param str - the string to print
+          */
+         void prints_l(legacy_span<const char> str);
+
+         /**
+          * Prints value as a 64 bit signed integer.
+          *
+          * @ingroup console
+          * @param val - 64 bit signed integer to be printed
+          */
+         void printi(int64_t val);
+
+         /**
+          * Prints value as a 64 bit unsigned integer.
+          *
+          * @ingroup console
+          * @param val - 64 bit unsigned integer to be printed
+          */
+         void printui(uint64_t val);
+
+         /**
+          * Prints value as a 128 bit signed integer.
+          *
+          * @ingroup console
+          * @param val - 128 bit signed integer to be printed
+          */
+         void printi128(legacy_ptr<const __int128> val);
+
+         /**
+          * Prints value as a 128 bit unsigned integer.
+          *
+          * @ingroup console
+          * @param val - 128 bit unsigned integer to be printed
+          */
+         void printui128(legacy_ptr<const unsigned __int128> val);
+
+         /**
+          * Prints value as single-precision floating point number (i.e. float)
+          *
+          * @ingroup console
+          * @param val -  float to be printed
+          */
+         void printsf(float32_t val);
+
+         /**
+          * Prints value as double-precision floating point number (i.e. double)
+          *
+          * @ingroup console
+          * @param value - float to be printed
+          */
+         void printdf(float64_t val);
+
+         /**
+          * Prints value as quadruple-precision floating point number (i.e. long double)
+          *
+          * @ingroup console
+          * @param val - a pointer to the long double to be printed
+          */
+         void printqf(legacy_ptr<const float128_t> val);
+
+         /**
+          * Prints a 64 bit names as base32 encoded string.
+          *
+          * @ingroup console
+          * @param value - 64 bit name to be printed
+          */
+         void printn(name value);
+
+         /**
+          * Prints a 64 bit names as base32 encoded string
+          *
+          * @ingroup console
+          * @param data - Hex name to be printed
+          */
+         void printhex(legacy_span<const char> data);
 
          // database api
          // primary index api
-         int32_t db_store_i64(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const char>);
-         void db_update_i64(int32_t, uint64_t, legacy_span<const char>);
-         void db_remove_i64(int32_t);
-         int32_t db_get_i64(int32_t, legacy_span<char>);
-         int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
-         int32_t db_previous_i64(int32_t, legacy_ptr<uint64_t>);
-         int32_t db_find_i64(uint64_t, uint64_t, uint64_t, uint64_t);
-         int32_t db_lowerbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
-         int32_t db_upperbound_i64(uint64_t, uint64_t, uint64_t, uint64_t);
-         int32_t db_end_i64(uint64_t, uint64_t, uint64_t);
 
-         // uint64_t secondary index api
-         int32_t db_idx64_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>);
-         void db_idx64_update(int32_t, uint64_t, legacy_ptr<const uint64_t>);
-         void db_idx64_remove(int32_t);
-         int32_t db_idx64_find_secondary(uint64_t, uint64_t, uint64_t, legacy_ptr<const uint64_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx64_find_primary(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t>, uint64_t);
-         int32_t db_idx64_lowerbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
-         int32_t db_idx64_upperbound(uint64_t, uint64_t, uint64_t, legacy_ptr<uint64_t, 8>, legacy_ptr<uint64_t, 8>);
-         int32_t db_idx64_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx64_next(int32_t, legacy_ptr<uint64_t>);
+         /**
+          * Store a record in a primary 64-bit integer index table
+          *
+          * @ingroup database primary-index
+          * @param scope - The scope where the record will be stored
+          * @param table - The name of the table within the current scope context
+          * @param payer - The account that is paying for this storage
+          * @param id - id of the entry
+          * @param buffer - record to store
+          *
+          * @return iterator to the newly created object
+          */
+         int32_t db_store_i64(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_span<const char> buffer);
+
+         /**
+          * Update a record inside a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param itr - iterator of the record to update
+          * @param payer -  the account that is paying for this storage
+          * @param buffer - new updated record
+          */
+         void db_update_i64(int32_t itr, uint64_t payer, legacy_span<const char> buffer);
+
+         /**
+          * Remove a record inside a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param itr - the iterator pointing to the record to remove.
+          */
+         void db_remove_i64(int32_t itr);
+
+         /**
+          * Get a record inside a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param itr - the iterator to the record
+          * @param buffer - the buffer which will be filled with the retrieved record
+          *
+          * @return size of the retrieved record
+          */
+         int32_t db_get_i64(int32_t itr, legacy_span<char> buffer);
+
+         /**
+          * Get the next record after the given iterator from a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param itr - the iterator to the record
+          * @param primary - it will be contain the primary key of the next record
+          *
+          * @return iterator to the next record
+          */
+         int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
+
+         /**
+          * Get the previous record before the given iterator from a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param itr - the iterator to the record
+          * @param primary - it will be contain the primary key of the previous record
+          *
+          * @return iterator to the previous record
+          */
+         int32_t db_previous_i64(int32_t itr, legacy_ptr<uint64_t> primary);
+
+         /**
+          * Find a record inside a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param code - the name of the owner of the table
+          * @param scope - the scope where the table resides
+          * @param table - the table name where the record is stored
+          * @param id - the primary key of the record to look up
+          *
+          * @return iterator to the found record
+          */
+         int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
+
+         /**
+          * Find the lowerbound record given a key inside a primary 64-bit integer index table.
+          * Lowerbound record is the first nearest record which primary key is <= the given key.
+          *
+          * @ingroup database primary-index
+          * @param code - the name of the owner of the table
+          * @param scope - the scope where the table resides
+          * @param table - the table name where the record is stored
+          * @param id - the primary key used as a pivot to determine the lowerbound record
+          *
+          * @return iterator to the lowerbound record
+          */
+         int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
+
+         /**
+          * Find the upperbound record given a key inside a primary 64-bit integer index table.
+          * Upperbound record is the first nearest record which primary key is < the given key.
+          *
+          * @ingroup database primary-index
+          * @param code - the name of the owner of the table
+          * @param scope - the scope where the table resides
+          * @param table - the table name where the record is stored
+          * @param id - the primary key used as a pivot to determine the lowerbound record
+          *
+          * @return iterator to the upperbound record
+          */
+         int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
+
+         /**
+          * Find the latest record inside a primary 64-bit integer index table.
+          *
+          * @ingroup database primary-index
+          * @param code - the name of the owner of the table
+          * @param scope - the scope where the table resides
+          * @param table - the table name where the record is stored
+          *
+          * @return iterator to the last record
+          */
+         int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table);
+
+         /**
+          * Store a record's secondary index in a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param scope - the scope where the secondary index will be stored.
+          * @param table - the table name where the secondary index will be stored.
+          * @param payer - the account that is paying for this storage.
+          * @param id - the primary key of the record which secondary index to be stored.
+          * @param secondary - the pointer to the key of the secondary index to store.
+          *
+          * @return iterator to the newly created secondary index
+          */
+         int32_t db_idx64_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_ptr<const uint64_t> secondary);
+
+         /**
+          * Update a record's secondary index inside a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param iterator - the iterator to the secondary index.
+          * @param payer - the account that is paying for this storage.
+          * @param secondary - the pointer to the new key of the secondary index.
+          */
+         void db_idx64_update(int32_t iterator, uint64_t payer, legacy_ptr<const uint64_t> secondary);
+
+         /**
+          * Remove a record's secondary index from a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param iterator - The iterator to the secondary index to be removed
+          */
+         void db_idx64_remove(int32_t iterator);
+
+         /**
+          * Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param code - the owner of the secondary index table
+          * @param scope - the scope where the secondary index resides
+          * @param table - the table where the secondary index resides
+          * @param secondary - the pointer to the secondary index key
+          * @param primary - it will be replaced with the primary key of the record which the secondary index contains
+          *
+          * @return iterator to the secondary index which contains the given secondary index key
+          */
+         int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const uint64_t> secondary, legacy_ptr<uint64_t> primary);
+
+         /**
+          * Get the secondary index of a record from a secondary 64-bit integer index table given the record's primary key.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param code - the owner of the secondary index table
+          * @param scope - the scope where the secondary index resides
+          * @param table - the table where the secondary index resides
+          * @param secondary - it will be replaced with the secondary index key
+          * @param primary - the record's primary key
+          *
+          * @return iterator to the secondary index which contains the given record's primary key
+          */
+         int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, uint64_t primary);
+
+         /**
+          * Get the lowerbound secondary index from a secondary 64-bit integer index table given the secondary index key.
+          * Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param code - the owner of the secondary index table
+          * @param scope - the scope where the secondary index resides
+          * @param table - the table where the secondary index resides
+          * @param secondary - the pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
+          * @param primary - it will be replaced with the primary key of the record which the lowerbound secondary index contains
+          *
+          * @return iterator to the lowerbound secondary index
+          */
+         int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t, 8> secondary, legacy_ptr<uint64_t, 8> primary);
+
+         /**
+          * Find the upperbound record given a key inside a primary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param code - the owner of the secondary index table.
+          * @param scope - the scope where the secondary index resides.
+          * @param table - the table where the secondary index resides.
+          * @param primary - the pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key.
+          * @param secondary - it will be replaced with the primary key of the record which the upperbound secondary index contains.
+          *
+          * @return iterator to the upperbound secondary index
+          */
+         int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t, 8> secondary, legacy_ptr<uint64_t, 8> primary);
+
+         /**
+          * Get the last secondary index from a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param code - the owner of the secondary index table
+          * @param scope - the scope where the secondary index resides
+          * @param table - the table where the secondary index resides
+          *
+          * @return iterator to the last secondary index
+          */
+         int32_t db_idx64_end(uint64_t code, uint64_t scope, uint64_t table);
+
+         /**
+          * Get the next secondary index inside a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param iterator - the iterator to the secondary index.
+          * @param primary - it will be replaced with the primary key of the record which is stored in the next secondary index.
+          *
+          * @return iterator to the next secondary index
+          */
+         int32_t db_idx64_next(int32_t iterator, legacy_ptr<uint64_t> primary);
+
+         /**
+          * Get the previous secondary index inside a secondary 64-bit integer index table.
+          *
+          * @ingroup database uint64_t-secondary-index
+          * @param iterator - the iterator to the record
+          * @param primary - it will be replaced with the primary key of the record which is stored in the previous secondary index
+          *
+          * @return iterator to the previous secondary index
+          */
          int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
 
          // uint128_t secondary index api
@@ -233,22 +1042,194 @@ namespace webassembly {
          int32_t db_idx_long_double_next(int32_t, legacy_ptr<uint64_t>);
          int32_t db_idx_long_double_previous(int32_t, legacy_ptr<uint64_t>);
 
-         // kv database api
-         int64_t  kv_erase(uint64_t, uint64_t, span<const char>);
-         int64_t  kv_set(uint64_t, uint64_t, span<const char>, span<const char>, account_name payer);
-         bool     kv_get(uint64_t, uint64_t, span<const char>, uint32_t*);
-         uint32_t kv_get_data(uint64_t, uint32_t, span<char>);
-         uint32_t kv_it_create(uint64_t, uint64_t, span<const char>);
-         void     kv_it_destroy(uint32_t);
-         int32_t  kv_it_status(uint32_t);
-         int32_t  kv_it_compare(uint32_t, uint32_t);
-         int32_t  kv_it_key_compare(uint32_t, span<const char>);
-         int32_t  kv_it_move_to_end(uint32_t);
-         int32_t  kv_it_next(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
-         int32_t  kv_it_prev(uint32_t, uint32_t* found_key_size, uint32_t* found_value_size);
-         int32_t  kv_it_lower_bound(uint32_t, span<const char>, uint32_t* found_key_size, uint32_t* found_value_size);
-         int32_t  kv_it_key(uint32_t, uint32_t, span<char>, uint32_t*);
-         int32_t  kv_it_value(uint32_t, uint32_t, span<char> dest, uint32_t*);
+         /**
+          * Erase a key-value pair.
+          *
+          * @ingroup kv-database
+          * @param contract - name of the contract associated with the kv pair.
+          * @param key - the key associated with the kv pair to be erased.
+          *
+          * @return change in resource usage.
+          */
+         int64_t  kv_erase(uint64_t db, uint64_t contract, span<const char> key);
+
+         /**
+          * Set a key-value pair.
+          * If the key doesn't exist, then a new kv pair will be created.
+          *
+          * @ingroup kv-database
+          * @param contract - name of the contract associated with the kv pair.
+          * @param key - the key in the kv pair.
+          * @param value - the value in the kv pair.
+          * @param payer - name of the account paying for the resource.
+          *
+          * @return change in resource usage.
+          */
+         int64_t  kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value, account_name payer);
+
+         /**
+          * Check the existence of a key.
+          * If the key doesn't exist, it returns false, clears the temporary data buffer and sets *value_size to 0.
+          * If the key does exist, it returns true, stores the value into the temporary data buffer,
+          * and sets *value_size to the value size.
+          * Use kv_get_data to retrieve the value.
+          *
+          * @ingroup kv-database
+          * @param contract - name of the contract associated with the kv pair.
+          * @param key - the key to query.
+          * @param[out] value_size - resulting value size (0 if the key doesn't exist).
+          *
+          * @return false if the provided key doesn't exist, true otherwise.
+          */
+         bool     kv_get(uint64_t db, uint64_t contract, span<const char> key, uint32_t* value_size);
+
+         /**
+          * Fetches data from temporary buffer starting at offset.
+          * Copies up to the data's size span passed as parameter.
+          *
+          * @ingroup kv-database
+          * @param offset - position from where to start reading the value from the temporary buffer.
+          * @param[out] data - span where the result value will be stored.
+          *
+          * @return number of bytes written in data
+          */
+         uint32_t kv_get_data(uint64_t, uint32_t offset, span<char> data);
+
+         /**
+          * Create a kv iterator.
+          *  The returned handle:
+          *  - Starts at 1.
+          *  - Counts up by 1 at each call, assuming no destroyed iterators are available.
+          *  - If destroyed iterators are available, the most-recently-destroyed one is reinitialized and returned.
+          *  The prefix limits the range of keys that the iterator covers. If the prefix is empty,
+          *  the iterator covers the entire range of keys belonging to a contract within the database ID.
+          *
+          * @ingroup kv-database
+          * @param contract - the contract associated with the kv iterator.
+          * @param prefix - prefix to build the iterator.
+          *
+          * @return handle of the created iterator
+          */
+         uint32_t kv_it_create(uint64_t, uint64_t contract, span<const char> prefix);
+
+         /**
+          * Destroy a kv iterator.
+          *
+          * @ingroup kv-database
+          * @param itr - the iterator to destroy.
+          */
+         void     kv_it_destroy(uint32_t itr);
+
+         /**
+          * Get the status of a kv iterator.
+          *
+          * @ingroup kv-database
+          * @param itr - the kv iterator we want to know the status.
+          *
+          * @retval iterator_ok iterator is positioned at a kv pair.
+          * @retval iterator_erased the kv pair that the iterator used to be positioned at, was erased.
+          * @retval iterator_end iterator is out-of-bounds.
+          */
+         int32_t  kv_it_status(uint32_t itr);
+
+         /**
+          * Compare the key of two kv iterators.
+          *
+          * @ingroup kv-database
+          * @param itr_a - first iterator.
+          * @param itr_b - second iterator.
+          *
+          * @retval -1 if itr_a's key is less than itr_b's key
+          * @retval 0 if itr_a's key is the same as itr_b's key
+          * @retval 1 if itr_a's key is greater than itr_b's key
+         */
+         int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
+
+         /**
+          * Compare the key of an iterator to a provided key.
+          *
+          * @ingroup kv-database
+          * @param itr - the iterator to compare.
+          * @param key - the key to compare.
+          *
+          * @reval -1 if itr's key is less than key.
+          * @retval 0 if itr's key is the same as key.
+          * @retval 1 itr's key is greater than key.
+         */
+         int32_t  kv_it_key_compare(uint32_t itr, span<const char> key);
+
+         /**
+          * Move a kv iterator to an out-of-bounds position.
+          *
+          * @ingroup kv-database
+          * @param itr - the kv iterator we want to move.
+          *
+          * @return the status of the iterator (iterator_end).
+         */
+         int32_t  kv_it_move_to_end(uint32_t itr);
+
+         /**
+          * Move a kv iterator to the next position.
+          *
+          * @ingroup kv-database
+          * @param itr - the iterator we want to move.
+          * @param [out] found_key_size - size of the result key in the new position.
+          * @param [out] found_value_size - size of the result value in the new position.
+          *
+          * @return the status of the iterator.
+         */
+         int32_t  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+
+         /**
+          * Move a kv iterator to the previous position.
+          *
+          * @ingroup kv-database
+          * @param itr - the iterator we want to move
+          * @param [out] found_key_size - size of the result key in the new position.
+          * @param [out] found_value_size - size of the result value in the new position.
+          *
+          * @return the status of the iterator.
+         */
+         int32_t  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+
+         /**
+          * Find the least non-deleted key which is >= the provided key.
+          *
+          * @ingroup kv-database
+          * @param itr
+          * @param key - the key we want to query
+          * @param found_key_size - size of the result found key
+          * @param found_value_size - size of the result found value
+          *
+          * @return the status of the iterator.
+         */
+         int32_t  kv_it_lower_bound(uint32_t itr, span<const char> key, uint32_t* found_key_size, uint32_t* found_value_size);
+
+         /**
+          * Fetch the key from a kv iterator.
+          *
+          * @ingroup kv-database
+          * @param itr - the kv iterator.
+          * @param offset - position from where to start reading.
+          * @param dest - where the data will reside.
+          * @param [out] actual_size - size of the key
+          *
+          * @return the status of the iterator passed as a parameter.
+         */
+         int32_t  kv_it_key(uint32_t itr, uint32_t offset, span<char> dest, uint32_t* actual_size);
+
+         /**
+          * Fetch the value from a kv iterator.
+          *
+          * @ingroup kv-database
+          * @param itr - the iterator of the object we want to get the value.
+          * @param offset - position from where to start reading.
+          * @param dest - where the data will reside.
+          * @param [out] actual_size - size of the value.
+          *
+          * @return the status of the iterator passed as a parameter.
+         */
+         int32_t  kv_it_value(uint32_t itr, uint32_t offset, span<char> dest, uint32_t* actual_size);
 
          // memory api
          void* memcpy(memcpy_params) const;
@@ -256,19 +1237,105 @@ namespace webassembly {
          int32_t memcmp(memcmp_params) const;
          void* memset(memset_params) const;
 
-         // transaction api
-         void send_inline(legacy_span<const char>);
-         void send_context_free_inline(legacy_span<const char>);
-         void send_deferred(legacy_ptr<const uint128_t>, account_name, legacy_span<const char>, uint32_t);
-         bool cancel_deferred(legacy_ptr<const uint128_t>);
+         /**
+          * Send an inline action in the context of the parent transaction of this operation.
+          *
+          * @ingroup transaction
+          * @param data - the inline action to be sent.
+         */
+         void send_inline(legacy_span<const char> data);
+
+         /**
+          * Send a context free inline action in the context of the parent transaction of this operation.
+          *
+          * @ingroup transaction
+          * @param data - the packed free inline action to be sent.
+         */
+         void send_context_free_inline(legacy_span<const char> data);
+
+         /**
+          * Send a deferred transaction.
+          *
+          * @ingroup transaction
+          * @param sender_id - account name of the sender of this deferred transaction.
+          * @param payer - account name responsible for paying the RAM for this deferred transaction.
+          * @param data - the packed transaction to be deferred
+          * @param replace_existing - if true, it will replace an existing transaction.
+         */
+         void send_deferred(legacy_ptr<const uint128_t> sender_id, account_name payer, legacy_span<const char> data, uint32_t replace_existing);
+
+         /**
+          * Cancels a deferred transaction.
+          *
+          * @ingroup transaction
+          * @param val - The id of the sender
+          *
+          * @retval false if transaction was not found
+          * @retval true if transaction was canceled
+         */
+         bool cancel_deferred(legacy_ptr<const uint128_t> val);
 
          // context-free transaction api
+
+         /**
+          * Access a copy of the currently executing transaction.
+          *
+          * @ingroup transaction
+          * @param[out] data - the currently executing transaction (packed).
+          *
+          * @retval false if transaction was not found
+          * @retval true if transaction was canceled
+         */
          int32_t read_transaction(legacy_span<char>) const;
+
+         /**
+          * Gets the size of the currently executing transaction.
+          *
+          * @ingroup transaction
+          *
+          * @return size of the currently executing transaction
+         */
          int32_t transaction_size() const;
+
+         /**
+          * Gets the expiration of the currently executing transaction.
+          *
+          * @ingroup transaction
+          *
+          * @return expiration of the currently executing transaction in seconds since Unix epoch
+         */
          int32_t expiration() const;
+
+         /**
+          * Gets the block number used for TAPOS on the currently executing transaction.
+          *
+          * @ingroup transaction
+          *
+          * @return block number used for TAPOS on the currently executing transaction.
+         */
          int32_t tapos_block_num() const;
+
+         /**
+          * Gets the block prefix used for TAPOS on the currently executing transaction.
+          *
+          * @ingroup transaction
+          *
+          * @return block prefix used for TAPOS on the currently executing transaction.
+         */
          int32_t tapos_block_prefix() const;
-         int32_t get_action(uint32_t, uint32_t, legacy_span<char>) const;
+
+         /**
+          * Retrieve the indicated action from the active transaction.
+          *
+          * @ingroup transaction
+          *
+          * @param type - 0 for context free action, 1 for action.
+          * @param index - the index of the requested action.
+          * @param[out] buffer - the action we want (packed).
+          *
+          * @return the number of bytes written on the buffer or -1 if there was an error.
+         */
+         int32_t get_action(uint32_t type, uint32_t index, legacy_span<char> buffer) const;
 
          // compiler builtins api
          void __ashlti3(legacy_ptr<int128_t>, uint64_t, uint64_t, uint32_t) const;
