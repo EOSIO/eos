@@ -44,16 +44,10 @@ try:
 
     specificExtraNodeosArgs = {}
     specificExtraNodeosArgs[0] = "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin "
-    "--plugin eosio::txn_test_gen_plugin --plugin eosio::producer_api_plugin --plugin eosio::history_plugin "
-    "--plugin eosio::history_api_plugin --plugin eosio::state_history_plugin --plugin eosio::db_size_api_plugin "
-    "--p2p-listen-endpoint=0.0.0.0:9876 --p2p-server-address=0.0.0.0:9876 --http-server-address=127.0.0.1:8888 "
-    "--delete-all-blocks --disable-replay-opts --delete-state-history --access-control-allow-origin='*'"
+    "--plugin eosio::txn_test_gen_plugin --plugin eosio::producer_api_plugin "
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
     specificExtraNodeosArgs[totalProducerNodes] = "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin "
     "--plugin eosio::txn_test_gen_plugin --plugin eosio::producer_api_plugin "
-    "--p2p-listen-endpoint=0.0.0.0:9877 --p2p-server-address=0.0.0.0:9877 --p2p-peer-address=127.0.0.1:9876 --http-server-address=127.0.0.1:8889 "
-    "--delete-all-blocks --contracts-console --access-control-allow-origin='*'"
-
 
     # ***   setup topogrophy   ***
 
@@ -99,7 +93,7 @@ try:
 
     transferAmount="1.0000 {0}".format(CORE_SYMBOL)
     for _ in range(500):
-        nonProdNode.transferFunds(account[0], account[1], transferAmount, "test transfer", waitForTransBlock=True)
+        nonProdNode.transferFunds(account[0], account[1], transferAmount, "test transfer", waitForTransBlock=False)
 
     testSuccessful = nonProdNode.kill(signal.SIGTERM)
 
@@ -108,4 +102,5 @@ try:
         errorExit("Failed to kill the seed node")
 
 finally:
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=True, cleanRun=True, dumpErrorDetails=True)
     exit(0)
