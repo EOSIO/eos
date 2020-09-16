@@ -123,7 +123,7 @@ In the context of the `trace_api_plugin`, a *slice* is defined as a collection o
   *  `trace_<S>-<E>.log`
   *  `trace_index_<S>-<E>.log`
 
-where `<S>` and `<E>` are the starting and ending block numbers for the slice padded with leading 0's to a stride. For instance if the start block is 5, the last is 15, and the stride is 4, then the resulting `<S>` is `0000000005` and `<E>` is `0000000015`.
+where `<S>` and `<E>` are the starting and ending block numbers for the slice padded with leading 0's to a stride. For instance if the start block is 5, the last is 15, and the stride is 10, then the resulting `<S>` is `0000000005` and `<E>` is `0000000015`.
 
 #### trace_&lt;S&gt;-&lt;E&gt;.log
 
