@@ -40,4 +40,4 @@ Pruning of context-free data only allows light block validation between trusted 
 * Tool support for the actual CFD pruning within the irreversible blocks log and the state history plugin trace log
 
 [[info | Pruning Tool]]
-| Node operators can perform the pruning of context-free data within a given transaction by using the [`eosio-blocklog`](../../../10_utilities/05_eosio-blocklog.md) utility. For instructions on using this tool for CFD pruning, see [How to prune context-free data](05_how-to-prune-context-free-data.md).
+| Node operators can perform the pruning of context-free data within a given transaction by using the [`eosio-blocklog`](../../../10_utilities/eosio-blocklog.md) utility. For instructions on using this tool for CFD pruning, see [How to prune context-free data](05_how-to-prune-context-free-data.md).
