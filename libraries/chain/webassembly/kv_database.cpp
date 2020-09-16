@@ -10,10 +10,13 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.kv_set(db, contract, key.data(), key.size(), value.data(), value.size(), payer);
    }
 
-   bool     interface::kv_get(uint64_t db, uint64_t contract, span<const char> key, uint32_t* value_size) {
-      return context.kv_get(db, contract, key.data(), key.size(), *value_size);
+   bool     interface::kv_get(uint64_t db, uint64_t contract, span<const char> key, output_proxy<uint32_t> value_size) {
+      uint32_t tmp;
+      auto r = context.kv_get(db, contract, key.data(), key.size(), tmp);
+      value_size.store(tmp);
+      return r;
    }
-   
+
    uint32_t interface::kv_get_data(uint64_t db, uint32_t offset, span<char> data) {
       return context.kv_get_data(db, offset, data.data(), data.size());
    }
@@ -42,23 +45,41 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.kv_it_move_to_end(itr);
    }
 
-   int32_t  interface::kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
-      return context.kv_it_next(itr, found_key_size, found_value_size);
+   int32_t  interface::kv_it_next(uint32_t itr, output_proxy<uint32_t> found_key_size, output_proxy<uint32_t> found_value_size) {
+      uint32_t found_key_size_tmp, found_value_size_tmp;
+      auto r = context.kv_it_next(itr, &found_key_size_tmp, &found_value_size_tmp);
+      found_key_size.store(found_key_size_tmp);
+      found_value_size.store(found_value_size_tmp);
+      return r;
    }
 
-   int32_t  interface::kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size) {
-      return context.kv_it_prev(itr, found_key_size, found_value_size);
+   int32_t  interface::kv_it_prev(uint32_t itr, output_proxy<uint32_t> found_key_size, output_proxy<uint32_t> found_value_size) {
+      uint32_t found_key_size_tmp, found_value_size_tmp;
+      auto r = context.kv_it_prev(itr, &found_key_size_tmp, &found_value_size_tmp);
+      found_key_size.store(found_key_size_tmp);
+      found_value_size.store(found_value_size_tmp);
+      return r;
    }
 
-   int32_t  interface::kv_it_lower_bound(uint32_t itr, span<const char> key, uint32_t* found_key_size, uint32_t* found_value_size) {
-      return context.kv_it_lower_bound(itr, key.data(), key.size(), found_key_size, found_value_size);
+   int32_t  interface::kv_it_lower_bound(uint32_t itr, span<const char> key, output_proxy<uint32_t> found_key_size, output_proxy<uint32_t> found_value_size) {
+      uint32_t found_key_size_tmp, found_value_size_tmp;
+      auto r = context.kv_it_lower_bound(itr, key.data(), key.size(), &found_key_size_tmp, &found_value_size_tmp);
+      found_key_size.store(found_key_size_tmp);
+      found_value_size.store(found_value_size_tmp);
+      return r;
    }
 
-   int32_t  interface::kv_it_key(uint32_t itr, uint32_t offset, span<char> dest, uint32_t* actual_size) {
-      return context.kv_it_key(itr, offset, dest.data(), dest.size(), *actual_size);
+   int32_t  interface::kv_it_key(uint32_t itr, uint32_t offset, span<char> dest, output_proxy<uint32_t> actual_size) {
+      uint32_t actual_size_tmp;
+      auto r = context.kv_it_key(itr, offset, dest.data(), dest.size(), actual_size_tmp);
+      actual_size.store(actual_size_tmp);
+      return r;
    }
 
-   int32_t  interface::kv_it_value(uint32_t itr, uint32_t offset, span<char> dest, uint32_t* actual_size) {
-      return context.kv_it_value(itr, offset, dest.data(), dest.size(), *actual_size);
+   int32_t  interface::kv_it_value(uint32_t itr, uint32_t offset, span<char> dest, output_proxy<uint32_t> actual_size) {
+      uint32_t actual_size_tmp;
+      auto r = context.kv_it_value(itr, offset, dest.data(), dest.size(), actual_size_tmp);
+      actual_size.store(actual_size_tmp);
+      return r;
    }
 }}} // ns eosio::chain::webassembly

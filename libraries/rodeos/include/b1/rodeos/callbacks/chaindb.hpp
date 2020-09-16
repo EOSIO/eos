@@ -210,7 +210,10 @@ struct chaindb_callbacks {
    }
 
    int32_t db_next_i64(int32_t itr, legacy_ptr<uint64_t> primary) {
-      return get_iterator_cache().db_next_i64(itr, *primary);
+      uint64_t tmp;
+      auto r = get_iterator_cache().db_next_i64(itr, tmp);
+      primary.store(tmp);
+      return r;
    }
 
    int32_t db_previous_i64(int32_t itr, legacy_ptr<uint64_t> primary) {

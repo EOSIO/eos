@@ -167,7 +167,7 @@ namespace eosio { namespace chain { namespace webassembly {
    EOS_VM_PRECONDITION(is_nan_check,
          EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
             if constexpr (should_check_nan_v<std::remove_cv_t<typename remove_argument_proxy<std::decay_t<decltype(arg)>>::type>>) {
-               EOS_WASM_ASSERT(!webassembly::is_nan(*arg), transaction_exception, "NaN is not an allowed value for a secondary key");
+               EOS_WASM_ASSERT(!webassembly::is_nan(arg.load()), transaction_exception, "NaN is not an allowed value for a secondary key");
             }
          }));
 

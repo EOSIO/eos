@@ -17,7 +17,7 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    void interface::preactivate_feature( legacy_ptr<const digest_type> feature_digest ) {
-      context.control.preactivate_feature( context.get_action_id(), *feature_digest );
+      context.control.preactivate_feature( context.get_action_id(), feature_digest.load() );
    }
 
    /**
@@ -36,10 +36,11 @@ namespace eosio { namespace chain { namespace webassembly {
     * Deprecated in favor of get_resource_limit.
     */
    void interface::get_resource_limits( account_name account, legacy_ptr<int64_t> ram_bytes, legacy_ptr<int64_t> net_weight, legacy_ptr<int64_t> cpu_weight ) const {
-      context.control.get_resource_limits_manager().get_account_limits( account, *ram_bytes, *net_weight, *cpu_weight);
-      (void)legacy_ptr<int64_t>(std::move(ram_bytes));
-      (void)legacy_ptr<int64_t>(std::move(net_weight));
-      (void)legacy_ptr<int64_t>(std::move(cpu_weight));
+      auto ram_bytes_committer = ram_bytes.get_committer();
+      auto net_weight_committer = net_weight.get_committer();
+      auto cpu_weight_committer = cpu_weight.get_committer();
+      context.control.get_resource_limits_manager().get_account_limits(account, ram_bytes_committer.get(), net_weight_committer.get(),
+                                                                       cpu_weight_committer.get());
    }
 
    /**

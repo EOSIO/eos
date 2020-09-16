@@ -12,33 +12,35 @@ struct compiler_builtins_callbacks {
 
    void __ashlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       if (shift >= 128) {
-         *ret = 0;
+         ret.store(0);
       } else {
          unsigned __int128 i = high;
          i <<= 64;
          i |= low;
          i <<= shift;
-         *ret = (__int128)i;
+         ret.store((__int128)i);
       }
    }
 
    void __ashrti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       // retain the signedness
-      *ret = high;
-      *ret <<= 64;
-      *ret |= low;
-      *ret >>= shift;
+      __int128 tmp;
+      tmp = high;
+      tmp <<= 64;
+      tmp |= low;
+      tmp >>= shift;
+      ret.store(tmp);
    }
 
    void __lshlti3(legacy_ptr<__int128> ret, uint64_t low, uint64_t high, uint32_t shift) {
       if (shift >= 128) {
-         *ret = 0;
+         ret.store(0);
       } else {
          unsigned __int128 i = high;
          i <<= 64;
          i |= low;
          i <<= shift;
-         *ret = (__int128)i;
+         ret.store((__int128)i);
       }
    }
 
@@ -47,7 +49,7 @@ struct compiler_builtins_callbacks {
       i <<= 64;
       i |= low;
       i >>= shift;
-      *ret = (unsigned __int128)i;
+      ret.store((unsigned __int128)i);
    }
 
    void __divti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -65,7 +67,7 @@ struct compiler_builtins_callbacks {
 
       lhs /= rhs;
 
-      *ret = lhs;
+      ret.store(lhs);
    }
 
    void __udivti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -82,7 +84,7 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs /= rhs;
-      *ret = lhs;
+      ret.store(lhs);
    }
 
    void __modti3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -99,7 +101,7 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs %= rhs;
-      *ret = lhs;
+      ret.store(lhs);
    }
 
    void __umodti3(legacy_ptr<unsigned __int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -116,7 +118,7 @@ struct compiler_builtins_callbacks {
          throw std::runtime_error("divide by zero");
 
       lhs %= rhs;
-      *ret = lhs;
+      ret.store(lhs);
    }
 
    void __multi3(legacy_ptr<__int128> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -130,31 +132,31 @@ struct compiler_builtins_callbacks {
       rhs |= lb;
 
       lhs *= rhs;
-      *ret = lhs;
+      ret.store(lhs);
    }
 
    void __addtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      *ret         = f128_add(a, b);
+      ret.store( f128_add(a, b));
    }
 
    void __subtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      *ret         = f128_sub(a, b);
+      ret.store( f128_sub(a, b));
    }
 
    void __multf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      *ret         = f128_mul(a, b);
+      ret.store( f128_mul(a, b));
    }
 
    void __divtf3(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
       float128_t a = { { la, ha } };
       float128_t b = { { lb, hb } };
-      *ret         = f128_div(a, b);
+      ret.store( f128_div(a, b));
    }
 
    int __unordtf2(uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
@@ -191,15 +193,15 @@ struct compiler_builtins_callbacks {
 
    int __cmptf2(uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) { return ___cmptf2(la, ha, lb, hb, 1); }
 
-   void __negtf2(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha) { *ret = { { la, (ha ^ (uint64_t)1 << 63) } }; }
+   void __negtf2(legacy_ptr<float128_t> ret, uint64_t la, uint64_t ha) { ret.store({ { la, (ha ^ (uint64_t)1 << 63) } }); }
 
-   void __floatsitf(legacy_ptr<float128_t> ret, int32_t i) { *ret = i32_to_f128(i); }
+   void __floatsitf(legacy_ptr<float128_t> ret, int32_t i) { ret.store(i32_to_f128(i)); }
 
-   void __floatditf(legacy_ptr<float128_t> ret, uint64_t a) { *ret = i64_to_f128(a); }
+   void __floatditf(legacy_ptr<float128_t> ret, uint64_t a) { ret.store(i64_to_f128(a)); }
 
-   void __floatunsitf(legacy_ptr<float128_t> ret, uint32_t i) { *ret = ui32_to_f128(i); }
+   void __floatunsitf(legacy_ptr<float128_t> ret, uint32_t i) { ret.store(ui32_to_f128(i)); }
 
-   void __floatunditf(legacy_ptr<float128_t> ret, uint64_t a) { *ret = ui64_to_f128(a); }
+   void __floatunditf(legacy_ptr<float128_t> ret, uint64_t a) { ret.store(ui64_to_f128(a)); }
 
    double __floattidf(uint64_t l, uint64_t h) {
       unsigned __int128 val = h;
@@ -217,13 +219,13 @@ struct compiler_builtins_callbacks {
 
    double __floatsidf(int32_t i) { return from_softfloat64(i32_to_f64(i)); }
 
-   void __extendsftf2(legacy_ptr<float128_t> ret, float f) { *ret = f32_to_f128(to_softfloat32(f)); }
+   void __extendsftf2(legacy_ptr<float128_t> ret, float f) { ret.store(f32_to_f128(to_softfloat32(f))); }
 
-   void __extenddftf2(legacy_ptr<float128_t> ret, double d) { *ret = f64_to_f128(to_softfloat64(d)); }
+   void __extenddftf2(legacy_ptr<float128_t> ret, double d) { ret.store(f64_to_f128(to_softfloat64(d))); }
 
    void __fixtfti(legacy_ptr<__int128> ret, uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };
-      *ret         = ___fixtfti(f);
+      ret.store( ___fixtfti(f));
    }
 
    int32_t __fixtfsi(uint64_t l, uint64_t h) {
@@ -238,7 +240,7 @@ struct compiler_builtins_callbacks {
 
    void __fixunstfti(legacy_ptr<unsigned __int128> ret, uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };
-      *ret         = ___fixunstfti(f);
+      ret.store( ___fixunstfti(f));
    }
 
    uint32_t __fixunstfsi(uint64_t l, uint64_t h) {
@@ -251,13 +253,13 @@ struct compiler_builtins_callbacks {
       return f128_to_ui64(f, 0, false);
    }
 
-   void __fixsfti(legacy_ptr<__int128> ret, float a) { *ret = ___fixsfti(to_softfloat32(a).v); }
+   void __fixsfti(legacy_ptr<__int128> ret, float a) { ret.store(___fixsfti(to_softfloat32(a).v)); }
 
-   void __fixdfti(legacy_ptr<__int128> ret, double a) { *ret = ___fixdfti(to_softfloat64(a).v); }
+   void __fixdfti(legacy_ptr<__int128> ret, double a) { ret.store(___fixdfti(to_softfloat64(a).v)); }
 
-   void __fixunssfti(legacy_ptr<unsigned __int128> ret, float a) { *ret = ___fixunssfti(to_softfloat32(a).v); }
+   void __fixunssfti(legacy_ptr<unsigned __int128> ret, float a) { ret.store(___fixunssfti(to_softfloat32(a).v)); }
 
-   void __fixunsdfti(legacy_ptr<unsigned __int128> ret, double a) { *ret = ___fixunsdfti(to_softfloat64(a).v); }
+   void __fixunsdfti(legacy_ptr<unsigned __int128> ret, double a) { ret.store(___fixunsdfti(to_softfloat64(a).v)); }
 
    double __trunctfdf2(uint64_t l, uint64_t h) {
       float128_t f = { { l, h } };

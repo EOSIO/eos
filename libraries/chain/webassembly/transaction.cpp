@@ -26,10 +26,10 @@ namespace eosio { namespace chain { namespace webassembly {
    void interface::send_deferred( legacy_ptr<const uint128_t> sender_id, account_name payer, legacy_span<const char> data, uint32_t replace_existing) {
       transaction trx;
       fc::raw::unpack<transaction>(data.data(), data.size(), trx);
-      context.schedule_deferred_transaction(*sender_id, payer, std::move(trx), replace_existing);
+      context.schedule_deferred_transaction(sender_id.load(), payer, std::move(trx), replace_existing);
    }
 
    bool interface::cancel_deferred( legacy_ptr<const uint128_t> val ) {
-      return context.cancel_deferred_transaction( *val );
+      return context.cancel_deferred_transaction( val.load() );
    }
 }}} // ns eosio::chain::webassembly

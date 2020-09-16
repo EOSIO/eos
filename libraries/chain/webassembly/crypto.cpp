@@ -25,7 +25,7 @@ namespace eosio { namespace chain { namespace webassembly {
          EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
                     sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
 
-      auto check = fc::crypto::public_key( s, *digest, false );
+      auto check = fc::crypto::public_key( s, digest.load(), false );
       EOS_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
    }
 
@@ -44,7 +44,7 @@ namespace eosio { namespace chain { namespace webassembly {
                     sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
 
 
-      auto recovered = fc::crypto::public_key(s, *digest, false);
+      auto recovered = fc::crypto::public_key(s, digest.load(), false);
 
       // the key types newer than the first 2 may be varible in length
       if (s.which() >= config::genesis_num_supported_key_types ) {
@@ -67,37 +67,37 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::assert_sha256(legacy_span<const char> data, legacy_ptr<const fc::sha256> hash_val) const {
       auto result = context.trx_context.hash_with_checktime<fc::sha256>( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == hash_val.load(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_sha1(legacy_span<const char> data, legacy_ptr<const fc::sha1> hash_val) const {
       auto result = context.trx_context.hash_with_checktime<fc::sha1>( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == hash_val.load(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_sha512(legacy_span<const char> data, legacy_ptr<const fc::sha512> hash_val) const {
       auto result = context.trx_context.hash_with_checktime<fc::sha512>( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == hash_val.load(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::assert_ripemd160(legacy_span<const char> data, legacy_ptr<const fc::ripemd160> hash_val) const {
       auto result = context.trx_context.hash_with_checktime<fc::ripemd160>( data.data(), data.size() );
-      EOS_ASSERT( result == *hash_val, crypto_api_exception, "hash mismatch" );
+      EOS_ASSERT( result == hash_val.load(), crypto_api_exception, "hash mismatch" );
    }
 
    void interface::sha1(legacy_span<const char> data, legacy_ptr<fc::sha1> hash_val) const {
-      *hash_val = context.trx_context.hash_with_checktime<fc::sha1>( data.data(), data.size() );
+      hash_val.store(context.trx_context.hash_with_checktime<fc::sha1>( data.data(), data.size() ));
    }
 
    void interface::sha256(legacy_span<const char> data, legacy_ptr<fc::sha256> hash_val) const {
-      *hash_val = context.trx_context.hash_with_checktime<fc::sha256>( data.data(), data.size() );
+      hash_val.store(context.trx_context.hash_with_checktime<fc::sha256>( data.data(), data.size() ));
    }
 
    void interface::sha512(legacy_span<const char> data, legacy_ptr<fc::sha512> hash_val) const {
-      *hash_val = context.trx_context.hash_with_checktime<fc::sha512>( data.data(), data.size() );
+      hash_val.store(context.trx_context.hash_with_checktime<fc::sha512>( data.data(), data.size() ));
    }
 
    void interface::ripemd160(legacy_span<const char> data, legacy_ptr<fc::ripemd160> hash_val) const {
-      *hash_val = context.trx_context.hash_with_checktime<fc::ripemd160>( data.data(), data.size() );
+      hash_val.store(context.trx_context.hash_with_checktime<fc::ripemd160>( data.data(), data.size() ));
    }
 }}} // ns eosio::chain::webassembly

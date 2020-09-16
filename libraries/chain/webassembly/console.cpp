@@ -40,34 +40,35 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   void interface::printi128(legacy_ptr<const __int128> val) {
-		predicated_print(context,
-      [&]() {
-			bool is_negative = (*val < 0);
-			unsigned __int128 val_magnitude;
+   void interface::printi128(legacy_ptr<const __int128> value) {
+      predicated_print(context, [&]() {
+         __int128          val         = value.load();
+         bool              is_negative = (val < 0);
+         unsigned __int128 val_magnitude;
 
-			if( is_negative )
-				val_magnitude = static_cast<unsigned __int128>(-*val); // Works even if val is at the lowest possible value of a int128_t
-			else
-				val_magnitude = static_cast<unsigned __int128>(*val);
+         if (is_negative)
+            val_magnitude = static_cast<unsigned __int128>(
+                -val); // Works even if val is at the lowest possible value of a int128_t
+         else
+            val_magnitude = static_cast<unsigned __int128>(val);
 
-			fc::uint128 v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+         fc::uint128 v(val_magnitude >> 64, static_cast<uint64_t>(val_magnitude));
 
-			string s;
-			if( is_negative ) {
-				s += '-';
-			}
-			s += fc::variant(v).get_string();
+         string s;
+         if (is_negative) {
+            s += '-';
+         }
+         s += fc::variant(v).get_string();
 
-			context.console_append( s );
+         context.console_append(s);
       });
    }
 
-   void interface::printui128(legacy_ptr<const unsigned __int128> val) {
-		predicated_print(context,
-      [&]() {
-			fc::uint128 v(*val>>64, static_cast<uint64_t>(*val) );
-			context.console_append(fc::variant(v).get_string());
+   void interface::printui128(legacy_ptr<const unsigned __int128> value) {
+      predicated_print(context, [&]() {
+         unsigned __int128 val = value.load();
+         fc::uint128       v(val >> 64, static_cast<uint64_t>(val));
+         context.console_append(fc::variant(v).get_string());
       });
    }
 
@@ -116,13 +117,15 @@ namespace eosio { namespace chain { namespace webassembly {
 #ifdef __x86_64__
 			oss.precision( std::numeric_limits<long double>::digits10 );
 			extFloat80_t val_approx;
-			f128M_to_extF80M(val.get(), &val_approx);
-			long double _val;
+         float128_t   tmp = val.load();
+         f128M_to_extF80M(&tmp, &val_approx);
+         long double _val;
 			std::memcpy((char*)&_val, (char*)&val_approx, sizeof(long double));
 			oss << _val;
 #else
 			oss.precision( std::numeric_limits<double>::digits10 );
-			double val_approx = from_softfloat64( f128M_to_f64(val.get()) );
+         float128_t   tmp = val.load();
+			double val_approx = from_softfloat64( f128M_to_f64(&tmp) );
 			oss << val_approx;
 #endif
 			context.console_append( oss.str() );

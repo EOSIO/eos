@@ -497,28 +497,48 @@ FC_REFLECT(push_trx_args, (transaction)(context_free_data)(signatures)(keys))
 #define DB_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)                                                                        \
    int32_t db_##IDX##_find_secondary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<const TYPE> secondary,    \
                                      wasm_ptr<uint64_t> primary) {                                                     \
-      return selected().IDX.find_secondary(code, scope, table, *secondary, *primary);                                  \
+      uint64_t tmp;                                                                                                    \
+      auto     r = selected().IDX.find_secondary(code, scope, table, secondary.load(), tmp);                           \
+      primary.store(tmp);                                                                                              \
+      return r;                                                                                                        \                                                                                                                  
    }                                                                                                                   \
    int32_t db_##IDX##_find_primary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<TYPE> secondary,            \
                                    uint64_t primary) {                                                                 \
-      return selected().IDX.find_primary(code, scope, table, *secondary, primary);                                     \
+      uint64_t tmp;                                                                                                    \
+      auto     r = selected().IDX.find_primary(code, scope, table, tmp, primary);                                      \
+      secondary.store(tmp);                                                                                            \
+      return r;                                                                                                        \
    }                                                                                                                   \
    int32_t db_##IDX##_lowerbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<TYPE> secondary,              \
                                  wasm_ptr<uint64_t> primary) {                                                         \
-      return selected().IDX.lowerbound_secondary(code, scope, table, *secondary, *primary);                            \
+      uint64_t tmp1, temp2;                                                                                            \
+      auto     r = selected().IDX.lowerbound_secondary(code, scope, table, tmp1, temp2);                               \
+      secondary.store(tmp1);                                                                                           \
+      primary.store(tmp2);                                                                                             \
+      return r;                                                                                                        \
    }                                                                                                                   \
    int32_t db_##IDX##_upperbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<TYPE> secondary,              \
                                  wasm_ptr<uint64_t> primary) {                                                         \
-      return selected().IDX.upperbound_secondary(code, scope, table, *secondary, *primary);                            \
+      uint64_t tmp1, temp2;                                                                                            \
+      auto     r = selected().IDX.upperbound_secondary(code, scope, table, tmp1, tmp2);                                \
+      secondary.store(tmp1);                                                                                           \
+      primary.store(tmp2);                                                                                             \
+      return r;                                                                                                        \
    }                                                                                                                   \
    int32_t db_##IDX##_end(uint64_t code, uint64_t scope, uint64_t table) {                                             \
       return selected().IDX.end_secondary(code, scope, table);                                                         \
    }                                                                                                                   \
    int32_t db_##IDX##_next(int32_t iterator, wasm_ptr<uint64_t> primary) {                                             \
-      return selected().IDX.next_secondary(iterator, *primary);                                                        \
+      uint64_t tmp;                                                                                                    \
+      auto     r = selected().IDX.next_secondary(iterator, tmp);                                                       \
+      primary.store(tmp);                                                                                              \
+      return r;                                                                                                        \
    }                                                                                                                   \
    int32_t db_##IDX##_previous(int32_t iterator, wasm_ptr<uint64_t> primary) {                                         \
-      return selected().IDX.previous_secondary(iterator, *primary);                                                    \
+      int64_t tmp;                                                                                                     \
+      auto    r = selected().IDX.previous_secondary(iterator, tmp);                                                    \
+      primary.store(tmp);                                                                                              \
+      return r;                                                                                                        \
    }
 
 #define DB_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)                                                   \
@@ -956,8 +976,8 @@ struct callbacks {
 
    // clang-format off
    int32_t db_get_i64(int32_t iterator, span<char> buffer)                                {return selected().db_get_i64(iterator, buffer.data(), buffer.size());}
-   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      {return selected().db_next_i64(iterator, *primary);}
-   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  {return selected().db_previous_i64(iterator, *primary);}
+   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      { uint64_t tmp; auto r = selected().db_next_i64(iterator, tmp); primary.store(tmp); return r;}
+   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  { uint64_t tmp; auto r = selected().db_previous_i64(iterator, tmp); primary.store(tmp); return r;}
    int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)        {return selected().db_find_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
    int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_lowerbound_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
    int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_upperbound_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
