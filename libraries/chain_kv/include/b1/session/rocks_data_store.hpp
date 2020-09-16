@@ -10,7 +10,6 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
-#include <session/key_value.hpp>
 #include <session/rocks_data_store_fwd_decl.hpp>
 #include <session/shared_bytes.hpp>
 
@@ -60,7 +59,7 @@ class rocks_data_store final {
 
    struct iterator_traits final {
       using difference_type   = long;
-      using value_type        = key_value;
+      using value_type        = std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;
       using reference         = value_type&;
       using iterator_category = std::bidirectional_iterator_tag;
@@ -69,7 +68,7 @@ class rocks_data_store final {
 
    struct const_iterator_traits final {
       using difference_type   = long;
-      using value_type        = const key_value;
+      using value_type        = const std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;
       using reference         = value_type&;
       using iterator_category = std::bidirectional_iterator_tag;
@@ -77,8 +76,6 @@ class rocks_data_store final {
    using const_iterator = rocks_iterator<const_iterator_traits>;
 
  public:
-   // TODO:  Should ColumnFamilyOptions, WriteOptions, ReadOptions also be passed in on construction
-   //        or should this type just decide on its own what options to use.
    rocks_data_store()                        = default;
    rocks_data_store(const rocks_data_store&) = default;
    rocks_data_store(rocks_data_store&&)      = default;
@@ -87,14 +84,15 @@ class rocks_data_store final {
    rocks_data_store& operator=(const rocks_data_store&) = default;
    rocks_data_store& operator=(rocks_data_store&&) = default;
 
-   const key_value read(const shared_bytes& key) const;
-   void            write(key_value kv);
-   bool            contains(const shared_bytes& key) const;
-   void            erase(const shared_bytes& key);
-   void            clear();
+   shared_bytes read(const shared_bytes& key) const;
+   void         write(const shared_bytes& key, const shared_bytes& value);
+   bool         contains(const shared_bytes& key) const;
+   void         erase(const shared_bytes& key);
+   void         clear();
 
    template <typename Iterable>
-   const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> read(const Iterable& keys) const;
+   const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
+   read(const Iterable& keys) const;
 
    template <typename Iterable>
    void write(const Iterable& key_values);
@@ -132,7 +130,8 @@ class rocks_data_store final {
 
  protected:
    template <typename Iterable>
-   const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>> read_(const Iterable& keys) const;
+   const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
+   read_(const Iterable& keys) const;
 
    template <typename Predicate>
    iterator make_iterator_(const Predicate& setup);
@@ -153,9 +152,9 @@ inline rocks_data_store make_rocks_data_store(std::shared_ptr<rocksdb::DB> db) {
 
 inline rocks_data_store::rocks_data_store(std::shared_ptr<rocksdb::DB> db) : m_db{ std::move(db) } {}
 
-inline const key_value rocks_data_store::read(const shared_bytes& key) const {
+inline shared_bytes rocks_data_store::read(const shared_bytes& key) const {
    if (!m_db) {
-      return key_value::invalid;
+      return shared_bytes::invalid;
    }
 
    auto key_slice      = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
@@ -163,19 +162,19 @@ inline const key_value rocks_data_store::read(const shared_bytes& key) const {
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
    if (status.code() != rocksdb::Status::Code::kOk) {
-      return key_value::invalid;
+      return shared_bytes::invalid;
    }
 
-   return make_kv(key_slice.data(), key_slice.size(), pinnable_value.data(), pinnable_value.size());
+   return make_shared_bytes(pinnable_value.data(), pinnable_value.size());
 }
 
-inline void rocks_data_store::write(key_value kv) {
+inline void rocks_data_store::write(const shared_bytes& key, const shared_bytes& value) {
    if (!m_db) {
       return;
    }
 
-   auto key_slice   = rocksdb::Slice{ reinterpret_cast<const char*>(kv.key().data()), kv.key().size() };
-   auto value_slice = rocksdb::Slice{ reinterpret_cast<const char*>(kv.value().data()), kv.value().size() };
+   auto key_slice   = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+   auto value_slice = rocksdb::Slice{ reinterpret_cast<const char*>(value.data()), value.size() };
    auto status      = m_db->Put(m_write_options, column_family_(), key_slice, value_slice);
 }
 
@@ -203,7 +202,7 @@ inline void rocks_data_store::clear() {
 }
 
 template <typename Iterable>
-const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>>
+const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
 rocks_data_store::read_(const Iterable& keys) const {
    if (!m_db) {
       return {};
@@ -221,7 +220,7 @@ rocks_data_store::read_(const Iterable& keys) const {
    values.reserve(key_slices.size());
    auto status = m_db->MultiGet(m_read_options, { key_slices.size(), column_family_() }, key_slices, &values);
 
-   auto kvs = std::vector<key_value>{};
+   auto kvs = std::vector<std::pair<shared_bytes, shared_bytes>>{};
    kvs.reserve(key_slices.size());
 
    for (size_t i = 0; i < values.size(); ++i) {
@@ -229,8 +228,9 @@ rocks_data_store::read_(const Iterable& keys) const {
          continue;
       }
 
-      not_found.erase(make_shared_bytes_view(key_slices[i].data(), key_slices[i].size()));
-      kvs.emplace_back(make_kv(key_slices[i].data(), key_slices[i].size(), values[i].data(), values[i].size()));
+      auto key = make_shared_bytes(key_slices[i].data(), key_slices[i].size());
+      not_found.erase(key);
+      kvs.emplace_back(key, make_shared_bytes(values[i].data(), values[i].size()));
    }
 
    return { std::move(kvs), std::move(not_found) };
@@ -240,17 +240,17 @@ rocks_data_store::read_(const Iterable& keys) const {
 //
 // \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
 // iterator. \param keys An Iterable instance that returns shared_bytes instances in its iterator. \returns An std::pair
-// where the first item is list of the found key_values and the second item is a set of the keys not found.
+// where the first item is list of the found key/value pairs and the second item is a set of the keys not found.
 template <typename Iterable>
-const std::pair<std::vector<key_value>, std::unordered_set<shared_bytes>>
+const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
 rocks_data_store::read(const Iterable& keys) const {
    return read_(keys);
 }
 
-// Writes a batch of key_values to rocksdb.
+// Writes a batch of key/value pairs to rocksdb.
 //
-// \tparam Iterable Any type that can be used within a range based for loop and returns key_value instances in its
-// iterator. \param key_values An Iterable instance that returns key_value instances in its iterator.
+// \tparam Iterable Any type that can be used within a range based for loop and returns key/value pairs in its
+// iterator. \param key_values An Iterable instance that returns key/value pairs in its iterator.
 template <typename Iterable>
 void rocks_data_store::write(const Iterable& key_values) {
    if (!m_db) {
@@ -260,14 +260,14 @@ void rocks_data_store::write(const Iterable& key_values) {
    auto batch = rocksdb::WriteBatch{ 1024 * 1024 };
 
    for (const auto& kv : key_values) {
-      batch.Put(column_family_(), { reinterpret_cast<const char*>(kv.key().data()), kv.key().size() },
-                { reinterpret_cast<const char*>(kv.value().data()), kv.value().size() });
+      batch.Put(column_family_(), { reinterpret_cast<const char*>(kv.first.data()), kv.first.size() },
+                { reinterpret_cast<const char*>(kv.second.data()), kv.second.size() });
    }
 
    auto status = m_db->Write(m_write_options, &batch);
 }
 
-// Erases a batch of key_values from rocksdb.
+// Erases a batch of key/value pairs from rocksdb.
 //
 // \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
 // iterator. \param keys An Iterable instance that returns shared_bytes instances in its iterator.
@@ -283,7 +283,7 @@ void rocks_data_store::erase(const Iterable& keys) {
    }
 }
 
-// Writes a batch of key_values from rocksdb into the given data_store instance.
+// Writes a batch of key/value pairs from rocksdb into the given data_store instance.
 //
 // \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that
 // concept. \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances
@@ -299,7 +299,7 @@ void rocks_data_store::write_to(Data_store& ds, const Iterable& keys) const {
    ds.write(found);
 }
 
-// Reads a batch of key_values from the given data store into the rocksdb.
+// Reads a batch of key/value pairs from the given data store into the rocksdb.
 //
 // \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that
 // concept. \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances
@@ -556,24 +556,26 @@ template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 rocks_data_store::rocks_iterator<Iterator_traits>::operator*() const {
    if (!m_iterator->Valid()) {
-      return key_value::invalid;
+      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size());
+   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
+                     make_shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 rocks_data_store::rocks_iterator<Iterator_traits>::operator->() const {
    if (!m_iterator->Valid()) {
-      return key_value::invalid;
+      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return make_kv(key_slice.data(), key_slice.size(), value.data(), value.size());
+   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
+                     make_shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>

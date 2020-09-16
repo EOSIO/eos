@@ -8,7 +8,6 @@
 
 #include <boost/pool/pool.hpp>
 
-#include <session/key_value_fwd_decl.hpp>
 #include <session/shared_bytes_fwd_decl.hpp>
 
 namespace eosio::session {
@@ -17,8 +16,6 @@ namespace eosio::session {
 //
 class shared_bytes final {
  public:
-   friend class key_value;
-
    template <typename T>
    friend shared_bytes make_shared_bytes(const T* data, size_t length);
 
@@ -26,18 +23,6 @@ class shared_bytes final {
 
    template <typename T>
    friend shared_bytes make_shared_bytes_view(const T* data, size_t length);
-
-   friend key_value make_kv(shared_bytes key, shared_bytes value);
-
-   template <typename Key, typename Value>
-   friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
-
-   template <typename Key, typename Value>
-   friend key_value make_kv_view(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
-
-   friend key_value make_kv(const int8_t* key, size_t key_length, const int8_t* value, size_t value_length);
-
-   friend key_value make_kv_view(const int8_t* key, size_t key_length, const int8_t* value, size_t value_length);
 
    template <typename Iterator_traits>
    class shared_bytes_iterator final {
@@ -117,8 +102,7 @@ class shared_bytes final {
 
  private:
    std::shared_ptr<int8_t> m_data;
-   size_t                  m_start_index;
-   size_t                  m_end_index;
+   size_t                  m_size{ 0 };
 };
 
 // \brief Creates a new shared_bytes instance with the given pointer and length.
@@ -141,10 +125,9 @@ inline shared_bytes make_shared_bytes(const int8_t* data, size_t length) {
    auto* chunk = std::allocator<int8_t>{}.allocate(length);
    memcpy(chunk, data, length);
 
-   auto deleter         = [&](auto* chunk) { std::allocator<int8_t>{}.deallocate(chunk, length); };
-   result.m_data        = std::shared_ptr<int8_t>(chunk, deleter);
-   result.m_start_index = 0;
-   result.m_end_index   = length - 1;
+   auto deleter  = [&](auto* chunk) { std::allocator<int8_t>{}.deallocate(chunk, length); };
+   result.m_data = std::shared_ptr<int8_t>(chunk, deleter);
+   result.m_size = length;
 
    return result;
 }
@@ -153,10 +136,9 @@ template <>
 inline shared_bytes make_shared_bytes_view(const int8_t* data, size_t length) {
    auto result = shared_bytes{};
 
-   auto deleter         = [&](auto* chunk) {};
-   result.m_data        = std::shared_ptr<int8_t>(const_cast<int8_t*>(data), deleter);
-   result.m_start_index = 0;
-   result.m_end_index   = length - 1;
+   auto deleter  = [&](auto* chunk) {};
+   result.m_data = std::shared_ptr<int8_t>(const_cast<int8_t*>(data), deleter);
+   result.m_size = length;
 
    return result;
 }
@@ -178,13 +160,14 @@ shared_bytes make_shared_bytes_view(const T* data, size_t length) {
 
 inline const shared_bytes shared_bytes::invalid{};
 
-inline const int8_t* const shared_bytes::data() const { return &(m_data.get()[m_start_index]); }
+inline const int8_t* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
 
-inline size_t shared_bytes::size() const { return m_data ? m_end_index - m_start_index + 1 : 0; }
+inline size_t shared_bytes::size() const { return m_size; }
 
 inline int8_t shared_bytes::operator[](size_t index) const {
    assert(index < size());
-   return m_data.get()[m_start_index + index];
+   assert(m_data);
+   return m_data.get()[index];
 }
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
@@ -192,7 +175,7 @@ inline bool shared_bytes::operator==(const shared_bytes& other) const {
       if (size() != other.size()) {
          return false;
       }
-      return memcmp(m_data.get() + m_start_index, other.m_data.get() + other.m_start_index, size()) == 0 ? true : false;
+      return memcmp(m_data.get(), other.m_data.get(), size()) == 0 ? true : false;
    }
 
    return m_data.get() == other.m_data.get();
@@ -221,7 +204,7 @@ inline shared_bytes::iterator shared_bytes::end() const {
 template <typename Iterator_traits>
 shared_bytes::shared_bytes_iterator<Iterator_traits>&
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator++() {
-   if (m_bytes->m_start_index + m_index <= m_bytes->m_end_index + 1) {
+   if (m_index <= m_bytes->m_size) {
       ++m_index;
    }
    return *this;
@@ -231,7 +214,7 @@ template <typename Iterator_traits>
 shared_bytes::shared_bytes_iterator<Iterator_traits>
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator++(int) {
    auto result = *this;
-   if (m_bytes->m_start_index + m_index <= m_bytes->m_end_index + 1) {
+   if (m_index <= m_bytes->m_size) {
       ++m_index;
    }
    return result;
@@ -262,7 +245,7 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](difference_type
    if (index >= m_bytes->size()) {
       return 0;
    }
-   return m_bytes->data()[m_bytes->m_start_index + index];
+   return m_bytes->data()[index];
 }
 
 template <typename Iterator_traits>
@@ -312,19 +295,19 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator+(const shared_byt
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator*() const {
-   if (m_bytes->m_start_index + m_index > m_bytes->m_end_index) {
+   if (m_index > m_bytes->m_size) {
       return 0;
    }
-   return m_bytes->m_data.get()[m_bytes->m_start_index + m_index];
+   return m_bytes->m_data.get()[m_index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator->() const {
-   if (m_bytes->m_start_index + m_index > m_bytes->m_end_index) {
+   if (m_index > m_bytes->m_size) {
       return 0;
    }
-   return m_bytes->m_data.get()[m_bytes->m_start_index + m_index];
+   return m_bytes->m_data.get()[m_index];
 }
 
 template <typename Iterator_traits>

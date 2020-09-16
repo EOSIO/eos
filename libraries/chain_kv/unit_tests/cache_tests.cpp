@@ -19,11 +19,11 @@ BOOST_AUTO_TEST_CASE(cache_create_test) {
 BOOST_AUTO_TEST_CASE(cache_rwd_test) {
    auto cache1 = eosio::session::make_cache();
    make_data_store(cache1, char_key_values, string_t{});
-   for (const auto& kv : char_batch_values) { verify_rwd(cache1, kv); }
+   for (const auto& kv : char_batch_values) { verify_rwd(cache1, kv.first, kv.second); }
 
    auto cache2 = eosio::session::make_cache();
    make_data_store(cache2, int_key_values, int_t{});
-   for (const auto& kv : int_batch_values) { verify_rwd(cache2, kv); }
+   for (const auto& kv : int_batch_values) { verify_rwd(cache2, kv.first, kv.second); }
 }
 
 BOOST_AUTO_TEST_CASE(cache_rwd_batch_test) {

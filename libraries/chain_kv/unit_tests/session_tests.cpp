@@ -98,12 +98,12 @@ BOOST_AUTO_TEST_CASE(session_rwd_test) {
    {
       auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
-      for (const auto& kv : char_batch_values) { verify_rwd(session1, kv); }
+      for (const auto& kv : char_batch_values) { verify_rwd(session1, kv.first, kv.second); }
    }
    {
       auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, int_key_values, int_t{});
-      for (const auto& kv : int_batch_values) { verify_rwd(session2, kv); }
+      for (const auto& kv : int_batch_values) { verify_rwd(session2, kv.first, kv.second); }
    }
 }
 
@@ -267,17 +267,17 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
 
 BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
    auto verify_key_value = [](auto& ds, uint16_t key, uint16_t expected_value) {
-      auto key_      = eosio::session::make_shared_bytes_view(&key, 1);
-      auto value     = eosio::session::make_shared_bytes_view(&expected_value, 1);
-      auto key_value = ds.read(key_);
-      BOOST_REQUIRE(key_value.value() == value);
+      auto key_       = eosio::session::make_shared_bytes_view(&key, 1);
+      auto value      = eosio::session::make_shared_bytes_view(&expected_value, 1);
+      auto value_read = ds.read(key_);
+      BOOST_REQUIRE(value_read == value);
 
       auto begin = std::begin(ds);
       auto it    = std::begin(ds);
       do {
          auto key_value = *it;
-         if (key_value.key() == key_) {
-            BOOST_REQUIRE(key_value.value() == value);
+         if (key_value.first == key_) {
+            BOOST_REQUIRE(key_value.second == value);
             break;
          }
          ++it;
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    auto verify_keys_deleted = [](auto& ds, const auto& keys) {
       for (const uint16_t& key : keys) {
          auto key_ = eosio::session::make_shared_bytes_view(&key, 1);
-         BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
+         BOOST_REQUIRE(ds.read(key_) == eosio::session::shared_bytes::invalid);
          BOOST_REQUIRE(ds.find(key_) == std::end(ds));
          BOOST_REQUIRE(ds.contains(key_) == false);
       }
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto it    = std::begin(ds);
       do {
          auto key_value = *it;
-         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.key().data())) == std::end(keys));
+         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
          ++it;
       } while (it != begin);
    };
@@ -349,20 +349,20 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    auto verify_keys_deleted_datastore = [](auto& ds, const auto& keys) {
       for (const uint16_t& key : keys) {
          auto key_ = eosio::session::make_shared_bytes_view(&key, 1);
-         BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
+         BOOST_REQUIRE(ds.read(key_) == eosio::session::shared_bytes::invalid);
          BOOST_REQUIRE(ds.find(key_) == std::end(ds));
          BOOST_REQUIRE(ds.contains(key_) == false);
       }
 
       for (const auto key_value : ds) {
-         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.key().data())) == std::end(keys));
+         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
       }
    };
 
    auto verify_keys_exist = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
          auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
-         auto value = eosio::session::make_kv_view(&key_value.first, 1, &key_value.second, 1);
+         auto value = eosio::session::make_shared_bytes_view(&key_value.second, 1);
          BOOST_REQUIRE(ds.read(key) == value);
          BOOST_REQUIRE(ds.find(key) != std::end(ds));
          BOOST_REQUIRE(ds.contains(key) == true);
@@ -373,8 +373,8 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto it    = std::begin(ds);
       do {
          auto key_value = *it;
-         auto key       = *reinterpret_cast<const uint16_t*>(key_value.key().data());
-         auto value     = *reinterpret_cast<const uint16_t*>(key_value.value().data());
+         auto key       = *reinterpret_cast<const uint16_t*>(key_value.first.data());
+         auto value     = *reinterpret_cast<const uint16_t*>(key_value.second.data());
 
          auto kv_it = key_values.find(key);
          if (kv_it != std::end(key_values)) {
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    auto verify_keys_exist_datastore = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
          auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
-         auto value = eosio::session::make_kv_view(&key_value.first, 1, &key_value.second, 1);
+         auto value = eosio::session::make_shared_bytes_view(&key_value.second, 1);
          BOOST_REQUIRE(ds.read(key) == value);
          BOOST_REQUIRE(ds.find(key) != std::end(ds));
          BOOST_REQUIRE(ds.contains(key) == true);
@@ -398,8 +398,8 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
       auto found = size_t{ 0 };
       for (const auto key_value : ds) {
-         auto key   = *reinterpret_cast<const uint16_t*>(key_value.key().data());
-         auto value = *reinterpret_cast<const uint16_t*>(key_value.value().data());
+         auto key   = *reinterpret_cast<const uint16_t*>(key_value.first.data());
+         auto value = *reinterpret_cast<const uint16_t*>(key_value.second.data());
 
          auto kv_it = key_values.find(key);
          if (kv_it != std::end(key_values)) {
