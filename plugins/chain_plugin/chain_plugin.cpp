@@ -2120,14 +2120,14 @@ void read_only::make_prefix(eosio::name table_name,  eosio::name index_name, uin
    vector<char> bin;
    bin.reserve(sizeof(uint64_t));
    convert_to_key(table_name.to_uint64_t(), bin);
-   for( int i = 0; i < sizeof(uint64_t); ++i ) {
+   for( unsigned i = 0; i < sizeof(uint64_t); ++i ) {
       prefix[i + 1] = bin[i];
    }
 
    bin.clear();
    convert_to_key(index_name.to_uint64_t(), bin);
    int offset = sizeof(uint64_t) + 1;
-   for( int i = 0; i < sizeof(uint64_t ); ++i) {
+   for( unsigned i = 0; i < sizeof(uint64_t ); ++i) {
       prefix[offset + i] = bin[i];
    }
 }

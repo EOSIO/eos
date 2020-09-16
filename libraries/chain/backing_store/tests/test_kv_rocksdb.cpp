@@ -541,7 +541,7 @@ BOOST_FIXTURE_TEST_CASE(test_iter_creation_too_many, kv_rocksdb_fixture) {
    mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), it_key_size); };
 
    // Creating max_iterators iterators
-   for (auto i = 0; i < max_iterators; ++i) {
+   for (auto i = 0U; i < max_iterators; ++i) {
       its[i] = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
    }
 

@@ -612,7 +612,7 @@ namespace eosio { namespace chain {
             static const eosio::session::shared_bytes  empty_payload;
             unsigned_int       size;
             read_row(size);
-            for (int i = 0; i < size.value; ++i) {
+            for (uint32_t i = 0; i < size.value; ++i) {
                backing_store::secondary_index_view<index_t> row;
                read_row(row);
                backing_store::payer_payload pp{row.payer, nullptr, 0};
