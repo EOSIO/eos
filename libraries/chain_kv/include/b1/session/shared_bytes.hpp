@@ -1,12 +1,15 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <string_view>
+
+#include <softfloat.hpp>
 
 #include <boost/pool/pool.hpp>
 
-#include <b1/session/key_value_fwd_decl.hpp>
-#include <b1/session/shared_bytes_fwd_decl.hpp>
+#include <session/key_value_fwd_decl.hpp>
+#include <session/shared_bytes_fwd_decl.hpp>
 
 namespace eosio::session {
 
@@ -16,42 +19,96 @@ class shared_bytes final {
  public:
    friend class key_value;
 
-   template <typename T, typename Allocator>
-   friend shared_bytes make_shared_bytes(const T* data, size_t length, Allocator& a);
-
-   template <typename Allocator>
-   friend shared_bytes make_shared_bytes(const void* data, size_t length, Allocator& a);
-
    template <typename T>
    friend shared_bytes make_shared_bytes(const T* data, size_t length);
 
-   friend key_value make_kv(shared_bytes key, shared_bytes value);
+   friend shared_bytes make_shared_bytes(const int8_t* data, size_t length);
 
-   template <typename Key, typename Value, typename Allocator>
-   friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length,
-                            Allocator& a);
+   template <typename T>
+   friend shared_bytes make_shared_bytes_view(const T* data, size_t length);
+
+   friend key_value make_kv(shared_bytes key, shared_bytes value);
 
    template <typename Key, typename Value>
    friend key_value make_kv(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
 
-   template <typename Allocator>
-   friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length, Allocator& a);
+   template <typename Key, typename Value>
+   friend key_value make_kv_view(const Key* the_key, size_t key_length, const Value* the_value, size_t value_length);
 
-   friend key_value make_kv(const void* key, size_t key_length, const void* value, size_t value_length);
+   friend key_value make_kv(const int8_t* key, size_t key_length, const int8_t* value, size_t value_length);
+
+   friend key_value make_kv_view(const int8_t* key, size_t key_length, const int8_t* value, size_t value_length);
+
+   template <typename Iterator_traits>
+   class shared_bytes_iterator final {
+    public:
+      friend class shared_bytes;
+
+      using difference_type   = typename Iterator_traits::difference_type;
+      using value_type        = typename Iterator_traits::value_type;
+      using pointer           = typename Iterator_traits::pointer;
+      using reference         = typename Iterator_traits::reference;
+      using iterator_category = typename Iterator_traits::iterator_category;
+
+    public:
+      shared_bytes_iterator()                                = default;
+      shared_bytes_iterator(const shared_bytes_iterator& it) = default;
+      shared_bytes_iterator(shared_bytes_iterator&&)         = default;
+
+      shared_bytes_iterator& operator=(const shared_bytes_iterator& it) = default;
+      shared_bytes_iterator& operator=(shared_bytes_iterator&&) = default;
+
+      shared_bytes_iterator& operator++();
+      shared_bytes_iterator  operator++(int);
+      shared_bytes_iterator& operator--();
+      shared_bytes_iterator  operator--(int);
+      value_type             operator*() const;
+      value_type             operator->() const;
+      bool                   operator==(const shared_bytes_iterator& other) const;
+      bool                   operator!=(const shared_bytes_iterator& other) const;
+      value_type             operator[](difference_type index) const;
+      shared_bytes_iterator& operator+=(difference_type n);
+      shared_bytes_iterator& operator-=(difference_type n);
+      shared_bytes_iterator  operator+(difference_type n) const;
+      shared_bytes_iterator  operator-(difference_type n) const;
+      difference_type        operator-(const shared_bytes_iterator& rhs) const;
+      difference_type        operator+(const shared_bytes_iterator& rhs) const;
+
+    private:
+      shared_bytes* m_bytes;
+      int64_t       m_index{ 0 };
+   };
+
+   struct iterator_traits final {
+      using difference_type   = int64_t;
+      using value_type        = int8_t;
+      using pointer           = value_type*;
+      using reference         = value_type&;
+      using iterator_category = std::random_access_iterator_tag;
+   };
+   using iterator = shared_bytes_iterator<iterator_traits>;
 
  public:
-   shared_bytes(const shared_bytes& b);
-   shared_bytes(shared_bytes&& b);
-   ~shared_bytes();
+   shared_bytes(const shared_bytes& b) = default;
+   shared_bytes(shared_bytes&& b)      = default;
+   ~shared_bytes()                     = default;
 
-   shared_bytes& operator=(const shared_bytes& b);
-   shared_bytes& operator=(shared_bytes&& b);
+   shared_bytes& operator=(const shared_bytes& b) = default;
+   shared_bytes& operator=(shared_bytes&& b) = default;
 
    const int8_t* const data() const;
-   size_t              length() const;
+   size_t              size() const;
+
+   int8_t operator[](size_t index) const;
 
    bool operator==(const shared_bytes& other) const;
    bool operator!=(const shared_bytes& other) const;
+
+   bool operator!() const;
+        operator bool() const;
+
+   iterator begin() const;
+   iterator end() const;
 
    static const shared_bytes invalid;
 
@@ -59,67 +116,47 @@ class shared_bytes final {
    shared_bytes() = default;
 
  private:
-   struct control_block {
-      // The encoded address of the memory allocator that instantiated the memory this instance points to.
-      // \warning The memory allocator MUST stay in scope during the lifetime of this instance.
-      uint64_t memory_allocator_address{ 0 };
-      // \brief A counter to keep track of the number of shared_bytes instances that point to the memory
-      // address.
-      // \remark When the counter reaches 0, the last instance will free the memory by invoking the free method on
-      // the memory allocator.
-      // \warning Assuming that this type will be accessed synchronously.
-      size_t use_count{ 0 };
-   };
-   // To allow for sharing a chunk of memory across multiple shared_byte instances, we need to keep track
-   // of the chunk start in each instance to pass back to the allocator.
-   int8_t*        m_chunk_start{ nullptr };
-   int8_t*        m_chunk_end{ nullptr };
-   control_block* m_control_block{ nullptr };
-   int8_t*        m_data_start{ nullptr };
-   int8_t*        m_data_end{ nullptr };
+   std::shared_ptr<int8_t> m_data;
+   size_t                  m_start_index;
+   size_t                  m_end_index;
 };
 
 // \brief Creates a new shared_bytes instance with the given pointer and length.
 //
 // \tparam T The type stored in the array.
-// \tparam allocator The memory allocator type used to manage the shared_bytes memory. This type mush implement the
-// "memory allocator" concept. \param data A pointer to an array of items to store in a shared_bytes instance. \param
-// length The number of items in the array. \param a The memory allocator used to instantiate the memory used by the
-// shared_bytes instance.
-template <typename T, typename Allocator>
-shared_bytes make_shared_bytes(const T* data, size_t length, Allocator& a) {
-   return make_shared_bytes(reinterpret_cast<const void*>(data), length * sizeof(T), a);
+// \\param data A pointer to an array of items to store in a shared_bytes instance. \param
+// length The number of items in the array.
+template <typename T>
+shared_bytes make_shared_bytes(const T* data, size_t length) {
+   return make_shared_bytes(reinterpret_cast<const int8_t*>(data), length * sizeof(T));
 }
 
-template <typename Allocator>
-shared_bytes make_shared_bytes(const void* data, size_t length, Allocator& a) {
+inline shared_bytes make_shared_bytes(const int8_t* data, size_t length) {
    auto result = shared_bytes{};
 
    if (!data || length == 0) {
       return result;
    }
 
-   auto  chunk_length                               = sizeof(shared_bytes::control_block) + length;
-   auto* chunk                                      = reinterpret_cast<int8_t*>(a->allocate(chunk_length));
-   result.m_chunk_start                             = chunk;
-   result.m_chunk_end                               = chunk + chunk_length;
-   result.m_control_block                           = reinterpret_cast<shared_bytes::control_block*>(chunk);
-   result.m_control_block->memory_allocator_address = reinterpret_cast<uint64_t>(&a->free_function());
-   result.m_control_block->use_count                = 1;
-   result.m_data_start                              = chunk + sizeof(shared_bytes::control_block);
-   result.m_data_end                                = result.m_data_start + length;
-   memcpy(result.m_data_start, data, length);
+   auto* chunk = std::allocator<int8_t>{}.allocate(length);
+   memcpy(chunk, data, length);
+
+   auto deleter         = [&](auto* chunk) { std::allocator<int8_t>{}.deallocate(chunk, length); };
+   result.m_data        = std::shared_ptr<int8_t>(chunk, deleter);
+   result.m_start_index = 0;
+   result.m_end_index   = length - 1;
 
    return result;
 }
 
 template <>
-inline shared_bytes make_shared_bytes(const void* data, size_t length) {
+inline shared_bytes make_shared_bytes_view(const int8_t* data, size_t length) {
    auto result = shared_bytes{};
 
-   // This is a "shared_bytes view".  Encode the date using the chunk start and chunk end data members.
-   result.m_data_start = reinterpret_cast<int8_t*>(const_cast<void*>(data));
-   result.m_data_end   = result.m_data_start + length;
+   auto deleter         = [&](auto* chunk) {};
+   result.m_data        = std::shared_ptr<int8_t>(const_cast<int8_t*>(data), deleter);
+   result.m_start_index = 0;
+   result.m_end_index   = length - 1;
 
    return result;
 }
@@ -135,109 +172,170 @@ inline shared_bytes make_shared_bytes(const void* data, size_t length) {
 // \warning The resulting shared_bytes instance does NOT take ownership of the given data pointer.
 // \warning The data pointer must remain in scope for the lifetime of the given shared_bytes instance.
 template <typename T>
-shared_bytes make_shared_bytes(const T* data, size_t length) {
-   return make_shared_bytes(reinterpret_cast<const void*>(data), length * sizeof(T));
+shared_bytes make_shared_bytes_view(const T* data, size_t length) {
+   return make_shared_bytes_view(reinterpret_cast<const int8_t*>(data), length * sizeof(T));
 }
 
 inline const shared_bytes shared_bytes::invalid{};
 
-inline shared_bytes::shared_bytes(const shared_bytes& b)
-    : m_chunk_start{ b.m_chunk_start }, m_chunk_end{ b.m_chunk_end }, m_control_block{ b.m_control_block },
-      m_data_start{ b.m_data_start }, m_data_end{ b.m_data_end } {
+inline const int8_t* const shared_bytes::data() const { return &(m_data.get()[m_start_index]); }
 
-   if (m_control_block) {
-      ++(m_control_block->use_count);
-   }
+inline size_t shared_bytes::size() const { return m_data ? m_end_index - m_start_index + 1 : 0; }
+
+inline int8_t shared_bytes::operator[](size_t index) const {
+   assert(index < size());
+   return m_data.get()[m_start_index + index];
 }
-
-inline shared_bytes::shared_bytes(shared_bytes&& b)
-    : m_chunk_start{ b.m_chunk_start }, m_chunk_end{ b.m_chunk_end }, m_control_block{ b.m_control_block },
-      m_data_start{ b.m_data_start }, m_data_end{ b.m_data_end } {
-   b.m_chunk_start   = nullptr;
-   b.m_chunk_end     = nullptr;
-   b.m_control_block = nullptr;
-   b.m_data_start    = nullptr;
-   b.m_data_end      = nullptr;
-}
-
-inline shared_bytes::~shared_bytes() {
-   if (!m_chunk_start || !m_chunk_end || !m_control_block || !m_data_start || !m_data_end) {
-      return;
-   }
-
-   if (--(m_control_block->use_count) != 0) {
-      return;
-   }
-
-   // The memory pool must remain in scope for the lifetime of this instance.
-   auto* free_function = reinterpret_cast<free_function_type*>(m_control_block->memory_allocator_address);
-   (*free_function)(m_chunk_start, m_chunk_end - m_chunk_start);
-}
-
-inline shared_bytes& shared_bytes::operator=(const shared_bytes& b) {
-   if (this == &b) {
-      return *this;
-   }
-
-   m_chunk_start   = b.m_chunk_start;
-   m_chunk_end     = b.m_chunk_end;
-   m_control_block = b.m_control_block;
-   m_data_start    = b.m_data_start;
-   m_data_end      = b.m_data_end;
-
-   if (m_control_block) {
-      ++(m_control_block->use_count);
-   }
-
-   return *this;
-}
-
-inline shared_bytes& shared_bytes::operator=(shared_bytes&& b) {
-   if (this == &b) {
-      return *this;
-   }
-
-   m_chunk_start   = b.m_chunk_start;
-   m_chunk_end     = b.m_chunk_end;
-   m_control_block = b.m_control_block;
-   m_data_start    = b.m_data_start;
-   m_data_end      = b.m_data_end;
-
-   b.m_chunk_start   = nullptr;
-   b.m_chunk_end     = nullptr;
-   b.m_control_block = nullptr;
-   b.m_data_start    = nullptr;
-   b.m_data_end      = nullptr;
-
-   return *this;
-}
-
-inline const int8_t* const shared_bytes::data() const { return m_data_start; }
-
-inline size_t shared_bytes::length() const { return m_data_end - m_data_start; }
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
-   auto compare = [](auto* left_start, auto* left_end, auto* right_start, auto* right_end) {
-      auto left_length  = left_end - left_start;
-      auto right_length = right_end - right_start;
-
-      if (left_length != right_length) {
+   if (m_data && other.m_data) {
+      if (size() != other.size()) {
          return false;
       }
-
-      return memcmp(left_start, right_start, left_length) == 0 ? true : false;
-   };
-
-   if (m_data_start && other.m_data_start) {
-      return compare(m_data_start, m_data_end, other.m_data_start, other.m_data_end);
+      return memcmp(m_data.get() + m_start_index, other.m_data.get() + other.m_start_index, size()) == 0 ? true : false;
    }
 
-   return m_chunk_start == other.m_chunk_start && m_chunk_end == other.m_chunk_end &&
-          m_control_block == other.m_control_block && m_data_start == other.m_data_start &&
-          m_data_end == other.m_data_end;
+   return m_data.get() == other.m_data.get();
 }
 
 inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
+
+inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid; }
+
+inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid; }
+
+inline shared_bytes::iterator shared_bytes::begin() const {
+   auto result    = iterator{};
+   result.m_bytes = const_cast<shared_bytes*>(this);
+   result.m_index = 0;
+   return result;
+}
+
+inline shared_bytes::iterator shared_bytes::end() const {
+   auto result    = iterator{};
+   result.m_bytes = const_cast<shared_bytes*>(this);
+   result.m_index = size();
+   return result;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>&
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator++() {
+   if (m_bytes->m_start_index + m_index <= m_bytes->m_end_index + 1) {
+      ++m_index;
+   }
+   return *this;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator++(int) {
+   auto result = *this;
+   if (m_bytes->m_start_index + m_index <= m_bytes->m_end_index + 1) {
+      ++m_index;
+   }
+   return result;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>&
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator--() {
+   if (m_index > 0) {
+      --m_index;
+   }
+   return *this;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator--(int) {
+   auto result = *this;
+   if (m_index > 0) {
+      --m_index;
+   }
+   return result;
+}
+
+template <typename Iterator_traits>
+typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](difference_type index) const {
+   if (index >= m_bytes->size()) {
+      return 0;
+   }
+   return m_bytes->data()[m_bytes->m_start_index + index];
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>&
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator+=(difference_type n) {
+   m_index = std::min(static_cast<int64_t>(m_bytes->size()), m_index - n);
+   return *this;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>&
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-=(difference_type n) {
+   m_index = std::max(0, m_index - n);
+   return *this;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator+(difference_type n) const {
+   auto it    = shared_bytes_iterator<Iterator_traits>{};
+   it.m_bytes = m_bytes;
+   it.m_index = std::min(static_cast<int64_t>(m_bytes->size()), m_index - n);
+   return it;
+}
+
+template <typename Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-(difference_type n) const {
+   auto it    = shared_bytes_iterator<Iterator_traits>{};
+   it.m_bytes = m_bytes;
+   it.m_index = std::max(0, m_index - n);
+   return it;
+}
+
+template <typename Iterator_traits>
+typename shared_bytes::shared_bytes_iterator<Iterator_traits>::difference_type
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-(const shared_bytes_iterator& rhs) const {
+   return m_index - rhs.m_index;
+}
+
+template <typename Iterator_traits>
+typename shared_bytes::shared_bytes_iterator<Iterator_traits>::difference_type
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator+(const shared_bytes_iterator& rhs) const {
+   return m_index + rhs.m_index;
+}
+
+template <typename Iterator_traits>
+typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator*() const {
+   if (m_bytes->m_start_index + m_index > m_bytes->m_end_index) {
+      return 0;
+   }
+   return m_bytes->m_data.get()[m_bytes->m_start_index + m_index];
+}
+
+template <typename Iterator_traits>
+typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
+shared_bytes::shared_bytes_iterator<Iterator_traits>::operator->() const {
+   if (m_bytes->m_start_index + m_index > m_bytes->m_end_index) {
+      return 0;
+   }
+   return m_bytes->m_data.get()[m_bytes->m_start_index + m_index];
+}
+
+template <typename Iterator_traits>
+bool shared_bytes::shared_bytes_iterator<Iterator_traits>::operator==(const shared_bytes_iterator& other) const {
+   return m_bytes == other.m_bytes && m_index == other.m_index;
+}
+
+template <typename Iterator_traits>
+bool shared_bytes::shared_bytes_iterator<Iterator_traits>::operator!=(const shared_bytes_iterator& other) const {
+   return !(*this == other);
+}
 
 } // namespace eosio::session
 
@@ -247,8 +345,8 @@ template <>
 struct less<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
       if (lhs != eosio::session::shared_bytes::invalid && rhs != eosio::session::shared_bytes::invalid) {
-         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.length() } <
-                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.length() };
+         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } <
+                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
       }
       if (lhs == eosio::session::shared_bytes::invalid) {
          return false;
@@ -261,8 +359,8 @@ template <>
 struct greater<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
       if (lhs != eosio::session::shared_bytes::invalid && rhs != eosio::session::shared_bytes::invalid) {
-         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.length() } >
-                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.length() };
+         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } >
+                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
       }
       if (lhs == eosio::session::shared_bytes::invalid) {
          return false;
@@ -274,15 +372,15 @@ struct greater<eosio::session::shared_bytes> final {
 template <>
 struct hash<eosio::session::shared_bytes> final {
    size_t operator()(const eosio::session::shared_bytes& b) const {
-      return std::hash<std::string_view>{}({ reinterpret_cast<const char*>(b.data()), b.length() });
+      return std::hash<std::string_view>{}({ reinterpret_cast<const char*>(b.data()), b.size() });
    }
 };
 
 template <>
 struct equal_to<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.length() } ==
-             std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.length() };
+      return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } ==
+             std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
    }
 };
 

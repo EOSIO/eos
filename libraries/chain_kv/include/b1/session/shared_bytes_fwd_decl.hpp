@@ -5,18 +5,15 @@
 
 namespace eosio::session {
 
-using free_function_type = std::function<void(void* data, size_t length_bytes)>;
-
 class shared_bytes;
-
-template <typename T, typename Allocator>
-shared_bytes make_shared_bytes(const T* data, size_t length, Allocator& a);
-
-template <typename Allocator>
-shared_bytes make_shared_bytes(const void* data, size_t length, Allocator& a);
 
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
+
+inline shared_bytes make_shared_bytes(const int8_t* data, size_t length);
+
+template <typename T>
+shared_bytes make_shared_bytes_view(const T* data, size_t length);
 
 } // namespace eosio::session
 

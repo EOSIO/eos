@@ -1,6 +1,5 @@
-#include <b1/session/boost_memory_allocator.hpp>
-#include <b1/session/key_value.hpp>
 #include <boost/test/unit_test.hpp>
+#include <session/key_value.hpp>
 
 using namespace eosio::session;
 
@@ -12,55 +11,53 @@ BOOST_AUTO_TEST_CASE(make_key_value_test) {
    static constexpr auto  int_key    = uint64_t{ 100000000 };
    static constexpr auto  int_value  = uint64_t{ 123456789 };
 
-   static const auto char_key_bytes   = make_shared_bytes(char_key, strlen(char_key));
-   static const auto char_value_bytes = make_shared_bytes(char_value, strlen(char_value));
-   static const auto int_key_bytes    = make_shared_bytes(&int_key, 1);
-   static const auto int_value_bytes  = make_shared_bytes(&int_value, 1);
+   static const auto char_key_bytes   = make_shared_bytes_view(char_key, strlen(char_key));
+   static const auto char_value_bytes = make_shared_bytes_view(char_value, strlen(char_value));
+   static const auto int_key_bytes    = make_shared_bytes_view(&int_key, 1);
+   static const auto int_value_bytes  = make_shared_bytes_view(&int_value, 1);
 
-   auto allocator = boost_memory_allocator::make();
-
-   auto kv1 = make_kv(make_shared_bytes(char_key, strlen(char_key)), make_shared_bytes(char_value, strlen(char_value)));
+   auto kv1 = make_kv(make_shared_bytes_view(char_key, strlen(char_key)),
+                           make_shared_bytes_view(char_value, strlen(char_value)));
    BOOST_REQUIRE(kv1.key() == char_key_bytes);
    BOOST_REQUIRE(kv1.value() == char_value_bytes);
 
-   auto kv2 = make_kv(make_shared_bytes(&int_key, 1), make_shared_bytes(&int_value, 1));
+   auto kv2 = make_kv(make_shared_bytes_view(&int_key, 1), make_shared_bytes_view(&int_value, 1));
    BOOST_REQUIRE(kv2.key() == int_key_bytes);
    BOOST_REQUIRE(kv2.value() == int_value_bytes);
 
-   auto kv3 = make_kv(make_shared_bytes(char_key, strlen(char_key), allocator),
-                      make_shared_bytes(char_value, strlen(char_value), allocator));
+   auto kv3 = make_kv(make_shared_bytes(char_key, strlen(char_key)), make_shared_bytes(char_value, strlen(char_value)));
    BOOST_REQUIRE(kv3.key() == char_key_bytes);
    BOOST_REQUIRE(kv3.value() == char_value_bytes);
 
-   auto kv4 = make_kv(make_shared_bytes(&int_key, 1, allocator), make_shared_bytes(&int_value, 1, allocator));
+   auto kv4 = make_kv(make_shared_bytes(&int_key, 1), make_shared_bytes(&int_value, 1));
    BOOST_REQUIRE(kv4.key() == int_key_bytes);
    BOOST_REQUIRE(kv4.value() == int_value_bytes);
 
-   auto kv5 = make_kv(char_key, strlen(char_key), char_value, strlen(char_value), allocator);
+   auto kv5 = make_kv(char_key, strlen(char_key), char_value, strlen(char_value));
    BOOST_REQUIRE(kv5.key() == char_key_bytes);
    BOOST_REQUIRE(kv5.value() == char_value_bytes);
 
-   auto kv6 = make_kv(&int_key, 1, &int_value, 1, allocator);
+   auto kv6 = make_kv(&int_key, 1, &int_value, 1);
    BOOST_REQUIRE(kv6.key() == int_key_bytes);
    BOOST_REQUIRE(kv6.value() == int_value_bytes);
 
-   auto kv7 = make_kv(reinterpret_cast<const void*>(char_key), strlen(char_key),
-                      reinterpret_cast<const void*>(char_value), strlen(char_value), allocator);
+   auto kv7 = make_kv(reinterpret_cast<const int8_t*>(char_key), strlen(char_key),
+                      reinterpret_cast<const int8_t*>(char_value), strlen(char_value));
    BOOST_REQUIRE(kv7.key() == char_key_bytes);
    BOOST_REQUIRE(kv7.value() == char_value_bytes);
 
-   auto kv8 = make_kv(reinterpret_cast<const void*>(&int_key), sizeof(int_key),
-                      reinterpret_cast<const void*>(&int_value), sizeof(int_value), allocator);
+   auto kv8 = make_kv(reinterpret_cast<const int8_t*>(&int_key), sizeof(int_key),
+                      reinterpret_cast<const int8_t*>(&int_value), sizeof(int_value));
    BOOST_REQUIRE(kv8.key() == int_key_bytes);
    BOOST_REQUIRE(kv8.value() == int_value_bytes);
 
-   auto kv9 = make_kv(reinterpret_cast<const void*>(char_key), strlen(char_key),
-                      reinterpret_cast<const void*>(char_value), strlen(char_value));
+   auto kv9 = make_kv_view(reinterpret_cast<const int8_t*>(char_key), strlen(char_key),
+                           reinterpret_cast<const int8_t*>(char_value), strlen(char_value));
    BOOST_REQUIRE(kv9.key() == char_key_bytes);
    BOOST_REQUIRE(kv9.value() == char_value_bytes);
 
-   auto kv10 = make_kv(reinterpret_cast<const void*>(&int_key), sizeof(int_key),
-                       reinterpret_cast<const void*>(&int_value), sizeof(int_value));
+   auto kv10 = make_kv_view(reinterpret_cast<const int8_t*>(&int_key), sizeof(int_key),
+                            reinterpret_cast<const int8_t*>(&int_value), sizeof(int_value));
    BOOST_REQUIRE(kv10.key() == int_key_bytes);
    BOOST_REQUIRE(kv10.value() == int_value_bytes);
 
@@ -73,9 +70,6 @@ BOOST_AUTO_TEST_CASE(make_key_value_test) {
    BOOST_REQUIRE(kv2 == kv8);
    BOOST_REQUIRE(kv2 == kv10);
    BOOST_REQUIRE(kv1 != kv2);
-
-   auto invalid = make_kv<void*, void*>(nullptr, 0, nullptr, 0);
-   BOOST_REQUIRE(key_value::invalid == invalid);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

@@ -1,8 +1,7 @@
 #include "data_store_tests.hpp"
-#include <b1/session/boost_memory_allocator.hpp>
-#include <b1/session/cache.hpp>
-#include <b1/session/rocks_data_store.hpp>
-#include <b1/session/session.hpp>
+#include <session/cache.hpp>
+#include <session/rocks_data_store.hpp>
+#include <session/session.hpp>
 
 using namespace eosio::session;
 using namespace eosio::session_tests;
@@ -10,14 +9,12 @@ using namespace eosio::session_tests;
 namespace eosio::session_tests {
 
 void perform_session_level_test(bool always_undo = false) {
-   auto memory_allocator = boost_memory_allocator::make();
-   auto cache_ds         = eosio::session::make_cache(memory_allocator);
-   auto rocksdb          = make_rocks_db("testdb");
-   auto rocks_ds         = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+   auto rocksdb  = make_rocks_db("testdb");
+   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
 
    auto kvs_list = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
 
-   auto root_session = eosio::session::make_session(rocks_ds, cache_ds);
+   auto root_session = eosio::session::make_session(rocks_ds);
    kvs_list.emplace_back(generate_kvs(50));
    write(root_session, kvs_list.back());
    verify_equal(root_session, kvs_list.back(), int_t{});
@@ -86,12 +83,12 @@ BOOST_AUTO_TEST_SUITE(session_tests)
 
 BOOST_AUTO_TEST_CASE(session_create_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
       verify_equal(session1, char_key_values, string_t{});
    }
    {
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, int_key_values, int_t{});
       verify_equal(session2, int_key_values, int_t{});
    }
@@ -99,12 +96,12 @@ BOOST_AUTO_TEST_CASE(session_create_test) {
 
 BOOST_AUTO_TEST_CASE(session_rwd_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
       for (const auto& kv : char_batch_values) { verify_rwd(session1, kv); }
    }
    {
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, int_key_values, int_t{});
       for (const auto& kv : int_batch_values) { verify_rwd(session2, kv); }
    }
@@ -112,12 +109,12 @@ BOOST_AUTO_TEST_CASE(session_rwd_test) {
 
 BOOST_AUTO_TEST_CASE(session_rwd_batch_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
       verify_rwd_batch(session1, char_batch_values);
    }
    {
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, int_key_values, int_t{});
       verify_rwd_batch(session2, int_batch_values);
    }
@@ -125,14 +122,14 @@ BOOST_AUTO_TEST_CASE(session_rwd_batch_test) {
 
 BOOST_AUTO_TEST_CASE(session_rw_ds_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>("testdb2");
+      auto session1 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("testdb2");
       make_data_store(session1, char_key_values, string_t{});
       verify_read_from_datastore(session1, session2);
    }
    {
-      auto session3 = eosio::session_tests::make_session<boost_memory_allocator>();
-      auto session4 = eosio::session_tests::make_session<boost_memory_allocator>("testdb2");
+      auto session3 = eosio::session_tests::make_session();
+      auto session4 = eosio::session_tests::make_session("testdb2");
       make_data_store(session3, int_key_values, int_t{});
       verify_write_to_datastore(session3, session4);
    }
@@ -140,22 +137,22 @@ BOOST_AUTO_TEST_CASE(session_rw_ds_test) {
 
 BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
       verify_iterators(session1, string_t{});
    }
    {
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, char_key_values, string_t{});
       verify_iterators<const decltype(session2)>(session2, string_t{});
    }
    {
-      auto session3 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session3 = eosio::session_tests::make_session();
       make_data_store(session3, int_key_values, int_t{});
       verify_iterators(session3, int_t{});
    }
    {
-      auto session4 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session4 = eosio::session_tests::make_session();
       make_data_store(session4, int_key_values, int_t{});
       verify_iterators<const decltype(session4)>(session4, int_t{});
    }
@@ -163,22 +160,22 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
 
 BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
-      auto session1 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session1 = eosio::session_tests::make_session();
       make_data_store(session1, char_key_values, string_t{});
       verify_session_key_order(session1);
    }
    {
-      auto session2 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session2 = eosio::session_tests::make_session();
       make_data_store(session2, char_key_values, string_t{});
       verify_session_key_order<const decltype(session2)>(session2);
    }
    {
-      auto session3 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session3 = eosio::session_tests::make_session();
       make_data_store(session3, int_key_values, int_t{});
       verify_session_key_order(session3);
    }
    {
-      auto session4 = eosio::session_tests::make_session<boost_memory_allocator>();
+      auto session4 = eosio::session_tests::make_session();
       make_data_store(session4, int_key_values, int_t{});
       verify_session_key_order<const decltype(session4)>(session4);
    }
@@ -189,16 +186,13 @@ BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::
 BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test(true); }
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
-   using rocks_db_type = rocks_data_store<boost_memory_allocator>;
-   using cache_type    = cache<boost_memory_allocator>;
-   using session_type  = session<rocks_db_type, cache_type>;
+   using rocks_db_type = rocks_data_store;
+   using session_type  = session<rocks_db_type>;
 
-   auto memory_allocator = boost_memory_allocator::make();
-   auto cache_ds         = eosio::session::make_cache(memory_allocator);
-   auto rocksdb          = make_rocks_db("testdb");
-   auto rocks_ds         = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+   auto rocksdb  = make_rocks_db("testdb");
+   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
 
-   auto root_session     = eosio::session::make_session(rocks_ds, cache_ds);
+   auto root_session     = eosio::session::make_session(rocks_ds);
    auto root_session_kvs = generate_kvs(50);
    write(root_session, root_session_kvs);
    verify_equal(root_session, root_session_kvs, int_t{});
@@ -273,8 +267,8 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
 
 BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
    auto verify_key_value = [](auto& ds, uint16_t key, uint16_t expected_value) {
-      auto key_      = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
-      auto value     = eosio::session::make_shared_bytes(&expected_value, 1, ds.memory_allocator());
+      auto key_      = eosio::session::make_shared_bytes_view(&key, 1);
+      auto value     = eosio::session::make_shared_bytes_view(&expected_value, 1);
       auto key_value = ds.read(key_);
       BOOST_REQUIRE(key_value.value() == value);
 
@@ -290,12 +284,10 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
       } while (it != begin);
    };
 
-   auto memory_allocator = boost_memory_allocator::make();
-   auto cache_ds         = eosio::session::make_cache(memory_allocator);
-   auto rocksdb          = make_rocks_db("testdb");
-   auto rocks_ds         = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+   auto rocksdb  = make_rocks_db("testdb");
+   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
 
-   auto root_session = eosio::session::make_session(rocks_ds, cache_ds);
+   auto root_session = eosio::session::make_session(rocks_ds);
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
                                                  { 6, 4 },  { 7, 3 }, { 8, 2 }, { 9, 1 }, { 10, 0 } };
@@ -339,7 +331,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
 BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    auto verify_keys_deleted = [](auto& ds, const auto& keys) {
       for (const uint16_t& key : keys) {
-         auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
+         auto key_ = eosio::session::make_shared_bytes_view(&key, 1);
          BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
          BOOST_REQUIRE(ds.find(key_) == std::end(ds));
          BOOST_REQUIRE(ds.contains(key_) == false);
@@ -356,7 +348,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
    auto verify_keys_deleted_datastore = [](auto& ds, const auto& keys) {
       for (const uint16_t& key : keys) {
-         auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
+         auto key_ = eosio::session::make_shared_bytes_view(&key, 1);
          BOOST_REQUIRE(ds.read(key_) == eosio::session::key_value::invalid);
          BOOST_REQUIRE(ds.find(key_) == std::end(ds));
          BOOST_REQUIRE(ds.contains(key_) == false);
@@ -369,8 +361,8 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
    auto verify_keys_exist = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
-         auto key   = eosio::session::make_shared_bytes(&key_value.first, 1, ds.memory_allocator());
-         auto value = eosio::session::make_kv(&key_value.first, 1, &key_value.second, 1, ds.memory_allocator());
+         auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
+         auto value = eosio::session::make_kv_view(&key_value.first, 1, &key_value.second, 1);
          BOOST_REQUIRE(ds.read(key) == value);
          BOOST_REQUIRE(ds.find(key) != std::end(ds));
          BOOST_REQUIRE(ds.contains(key) == true);
@@ -397,8 +389,8 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
    auto verify_keys_exist_datastore = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
-         auto key   = eosio::session::make_shared_bytes(&key_value.first, 1, ds.memory_allocator());
-         auto value = eosio::session::make_kv(&key_value.first, 1, &key_value.second, 1, ds.memory_allocator());
+         auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
+         auto value = eosio::session::make_kv_view(&key_value.first, 1, &key_value.second, 1);
          BOOST_REQUIRE(ds.read(key) == value);
          BOOST_REQUIRE(ds.find(key) != std::end(ds));
          BOOST_REQUIRE(ds.contains(key) == true);
@@ -419,16 +411,14 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    };
 
    auto delete_key = [](auto& ds, uint16_t key) {
-      auto key_ = eosio::session::make_shared_bytes(&key, 1, ds.memory_allocator());
+      auto key_ = eosio::session::make_shared_bytes(&key, 1);
       ds.erase(key_);
    };
 
-   auto memory_allocator = boost_memory_allocator::make();
-   auto cache_ds         = eosio::session::make_cache(memory_allocator);
-   auto rocksdb          = make_rocks_db("testdb");
-   auto rocks_ds         = eosio::session::make_rocks_data_store(std::move(rocksdb), std::move(memory_allocator));
+   auto rocksdb  = make_rocks_db("testdb");
+   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
 
-   auto root_session = eosio::session::make_session(rocks_ds, cache_ds);
+   auto root_session = eosio::session::make_session(rocks_ds);
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
                                                  { 6, 4 },  { 7, 3 }, { 8, 2 }, { 9, 1 }, { 10, 0 } };
@@ -462,8 +452,8 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 }
 
 // BOOST_AUTO_TEST_CASE(session_iteration) {
-//     using rocks_db_type = rocks_data_store<boost_memory_allocator>;
-//     using cache_type = cache<boost_memory_allocator>;
+//     using rocks_db_type = rocks_data_store<>;
+//     using cache_type = cache<>;
 //     using session_type = session<rocks_db_type, cache_type>;
 
 //     auto memory_allocator = boost_memory_allocator::make();
@@ -491,7 +481,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 //     auto set = collapse({root_session_kvs, root_session_kvs_2, block_session_kvs, transaction_session_kvs});
 
 //     // Iterate a few times just for a time measurement.
-//     for (size_t i = 0; i < 50; ++i) {
+//     for (size_t i = 0; i < 500000; ++i) {
 //         auto begin = std::begin(transaction_session);
 //         auto current = std::begin(transaction_session);
 //         do {
