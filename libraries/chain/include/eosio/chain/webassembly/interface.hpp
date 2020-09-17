@@ -750,30 +750,32 @@ namespace webassembly {
           */
          void printhex(legacy_span<const char> data);
 
-         // database api
-         // primary index api
-
          /**
-          * Store a record in a primary 64-bit integer index table
+          * Store a record in a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param scope - The scope where the record will be stored
-          * @param table - The name of the table within the current scope context
-          * @param payer - The account that is paying for this storage
-          * @param id - id of the entry
-          * @param buffer - record to store
           *
-          * @return iterator to the newly created object
-          */
+          * @param scope - the scope where the table resides (implied to be within the code of the current receiver).
+          * @param table - the name of the table within the current scope context.
+          * @param payer - the account that pays for the storage.
+          * @param id - id of the entry.
+          * @param buffer - record to store.
+          *
+          * @return iterator to the newly created table row.
+          * @post a new entry is created in the table.
+         */
          int32_t db_store_i64(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_span<const char> buffer);
 
          /**
-          * Update a record inside a primary 64-bit integer index table.
+          * Update a record in a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - iterator of the record to update
-          * @param payer -  the account that is paying for this storage
-          * @param buffer - new updated record
+          * @param itr - iterator to the table row containing the record to update.
+          * @param payer -  the account that pays for the storage costs.
+          * @param buffer - new updated record.
+          *
+          * @pre `itr` points to an existing table row in the table.
+          * @post the record contained in the table row pointed to by `itr` is replaced with the new updated record.
           */
          void db_update_i64(int32_t itr, uint64_t payer, legacy_span<const char> buffer);
 
@@ -781,216 +783,241 @@ namespace webassembly {
           * Remove a record inside a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - the iterator pointing to the record to remove.
+          * @param itr - the terator to the table row to remove.
+          *
+          *  @pre `itr` points to an existing table row in the tab.
           */
          void db_remove_i64(int32_t itr);
 
          /**
-          * Get a record inside a primary 64-bit integer index table.
+          * Get a record in a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - the iterator to the record
-          * @param buffer - the buffer which will be filled with the retrieved record
+          * @param itr - the iterator to the table row containing the record to retrieve.
+          * @param[out] buffer - the buffer which will be filled with the retrieved record.
           *
-          * @return size of the retrieved record
+          * @return size of the data copied into the buffer if buffer is not empty, or size of the retrieved record if the buffer is empty.
+          * @pre `itr` points to an existing table row in the table.
+          * @post `buffer` will be filled with the retrieved record (truncated to the first `len` bytes if necessary).
           */
          int32_t db_get_i64(int32_t itr, legacy_span<char> buffer);
 
          /**
-          * Get the next record after the given iterator from a primary 64-bit integer index table.
+          * Find the table row following the referenced table row in a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - the iterator to the record
-          * @param primary - it will be contain the primary key of the next record
+          * @param itr - the iterator to the referenced table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
           *
-          * @return iterator to the next record
+          * @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table).
+          *
+          * @post '*primary' will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise primary will be left untouched.
           */
-         int32_t db_next_i64(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_next_i64(int32_t itr, legacy_ptr<uint64_t> primary);
 
          /**
-          * Get the previous record before the given iterator from a primary 64-bit integer index table.
+          * Find the table row preceding the referenced table row in a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - the iterator to the record
-          * @param primary - it will be contain the primary key of the previous record
+          * @param itr - the iterator to the referenced table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
           *
-          * @return iterator to the previous record
+          * @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table).
+          * @post '*primary' will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise primary will be left untouched.
           */
          int32_t db_previous_i64(int32_t itr, legacy_ptr<uint64_t> primary);
 
          /**
-          * Find a record inside a primary 64-bit integer index table.
+          * Find a table row in a primary 64-bit integer index table by primary key.
           *
           * @ingroup database primary-index
-          * @param code - the name of the owner of the table
-          * @param scope - the scope where the table resides
-          * @param table - the table name where the record is stored
-          * @param id - the primary key of the record to look up
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param id - the primary key of the record to look up.
           *
-          * @return iterator to the found record
+          * @return iterator to the table row with a primary key equal to id or the end iterator of the table if the table row could not be found.
           */
          int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
 
          /**
-          * Find the lowerbound record given a key inside a primary 64-bit integer index table.
+          * Find the table row in a primary 64-bit integer index table that matches the lowerbound condition for a given primary key.
           * Lowerbound record is the first nearest record which primary key is <= the given key.
           *
           * @ingroup database primary-index
-          * @param code - the name of the owner of the table
-          * @param scope - the scope where the table resides
-          * @param table - the table name where the record is stored
-          * @param id - the primary key used as a pivot to determine the lowerbound record
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param id - the primary key used as a pivot to determine the lowerbound record.
           *
-          * @return iterator to the lowerbound record
+          * @return iterator to the lowerbound record or the end iterator of the table if the table row could not be found.
           */
          int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
 
          /**
-          * Find the upperbound record given a key inside a primary 64-bit integer index table.
-          * Upperbound record is the first nearest record which primary key is < the given key.
+          * Find the table row in a primary 64-bit integer index table that matches the upperbound condition for a given primary key.
+          * The table row that matches the upperbound condition is the first table row in the table with the lowest primary key that is > the given key.
           *
           * @ingroup database primary-index
-          * @param code - the name of the owner of the table
-          * @param scope - the scope where the table resides
-          * @param table - the table name where the record is stored
-          * @param id - the primary key used as a pivot to determine the lowerbound record
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param id - the primary key used as a pivot to determine the upperbound record.
           *
-          * @return iterator to the upperbound record
+          * @return iterator to the upperbound record or the end iterator of the table if the table row could not be found.
           */
          int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id);
 
          /**
-          * Find the latest record inside a primary 64-bit integer index table.
+          * Get an iterator representing just-past-the-end of the last table row of a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param code - the name of the owner of the table
-          * @param scope - the scope where the table resides
-          * @param table - the table name where the record is stored
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
           *
-          * @return iterator to the last record
+          * @return end iterator of the table.
           */
          int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table);
 
          /**
-          * Store a record's secondary index in a secondary 64-bit integer index table.
+          * Store an association of a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param scope - the scope where the secondary index will be stored.
-          * @param table - the table name where the secondary index will be stored.
+          * @param scope - the scope where the table resides (implied to be within the code of the current receiver).
+          * @param table - the table name.
           * @param payer - the account that is paying for this storage.
-          * @param id - the primary key of the record which secondary index to be stored.
+          * @param id - the primary key to which to associate the secondary key.
           * @param secondary - the pointer to the key of the secondary index to store.
           *
-          * @return iterator to the newly created secondary index
+          * @return iterator to the newly created secondary index.
+          * @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 64-bit integer index table.
           */
          int32_t db_idx64_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_ptr<const uint64_t> secondary);
 
          /**
-          * Update a record's secondary index inside a secondary 64-bit integer index table.
+          * Update an association for a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param iterator - the iterator to the secondary index.
-          * @param payer - the account that is paying for this storage.
-          * @param secondary - the pointer to the new key of the secondary index.
+          * @param iterator - the iterator to the table row containing the secondary key association to update.
+          * @param payer - the account that pays for the storage costs.
+          * @param secondary - pointer to the **new** secondary key that will replace the existing one of the association.
+          *
+          * @pre `iterator` points to an existing table row in the table.
+          * @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`.
           */
          void db_idx64_update(int32_t iterator, uint64_t payer, legacy_ptr<const uint64_t> secondary);
 
          /**
-          * Remove a record's secondary index from a secondary 64-bit integer index table.
+          * Remove a table row from a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param iterator - The iterator to the secondary index to be removed
+          * @param iterator - iterator to the table row to remove.
+          *
+          * @pre `iterator` points to an existing table row in the table.
+          * @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer.
           */
          void db_idx64_remove(int32_t iterator);
 
          /**
-          * Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key.
+          * Find a table row in a secondary 64-bit integer index table by secondary key.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param code - the owner of the secondary index table
-          * @param scope - the scope where the secondary index resides
-          * @param table - the table where the secondary index resides
-          * @param secondary - the pointer to the secondary index key
-          * @param primary - it will be replaced with the primary key of the record which the secondary index contains
           *
-          * @return iterator to the secondary index which contains the given secondary index key
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param secondary - the pointer to the secondary index key.
+          * @param[out] primary - pointer to a 'uint64_t' variable which will have its value set to the primary key of the found table row.
+          *
+          * @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found.
+          * @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
           */
          int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const uint64_t> secondary, legacy_ptr<uint64_t> primary);
 
          /**
-          * Get the secondary index of a record from a secondary 64-bit integer index table given the record's primary key.
+          * Find a table row in a secondary 64-bit integer index table by primary key.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param code - the owner of the secondary index table
-          * @param scope - the scope where the secondary index resides
-          * @param table - the table where the secondary index resides
-          * @param secondary - it will be replaced with the secondary index key
-          * @param primary - the record's primary key
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param[out] secondary - pointer to a 'uint64_t' variable which will have its value set to the secondary key of the found table row.
+          * @param primary - the primary key of the table row to look up.
           *
-          * @return iterator to the secondary index which contains the given record's primary key
+          * @return iterator to the table row with a primary key equal to `primary` or the end iterator of the table if the table row could not be found.
+          * @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row.
           */
          int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, uint64_t primary);
 
          /**
-          * Get the lowerbound secondary index from a secondary 64-bit integer index table given the secondary index key.
+          * Find the table row in a secondary 64-bit integer index table that matches the lowerbound condition for a given secondary key.
           * Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
           *
           * @ingroup database uint64_t-secondary-index
-          * @param code - the owner of the secondary index table
-          * @param scope - the scope where the secondary index resides
-          * @param table - the table where the secondary index resides
-          * @param secondary - the pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-          * @param primary - it will be replaced with the primary key of the record which the lowerbound secondary index contains
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param[out] secondary - pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
-          * @return iterator to the lowerbound secondary index
+          * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
+          *
+          *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row.
+          *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
           */
          int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t, 8> secondary, legacy_ptr<uint64_t, 8> primary);
 
          /**
-          * Find the upperbound record given a key inside a primary 64-bit integer index table.
+          * Find the table row in a secondary 64-bit integer index table that matches the upperbound condition for a given secondary key.
+          * The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
           *
           * @ingroup database uint64_t-secondary-index
-          * @param code - the owner of the secondary index table.
-          * @param scope - the scope where the secondary index resides.
-          * @param table - the table where the secondary index resides.
-          * @param primary - the pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key.
-          * @param secondary - it will be replaced with the primary key of the record which the upperbound secondary index contains.
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param seconday - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
-          * @return iterator to the upperbound secondary index
+          * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
           */
          int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t, 8> secondary, legacy_ptr<uint64_t, 8> primary);
 
          /**
-          * Get the last secondary index from a secondary 64-bit integer index table.
+          * Get an end iterator representing just-past-the-end of the last table row of a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param code - the owner of the secondary index table
-          * @param scope - the scope where the secondary index resides
-          * @param table - the table where the secondary index resides
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
           *
-          * @return iterator to the last secondary index
+          * @return end iterator of the table.
           */
          int32_t db_idx64_end(uint64_t code, uint64_t scope, uint64_t table);
 
          /**
-          * Get the next secondary index inside a secondary 64-bit integer index table.
+          * Find the table row following the referenced table row in a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param iterator - the iterator to the secondary index.
-          * @param primary - it will be replaced with the primary key of the record which is stored in the next secondary index.
+          * @param iterator - the iterator to the referenced table row.
+          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
           *
-          * @return iterator to the next secondary index
+          * @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table).
+          * @pre `iterator` points to an existing table row in the table.
+          * @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched.
           */
          int32_t db_idx64_next(int32_t iterator, legacy_ptr<uint64_t> primary);
 
          /**
-          * Get the previous secondary index inside a secondary 64-bit integer index table.
+          * Find the table row preceding the referenced table row in a secondary 64-bit integer index table.
           *
           * @ingroup database uint64_t-secondary-index
-          * @param iterator - the iterator to the record
-          * @param primary - it will be replaced with the primary key of the record which is stored in the previous secondary index
+          * @param iterator - the iterator to the referenced table row.
+          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row.
           *
-          * @return iterator to the previous secondary index
+          * @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table).
+          * @pre `iterator` points to an existing table row in the table or it is the end iterator of the table.
+          * @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched.
           */
          int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
 
