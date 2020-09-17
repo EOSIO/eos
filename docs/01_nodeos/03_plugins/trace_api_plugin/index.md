@@ -127,11 +127,23 @@ where `<S>` and `<E>` are the starting and ending block numbers for the slice pa
 
 #### trace_&lt;S&gt;-&lt;E&gt;.log
 
-The trace data log is an append only log that stores the actual binary serialized block data. The contents include the transaction and action trace data needed to service the RPC requests augmented by the per-action ABIs. The trace log may include blocks that have been forked out of the blockchain as part of the normal operations of the chain. The next entry in the file will always have a block number one higher than the previous one or the same number or less because of forking.  Every trace entry will have a corresponding entry in the corresponding slice file for trace indexes. Note that forked blocks can be avoided by running nodeos in `read-mode=irreversible`. The log begins with a basic header that includes versioning information about the data stored in the log.
+The trace data log is an append only log that stores the actual binary serialized block data. The contents include the transaction and action trace data needed to service the RPC requests augmented by the per-action ABIs. Two block types are supported:
+  
+  * `block_trace_v0`
+  * `block_trace_v1`
+
+The data log begins with a basic header that includes versioning information about the data stored in the log. `block_trace_v0` includes the block ID, block number, previous block ID, the production timestamp, the producer that signed the block, and the actual trace data. `block_trace_v1` adds both merkle root hashes for the list of transactions and the list of actions included in the block as well as the production schedule count since genesis.
+
+The log may include blocks that have been forked out of the blockchain as part of the normal operations of the chain. The next entry in the file will always have a block number one higher than the previous one or the same number or less because of forking.  Every trace entry will have a corresponding entry in the corresponding slice file for trace indexes. Note that forked blocks can be avoided by running nodeos in `read-mode=irreversible`.
 
 #### trace_index&#95;&lt;S&gt;-&lt;E&gt;.log
 
-The trace index log or metadata log is an append only log that stores a sequence of binary-serialized types. Currently two types are supported: `block_entry_v0` and `lib_entry_v0`. The log begins with a basic header that includes versioning information about the data stored in the log. `block_entry_v0` includes a block ID and block number with an offset to the location of that block within the data log. `lib_entry_v0` includes an entry for the latest known LIB. The reader will use the LIB information for reporting to users an irreversible status.
+The trace index log or metadata log is an append only log that stores a sequence of binary-serialized types. Currently two types are supported:
+
+  * `block_entry_v0`
+  * `lib_entry_v0`
+
+The index log begins with a basic header that includes versioning information about the data stored in the log. `block_entry_v0` includes the block ID and block number with an offset to the location of that block within the data log. This entry is used to locate the offsets of both `block_trace_v0` and `block_trace_v1` blocks. `lib_entry_v0` includes an entry for the latest known LIB. The reader module uses the LIB information for reporting to users an irreversible status.
 
 ### clog format
 
