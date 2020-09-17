@@ -171,6 +171,11 @@ inline int8_t shared_bytes::operator[](size_t index) const {
 }
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
+   if (m_data == other.m_data) {
+      // Same pointer.
+      return true;
+   }
+
    if (m_data && other.m_data) {
       if (size() != other.size()) {
          return false;
@@ -178,7 +183,7 @@ inline bool shared_bytes::operator==(const shared_bytes& other) const {
       return memcmp(m_data.get(), other.m_data.get(), size()) == 0 ? true : false;
    }
 
-   return m_data.get() == other.m_data.get();
+   return false;
 }
 
 inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
@@ -362,8 +367,7 @@ struct hash<eosio::session::shared_bytes> final {
 template <>
 struct equal_to<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } ==
-             std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
+      return lhs == rhs;
    }
 };
 

@@ -51,7 +51,7 @@ undo_stack<Session>::undo_stack(Session head_session) : m_sessions{ 1, std::move
 
 template <typename Session>
 void undo_stack<Session>::push() {
-   m_sessions.emplace_back(make_session(m_sessions.front()));
+   //  m_sessions.emplace_back(make_session(m_sessions.front()));
    ++m_revision;
 }
 
@@ -61,14 +61,14 @@ void undo_stack<Session>::squash() {
       return;
    }
 
-   m_sessions.front().detach();
-   auto from_session = m_sessions.back();
-   m_sessions.pop_back();
+   //  m_sessions.front().detach();
+   //  auto from_session = m_sessions.back();
+   //  m_sessions.pop_back();
 
-   m_sessions.front().attach(m_sessions.back());
-   m_sessions.back().attach(from_session);
-   from_session.commit();
-   m_sessions.back().detach();
+   //  m_sessions.front().attach(m_sessions.back());
+   //  m_sessions.back().attach(from_session);
+   //  from_session.commit();
+   //  m_sessions.back().detach();
    --m_revision;
 }
 
@@ -78,38 +78,38 @@ void undo_stack<Session>::undo() {
       // The session as the front can't be popped.
       return;
    }
-   m_sessions.front().detach();
-   m_sessions.pop_back();
-   --m_revision;
+   //  m_sessions.front().detach();
+   //  m_sessions.pop_back();
+   //  --m_revision;
 
-   if (m_sessions.size() > 1) {
-      m_sessions.front().attach(m_sessions.back());
-   }
+   //  if (m_sessions.size() > 1) {
+   //     m_sessions.front().attach(m_sessions.back());
+   //  }
 }
 
 template <typename Session>
 void undo_stack<Session>::commit(int64_t revision) {
-   revision              = std::min(revision, m_revision);
-   auto initial_revision = m_revision - m_sessions.size() + 1;
-   if (initial_revision > revision) {
-      return;
-   }
+   //  revision              = std::min(revision, m_revision);
+   //  auto initial_revision = m_revision - m_sessions.size() + 1;
+   //  if (initial_revision > revision) {
+   //     return;
+   //  }
 
-   m_sessions.front().detach();
+   //  m_sessions.front().detach();
 
-   auto start_index       = revision - initial_revision;
-   auto session_to_commit = m_sessions[start_index++];
-   auto current_index     = 1;
-   for (size_t i = start_index; i < m_sessions.size(); ++i) { m_sessions[current_index++] = m_sessions[start_index]; }
-   m_sessions.erase(std::begin(m_sessions) + current_index, std::end(m_sessions));
+   //  auto start_index       = revision - initial_revision;
+   //  auto session_to_commit = m_sessions[start_index++];
+   //  auto current_index     = 1;
+   //  for (size_t i = start_index; i < m_sessions.size(); ++i) { m_sessions[current_index++] = m_sessions[start_index];
+   //  } m_sessions.erase(std::begin(m_sessions) + current_index, std::end(m_sessions));
 
-   m_sessions.front().attach(session_to_commit);
-   session_to_commit.commit();
-   m_sessions.front().detach();
+   //  m_sessions.front().attach(session_to_commit);
+   //  session_to_commit.commit();
+   //  m_sessions.front().detach();
 
-   if (m_sessions.size() > 1) {
-      m_sessions.front().attach(m_sessions.back());
-   }
+   //  if (m_sessions.size() > 1) {
+   //     m_sessions.front().attach(m_sessions.back());
+   //  }
 }
 
 template <typename Session>

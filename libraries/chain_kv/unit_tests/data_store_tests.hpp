@@ -11,7 +11,7 @@
 #include <rocksdb/slice_transform.h>
 
 #include <session/cache.hpp>
-#include <session/rocks_data_store.hpp>
+#include <session/rocks_session.hpp>
 #include <session/session.hpp>
 
 namespace eosio::session_tests {
@@ -337,12 +337,19 @@ void verify_iterators(T& ds, int_t) {
 
 template <typename T>
 void verify_key_order(T& ds) {
+   auto begin_key = eosio::session::shared_bytes::invalid;
    auto current_key = eosio::session::shared_bytes::invalid;
    auto compare     = std::less<eosio::session::shared_bytes>{};
    for (const auto& kv : ds) {
       if (current_key == eosio::session::shared_bytes::invalid) {
          current_key = kv.first;
+         begin_key = kv.first;
          continue;
+      }
+
+      if (current_key == begin_key) {
+        // We've wrapped around
+        break;
       }
 
       BOOST_REQUIRE(compare(current_key, kv.first) == true);
@@ -541,10 +548,9 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
    compare_ds(other_ds, ds);
 }
 
-inline eosio::session::session<eosio::session::rocks_data_store> make_session(const std::string& name = "testdb") {
+inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std::string& name = "testdb") {
    auto rocksdb          = make_rocks_db(name);
-   auto rocks_data_store = eosio::session::make_rocks_data_store(rocksdb);
-   return eosio::session::make_session(std::move(rocks_data_store));
+   return eosio::session::make_session(std::move(rocksdb));
 }
 
 template <typename Data_store, typename Container>

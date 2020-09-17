@@ -2,16 +2,13 @@
 
 namespace eosio::session {
 
-template <typename Data_store>
+template <typename Parent>
 class session;
 
-template <typename Data_store>
-session<Data_store> make_session();
+template <typename Parent>
+session<Parent> make_session();
 
-template <typename Data_store>
-session<Data_store> make_session(Data_store store);
-
-template <typename Data_store>
-session<Data_store> make_session(session<Data_store>& s);
+template <typename Parent>
+session<Parent> make_session(Parent& parent);
 
 } // namespace eosio::session

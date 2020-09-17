@@ -1,6 +1,6 @@
 #include "data_store_tests.hpp"
 #include <session/cache.hpp>
-#include <session/rocks_data_store.hpp>
+#include <session/rocks_session.hpp>
 #include <session/session.hpp>
 
 using namespace eosio::session;
@@ -9,13 +9,12 @@ using namespace eosio::session_tests;
 namespace eosio::session_tests {
 
 void perform_session_level_test(bool always_undo = false) {
-   auto rocksdb  = make_rocks_db("testdb");
-   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
-
    auto kvs_list = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
+   auto ordered_list = std::vector<std::map<uint16_t, uint16_t>>{};
 
-   auto root_session = eosio::session::make_session(rocks_ds);
+   auto root_session = eosio::session_tests::make_session("testdb");
    kvs_list.emplace_back(generate_kvs(50));
+   ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
    write(root_session, kvs_list.back());
    verify_equal(root_session, kvs_list.back(), int_t{});
    verify_session_key_order(root_session);
@@ -23,6 +22,7 @@ void perform_session_level_test(bool always_undo = false) {
    for (size_t i = 0; i < 3; ++i) {
       auto block_session = eosio::session::make_session(root_session);
       kvs_list.emplace_back(generate_kvs(50));
+      ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
       write(block_session, kvs_list.back());
       verify_equal(block_session, collapse(kvs_list), int_t{});
       verify_session_key_order(block_session);
@@ -30,6 +30,7 @@ void perform_session_level_test(bool always_undo = false) {
       for (size_t j = 0; j < 3; ++j) {
          auto transaction = eosio::session::make_session(block_session);
          kvs_list.emplace_back(generate_kvs(50));
+         ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
          write(transaction, kvs_list.back());
          verify_equal(transaction, collapse(kvs_list), int_t{});
          verify_session_key_order(transaction);
@@ -39,6 +40,7 @@ void perform_session_level_test(bool always_undo = false) {
             kvs_list.pop_back();
          } else {
             transaction.commit();
+            transaction.detach();
          }
 
          // Verify contents of block session
@@ -61,6 +63,7 @@ void perform_session_level_test(bool always_undo = false) {
          }
       } else {
          block_session.commit();
+         block_session.detach();
       }
 
       // Verify contents of root session
@@ -70,11 +73,6 @@ void perform_session_level_test(bool always_undo = false) {
    // Verify contents of root session
    verify_equal(root_session, collapse(kvs_list), int_t{});
    verify_session_key_order(root_session);
-   root_session.commit();
-
-   // Verify contents of rocks ds
-   verify_equal(rocks_ds, collapse(kvs_list), int_t{});
-   verify_key_order(rocks_ds);
 }
 
 } // namespace eosio::session_tests
@@ -186,19 +184,14 @@ BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::
 BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test(true); }
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
-   using rocks_db_type = rocks_data_store;
-   using session_type  = session<rocks_db_type>;
-
-   auto rocksdb  = make_rocks_db("testdb");
-   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
-
-   auto root_session     = eosio::session::make_session(rocks_ds);
+   auto root_session     = eosio::session_tests::make_session("testdb");
    auto root_session_kvs = generate_kvs(50);
    write(root_session, root_session_kvs);
    verify_equal(root_session, root_session_kvs, int_t{});
    verify_session_key_order(root_session);
 
-   auto block_sessions    = std::vector<session_type>{};
+   using block_session_type = eosio::session::session<decltype(root_session)>;
+   auto block_sessions    = std::vector<block_session_type>{};
    auto block_session_kvs = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
    for (size_t i = 0; i < 3; ++i) {
       block_sessions.emplace_back(eosio::session::make_session(root_session));
@@ -206,17 +199,18 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
       write(block_sessions.back(), block_session_kvs.back());
       verify_equal(block_sessions.back(), collapse({ root_session_kvs, block_session_kvs.back() }), int_t{});
       verify_session_key_order(block_sessions.back());
-      root_session.detach();
+      block_sessions.back().detach();
    }
 
    // Root session should not have changed.
    verify_equal(root_session, root_session_kvs, int_t{});
 
-   auto transaction_sessions    = std::vector<session_type>{};
+   using transaction_session_type = eosio::session::session<block_session_type>;
+   auto transaction_sessions    = std::vector<transaction_session_type>{};
    auto transaction_session_kvs = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
    for (size_t i = 0; i < 3; ++i) {
       auto& block_session = block_sessions[i];
-      root_session.attach(block_session);
+      block_session.attach(root_session);
       auto& kvs = block_session_kvs[i];
 
       for (size_t j = 0; j < 3; ++j) {
@@ -226,12 +220,12 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
          verify_equal(transaction_sessions.back(), collapse({ root_session_kvs, kvs, transaction_session_kvs.back() }),
                       int_t{});
          verify_session_key_order(transaction_sessions.back());
-         block_session.detach();
+         transaction_sessions.back().detach();
       }
 
       // Block session should not have changed.
       verify_equal(block_session, collapse({ root_session_kvs, kvs }), int_t{});
-      root_session.detach();
+      block_session.detach();
    }
 
    // Root session should not have changed.
@@ -242,12 +236,12 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
    session_kvs.emplace_back(root_session_kvs);
    for (size_t i = 0; i < block_sessions.size(); ++i) {
       auto& block_session = block_sessions[i];
-      root_session.attach(block_session);
+      block_session.attach(root_session);
       session_kvs.emplace_back(block_session_kvs[i]);
 
       for (size_t j = 3 * i; j < 3 * i + 3; ++j) {
          auto& transaction_session = transaction_sessions[j];
-         block_session.attach(transaction_session);
+         transaction_session.attach(block_session);
          transaction_session.commit();
          session_kvs.emplace_back(transaction_session_kvs[j]);
       }
@@ -258,11 +252,6 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
    // Verify contents of root session
    verify_equal(root_session, collapse(session_kvs), int_t{});
    verify_session_key_order(root_session);
-   root_session.commit();
-
-   // Verify contents of rocks ds
-   verify_equal(rocks_ds, collapse(session_kvs), int_t{});
-   verify_key_order(rocks_ds);
 }
 
 BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
@@ -284,10 +273,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
       } while (it != begin);
    };
 
-   auto rocksdb  = make_rocks_db("testdb");
-   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
-
-   auto root_session = eosio::session::make_session(rocks_ds);
+   auto root_session = eosio::session_tests::make_session("testdb");
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
                                                  { 6, 4 },  { 7, 3 }, { 8, 2 }, { 9, 1 }, { 10, 0 } };
@@ -346,19 +332,6 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       } while (it != begin);
    };
 
-   auto verify_keys_deleted_datastore = [](auto& ds, const auto& keys) {
-      for (const uint16_t& key : keys) {
-         auto key_ = eosio::session::make_shared_bytes_view(&key, 1);
-         BOOST_REQUIRE(ds.read(key_) == eosio::session::shared_bytes::invalid);
-         BOOST_REQUIRE(ds.find(key_) == std::end(ds));
-         BOOST_REQUIRE(ds.contains(key_) == false);
-      }
-
-      for (const auto key_value : ds) {
-         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
-      }
-   };
-
    auto verify_keys_exist = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
          auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
@@ -387,38 +360,12 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       BOOST_REQUIRE(found == key_values.size());
    };
 
-   auto verify_keys_exist_datastore = [](auto& ds, const auto& key_values) {
-      for (const auto& key_value : key_values) {
-         auto key   = eosio::session::make_shared_bytes_view(&key_value.first, 1);
-         auto value = eosio::session::make_shared_bytes_view(&key_value.second, 1);
-         BOOST_REQUIRE(ds.read(key) == value);
-         BOOST_REQUIRE(ds.find(key) != std::end(ds));
-         BOOST_REQUIRE(ds.contains(key) == true);
-      }
-
-      auto found = size_t{ 0 };
-      for (const auto key_value : ds) {
-         auto key   = *reinterpret_cast<const uint16_t*>(key_value.first.data());
-         auto value = *reinterpret_cast<const uint16_t*>(key_value.second.data());
-
-         auto kv_it = key_values.find(key);
-         if (kv_it != std::end(key_values)) {
-            BOOST_REQUIRE(value == kv_it->second);
-            ++found;
-         }
-      }
-      BOOST_REQUIRE(found == key_values.size());
-   };
-
    auto delete_key = [](auto& ds, uint16_t key) {
       auto key_ = eosio::session::make_shared_bytes(&key, 1);
       ds.erase(key_);
    };
 
-   auto rocksdb  = make_rocks_db("testdb");
-   auto rocks_ds = eosio::session::make_rocks_data_store(std::move(rocksdb));
-
-   auto root_session = eosio::session::make_session(rocks_ds);
+   auto root_session = eosio::session_tests::make_session("testdb");
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
                                                  { 6, 4 },  { 7, 3 }, { 8, 2 }, { 9, 1 }, { 10, 0 } };
@@ -447,8 +394,6 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    verify_keys_deleted(root_session, std::unordered_set<uint16_t>{ 6 });
    verify_keys_exist(root_session, std::unordered_map<uint16_t, uint16_t>{ { 2, 2003 }, { 4, 2004 } });
    root_session.commit();
-   verify_keys_deleted_datastore(rocks_ds, std::unordered_set<uint16_t>{ 6 });
-   verify_keys_exist_datastore(rocks_ds, std::unordered_map<uint16_t, uint16_t>{ { 2, 2003 }, { 4, 2004 } });
 }
 
 // BOOST_AUTO_TEST_CASE(session_iteration) {
