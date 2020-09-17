@@ -391,16 +391,16 @@ class apply_context {
 
       void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
-      int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
-      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
-      void db_remove_i64( int iterator );
-      int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
-      int  db_next_i64( int iterator, uint64_t& primary );
-      int  db_previous_i64( int iterator, uint64_t& primary );
-      int  db_find_i64( name code, name scope, name table, uint64_t id );
-      int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_end_i64( name code, name scope, name table );
+      int  db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      void db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size );
+      void db_remove_i64_chainbase( int iterator );
+      int  db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size );
+      int  db_next_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_previous_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_find_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_end_i64_chainbase( name code, name scope, name table );
 
 # warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
       backing_store::db_context& db_get_context();
@@ -410,8 +410,6 @@ class apply_context {
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void                   remove_table( const table_id_object& tid );
-
-      int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
    /// KV Database methods:
    public:

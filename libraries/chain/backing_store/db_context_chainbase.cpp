@@ -9,43 +9,43 @@ namespace eosio { namespace chain { namespace backing_store {
          : db_context( context, receiver ) {}
 
       int32_t db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* buffer , size_t buffer_size) override {
-         return context.db_store_i64(name(scope), name(table), payer, id, buffer, buffer_size);
+         return context.db_store_i64_chainbase(name(scope), name(table), payer, id, buffer, buffer_size);
       }
 
       void db_update_i64(int32_t itr, account_name payer, const char* buffer , size_t buffer_size) override {
-         context.db_update_i64(itr, payer, buffer, buffer_size);
+         context.db_update_i64_chainbase(itr, payer, buffer, buffer_size);
       }
 
       void db_remove_i64(int32_t itr) override {
-         context.db_remove_i64(itr);
+         context.db_remove_i64_chainbase(itr);
       }
 
       int32_t db_get_i64(int32_t itr, char* buffer , size_t buffer_size) override {
-         return context.db_get_i64(itr, buffer, buffer_size);
+         return context.db_get_i64_chainbase(itr, buffer, buffer_size);
       }
 
       int32_t db_next_i64(int32_t itr, uint64_t& primary) override {
-         return context.db_next_i64(itr, primary);
+         return context.db_next_i64_chainbase(itr, primary);
       }
 
       int32_t db_previous_i64(int32_t itr, uint64_t& primary) override {
-         return context.db_previous_i64(itr, primary);
+         return context.db_previous_i64_chainbase(itr, primary);
       }
 
       int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) override {
-         return context.db_find_i64(name(code), name(scope), name(table), id);
+         return context.db_find_i64_chainbase(name(code), name(scope), name(table), id);
       }
 
       int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) override {
-         return context.db_lowerbound_i64(name(code), name(scope), name(table), id);
+         return context.db_lowerbound_i64_chainbase(name(code), name(scope), name(table), id);
       }
 
       int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) override {
-         return context.db_upperbound_i64(name(code), name(scope), name(table), id);
+         return context.db_upperbound_i64_chainbase(name(code), name(scope), name(table), id);
       }
 
       int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table) override {
-         return context.db_end_i64(name(code), name(scope), name(table));
+         return context.db_end_i64_chainbase(name(code), name(scope), name(table));
       }
 
       /**
