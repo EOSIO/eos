@@ -952,7 +952,7 @@ namespace webassembly {
 
          /**
           * Find the table row in a secondary 64-bit integer index table that matches the lowerbound condition for a given secondary key.
-          * Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
+          * Lowerbound secondary index is the first secondary index which key is <= the given secondary index key.
           *
           * @ingroup database uint64_t-secondary-index
           * @param code - the name of the owner of the table.
@@ -970,13 +970,13 @@ namespace webassembly {
 
          /**
           * Find the table row in a secondary 64-bit integer index table that matches the upperbound condition for a given secondary key.
-          * The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
+          * The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key.
           *
           * @ingroup database uint64_t-secondary-index
           * @param code - the name of the owner of the table.
           * @param scope - the scope where the table resides.
           * @param table - the table name.
-          * @param seconday - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param secondary - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
           * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
@@ -1000,7 +1000,7 @@ namespace webassembly {
           *
           * @ingroup database uint64_t-secondary-index
           * @param iterator - the iterator to the referenced table row.
-          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
           *
           * @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table).
           * @pre `iterator` points to an existing table row in the table.
@@ -1013,7 +1013,7 @@ namespace webassembly {
           *
           * @ingroup database uint64_t-secondary-index
           * @param iterator - the iterator to the referenced table row.
-          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row.
           *
           * @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table).
           * @pre `iterator` points to an existing table row in the table or it is the end iterator of the table.
