@@ -174,6 +174,7 @@ namespace eosio { namespace chain {
             EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
    }
+
    std::unique_ptr<db_context> combined_database::create_db_context(apply_context& context, name receiver) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
@@ -485,5 +486,6 @@ namespace eosio { namespace chain {
 
    std::vector<char> make_rocksdb_undo_prefix() { return rocksdb_undo_prefix; }
    std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
+   std::vector<char> make_rocksdb_contract_db_prefix() { return rocksdb_contract_db_prefix; }
 
 }} // namespace eosio::chain

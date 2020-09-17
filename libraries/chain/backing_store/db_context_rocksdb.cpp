@@ -178,7 +178,7 @@ namespace eosio { namespace chain { namespace backing_store {
    }
 
    std::vector<char> db_context_rocksdb::make_prefix() {
-      return rocksdb_contract_db_prefix;
+      return make_rocksdb_contract_db_prefix();
    }
 
    int32_t db_context_rocksdb::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {

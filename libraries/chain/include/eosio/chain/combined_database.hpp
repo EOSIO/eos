@@ -131,5 +131,6 @@ namespace eosio { namespace chain {
 
    std::vector<char> make_rocksdb_undo_prefix();
    std::vector<char> make_rocksdb_contract_kv_prefix();
+   std::vector<char> make_rocksdb_contract_db_prefix();
 
 }} // namespace eosio::chain
