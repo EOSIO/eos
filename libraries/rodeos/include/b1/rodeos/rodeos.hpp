@@ -65,7 +65,8 @@ struct rodeos_db_snapshot {
  private:
    void write_block_info(uint32_t block_num, const eosio::checksum256& id,
                          const eosio::ship_protocol::signed_block_header& block);
-   void write_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> deltas, std::function<bool()> shutdown);
+   void write_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> deltas,
+                     std::function<bool()> shutdown);
    void write_fill_status();
 };
 
@@ -74,7 +75,13 @@ struct rodeos_filter {
    std::unique_ptr<filter::backend_t>    backend      = {};
    std::unique_ptr<filter::filter_state> filter_state = {};
 
-   rodeos_filter(eosio::name name, const std::string& wasm_filename);
+   rodeos_filter(eosio::name name, const std::string& wasm_filename
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                 ,
+                 const boost::filesystem::path&       eosvmoc_path   = "",
+                 const eosio::chain::eosvmoc::config& eosvmoc_config = {}, bool eosvmoc_enable = false
+#endif
+   );
 
    void process(rodeos_db_snapshot& snapshot, const eosio::ship_protocol::get_blocks_result_base& result,
                 eosio::input_stream bin, const std::function<void(const char* data, uint64_t size)>& push_data);

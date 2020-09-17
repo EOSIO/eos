@@ -2246,6 +2246,16 @@ static const char memcpy_overlap_wast[] = R"======(
 )
 )======";
 
+static const char memcpy_past_end_wast[] = R"======(
+(module
+ (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (drop (call $memcpy (i32.const 65535) (i32.const 0) (i32.const 2)))
+ )
+)
+)======";
+
 static const char memmove_pass_wast[] = R"======(
 (module
  (import "env" "memmove" (func $memmove (param i32 i32 i32) (result i32)))
@@ -2327,9 +2337,10 @@ static const char memset_pass_wast[] = R"======(
 
 BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) {
    produce_block();
-   create_accounts( { N(memcpy), N(memcpy2), N(memmove), N(memcmp), N(memset) } );
+   create_accounts( { N(memcpy), N(memcpy2), N(memcpy3), N(memmove), N(memcmp), N(memset) } );
    set_code( N(memcpy), memcpy_pass_wast );
    set_code( N(memcpy2), memcpy_overlap_wast );
+   set_code( N(memcpy3), memcpy_past_end_wast );
    set_code( N(memmove), memmove_pass_wast );
    set_code( N(memcmp), memcmp_pass_wast );
    set_code( N(memset), memset_pass_wast );
@@ -2346,6 +2357,7 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) {
    BOOST_CHECK_THROW(pushit(N(memcpy2), name(12)), overlapping_memory_error);
    BOOST_CHECK_THROW(pushit(N(memcpy2), name(16)), overlapping_memory_error);
    BOOST_CHECK_THROW(pushit(N(memcpy2), name(20)), overlapping_memory_error);
+   BOOST_CHECK_THROW(pushit(N(memcpy3), name()), wasm_execution_error);
    pushit(N(memcpy2), name(24));
 
    pushit(N(memmove), name());
