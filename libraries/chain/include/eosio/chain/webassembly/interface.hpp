@@ -23,7 +23,7 @@ namespace webassembly {
           * @param index - the index of the context_free_data entry to retrieve.
           * @param[out] buffer - output buffer of the context_free_data entry.
           *
-          * @retval -1 if the index is not valid
+          * @retval -1 if the index is not valid.
           * @retval size of the cfd if the buffer is empty, otherwise return the amount of data copied onto the buffer.
          */
          int32_t get_context_free_data(uint32_t index, legacy_span<char> buffer) const;
@@ -64,7 +64,7 @@ namespace webassembly {
           * @ingroup privileged
           *
           * @param account - name of the account whose resource limit to be set.
-          * @param ram_bytes -ram limit in absolute bytes.
+          * @param ram_bytes - ram limit in absolute bytes.
           * @param net_weight - fractionally proportionate net limit of available resources based on (weight / total_weight_of_all_accounts).
           * @param cpu_weight - fractionally proportionate cpu limit of available resources based on (weight / total_weight_of_all_accounts).
          */
@@ -76,7 +76,7 @@ namespace webassembly {
           * @ingroup privileged
           *
           * @param account - name of the account whose resource limit to get.
-          * @param[out] ram_bytes -  output to hold retrieved ram limit in absolute bytes.
+          * @param[out] ram_bytes - output to hold retrieved ram limit in absolute bytes.
           * @param[out] net_weight - output to hold net weight.
           * @param[out] cpu_weight - output to hold cpu weight.
          */
@@ -219,22 +219,38 @@ namespace webassembly {
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
 
          /**
-          * Update a single resource limit associated with an account.
+          * Retrieve the blockchain config parameters.
+          * The input buffer is a packed data stream which represents an encoded sequence of parameter_id pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | ...
+          * The output buffer is a packed data stream which represents an encoded sequence of parameter_id:paramter_value pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | <various>:parameter_value | ...
+          * The encoding of parameter_values should be specific to the parameter being set
+          * The output buffer format should be valid input for set_parameters_packed.
+          * For each known parameter_id in the input sequence there should be an associated entry in the output sequence with the current encoded parameter_value.
           *
+          * @brief Retrieve the blockchain config parameters.
           * @ingroup privileged
           *
-          * @param packed_parameters - a span containing the parameters to the function, for a complete reference check https://github.com/EOSIO/spec-repo/blob/master/esr_configurable_wasm_limits.md
-          * @param max_version - the resource to update, which should be either ram, disk, cpu, or net.
+          * @param packed_parameter_ids - the input buffer with the format as described above.
+          * @param[out] packed_parameters - the output buffer with the format as described above.
          */
          uint32_t get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const;
 
          /**
-          * Update a single resource limit associated with an account.
+          * Set the blockchain parameters.
+          * It allows a system contract the ability to set parameters in a flexible manner.
+          * The input buffer is a packed data stream which represents an encoded sequence of parameter_id:paramter_value pairs with the following format:
+          * |varuint32:sequence_length | varuint32:parameter_id | <various>:parameter_value | ...
+          * The encoding of parameter_values should be specific to the parameter being set.
+          * Having duplicate parameter_ids encoded in the sequence should result in aborting the transaction context.
+          * The presence of a parameter_id which is unknown OR which is known but tied to an unactivated consensus protocol
+          * should result in aborting the transaction context.
+          * There are no requirement for the ordering of items in the sequence.
           *
+          * @brief Set the blockchain parameters in a flexible manner.
           * @ingroup privileged
           *
-          * @param packed_parameters - a span containing the parameters to the function, for a complete reference check https://github.com/EOSIO/spec-repo/blob/master/esr_configurable_wasm_limits.md
-          * @param max_version - the resource to update, which should be either ram, disk, cpu, or net.
+          * @param packed_parameters - buffer to hold the packed data with the format described above.
          */
          void set_parameters_packed( span<const char> packed_parameters );
 
@@ -431,7 +447,7 @@ namespace webassembly {
           *
           * @ingroup crypto
           * @param data - a span containing the data.
-          * @param hash_val - the resulting digest.
+          * @param[out] hash_val - the resulting digest.
          */
          void sha1(legacy_span<const char> data, legacy_ptr<fc::sha1> hash_val) const;
 
@@ -440,16 +456,16 @@ namespace webassembly {
           *
           * @ingroup crypto
           * @param data - a span containing the data.
-          * @param hash_val - the hash
+          * @param[out] hash_val - the hash
          */
          void sha512(legacy_span<const char> data, legacy_ptr<fc::sha512> hash_val) const;
 
          /**
-          * Tests if the ripemd160 hash generated from data matches the provided digest.
+          * Hashes data using RIPEMD160.
           *
           * @ingroup crypto
-          * @param data - a span containing the data
-          * @param hash_val - the resulting digest.
+          * @param data - a span containing the data.
+          * @param[out] hash_val - computed digest.
          */
          void ripemd160(legacy_span<const char> data, legacy_ptr<fc::ripemd160> hash_val) const;
 
@@ -503,29 +519,29 @@ namespace webassembly {
          int64_t get_account_creation_time(account_name account) const;
 
          /**
-          * Verifies that Name exists in the set of provided auths on a action. Fails if not found.
+          * Verifies that an account exists in the set of provided auths on an action. Fails if not found.
           *
           * @ingroup authorization
-          * @param account - name of the account to be verified
+          * @param account - the name of the account to be verified.
          */
          void require_auth(account_name account) const;
 
          /**
-          * Verifies that the account exists in the set of provided auths on a action
+          * Verifies that an account with a specific permission exists in the set of provided auths on an action,
           *
           * @ingroup authorization
-          * @param account -
-          * @param permission -
+          * @param account - the name of the account to be verified.
+          * @param permission - the name of the permission to be verified.
          */
          void require_auth2(account_name account, permission_name permission) const;
 
          /**
-          * Verifies that an account has auth.
+          * Test whether an account exists in the set of provided auths on an action.
           *
           * @ingroup authorization
-          * @param account - name of the account to be verified.
+          * @param account - name of the account to be tested.
           *
-          * @retval true if the account has auth.
+          * @retval true if the action has an auth with the account name.
           * @retval false otherwise.
          */
          bool has_auth(account_name account) const;
@@ -976,8 +992,8 @@ namespace webassembly {
           * @param code - the name of the owner of the table.
           * @param scope - the scope where the table resides.
           * @param table - the table name.
-          * @param secondary - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
-          * @param primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
+          * @param[out] secondary - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
           */
@@ -1069,7 +1085,7 @@ namespace webassembly {
           * @param scope - the scope where the table resides.
           * @param table - the table name.
           * @param secondary - the pointer to the secondary index key.
-          * @param[out] primary - pointer to a 'uint128_t' variable which will have its value set to the primary key of the found table row.
+          * @param[out] primary - pointer to a 'uint64_t' variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found.
           * @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
@@ -1100,7 +1116,7 @@ namespace webassembly {
           * @param scope - the scope where the table resides.
           * @param table - the table name.
           * @param[out] secondary - pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row.
-          * @param[out] primary - pointer to a `uint128_t` variable which will have its value set to the primary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
           *
@@ -1117,8 +1133,8 @@ namespace webassembly {
           * @param code - the name of the owner of the table.
           * @param scope - the scope where the table resides.
           * @param table - the table name.
-          * @param secondary - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
-          * @param primary - pointer to a `uint128_t` variable which will have its value set to the primary key of the found table row.
+          * @param secondary[out] - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param primary[out] - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
           */
@@ -1141,7 +1157,7 @@ namespace webassembly {
           *
           * @ingroup database uint128_t-secondary-index
           * @param iterator - the iterator to the referenced table row.
-          * @param[out] primary - pointer to a `uint128_t` variable which will have its value set to the primary key of the next table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
           *
           * @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table).
           * @pre `iterator` points to an existing table row in the table.
@@ -1154,7 +1170,7 @@ namespace webassembly {
           *
           * @ingroup database uint128_t-secondary-index
           * @param iterator - the iterator to the referenced table row.
-          * @param[out] primary - pointer to a `uint128_t` variable which will have its value set to the primary key of the previous table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row.
           *
           * @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table).
           * @pre `iterator` points to an existing table row in the table or it is the end iterator of the table.
@@ -1162,17 +1178,149 @@ namespace webassembly {
           */
          int32_t db_idx128_previous(int32_t iterator, legacy_ptr<uint64_t> primary);
 
-         // 256-bit secondary index api
-         int32_t db_idx256_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_span<const uint128_t>);
-         void db_idx256_update(int32_t, uint64_t, legacy_span<const uint128_t>);
-         void db_idx256_remove(int32_t);
-         int32_t db_idx256_find_secondary(uint64_t, uint64_t, uint64_t, legacy_span<const uint128_t>, legacy_ptr<uint64_t>);
-         int32_t db_idx256_find_primary(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t>, uint64_t);
-         int32_t db_idx256_lowerbound(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
-         int32_t db_idx256_upperbound(uint64_t, uint64_t, uint64_t, legacy_span<uint128_t, 16>, legacy_ptr<uint64_t, 8>);
-         int32_t db_idx256_end(uint64_t, uint64_t, uint64_t);
-         int32_t db_idx256_next(int32_t, legacy_ptr<uint64_t>);
-         int32_t db_idx256_previous(int32_t, legacy_ptr<uint64_t>);
+         /**
+          * Store an association of a 256-bit integer secondary key to a primary key in a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param scope - the scope where the table resides (implied to be within the code of the current receiver).
+          * @param table - the table name.
+          * @param payer - the account that is paying for this storage.
+          * @param id - the primary key to which to associate the secondary key.
+          * @param data - pointer to the secondary key data stored as an array of 2 `uint128_t` integers.
+          *
+          * @return iterator to the newly created secondary index.
+          * @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 256-bit integer index table.
+          */
+         int32_t db_idx256_store(uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, legacy_span<const uint128_t> data);
+
+         /**
+          * Update an association for a 256-bit integer secondary key to a primary key in a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param iterator - the iterator to the table row containing the secondary key association to update.
+          * @param payer - the account that pays for the storage costs.
+          * @param data - pointer to the **new** secondary key data (which is stored as an array of 2 `uint128_t` integers) that will replace the existing one of the association.
+          *
+          * @pre `iterator` points to an existing table row in the table.
+          * @post the secondary key of the table row pointed to by `iterator` is replaced by the specified secondary key.
+          */
+         void db_idx256_update(int32_t iterator, uint64_t payer, legacy_span<const uint128_t> data);
+
+         /**
+          * Remove a table row from a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param iterator - iterator to the table row to remove.
+          *
+          * @pre `iterator` points to an existing table row in the table.
+          * @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer.
+          */
+         void db_idx256_remove(int32_t iterator);
+
+         /**
+          * Find a table row in a secondary 256-bit integer index table by secondary key.
+          *
+          * @ingroup database 256-bit-secondary-index
+          *
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param data - pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) used to lookup the table row.
+          * @param[out] primary - pointer to a 'uint64_t' variable which will have its value set to the primary key of the found table row.
+          *
+          * @return iterator to the first table row with a secondary key equal to the specified secondary key or the end iterator of the table if the table row could not be found.
+          * @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
+          */
+         int32_t db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_span<const uint128_t> data, legacy_ptr<uint64_t> primary);
+
+         /**
+          * Find a table row in a secondary 256-bit integer index table by primary key.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param[out] data - pointer to the array of 2 `uint128_t` integers which will act as the buffer to hold the retrieved secondary key of the found table row.
+          * @param primary - the primary key of the table row to look up.
+          *
+          * @return iterator to the table row with a primary key equal to `data` or the end iterator of the table if the table row could not be found.
+          * @post If and only if the table row is found, `data` will be replaced with the secondary key of the found table row.
+          */
+         int32_t db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, legacy_span<uint128_t> data, uint64_t primary);
+
+         /**
+          * Find the table row in a secondary 256-bit integer index table that matches the lowerbound condition for a given secondary key.
+          * Lowerbound secondary index is the first secondary index which key is <= the given secondary index key.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param[out] data - pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) first used to determine the lowerbound and which is then replaced with the secondary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
+          *
+          * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
+          *
+          *  @post If and only if the table row is found, `data` will be replaced with the secondary key of the found table row.
+          *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
+          */
+         int32_t db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<uint128_t, 16> data, legacy_ptr<uint64_t, 8> primary);
+
+         /**
+          * Find the table row in a secondary 256-bit integer index table that matches the upperbound condition for a given secondary key.
+          * The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          * @param[out] data - pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
+          *
+          * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
+          *
+          * @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row.
+          * @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row.
+          */
+         int32_t db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, legacy_span<uint128_t, 16> data, legacy_ptr<uint64_t, 8> primary);
+
+         /**
+          * Get an end iterator representing just-past-the-end of the last table row of a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param code - the name of the owner of the table.
+          * @param scope - the scope where the table resides.
+          * @param table - the table name.
+          *
+          * @return end iterator of the table.
+          */
+         int32_t db_idx256_end(uint64_t code, uint64_t scope, uint64_t table);
+
+         /**
+          * Find the table row following the referenced table row in a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param iterator - the iterator to the referenced table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row.
+          *
+          * @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table).
+          * @pre `iterator` points to an existing table row in the table.
+          * @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched.
+          */
+         int32_t db_idx256_next(int32_t iterator, legacy_ptr<uint64_t> primary);
+
+         /**
+          * Find the table row preceding the referenced table row in a secondary 256-bit integer index table.
+          *
+          * @ingroup database 256-bit-secondary-index
+          * @param iterator - the iterator to the referenced table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row.
+          *
+          * @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table).
+          * @pre `iterator` points to an existing table row in the table or it is the end iterator of the table.
+          * @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched.
+          */
+         int32_t db_idx256_previous(int32_t iterator, legacy_ptr<uint64_t> primary);
 
          // double secondary index api
          int32_t db_idx_double_store(uint64_t, uint64_t, uint64_t, uint64_t, legacy_ptr<const float64_t>);
