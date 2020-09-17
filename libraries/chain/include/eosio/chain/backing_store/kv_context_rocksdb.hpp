@@ -6,23 +6,6 @@
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
 
 namespace eosio { namespace chain {
-   static constexpr auto kv_payer_size = sizeof(account_name);
-
-   static uint32_t actual_value_size(const uint32_t raw_value_size) {
-      EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
-      return (raw_value_size - kv_payer_size);
-   }
-
-   static account_name get_payer(const char* data) {
-      account_name payer;
-      memcpy(&payer, data, kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
-      return payer;
-   }
-
-   static const char* actual_value_start(const char* data) {
-      return data + kv_payer_size;
-   }
-
    template <typename View>
    struct kv_iterator_rocksdb : kv_iterator {
       uint32_t&                num_iterators;
