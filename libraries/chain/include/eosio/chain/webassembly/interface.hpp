@@ -54,7 +54,7 @@ namespace webassembly {
           * Allows a privileged smart contract, e.g. the system contract, to pre-activate a consensus protocol upgrade feature.
           *
           * @ingroup privileged
-          * @param digest_type - 256-bit digest representing the feature to pre-activate.
+          * @param feature_digest - 256-bit digest representing the feature to pre-activate.
          */
          void preactivate_feature(legacy_ptr<const digest_type> feature_digest);
 
@@ -130,8 +130,7 @@ namespace webassembly {
            * @param[out] packed_parameters the ouput for the parameters.
            * @param max_version has no effect, but should be 0.
            *
-           * @retval the size of the packed parameters if packed_parameters is empty.
-           * @retval the amount of data written in packed_parameters.
+           * @return the size of the packed parameters if packed_parameters is empty, otherwise it returns the amount of data written in packed_parameters.
          */
          uint32_t get_wasm_parameters_packed( span<char> packed_parameters, uint32_t max_version ) const;
 
@@ -186,12 +185,12 @@ namespace webassembly {
           * Proposes a schedule change with extended features.
           *
           * Valid formats:
-          * 0 : serialized array of producer_keys. Using this format is exactly equivalent to set_proposed_producers
-          * 1 : serialized array of producer_authority's
+          * 0 : serialized array of producer_keys. Using this format is exactly equivalent to set_proposed_producers.
+          * 1 : serialized array of producer_authority's.
           *
           * @ingroup privileged
           *
-          * @param packed_producer_format - format of the producer data blob
+          * @param packed_producer_format - format of the producer data blob.
           * @param packed_producer_schedule - packed data of representing the producer schedule in the format indicated.
           *
           * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule.
@@ -214,7 +213,7 @@ namespace webassembly {
           *
           * @ingroup privileged
           *
-          * @param packed_parameters - a span containing the packed blockchain config parameters.
+          * @param packed_blockchain_parameters - a span containing the packed blockchain config parameters.
          */
          void set_blockchain_parameters_packed(legacy_span<const char> packed_blockchain_parameters);
 
@@ -614,7 +613,7 @@ namespace webassembly {
           *
           * @ingroup context-free
           * @param condition - test condition.
-          * @return name of account that sent current inline action
+          * @param msg - string explaining the reason for failure.
          */
          void eosio_assert(bool condition, null_terminated_ptr msg) const;
 
@@ -738,7 +737,7 @@ namespace webassembly {
           * Prints value as double-precision floating point number (i.e. double)
           *
           * @ingroup console
-          * @param value - float to be printed
+          * @param val - float to be printed
           */
          void printdf(float64_t val);
 
@@ -1035,7 +1034,7 @@ namespace webassembly {
           * @pre `iterator` points to an existing table row in the table or it is the end iterator of the table.
           * @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched.
           */
-         int32_t db_idx64_previous(int32_t, legacy_ptr<uint64_t>);
+         int32_t db_idx64_previous(int32_t iterator, legacy_ptr<uint64_t> primary);
 
          /**
           * Store an association of a 128-bit integer secondary key to a primary key in a secondary 128-bit integer index table.
@@ -1133,8 +1132,8 @@ namespace webassembly {
           * @param code - the name of the owner of the table.
           * @param scope - the scope where the table resides.
           * @param table - the table name.
-          * @param secondary[out] - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
-          * @param primary[out] - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
+          * @param[out] secondary - pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row.
+          * @param[out] primary - pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row.
           *
           * @return iterator to the found table row or the end iterator of the table if the table row could not be found.
           */
@@ -1720,7 +1719,7 @@ namespace webassembly {
           * @param itr - the iterator to compare.
           * @param key - the key to compare.
           *
-          * @reval -1 if itr's key is less than key.
+          * @retval -1 if itr's key is less than key.
           * @retval 0 if itr's key is the same as key.
           * @retval 1 itr's key is greater than key.
          */
@@ -1854,7 +1853,7 @@ namespace webassembly {
           * @retval false if transaction was not found
           * @retval true if transaction was canceled
          */
-         int32_t read_transaction(legacy_span<char>) const;
+         int32_t read_transaction(legacy_span<char> data) const;
 
          /**
           * Gets the size of the currently executing transaction.
