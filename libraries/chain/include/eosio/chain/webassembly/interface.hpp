@@ -285,10 +285,10 @@ namespace webassembly {
          void set_kv_parameters_packed(name db, span<const char> packed_kv_parameters);
 
          /**
-          * Check if an account is privileged
+          * Check if an account is privileged.
           *
           * @ingroup privileged
-          * @param account - name of the account to be checked
+          * @param account - name of the account to be checked.
           *
           * @retval true if the account is privileged
           * @retval false otherwise
@@ -296,7 +296,7 @@ namespace webassembly {
          bool is_privileged(account_name account) const;
 
          /**
-          * Set the privileged status of an account
+          * Set the privileged status of an account.
           *
           * @ingroup privileged
           * @param account - name of the account that we want to give the privileged status.
@@ -557,7 +557,7 @@ namespace webassembly {
           * Verifies that n is an existing account.
           *
           * @ingroup authorization
-          * @param account - name of the account to check
+          * @param account - name of the account to check.
           *
           * @return true if the account exists.
           * @return false otherwise.
@@ -569,7 +569,7 @@ namespace webassembly {
           *
           * @ingroup system
           *
-          * @return time in microseconds from 1970 of the current block
+          * @return time in microseconds from 1970 of the current block.
          */
          uint64_t current_time() const;
 
@@ -589,7 +589,7 @@ namespace webassembly {
           * @param feature_digest - digest of the protocol feature.
           *
           * @retval true if the specified protocol feature has been activated.
-          * @retval false otherwise
+          * @retval false otherwise.
          */
          bool is_feature_activated(legacy_ptr<const digest_type> feature_digest) const;
 
@@ -602,7 +602,7 @@ namespace webassembly {
          name get_sender() const;
 
          /**
-          * Aborts processing of this action and unwinds all pending changes if the test condition is true
+          * Aborts processing of this action and unwinds all pending changes if the test condition is true.
           *
           * @ingroup context-free
          */
@@ -628,10 +628,12 @@ namespace webassembly {
 
          /**
           * Aborts processing of this action if the test condition is true.
+          * It can be used to provide an error code rather than a message string on assertion checks.
+          * If the assertion fails, the provided error code will be made available through the exception message.
           *
           * @ingroup context-free
           * @param condition - test condition.
-          * @param error_code -
+          * @param error_code - the error code associated.
          */
          void eosio_assert_code(bool condition, uint64_t error_code) const;
 
@@ -647,9 +649,9 @@ namespace webassembly {
           * Copy up to length bytes of current action data to the specified location
           *
           * @ingroup action
-          * @param memory - a pointer where up to length bytes of the current action data will be copied
+          * @param memory - a pointer where up to length bytes of the current action data will be copied.
           *
-          * @return the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed
+          * @return the number of bytes copied to msg, or number of bytes that can be copied if an empty span is passed.
          */
          int32_t read_action_data(legacy_span<char> memory) const;
 
@@ -689,7 +691,7 @@ namespace webassembly {
           * Prints string up to given length.
           *
           * @ingroup console
-          * @param str - the string to print
+          * @param str - the string to print.
           */
          void prints_l(legacy_span<const char> str);
 
@@ -697,7 +699,7 @@ namespace webassembly {
           * Prints value as a 64 bit signed integer.
           *
           * @ingroup console
-          * @param val - 64 bit signed integer to be printed
+          * @param val - 64 bit signed integer to be printed.
           */
          void printi(int64_t val);
 
@@ -705,7 +707,7 @@ namespace webassembly {
           * Prints value as a 64 bit unsigned integer.
           *
           * @ingroup console
-          * @param val - 64 bit unsigned integer to be printed
+          * @param val - 64 bit unsigned integer to be printed.
           */
          void printui(uint64_t val);
 
@@ -713,7 +715,7 @@ namespace webassembly {
           * Prints value as a 128 bit signed integer.
           *
           * @ingroup console
-          * @param val - 128 bit signed integer to be printed
+          * @param val - 128 bit signed integer to be printed.
           */
          void printi128(legacy_ptr<const __int128> val);
 
@@ -721,31 +723,31 @@ namespace webassembly {
           * Prints value as a 128 bit unsigned integer.
           *
           * @ingroup console
-          * @param val - 128 bit unsigned integer to be printed
+          * @param val - 128 bit unsigned integer to be printed.
           */
          void printui128(legacy_ptr<const unsigned __int128> val);
 
          /**
-          * Prints value as single-precision floating point number (i.e. float)
+          * Prints value as single-precision floating point number.
           *
           * @ingroup console
-          * @param val -  float to be printed
+          * @param val - single-precision floating point number to be printed.
           */
          void printsf(float32_t val);
 
          /**
-          * Prints value as double-precision floating point number (i.e. double)
+          * Prints value as double-precision floating point number.
           *
           * @ingroup console
-          * @param val - float to be printed
+          * @param val - double-precision floating point number to be printed
           */
-         void printdf(float64_t val);
+         void printdf(float64_t val);.
 
          /**
-          * Prints value as quadruple-precision floating point number (i.e. long double)
+          * Prints value as quadruple-precision floating point number.
           *
           * @ingroup console
-          * @param val - a pointer to the long double to be printed
+          * @param val - a pointer to the quadruple-precision floating point number to be printed
           */
          void printqf(legacy_ptr<const float128_t> val);
 
@@ -761,7 +763,7 @@ namespace webassembly {
           * Prints a 64 bit names as base32 encoded string
           *
           * @ingroup console
-          * @param data - Hex name to be printed
+          * @param data - Hex name to be printed.
           */
          void printhex(legacy_span<const char> data);
 
@@ -798,7 +800,7 @@ namespace webassembly {
           * Remove a record inside a primary 64-bit integer index table.
           *
           * @ingroup database primary-index
-          * @param itr - the terator to the table row to remove.
+          * @param itr - the iterator to the table row to remove.
           *
           *  @pre `itr` points to an existing table row in the tab.
           */
@@ -1521,7 +1523,7 @@ namespace webassembly {
          int32_t db_idx_long_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const float128_t> secondary, legacy_ptr<uint64_t> primary);
 
          /**
-          * Find a table row in a quadruple double-precision floating-point index table by primary key.
+          * Find a table row in a secondary double-precision floating-point index table by primary key.
           *
           * @ingroup database long-double-secondary-index
           * @param code - the name of the owner of the table.
@@ -1637,7 +1639,7 @@ namespace webassembly {
          /**
           * Check the existence of a key.
           * If the key doesn't exist, it returns false, clears the temporary data buffer and sets *value_size to 0.
-          * If the key does exist, it returns true, stores the value into the temporary data buffer,
+          * If the key does exist, it returns true, stores the value into the temporary data buffer
           * and sets *value_size to the value size.
           * Use kv_get_data to retrieve the value.
           *
@@ -1658,7 +1660,7 @@ namespace webassembly {
           * @param offset - position from where to start reading the value from the temporary buffer.
           * @param[out] data - span where the result value will be stored.
           *
-          * @return number of bytes written in data
+          * @return number of bytes written in data.
           */
          uint32_t kv_get_data(uint64_t, uint32_t offset, span<char> data);
 
@@ -1683,7 +1685,7 @@ namespace webassembly {
           * Destroy a kv iterator.
           *
           * @ingroup kv-database
-          * @param itr - the iterator to destroy.
+          * @param itr - the kv iterator to destroy.
           */
          void     kv_it_destroy(uint32_t itr);
 
@@ -1740,8 +1742,8 @@ namespace webassembly {
           *
           * @ingroup kv-database
           * @param itr - the iterator we want to move.
-          * @param [out] found_key_size - size of the result key in the new position.
-          * @param [out] found_value_size - size of the result value in the new position.
+          * @param[out] found_key_size - size of the result key in the new position.
+          * @param[out] found_value_size - size of the result value in the new position.
           *
           * @return the status of the iterator.
          */
@@ -1752,8 +1754,8 @@ namespace webassembly {
           *
           * @ingroup kv-database
           * @param itr - the iterator we want to move
-          * @param [out] found_key_size - size of the result key in the new position.
-          * @param [out] found_value_size - size of the result value in the new position.
+          * @param[out] found_key_size - size of the result key in the new position.
+          * @param[out] found_value_size - size of the result value in the new position.
           *
           * @return the status of the iterator.
          */
@@ -1763,12 +1765,14 @@ namespace webassembly {
           * Find the least non-deleted key which is >= the provided key.
           *
           * @ingroup kv-database
-          * @param itr
+          * @param itr - the kv iterator.
           * @param key - the key we want to query
-          * @param found_key_size - size of the result found key
-          * @param found_value_size - size of the result found value
+          * @param[out] found_key_size - size of the result found key
+          * @param[out] found_value_size - size of the result found value
           *
           * @return the status of the iterator.
+          * @post if a key is found, the new status is iterator_ok. If not found, the new status is iterator_end. kv_it_lower_bound never returns iterator_erased.
+          * @post the size of the key and the size of the value at the iterator's new position, or zero if the iterator is at end, will be written to found_key_size and found_value_size.
          */
          int32_t  kv_it_lower_bound(uint32_t itr, span<const char> key, uint32_t* found_key_size, uint32_t* found_value_size);
 
@@ -1778,8 +1782,8 @@ namespace webassembly {
           * @ingroup kv-database
           * @param itr - the kv iterator.
           * @param offset - position from where to start reading.
-          * @param dest - where the data will reside.
-          * @param [out] actual_size - size of the key
+          * @param[out] dest - where the data will reside.
+          * @param[out] actual_size - size of the key
           *
           * @return the status of the iterator passed as a parameter.
          */
@@ -1791,8 +1795,8 @@ namespace webassembly {
           * @ingroup kv-database
           * @param itr - the iterator of the object we want to get the value.
           * @param offset - position from where to start reading.
-          * @param dest - where the data will reside.
-          * @param [out] actual_size - size of the value.
+          * @param[out] dest - where the value will reside.
+          * @param[out] actual_size - size of the value.
           *
           * @return the status of the iterator passed as a parameter.
          */
@@ -1826,7 +1830,7 @@ namespace webassembly {
           * @ingroup transaction
           * @param sender_id - account name of the sender of this deferred transaction.
           * @param payer - account name responsible for paying the RAM for this deferred transaction.
-          * @param data - the packed transaction to be deferred
+          * @param data - the packed transaction to be deferred.
           * @param replace_existing - if true, it will replace an existing transaction.
          */
          void send_deferred(legacy_ptr<const uint128_t> sender_id, account_name payer, legacy_span<const char> data, uint32_t replace_existing);
@@ -1835,48 +1839,46 @@ namespace webassembly {
           * Cancels a deferred transaction.
           *
           * @ingroup transaction
-          * @param val - The id of the sender
+          * @param val - The id of the sender.
           *
-          * @retval false if transaction was not found
-          * @retval true if transaction was canceled
+          * @retval false if transaction was not found.
+          * @retval true if transaction was canceled.
          */
          bool cancel_deferred(legacy_ptr<const uint128_t> val);
-
-         // context-free transaction api
 
          /**
           * Access a copy of the currently executing transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           * @param[out] data - the currently executing transaction (packed).
           *
-          * @retval false if transaction was not found
-          * @retval true if transaction was canceled
+          * @retval false if transaction was not found.
+          * @retval true if transaction was canceled.
          */
          int32_t read_transaction(legacy_span<char> data) const;
 
          /**
           * Gets the size of the currently executing transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           *
-          * @return size of the currently executing transaction
+          * @return size of the currently executing transaction.
          */
          int32_t transaction_size() const;
 
          /**
           * Gets the expiration of the currently executing transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           *
-          * @return expiration of the currently executing transaction in seconds since Unix epoch
+          * @return expiration of the currently executing transaction in seconds since Unix epoch.
          */
          int32_t expiration() const;
 
          /**
           * Gets the block number used for TAPOS on the currently executing transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           *
           * @return block number used for TAPOS on the currently executing transaction.
          */
@@ -1885,7 +1887,7 @@ namespace webassembly {
          /**
           * Gets the block prefix used for TAPOS on the currently executing transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           *
           * @return block prefix used for TAPOS on the currently executing transaction.
          */
@@ -1894,7 +1896,7 @@ namespace webassembly {
          /**
           * Retrieve the indicated action from the active transaction.
           *
-          * @ingroup transaction
+          * @ingroup context-free-transaction
           *
           * @param type - 0 for context free action, 1 for action.
           * @param index - the index of the requested action.
