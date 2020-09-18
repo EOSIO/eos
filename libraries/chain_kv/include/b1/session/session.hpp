@@ -231,9 +231,7 @@ void session<Parent>::prime_cache_() {
 
       if (begin_it != end_it) {
          m_iterator_cache.try_emplace((*begin_it).first, iterator_state{});
-      }
-      if (--end_it != std::end(*m_parent)) {
-         m_iterator_cache.try_emplace((*end_it).first, iterator_state{});
+         m_iterator_cache.try_emplace((*--end_it).first, iterator_state{});
       }
    }
 }
@@ -275,11 +273,12 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
    // method.  Ask for the iterator in a way that isn't reentrant.  We can do this by invoking the make_iterator_
    // method directly.
    auto lower = [&](auto& ds) {
-      auto it = ds.lower_bound(key);
-      if (it != std::begin(ds) && it != std::end(ds)) {
+      auto it  = ds.lower_bound(key);
+      auto end = std::end(ds);
+      if (it != std::begin(ds) && it != end) {
          return --it;
       }
-      return std::end(ds);
+      return end;
    };
    auto lower_bound = make_iterator_<iterator>(
          lower, std::less<shared_bytes>{}, [](auto& it, auto& end) { ++it; }, true);
@@ -303,16 +302,16 @@ template <typename Parent>
 void session<Parent>::update_iterator_cache_(const shared_bytes& key, const iterator_cache_params& params) const {
    auto result = m_iterator_cache.try_emplace(key, iterator_state{});
 
-   if (params.prime_only) {
-      // We only want to make sure the key exists in the iterator cache.
-      return;
-   }
-
    auto& it = result.first;
 
    if (params.overwrite) {
       // Force an overwrite
       it->second.deleted = params.mark_deleted;
+   }  
+   
+   if (params.prime_only) {
+      // We only want to make sure the key exists in the iterator cache.
+      return;
    }
 
    if (!params.recalculate && it->second.next_in_cache && it->second.previous_in_cache) {
@@ -391,7 +390,7 @@ shared_bytes session<Parent>::read(const shared_bytes& key) const {
    if (value != shared_bytes::invalid) {
       m_cache.write(key, value);
       update_iterator_cache_(key,
-                             { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
+                             { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = false });
    }
 
    return value;
@@ -402,7 +401,7 @@ void session<Parent>::write(const shared_bytes& key, const shared_bytes& value) 
    m_updated_keys.emplace(key);
    m_deleted_keys.erase(key);
    m_cache.write(key, value);
-   update_iterator_cache_(key, { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = true });
+   update_iterator_cache_(key, { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = true });
 }
 
 template <typename Parent>
@@ -418,7 +417,7 @@ bool session<Parent>::contains(const shared_bytes& key) const {
    }
    if (m_parent && m_parent->contains(key)) {
       update_iterator_cache_(key,
-                             { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
+                             { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = false });
       return true;
    }
 
@@ -432,7 +431,7 @@ void session<Parent>::erase(const shared_bytes& key) {
    m_deleted_keys.emplace(key);
    m_updated_keys.erase(key);
    m_cache.erase(key);
-   update_iterator_cache_(key, { .prime_only = false, .recalculate = true, .mark_deleted = true, .overwrite = true });
+   update_iterator_cache_(key, { .prime_only = true, .recalculate = true, .mark_deleted = true, .overwrite = true });
 }
 
 // Reads a batch of keys from the session.
@@ -563,14 +562,24 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
    if (m_parent) {
       // Get the iterator from the parent
       auto it     = predicate(*m_parent);
-      current_key = find_first_not(it, std::end(*m_parent), deleted);
+      auto end_it = std::end(*m_parent);
+      if (it != end_it) {
+         current_key = (*it).first;
+         if (m_deleted_keys.find(current_key) != std::end(m_deleted_keys)) {
+            current_key = find_first_not(it, end_it, deleted);
+         }
+      }
    }
 
    // Get the iterator from this
    auto pending     = predicate(m_cache);
-   auto pending_key = find_first_not(pending, std::end(m_cache), deleted);
+   auto pending_key = shared_bytes::invalid;
+   if (pending != std::end(m_cache)) {
+      pending_key = (*pending).first;
+   }
 
-   if (current_key == shared_bytes::invalid || comparator(pending_key, current_key)) {
+   if (current_key == shared_bytes::invalid ||
+       (pending_key != shared_bytes::invalid && comparator(pending_key, current_key))) {
       current_key = pending_key;
    }
 
