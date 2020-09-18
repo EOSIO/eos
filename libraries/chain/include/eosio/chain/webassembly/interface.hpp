@@ -741,7 +741,7 @@ namespace webassembly {
           * @ingroup console
           * @param val - double-precision floating point number to be printed
           */
-         void printdf(float64_t val);.
+         void printdf(float64_t val);
 
          /**
           * Prints value as quadruple-precision floating point number.
