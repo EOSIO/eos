@@ -120,8 +120,6 @@ class session<rocksdb_t> final {
    iterator       upper_bound(const shared_bytes& key);
    const_iterator upper_bound(const shared_bytes& key) const;
 
-   void attach(rocksdb_t& parent);
-   void detach();
    void undo();
    void commit();
    void flush();
@@ -159,10 +157,6 @@ inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db) { return
 
 inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db) : m_db{ std::move(db) } {}
 
-inline void session<rocksdb_t>::attach(rocksdb_t& parent) {}
-
-inline void session<rocksdb_t>::detach() {}
-
 inline void session<rocksdb_t>::undo() {}
 
 inline void session<rocksdb_t>::commit() {}
@@ -171,7 +165,7 @@ inline bool session<rocksdb_t>::is_deleted(const shared_bytes& key) const { retu
 
 inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
    if (!m_db) {
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
    auto key_slice      = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
@@ -179,7 +173,7 @@ inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
    if (status.code() != rocksdb::Status::Code::kOk) {
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
    return make_shared_bytes(pinnable_value.data(), pinnable_value.size());
@@ -579,7 +573,7 @@ template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator*() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
    }
 
    auto key_slice = m_iterator->key();
@@ -592,7 +586,7 @@ template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator->() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
    }
 
    auto key_slice = m_iterator->key();

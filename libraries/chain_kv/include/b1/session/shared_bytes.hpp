@@ -21,9 +21,6 @@ class shared_bytes final {
 
    friend shared_bytes make_shared_bytes(const int8_t* data, size_t length);
 
-   template <typename T>
-   friend shared_bytes make_shared_bytes_view(const T* data, size_t length);
-
    template <typename Iterator_traits>
    class shared_bytes_iterator final {
     public:
@@ -95,7 +92,7 @@ class shared_bytes final {
    iterator begin() const;
    iterator end() const;
 
-   static const shared_bytes invalid;
+   static const shared_bytes& invalid();
 
  private:
    shared_bytes() = default;
@@ -132,33 +129,10 @@ inline shared_bytes make_shared_bytes(const int8_t* data, size_t length) {
    return result;
 }
 
-template <>
-inline shared_bytes make_shared_bytes_view(const int8_t* data, size_t length) {
-   auto result = shared_bytes{};
-
-   auto deleter  = [&](auto* chunk) {};
-   result.m_data = std::shared_ptr<int8_t>(const_cast<int8_t*>(data), deleter);
-   result.m_size = length;
-
-   return result;
+inline const shared_bytes& shared_bytes::invalid() {
+   static shared_bytes bad;
+   return bad;
 }
-
-// \brief Creates a new shared_bytes instance with the given pointer and length.
-//
-// This returns a shared_bytes "view" instance, in that the resulting shared_bytes instance does not manage
-// the given memory.
-//
-// \tparam T The type stored in the array.
-// \param data A pointer to an array of items to store in a shared_bytes instance.
-// \param length The number of items in the array.
-// \warning The resulting shared_bytes instance does NOT take ownership of the given data pointer.
-// \warning The data pointer must remain in scope for the lifetime of the given shared_bytes instance.
-template <typename T>
-shared_bytes make_shared_bytes_view(const T* data, size_t length) {
-   return make_shared_bytes_view(reinterpret_cast<const int8_t*>(data), length * sizeof(T));
-}
-
-inline const shared_bytes shared_bytes::invalid{};
 
 inline const int8_t* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
 
@@ -188,9 +162,9 @@ inline bool shared_bytes::operator==(const shared_bytes& other) const {
 
 inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
 
-inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid; }
+inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid(); }
 
-inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid; }
+inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid(); }
 
 inline shared_bytes::iterator shared_bytes::begin() const {
    auto result    = iterator{};
@@ -332,11 +306,11 @@ namespace std {
 template <>
 struct less<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      if (lhs != eosio::session::shared_bytes::invalid && rhs != eosio::session::shared_bytes::invalid) {
+      if (lhs != eosio::session::shared_bytes::invalid() && rhs != eosio::session::shared_bytes::invalid()) {
          return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } <
                 std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
       }
-      if (lhs == eosio::session::shared_bytes::invalid) {
+      if (lhs == eosio::session::shared_bytes::invalid()) {
          return false;
       }
       return true;
@@ -346,11 +320,11 @@ struct less<eosio::session::shared_bytes> final {
 template <>
 struct greater<eosio::session::shared_bytes> final {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      if (lhs != eosio::session::shared_bytes::invalid && rhs != eosio::session::shared_bytes::invalid) {
+      if (lhs != eosio::session::shared_bytes::invalid() && rhs != eosio::session::shared_bytes::invalid()) {
          return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } >
                 std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
       }
-      if (lhs == eosio::session::shared_bytes::invalid) {
+      if (lhs == eosio::session::shared_bytes::invalid()) {
          return false;
       }
       return true;

@@ -126,7 +126,7 @@ inline cache make_cache() { return {}; }
 // void(cache_type::iterator& it) \tparam on_cache_miss A functor to invoke when the key is not found.  It has the
 // following singature void(void). \param key The key to search the cache for. \param cache_hit The functor to invoke
 // when the key is found. \param cache_miss The functor to invoke when the key is not found. \return A reference to the
-// value shared_bytes instance if found, shared_bytes::invalid otherwise.
+// value shared_bytes instance if found, shared_bytes::invalid() otherwise.
 template <typename on_cache_hit, typename on_cache_miss>
 const shared_bytes& cache::find_(const shared_bytes& key, const on_cache_hit& cache_hit,
                                  const on_cache_miss& cache_miss) const {
@@ -134,14 +134,14 @@ const shared_bytes& cache::find_(const shared_bytes& key, const on_cache_hit& ca
 
    if (it == std::end(m_cache)) {
       cache_miss();
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
    if (cache_hit(it)) {
       return it->second;
    }
 
-   return shared_bytes::invalid;
+   return shared_bytes::invalid();
 }
 
 inline const shared_bytes& cache::read(const shared_bytes& key) const {
@@ -152,15 +152,15 @@ inline const shared_bytes& cache::read(const shared_bytes& key) const {
 inline void cache::write(const shared_bytes& key, const shared_bytes& value) {
    auto it = m_cache.find(key);
    if (it == std::end(m_cache)) {
-      m_cache.emplace(std::move(key), std::move(value));
+      m_cache.emplace(key, value);
       return;
    }
-   it->second = std::move(value);
+   it->second = value;
 }
 
 inline bool cache::contains(const shared_bytes& key) const {
    return find_(
-                key, [](auto& it) { return true; }, []() {}) != shared_bytes::invalid;
+                key, [](auto& it) { return true; }, []() {}) != shared_bytes::invalid();
 }
 
 inline void cache::erase(const shared_bytes& key) {
@@ -189,7 +189,7 @@ cache::read(const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          not_found.emplace(key);
          continue;
       }
@@ -239,7 +239,7 @@ void cache::write_to(Data_store& ds, const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });
@@ -260,7 +260,7 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
 
    for (const auto& key : keys) {
       auto& value = ds.read(key);
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });

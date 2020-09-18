@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
    BOOST_REQUIRE(*(reinterpret_cast<const decltype(int_value)*>(b3.data())) == int_value);
    BOOST_REQUIRE(b3.size() == sizeof(decltype(int_value)));
 
-   auto b4 = make_shared_bytes_view(char_value, char_length);
+   auto b4 = make_shared_bytes(char_value, char_length);
    BOOST_REQUIRE(memcmp(b4.data(), reinterpret_cast<const int8_t*>(char_value), char_length) == 0);
    BOOST_REQUIRE(b4.size() == char_length);
 
@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
 
    BOOST_REQUIRE(b1 == b2);
    BOOST_REQUIRE(b1 == b4);
-   BOOST_REQUIRE(invalid == shared_bytes::invalid);
+   BOOST_REQUIRE(invalid == shared_bytes::invalid());
    BOOST_REQUIRE(b1 != b3);
 
    auto b5 = b1;
