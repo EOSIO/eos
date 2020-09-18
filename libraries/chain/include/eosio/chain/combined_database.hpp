@@ -48,9 +48,7 @@ namespace eosio { namespace chain {
     public:
       combined_session() = default;
 
-      combined_session(chainbase::database& cb_database);
-
-      combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack);
+      combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack* kv_undo_stack);
 
       combined_session(combined_session&& src) noexcept;
 
@@ -87,8 +85,7 @@ namespace eosio { namespace chain {
       static combined_session make_no_op_session() { return combined_session(); }
 
       combined_session make_session() {
-         return backing_store == backing_store_type::ROCKSDB ? combined_session(db, *kv_undo_stack)
-                                                             : combined_session(db);
+         return combined_session(db, kv_undo_stack.get());
       }
 
       void set_revision(uint64_t revision);

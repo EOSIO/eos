@@ -4,19 +4,20 @@
 
 namespace eosio { namespace chain {
 
-   combined_session::combined_session(chainbase::database& cb_database)
-       : cb_session{ std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true)) } {}
-
-   combined_session::combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack)
-       : kv_undo_stack{ &kv_undo_stack } {
-      try {
+   combined_session::combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack* kv_undo_stack)
+       : kv_undo_stack{ kv_undo_stack } {
+      if (!kv_undo_stack) {
+         cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
+      } else {
          try {
-            cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
-            kv_undo_stack.push(false);
+            try {
+               cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
+               kv_undo_stack->push(false);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    combined_session::combined_session(combined_session&& src) noexcept
