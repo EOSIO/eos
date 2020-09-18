@@ -692,6 +692,7 @@ static void set_backing_store(tester& chain, const backing_store_type backing_st
    chain.init(cfg); // enable new config
 }
 
+# warning TODO: test_kv_snapshot does not really test snapshot on RocksDB. More work (including turn on test_pending_schedule_snapshot) is required
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
    for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
