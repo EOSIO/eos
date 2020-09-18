@@ -66,24 +66,28 @@ namespace eosio { namespace chain {
 
     private:
       std::unique_ptr<chainbase::database::session> cb_session    = {};
-      b1::chain_kv::undo_stack*                     kv_undo_stack = {};
+      b1::chain_kv::undo_stack*                     kv_undo_stack = nullptr;
    };
 
    class combined_database {
     public:
-      combined_database(backing_store_type backing_store,
-                        chainbase::database& chain_db,
+      combined_database(chainbase::database& chain_db);
+
+      combined_database(chainbase::database& chain_db,
                         const std::string& rocksdb_path,
                         bool rocksdb_create_if_missing,
                         uint32_t rocksdb_threads,
                         int rocksdb_max_open_files);
+
+      combined_database(const combined_database& copy) = delete;
+      combined_database& operator=(const combined_database& copy) = delete;
 
       void set_backing_store(backing_store_type backing_store);
 
       static combined_session make_no_op_session() { return combined_session(); }
 
       combined_session make_session() {
-         return backing_store == backing_store_type::ROCKSDB ? combined_session(db, kv_undo_stack)
+         return backing_store == backing_store_type::ROCKSDB ? combined_session(db, *kv_undo_stack)
                                                              : combined_session(db);
       }
 
@@ -114,8 +118,8 @@ namespace eosio { namespace chain {
 
       backing_store_type       backing_store;
       chainbase::database&     db;
-      b1::chain_kv::database   kv_database;
-      b1::chain_kv::undo_stack kv_undo_stack;
+      std::unique_ptr<b1::chain_kv::database>   kv_database;
+      std::unique_ptr<b1::chain_kv::undo_stack> kv_undo_stack;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);

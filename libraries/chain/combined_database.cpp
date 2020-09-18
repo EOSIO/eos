@@ -88,15 +88,17 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
-   combined_database::combined_database(backing_store_type backing_store_,
-                                        chainbase::database& chain_db,
+   combined_database::combined_database(chainbase::database& chain_db)
+       : backing_store(backing_store_type::CHAINBASE), db(chain_db) {}
+
+   combined_database::combined_database(chainbase::database& chain_db,
                                         const std::string& rocksdb_path,
                                         bool rocksdb_create_if_missing,
                                         uint32_t rocksdb_threads,
                                         int rocksdb_max_open_files)
-       : backing_store(backing_store_), db(chain_db),
-         kv_database(rocksdb_path.c_str(), rocksdb_create_if_missing, rocksdb_threads, rocksdb_max_open_files),
-         kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
+       : backing_store(backing_store_type::ROCKSDB), db(chain_db),
+         kv_database(std::make_unique<b1::chain_kv::database>(rocksdb_path.c_str(), rocksdb_create_if_missing, rocksdb_threads, rocksdb_max_open_files)),
+         kv_undo_stack(std::make_unique<b1::chain_kv::undo_stack>(*kv_database, rocksdb_undo_prefix)) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
       if (backing_store == backing_store_type::ROCKSDB) {
@@ -116,48 +118,71 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::set_revision(uint64_t revision) {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.set_revision(revision);
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            db.set_revision(revision);
+            try {
+               db.set_revision(revision);
 #warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restart
-            // kv_undo_stack.set_revision(revision, false);
+               // kv_undo_stack->set_revision(revision, false);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::undo() {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.undo();
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            db.undo();
-            kv_undo_stack.undo(false);
+            try {
+               db.undo();
+               kv_undo_stack->undo(false);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::commit(int64_t revision) {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.commit(revision);
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            db.commit(revision);
-            kv_undo_stack.commit(revision);
+            try {
+               db.commit(revision);
+               kv_undo_stack->commit(revision);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::flush() {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            kv_undo_stack.write_state();
-            kv_database.flush(true, true);
+            try {
+               kv_undo_stack->write_state();
+               kv_database->flush(true, true);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver,
@@ -166,12 +191,11 @@ namespace eosio { namespace chain {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
             return create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
-                  kv_database, kv_undo_stack, receiver, resource_manager, limits);
+                  *kv_database, *kv_undo_stack, receiver, resource_manager, limits);
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context(db, receiver, resource_manager, limits);
-         default:
-            EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
+      EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
    }
 
    void combined_database::add_to_snapshot(
@@ -210,7 +234,7 @@ namespace eosio { namespace chain {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-                  std::unique_ptr<rocksdb::Iterator> it{ kv_database.rdb->NewIterator(rocksdb::ReadOptions()) };
+                  std::unique_ptr<rocksdb::Iterator> it{ kv_database->rdb->NewIterator(rocksdb::ReadOptions()) };
                   std::vector<char>                  prefix = rocksdb_contract_kv_prefix;
                   it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
                   while (it->Valid()) {
@@ -375,7 +399,7 @@ namespace eosio { namespace chain {
                   }
                });
 #warning TODO: Split the batch to avoid storing it all in memory at once.
-               kv_database.write(batch);
+               kv_database->write(batch);
                return;
             }
          }
