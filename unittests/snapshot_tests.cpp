@@ -685,20 +685,20 @@ static const char kv_snapshot_bios[] = R"=====(
 )
 )=====";
 
+static void set_backing_store(tester& chain, const backing_store_type backing_store) {
+   chain.close(); // clean up chain so no dirty db error
+   auto cfg = chain.get_config();
+   cfg.backing_store = backing_store;
+   chain.init(cfg); // enable new config
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
-   for (bool rocks_save : { false, true }) {
-      for (bool rocks_load : { false, true }) {
+   for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
          tester chain;
 
-         // set backing_store according to rocks_load value
-         chain.close(); // clean up chain so no dirty db error
-         auto cfg = chain.get_config();
-         if (rocks_load) {
-            cfg.backing_store = eosio::chain::backing_store_type::ROCKSDB;
-         } else {
-            cfg.backing_store = eosio::chain::backing_store_type::CHAINBASE;
-         }
-         chain.init(cfg); // enable new config
+         // Set backing_store for save snapshot
+         set_backing_store(chain, origin_backing_store);
 
          chain.create_accounts({N(snapshot), N(manager)});
          chain.set_code(N(manager), kv_snapshot_bios);
@@ -726,6 +726,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             chain.control->write_snapshot(writer);
             auto snapshot = SNAPSHOT_SUITE::finalize(writer);
 
+            // Set backing_store for load snapshot
+            set_backing_store(chain, resulting_backing_store);
+
+            auto cfg = chain.get_config();
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
