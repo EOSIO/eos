@@ -1,13 +1,12 @@
 #include "data_store_tests.hpp"
-#include <session/cache.hpp>
-#include <session/rocks_session.hpp>
-#include <session/session.hpp>
-#include <session/undo_stack.hpp>
+#include <chain_kv/cache.hpp>
+#include <chain_kv/rocks_session.hpp>
+#include <chain_kv/session.hpp>
+#include <chain_kv/undo_stack.hpp>
 
 #include <random>
 
-using namespace eosio::session;
-using namespace eosio::session_tests;
+using namespace eosio::chain_kv;
 
 BOOST_AUTO_TEST_SUITE(session_undo_stack_tests)
 

@@ -10,7 +10,7 @@ namespace chainbase {
 class database;
 }
 
-namespace b1::chain_kv {
+namespace eosio::chain_kv {
    struct database;
    class undo_stack;
 }

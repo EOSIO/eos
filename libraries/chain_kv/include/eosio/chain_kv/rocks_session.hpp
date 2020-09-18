@@ -10,9 +10,9 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
-#include <session/session.hpp>
+#include <chain_kv/session.hpp>
 
-namespace eosio::session {
+namespace eosio::chain_kv {
 
 struct rocksdb_t {};
 
@@ -155,8 +155,6 @@ class session<rocksdb_t> final {
    rocksdb::WriteOptions                        m_write_options;
 };
 
-inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db) { return { std::move(db) }; }
-
 inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db) : m_db{ std::move(db) } {}
 
 inline void session<rocksdb_t>::attach(rocksdb_t& parent) {}
@@ -171,7 +169,7 @@ inline bool session<rocksdb_t>::is_deleted(const shared_bytes& key) const { retu
 
 inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
    if (!m_db) {
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
    auto key_slice      = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
@@ -179,10 +177,10 @@ inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
    if (status.code() != rocksdb::Status::Code::kOk) {
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
-   return make_shared_bytes(pinnable_value.data(), pinnable_value.size());
+   return {pinnable_value.data(), pinnable_value.size()};
 }
 
 inline void session<rocksdb_t>::write(const shared_bytes& key, const shared_bytes& value) {
@@ -245,9 +243,9 @@ session<rocksdb_t>::read_(const Iterable& keys) const {
          continue;
       }
 
-      auto key = make_shared_bytes(key_slices[i].data(), key_slices[i].size());
+      auto key = shared_bytes{key_slices[i].data(), key_slices[i].size()};
       not_found.erase(key);
-      kvs.emplace_back(key, make_shared_bytes(values[i].data(), values[i].size()));
+      kvs.emplace_back(key, shared_bytes{values[i].data(), values[i].size()});
    }
 
    return { std::move(kvs), std::move(not_found) };
@@ -579,26 +577,26 @@ template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator*() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator->() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid, shared_bytes::invalid };
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>
@@ -620,4 +618,4 @@ bool session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator!=(const rocks
    return !(*this == other);
 }
 
-} // namespace eosio::session
+} // namespace eosio::chain_kv

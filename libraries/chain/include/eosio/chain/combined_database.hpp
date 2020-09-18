@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
 
       combined_session(chainbase::database& cb_database);
 
-      combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack);
+      combined_session(chainbase::database& cb_database, eosio::chain_kv::undo_stack& kv_undo_stack);
 
       combined_session(combined_session&& src) noexcept;
 
@@ -66,7 +66,7 @@ namespace eosio { namespace chain {
 
     private:
       std::unique_ptr<chainbase::database::session> cb_session    = {};
-      b1::chain_kv::undo_stack*                     kv_undo_stack = {};
+      eosio::chain_kv::undo_stack*                     kv_undo_stack = {};
    };
 
    class combined_database {
@@ -114,8 +114,8 @@ namespace eosio { namespace chain {
 
       backing_store_type       backing_store;
       chainbase::database&     db;
-      b1::chain_kv::database   kv_database;
-      b1::chain_kv::undo_stack kv_undo_stack;
+      eosio::chain_kv::database   kv_database;
+      eosio::chain_kv::undo_stack kv_undo_stack;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);

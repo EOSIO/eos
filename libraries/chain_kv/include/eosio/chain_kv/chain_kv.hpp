@@ -8,7 +8,7 @@
 #include <softfloat.hpp>
 #include <algorithm>
 
-namespace b1::chain_kv {
+namespace eosio::chain_kv {
 
 class exception : public std::exception {
    std::string msg;
@@ -1011,6 +1011,6 @@ class view {
    void erase(uint64_t contract, const rocksdb::Slice& k) { write_session.erase(create_full_key(prefix, contract, k)); }
 }; // view
 
-} // namespace b1::chain_kv
+} // namespace eosio::chain_kv
 
-FC_REFLECT(b1::chain_kv::undo_state, (format_version)(revision)(undo_stack)(next_undo_segment))
+FC_REFLECT(eosio::chain_kv::undo_state, (format_version)(revision)(undo_stack)(next_undo_segment))

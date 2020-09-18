@@ -2,14 +2,14 @@
 
 #include <vector>
 
-#include <session/session.hpp>
+#include <chain_kv/session.hpp>
 
-namespace eosio::session {
+namespace eosio::chain_kv {
 
    template <typename Session>
    class undo_stack {
     public:
-      undo_stack(Session&& head) : m_sessions(std::move(head)) {}
+      undo_stack(Session&& head) : sessions(std::move(head)) {}
       undo_stack(const undo_stack&) = default;
       undo_stack(undo_stack&&)      = default;
 
@@ -50,7 +50,7 @@ namespace eosio::session {
 
     private:
       std::vector<uint64_t> nums;
-      std::vector<Session> m_sessions;
+      std::vector<Session> sessions;
    };
 
-} // namespace eosio::session
+} // namespace eosio::chain_kv

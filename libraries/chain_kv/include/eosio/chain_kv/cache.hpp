@@ -4,15 +4,14 @@
 #include <unordered_set>
 #include <vector>
 
-#include <session/cache_fwd_decl.hpp>
-#include <session/shared_bytes.hpp>
+#include <chain_kv/shared_bytes.hpp>
 
-namespace eosio::session {
+namespace eosio::chain_kv {
 
 // An in memory caching data store for storing key_value types.
 //
 // \remarks This type implements the "data store" concept.
-class cache final {
+class cache {
  private:
    // Currently there are some constraints that require the use of a std::map.
    // Namely, we need to be able to iterator over the entries in lexigraphical ordering on the keys.
@@ -118,8 +117,6 @@ class cache final {
    cache_type m_cache;
 };
 
-inline cache make_cache() { return {}; }
-
 // Searches the cache for the given key.
 //
 // \tparam on_cache_hit A functor to invoke when the key is found.  It has the following signature
@@ -134,14 +131,14 @@ const shared_bytes& cache::find_(const shared_bytes& key, const on_cache_hit& ca
 
    if (it == std::end(m_cache)) {
       cache_miss();
-      return shared_bytes::invalid;
+      return shared_bytes::invalid();
    }
 
    if (cache_hit(it)) {
       return it->second;
    }
 
-   return shared_bytes::invalid;
+   return shared_bytes::invalid();
 }
 
 inline const shared_bytes& cache::read(const shared_bytes& key) const {
@@ -160,7 +157,7 @@ inline void cache::write(const shared_bytes& key, const shared_bytes& value) {
 
 inline bool cache::contains(const shared_bytes& key) const {
    return find_(
-                key, [](auto& it) { return true; }, []() {}) != shared_bytes::invalid;
+                key, [](auto& it) { return true; }, []() {}) != shared_bytes::invalid();
 }
 
 inline void cache::erase(const shared_bytes& key) {
@@ -189,7 +186,7 @@ cache::read(const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          not_found.emplace(key);
          continue;
       }
@@ -239,7 +236,7 @@ void cache::write_to(Data_store& ds, const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });
@@ -260,7 +257,7 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
 
    for (const auto& key : keys) {
       auto& value = ds.read(key);
-      if (value == shared_bytes::invalid) {
+      if (value == shared_bytes::invalid()) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });

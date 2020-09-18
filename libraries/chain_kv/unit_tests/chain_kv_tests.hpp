@@ -1,7 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <chain_kv/chain_kv.hpp>
 
-namespace chain_kv = b1::chain_kv;
+namespace chain_kv = eosio::chain_kv;
 
 struct kv_values {
    std::vector<std::pair<chain_kv::bytes, chain_kv::bytes>> values;

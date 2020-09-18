@@ -69,7 +69,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(!kv_it.is_erased(), kv_bad_iter, "Iterator to erased element");
          try {
             try {
-               return b1::chain_kv::compare_key(kv_it.get_kv(), b1::chain_kv::key_value{ { key, size }, {} });
+               return eosio::chain_kv::compare_key(kv_it.get_kv(), eosio::chain_kv::key_value{ { key, size }, {} });
             }
             FC_LOG_AND_RETHROW()
          }
@@ -131,7 +131,7 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          EOS_ASSERT(!kv_it.is_erased(), kv_bad_iter, "Iterator to erased element");
 
-         std::optional<b1::chain_kv::key_value> kv;
+         std::optional<eosio::chain_kv::key_value> kv;
          try {
             try {
                kv = kv_it.get_kv();
@@ -154,7 +154,7 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          EOS_ASSERT(!kv_it.is_erased(), kv_bad_iter, "Iterator to erased element");
 
-         std::optional<b1::chain_kv::key_value> kv;
+         std::optional<eosio::chain_kv::key_value> kv;
          try {
             try {
                kv = kv_it.get_kv();
@@ -192,8 +192,8 @@ namespace eosio { namespace chain {
 
    template<typename View, typename Write_session, typename Resource_manager>
    struct kv_context_rocksdb : kv_context {
-      b1::chain_kv::database&                  database;
-      b1::chain_kv::undo_stack&                undo_stack;
+      eosio::chain_kv::database&                  database;
+      eosio::chain_kv::undo_stack&                undo_stack;
       Write_session                            write_session;
       View                                     view;
       name                                     receiver;
@@ -202,16 +202,16 @@ namespace eosio { namespace chain {
       uint32_t                                 num_iterators = 0;
       std::shared_ptr<const std::vector<char>> temp_data_buffer;
 
-      kv_context_rocksdb(b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack,
+      kv_context_rocksdb(eosio::chain_kv::database& database, eosio::chain_kv::undo_stack& undo_stack,
                          name receiver, Resource_manager /*kv_resource_manager*/ resource_manager, const kv_database_config& limits)
           : database{ database }, undo_stack{ undo_stack },
             write_session{ database }, view{ write_session, make_rocksdb_contract_kv_prefix() }, receiver{ receiver },
             resource_manager{ resource_manager }, limits{ limits } {}
 
       // A hook for unit testing. Do not use this for any other purpose.
-      kv_context_rocksdb(View&& view_, b1::chain_kv::database& database, b1::chain_kv::undo_stack& undo_stack, name receiver, Resource_manager resource_manager, const kv_database_config& limits)
+      kv_context_rocksdb(View&& view_, eosio::chain_kv::database& database, eosio::chain_kv::undo_stack& undo_stack, name receiver, Resource_manager resource_manager, const kv_database_config& limits)
          : database{ database }, undo_stack{ undo_stack },
-           write_session{ database }, view(std::move(view_)), 
+           write_session{ database }, view(std::move(view_)),
            receiver{ receiver },
            resource_manager{ resource_manager }, limits{ limits } {}
 
@@ -236,7 +236,7 @@ namespace eosio { namespace chain {
                old_value = view.get(contract, { key, key_size });
                if (!old_value)
                   return 0;
-               actual_old_value_size = actual_value_size(old_value->size()); 
+               actual_old_value_size = actual_value_size(old_value->size());
                view.erase(contract, { key, key_size });
             }
             FC_LOG_AND_RETHROW()
@@ -275,7 +275,7 @@ namespace eosio { namespace chain {
                memcpy(buf, &payer, kv_payer_size);
                total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
 
-               total_value.insert(total_value.end(), value, value + value_size); 
+               total_value.insert(total_value.end(), value, value + value_size);
                view.set(contract, { key, key_size }, { total_value.data(), total_value_size });
 
             }
@@ -339,8 +339,8 @@ namespace eosio { namespace chain {
    }; // kv_context_rocksdb
 
    template <typename View, typename Write_session, typename Resource_manager>
-   std::unique_ptr<kv_context> create_kv_rocksdb_context(b1::chain_kv::database&   kv_database,
-                                                         b1::chain_kv::undo_stack& kv_undo_stack,
+   std::unique_ptr<kv_context> create_kv_rocksdb_context(eosio::chain_kv::database&   kv_database,
+                                                         eosio::chain_kv::undo_stack& kv_undo_stack,
                                                          name receiver, Resource_manager resource_manager,
                                                          const kv_database_config& limits) {
       try {

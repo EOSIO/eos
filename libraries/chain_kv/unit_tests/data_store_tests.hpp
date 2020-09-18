@@ -10,11 +10,12 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
-#include <session/cache.hpp>
-#include <session/rocks_session.hpp>
-#include <session/session.hpp>
+#include <chain_kv/cache.hpp>
+#include <chain_kv/rocks_session.hpp>
+#include <chain_kv/session.hpp>
 
-namespace eosio::session_tests {
+
+using namespace eosio::chain_kv;
 
 inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name = "testdb") {
    rocksdb::DestroyDB(name.c_str(), rocksdb::Options{});
@@ -73,17 +74,17 @@ static const std::unordered_map<std::string, std::string> char_key_values{
      "ffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
 };
 
-static const std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>> char_batch_values{
-   { eosio::session::make_shared_bytes("hello0", 6), eosio::session::make_shared_bytes("world0", 6) },
-   { eosio::session::make_shared_bytes("hello1", 6), eosio::session::make_shared_bytes("world1", 6) },
-   { eosio::session::make_shared_bytes("hello2", 6), eosio::session::make_shared_bytes("world2", 6) },
-   { eosio::session::make_shared_bytes("hello3", 6), eosio::session::make_shared_bytes("world3", 6) },
-   { eosio::session::make_shared_bytes("hello4", 6), eosio::session::make_shared_bytes("world4", 6) },
-   { eosio::session::make_shared_bytes("hello5", 6), eosio::session::make_shared_bytes("world5", 6) },
-   { eosio::session::make_shared_bytes("hello6", 6), eosio::session::make_shared_bytes("world6", 6) },
-   { eosio::session::make_shared_bytes("hello7", 6), eosio::session::make_shared_bytes("world7", 6) },
-   { eosio::session::make_shared_bytes("hello8", 6), eosio::session::make_shared_bytes("world8", 6) },
-   { eosio::session::make_shared_bytes("hello9", 6), eosio::session::make_shared_bytes("world9", 6) },
+static const std::vector<std::pair<shared_bytes, shared_bytes>> char_batch_values{
+   { {"hello0", 6}, {"world0", 6} },
+   { {"hello1", 6}, {"world1", 6} },
+   { {"hello2", 6}, {"world2", 6} },
+   { {"hello3", 6}, {"world3", 6} },
+   { {"hello4", 6}, {"world4", 6} },
+   { {"hello5", 6}, {"world5", 6} },
+   { {"hello6", 6}, {"world6", 6} },
+   { {"hello7", 6}, {"world7", 6} },
+   { {"hello8", 6}, {"world8", 6} },
+   { {"hello9", 6}, {"world9", 6} },
 };
 
 static const std::unordered_map<int32_t, int32_t> int_key_values{
@@ -99,17 +100,17 @@ static const std::vector<int32_t> int_values{
    1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,
 };
 
-static const std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>> int_batch_values{
-   { eosio::session::make_shared_bytes(&int_keys[0], 1), eosio::session::make_shared_bytes(&int_values[0], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[1], 1), eosio::session::make_shared_bytes(&int_values[1], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[2], 1), eosio::session::make_shared_bytes(&int_values[2], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[3], 1), eosio::session::make_shared_bytes(&int_values[3], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[4], 1), eosio::session::make_shared_bytes(&int_values[4], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[5], 1), eosio::session::make_shared_bytes(&int_values[5], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[6], 1), eosio::session::make_shared_bytes(&int_values[6], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[7], 1), eosio::session::make_shared_bytes(&int_values[7], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[8], 1), eosio::session::make_shared_bytes(&int_values[8], 1) },
-   { eosio::session::make_shared_bytes(&int_keys[9], 1), eosio::session::make_shared_bytes(&int_values[9], 1) },
+static const std::vector<std::pair<shared_bytes, shared_bytes>> int_batch_values{
+   { {&int_keys[0], 1}, {&int_values[0], 1} },
+   { {&int_keys[1], 1}, {&int_values[1], 1} },
+   { {&int_keys[2], 1}, {&int_values[2], 1} },
+   { {&int_keys[3], 1}, {&int_values[3], 1} },
+   { {&int_keys[4], 1}, {&int_values[4], 1} },
+   { {&int_keys[5], 1}, {&int_values[5], 1} },
+   { {&int_keys[6], 1}, {&int_values[6], 1} },
+   { {&int_keys[7], 1}, {&int_values[7], 1} },
+   { {&int_keys[8], 1}, {&int_values[8], 1} },
+   { {&int_keys[9], 1}, {&int_values[9], 1} },
 };
 
 struct string_t {};
@@ -118,15 +119,15 @@ struct int_t {};
 template <typename T, typename Key, typename Value>
 void make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, string_t) {
    for (const auto& kv : kvs) {
-      ds.write(eosio::session::make_shared_bytes(kv.first.c_str(), kv.first.size()),
-               eosio::session::make_shared_bytes(kv.second.c_str(), kv.second.size()));
+      ds.write(shared_bytes{kv.first.c_str(), kv.first.size()},
+               shared_bytes{kv.second.c_str(), kv.second.size()});
    }
 }
 
 template <typename T, typename Key, typename Value>
 void make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, int_t) {
    for (const auto& kv : kvs) {
-      ds.write(eosio::session::make_shared_bytes(&kv.first, 1), eosio::session::make_shared_bytes(&kv.second, 1));
+      ds.write(shared_bytes{&kv.first, 1}, shared_bytes{&kv.second, 1});
    }
 }
 
@@ -158,16 +159,16 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
    BOOST_REQUIRE(count == container.size());
 
    for (const auto& it : container) {
-      auto key   = eosio::session::make_shared_bytes_view(it.first.c_str(), it.first.size());
+      auto key   = shared_bytes{it.first.c_str(), it.first.size()};
       auto value = ds.read(key);
       BOOST_REQUIRE(ds.contains(key) == true);
-      BOOST_REQUIRE(value != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(value != shared_bytes::invalid());
       BOOST_REQUIRE(std::memcmp(it.second.c_str(), reinterpret_cast<const char*>(value.data()), it.second.size()) == 0);
    }
 }
 
 template <typename Data_store, typename Key, typename Value>
-void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_map<Key, Value>& container, string_t) {
+void verify_equal(session<Data_store>& ds, const std::unordered_map<Key, Value>& container, string_t) {
    auto verify_key_value = [&](auto kv) {
       auto key = std::string{ reinterpret_cast<const char*>(kv.first.data()), kv.first.size() };
       auto it  = container.find(key);
@@ -202,10 +203,10 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    BOOST_REQUIRE(count == container.size());
 
    for (const auto& it : container) {
-      auto key   = eosio::session::make_shared_bytes_view(it.first.c_str(), it.first.size());
+      auto key   = shared_bytes{it.first.c_str(), it.first.size()};
       auto value = ds.read(key);
       BOOST_REQUIRE(ds.contains(key) == true);
-      BOOST_REQUIRE(value != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(value != shared_bytes::invalid());
       BOOST_REQUIRE(std::memcmp(it.second.c_str(), reinterpret_cast<const char*>(value.data()), it.second.size()) == 0);
    }
 }
@@ -236,16 +237,16 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
    BOOST_REQUIRE(count == container.size());
 
    for (const auto& it : container) {
-      auto key   = eosio::session::make_shared_bytes_view(&it.first, 1);
+      auto key   = shared_bytes{&it.first, 1};
       auto value = ds.read(key);
-      BOOST_REQUIRE(value != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(value != shared_bytes::invalid());
       BOOST_REQUIRE(ds.contains(key) == true);
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), value.data(), sizeof(Value)) == 0);
    }
 }
 
 template <typename Data_store, typename Key, typename Value>
-void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_map<Key, Value>& container, int_t) {
+void verify_equal(session<Data_store>& ds, const std::unordered_map<Key, Value>& container, int_t) {
    auto verify_key_value = [&](auto kv) {
       auto it = container.find(*reinterpret_cast<const Key*>(kv.first.data()));
       BOOST_REQUIRE(it != std::end(container));
@@ -278,9 +279,9 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    BOOST_REQUIRE(count == container.size());
 
    for (const auto& it : container) {
-      auto key   = eosio::session::make_shared_bytes_view(&it.first, 1);
+      auto key   = shared_bytes{&it.first, 1};
       auto value = ds.read(key);
-      BOOST_REQUIRE(value != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(value != shared_bytes::invalid());
       BOOST_REQUIRE(ds.contains(key) == true);
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), value.data(), sizeof(Value)) == 0);
    }
@@ -288,60 +289,59 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
 
 template <typename T>
 void verify_iterators(T& ds, string_t) {
-   BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes_view("g", 1)) == std::end(ds));
-   BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes_view("a", 1)) != std::end(ds));
-   BOOST_REQUIRE(*ds.find(eosio::session::make_shared_bytes_view("a", 1)) ==
-                 std::pair(eosio::session::make_shared_bytes_view("a", 1),
-                           eosio::session::make_shared_bytes_view("123456789", 9)));
-   BOOST_REQUIRE(*std::begin(ds) == std::pair(eosio::session::make_shared_bytes_view("a", 1),
-                                              eosio::session::make_shared_bytes_view("123456789", 9)));
+   BOOST_REQUIRE(ds.find(shared_bytes("g", 1)) == std::end(ds));
+   BOOST_REQUIRE(ds.find(shared_bytes("a", 1)) != std::end(ds));
+   BOOST_REQUIRE(*ds.find(shared_bytes("a", 1)) ==
+                 std::pair(shared_bytes("a", 1),
+                           shared_bytes("123456789", 9)));
+   BOOST_REQUIRE(*std::begin(ds) == std::pair(shared_bytes("a", 1),
+                                              shared_bytes("123456789", 9)));
    BOOST_REQUIRE(std::begin(ds) != std::end(ds));
    BOOST_REQUIRE(
-         *ds.lower_bound(eosio::session::make_shared_bytes_view("fffff", 5)) ==
-         std::pair(eosio::session::make_shared_bytes_view("fffff", 5), eosio::session::make_shared_bytes_view("5", 1)));
+         *ds.lower_bound(shared_bytes("fffff", 5)) ==
+         std::pair(shared_bytes("fffff", 5), shared_bytes("5", 1)));
    BOOST_REQUIRE(
-         *ds.upper_bound(eosio::session::make_shared_bytes_view("fffff", 5)) ==
-         std::pair(
-               eosio::session::make_shared_bytes_view("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54),
-               eosio::session::make_shared_bytes_view("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54)));
+         *ds.upper_bound(shared_bytes("fffff", 5)) ==
+         std::pair(shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54),
+               shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54)));
 }
 
 template <typename T>
 void verify_iterators(T& ds, int_t) {
    auto search_key = int32_t{ 16 };
-   BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes_view(&search_key, 1)) == std::end(ds));
+   BOOST_REQUIRE(ds.find(shared_bytes(&search_key, 1)) == std::end(ds));
    search_key        = 15;
    auto search_value = 8;
-   BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes_view(&search_key, 1)) != std::end(ds));
-   BOOST_REQUIRE(*ds.find(eosio::session::make_shared_bytes_view(&search_key, 1)) ==
-                 std::pair(eosio::session::make_shared_bytes_view(&search_key, 1),
-                           eosio::session::make_shared_bytes_view(&search_value, 1)));
+   BOOST_REQUIRE(ds.find(shared_bytes(&search_key, 1)) != std::end(ds));
+   BOOST_REQUIRE(*ds.find(shared_bytes(&search_key, 1)) ==
+                 std::pair(shared_bytes(&search_key, 1),
+                           shared_bytes(&search_value, 1)));
    search_key   = 1;
    search_value = 1;
-   BOOST_REQUIRE(*std::begin(ds) == std::pair(eosio::session::make_shared_bytes_view(&search_key, 1),
-                                              eosio::session::make_shared_bytes_view(&search_value, 1)));
+   BOOST_REQUIRE(*std::begin(ds) == std::pair(shared_bytes(&search_key, 1),
+                                              shared_bytes(&search_value, 1)));
    BOOST_REQUIRE(std::begin(ds) != std::end(ds));
    search_key        = 14;
    search_value      = 9;
    auto result_key   = int32_t{ 14 };
    auto result_value = int32_t{ 9 };
-   BOOST_REQUIRE(*ds.lower_bound(eosio::session::make_shared_bytes_view(&search_key, 1)) ==
-                 std::pair(eosio::session::make_shared_bytes_view(&result_key, 1),
-                           eosio::session::make_shared_bytes_view(&result_value, 1)));
+   BOOST_REQUIRE(*ds.lower_bound(shared_bytes(&search_key, 1)) ==
+                 std::pair(shared_bytes(&result_key, 1),
+                           shared_bytes(&result_value, 1)));
    result_key   = int32_t{ 15 };
    result_value = int32_t{ 8 };
-   BOOST_REQUIRE(*ds.upper_bound(eosio::session::make_shared_bytes_view(&search_key, 1)) ==
-                 std::pair(eosio::session::make_shared_bytes_view(&result_key, 1),
-                           eosio::session::make_shared_bytes_view(&result_value, 1)));
+   BOOST_REQUIRE(*ds.upper_bound(shared_bytes(&search_key, 1)) ==
+                 std::pair(shared_bytes(&result_key, 1),
+                           shared_bytes(&result_value, 1)));
 }
 
 template <typename T>
 void verify_key_order(T& ds) {
-   auto begin_key = eosio::session::shared_bytes::invalid;
-   auto current_key = eosio::session::shared_bytes::invalid;
-   auto compare     = std::less<eosio::session::shared_bytes>{};
+   auto begin_key = shared_bytes::invalid();
+   auto current_key = shared_bytes::invalid();
+   auto compare     = std::less<shared_bytes>{};
    for (const auto& kv : ds) {
-      if (current_key == eosio::session::shared_bytes::invalid) {
+      if (current_key == shared_bytes::invalid()) {
          current_key = kv.first;
          begin_key = kv.first;
          continue;
@@ -359,15 +359,15 @@ void verify_key_order(T& ds) {
 
 template <typename T>
 void verify_session_key_order(T& ds) {
-   auto current_key = eosio::session::shared_bytes::invalid;
-   auto compare     = std::less<eosio::session::shared_bytes>{};
+   auto current_key = shared_bytes::invalid();
+   auto compare     = std::less<shared_bytes>{};
 
    // the iterator is a session is circular.  So we need to bail out when we circle around to the beginning.
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
       auto kv = *kv_it;
-      if (current_key == eosio::session::shared_bytes::invalid) {
+      if (current_key == shared_bytes::invalid()) {
          current_key = kv.first;
          ++kv_it;
          continue;
@@ -380,8 +380,8 @@ void verify_session_key_order(T& ds) {
 }
 
 template <typename T>
-void verify_rwd(T& ds, const eosio::session::shared_bytes& key, const eosio::session::shared_bytes& value) {
-   BOOST_REQUIRE(ds.read(key) == eosio::session::shared_bytes::invalid);
+void verify_rwd(T& ds, const shared_bytes& key, const shared_bytes& value) {
+   BOOST_REQUIRE(ds.read(key) == shared_bytes::invalid());
    BOOST_REQUIRE(ds.contains(key) == false);
 
    ds.write(key, value);
@@ -389,19 +389,19 @@ void verify_rwd(T& ds, const eosio::session::shared_bytes& key, const eosio::ses
    BOOST_REQUIRE(ds.contains(key) == true);
 
    ds.erase(key);
-   BOOST_REQUIRE(ds.read(key) == eosio::session::shared_bytes::invalid);
+   BOOST_REQUIRE(ds.read(key) == shared_bytes::invalid());
    BOOST_REQUIRE(ds.contains(key) == false);
 }
 
 template <typename T, typename Iterable>
 void verify_rwd_batch(T& ds, const Iterable& kvs) {
-   auto keys = std::vector<eosio::session::shared_bytes>{};
+   auto keys = std::vector<shared_bytes>{};
    for (const auto& kv : kvs) { keys.emplace_back(kv.first); }
 
    auto [read_batch1, not_found1] = ds.read(keys);
    BOOST_REQUIRE(read_batch1.empty() == true);
    for (const auto& kv : kvs) {
-      BOOST_REQUIRE(ds.read(kv.first) == eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(ds.read(kv.first) == shared_bytes::invalid());
       BOOST_REQUIRE(ds.contains(kv.first) == false);
       BOOST_REQUIRE(not_found1.find(kv.first) != std::end(not_found1));
    }
@@ -410,7 +410,7 @@ void verify_rwd_batch(T& ds, const Iterable& kvs) {
    auto [read_batch2, not_found2] = ds.read(keys);
    BOOST_REQUIRE(read_batch2.empty() == false);
    for (const auto& kv : kvs) {
-      BOOST_REQUIRE(ds.read(kv.first) != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(ds.read(kv.first) != shared_bytes::invalid());
       BOOST_REQUIRE(ds.contains(kv.first) == true);
       BOOST_REQUIRE(not_found2.find(kv.first) == std::end(not_found2));
    }
@@ -419,7 +419,7 @@ void verify_rwd_batch(T& ds, const Iterable& kvs) {
    auto [read_batch3, not_found3] = ds.read(keys);
    BOOST_REQUIRE(read_batch3.empty() == true);
    for (const auto& kv : kvs) {
-      BOOST_REQUIRE(ds.read(kv.first) == eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(ds.read(kv.first) == shared_bytes::invalid());
       BOOST_REQUIRE(ds.contains(kv.first) == false);
       BOOST_REQUIRE(not_found3.find(kv.first) != std::end(not_found3));
    }
@@ -441,7 +441,7 @@ void verify_read_from_datastore(T& ds, U& other_ds) {
       }
    };
 
-   auto keys = std::vector<eosio::session::shared_bytes>{};
+   auto keys = std::vector<shared_bytes>{};
    for (const auto& kv : ds) { keys.emplace_back(kv.first); }
 
    other_ds.read_from(ds, keys);
@@ -449,8 +449,8 @@ void verify_read_from_datastore(T& ds, U& other_ds) {
 }
 
 template <typename Data_store>
-void verify_read_from_datastore(eosio::session::session<Data_store>& ds,
-                                eosio::session::session<Data_store>& other_ds) {
+void verify_read_from_datastore(session<Data_store>& ds,
+                                session<Data_store>& other_ds) {
    auto compare_ds = [](auto& left, auto& right) {
       // The data stores are equal if all the key_values in left are in right
       // and all the key_values in right are in left.
@@ -474,7 +474,7 @@ void verify_read_from_datastore(eosio::session::session<Data_store>& ds,
       } while (kv_it2 != begin2);
    };
 
-   auto keys  = std::vector<eosio::session::shared_bytes>{};
+   auto keys  = std::vector<shared_bytes>{};
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
@@ -503,7 +503,7 @@ void verify_write_to_datastore(T& ds, U& other_ds) {
       }
    };
 
-   auto keys = std::vector<eosio::session::shared_bytes>{};
+   auto keys = std::vector<shared_bytes>{};
    for (const auto& kv : ds) { keys.emplace_back(kv.first); }
 
    ds.write_to(other_ds, keys);
@@ -511,7 +511,7 @@ void verify_write_to_datastore(T& ds, U& other_ds) {
 }
 
 template <typename Data_store>
-void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::session::session<Data_store>& other_ds) {
+void verify_write_to_datastore(session<Data_store>& ds, session<Data_store>& other_ds) {
    auto compare_ds = [](auto& left, auto& right) {
       // The data stores are equal if all the key_values in left are in right
       // and all the key_values in right are in left.
@@ -535,7 +535,7 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
       } while (kv_it2 != begin2);
    };
 
-   auto keys  = std::vector<eosio::session::shared_bytes>{};
+   auto keys  = std::vector<shared_bytes>{};
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
@@ -548,9 +548,8 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
    compare_ds(other_ds, ds);
 }
 
-inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std::string& name = "testdb") {
-   auto rocksdb          = make_rocks_db(name);
-   return eosio::session::make_session(std::move(rocksdb));
+inline session<rocksdb_t> make_session(const std::string& name = "testdb") {
+   return {make_rocks_db(name)};
 }
 
 template <typename Data_store, typename Container>
@@ -566,10 +565,10 @@ void verify(const Data_store& ds, const Container& kvs) {
    }
 
    for (auto kv : kvs) {
-      auto key          = eosio::session::make_shared_bytes_view(&kv.first, 1);
-      auto value        = eosio::session::make_shared_bytes_view(&kv.second, 1);
+      auto key          = shared_bytes(&kv.first, 1);
+      auto value        = shared_bytes(&kv.second, 1);
       auto result_value = ds.read(key);
-      BOOST_REQUIRE(result_value != eosio::session::shared_bytes::invalid);
+      BOOST_REQUIRE(result_value != shared_bytes::invalid());
       BOOST_REQUIRE(value == result_value);
    }
 };
@@ -577,7 +576,7 @@ void verify(const Data_store& ds, const Container& kvs) {
 template <typename Data_store, typename Container>
 void write(Data_store& ds, const Container& kvs) {
    for (auto kv : kvs) {
-      ds.write(eosio::session::make_shared_bytes(&kv.first, 1), eosio::session::make_shared_bytes(&kv.second, 1));
+      ds.write(shared_bytes(&kv.first, 1), shared_bytes(&kv.second, 1));
    }
 };
 
@@ -605,5 +604,3 @@ collapse(const std::vector<std::unordered_map<uint16_t, uint16_t>>& kvs_list) {
    }
    return merged;
 };
-
-} // namespace eosio::session_tests
