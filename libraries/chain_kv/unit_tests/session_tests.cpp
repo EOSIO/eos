@@ -2,11 +2,19 @@
 #include <session/cache.hpp>
 #include <session/rocks_session.hpp>
 #include <session/session.hpp>
+#include <session/map_session.hpp>
 
 using namespace eosio::session;
 using namespace eosio::session_tests;
 
 namespace eosio::session_tests {
+
+BOOST_AUTO_TEST_CASE(basic_session_tests) {
+   using db_t = std::map<shared_bytes, shared_bytes>;
+   session<db_t> base;
+
+   session s0 = {base};
+}
 
 void perform_session_level_test(bool always_undo = false) {
    auto kvs_list = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
