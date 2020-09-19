@@ -14,8 +14,7 @@ BOOST_AUTO_TEST_SUITE(session_undo_stack_tests)
 BOOST_AUTO_TEST_CASE(undo_stack_test) {
    // Push the head session into the undo stack.
    auto data_store    = eosio::session::make_session(make_rocks_db());
-   using session_type = eosio::session::session<decltype(data_store)>;
-   auto undo          = eosio::session::make_undo_stack(session_type{data_store});
+   auto undo          = eosio::session::undo_stack(data_store);
    auto session_kvs_1 = std::unordered_map<uint16_t, uint16_t>{
       { 1, 100 }, { 2, 200 }, { 3, 300 }, { 4, 400 }, { 5, 500 },
    };

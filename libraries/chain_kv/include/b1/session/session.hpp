@@ -109,11 +109,11 @@ class session final {
    session() = default;
    session(Parent& parent);
    session(session& parent);
-   session(const session&) = default;
+   session(const session&) = delete;
    session(session&& other);
    ~session();
 
-   session& operator=(const session&) = default;
+   session& operator=(const session&) = delete;
    session& operator                  =(session&& other);
 
    parent_type parent() const;
@@ -464,8 +464,7 @@ shared_bytes session<Parent>::read(const shared_bytes& key) const {
 
    if (value != shared_bytes::invalid()) {
       m_cache.write(key, value);
-      update_iterator_cache_(key,
-                             { .prime_only = true, .mark_deleted = false, .overwrite = false });
+      update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
    }
 
    return value;
@@ -494,8 +493,7 @@ bool session<Parent>::contains(const shared_bytes& key) const {
    return std::visit(
          [&](auto* p) {
             if (p && p->contains(key)) {
-               update_iterator_cache_(
-                     key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
+               update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
                return true;
             }
             return false;
@@ -672,9 +670,8 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
       // Update the iterator cache with this key.  It has to exist in the cache before
       // we can get an iterator to it.  In some cases, we will only be inserting the new
       // key and bypassing the search for its previous and next key.
-      update_iterator_cache_(
-            current_key,
-            { .prime_only = prime_cache_only, .mark_deleted = false, .overwrite = false });
+      update_iterator_cache_(current_key,
+                             { .prime_only = prime_cache_only, .mark_deleted = false, .overwrite = false });
       new_iterator.m_active_iterator = m_iterator_cache.find(current_key);
 
       if (new_iterator.m_active_iterator->second.deleted) {
@@ -782,9 +779,8 @@ void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predic
    do {
       if (m_active_iterator != std::end(m_active_session->m_iterator_cache) && !test(m_active_iterator)) {
          // Force an update to see if we pull in a next or previous key from the current key.
-         m_active_session->update_iterator_cache_(
-               m_active_iterator->first,
-               { .prime_only = false, .mark_deleted = false, .overwrite = false });
+         m_active_session->update_iterator_cache_(m_active_iterator->first,
+                                                  { .prime_only = false, .mark_deleted = false, .overwrite = false });
          if (!test(m_active_iterator)) {
             // The test still fails.  We are at the end.
             m_active_iterator = std::end(m_active_session->m_iterator_cache);
@@ -837,14 +833,16 @@ void session<Parent>::session_iterator<Iterator_traits>::move_previous_() {
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator++() {
+typename session<Parent>::template session_iterator<Iterator_traits>&
+session<Parent>::session_iterator<Iterator_traits>::operator++() {
    move_next_();
    return *this;
 }
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator++(int) {
+typename session<Parent>::template session_iterator<Iterator_traits>
+session<Parent>::session_iterator<Iterator_traits>::operator++(int) {
    auto new_iterator = *this;
    move_next_();
    return new_iterator;
@@ -852,14 +850,16 @@ typename session<Parent>::template session_iterator<Iterator_traits> session<Par
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator--() {
+typename session<Parent>::template session_iterator<Iterator_traits>&
+session<Parent>::session_iterator<Iterator_traits>::operator--() {
    move_previous_();
    return *this;
 }
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator--(int) {
+typename session<Parent>::template session_iterator<Iterator_traits>
+session<Parent>::session_iterator<Iterator_traits>::operator--(int) {
    auto new_iterator = *this;
    move_previous_();
    return new_iterator;
