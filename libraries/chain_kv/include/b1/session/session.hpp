@@ -110,11 +110,13 @@ class session final {
    session(Parent& parent);
    session(session& parent);
    session(const session&) = default;
-   session(session&&)      = default;
+   session(session&& other);
    ~session();
 
    session& operator=(const session&) = default;
-   session& operator=(session&&) = default;
+   session& operator                  =(session&& other);
+
+   parent_type parent() const;
 
    template <typename Other_parent>
    void attach(Other_parent& parent);
@@ -197,6 +199,11 @@ class session final {
 };
 
 template <typename Parent>
+typename session<Parent>::parent_type session<Parent>::parent() const {
+   return m_parent;
+}
+
+template <typename Parent>
 void session<Parent>::prime_cache_() {
    m_iterator_cache.clear();
 
@@ -212,7 +219,7 @@ void session<Parent>::prime_cache_() {
       m_cache.erase(keys_to_remove);
    }
 
-   auto key  = shared_bytes::invalid();
+   auto key = shared_bytes::invalid();
    auto end = [&](auto& ds) {
       auto end = std::end(ds);
       auto it  = end;
@@ -229,7 +236,7 @@ void session<Parent>::prime_cache_() {
    if (key != shared_bytes::invalid()) {
       m_iterator_cache.try_emplace(key, iterator_state{});
    }
-   key  = shared_bytes::invalid();
+   key        = shared_bytes::invalid();
    auto begin = [&](auto& ds) {
       auto end = std::end(ds);
       auto it  = std::begin(ds);
@@ -267,6 +274,33 @@ session<Parent>::session(session& parent) : m_parent{ &parent } {
 }
 
 template <typename Parent>
+session<Parent>::session(session&& other)
+    : m_parent{ std::move(other.m_parent) }, m_cache{ std::move(other.m_cache) }, m_iterator_cache{ std::move(
+                                                                                        other.m_iterator_cache) },
+      m_updated_keys{ std::move(other.m_updated_keys) }, m_deleted_keys{ std::move(other.m_deleted_keys) } {
+   session* null_parent = nullptr;
+   other.m_parent       = null_parent;
+}
+
+template <typename Parent>
+session<Parent>& session<Parent>::operator=(session&& other) {
+   if (this == &other) {
+      return *this;
+   }
+
+   m_parent         = std::move(other.m_parent);
+   m_cache          = std::move(other.m_cache);
+   m_iterator_cache = std::move(other.m_iterator_cache);
+   m_updated_keys   = std::move(other.m_updated_keys);
+   m_deleted_keys   = std::move(other.m_deleted_keys);
+
+   session* null_parent = nullptr;
+   other.m_parent       = null_parent;
+
+   return *this;
+}
+
+template <typename Parent>
 session<Parent>::~session() {
    commit();
    undo();
@@ -288,9 +322,9 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
    // method directly.
 
    auto lower = [&](auto& ds) {
-      auto it = ds.lower_bound(key);
+      auto it    = ds.lower_bound(key);
       auto begin = std::begin(ds);
-      auto end = std::end(ds);
+      auto end   = std::end(ds);
       if (it == begin && it == end) {
          // No bounds for this key;
          return end;
@@ -308,8 +342,8 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
             ++it;
             end = std::end(ds);
             if (it == std::begin(ds) || it == end) {
-                // We wrapped around.  These are circular iterators
-                return end;
+               // We wrapped around.  These are circular iterators
+               return end;
             }
          }
          test_set((*it).first, upper_bound_key, std::less<shared_bytes>{});
