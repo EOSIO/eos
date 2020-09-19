@@ -84,7 +84,7 @@ void undo_stack<Session>::undo() {
 template <typename Session>
 void undo_stack<Session>::commit(int64_t revision) {
    revision              = std::min(revision, m_revision);
-   auto initial_revision = m_revision - m_sessions.size() + 1;
+   auto initial_revision = static_cast<int64_t>(m_revision - m_sessions.size() + 1);
    if (initial_revision > revision) {
       return;
    }
@@ -98,8 +98,8 @@ void undo_stack<Session>::commit(int64_t revision) {
    session_to_commit.commit();
    session_to_commit.detach();
 
-   for (size_t i = 0; i <= start_index; ++i) { m_sessions[i].detach(); }
-   for (size_t i = start_index; i < m_sessions.size(); ++i) { m_sessions[current_index++] = std::move(m_sessions[i]); }
+   for (int64_t i = 0; i <= start_index; ++i) { m_sessions[i].detach(); }
+   for (int64_t i = start_index; i < static_cast<int64_t>(m_sessions.size()); ++i) { m_sessions[current_index++] = std::move(m_sessions[i]); }
    m_sessions.erase(std::begin(m_sessions) + current_index, std::end(m_sessions));
    if (!m_sessions.empty()) {
       std::visit([&](auto* parent) { m_sessions[0].attach(*parent); }, parent);

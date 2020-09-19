@@ -835,19 +835,16 @@ void session<Parent>::session_iterator<Iterator_traits>::move_previous_() {
    move_(test, move);
 }
 
-template <typename Parent, typename Iterator_traits>
-using session_iterator_alias = typename session<Parent>::template session_iterator<Iterator_traits>;
-
 template <typename Parent>
 template <typename Iterator_traits>
-session_iterator_alias<Parent, Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator++() {
+typename session<Parent>::template session_iterator<Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator++() {
    move_next_();
    return *this;
 }
 
 template <typename Parent>
 template <typename Iterator_traits>
-session_iterator_alias<Parent, Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator++(int) {
+typename session<Parent>::template session_iterator<Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator++(int) {
    auto new_iterator = *this;
    move_next_();
    return new_iterator;
@@ -855,14 +852,14 @@ session_iterator_alias<Parent, Iterator_traits> session<Parent>::session_iterato
 
 template <typename Parent>
 template <typename Iterator_traits>
-session_iterator_alias<Parent, Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator--() {
+typename session<Parent>::template session_iterator<Iterator_traits>& session<Parent>::session_iterator<Iterator_traits>::operator--() {
    move_previous_();
    return *this;
 }
 
 template <typename Parent>
 template <typename Iterator_traits>
-session_iterator_alias<Parent, Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator--(int) {
+typename session<Parent>::template session_iterator<Iterator_traits> session<Parent>::session_iterator<Iterator_traits>::operator--(int) {
    auto new_iterator = *this;
    move_previous_();
    return new_iterator;
@@ -879,7 +876,7 @@ bool session<Parent>::session_iterator<Iterator_traits>::deleted() const {
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session_iterator_alias<Parent, Iterator_traits>::value_type
+typename session<Parent>::template session_iterator<Iterator_traits>::value_type
 session<Parent>::session_iterator<Iterator_traits>::operator*() const {
    if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
       return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
@@ -889,7 +886,7 @@ session<Parent>::session_iterator<Iterator_traits>::operator*() const {
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session_iterator_alias<Parent, Iterator_traits>::value_type
+typename session<Parent>::template session_iterator<Iterator_traits>::value_type
 session<Parent>::session_iterator<Iterator_traits>::operator->() const {
    if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
       return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
