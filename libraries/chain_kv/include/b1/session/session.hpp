@@ -173,7 +173,6 @@ class session final {
 
    struct iterator_cache_params final {
       bool prime_only{ false };
-      bool recalculate{ false };
       bool mark_deleted{ false };
       bool overwrite{ true };
    };
@@ -389,14 +388,6 @@ void session<Parent>::update_iterator_cache_(const shared_bytes& key, const iter
       return;
    }
 
-   if (!params.recalculate && it->second.next_in_cache && it->second.previous_in_cache) {
-      // Only find the previous and next keys if we are forced to or if the current
-      // key has one of the flags markes as false.  We check when the flags are false
-      // because a new key might have come through that could change that result.  We may
-      // do a recalculation on a deletion to also change the flags.
-      return;
-   }
-
    auto [lower_bound, upper_bound] = bounds_(key);
 
    if (lower_bound != shared_bytes::invalid()) {
@@ -474,7 +465,7 @@ shared_bytes session<Parent>::read(const shared_bytes& key) const {
    if (value != shared_bytes::invalid()) {
       m_cache.write(key, value);
       update_iterator_cache_(key,
-                             { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = false });
+                             { .prime_only = true, .mark_deleted = false, .overwrite = false });
    }
 
    return value;
@@ -485,7 +476,7 @@ void session<Parent>::write(const shared_bytes& key, const shared_bytes& value) 
    m_updated_keys.emplace(key);
    m_deleted_keys.erase(key);
    m_cache.write(key, value);
-   update_iterator_cache_(key, { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = true });
+   update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = true });
 }
 
 template <typename Parent>
@@ -504,7 +495,7 @@ bool session<Parent>::contains(const shared_bytes& key) const {
          [&](auto* p) {
             if (p && p->contains(key)) {
                update_iterator_cache_(
-                     key, { .prime_only = true, .recalculate = true, .mark_deleted = false, .overwrite = false });
+                     key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
                return true;
             }
             return false;
@@ -517,7 +508,7 @@ void session<Parent>::erase(const shared_bytes& key) {
    m_deleted_keys.emplace(key);
    m_updated_keys.erase(key);
    m_cache.erase(key);
-   update_iterator_cache_(key, { .prime_only = true, .recalculate = true, .mark_deleted = true, .overwrite = true });
+   update_iterator_cache_(key, { .prime_only = true, .mark_deleted = true, .overwrite = true });
 }
 
 // Reads a batch of keys from the session.
@@ -683,7 +674,7 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
       // key and bypassing the search for its previous and next key.
       update_iterator_cache_(
             current_key,
-            { .prime_only = prime_cache_only, .recalculate = true, .mark_deleted = false, .overwrite = false });
+            { .prime_only = prime_cache_only, .mark_deleted = false, .overwrite = false });
       new_iterator.m_active_iterator = m_iterator_cache.find(current_key);
 
       if (new_iterator.m_active_iterator->second.deleted) {
@@ -793,7 +784,7 @@ void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predic
          // Force an update to see if we pull in a next or previous key from the current key.
          m_active_session->update_iterator_cache_(
                m_active_iterator->first,
-               { .prime_only = false, .recalculate = true, .mark_deleted = false, .overwrite = false });
+               { .prime_only = false, .mark_deleted = false, .overwrite = false });
          if (!test(m_active_iterator)) {
             // The test still fails.  We are at the end.
             m_active_iterator = std::end(m_active_session->m_iterator_cache);
