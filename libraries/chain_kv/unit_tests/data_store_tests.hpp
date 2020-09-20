@@ -181,9 +181,11 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    auto kv_it = std::begin(ds);
    auto count = size_t{ 0 };
    do {
-      verify_key_value(*kv_it);
+      if (kv_it != std::end(ds)) {
+         verify_key_value(*kv_it);
+         ++count;
+      }
       ++kv_it;
-      ++count;
    } while (kv_it != begin);
    BOOST_REQUIRE(count == container.size());
 
@@ -257,9 +259,13 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    auto kv_it = std::begin(ds);
    auto count = size_t{ 0 };
    do {
-      verify_key_value(*kv_it);
+      if (kv_it != std::end(ds)) {
+         verify_key_value(*kv_it);
+         ++count;
+      } else {
+        int i = 0;
+      }
       ++kv_it;
-      ++count;
    } while (kv_it != begin);
    BOOST_REQUIRE(count == container.size());
 
@@ -290,20 +296,18 @@ template <typename T>
 void verify_iterators(T& ds, string_t) {
    BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes("g", 1)) == std::end(ds));
    BOOST_REQUIRE(ds.find(eosio::session::make_shared_bytes("a", 1)) != std::end(ds));
-   BOOST_REQUIRE(*ds.find(eosio::session::make_shared_bytes("a", 1)) ==
-                 std::pair(eosio::session::make_shared_bytes("a", 1),
-                           eosio::session::make_shared_bytes("123456789", 9)));
+   BOOST_REQUIRE(
+         *ds.find(eosio::session::make_shared_bytes("a", 1)) ==
+         std::pair(eosio::session::make_shared_bytes("a", 1), eosio::session::make_shared_bytes("123456789", 9)));
    BOOST_REQUIRE(*std::begin(ds) == std::pair(eosio::session::make_shared_bytes("a", 1),
                                               eosio::session::make_shared_bytes("123456789", 9)));
    BOOST_REQUIRE(std::begin(ds) != std::end(ds));
-   BOOST_REQUIRE(
-         *ds.lower_bound(eosio::session::make_shared_bytes("fffff", 5)) ==
-         std::pair(eosio::session::make_shared_bytes("fffff", 5), eosio::session::make_shared_bytes("5", 1)));
+   BOOST_REQUIRE(*ds.lower_bound(eosio::session::make_shared_bytes("fffff", 5)) ==
+                 std::pair(eosio::session::make_shared_bytes("fffff", 5), eosio::session::make_shared_bytes("5", 1)));
    BOOST_REQUIRE(
          *ds.upper_bound(eosio::session::make_shared_bytes("fffff", 5)) ==
-         std::pair(
-               eosio::session::make_shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54),
-               eosio::session::make_shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54)));
+         std::pair(eosio::session::make_shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54),
+                   eosio::session::make_shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54)));
 }
 
 template <typename T>
@@ -337,19 +341,19 @@ void verify_iterators(T& ds, int_t) {
 
 template <typename T>
 void verify_key_order(T& ds) {
-   auto begin_key = eosio::session::shared_bytes::invalid();
+   auto begin_key   = eosio::session::shared_bytes::invalid();
    auto current_key = eosio::session::shared_bytes::invalid();
    auto compare     = std::less<eosio::session::shared_bytes>{};
    for (const auto& kv : ds) {
       if (current_key == eosio::session::shared_bytes::invalid()) {
          current_key = kv.first;
-         begin_key = kv.first;
+         begin_key   = kv.first;
          continue;
       }
 
       if (current_key == begin_key) {
-        // We've wrapped around
-        break;
+         // We've wrapped around
+         break;
       }
 
       BOOST_REQUIRE(compare(current_key, kv.first) == true);
@@ -366,6 +370,11 @@ void verify_session_key_order(T& ds) {
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
+      if (kv_it == std::end(ds)) {
+         ++kv_it;
+         continue;
+      }
+
       auto kv = *kv_it;
       if (current_key == eosio::session::shared_bytes::invalid()) {
          current_key = kv.first;
@@ -458,18 +467,22 @@ void verify_read_from_datastore(eosio::session::session<Data_store>& ds,
       auto begin1 = std::begin(left);
       auto kv_it1 = std::begin(left);
       do {
-         auto kv = *kv_it1;
-         BOOST_REQUIRE(right.contains(kv.first) == true);
-         BOOST_REQUIRE(right.read(kv.first) == kv.second);
+         if (kv_it1 != std::end(left)) {
+            auto kv = *kv_it1;
+            BOOST_REQUIRE(right.contains(kv.first) == true);
+            BOOST_REQUIRE(right.read(kv.first) == kv.second);
+         }
          ++kv_it1;
       } while (kv_it1 != begin1);
 
       auto begin2 = std::begin(right);
       auto kv_it2 = std::begin(right);
       do {
-         auto kv = *kv_it2;
-         BOOST_REQUIRE(left.contains(kv.first) == true);
-         BOOST_REQUIRE(left.read(kv.first) == kv.second);
+         if (kv_it2 != std::end(right)) {
+            auto kv = *kv_it2;
+            BOOST_REQUIRE(left.contains(kv.first) == true);
+            BOOST_REQUIRE(left.read(kv.first) == kv.second);
+         }
          ++kv_it2;
       } while (kv_it2 != begin2);
    };
@@ -478,8 +491,10 @@ void verify_read_from_datastore(eosio::session::session<Data_store>& ds,
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
-      auto kv = *kv_it;
-      keys.emplace_back(kv.first);
+      if (kv_it != std::end(ds)) {
+         auto kv = *kv_it;
+         keys.emplace_back(kv.first);
+      }
       ++kv_it;
    } while (kv_it != begin);
 
@@ -519,18 +534,22 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
       auto begin1 = std::begin(left);
       auto kv_it1 = std::begin(left);
       do {
-         auto kv = *kv_it1;
-         BOOST_REQUIRE(right.contains(kv.first) == true);
-         BOOST_REQUIRE(right.read(kv.first) == kv.second);
+         if (kv_it1 != std::end(left)) {
+            auto kv = *kv_it1;
+            BOOST_REQUIRE(right.contains(kv.first) == true);
+            BOOST_REQUIRE(right.read(kv.first) == kv.second);
+         }
          ++kv_it1;
       } while (kv_it1 != begin1);
 
       auto begin2 = std::begin(right);
       auto kv_it2 = std::begin(right);
       do {
-         auto kv = *kv_it2;
-         BOOST_REQUIRE(left.contains(kv.first) == true);
-         BOOST_REQUIRE(left.read(kv.first) == kv.second);
+         if (kv_it2 != std::end(right)) {
+            auto kv = *kv_it2;
+            BOOST_REQUIRE(left.contains(kv.first) == true);
+            BOOST_REQUIRE(left.read(kv.first) == kv.second);
+         }
          ++kv_it2;
       } while (kv_it2 != begin2);
    };
@@ -539,8 +558,10 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
    auto begin = std::begin(ds);
    auto kv_it = std::begin(ds);
    do {
-      auto kv = *kv_it;
-      keys.emplace_back(kv.first);
+      if (kv_it != std::end(ds)) {
+         auto kv = *kv_it;
+         keys.emplace_back(kv.first);
+      }
       ++kv_it;
    } while (kv_it != begin);
 
@@ -549,7 +570,7 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
 }
 
 inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std::string& name = "testdb") {
-   auto rocksdb          = make_rocks_db(name);
+   auto rocksdb = make_rocks_db(name);
    return eosio::session::make_session(std::move(rocksdb));
 }
 

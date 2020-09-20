@@ -515,11 +515,10 @@ rocks_iterator_alias<Iterator_traits> session<rocksdb_t>::rocks_iterator<Iterato
 
 template <typename Iterator_traits>
 rocks_iterator_alias<Iterator_traits>& session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator++() {
-   if (m_iterator->Valid()) {
-      m_iterator->Next();
-   }
    if (!m_iterator->Valid()) {
       m_iterator->SeekToFirst();
+   } else {
+      m_iterator->Next();
    }
    return *this;
 }
@@ -527,11 +526,10 @@ rocks_iterator_alias<Iterator_traits>& session<rocksdb_t>::rocks_iterator<Iterat
 template <typename Iterator_traits>
 rocks_iterator_alias<Iterator_traits> session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator++(int) {
    auto new_it = make_iterator_();
-   if (m_iterator->Valid()) {
-      m_iterator->Next();
-   }
    if (!m_iterator->Valid()) {
       m_iterator->SeekToFirst();
+   } else {
+      m_iterator->Next();
    }
    return new_it;
 }

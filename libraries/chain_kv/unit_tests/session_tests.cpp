@@ -9,10 +9,10 @@ using namespace eosio::session_tests;
 namespace eosio::session_tests {
 
 void perform_session_level_test(bool always_undo = false) {
-   auto kvs_list = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
+   auto kvs_list     = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
    auto ordered_list = std::vector<std::map<uint16_t, uint16_t>>{};
 
-   auto root_session = eosio::session_tests::make_session("testdb");
+   auto root_session  = eosio::session_tests::make_session("testdb");
    using session_type = eosio::session::session<decltype(root_session)>;
    kvs_list.emplace_back(generate_kvs(50));
    ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
@@ -185,9 +185,9 @@ BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::
 BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test(true); }
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
-   size_t key_count = 10;
-   auto root_session     = eosio::session_tests::make_session("testdb");
-   using session_type = eosio::session::session<decltype(root_session)>;
+   size_t key_count      = 10;
+   auto   root_session   = eosio::session_tests::make_session("testdb");
+   using session_type    = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs = generate_kvs(key_count);
    write(root_session, root_session_kvs);
    verify_equal(root_session, root_session_kvs, int_t{});
@@ -265,7 +265,13 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
 
       auto begin = std::begin(ds);
       auto it    = std::begin(ds);
+      auto end   = std::end(ds);
       do {
+         if (it == end) {
+            ++it;
+            continue;
+         }
+
          auto key_value = *it;
          if (key_value.first == key_) {
             BOOST_REQUIRE(key_value.second == value);
@@ -275,7 +281,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
       } while (it != begin);
    };
 
-   auto root_session = eosio::session_tests::make_session("testdb");
+   auto root_session  = eosio::session_tests::make_session("testdb");
    using session_type = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
@@ -328,9 +334,12 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
       auto begin = std::begin(ds);
       auto it    = std::begin(ds);
+      auto end   = std::end(ds);
       do {
-         auto key_value = *it;
-         BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
+         if (it != end) {
+            auto key_value = *it;
+            BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
+         }
          ++it;
       } while (it != begin);
    };
@@ -347,7 +356,12 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto found = size_t{ 0 };
       auto begin = std::begin(ds);
       auto it    = std::begin(ds);
+      auto end   = std::end(ds);
       do {
+         if (it == end) {
+            ++it;
+            continue;
+         }
          auto key_value = *it;
          auto key       = *reinterpret_cast<const uint16_t*>(key_value.first.data());
          auto value     = *reinterpret_cast<const uint16_t*>(key_value.second.data());
@@ -368,7 +382,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       ds.erase(key_);
    };
 
-   auto root_session = eosio::session_tests::make_session("testdb");
+   auto root_session  = eosio::session_tests::make_session("testdb");
    using session_type = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },

@@ -18,9 +18,8 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
    auto session_kvs_1 = std::unordered_map<uint16_t, uint16_t>{
       { 1, 100 }, { 2, 200 }, { 3, 300 }, { 4, 400 }, { 5, 500 },
    };
-   write(undo.top(), session_kvs_1);
-   verify_equal(undo.top(), session_kvs_1, int_t{});
-   BOOST_REQUIRE(undo.revision() == 0);
+   write(data_store, session_kvs_1);
+   verify_equal(data_store, session_kvs_1, int_t{});
 
    // Push a new session on the end of the undo stack and write some data to it
    undo.push();
@@ -35,7 +34,8 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
    // Undo that new session
    undo.undo();
    BOOST_REQUIRE(undo.revision() == 0);
-   verify_equal(undo.top(), session_kvs_1, int_t{});
+   BOOST_REQUIRE(undo.empty());
+   verify_equal(data_store, session_kvs_1, int_t{});
 
    // Push a new session and verify.
    undo.push();
@@ -69,7 +69,8 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
    undo.push();
    BOOST_REQUIRE(undo.revision() == 3);
    write(undo.top(), session_kvs_5);
-   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5 }), int_t{});
+   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5 }),
+                int_t{});
 
    auto session_kvs_6 = std::unordered_map<uint16_t, uint16_t>{
       { 26, 2600 }, { 27, 2700 }, { 28, 2800 }, { 29, 2900 }, { 30, 3000 },
@@ -77,12 +78,14 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
    undo.push();
    BOOST_REQUIRE(undo.revision() == 4);
    write(undo.top(), session_kvs_6);
-   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }), int_t{});
+   verify_equal(undo.top(),
+                collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }),
+                int_t{});
 
    // Commit revision 13 and verify that the top session has the correct key values.
    undo.commit(3);
    BOOST_REQUIRE(undo.revision() == 4);
-   verify_equal(undo.top(), collapse({ session_kvs_5, session_kvs_6 }), int_t{});
+   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_5, session_kvs_6 }), int_t{});
 }
 
 BOOST_AUTO_TEST_SUITE_END();

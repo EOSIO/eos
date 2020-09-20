@@ -801,14 +801,12 @@ template <typename Iterator_traits>
 void session<Parent>::session_iterator<Iterator_traits>::move_next_() {
    auto move     = [](auto& it) { ++it; };
    auto test     = [](auto& it) { return it->second.next_in_cache; };
-   auto rollover = [&]() {
-      if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
-         m_active_iterator = std::begin(m_active_session->m_iterator_cache);
-      }
-   };
 
-   move_(test, move);
-   rollover();
+   if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
+      m_active_iterator = std::begin(m_active_session->m_iterator_cache);
+   } else {
+      move_(test, move);
+   }
 }
 
 template <typename Parent>

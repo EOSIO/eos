@@ -41,7 +41,7 @@ class undo_stack final {
 
 template <typename Session>
 undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {
-   m_sessions.emplace_back(*m_head);
+   // m_sessions.emplace_back(*m_head);
 }
 
 template <typename Session>
@@ -77,6 +77,9 @@ void undo_stack<Session>::undo() {
 
 template <typename Session>
 void undo_stack<Session>::commit(int64_t revision) {
+   if (m_sessions.empty()) {
+      return;
+   }
    revision              = std::min(revision, m_revision);
    auto initial_revision = static_cast<int64_t>(m_revision - m_sessions.size() + 1);
    if (initial_revision > revision) {
@@ -132,11 +135,13 @@ void undo_stack<Session>::revision(int64_t revision) {
 
 template <typename Session>
 typename undo_stack<Session>::session_type& undo_stack<Session>::top() {
+   assert(!m_sessions.empty());
    return m_sessions.back();
 }
 
 template <typename Session>
 const typename undo_stack<Session>::session_type& undo_stack<Session>::top() const {
+   assert(!m_sessions.empty());
    return m_sessions.back();
 }
 
