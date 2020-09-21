@@ -17,6 +17,8 @@ add_executable(t0003_wcs.run t0003_wcs.cpp)
 add_executable(t0004_wcss.run t0004_wcss.cpp)
 add_executable(t0005_wcas.run t0005_wcas.cpp)
 add_executable(t0006_wccos.run t0006_wccos.cpp)
+add_executable(t0007_wca.run t0007_wca.cpp)
+add_executable(t0008_wcco.run t0008_wcco.cpp)
 #message(STATUS "SSL_LIB=${SSL_LIB}, CRYPTO_LIB=${CRYPTO_LIB}")
 target_link_libraries( t0002_hcss.run 
                         ${OPENSSL_SSL_LIBRARY}
@@ -33,4 +35,9 @@ target_link_libraries( t0006_wccos.run
                         ${COROUTINE_LIB}
                         ${THREAD_LIB}
                         ${CONTEXT_LIB} )
+target_link_libraries( t0008_wcco.run
+                        ${COROUTINE_LIB}
+                        ${THREAD_LIB}
+                        ${CONTEXT_LIB} )
+
 #target_include_directories( blockvault_svr_tst_net PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )

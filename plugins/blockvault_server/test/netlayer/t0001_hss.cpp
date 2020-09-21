@@ -148,6 +148,7 @@ handle_request(
     if(req.target().back() == '/')
         path.append("index.html");
 
+    std::cout << "request file: " << path << std::endl;
     // Attempt to open the file
     beast::error_code ec;
     http::file_body::value_type body;

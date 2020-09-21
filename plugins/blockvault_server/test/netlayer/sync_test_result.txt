@@ -1,0 +1,9 @@
+test environment : single pc, 127.0.0.1<->127.0.0.1     1024 connection  1024 messages with message length 1024 byte.
+
+t0003 as sync  client 
+        as               t0008  14988871us  1 th   18184209us  1024th,    51214425us 2048th         multi-th ioc
+        wsst             t0013  14718413us  1 th   18014619us  1024th,    51883586us 2048th,        multi-th ioc  
+        wsco             t0012  17446048us  1 th   18293155us 1024th,     43229952us 2048th,        multi-th ioc
+        wsfast           t0010  13122184us  1 th   13404472us 1024th,     13259138us 2048th         milti-th ioc
+        wsa              t0011  14841815us  1 th   18622260us 1024th ,     50320068us 2048th,       multi-th ioc 
+        wss              t0003  13076254us  1 th   sync + new th (socket) 
