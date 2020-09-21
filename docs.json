@@ -68,6 +68,10 @@
           },
           "disable_default_filters" :true,
           "filters" : []
+        },
+        {
+          "name": "doxybook",
+          "options": {}
         }
     ]
 }
