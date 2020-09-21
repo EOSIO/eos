@@ -425,7 +425,11 @@ class kv_tester : public tester {
    } // test_scanrev2
 
    void test_iterase(name db) {
-      for(bool reinsert : {false, true}) {
+      //for(bool reinsert : {false, true}) {
+      // With the session api, erasing a key doesn't invalidate the iterator
+      // AND reinserting that key after erasing it, also doesn't invalidate the iterator.
+      // The Session iterator will still be pointing to the correct thing.
+      for(bool reinsert : {false}) {  
          // pre-inserted
          for(bool insert : {false, true}) {
             for(int i = 0; i < 8; ++i) {

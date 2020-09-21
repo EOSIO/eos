@@ -7,12 +7,13 @@ namespace eosio { namespace chain {
    combined_session::combined_session(chainbase::database& cb_database)
        : cb_session{ std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true)) } {}
 
-   combined_session::combined_session(chainbase::database& cb_database, b1::chain_kv::undo_stack& kv_undo_stack)
-       : kv_undo_stack{ &kv_undo_stack } {
+   combined_session::combined_session(chainbase::database&                       cb_database,
+                                      eosio::session::undo_stack<rocks_db_type>& undo_stack)
+       : kv_undo_stack{ &undo_stack } {
       try {
          try {
             cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
-            kv_undo_stack.push(false);
+            kv_undo_stack->push();
          }
          FC_LOG_AND_RETHROW()
       }
@@ -20,8 +21,8 @@ namespace eosio { namespace chain {
    }
 
    combined_session::combined_session(combined_session&& src) noexcept
-       : cb_session(std::move(src.cb_session)), kv_undo_stack(src.kv_undo_stack) {
-      src.kv_undo_stack = nullptr;
+       : cb_session(std::move(src.cb_session)), kv_undo_stack(std::move(src.kv_undo_stack)) {
+      kv_undo_stack = nullptr;
    }
 
    void combined_session::push() {
@@ -52,7 +53,7 @@ namespace eosio { namespace chain {
             try {
                try {
                   cb_session->squash();
-                  kv_undo_stack->squash(false);
+                  kv_undo_stack->squash();
                   cb_session    = nullptr;
                   kv_undo_stack = nullptr;
                }
@@ -72,7 +73,7 @@ namespace eosio { namespace chain {
             try {
                try {
                   cb_session->undo();
-                  kv_undo_stack->undo(false);
+                  kv_undo_stack->undo();
                   cb_session    = nullptr;
                   kv_undo_stack = nullptr;
                }
@@ -88,15 +89,32 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
-   combined_database::combined_database(backing_store_type backing_store_,
-                                        chainbase::database& chain_db,
-                                        const std::string& rocksdb_path,
-                                        bool rocksdb_create_if_missing,
-                                        uint32_t rocksdb_threads,
-                                        int rocksdb_max_open_files)
-       : backing_store(backing_store_), db(chain_db),
-         kv_database(rocksdb_path.c_str(), rocksdb_create_if_missing, rocksdb_threads, rocksdb_max_open_files),
-         kv_undo_stack(kv_database, rocksdb_undo_prefix) {}
+   combined_database::combined_database(backing_store_type backing_store_, chainbase::database& chain_db,
+                                        const std::string& rocksdb_path, bool rocksdb_create_if_missing,
+                                        uint32_t rocksdb_threads, int rocksdb_max_open_files)
+       : backing_store(backing_store_), db(chain_db), kv_database{ [&]() {
+            rocksdb::Options options;
+            options.create_if_missing                    = rocksdb_create_if_missing;
+            options.level_compaction_dynamic_level_bytes = true;
+            options.bytes_per_sync                       = 1048576;
+            options.IncreaseParallelism(rocksdb_threads);
+            options.OptimizeLevelStyleCompaction(256ull << 20);
+            options.max_open_files = rocksdb_max_open_files;
+
+            rocksdb::BlockBasedTableOptions table_options;
+            table_options.format_version               = 4;
+            table_options.index_block_restart_interval = 16;
+            options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+
+            rocksdb::DB* p;
+            auto         status = rocksdb::DB::Open(options, rocksdb_path, &p);
+            if (!status.ok())
+               throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
+            auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
+            auto data_store = eosio::session::make_session(std::move(rdb));
+            return data_store;
+         }() },
+         kv_undo_stack(kv_database) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
       if (backing_store == backing_store_type::ROCKSDB) {
@@ -119,8 +137,7 @@ namespace eosio { namespace chain {
       try {
          try {
             db.set_revision(revision);
-#warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restart
-            // kv_undo_stack.set_revision(revision, false);
+            kv_undo_stack.revision(revision);
          }
          FC_LOG_AND_RETHROW()
       }
@@ -131,7 +148,7 @@ namespace eosio { namespace chain {
       try {
          try {
             db.undo();
-            kv_undo_stack.undo(false);
+            kv_undo_stack.undo();
          }
          FC_LOG_AND_RETHROW()
       }
@@ -152,33 +169,28 @@ namespace eosio { namespace chain {
    void combined_database::flush() {
       try {
          try {
-            kv_undo_stack.write_state();
-            kv_database.flush(true, true);
+            kv_database.flush();
          }
          FC_LOG_AND_RETHROW()
       }
       CATCH_AND_EXIT_DB_FAILURE()
    }
 
-   std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver,
-                                                                    kv_resource_manager resource_manager,
+   std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
-                  kv_database, kv_undo_stack, receiver, resource_manager, limits);
-         case backing_store_type::CHAINBASE:
-            return create_kv_chainbase_context(db, receiver, resource_manager, limits);
-         default:
-            EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
+            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack.top(), receiver,
+                                                                                resource_manager, limits);
+         case backing_store_type::CHAINBASE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
+         default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
    }
 
    void combined_database::add_to_snapshot(
-                                 const eosio::chain::snapshot_writer_ptr& snapshot,
-                                 const eosio::chain::block_state& head,
-                                 const eosio::chain::authorization_manager& authorization,
-                                 const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const {
+         const eosio::chain::snapshot_writer_ptr& snapshot, const eosio::chain::block_state& head,
+         const eosio::chain::authorization_manager&                    authorization,
+         const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const {
 
       snapshot->write_section<chain_snapshot_header>(
             [this](auto& section) { section.add_row(chain_snapshot_header(), db); });
@@ -204,33 +216,35 @@ namespace eosio { namespace chain {
             return;
          }
 
-#warning TODO: Revisit this and adapt to new design
          if constexpr (std::is_same_v<value_t, kv_object>) {
             snapshot->write_section<value_t>([this](auto& section) {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-                  std::unique_ptr<rocksdb::Iterator> it{ kv_database.rdb->NewIterator(rocksdb::ReadOptions()) };
-                  std::vector<char>                  prefix = rocksdb_contract_kv_prefix;
-                  b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
-                  it->Seek(b1::chain_kv::to_slice(rocksdb_contract_kv_prefix));
-                  while (it->Valid()) {
-                     auto key = it->key();
+                  auto prefix_key = make_prefix_key(kvdisk_id.to_uint64_t(), rocksdb_contract_kv_prefix.data(),
+                                                    rocksdb_contract_kv_prefix.size());
+
+                  for (auto it = kv_database.lower_bound(prefix_key); it != std::end(kv_database); ++it) {
+                     auto kv  = *it;
+                     auto key = kv.first;
+
                      if (key.size() < rocksdb_contract_kv_prefix.size() ||
-                         !std::equal(prefix.begin(), prefix.end(), key.data()))
+                         !std::equal(prefix_key.data(), prefix_key.data() + prefix_key.size(), key.data()))
                         break;
+
                      uint64_t    contract;
-                     std::size_t key_prefix_size = prefix.size() + sizeof(contract);
+                     std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
                      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-                     std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size,
+                     auto key_buffer = std::vector<int8_t>{ key.data(), key.data() + key.size() };
+                     std::reverse_copy(key_buffer.data() + prefix_key.size(), key_buffer.data() + key_prefix_size,
                                        reinterpret_cast<char*>(&contract));
-                     auto           value = it->value();
+                     auto           value = kv.second;
                      kv_object_view row{ kvdisk_id,
                                          name(contract),
-                                         { { key.data() + key_prefix_size, key.data() + key.size() } },
+                                         { { key_buffer.data() + key_prefix_size,
+                                             key_buffer.data() + key_buffer.size() } },
                                          { { value.data(), value.data() + value.size() } } };
                      section.add_row(row, db);
-                     it->Next();
                   }
                }
                decltype(utils)::template walk<by_kv_key>(
@@ -250,15 +264,12 @@ namespace eosio { namespace chain {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot,
-                                              uint32_t blog_start,
-                                              uint32_t blog_end,
-                                              backing_store_type backing_store_,
-                                              eosio::chain::authorization_manager& authorization,
+   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start,
+                                              uint32_t blog_end, backing_store_type backing_store_,
+                                              eosio::chain::authorization_manager&                    authorization,
                                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
-                                              eosio::chain::fork_database& fork_db,
-                                              eosio::chain::block_state_ptr& head,
-                                              uint32_t& snapshot_head_block,
+                                              eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
+                                              uint32_t&                          snapshot_head_block,
                                               const eosio::chain::chain_id_type& chain_id) {
       chain_snapshot_header header;
       snapshot->read_section<chain_snapshot_header>([this, &header](auto& section) {
@@ -356,10 +367,10 @@ namespace eosio { namespace chain {
             if (header.version < kv_object::minimum_snapshot_version)
                return;
             if (backing_store == backing_store_type::ROCKSDB) {
-               rocksdb::WriteBatch batch;
-               vector<char>        prefix = rocksdb_contract_kv_prefix;
-               b1::chain_kv::append_key(prefix, kvdisk_id.to_uint64_t());
-               snapshot->read_section<value_t>([this, &batch, &prefix](auto& section) {
+               auto prefix_key = make_prefix_key(kvdisk_id.to_uint64_t(), rocksdb_contract_kv_prefix.data(),
+                                                 rocksdb_contract_kv_prefix.size());
+               auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
+               snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
                   bool more = !section.empty();
                   while (more) {
                      kv_object* move_to_rocks = nullptr;
@@ -370,17 +381,21 @@ namespace eosio { namespace chain {
                         }
                      });
                      if (move_to_rocks) {
-                        rocksdb::Slice key   = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
-                        rocksdb::Slice value = { move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size() };
-                        batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(
-                                        prefix, move_to_rocks->contract.to_uint64_t(), key)),
-                                  value);
+                        auto buffer = std::vector<char>{};
+                        buffer.reserve(sizeof(uint64_t) + prefix_key.size());
+                        buffer.insert(std::end(buffer), prefix_key.data(), prefix_key.data() + prefix_key.size());
+                        b1::chain_kv::append_key(buffer, move_to_rocks->contract.to_uint64_t());
+                        buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
+                                      move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
+
+                        key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
+                                                eosio::session::make_shared_bytes(move_to_rocks->kv_value.data(),
+                                                                                  move_to_rocks->kv_value.size()));
                         db.remove(*move_to_rocks);
                      }
                   }
                });
-#warning TODO: Split the batch to avoid storing it all in memory at once.
-               kv_database.write(batch);
+               kv_database.write(key_values);
                return;
             }
          }
@@ -465,7 +480,7 @@ namespace eosio { namespace chain {
    }
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot,
-                                                                           uint32_t version) {
+                                                                           uint32_t         version) {
       std::optional<eosio::chain::genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
