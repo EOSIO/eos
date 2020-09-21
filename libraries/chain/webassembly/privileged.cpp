@@ -46,7 +46,7 @@ namespace eosio { namespace chain { namespace webassembly {
     * update a single resource limit associated with an account.
     *
     * @param account - the account whose limits are being modified
-    * @param resource - the resource to update, which should be either ram, disk, cpu, or net.
+    * @param resource - the resource to update, which should be either ram, cpu, or net.
     * @param limit - the new limit.  A value of -1 means unlimited.
     *
     * @pre limit >= -1
@@ -258,7 +258,7 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   uint32_t interface::get_kv_parameters_packed( name db, span<char> packed_kv_parameters, uint32_t max_version ) const {
+   uint32_t interface::get_kv_parameters_packed( span<char> packed_kv_parameters, uint32_t max_version ) const {
       const auto& gpo = context.control.get_global_properties();
       const auto& params = gpo.kv_configuration;
       uint32_t version = std::min( max_version, uint32_t(0) );
@@ -273,7 +273,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return s;
    }
 
-   void interface::set_kv_parameters_packed( name db, span<const char> packed_kv_parameters ) {
+   void interface::set_kv_parameters_packed( span<const char> packed_kv_parameters ) {
       datastream<const char*> ds( packed_kv_parameters.data(), packed_kv_parameters.size() );
       uint32_t version;
       chain::kv_database_config cfg;

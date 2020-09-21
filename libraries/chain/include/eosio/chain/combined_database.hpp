@@ -1,6 +1,6 @@
 #pragma once
 #warning TODO: Replace this file with db_undo_session.hpp. Use variant.
-#include <chain_kv/chain_kv.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/block_state.hpp>
@@ -25,10 +25,10 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 
-#include <session/cache.hpp>
-#include <session/rocks_session.hpp>
-#include <session/session.hpp>
-#include <session/undo_stack.hpp>
+#include <b1/session/cache.hpp>
+#include <b1/session/rocks_session.hpp>
+#include <b1/session/session.hpp>
+#include <b1/session/undo_stack.hpp>
 
 // It's a fatal condition if chainbase and chain_kv get out of sync with each
 // other due to exceptions.

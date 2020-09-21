@@ -121,8 +121,8 @@ namespace eosio { namespace chain {
          if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
             return;
          auto& idx = db.get_index<kv_index, by_kv_key>();
-         auto  it  = idx.lower_bound(boost::make_tuple(kvdisk_id, name{}, std::string_view{}));
-         EOS_ASSERT(it == idx.end() || it->database_id != kvdisk_id, database_move_kv_disk_exception,
+         auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
+         EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
                     "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
                     "rocksdb");
          db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
@@ -221,13 +221,12 @@ namespace eosio { namespace chain {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-                  auto prefix_key = make_prefix_key(kvdisk_id.to_uint64_t(), rocksdb_contract_kv_prefix.data(),
-                                                    rocksdb_contract_kv_prefix.size());
+                  auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+                                                                      rocksdb_contract_kv_prefix.size());
 
                   for (auto it = kv_database.lower_bound(prefix_key); it != std::end(kv_database); ++it) {
                      auto kv  = *it;
                      auto key = kv.first;
-
                      if (key.size() < rocksdb_contract_kv_prefix.size() ||
                          !std::equal(prefix_key.data(), prefix_key.data() + prefix_key.size(), key.data()))
                         break;
@@ -239,8 +238,7 @@ namespace eosio { namespace chain {
                      std::reverse_copy(key_buffer.data() + prefix_key.size(), key_buffer.data() + key_prefix_size,
                                        reinterpret_cast<char*>(&contract));
                      auto           value = kv.second;
-                     kv_object_view row{ kvdisk_id,
-                                         name(contract),
+                     kv_object_view row{ name(contract),
                                          { { key_buffer.data() + key_prefix_size,
                                              key_buffer.data() + key_buffer.size() } },
                                          { { value.data(), value.data() + value.size() } } };
@@ -367,8 +365,8 @@ namespace eosio { namespace chain {
             if (header.version < kv_object::minimum_snapshot_version)
                return;
             if (backing_store == backing_store_type::ROCKSDB) {
-               auto prefix_key = make_prefix_key(kvdisk_id.to_uint64_t(), rocksdb_contract_kv_prefix.data(),
-                                                 rocksdb_contract_kv_prefix.size());
+               auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+                                                                   rocksdb_contract_kv_prefix.size());
                auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
                snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
                   bool more = !section.empty();
@@ -376,9 +374,7 @@ namespace eosio { namespace chain {
                      kv_object* move_to_rocks = nullptr;
                      decltype(utils)::create(db, [this, &section, &more, &move_to_rocks](auto& row) {
                         more = section.read_row(row, db);
-                        if (row.database_id == kvdisk_id) {
-                           move_to_rocks = &row;
-                        }
+                        move_to_rocks = &row;
                      });
                      if (move_to_rocks) {
                         auto buffer = std::vector<char>{};

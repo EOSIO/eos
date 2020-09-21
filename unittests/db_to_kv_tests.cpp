@@ -2,7 +2,7 @@
 #include <eosio/chain/backing_store/db_key_value_format.hpp>
 #include <eosio/chain/backing_store/db_key_value_iter_store.hpp>
 
-#include <session/shared_bytes.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 #include <boost/test/unit_test.hpp>
 #include <cstring>

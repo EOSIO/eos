@@ -1,7 +1,7 @@
 #include "data_store_tests.hpp"
-#include <session/cache.hpp>
-#include <session/rocks_session.hpp>
-#include <session/session.hpp>
+#include <b1/session/cache.hpp>
+#include <b1/session/rocks_session.hpp>
+#include <b1/session/session.hpp>
 
 using namespace eosio::session;
 using namespace eosio::session_tests;

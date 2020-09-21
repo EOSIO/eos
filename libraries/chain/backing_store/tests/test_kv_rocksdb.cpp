@@ -4,7 +4,7 @@
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
-#include <session/shared_bytes.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -568,6 +568,7 @@ BOOST_FIXTURE_TEST_CASE(test_kv_it_compare_erased, kv_rocksdb_fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_equal, kv_rocksdb_fixture) {
+#warning Re-enable after merge
 //   check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::YES, "key");
 }
 
@@ -585,10 +586,12 @@ BOOST_FIXTURE_TEST_CASE(test_kv_it_status_end, kv_rocksdb_fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_status_erased, kv_rocksdb_fixture) {
+#warning Re-enable after merge
 //   check_test_kv_it_status(it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_erased);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_status_ok, kv_rocksdb_fixture) {
+#warning Re-enable after merge
 //   check_test_kv_it_status(it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
 }
 

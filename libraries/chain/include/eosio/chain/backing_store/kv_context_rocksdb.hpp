@@ -4,7 +4,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
-#include <session/session.hpp>
+#include <b1/session/session.hpp>
 
 namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);

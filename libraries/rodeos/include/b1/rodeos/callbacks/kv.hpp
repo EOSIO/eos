@@ -1,7 +1,7 @@
 #pragma once
 
 #include <b1/rodeos/callbacks/vm_types.hpp>
-#include <chain_kv/chain_kv.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 #include <eosio/check.hpp>
 #include <eosio/name.hpp>
 #include <rocksdb/db.h>

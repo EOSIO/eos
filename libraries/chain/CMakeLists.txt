@@ -139,7 +139,7 @@ target_include_directories( eosio_chain
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../rocksdb/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../chain_kv/include/b1"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../chain_kv/include"
                             )
 
 add_library(eosio_chain_wrap INTERFACE )

@@ -8,7 +8,7 @@
 
 #include <boost/pool/pool.hpp>
 
-#include <session/shared_bytes_fwd_decl.hpp>
+#include <b1/session/shared_bytes_fwd_decl.hpp>
 
 namespace eosio::session {
 

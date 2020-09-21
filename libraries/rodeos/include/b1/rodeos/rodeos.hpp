@@ -1,7 +1,7 @@
 #pragma once
 #include <b1/rodeos/filter.hpp>
 #include <b1/rodeos/wasm_ql.hpp>
-#include <chain_kv/chain_kv.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 #include <eosio/ship_protocol.hpp>
 #include <functional>
 
