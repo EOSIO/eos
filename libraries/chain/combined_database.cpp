@@ -236,27 +236,39 @@ namespace eosio { namespace chain {
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
                   auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
+                  auto it = kv_database->lower_bound(prefix_key);
 
-                  for (auto it = kv_database->lower_bound(prefix_key); it != std::end(*kv_database); ++it) {
-                     auto kv  = *it;
-                     auto key = kv.first;
-                     if (key.size() < rocksdb_contract_kv_prefix.size() ||
+                  do {
+                     if (it == std::end(*kv_database)) {
+                        break;
+                     }
+
+                     auto key = (*it).first;
+                     if (key.size() < prefix_key.size() ||
                          !std::equal(prefix_key.data(), prefix_key.data() + prefix_key.size(), key.data()))
                         break;
 
                      uint64_t    contract;
                      std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
                      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-                     auto key_buffer = std::vector<int8_t>{ key.data(), key.data() + key.size() };
-                     std::reverse_copy(key_buffer.data() + prefix_key.size(), key_buffer.data() + key_prefix_size,
-                                       reinterpret_cast<char*>(&contract));
-                     auto           value = kv.second;
+
+                     auto key_buffer = std::vector<uint8_t>{ key.data(), key.data() + key.size() };
+                     auto begin = std::begin(key_buffer) + prefix_key.size();
+                     auto end = std::begin(key_buffer) + key_prefix_size;
+                     b1::chain_kv::extract_key(begin, end, contract);
+
+                     auto           value = (*it).second;
                      kv_object_view row{ name(contract),
-                                         { { key_buffer.data() + key_prefix_size,
-                                             key_buffer.data() + key_buffer.size() } },
+                                         { { key.data() + key_prefix_size,
+                                             key.data() + key.size() } },
                                          { { value.data(), value.data() + value.size() } } };
+
                      section.add_row(row, db);
-                  }
+
+                     if (++it == std::begin(*kv_database)) {
+                         break;
+                     }
+                  } while (true);
                }
                decltype(utils)::template walk<by_kv_key>(
                      db, [this, &section](const auto& row) { section.add_row(row, db); });
@@ -391,7 +403,7 @@ namespace eosio { namespace chain {
                      });
                      if (move_to_rocks) {
                         auto buffer = std::vector<char>{};
-                        buffer.reserve(sizeof(uint64_t) + prefix_key.size());
+                        buffer.reserve(sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size());
                         buffer.insert(std::end(buffer), prefix_key.data(), prefix_key.data() + prefix_key.size());
                         b1::chain_kv::append_key(buffer, move_to_rocks->contract.to_uint64_t());
                         buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
