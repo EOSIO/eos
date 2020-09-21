@@ -31,11 +31,11 @@ namespace eosio {
       void add_abi( const chain::name& name, const chain::abi_def& abi );
 
       /**
-       * Given an action trace, produce a variant that represents the `data` field in the trace
+       * Given an action trace, produce a tuple representing the `data` and `return_value` fields in the trace
        *
        * @param action - trace of the action including metadata necessary for finding the ABI
        * @param yield - a yield function to allow cooperation during long running tasks
-       * @return variant representing the `data` field of the action interpreted by known ABIs OR an empty variant
+       * @return tuple with the first element is a variant representing the `data` field of the action interpreted by known ABIs OR an empty variant, the second element representing the `return_value` field of the trace.
        */
 
       std::tuple<fc::variant, std::optional<fc::variant>> serialize_to_variant(const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield );

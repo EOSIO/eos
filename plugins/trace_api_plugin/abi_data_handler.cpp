@@ -10,10 +10,12 @@ namespace eosio::trace_api {
    }
 
     std::tuple<fc::variant, std::optional<fc::variant>> abi_data_handler::serialize_to_variant(const std::variant<action_trace_v0, action_trace_v1> & action, const yield_function& yield ) {
-      chain::name  account = action.index() == 0 ? std::get<0>(action).account : std::get<1>(action).account;
+      auto  account = std::visit([](auto&& action) -> auto { return action.account; }, action);
+
       if (abi_serializer_by_account.count(account) > 0) {
          const auto& serializer_p = abi_serializer_by_account.at(account);
-         auto type_name = serializer_p->get_action_type(action.index() == 0 ? std::get<0>(action).action : std::get<1>(action).action);
+         auto action_name = std::visit([](auto&& action) -> auto { return action.action; }, action);
+         auto type_name = serializer_p->get_action_type(action_name);
 
          if (!type_name.empty()) {
             try {
@@ -23,12 +25,15 @@ namespace eosio::trace_api {
                   EOS_ASSERT( recursion_depth < chain::abi_serializer::max_recursion_depth, chain::abi_recursion_depth_exception,
                               "exceeded max_recursion_depth ${r} ", ("r", chain::abi_serializer::max_recursion_depth) );
                };
-               if(action.index() == 0){
-                   return {serializer_p->binary_to_variant(type_name, std::get<0>(action).data, abi_yield),{}};
-	         } else {
-                   return {serializer_p->binary_to_variant(type_name, std::get<1>(action).data, abi_yield), {serializer_p->binary_to_variant(type_name, std::get<1>(action).return_value, abi_yield)}};
-               }
-
+               return std::visit([&](auto&& action) -> std::tuple<fc::variant, std::optional<fc::variant>> {
+                  using T = std::decay_t<decltype(action)>;
+                  if constexpr (std::is_same_v<T, action_trace_v0>) {
+                     return {serializer_p->binary_to_variant(type_name, action.data, abi_yield), {}};
+                  } else {
+                     return {serializer_p->binary_to_variant(type_name, action.data, abi_yield),
+                             {serializer_p->binary_to_variant(type_name, action.return_value, abi_yield)}};
+                  }
+               }, action);
             } catch (...) {
                except_handler(MAKE_EXCEPTION_WITH_CONTEXT(std::current_exception()));
             }
