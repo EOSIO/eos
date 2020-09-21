@@ -58,7 +58,7 @@ namespace webassembly {
          */
          void preactivate_feature(legacy_ptr<const digest_type> feature_digest);
 
-         /*
+         /**
           * Set the resource limits of an account.
           *
           * @ingroup privileged
@@ -70,7 +70,7 @@ namespace webassembly {
          */
          void set_resource_limits(account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
 
-         /*
+         /**
           * Get the resource limits of an account
           *
           * @ingroup privileged
