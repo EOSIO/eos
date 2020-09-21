@@ -56,9 +56,7 @@ namespace eosio { namespace chain {
     public:
       combined_session() = default;
 
-      combined_session(chainbase::database& cb_database);
-
-      combined_session(chainbase::database& cb_database, eosio::session::undo_stack<rocks_db_type>& undo_stack);
+      combined_session(chainbase::database& cb_database, eosio::session::undo_stack<rocks_db_type>* undo_stack);
 
       combined_session(combined_session&& src) noexcept;
 
@@ -80,17 +78,23 @@ namespace eosio { namespace chain {
    // TODO:  What is combined_database used for?
    class combined_database {
     public:
-      combined_database(backing_store_type backing_store, chainbase::database& chain_db,
-                        const std::string& rocksdb_path, bool rocksdb_create_if_missing, uint32_t rocksdb_threads,
+      combined_database(chainbase::database& chain_db);
+
+      combined_database(chainbase::database& chain_db,
+                        const std::string& rocksdb_path,
+                        bool rocksdb_create_if_missing,
+                        uint32_t rocksdb_threads,
                         int rocksdb_max_open_files);
+
+      combined_database(const combined_database& copy) = delete;
+      combined_database& operator=(const combined_database& copy) = delete;
 
       void set_backing_store(backing_store_type backing_store);
 
       static combined_session make_no_op_session() { return combined_session(); }
 
       combined_session make_session() {
-         return backing_store == backing_store_type::ROCKSDB ? combined_session(db, kv_undo_stack)
-                                                             : combined_session(db);
+         return combined_session(db, kv_undo_stack.get());
       }
 
       void set_revision(uint64_t revision);
@@ -118,10 +122,10 @@ namespace eosio { namespace chain {
       void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;
       void read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot);
 
-      backing_store_type                       backing_store;
-      chainbase::database&                     db;
-      rocks_db_type                            kv_database;
-      eosio::session::undo_stack<rocks_db_type> kv_undo_stack;
+      backing_store_type                                         backing_store;
+      chainbase::database&                                       db;
+      std::unique_ptr<rocks_db_type>                             kv_database;
+      std::unique_ptr<eosio::session::undo_stack<rocks_db_type>> kv_undo_stack;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);

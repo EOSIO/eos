@@ -3,19 +3,16 @@
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
 namespace eosio { namespace chain {
-
-   combined_session::combined_session(chainbase::database& cb_database)
-       : cb_session{ std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true)) } {}
-
-   combined_session::combined_session(chainbase::database&                       cb_database,
-                                      eosio::session::undo_stack<rocks_db_type>& undo_stack)
-       : kv_undo_stack{ &undo_stack } {
+   combined_session::combined_session(chainbase::database& cb_database, eosio::session::undo_stack<rocks_db_type>* undo_stack)
+       : kv_undo_stack{ undo_stack } {
       try {
-         try {
+        try {
             cb_session = std::make_unique<chainbase::database::session>(cb_database.start_undo_session(true));
-            kv_undo_stack->push();
-         }
-         FC_LOG_AND_RETHROW()
+            if (kv_undo_stack) {
+              kv_undo_stack->push();
+            }
+        }
+        FC_LOG_AND_RETHROW()
       }
       CATCH_AND_EXIT_DB_FAILURE()
    }
@@ -89,10 +86,13 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
-   combined_database::combined_database(backing_store_type backing_store_, chainbase::database& chain_db,
+   combined_database::combined_database(chainbase::database& chain_db)
+       : backing_store(backing_store_type::CHAINBASE), db(chain_db) {}
+
+   combined_database::combined_database(chainbase::database& chain_db,
                                         const std::string& rocksdb_path, bool rocksdb_create_if_missing,
                                         uint32_t rocksdb_threads, int rocksdb_max_open_files)
-       : backing_store(backing_store_), db(chain_db), kv_database{ [&]() {
+       : backing_store(backing_store_type::ROCKSDB), db(chain_db), kv_database{ [&]() {
             rocksdb::Options options;
             options.create_if_missing                    = rocksdb_create_if_missing;
             options.level_compaction_dynamic_level_bytes = true;
@@ -111,10 +111,9 @@ namespace eosio { namespace chain {
             if (!status.ok())
                throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
-            auto data_store = eosio::session::make_session(std::move(rdb));
-            return data_store;
+            return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb)));
          }() },
-         kv_undo_stack(kv_database) {}
+         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
 
    void combined_database::set_backing_store(backing_store_type backing_store) {
       if (backing_store == backing_store_type::ROCKSDB) {
@@ -134,57 +133,71 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::set_revision(uint64_t revision) {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.set_revision(revision);
+         break;
+      case backing_store_type::ROCKSDB:
          try {
             db.set_revision(revision);
-            kv_undo_stack.revision(revision);
+            kv_undo_stack->revision(revision);
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::undo() {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.undo();
+         break;
+      case backing_store_type::ROCKSDB:
          try {
             db.undo();
-            kv_undo_stack.undo();
+            kv_undo_stack->undo();
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::commit(int64_t revision) {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         db.commit(revision);
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            db.commit(revision);
-            kv_undo_stack.commit(revision);
+            try {
+               db.commit(revision);
+               kv_undo_stack->commit(revision);
+            }
+            FC_LOG_AND_RETHROW()
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    void combined_database::flush() {
-      try {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         break;
+      case backing_store_type::ROCKSDB:
          try {
-            kv_database.flush();
+            kv_database->flush();
          }
-         FC_LOG_AND_RETHROW()
+         CATCH_AND_EXIT_DB_FAILURE()
       }
-      CATCH_AND_EXIT_DB_FAILURE()
    }
 
    std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack.top(), receiver,
+            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack->top(), receiver,
                                                                                 resource_manager, limits);
          case backing_store_type::CHAINBASE: return create_kv_chainbase_context(db, receiver, resource_manager, limits);
-         default: EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
       }
+      EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
    }
 
    void combined_database::add_to_snapshot(
@@ -224,7 +237,7 @@ namespace eosio { namespace chain {
                   auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
 
-                  for (auto it = kv_database.lower_bound(prefix_key); it != std::end(kv_database); ++it) {
+                  for (auto it = kv_database->lower_bound(prefix_key); it != std::end(*kv_database); ++it) {
                      auto kv  = *it;
                      auto key = kv.first;
                      if (key.size() < rocksdb_contract_kv_prefix.size() ||
@@ -391,7 +404,7 @@ namespace eosio { namespace chain {
                      }
                   }
                });
-               kv_database.write(key_values);
+               kv_database->write(key_values);
                return;
             }
          }
