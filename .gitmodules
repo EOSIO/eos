@@ -28,3 +28,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
 	url = https://github.com/eosio/appbase
+[submodule "libraries/nuraft"]
+	path = libraries/nuraft
+	url = https://github.com/eBay/NuRaft

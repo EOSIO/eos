@@ -53,3 +53,35 @@ find_package(OpenSSL REQUIRED)
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+
+
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
+
+add_library(nuraft STATIC 
+    nuraft/src/asio_service.cxx
+    nuraft/src/buffer.cxx
+    nuraft/src/buffer_serializer.cxx
+    nuraft/src/cluster_config.cxx
+    nuraft/src/crc32.cxx
+    nuraft/src/error_code.cxx
+    nuraft/src/handle_append_entries.cxx
+    nuraft/src/handle_client_request.cxx
+    nuraft/src/handle_custom_notification.cxx
+    nuraft/src/handle_commit.cxx
+    nuraft/src/handle_join_leave.cxx
+    nuraft/src/handle_priority.cxx
+    nuraft/src/handle_snapshot_sync.cxx
+    nuraft/src/handle_timeout.cxx
+    nuraft/src/handle_user_cmd.cxx
+    nuraft/src/handle_vote.cxx
+    nuraft/src/launcher.cxx
+    nuraft/src/peer.cxx
+    nuraft/src/raft_server.cxx
+    nuraft/src/snapshot.cxx
+    nuraft/src/snapshot_sync_req.cxx
+    nuraft/src/srv_config.cxx
+    nuraft/src/stat_mgr.cxx)
+
+target_include_directories(nuraft PRIVATE ${Boost_INCLUDE_DIR}/boost nuraft/include/libnuraft PUBLIC nuraft/include)
+target_compile_definitions(nuraft PRIVATE USE_BOOST_ASIO)
+target_link_libraries(nuraft Boost::system OpenSSL::SSL)

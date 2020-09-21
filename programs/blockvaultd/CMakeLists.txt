@@ -26,9 +26,11 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(${BLOCKVAULTD_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( ${BLOCKVAULTD_EXECUTABLE_NAME}
-        PRIVATE appbase version fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE appbase version fc nuraft ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 copy_bin( ${BLOCKVAULTD_EXECUTABLE_NAME} )
 install( TARGETS
    ${BLOCKVAULTD_EXECUTABLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
 )
+
+add_subdirectory(unittests)
