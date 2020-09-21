@@ -10,7 +10,7 @@ class shared_bytes;
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
 
-inline shared_bytes make_shared_bytes(const int8_t* data, size_t length);
+inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length);
 
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);

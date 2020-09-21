@@ -799,8 +799,8 @@ void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predic
 template <typename Parent>
 template <typename Iterator_traits>
 void session<Parent>::session_iterator<Iterator_traits>::move_next_() {
-   auto move     = [](auto& it) { ++it; };
-   auto test     = [](auto& it) { return it->second.next_in_cache; };
+   auto move = [](auto& it) { ++it; };
+   auto test = [](auto& it) { return it->second.next_in_cache; };
 
    if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
       m_active_iterator = std::begin(m_active_session->m_iterator_cache);

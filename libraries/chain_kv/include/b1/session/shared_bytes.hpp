@@ -19,9 +19,9 @@ class shared_bytes final {
    template <typename T>
    friend shared_bytes make_shared_bytes(const T* data, size_t length);
 
-   friend shared_bytes make_shared_bytes(const int8_t* data, size_t length);
+   friend shared_bytes make_shared_bytes(const uint8_t* data, size_t length);
 
-   using iterator       = const int8_t*;
+   using iterator       = const uint8_t*;
    using const_iterator = const iterator;
 
  public:
@@ -32,10 +32,10 @@ class shared_bytes final {
    shared_bytes& operator=(const shared_bytes& b) = default;
    shared_bytes& operator=(shared_bytes&& b) = default;
 
-   const int8_t* const data() const;
-   size_t              size() const;
+   const uint8_t* const data() const;
+   size_t               size() const;
 
-   int8_t operator[](size_t index) const;
+   uint8_t operator[](size_t index) const;
 
    bool operator==(const shared_bytes& other) const;
    bool operator!=(const shared_bytes& other) const;
@@ -52,8 +52,8 @@ class shared_bytes final {
    shared_bytes() = default;
 
  private:
-   std::shared_ptr<int8_t> m_data;
-   size_t                  m_size{ 0 };
+   std::shared_ptr<uint8_t> m_data;
+   size_t                   m_size{ 0 };
 };
 
 // \brief Creates a new shared_bytes instance with the given pointer and length.
@@ -63,21 +63,21 @@ class shared_bytes final {
 // length The number of items in the array.
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length) {
-   return make_shared_bytes(reinterpret_cast<const int8_t*>(data), length * sizeof(T));
+   return make_shared_bytes(reinterpret_cast<const uint8_t*>(data), length * sizeof(T));
 }
 
-inline shared_bytes make_shared_bytes(const int8_t* data, size_t length) {
+inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length) {
    auto result = shared_bytes{};
 
    if (!data || length == 0) {
       return result;
    }
 
-   auto* chunk = std::allocator<int8_t>{}.allocate(length);
+   auto* chunk = std::allocator<uint8_t>{}.allocate(length);
    memcpy(chunk, data, length);
 
-   auto deleter  = [&](auto* chunk) { std::allocator<int8_t>{}.deallocate(chunk, length); };
-   result.m_data = std::shared_ptr<int8_t>(chunk, deleter);
+   auto deleter  = [&](auto* chunk) { std::allocator<uint8_t>{}.deallocate(chunk, length); };
+   result.m_data = std::shared_ptr<uint8_t>(chunk, deleter);
    result.m_size = length;
 
    return result;
@@ -88,11 +88,11 @@ inline const shared_bytes& shared_bytes::invalid() {
    return bad;
 }
 
-inline const int8_t* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
+inline const uint8_t* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
 
 inline size_t shared_bytes::size() const { return m_size; }
 
-inline int8_t shared_bytes::operator[](size_t index) const {
+inline uint8_t shared_bytes::operator[](size_t index) const {
    assert(index < size());
    assert(m_data);
    return m_data.get()[index];
