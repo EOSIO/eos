@@ -960,6 +960,7 @@ struct controller_impl {
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
             using v3 = legacy::snapshot_global_property_object_v3;
+            using v4 = legacy::snapshot_global_property_object_v4;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
                std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -986,6 +987,18 @@ struct controller_impl {
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
                      gpo.initalize_from(legacy_global_properties, kv_config{},
                                         genesis_state::default_initial_wasm_configuration);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+
+            if (std::clamp(header.version, v4::minimum_version, v4::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
+                  v4 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties);
                   });
                });
                return; // early out to avoid default processing
@@ -2525,7 +2538,7 @@ struct controller_impl {
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
-      on_block_act.name = N(onblock);
+      on_block_act.name = "onblock"_n;
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(self.head_block_header());
 
@@ -3246,6 +3259,10 @@ validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
 }
 
+const flat_set<account_name>& controller::get_trusted_producers()const {
+   return my->conf.trusted_producers;
+}
+
 uint32_t controller::get_terminate_at_block()const {
    return my->conf.terminate_at_block;
 }
@@ -3479,11 +3496,22 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    }
 
    chain_id_type chain_id;
-   snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
-      snapshot_global_property_object global_properties;
-      section.read_row(global_properties);
-      chain_id = global_properties.chain_id;
-   });
+   using v4 = legacy::snapshot_global_property_object_v4;
+   if (header.version <= v4::maximum_version) {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         v4 global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      }); 
+   }
+   else {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         snapshot_global_property_object global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      });      
+   }
+
    return chain_id;
 }
 

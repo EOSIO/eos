@@ -15,6 +15,7 @@ namespace eosio { namespace chain {
  */
 struct chain_config_v0 {
 
+   //order must match parameters as ids are used in serialization
    enum {
       max_block_net_usage_id,
       target_block_net_usage_pct_id,
@@ -33,7 +34,7 @@ struct chain_config_v0 {
       max_inline_action_size_id,
       max_inline_action_depth_id,
       max_authority_depth_id,
-      ENUM_SIZE
+      PARAMS_COUNT
    };
 
    uint64_t   max_block_net_usage;                 ///< the maxiumum net usage in instructions for a block
@@ -64,24 +65,7 @@ struct chain_config_v0 {
    
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config_v0& c ) {
-      return out << "Max Block Net Usage: " << c.max_block_net_usage << ", "
-                 << "Target Block Net Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction Net Usage: " << c.max_transaction_net_usage << ", "
-                 << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
-                 << "Net Usage Leeway: " << c.net_usage_leeway << ", "
-                 << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
-
-                 << "Max Block CPU Usage: " << c.max_block_cpu_usage << ", "
-                 << "Target Block CPU Usage Percent: " << ((double)c.target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
-                 << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
-
-                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                 << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
-                 << "Max Transaction Delay: " << c.max_transaction_delay << ", "
-                 << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
-                 << "Max Authority Depth: " << c.max_authority_depth << "\n";
+      return c.log(out) << "\n";
    }
 
    friend inline bool operator ==( const chain_config_v0& lhs, const chain_config_v0& rhs ) {
@@ -126,18 +110,46 @@ struct chain_config_v0 {
 
    friend inline bool operator !=( const chain_config_v0& lhs, const chain_config_v0& rhs ) { return !(lhs == rhs); }
 
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const{
+      return out << "Max Block Net Usage: " << max_block_net_usage << ", "
+                     << "Target Block Net Usage Percent: " << ((double)target_block_net_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction Net Usage: " << max_transaction_net_usage << ", "
+                     << "Base Per-Transaction Net Usage: " << base_per_transaction_net_usage << ", "
+                     << "Net Usage Leeway: " << net_usage_leeway << ", "
+                     << "Context-Free Data Net Usage Discount: " << (double)context_free_discount_net_usage_num * 100.0 / (double)context_free_discount_net_usage_den << "% , "
+
+                     << "Max Block CPU Usage: " << max_block_cpu_usage << ", "
+                     << "Target Block CPU Usage Percent: " << ((double)target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
+                     << "Max Transaction CPU Usage: " << max_transaction_cpu_usage << ", "
+                     << "Min Transaction CPU Usage: " << min_transaction_cpu_usage << ", "
+
+                     << "Max Transaction Lifetime: " << max_transaction_lifetime << ", "
+                     << "Deferred Transaction Expiration Window: " << deferred_trx_expiration_window << ", "
+                     << "Max Transaction Delay: " << max_transaction_delay << ", "
+                     << "Max Inline Action Size: " << max_inline_action_size << ", "
+                     << "Max Inline Action Depth: " << max_inline_action_depth << ", "
+                     << "Max Authority Depth: " << max_authority_depth;
+   }
 };
 
+/**
+ * @brief v1 Producer-voted blockchain configuration parameters
+ *
+ * If Adding new parameters create chain_config_v[n] class instead of adding
+ * new parameters to v1 or v0. This is needed for snapshots backward compatibility
+ */
 struct chain_config_v1 : chain_config_v0 {
    using Base = chain_config_v0;
-   //add parameters here:
-   //...
-   //uncomment and substitute first_id with corresponding parameter name
+
+   uint32_t   max_action_return_value_size = config::default_max_action_return_value_size;               ///< size limit for action return value
+   
    //order must match parameters as ids are used in serialization
-   //enum {
-   //   first_id = chain_config_v0::ENUM_SIZE,
-   //   ENUM_SIZE
-   //};
+   enum {
+     max_action_return_value_size_id = Base::PARAMS_COUNT,
+     PARAMS_COUNT
+   };
 
    inline const Base& base() const {
       return static_cast<const Base&>(*this);
@@ -147,13 +159,13 @@ struct chain_config_v1 : chain_config_v0 {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config_v1& c ) {
-      //add v1 parameters output here
-      return out << c.base();
+      return c.log(out) << "\n";
    }
 
    friend inline bool operator == ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
       //add v1 parameters comarison here
-      return lhs.base() == rhs.base();
+      return std::tie(lhs.max_action_return_value_size) == std::tie(rhs.max_action_return_value_size) 
+          && lhs.base() == rhs.base();
    }
 
    friend inline bool operator != ( const chain_config_v1& lhs, const chain_config_v1& rhs ) {
@@ -163,6 +175,12 @@ struct chain_config_v1 : chain_config_v0 {
    inline chain_config_v1& operator= (const Base& b) {
       Base::operator= (b);
       return *this;
+   }
+
+protected:
+   template<typename Stream>
+   Stream& log(Stream& out) const{
+      return base().log(out) << ", Max Action Return Value Size: " << max_action_return_value_size;
    }
 };
 
@@ -175,7 +193,7 @@ struct config_entry_validator{
 };
 
 //after adding 1st value to chain_config_v1 change this using to point to v1
-using chain_config = chain_config_v0;
+using chain_config = chain_config_v1;
 using config_range = data_range<chain_config, config_entry_validator>;
 
 } } // namespace eosio::chain
@@ -192,9 +210,10 @@ FC_REFLECT(eosio::chain::chain_config_v0,
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
 
 )
-//uncomment after adding 1st member to v1 config
-//FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), CHAIN_CONFIG_V1_MEMBERS())
 
+FC_REFLECT_DERIVED(eosio::chain::chain_config_v1, (eosio::chain::chain_config_v0), 
+           (max_action_return_value_size)
+)
 
 namespace fc {
 
@@ -209,8 +228,9 @@ template <typename DataStream>
 inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v0, eosio::chain::config_entry_validator> &entry){
    using namespace eosio::chain;
 
-   if (!entry.is_allowed())
-      return s;
+   //initial requirements were to skip packing field if it is not activated.
+   //this approach allows to spam this function with big buffer so changing this behavior
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
    
    switch (entry.id){
       case chain_config_v0::max_block_net_usage_id:
@@ -281,14 +301,22 @@ template <typename DataStream>
 inline DataStream &operator<<(DataStream &s, const eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
    using namespace eosio::chain;
 
-   if (!entry.is_allowed())
-      return s;
+   //initial requirements were to skip packing field if it is not activated.
+   //this approach allows to spam this function with big buffer so changing this behavior
+   //moreover:
+   //The contract has no way to know that the value was skipped and is likely to behave incorrectly.
+   //When the protocol feature is not activated, the old version of nodeos that doesn't know about 
+   //the entry MUST behave the same as the new version of nodeos that does.
+   //Skipping known but unactivated entries violates this.
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
    
    switch (entry.id){
-      //add here entries for new members of chain_config_v1
+      case chain_config_v1::max_action_return_value_size_id:
+      fc::raw::pack(s, entry.config.max_action_return_value_size);
+      break;
       default:
-      data_entry<chain_config_v0, eosio::chain::config_entry_validator> base_entry(entry);
-      fc::raw::unpack(s, base_entry);
+      data_entry<chain_config_v0, config_entry_validator> base_entry(entry);
+      fc::raw::pack(s, base_entry);
    }
 
    return s;
@@ -375,12 +403,16 @@ inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::cha
  */
 template <typename DataStream>
 inline DataStream &operator>>(DataStream &s, eosio::chain::data_entry<eosio::chain::chain_config_v1, eosio::chain::config_entry_validator> &entry){
-   EOS_ASSERT(entry.is_allowed(), eosio::chain::unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
+   using namespace eosio::chain;
+
+   EOS_ASSERT(entry.is_allowed(), unsupported_feature, "config id ${id} is no allowed", ("id", entry.id));
 
    switch (entry.id){
-      //add here entries for new members of chain_config_v1
+      case chain_config_v1::max_action_return_value_size_id:
+      fc::raw::unpack(s, entry.config.max_action_return_value_size);
+      break;
       default:
-      eosio::chain::data_entry<std::false_type, eosio::chain::config_entry_validator> base_entry(entry);
+      eosio::chain::data_entry<chain_config_v0, config_entry_validator> base_entry(entry);
       fc::raw::unpack(s, base_entry);
    }
 
@@ -402,7 +434,7 @@ inline DataStream& operator<<( DataStream& s, const eosio::chain::data_range<T, 
    fc::raw::pack(s, size);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(T::ENUM_SIZE, false);
+   std::vector<bool> visited(T::PARAMS_COUNT, false);
    for (auto uid : selection.ids){
       uint32_t id = uid;
       EOS_ASSERT(id < visited.size(), config_parse_error, "provided id ${id} should be less than ${size}", ("id", id)("size", visited.size()));
@@ -431,7 +463,7 @@ inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio:
    fc::raw::unpack(s, length);
 
    //vector here serves as hash map where key is always an index
-   std::vector<bool> visited(T::ENUM_SIZE, false);
+   std::vector<bool> visited(T::PARAMS_COUNT, false);
    for (uint32_t i = 0; i < length; ++i) {
       fc::unsigned_int id;
       fc::raw::unpack(s, id);
@@ -440,7 +472,7 @@ inline DataStream& operator>>( DataStream& s, eosio::chain::data_range<T, eosio:
       EOS_ASSERT(!visited[id], config_parse_error, "duplicate id provided: ${id}", ("id", id));
       visited[id] = true;
 
-      eosio::chain::data_entry<T, config_entry_validator> cfg_entry(selection.config, id, selection.validator);
+      data_entry<T, config_entry_validator> cfg_entry(selection.config, id, selection.validator);
       fc::raw::unpack(s, cfg_entry);
    }
    return s;
