@@ -4,8 +4,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include <session/cache_fwd_decl.hpp>
-#include <session/shared_bytes.hpp>
+#include <b1/session/cache_fwd_decl.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
 

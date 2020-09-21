@@ -1,5 +1,5 @@
 #include "data_store_tests.hpp"
-#include <session/rocks_session.hpp>
+#include <b1/session/rocks_session.hpp>
 
 using namespace eosio::session;
 using namespace eosio::session_tests;

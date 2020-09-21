@@ -2,7 +2,7 @@
 
 #include <queue>
 
-#include <session/session.hpp>
+#include <b1/session/session.hpp>
 
 namespace eosio::session {
 

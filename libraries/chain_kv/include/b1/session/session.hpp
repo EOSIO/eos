@@ -8,9 +8,9 @@
 #include <unordered_set>
 #include <variant>
 
-#include <session/cache.hpp>
-#include <session/session_fwd_decl.hpp>
-#include <session/shared_bytes.hpp>
+#include <b1/session/cache.hpp>
+#include <b1/session/session_fwd_decl.hpp>
+#include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
 
