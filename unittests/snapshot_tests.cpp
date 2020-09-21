@@ -654,6 +654,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+// Psudo code for the following WAST:
+//    kv_get(receiver, ...)
+//    uint64_t buff[1];
+//    kv_get_data(offset, buff, ...)
+//    buff[0] = buff[0]++;
+//    kv_set(receiver, key, key_size, buff, ...)
 static const char kv_snapshot_wast[] = R"=====(
 (module
   (func $kv_get (import "env" "kv_get") (param i64 i32 i32 i32) (result i32))
@@ -692,7 +698,6 @@ static void set_backing_store(tester& chain, const backing_store_type backing_st
    chain.init(cfg); // enable new config
 }
 
-# warning TODO: test_kv_snapshot does not really test snapshot on RocksDB. More work (including turn on test_pending_schedule_snapshot) is required
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
    for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
@@ -734,7 +739,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
-            // increment the test contract
+            // Calling apply method which will increment the
+            // current value stored
             signed_transaction trx;
             trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
             chain.set_transaction_headers(trx);
@@ -743,6 +749,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // produce block
             auto new_block = chain.produce_block();
+
+#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
 
             // undo the auto-pending from tester
             chain.control->abort_block();
