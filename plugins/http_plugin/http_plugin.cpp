@@ -134,6 +134,7 @@ namespace eosio {
          virtual ~abstract_conn() {}
          virtual bool verify_max_bytes_in_flight() = 0;
          virtual void handle_exception() = 0;
+         virtual void send_response(std::string, int) = 0;
       };
 
       using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
@@ -367,10 +368,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             abstract_conn_impl(const abstract_conn_impl&) = delete;
             abstract_conn_impl(abstract_conn_impl&&) = delete;
             abstract_conn_impl& operator=(const abstract_conn_impl&) = delete;
+            abstract_conn_impl& operator=(abstract_conn_impl&&) noexcept = default;
 
             ~abstract_conn_impl() = default;
-            abstract_conn_impl(abstract_conn_impl&&) = default;
-            abstract_conn_impl& operator=(abstract_conn_impl&&) noexcept = default;
 
             bool verify_max_bytes_in_flight() override {
                return _impl->verify_max_bytes_in_flight(_conn);
@@ -378,6 +378,12 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
             void handle_exception()override {
                http_plugin_impl::handle_exception<T>(_conn);
+            }
+
+            void send_response(std::string body, int code) override {
+               _conn->set_body(std::move(body));
+               _conn->set_status( websocketpp::http::status_code::value( code ) );
+               _conn->send_http_response();
             }
 
             detail::connection_ptr<T> _conn;
@@ -542,7 +548,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                      auto tracked_json = make_in_flight(std::move(json), my);
                      abstract_conn_ptr->send_response(std::move(*(*tracked_json)), code);
                   } catch( ... ) {
-                     handle_exception<T>( con );
+                     abstract_conn_ptr->handle_exception();
                   }
                });
             };
