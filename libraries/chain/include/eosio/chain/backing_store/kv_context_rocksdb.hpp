@@ -354,7 +354,7 @@ namespace eosio { namespace chain {
             try {
                auto composite_key = make_composite_key(contract, nullptr, 0, key, key_size);
                old_value          = session->read(composite_key);
-               if (old_value == eosio::session::shared_bytes::invalid())
+               if (!old_value)
                   return 0;
                actual_old_value_size = actual_value_size(old_value.size());
                session->erase(composite_key);

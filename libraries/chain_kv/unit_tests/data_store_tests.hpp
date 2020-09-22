@@ -343,7 +343,7 @@ void verify_key_order(T& ds) {
    auto current_key = eosio::session::shared_bytes::invalid();
    auto compare     = std::less<eosio::session::shared_bytes>{};
    for (const auto& kv : ds) {
-      if (current_key == eosio::session::shared_bytes::invalid()) {
+      if (!current_key) {
          current_key = kv.first;
          begin_key   = kv.first;
          continue;
@@ -374,7 +374,7 @@ void verify_session_key_order(T& ds) {
       }
 
       auto kv = *kv_it;
-      if (current_key == eosio::session::shared_bytes::invalid()) {
+      if (!current_key) {
          current_key = kv.first;
          ++kv_it;
          continue;

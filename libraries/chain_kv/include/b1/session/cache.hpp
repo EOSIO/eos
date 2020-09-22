@@ -187,7 +187,7 @@ cache::read(const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid()) {
+      if (!value) {
          not_found.emplace(key);
          continue;
       }
@@ -237,7 +237,7 @@ void cache::write_to(Data_store& ds, const Iterable& keys) const {
    for (const auto& key : keys) {
       auto& value = find_(
             key, [](auto& it) { return true; }, []() {});
-      if (value == shared_bytes::invalid()) {
+      if (!value) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });
@@ -258,7 +258,7 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
 
    for (const auto& key : keys) {
       auto& value = ds.read(key);
-      if (value == shared_bytes::invalid()) {
+      if (!value) {
          continue;
       }
       kvs.emplace_back(std::pair{ key, value });

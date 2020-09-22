@@ -658,12 +658,12 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
       pending_key = (*pending).first;
    }
 
-   if (current_key == shared_bytes::invalid() ||
-       (pending_key != shared_bytes::invalid() && comparator(pending_key, current_key))) {
+   if (!current_key ||
+       (pending_key && comparator(pending_key, current_key))) {
       current_key = pending_key;
    }
 
-   if (current_key != shared_bytes::invalid()) {
+   if (current_key) {
       // Update the iterator cache with this key.  It has to exist in the cache before
       // we can get an iterator to it.  In some cases, we will only be inserting the new
       // key and bypassing the search for its previous and next key.
@@ -683,11 +683,11 @@ template <typename Parent>
 typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key) {
    // This comparator just chooses the one that isn't invalid.
    static auto comparator = [](const auto& left, const auto& right) {
-      if (left == shared_bytes::invalid() && right == shared_bytes::invalid()) {
+      if (!left && !right) {
          return true;
       }
 
-      if (left == shared_bytes::invalid()) {
+      if (!left) {
          return false;
       }
 
@@ -702,11 +702,11 @@ template <typename Parent>
 typename session<Parent>::const_iterator session<Parent>::find(const shared_bytes& key) const {
    // This comparator just chooses the one that isn't invalid.
    static auto comparator = [](const auto& left, const auto& right) {
-      if (left == shared_bytes::invalid() && right == shared_bytes::invalid()) {
+      if (!left && !right) {
          return true;
       }
 
-      if (left == shared_bytes::invalid()) {
+      if (!left) {
          return false;
       }
 

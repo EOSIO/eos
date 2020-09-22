@@ -41,7 +41,6 @@ class undo_stack {
 
 template <typename Session>
 undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {
-   // m_sessions.emplace_back(*m_head);
 }
 
 template <typename Session>
