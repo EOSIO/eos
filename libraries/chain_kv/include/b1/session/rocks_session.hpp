@@ -531,16 +531,15 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator->() const {
 
 template <typename Iterator_traits>
 bool session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator==(const rocks_iterator& other) const {
-   if (!m_iterator->Valid() && !other.m_iterator->Valid()) {
-      return true;
+   if (!m_iterator->Valid()) {
+      return !other.m_iterator->Valid();
    }
 
-   if (!m_iterator->Valid() || !other.m_iterator->Valid()) {
-      return false;
+   if (!other.m_iterator->Valid()) {
+      return !m_iterator->Valid();
    }
 
-   return m_iterator->key().compare(other.m_iterator->key()) == 0 &&
-          m_iterator->value().compare(other.m_iterator->value()) == 0;
+   return m_iterator->key().compare(other.m_iterator->key()) == 0;
 }
 
 template <typename Iterator_traits>
