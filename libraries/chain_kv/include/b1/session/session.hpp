@@ -658,8 +658,7 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
       pending_key = (*pending).first;
    }
 
-   if (!current_key ||
-       (pending_key && comparator(pending_key, current_key))) {
+   if (!current_key || (pending_key && comparator(pending_key, current_key))) {
       current_key = pending_key;
    }
 

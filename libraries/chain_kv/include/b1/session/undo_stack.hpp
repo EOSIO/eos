@@ -40,8 +40,7 @@ class undo_stack {
 };
 
 template <typename Session>
-undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {
-}
+undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {}
 
 template <typename Session>
 void undo_stack<Session>::push() {
