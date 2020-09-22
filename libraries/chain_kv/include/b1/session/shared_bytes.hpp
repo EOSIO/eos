@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <memory>
 #include <string_view>
 
@@ -82,7 +83,7 @@ inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length) {
    }
 
    auto* chunk = std::allocator<uint8_t>{}.allocate(length);
-   memcpy(chunk, data, length);
+   std::memcpy(chunk, data, length);
 
    auto deleter  = [&](auto* chunk) { std::allocator<uint8_t>{}.deallocate(chunk, length); };
    result.m_data = std::shared_ptr<uint8_t>(chunk, deleter);
@@ -116,7 +117,7 @@ inline bool shared_bytes::operator==(const shared_bytes& other) const {
       if (size() != other.size()) {
          return false;
       }
-      return memcmp(m_data.get(), other.m_data.get(), size()) == 0 ? true : false;
+      return std::memcmp(m_data.get(), other.m_data.get(), size()) == 0 ? true : false;
    }
 
    return false;
