@@ -158,7 +158,9 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db)
     : m_db{ [&]() {
          assert(db);
          return std::move(db);
-      }() } {}
+      }() } {
+   m_write_options.disableWAL = true;
+}
 
 inline void session<rocksdb_t>::undo() {}
 

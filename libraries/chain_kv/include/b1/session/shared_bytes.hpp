@@ -48,6 +48,9 @@ class shared_bytes {
    bool operator!() const;
         operator bool() const;
 
+   bool operator<(const shared_bytes& other) const;
+   bool operator>(const shared_bytes& other) const;
+
    iterator begin() const;
    iterator end() const;
 
@@ -121,6 +124,28 @@ inline bool shared_bytes::operator==(const shared_bytes& other) const {
 
 inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
 
+inline bool shared_bytes::operator<(const shared_bytes& other) const {
+   if (*this != eosio::session::shared_bytes::invalid() && other != eosio::session::shared_bytes::invalid()) {
+      return std::string_view{ reinterpret_cast<const char*>(this->data()), this->size() } <
+             std::string_view{ reinterpret_cast<const char*>(other.data()), other.size() };
+   }
+   if (*this == eosio::session::shared_bytes::invalid()) {
+      return false;
+   }
+   return true;
+}
+
+inline bool shared_bytes::operator>(const shared_bytes& other) const {
+   if (*this != eosio::session::shared_bytes::invalid() && other != eosio::session::shared_bytes::invalid()) {
+      return std::string_view{ reinterpret_cast<const char*>(this->data()), this->size() } >
+             std::string_view{ reinterpret_cast<const char*>(other.data()), other.size() };
+   }
+   if (*this == eosio::session::shared_bytes::invalid()) {
+      return false;
+   }
+   return true;
+}
+
 inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid(); }
 
 inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid(); }
@@ -134,42 +159,28 @@ inline shared_bytes::iterator shared_bytes::end() const { return m_data.get() + 
 namespace std {
 
 template <>
-struct less<eosio::session::shared_bytes> final {
+struct less<eosio::session::shared_bytes> {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      if (lhs != eosio::session::shared_bytes::invalid() && rhs != eosio::session::shared_bytes::invalid()) {
-         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } <
-                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
-      }
-      if (lhs == eosio::session::shared_bytes::invalid()) {
-         return false;
-      }
-      return true;
+      return lhs < rhs;
    };
 };
 
 template <>
-struct greater<eosio::session::shared_bytes> final {
+struct greater<eosio::session::shared_bytes> {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      if (lhs != eosio::session::shared_bytes::invalid() && rhs != eosio::session::shared_bytes::invalid()) {
-         return std::string_view{ reinterpret_cast<const char*>(lhs.data()), lhs.size() } >
-                std::string_view{ reinterpret_cast<const char*>(rhs.data()), rhs.size() };
-      }
-      if (lhs == eosio::session::shared_bytes::invalid()) {
-         return false;
-      }
-      return true;
+      return lhs > rhs;
    };
 };
 
 template <>
-struct hash<eosio::session::shared_bytes> final {
+struct hash<eosio::session::shared_bytes> {
    size_t operator()(const eosio::session::shared_bytes& b) const {
       return std::hash<std::string_view>{}({ reinterpret_cast<const char*>(b.data()), b.size() });
    }
 };
 
 template <>
-struct equal_to<eosio::session::shared_bytes> final {
+struct equal_to<eosio::session::shared_bytes> {
    bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
       return lhs == rhs;
    }

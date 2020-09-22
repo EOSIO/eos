@@ -72,11 +72,11 @@ namespace eosio { namespace chain {
    }
 
    static inline int32_t compare_bytes(const eosio::session::shared_bytes& left, const eosio::session::shared_bytes& right) {
-      if (std::less<eosio::session::shared_bytes>{}(left, right)) {
+      if (left < right) {
           return -1;
       }
 
-      if (std::greater<eosio::session::shared_bytes>{}(left, right)) {
+      if (left > right) {
           return 1;
       }
 
@@ -108,7 +108,7 @@ namespace eosio { namespace chain {
           }
 
           auto next_prefix = eosio::session::make_shared_bytes(buffer.data(), buffer.size()); 
-          if (std::less<eosio::session::shared_bytes>{}(next_prefix, key)) {
+          if (next_prefix < key) {
              return key;
           }
           return next_prefix;
@@ -133,7 +133,7 @@ namespace eosio { namespace chain {
             return kv_it_stat::iterator_end; 
          else if (kv_current == kv_session->lower_bound(kv_next_prefix)) 
             return kv_it_stat::iterator_end; 
-         else if (std::less<eosio::session::shared_bytes>{}((*kv_current).first, kv_prefix)) 
+         else if ((*kv_current).first < kv_prefix) 
             return kv_it_stat::iterator_end; 
          else if (kv_current.deleted())
             return kv_it_stat::iterator_erased;
@@ -243,7 +243,7 @@ namespace eosio { namespace chain {
          try {
             try {
                auto key_bytes = make_composite_key(kv_contract, nullptr, 0, key, size);
-               if (std::less<eosio::session::shared_bytes>{}(key_bytes, kv_prefix)) {
+               if (key_bytes < kv_prefix) {
                  key_bytes = kv_prefix;
                }
 

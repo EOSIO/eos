@@ -222,7 +222,7 @@ void session<Parent>::prime_cache_() {
       if (it == std::begin(ds)) {
          return it;
       }
-      if (std::greater<shared_bytes>{}((*(--it)).first, key)) {
+      if ((*(--it)).first > key) {
          key = (*it).first;
       }
       return end;
@@ -239,7 +239,7 @@ void session<Parent>::prime_cache_() {
       if (it == end) {
          return it;
       }
-      if (std::less<shared_bytes>{}((*it).first, key)) {
+      if ((*it).first < key) {
          key = (*it).first;
       }
       return end;
@@ -627,7 +627,7 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
             return shared_bytes::invalid();
          }
          pending_key = (*it).first;
-         if (std::less<shared_bytes>{}(pending_key, beginning_key)) {
+         if (pending_key < beginning_key) {
             // We've looped around.
             return shared_bytes::invalid();
          }
