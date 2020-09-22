@@ -1,4 +1,4 @@
-#include <eosio/chain/exceptions.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <eosio/web_server_plugin/web_server_plugin.hpp>
 #include <eosio/web_server_plugin/beast_server.hpp>
