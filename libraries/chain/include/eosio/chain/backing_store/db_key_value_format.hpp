@@ -81,7 +81,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    template <typename Key>
    eosio::session::shared_bytes create_secondary_key(name scope, name table, const Key& db_key, uint64_t primary_key) {
-      auto buffer = std::vector<char>{};
+      auto buffer = detail::prepare_composite_key<Key>(scope, table, sizeof(Key));
       b1::chain_kv::append_key(buffer, db_key);
       b1::chain_kv::append_key(buffer, primary_key);
       return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
