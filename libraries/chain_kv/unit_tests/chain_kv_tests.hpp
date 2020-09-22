@@ -1,5 +1,5 @@
-#include <boost/test/unit_test.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
+#include <boost/test/unit_test.hpp>
 
 namespace chain_kv = b1::chain_kv;
 

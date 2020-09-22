@@ -2,19 +2,24 @@
 
 #include <algorithm>
 #include <memory>
-#include <string_view>
-
 #include <softfloat.hpp>
-
-#include <boost/pool/pool.hpp>
-
-#include <b1/session/shared_bytes_fwd_decl.hpp>
+#include <string_view>
 
 namespace eosio::session {
 
+class shared_bytes;
+
+template <typename T>
+shared_bytes make_shared_bytes(const T* data, size_t length);
+
+inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length);
+
+template <typename T>
+shared_bytes make_shared_bytes(const T* data, size_t length);
+
 // \brief An immutable type to represent a pointer and a length.
 //
-class shared_bytes final {
+class shared_bytes {
  public:
    template <typename T>
    friend shared_bytes make_shared_bytes(const T* data, size_t length);

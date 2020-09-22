@@ -7,7 +7,7 @@
 namespace eosio::session {
 
 template <typename Session>
-class undo_stack final {
+class undo_stack {
  public:
    using session_type = session<Session>;
 

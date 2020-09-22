@@ -17,13 +17,13 @@ namespace eosio::session {
 struct rocksdb_t {};
 
 template <>
-class session<rocksdb_t> final {
+class session<rocksdb_t> {
  public:
    template <typename Parent>
    friend class session;
 
    template <typename Iterator_traits>
-   class rocks_iterator final {
+   class rocks_iterator {
     public:
       using difference_type   = typename Iterator_traits::difference_type;
       using value_type        = typename Iterator_traits::value_type;
@@ -59,7 +59,7 @@ class session<rocksdb_t> final {
       rocksdb::ReadOptions               m_read_options;
    };
 
-   struct iterator_traits final {
+   struct iterator_traits {
       using difference_type   = long;
       using value_type        = std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;
@@ -68,7 +68,7 @@ class session<rocksdb_t> final {
    };
    using iterator = rocks_iterator<iterator_traits>;
 
-   struct const_iterator_traits final {
+   struct const_iterator_traits {
       using difference_type   = long;
       using value_type        = const std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;

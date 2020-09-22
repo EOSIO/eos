@@ -1,5 +1,5 @@
-#include <boost/test/unit_test.hpp>
 #include <b1/session/shared_bytes.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace eosio::session;
 

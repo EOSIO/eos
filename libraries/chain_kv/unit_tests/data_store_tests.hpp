@@ -262,8 +262,6 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
       if (kv_it != std::end(ds)) {
          verify_key_value(*kv_it);
          ++count;
-      } else {
-        int i = 0;
       }
       ++kv_it;
    } while (kv_it != begin);

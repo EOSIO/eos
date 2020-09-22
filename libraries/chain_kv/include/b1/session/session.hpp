@@ -9,7 +9,6 @@
 #include <variant>
 
 #include <b1/session/cache.hpp>
-#include <b1/session/session_fwd_decl.hpp>
 #include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
@@ -25,12 +24,12 @@ overloaded(Ts...) -> overloaded<Ts...>;
 //
 // \tparam Parent The parent of this session
 template <typename Parent>
-class session final {
+class session {
  private:
    struct session_impl;
 
  public:
-   struct iterator_state final {
+   struct iterator_state {
       bool next_in_cache{ false };
       bool previous_in_cache{ false };
       bool deleted{ false };
@@ -46,7 +45,7 @@ class session final {
    // session). Basically we are iterating over a list of sessions and each session has its own cache of key/value
    // pairs, along with iterating over a persistent data store all the while maintaining key order with the iterator.
    template <typename Iterator_traits>
-   class session_iterator final {
+   class session_iterator {
     public:
       using difference_type   = typename Iterator_traits::difference_type;
       using value_type        = typename Iterator_traits::value_type;
@@ -85,7 +84,7 @@ class session final {
       session*                                          m_active_session{ nullptr };
    };
 
-   struct iterator_traits final {
+   struct iterator_traits {
       using difference_type         = long;
       using value_type              = std::pair<shared_bytes, shared_bytes>;
       using pointer                 = value_type*;
@@ -95,7 +94,7 @@ class session final {
    };
    using iterator = session_iterator<iterator_traits>;
 
-   struct const_iterator_traits final {
+   struct const_iterator_traits {
       using difference_type         = long;
       using value_type              = const std::pair<shared_bytes, shared_bytes>;
       using pointer                 = value_type*;
@@ -171,7 +170,7 @@ class session final {
    void                                  prime_cache_();
    std::pair<shared_bytes, shared_bytes> bounds_(const shared_bytes& key) const;
 
-   struct iterator_cache_params final {
+   struct iterator_cache_params {
       bool prime_only{ false };
       bool mark_deleted{ false };
       bool overwrite{ true };

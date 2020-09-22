@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <b1/session/cache_fwd_decl.hpp>
+#include <b1/session/cache.hpp>
 #include <b1/session/shared_bytes.hpp>
 
 namespace eosio::session {
@@ -12,7 +12,7 @@ namespace eosio::session {
 // An in memory caching data store for storing key_value types.
 //
 // \remarks This type implements the "data store" concept.
-class cache final {
+class cache {
  private:
    // Currently there are some constraints that require the use of a std::map.
    // Namely, we need to be able to iterator over the entries in lexigraphical ordering on the keys.
@@ -21,7 +21,7 @@ class cache final {
 
  public:
    template <typename Iterator_type, typename Iterator_traits>
-   class cache_iterator final {
+   class cache_iterator {
     public:
       using difference_type   = typename Iterator_traits::difference_type;
       using value_type        = typename Iterator_traits::value_type;
@@ -50,7 +50,7 @@ class cache final {
       Iterator_type m_it;
    };
 
-   struct iterator_traits final {
+   struct iterator_traits {
       using difference_type   = long;
       using value_type        = std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;
@@ -59,7 +59,7 @@ class cache final {
    };
    using iterator = cache_iterator<cache_type::iterator, iterator_traits>;
 
-   struct const_iterator_traits final {
+   struct const_iterator_traits {
       using difference_type   = long;
       using value_type        = const std::pair<shared_bytes, shared_bytes>;
       using pointer           = const value_type*;
