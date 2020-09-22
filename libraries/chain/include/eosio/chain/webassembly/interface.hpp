@@ -602,14 +602,14 @@ namespace webassembly {
          name get_sender() const;
 
          /**
-          * Aborts processing of this action and unwinds all pending changes if the test condition is true.
+          * Aborts processing of this action and unwinds all pending changes.
           *
           * @ingroup context-free
          */
          void abort() const;
 
          /**
-          * Aborts processing of this action if the test condition is true.
+          * Aborts processing of this action if the test condition is false.
           *
           * @ingroup context-free
           * @param condition - test condition.
@@ -618,7 +618,7 @@ namespace webassembly {
          void eosio_assert(bool condition, null_terminated_ptr msg) const;
 
          /**
-          * Aborts processing of this action if the test condition is true.
+          * Aborts processing of this action if the test condition is false.
           *
           * @ingroup context-free
           * @param condition - test condition.
@@ -627,7 +627,7 @@ namespace webassembly {
          void eosio_assert_message(bool condition, legacy_span<const char> msg) const;
 
          /**
-          * Aborts processing of this action if the test condition is true.
+          * Aborts processing of this action if the test condition is false.
           * It can be used to provide an error code rather than a message string on assertion checks.
           * If the assertion fails, the provided error code will be made available through the exception message.
           *
@@ -638,7 +638,7 @@ namespace webassembly {
          void eosio_assert_code(bool condition, uint64_t error_code) const;
 
          /**
-          * This method will abort execution of wasm without failing the contract
+          * This method will abort execution of wasm without failing the contract.
           *
           * @ingroup context-free
           * @param code - the exit code
@@ -646,7 +646,7 @@ namespace webassembly {
          void eosio_exit(int32_t code) const;
 
          /**
-          * Copy up to length bytes of current action data to the specified location
+          * Copy up to length bytes of the current action data to the specified location.
           *
           * @ingroup action
           * @param memory - a pointer where up to length bytes of the current action data will be copied.
@@ -656,7 +656,7 @@ namespace webassembly {
          int32_t read_action_data(legacy_span<char> memory) const;
 
          /**
-          * Get the length of the current action's data field. This method is useful for dynamically sized actions
+          * Get the length of the current action's data field. This method is useful for dynamically sized actions.
           *
           * @ingroup action
           * @return the length of the current action's data field
