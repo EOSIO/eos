@@ -51,6 +51,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
+   _db_context = control.kv_db().create_db_context(*this, receiver);
 }
 
 template <typename Exception>
@@ -104,7 +105,6 @@ void apply_context::exec_one()
          kv_destroyed_iterators.clear();
          if (!context_free) {
             kv_backing_store = control.kv_db().create_kv_context(receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
-            _db_context = control.kv_db().create_db_context(*this, receiver);
         }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {

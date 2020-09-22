@@ -73,8 +73,8 @@ class db_key_value_iter_store {
       const unique_table& get_table( const secondary_obj_type& obj )const {
          EOS_ASSERT( obj.table_ei < invalid_iterator(), invalid_table_iterator, "not an end iterator" );
          auto indx = end_iterator_to_index(obj.table_ei);
-         EOS_ASSERT( indx >= _end_iterator_to_table.size(), table_not_in_cache,
-                     "an invariant was broken, secondary object references table this is not in cache" );
+         EOS_ASSERT( indx < _end_iterator_to_table.size(), table_not_in_cache,
+                     "an invariant was broken, secondary object references table that is not in cache" );
          return _end_iterator_to_table[indx];
       }
 
