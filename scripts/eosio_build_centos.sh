@@ -38,6 +38,12 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
         install-package https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
         group-install-package 'Development Tools'
         install-package openssl-devel
+	install-package git autoconf automake libtool make bzip2 && \
+    	install-package graphviz bzip2-devel openssl-devel gmp-devel  && \
+    	install-package file libusbx-devel && \
+    	install-package libcurl-devel patch  && \
+    	install-package python3 python3-devel clang llvm-devel llvm-static procps-ng util-linux libstdc++ ncurses-compat-libs
+	ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
 fi
 
 # Handle clang/compiler
