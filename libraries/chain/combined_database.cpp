@@ -236,13 +236,7 @@ namespace eosio { namespace chain {
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
                   auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
-                  auto it = kv_database->lower_bound(prefix_key);
-
-                  do {
-                     if (it == std::end(*kv_database)) {
-                        break;
-                     }
-
+                  for (auto it = kv_database->lower_bound(prefix_key); it != std::end(*kv_database); ++it) {
                      auto key = (*it).first;
                      if (key.size() < prefix_key.size() ||
                          !std::equal(prefix_key.data(), prefix_key.data() + prefix_key.size(), key.data()))
@@ -264,11 +258,7 @@ namespace eosio { namespace chain {
                                          { { value.data(), value.data() + value.size() } } };
 
                      section.add_row(row, db);
-
-                     if (++it == std::begin(*kv_database)) {
-                         break;
-                     }
-                  } while (true);
+                  }
                }
                decltype(utils)::template walk<by_kv_key>(
                      db, [this, &section](const auto& row) { section.add_row(row, db); });

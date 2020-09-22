@@ -107,11 +107,11 @@ namespace eosio { namespace chain {
             buffer.pop_back();
           }
 
-          auto next_prefix = eosio::session::make_shared_bytes(buffer.data(), buffer.size()); 
-          if (next_prefix < key) {
-             return key;
-          }
-          return next_prefix;
+          // auto next_prefix = eosio::session::make_shared_bytes(buffer.data(), buffer.size()); 
+          // if (next_prefix < key) {
+          //    return key;
+          // }
+          return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
       }
 
       kv_iterator_rocksdb(uint32_t& num_iterators, session_type& session, uint64_t contract, const char* user_prefix,

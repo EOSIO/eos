@@ -115,6 +115,9 @@ class session {
 
    parent_type parent() const;
 
+   const std::unordered_set<shared_bytes>& updated_keys() const;
+   const std::unordered_set<shared_bytes>& deleted_keys() const;
+
    template <typename Other_parent>
    void attach(Other_parent& parent);
    void detach();
@@ -398,6 +401,16 @@ void session<Parent>::update_iterator_cache_(const shared_bytes& key, const iter
       upper_it.first->second.previous_in_cache = true;
       it->second.next_in_cache                 = true;
    }
+}
+
+template <typename Parent>
+const typename std::unordered_set<shared_bytes>& session<Parent>::updated_keys() const {
+   return m_updated_keys;
+}
+
+template <typename Parent>
+const typename std::unordered_set<shared_bytes>& session<Parent>::deleted_keys() const {
+   return m_deleted_keys;
 }
 
 template <typename Parent>

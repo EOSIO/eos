@@ -32,6 +32,9 @@ class undo_stack {
    session_type&       top();
    const session_type& top() const;
 
+   session_type&       bottom();
+   const session_type& bottom() const;
+
  private:
    int64_t                  m_revision{ 0 };
    Session*                 m_head;
@@ -141,6 +144,18 @@ template <typename Session>
 const typename undo_stack<Session>::session_type& undo_stack<Session>::top() const {
    assert(!m_sessions.empty());
    return m_sessions.back();
+}
+
+template <typename Session>
+typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() {
+   assert(!m_sessions.empty());
+   return m_sessions.front();
+}
+
+template <typename Session>
+const typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() const {
+   assert(!m_sessions.empty());
+   return m_sessions.front();
 }
 
 } // namespace eosio::session
