@@ -256,6 +256,7 @@ namespace webassembly {
          /**
           * Gets the maximum key size, maximum value size, and maximum iterators of a kv database and returns the size of the data.
           * The kv parameters are encoded as 16 bytes, representing four 32-bit little-endian values.
+          * ```
           * +-------+---------------+---------------+---------------+---------------+
           * | byte  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |10 |11 |12 |13 |14 |15 |
           * +-------+---------------+---------------+---------------+---------------+
@@ -263,6 +264,7 @@ namespace webassembly {
           * +-------+---------------+---------------+---------------+---------------+
           * | type  |      0        |   32-bits LE  |  32-bits LE   |  32-bits LE   |
           * +-------+---------------+---------------+---------------+---------------+
+          * ```
           *
           * @ingroup privileged
           * @param[out] packed_kv_parameters - the buffer containing the packed kv parameters.
