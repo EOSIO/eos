@@ -80,7 +80,11 @@ namespace eosio { namespace chain {
       combined_database(const combined_database& copy) = delete;
       combined_database& operator=(const combined_database& copy) = delete;
 
-      void set_backing_store(backing_store_type backing_store);
+      // Save the backing_store setting to the chainbase in order to detect
+      // when this setting is switched from CHAINBASE to ROCKSDB, in which
+      // case, check that no KV entries already exist in the chainbase.
+      // Otherwise, they would become unreachable.
+      void check_backing_store_setting();
 
       static combined_session make_no_op_session() { return combined_session(); }
 
@@ -104,7 +108,7 @@ namespace eosio { namespace chain {
                            const eosio::chain::resource_limits::resource_limits_manager& resource_limits) const;
 
       void read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end,
-                              backing_store_type backing_store, eosio::chain::authorization_manager& authorization,
+                              eosio::chain::authorization_manager& authorization,
                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
                               eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
                               uint32_t& snapshot_head_block, const eosio::chain::chain_id_type& chain_id);
