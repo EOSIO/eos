@@ -10,7 +10,8 @@ Microbenchmarking instructions
    c). use "sort -u" to remove duplicate keys.
    d). use "shuf" to randomize the final file.
 3. To prepare a workset file, use "shuf -n".
-4. To facilitate running a suite of benchmarking, "data" directory
+4. To facilitate running a suite of benchmarking, "benchmark_kv.py"
+   is provided. You need to prepare "data" directory which
    contains a set of key files and their workset files.
    a). run "benchmark_kv.py" will benchmark operations
        (get, egt_data, set, create, erase, it_create, it_next,
