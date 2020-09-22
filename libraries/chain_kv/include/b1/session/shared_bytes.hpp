@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <memory>
-#include <softfloat.hpp>
 #include <string_view>
 
 namespace eosio::session {
