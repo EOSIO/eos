@@ -108,9 +108,7 @@ namespace eosio { namespace chain {
                     "Chainbase indicates that RocksDB is in use; resync, replay, or restore from snapshot to switch back to chainbase");
          break;
       case backing_store_type::ROCKSDB:
-         {
-            if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
-               return;
+         if (db.get<kv_db_config_object>().backing_store != backing_store_type::ROCKSDB) {
             auto& idx = db.get_index<kv_index, by_kv_key>();
             auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
             EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
