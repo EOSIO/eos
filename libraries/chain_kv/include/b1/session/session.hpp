@@ -63,9 +63,7 @@ class session {
       session_iterator& operator=(session_iterator&&) = default;
 
       session_iterator& operator++();
-      session_iterator  operator++(int);
       session_iterator& operator--();
-      session_iterator  operator--(int);
       value_type        operator*() const;
       value_type        operator->() const;
       bool              operator==(const session_iterator& other) const;
@@ -85,7 +83,7 @@ class session {
    };
 
    struct iterator_traits {
-      using difference_type         = long;
+      using difference_type         = std::ptrdiff_t;
       using value_type              = std::pair<shared_bytes, shared_bytes>;
       using pointer                 = value_type*;
       using reference               = value_type&;
@@ -95,7 +93,7 @@ class session {
    using iterator = session_iterator<iterator_traits>;
 
    struct const_iterator_traits {
-      using difference_type         = long;
+      using difference_type         = std::ptrdiff_t;
       using value_type              = const std::pair<shared_bytes, shared_bytes>;
       using pointer                 = value_type*;
       using reference               = value_type&;
@@ -838,28 +836,10 @@ session<Parent>::session_iterator<Iterator_traits>::operator++() {
 
 template <typename Parent>
 template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits>
-session<Parent>::session_iterator<Iterator_traits>::operator++(int) {
-   auto new_iterator = *this;
-   move_next_();
-   return new_iterator;
-}
-
-template <typename Parent>
-template <typename Iterator_traits>
 typename session<Parent>::template session_iterator<Iterator_traits>&
 session<Parent>::session_iterator<Iterator_traits>::operator--() {
    move_previous_();
    return *this;
-}
-
-template <typename Parent>
-template <typename Iterator_traits>
-typename session<Parent>::template session_iterator<Iterator_traits>
-session<Parent>::session_iterator<Iterator_traits>::operator--(int) {
-   auto new_iterator = *this;
-   move_previous_();
-   return new_iterator;
 }
 
 template <typename Parent>

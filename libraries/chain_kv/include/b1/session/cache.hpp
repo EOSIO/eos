@@ -38,9 +38,7 @@ class cache {
       cache_iterator& operator=(cache_iterator&&) = default;
 
       cache_iterator& operator++();
-      cache_iterator  operator++(int);
       cache_iterator& operator--();
-      cache_iterator  operator--(int);
       value_type      operator*() const;
       value_type      operator->() const;
       bool            operator==(const cache_iterator& other) const;
@@ -51,7 +49,7 @@ class cache {
    };
 
    struct iterator_traits {
-      using difference_type   = long;
+      using difference_type   = std::ptrdiff_t;
       using value_type        = std::pair<shared_bytes, shared_bytes>;
       using pointer           = value_type*;
       using reference         = value_type&;
@@ -60,7 +58,7 @@ class cache {
    using iterator = cache_iterator<cache_type::iterator, iterator_traits>;
 
    struct const_iterator_traits {
-      using difference_type   = long;
+      using difference_type   = std::ptrdiff_t;
       using value_type        = const std::pair<shared_bytes, shared_bytes>;
       using pointer           = const value_type*;
       using reference         = const value_type&;
@@ -309,22 +307,10 @@ cache::cache_iterator<Iterator_type, Iterator_traits>::operator++() {
 }
 
 template <typename Iterator_type, typename Iterator_traits>
-cache_iterator_alias<Iterator_type, Iterator_traits>
-cache::cache_iterator<Iterator_type, Iterator_traits>::operator++(int) {
-   return { m_it++ };
-}
-
-template <typename Iterator_type, typename Iterator_traits>
 cache_iterator_alias<Iterator_type, Iterator_traits>&
 cache::cache_iterator<Iterator_type, Iterator_traits>::operator--() {
    --m_it;
    return *this;
-}
-
-template <typename Iterator_type, typename Iterator_traits>
-cache_iterator_alias<Iterator_type, Iterator_traits>
-cache::cache_iterator<Iterator_type, Iterator_traits>::operator--(int) {
-   return { m_it-- };
 }
 
 template <typename Iterator_type, typename Iterator_traits>
