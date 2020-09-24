@@ -23,9 +23,12 @@ if [[ -d /opt/rh/devtoolset-8 ]]; then
 	echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
 fi
 
-echo "installing https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
-yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-yum install jq -y
+yum install epel-release
+yum install dnf
+yum install jq
+#echo "installing https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+#yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+#yum install jq -y
 
 # Ensure packages exist
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
