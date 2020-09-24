@@ -37,6 +37,7 @@ struct helper;
 template<>
 struct helper<uint64_t> {
    using type_t = uint64_t;
+   using alt_type_t = eosio::chain::uint128_t;
    const type_t init = 0x0;
    type_t inc(type_t t) { return ++t; }
 };
@@ -44,6 +45,7 @@ struct helper<uint64_t> {
 template<>
 struct helper<eosio::chain::uint128_t> {
    using type_t = eosio::chain::uint128_t;
+   using alt_type_t = eosio::chain::key256_t;
    const type_t init = create_uint128(0, 0);
    type_t inc(type_t t) { return ++t; }
 };
@@ -51,6 +53,7 @@ struct helper<eosio::chain::uint128_t> {
 template<>
 struct helper<eosio::chain::key256_t> {
    using type_t = eosio::chain::key256_t;
+   using alt_type_t = float64_t;
    const type_t init =  create_key256(create_uint128(0, 0), create_uint128(0, 0));
    type_t inc(type_t t) {
       if(!++t[1]) {
@@ -63,6 +66,7 @@ struct helper<eosio::chain::key256_t> {
 template<>
 struct helper<float64_t> {
    using type_t = float64_t;
+   using alt_type_t = float128_t;
    const type_t init =  to_softfloat64(0.0);
    type_t inc(type_t t) { return to_softfloat64(from_softfloat64(t) + 1.0); }
 };
@@ -70,6 +74,7 @@ struct helper<float64_t> {
 template<>
 struct helper<float128_t> {
    using type_t = float128_t;
+   using alt_type_t = uint64_t;
    const type_t init =  to_softfloat128(0.0);
    type_t inc(type_t t) { return to_softfloat128(from_softfloat128(t) + 1.0); }
 };
@@ -345,6 +350,57 @@ void verify_secondary_key_pair_order(const eosio::chain::backing_store::db_key_v
 }
 
 template<typename Key>
+void verify_primary_to_sec_key(const eosio::chain::backing_store::db_key_value_format::secondary_key_pair& key_pair, name scope, name table, uint64_t primary_key, Key sec_key) {
+   name extracted_scope;
+   name extracted_table;
+   const uint64_t default_primary_key = 0xffff'ffff'ffff'ffff;
+   BOOST_REQUIRE_NE(default_primary_key, primary_key);
+   uint64_t extracted_primary_key = default_primary_key;
+   Key extracted_key;
+
+   const key_type actual_kt = eosio::chain::backing_store::db_key_value_format::extract_key_type(key_pair.primary_to_secondary_key);
+   BOOST_REQUIRE(key_type::primary_to_sec == actual_kt);
+   const key_type actual_sec_kt = eosio::chain::backing_store::db_key_value_format::extract_primary_to_sec_key_type(key_pair.primary_to_secondary_key);
+   BOOST_REQUIRE(eosio::chain::backing_store::db_key_value_format::derive_secondary_key_type<Key>() == actual_sec_kt);
+
+   // use this primary_to_sec_key to retrieve the correct type
+   auto result = eosio::chain::backing_store::db_key_value_format::get_primary_to_secondary_keys(
+         key_pair.primary_to_secondary_key, extracted_scope, extracted_table, extracted_primary_key, extracted_key);
+   BOOST_REQUIRE(eosio::chain::backing_store::db_key_value_format::prim_to_sec_type_result::valid_type == result);
+   BOOST_CHECK_EQUAL(scope.to_string(), extracted_scope.to_string());
+   BOOST_CHECK_EQUAL(table.to_string(), extracted_table.to_string());
+   BOOST_CHECK_EQUAL(primary_key, extracted_primary_key);
+   BOOST_CHECK(sec_key == extracted_key);
+
+   // used this primary_to_sec_key to try and retrieve another secondary type
+   extracted_scope = name{};
+   extracted_table = name{};
+   extracted_primary_key = default_primary_key;
+   using alt_type_t = typename helper<Key>::alt_type_t;
+   alt_type_t alt_key = helper<alt_type_t>{}.init;
+   result = eosio::chain::backing_store::db_key_value_format::get_primary_to_secondary_keys(
+         key_pair.primary_to_secondary_key, extracted_scope, extracted_table, primary_key, alt_key);
+   BOOST_REQUIRE(eosio::chain::backing_store::db_key_value_format::prim_to_sec_type_result::wrong_sec_type == result);
+   BOOST_CHECK_EQUAL(scope.to_string(), extracted_scope.to_string());
+   BOOST_CHECK_EQUAL(table.to_string(), extracted_table.to_string());
+   BOOST_CHECK_EQUAL(default_primary_key, extracted_primary_key);
+   BOOST_CHECK(helper<alt_type_t>{}.init == alt_key);
+
+   extracted_scope = name{};
+   extracted_table = name{};
+   extracted_primary_key = default_primary_key;
+   extracted_key = helper<Key>{}.init;
+   Key invalid_key;
+   result = eosio::chain::backing_store::db_key_value_format::get_primary_to_secondary_keys(
+      key_pair.secondary_key, extracted_scope, extracted_table, primary_key, alt_key);
+   BOOST_REQUIRE(eosio::chain::backing_store::db_key_value_format::prim_to_sec_type_result::invalid_type == result);
+   BOOST_CHECK_EQUAL(scope.to_string(), extracted_scope.to_string());
+   BOOST_CHECK_EQUAL(table.to_string(), extracted_table.to_string());
+   BOOST_CHECK_EQUAL(default_primary_key, extracted_primary_key);
+   BOOST_CHECK(helper<Key>{}.init == extracted_key);
+}
+
+template<typename Key>
 void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
    name scope;
    name table;
@@ -359,6 +415,8 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
    const auto primary_to_sec_key = eosio::chain::backing_store::db_key_value_format::create_primary_to_secondary_key(scope, table, primary_key, key);
    BOOST_CHECK_EQUAL(overhead_size + sizeof(primary_key) + sizeof(key_type) + sizeof(key), primary_to_sec_key.size());
    BOOST_CHECK_EQUAL(0, compare_composite_keys(sec_key_pair.primary_to_secondary_key, primary_to_sec_key).first);
+   const key_type actual_kt = eosio::chain::backing_store::db_key_value_format::extract_key_type(sec_key_pair.secondary_key);
+   BOOST_CHECK(eosio::chain::backing_store::db_key_value_format::derive_secondary_key_type<Key>() == actual_kt);
 
 
    // extract using the type prefix, the extended type prefix (with the indication of the secondary type), and from the prefix including the primary type
@@ -372,6 +430,8 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
    BOOST_REQUIRE(result);
    BOOST_CHECK_EQUAL(primary_key, extracted_primary_key2);
    BOOST_CHECK(key == extracted_key2);
+
+   verify_primary_to_sec_key(sec_key_pair, scope, table, primary_key, key);
 
    uint64_t extracted_primary_key3 = 0xffff'ffff'ffff'ffff;
    Key extracted_key3;

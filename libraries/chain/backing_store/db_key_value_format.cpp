@@ -127,4 +127,22 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  " less than the sizeof(uint64_t)");
       return true;
    }
+
+   key_type extract_key_type(const b1::chain_kv::bytes& composite_key) {
+      key_type kt = key_type::primary;
+      std::tie(std::ignore, std::ignore, std::ignore, kt) = detail::extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
+      return kt;
+   }
+
+   key_type extract_primary_to_sec_key_type(const b1::chain_kv::bytes& composite_key) {
+      b1::chain_kv::bytes::const_iterator composite_loc;
+      key_type kt = key_type::primary;
+      std::tie(std::ignore, std::ignore, composite_loc, kt) = detail::extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
+      EOS_ASSERT(kt == key_type::primary_to_sec, bad_composite_key_exception,
+                 "DB intrinsic extract_primary_to_sec_key_type was passed a key that was not of type: ${type}", ("type", detail::to_string(kt)));
+      EOS_ASSERT(composite_loc != composite_key.cend(), bad_composite_key_exception,
+                 "DB intrinsic extract_primary_to_sec_key_type was passed a key that was only the type prefix");
+      const key_type sec_kt{*composite_loc++};
+      return sec_kt;
+   }
 }}}} // namespace eosio::chain::backing_store::db_key_value_format
