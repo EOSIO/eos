@@ -949,6 +949,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
       if( my->thread_pool ) {
          my->thread_pool->stop();
+         my->thread_pool.reset();
       }
 
       // release http_plugin_impl_ptr shared_ptrs captured in url handlers
