@@ -2,8 +2,6 @@
 #include <eosio/chain/backing_store/db_key_value_format.hpp>
 #include <eosio/chain/backing_store/db_key_value_iter_store.hpp>
 
-#include <b1/session/shared_bytes.hpp>
-
 #include <boost/test/unit_test.hpp>
 #include <cstring>
 
@@ -15,7 +13,7 @@ BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 constexpr uint64_t overhead_size = sizeof(name) * 2 + 1; // 8 (scope) + 8 (table) + 1 (key type)
 
 template<typename Type>
-void verify_secondary_wont_convert(const eosio::session::shared_bytes& composite_key) {
+void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key) {
    name scope;
    name table;
    Type key;
@@ -23,7 +21,7 @@ void verify_secondary_wont_convert(const eosio::session::shared_bytes& composite
    BOOST_CHECK(!eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, scope, table, key, primary_key));
 }
 
-void verify_secondary_wont_convert(const eosio::session::shared_bytes& composite_key, key_type except) {
+void verify_secondary_wont_convert(const b1::chain_kv::bytes& composite_key, key_type except) {
    if (except != key_type::primary) {
       name scope;
       name table;
@@ -41,9 +39,9 @@ float128_t to_softfloat128( double d ) {
    return f64_to_f128(to_softfloat64(d));
 }
 
-std::pair<int, unsigned int> compare_composite_keys(const std::vector<eosio::session::shared_bytes>& keys, uint64_t lhs_index) {
-   const eosio::session::shared_bytes& lhs = keys[lhs_index];
-   const eosio::session::shared_bytes& rhs = keys[lhs_index + 1];
+std::pair<int, unsigned int> compare_composite_keys(const std::vector<b1::chain_kv::bytes>& keys, uint64_t lhs_index) {
+   const b1::chain_kv::bytes& lhs = keys[lhs_index];
+   const b1::chain_kv::bytes& rhs = keys[lhs_index + 1];
    unsigned int j = 0;
    const int gt = 1;
    const int lt = -1;
@@ -65,7 +63,7 @@ std::pair<int, unsigned int> compare_composite_keys(const std::vector<eosio::ses
    return { equal, j };
 }
 
-void verify_assending_composite_keys(const std::vector<eosio::session::shared_bytes>& keys, uint64_t lhs_index, std::string desc) {
+void verify_assending_composite_keys(const std::vector<b1::chain_kv::bytes>& keys, uint64_t lhs_index, std::string desc) {
    const auto ret = compare_composite_keys(keys, lhs_index);
    BOOST_CHECK_MESSAGE(ret.first != 1, "expected " + std::to_string(lhs_index) +
                        "th composite key to be less than the " + std::to_string(lhs_index + 1) + "th, but the " + std::to_string(ret.second) +
@@ -77,7 +75,7 @@ void verify_assending_composite_keys(const std::vector<eosio::session::shared_by
 
 template<typename T, typename KeyFunc>
 void verify_scope_table_order(T low_key, T high_key, KeyFunc key_func, bool skip_trailing_prim_key) {
-   std::vector<eosio::session::shared_bytes> comp_keys;
+   std::vector<b1::chain_kv::bytes> comp_keys;
    comp_keys.push_back(key_func(name{0}, name{0}, low_key, 0x0));
    // this function always passes the extra primary key, but need to skip what would be redundant keys for when we are
    // actually getting a primary key
@@ -101,7 +99,7 @@ void verify_scope_table_order(T low_key, T high_key, KeyFunc key_func, bool skip
 }
 
 // using this function to allow check_ordered_keys to work for all key types
-eosio::session::shared_bytes prim_drop_extra_key(name scope, name table, uint64_t db_key, uint64_t unused_primary_keyr) {
+b1::chain_kv::bytes prim_drop_extra_key(name scope, name table, uint64_t db_key, uint64_t unused_primary_key) {
    return eosio::chain::backing_store::db_key_value_format::create_primary_key(scope, table, db_key);
 };
 
@@ -111,7 +109,7 @@ void check_ordered_keys(const std::vector<T>& ordered_keys, KeyFunc key_func, bo
    name scope{0};
    name table{0};
    const uint64_t prim_key = 0;
-   std::vector<eosio::session::shared_bytes> composite_keys;
+   std::vector<b1::chain_kv::bytes> composite_keys;
    for (const auto& key: ordered_keys) {
       auto comp_key = key_func(scope, table, key, prim_key);
       composite_keys.push_back(comp_key);
@@ -319,98 +317,48 @@ BOOST_AUTO_TEST_CASE(float128_key_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(compare_negative_and_positive_f64_0_are_equal_test) {
-   std::vector<eosio::session::shared_bytes> composite_keys;
-   composite_keys.reserve(2);
-
-   auto buffer = std::vector<char>{};
-   buffer.reserve(sizeof(float64_t));
-   b1::chain_kv::append_key(buffer, to_softfloat64(-0.0));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
-   b1::chain_kv::append_key(buffer, to_softfloat64(0.0));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
+   std::vector<b1::chain_kv::bytes> composite_keys(2);
+   b1::chain_kv::append_key(composite_keys[0], to_softfloat64(-0.0));
+   b1::chain_kv::append_key(composite_keys[1], to_softfloat64(0.0));
    // composite key representation should treat -0.0 and -0.0 as the same value
    BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_keys, 0).first);
 }
 
 BOOST_AUTO_TEST_CASE(compare_negative_and_positive_f128_0_are_equal_test) {
-   std::vector<eosio::session::shared_bytes> composite_keys;
-   composite_keys.reserve(2);
-
-   auto buffer = std::vector<char>{};
-   buffer.reserve(sizeof(float128_t));
-   b1::chain_kv::append_key(buffer, to_softfloat128(-0.0));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
-   b1::chain_kv::append_key(buffer, to_softfloat128(0.0));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-   
+   std::vector<b1::chain_kv::bytes> composite_keys(2);
+   b1::chain_kv::append_key(composite_keys[0], to_softfloat128(-0.0));
+   b1::chain_kv::append_key(composite_keys[1], to_softfloat128(0.0));
    // composite key representation should treat -0.0 and -0.0 as the same value
    BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_keys, 0).first);
 }
 
 BOOST_AUTO_TEST_CASE(compare_span_of_doubles_test) {
-   std::vector<eosio::session::shared_bytes> composite_keys;
-   composite_keys.reserve(4);
-
-   auto buffer = std::vector<char>{};
-   buffer.reserve(sizeof(float64_t));
-
+   std::vector<b1::chain_kv::bytes> composite_keys(4);
    uint64_t next = 0;
    const double neg_inf = -std::numeric_limits<double>::infinity();
-   b1::chain_kv::append_key(buffer, to_softfloat64(neg_inf));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(neg_inf));
    const double min = std::numeric_limits<double>::min();
-   b1::chain_kv::append_key(buffer, to_softfloat64(min));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(min));
    const double max = std::numeric_limits<double>::max();
-   b1::chain_kv::append_key(buffer, to_softfloat64(max));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(max));
    const double inf = std::numeric_limits<double>::infinity();
-   b1::chain_kv::append_key(buffer, to_softfloat64(inf));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat64(inf));
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 0).first);
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 1).first);
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 2).first);
 }
 
 BOOST_AUTO_TEST_CASE(compare_span_of_long_doubles_test) {
-   std::vector<eosio::session::shared_bytes> composite_keys;
-   composite_keys.reserve(4);
-
-   auto buffer = std::vector<char>{};
-   buffer.reserve(sizeof(float128_t));
-
+   std::vector<b1::chain_kv::bytes> composite_keys(4);
    uint64_t next = 0;
    const double neg_inf = -std::numeric_limits<double>::infinity();
-   b1::chain_kv::append_key(buffer, to_softfloat64(neg_inf));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(neg_inf));
    const double min = std::numeric_limits<double>::min();
-   b1::chain_kv::append_key(buffer, to_softfloat64(min));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(min));
    const double max = std::numeric_limits<double>::max();
-   b1::chain_kv::append_key(buffer, to_softfloat64(max));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
-   buffer.clear();
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(max));
    const double inf = std::numeric_limits<double>::infinity();
-   b1::chain_kv::append_key(buffer, to_softfloat64(inf));
-   composite_keys.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()));
-
+   b1::chain_kv::append_key(composite_keys[next++], to_softfloat128(inf));
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 0).first);
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 1).first);
    BOOST_CHECK_EQUAL(-1, compare_composite_keys(composite_keys, 2).first);

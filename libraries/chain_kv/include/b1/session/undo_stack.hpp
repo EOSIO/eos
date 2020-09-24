@@ -15,6 +15,7 @@ class undo_stack {
    undo_stack(Session& head);
    undo_stack(const undo_stack&) = delete;
    undo_stack(undo_stack&&)      = default;
+   ~undo_stack();
 
    undo_stack& operator=(const undo_stack&) = delete;
    undo_stack& operator=(undo_stack&&) = default;
@@ -45,6 +46,13 @@ class undo_stack {
 
 template <typename Session>
 undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {}
+
+template <typename Session>
+undo_stack<Session>::~undo_stack() {
+  for (auto& session : m_sessions) {
+    session.undo();
+  }
+}
 
 template <typename Session>
 void undo_stack<Session>::push() {

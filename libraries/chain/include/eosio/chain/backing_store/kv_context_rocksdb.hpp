@@ -9,20 +9,17 @@
 namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);
 
-   static inline uint32_t actual_value_size(const uint32_t raw_value_size) {
-      EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception,
-                 "The size of value returned from RocksDB is less than payer's size");
+   inline static uint32_t actual_value_size(const uint32_t raw_value_size) {
+      EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
       return (raw_value_size - kv_payer_size);
    }
 
-   static inline account_name get_payer(const char* data) {
+   inline static account_name get_payer(const char* data) {
       account_name payer;
       memcpy(&payer, data,
              kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
       return payer;
    }
-
-   static inline const char* actual_value_start(const char* data) { return data + kv_payer_size; }
    
    static inline uint32_t actual_key_size(const uint32_t raw_key_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
@@ -37,6 +34,25 @@ namespace eosio { namespace chain {
       static auto prefix_size = rocks_prefix.size() + sizeof(uint64_t);
       return key + prefix_size;
    }
+
+   inline static const char* actual_value_start(const char* data) {
+      return data + kv_payer_size;
+   }
+
+   // Need to store payer so that this account is properly
+   // credited when storage is removed or changed
+   // to another payer
+   inline static void build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
+      const uint32_t final_value_size = kv_payer_size + value_size;
+      final_kv_value.reserve(final_value_size);
+
+      char buf[kv_payer_size];
+      memcpy(buf, &payer, kv_payer_size);
+      final_kv_value.insert(final_kv_value.end(), std::begin(buf), std::end(buf));
+
+      final_kv_value.insert(final_kv_value.end(), value, value + value_size); 
+   }
+
 
    static inline eosio::session::shared_bytes make_prefix_key(uint64_t contract, const char* user_prefix, uint32_t user_prefix_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
@@ -367,20 +383,9 @@ namespace eosio { namespace chain {
                   old_value_size = actual_value_size(old_value.size());
                }
 
-               // need to store payer to properly credit this
-               // account when storage is removed or changed
-               // to another payer
-               auto       total_value      = std::vector<char>{};
-               const auto total_value_size = kv_payer_size + value_size;
-
-               char buf[kv_payer_size];
-               memcpy(buf, &payer, kv_payer_size);
-
-               total_value.reserve(total_value_size);
-               total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
-               total_value.insert(total_value.end(), value, value + value_size);
-
-               auto new_value = eosio::session::make_shared_bytes(total_value.data(), total_value.size());
+               bytes final_value;
+               build_value(value, value_size, payer,final_value);
+               auto new_value = eosio::session::make_shared_bytes(final_value.data(), final_value.size());
                session->write(composite_key, new_value);
             }
             FC_LOG_AND_RETHROW()

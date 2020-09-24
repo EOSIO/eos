@@ -242,11 +242,19 @@ namespace eosio { namespace chain {
             snapshot->write_section<value_t>([this](auto& section) {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
-               if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
+               if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB && kv_undo_stack) {
                   auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
                   auto next_prefix = prefix_key++;
-                  for (auto it = kv_database->lower_bound(prefix_key); it != kv_database->lower_bound(next_prefix); ++it) {
+
+                  auto undo = false;
+                  if (kv_undo_stack->empty()) {
+                    // Get a session to iterate over.
+                    kv_undo_stack->push();
+                    undo = true;
+                  }
+
+                  for (auto it = kv_undo_stack->top().lower_bound(prefix_key); it != kv_undo_stack->top().lower_bound(next_prefix); ++it) {
                      auto key = (*it).first;
 
                      uint64_t    contract;
@@ -258,14 +266,21 @@ namespace eosio { namespace chain {
                      auto end = std::begin(key_buffer) + key_prefix_size;
                      b1::chain_kv::extract_key(begin, end, contract);
 
+                     // In KV RocksDB, payer and actual data are packed together.
+                     // Extract them.
                      auto           value = (*it).second;
+                     auto           payer = get_payer(value.data());
+                     auto           actual_value_data = actual_value_start(value.data());
                      kv_object_view row{ name(contract),
-                                         { { key.data() + key_prefix_size,
-                                             key.data() + key.size() } },
-                                         { { value.data(), value.data() + value.size() } } };
-
-                     std::cout << "Snapshot write [key: " << key << ", value: " << value << "]" << std::endl;
+                                         { { key.data() + key_prefix_size, key.data() + key.size() } },
+                                         { { actual_value_data, actual_value_data + actual_value_size(value.size()) } },
+                                         payer
+                     };
                      section.add_row(row, db);
+                  }
+
+                  if (undo) {
+                    kv_undo_stack->undo();
                   }
                }
                decltype(utils)::template walk<by_kv_key>(
@@ -407,11 +422,13 @@ namespace eosio { namespace chain {
                         buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
                                       move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
 
-                        key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
-                                                eosio::session::make_shared_bytes(move_to_rocks->kv_value.data(),
-                                                                                  move_to_rocks->kv_value.size()));
+                        // Pack payer and actual key value
+                        bytes final_kv_value;
+                        build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
 
-                        std::cout << "Snapshot Read [key: " << key_values.back().first << ", value: " << key_values.back().second << "]" << std::endl;                                                                                  
+                        key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
+                                                eosio::session::make_shared_bytes(final_kv_value.data(),
+                                                                                  final_kv_value.size()));                                                                                
                         db.remove(*move_to_rocks);
                      }
                   }
