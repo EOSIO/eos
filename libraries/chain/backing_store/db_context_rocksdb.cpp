@@ -299,6 +299,9 @@ namespace eosio { namespace chain { namespace backing_store {
       "invariant failure in db_get_i64, iter store found to update but nothing in database");
       const char* const actual_value = backing_store::actual_value_start(old_key_value.value->data());
       const size_t actual_size = backing_store::actual_value_size(old_key_value.value->size());
+      if (value_size == 0) {
+         return actual_size;
+      }
       const size_t copy_size = std::min<size_t>(value_size, actual_size);
       memcpy( value, actual_value, copy_size );
       return copy_size;
