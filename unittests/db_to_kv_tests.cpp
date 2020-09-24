@@ -366,10 +366,11 @@ void verify_primary_to_sec_key(const eosio::chain::backing_store::db_key_value_f
 
    b1::chain_kv::bytes::const_iterator composite_loc;
    key_type kt = key_type::table;
-   std::tie(scope, table, composite_loc, kt) = eosio::chain::backing_store::db_key_value_format::get_prefix_thru_key_type(key_pair.primary_to_secondary_key);
+   std::tie(extracted_scope, extracted_table, composite_loc, kt) = eosio::chain::backing_store::db_key_value_format::get_prefix_thru_key_type(key_pair.primary_to_secondary_key);
    BOOST_CHECK_EQUAL(scope.to_string(), extracted_scope.to_string());
    BOOST_CHECK_EQUAL(table.to_string(), extracted_table.to_string());
-   BOOST_CHECK_EQUAL(sizeof(uint64_t) + sizeof(Key), std::distance(composite_loc, key_pair.primary_to_secondary_key.cend()));
+   // make sure that there is a primary key and secondary key's worth of memory before reaching the end of the key
+   BOOST_CHECK_EQUAL(sizeof(uint64_t) + sizeof(Key) + 1, std::distance(composite_loc, key_pair.primary_to_secondary_key.cend()));
    BOOST_CHECK(key_type::primary_to_sec == kt);
 
    extracted_scope = name{};
