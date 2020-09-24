@@ -75,7 +75,6 @@ namespace eosio { namespace chain {
       eosio::session::undo_stack<rocks_db_type>*     kv_undo_stack = nullptr;
    };
 
-   // TODO:  What is combined_database used for?
    class combined_database {
     public:
       combined_database(chainbase::database& chain_db);
