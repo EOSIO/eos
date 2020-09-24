@@ -26,6 +26,9 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       table = std::numeric_limits<char>::max() // require to be highest value for a given scope/table
    };
 
+   enum class decomposed_types { scope, table, key_loc, type_of_key};
+   using intermittent_decomposed_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator, key_type>;
+
    namespace detail {
 
       template<typename Key>
@@ -55,8 +58,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       using intermittent_decomposed_prefix_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator>;
 
       intermittent_decomposed_prefix_values extract_from_composite_key_prefix(b1::chain_kv::bytes::const_iterator begin, b1::chain_kv::bytes::const_iterator key_end);
-
-      using intermittent_decomposed_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator, key_type>;
 
       intermittent_decomposed_values extract_from_composite_key(b1::chain_kv::bytes::const_iterator begin, b1::chain_kv::bytes::const_iterator key_end);
 
@@ -353,4 +354,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    key_type extract_key_type(const b1::chain_kv::bytes& composite_key);
 
    key_type extract_primary_to_sec_key_type(const b1::chain_kv::bytes& composite_key);
+
+   intermittent_decomposed_values get_prefix_thru_key_type(const b1::chain_kv::bytes& composite_key);
 }}}} // ns eosio::chain::backing_store::db_key_value_format

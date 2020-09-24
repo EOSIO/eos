@@ -361,7 +361,14 @@ void verify_primary_to_sec_key(const eosio::chain::backing_store::db_key_value_f
    const key_type actual_kt = eosio::chain::backing_store::db_key_value_format::extract_key_type(key_pair.primary_to_secondary_key);
    BOOST_REQUIRE(key_type::primary_to_sec == actual_kt);
    const key_type actual_sec_kt = eosio::chain::backing_store::db_key_value_format::extract_primary_to_sec_key_type(key_pair.primary_to_secondary_key);
-   BOOST_REQUIRE(eosio::chain::backing_store::db_key_value_format::derive_secondary_key_type<Key>() == actual_sec_kt);
+   const key_type expected_sec_kt = eosio::chain::backing_store::db_key_value_format::derive_secondary_key_type<Key>();
+   BOOST_REQUIRE(expected_sec_kt == actual_sec_kt);
+
+   using decomposed_types = eosio::chain::backing_store::db_key_value_format::decomposed_types;
+   const auto decomposed_vals = eosio::chain::backing_store::db_key_value_format::get_prefix_thru_key_type(key_pair.primary_to_secondary_key);
+   BOOST_CHECK_EQUAL(scope.to_string(), std::get<decomposed_types::scope>(decomposed_vals).to_string());
+   BOOST_CHECK_EQUAL(table.to_string(), std::get<decomposed_types::table>(decomposed_vals).to_string());
+   BOOST_CHECK(key_type::primary_to_sec == std::get<decomposed_types::type_of_key>(decomposed_vals));
 
    // use this primary_to_sec_key to retrieve the correct type
    auto result = eosio::chain::backing_store::db_key_value_format::get_primary_to_secondary_keys(
