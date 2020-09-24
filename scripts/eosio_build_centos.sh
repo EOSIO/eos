@@ -22,6 +22,11 @@ if [[ -d /opt/rh/devtoolset-8 ]]; then
 	execute-always source /opt/rh/devtoolset-8/enable
 	echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
 fi
+
+echo "installing https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+yum install jq -y
+
 # Ensure packages exist
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
 export PYTHON3PATH="/opt/rh/rh-python36"
@@ -62,12 +67,6 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
 	install-package libstdc++
 	install-package ncurses-compat-libs
 	ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
-fi
-
-if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
-        echo "Install Development Tools ..."
-        yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-        yum install jq -y
 fi
 
 # Handle clang/compiler
