@@ -7,6 +7,8 @@
 #include <string_view>
 #include <vector>
 
+#include <fc/crypto/base64.hpp>
+
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
@@ -171,6 +173,11 @@ inline shared_bytes::operator bool() const { return *this != shared_bytes::inval
 inline shared_bytes::iterator shared_bytes::begin() const { return m_data.get(); }
 
 inline shared_bytes::iterator shared_bytes::end() const { return m_data.get() + size(); }
+
+inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
+    std::cout << fc::base64_encode({bytes.data(), bytes.size()});
+    return os;
+}
 
 } // namespace eosio::session
 

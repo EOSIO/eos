@@ -139,8 +139,11 @@ namespace eosio { namespace chain {
          break;
       case backing_store_type::ROCKSDB:
          try {
-            db.set_revision(revision);
-            kv_undo_stack->revision(revision);
+            try {
+                db.set_revision(revision);
+                kv_undo_stack->revision(revision);
+            }
+            FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
       }
@@ -153,8 +156,11 @@ namespace eosio { namespace chain {
          break;
       case backing_store_type::ROCKSDB:
          try {
-            db.undo();
-            kv_undo_stack->undo();
+            try {
+              db.undo();
+              kv_undo_stack->undo();
+            }
+            FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
       }
@@ -183,7 +189,10 @@ namespace eosio { namespace chain {
          break;
       case backing_store_type::ROCKSDB:
          try {
-            kv_database->flush();
+            try {
+               kv_database->flush();
+            }
+            FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
       }
@@ -255,6 +264,7 @@ namespace eosio { namespace chain {
                                              key.data() + key.size() } },
                                          { { value.data(), value.data() + value.size() } } };
 
+                     std::cout << "Snapshot write [key: " << key << ", value: " << value << "]" << std::endl;
                      section.add_row(row, db);
                   }
                }
@@ -400,6 +410,8 @@ namespace eosio { namespace chain {
                         key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
                                                 eosio::session::make_shared_bytes(move_to_rocks->kv_value.data(),
                                                                                   move_to_rocks->kv_value.size()));
+
+                        std::cout << "Snapshot Read [key: " << key_values.back().first << ", value: " << key_values.back().second << "]" << std::endl;                                                                                  
                         db.remove(*move_to_rocks);
                      }
                   }
