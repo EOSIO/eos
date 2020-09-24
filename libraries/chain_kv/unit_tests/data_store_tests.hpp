@@ -17,8 +17,6 @@
 namespace eosio::session_tests {
 
 inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name = "testdb") {
-   rocksdb::DestroyDB(name.c_str(), rocksdb::Options{});
-
    rocksdb::DB* cache_ptr{ nullptr };
    auto         cache = std::shared_ptr<rocksdb::DB>{};
 
@@ -30,6 +28,19 @@ inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name = "tes
 
    auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
    cache.reset(cache_ptr);
+
+   {
+      // DeleteDB might be causing permission problems in buildkite.  As a workaround, let's just clear the database
+      // when we open it.
+      auto begin = std::unique_ptr<rocksdb::Iterator>{cache->NewIterator(rocksdb::ReadOptions{}, cache->DefaultColumnFamily())};
+      begin->SeekToFirst();
+      if (begin->Valid()) {
+          auto end = std::unique_ptr<rocksdb::Iterator>{cache->NewIterator(rocksdb::ReadOptions{}, cache->DefaultColumnFamily())};
+          end->SeekToLast();
+          cache->DeleteRange(rocksdb::WriteOptions{}, cache->DefaultColumnFamily(), begin->key(), end->key());
+          cache->SingleDelete(rocksdb::WriteOptions{}, cache->DefaultColumnFamily(), end->key());
+      }
+   }
 
    return cache;
 }
