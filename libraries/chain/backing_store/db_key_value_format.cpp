@@ -147,7 +147,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    }
 
    intermittent_decomposed_values get_prefix_thru_key_type(const b1::chain_kv::bytes& composite_key) {
-      key_type kt = key_type::primary;
       return detail::extract_from_composite_key(composite_key.cbegin(), composite_key.cend());
    }
 }}}} // namespace eosio::chain::backing_store::db_key_value_format

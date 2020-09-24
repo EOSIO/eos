@@ -26,7 +26,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       table = std::numeric_limits<char>::max() // require to be highest value for a given scope/table
    };
 
-   enum class decomposed_types { scope, table, key_loc, type_of_key};
+   enum class decomposed_types { scope = 0, table, key_loc, type_of_key};
    using intermittent_decomposed_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator, key_type>;
 
    namespace detail {
