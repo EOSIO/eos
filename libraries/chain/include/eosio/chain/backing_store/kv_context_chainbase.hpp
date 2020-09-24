@@ -139,18 +139,19 @@ namespace eosio { namespace chain {
       }
    }; // kv_iterator_chainbase
 
+   template<typename Resource_manager>
    struct kv_context_chainbase : kv_context {
       using tracker_type = std::decay_t<decltype(std::declval<chainbase::database>().get_mutable_index<kv_index>().track_removed())>;
       chainbase::database&         db;
       tracker_type                 tracker = db.get_mutable_index<kv_index>().track_removed();
       name                         receiver;
-      kv_resource_manager          resource_manager;
+      Resource_manager             resource_manager;
       const kv_database_config&    limits;
       uint32_t                     num_iterators = 0;
       std::optional<shared_blob>   temp_data_buffer;
 
       kv_context_chainbase(chainbase::database& db, name receiver,
-                           kv_resource_manager resource_manager, const kv_database_config& limits)
+                           Resource_manager resource_manager, const kv_database_config& limits)
          : db{ db }, receiver{ receiver }, resource_manager{ resource_manager }, limits{limits} {}
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
@@ -259,10 +260,11 @@ namespace eosio { namespace chain {
       }
    }; // kv_context_chainbase
 
+   template<typename Resource_manager>
    std::unique_ptr<kv_context> create_kv_chainbase_context(chainbase::database& db, name receiver,
-                                                           kv_resource_manager resource_manager, const kv_database_config& limits)
+                                                           Resource_manager resource_manager, const kv_database_config& limits)
    {
-      return std::make_unique<kv_context_chainbase>(db,receiver, resource_manager, limits);
+      return std::make_unique<kv_context_chainbase<Resource_manager>>(db,receiver, resource_manager, limits);
    }
 
 }} // namespace eosio::chain
