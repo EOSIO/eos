@@ -6,7 +6,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::backing_store::kv_rksdb;
 
 // Global test data
 constexpr account_name receiver = N(kvrdb);
@@ -381,7 +380,7 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
    BOOST_AUTO_TEST_CASE(test_actual_value_start)
    {
       char buf[10]; // any size of buffer will work
-      BOOST_CHECK(actual_value_data(buf) == (buf + kv_payer_size));
+      BOOST_CHECK(actual_value_start(buf) == (buf + kv_payer_size));
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_erase, kv_rocksdb_fixture)

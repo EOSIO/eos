@@ -4,7 +4,7 @@
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
 
-namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb {
+namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);
 
    inline static uint32_t actual_value_size(const uint32_t raw_value_size) {
@@ -18,7 +18,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb
       return payer;
    }
 
-   inline static const char* actual_value_data(const char* data) {
+   inline static const char* actual_value_start(const char* data) {
       return data + kv_payer_size;
    }
 
@@ -180,7 +180,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb
          if (kv) {
             actual_size = actual_value_size( kv->value.size() );
             if (offset < actual_size)
-               memcpy(dest, actual_value_data(kv->value.data()) + offset, std::min(size, actual_size - offset));
+               memcpy(dest, actual_value_start(kv->value.data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -320,7 +320,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb
          const char* temp      = nullptr;
          uint32_t    temp_size = 0;
          if (temp_data_buffer) {
-            temp      = actual_value_data(temp_data_buffer->data());
+            temp      = actual_value_start(temp_data_buffer->data());
             temp_size = actual_value_size(temp_data_buffer->size());
          }
          if (offset < temp_size)
@@ -356,4 +356,4 @@ namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb
       CATCH_AND_EXIT_DB_FAILURE()
    }
 
-}}}} // namespace eosio::chain::backing_store::kv_rksdb
+}} // namespace eosio::chain
