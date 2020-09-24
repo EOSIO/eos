@@ -117,7 +117,7 @@ struct kv_rocksdb_fixture {
    void check_get_payer(account_name p) {
       char buf[kv_payer_size];
       memcpy(buf, &p, kv_payer_size); // copy payer to buffer
-      BOOST_CHECK(get_payer(buf) == p); // read payer from the buffer and should be equal to the original
+      BOOST_CHECK(kv_rksdb_get_payer(buf) == p); // read payer from the buffer and should be equal to the original
    }
 
    struct kv_pair {
@@ -351,15 +351,15 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
 
    BOOST_AUTO_TEST_CASE(test_actual_value_size)
    {
-      BOOST_CHECK(actual_value_size(kv_payer_size) == 0);
-      BOOST_CHECK(actual_value_size(kv_payer_size + 1) == 1);
-      BOOST_CHECK(actual_value_size(kv_payer_size + 10) == 10);
+      BOOST_CHECK(kv_rksdb_actual_value_size(kv_payer_size) == 0);
+      BOOST_CHECK(kv_rksdb_actual_value_size(kv_payer_size + 1) == 1);
+      BOOST_CHECK(kv_rksdb_actual_value_size(kv_payer_size + 10) == 10);
    }
 
    BOOST_AUTO_TEST_CASE(test_actual_value_size_small_value)
    {
       // any raw size less than kv_payer_size should throw
-      BOOST_CHECK_THROW(actual_value_size(kv_payer_size - 1), kv_rocksdb_bad_value_size_exception);
+      BOOST_CHECK_THROW(kv_rksdb_actual_value_size(kv_payer_size - 1), kv_rocksdb_bad_value_size_exception);
    }
 
    BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture)
@@ -380,7 +380,7 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
    BOOST_AUTO_TEST_CASE(test_actual_value_start)
    {
       char buf[10]; // any size of buffer will work
-      BOOST_CHECK(actual_value_start(buf) == (buf + kv_payer_size));
+      BOOST_CHECK(kv_rksdb_actual_value_data(buf) == (buf + kv_payer_size));
    }
 
    BOOST_FIXTURE_TEST_CASE(test_kv_erase, kv_rocksdb_fixture)
@@ -391,7 +391,7 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
       };
 
       std::string key = "key";
-      int64_t resource_delta = -(default_billable_size + key.size() + actual_value_size(v.size()));
+      int64_t resource_delta = -(default_billable_size + key.size() + kv_rksdb_actual_value_size(v.size()));
 
       BOOST_CHECK(my_kv_context->kv_erase(contract, key.c_str(), key.size()) == resource_delta);
    }
@@ -404,7 +404,7 @@ BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
       };
 
       std::string key = "key";
-      int64_t resource_delta = -(default_billable_size + key.size() + actual_value_size(v.size()));
+      int64_t resource_delta = -(default_billable_size + key.size() + kv_rksdb_actual_value_size(v.size()));
 
       BOOST_CHECK(my_kv_context->kv_erase(contract, key.c_str(), key.size()) == resource_delta);
    }
