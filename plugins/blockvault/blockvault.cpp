@@ -33,10 +33,20 @@ void blockvault::plugin_shutdown() {
    // OK, that's enough magic
 }
 
-void blockvault::propose_constructed_block(){}
+void blockvault::propose_constructed_block(signed_block_ptr sbp, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark) {
+   
+}
     
-void blockvault::append_external_block(){}
+void blockvault::append_external_block(signed_block_ptr sbp, block_id_type lib_id) {
+   
+}
     
-void blockvault::sync_for_construction(){}
+void blockvault::sync_for_construction(std::optional<block_num> block_height) {
+   
+}
+
+void blockvault::propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark) {
+   
+}
 
 }

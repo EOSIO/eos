@@ -7,7 +7,24 @@
 
 BOOST_AUTO_TEST_SUITE(blockvault_tests)
 
-BOOST_AUTO_TEST_CASE( blockvault ) try {
+BOOST_AUTO_TEST_CASE( blockvault_init_plugin ) try {
+   BOOST_REQUIRE(true);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( blockvault_propose_constructed_block ) try {
+   BOOST_REQUIRE(true);
+}
+FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( blockvault_append_external_block ) try {
+   BOOST_REQUIRE(true);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( blockvault_sync_for_construction ) try {
+   BOOST_REQUIRE(true);
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( blockvault_propose_snapshot ) try {
    BOOST_REQUIRE(true);
 } FC_LOG_AND_RETHROW()
 
