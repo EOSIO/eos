@@ -191,7 +191,7 @@ namespace eosio { namespace chain {
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
+            return backing_store::kv_rksdb::create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, kv_resource_manager>(
                   *kv_database, *kv_undo_stack, receiver, resource_manager, limits);
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context(db, receiver, resource_manager, limits);
@@ -252,9 +252,9 @@ namespace eosio { namespace chain {
 
                      // In KV RocksDB, payer and actual data are packed together.
                      // Extract them.
-                     auto           payer = kv_rksdb_get_payer(value.data());
-                     auto           actual_value_data = kv_rksdb_actual_value_data(value.data());
-                     auto           actual_value_size = kv_rksdb_actual_value_size(value.size());
+                     auto           payer = backing_store::kv_rksdb::get_payer(value.data());
+                     auto           actual_value_data = backing_store::kv_rksdb::actual_value_data(value.data());
+                     auto           actual_value_size = backing_store::kv_rksdb::actual_value_size(value.size());
 
                      kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
@@ -403,7 +403,7 @@ namespace eosio { namespace chain {
                
                         // Pack payer and actual key value
                         bytes final_kv_value;
-                        kv_rksdb_build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
+                        backing_store::kv_rksdb::build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
 
                         rocksdb::Slice value = { final_kv_value.data(), final_kv_value.size() };
                         batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(

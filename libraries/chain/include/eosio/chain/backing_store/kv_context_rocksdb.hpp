@@ -4,28 +4,28 @@
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
 
-namespace eosio { namespace chain {
+namespace eosio { namespace chain { namespace backing_store { namespace kv_rksdb {
    static constexpr auto kv_payer_size = sizeof(account_name);
 
-   static uint32_t kv_rksdb_actual_value_size(const uint32_t raw_value_size) {
+   inline static uint32_t actual_value_size(const uint32_t raw_value_size) {
       EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
       return (raw_value_size - kv_payer_size);
    }
 
-   static account_name kv_rksdb_get_payer(const char* data) {
+   inline static account_name get_payer(const char* data) {
       account_name payer;
       memcpy(&payer, data, kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
       return payer;
    }
 
-   static const char* kv_rksdb_actual_value_data(const char* data) {
+   inline static const char* actual_value_data(const char* data) {
       return data + kv_payer_size;
    }
 
    // Need to store payer so that this account is properly
    // credited when storage is removed or changed
    // to another payer
-   static void kv_rksdb_build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
+   inline static void build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
       const uint32_t final_value_size = kv_payer_size + value_size;
       final_kv_value.reserve(final_value_size);
 
@@ -178,9 +178,9 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (kv) {
-            actual_size = kv_rksdb_actual_value_size( kv->value.size() );
+            actual_size = actual_value_size( kv->value.size() );
             if (offset < actual_size)
-               memcpy(dest, kv_rksdb_actual_value_data(kv->value.data()) + offset, std::min(size, actual_size - offset));
+               memcpy(dest, actual_value_data(kv->value.data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -195,7 +195,7 @@ namespace eosio { namespace chain {
             auto kv = kv_it.get_kv();
 
             // kv is always non-null due to the check of is_valid()
-            *found_value_size = kv_rksdb_actual_value_size( kv->value.size() ); // This must be before *found_key_size in case kv_rksdb_actual_value_size throws
+            *found_value_size = actual_value_size( kv->value.size() ); // This must be before *found_key_size in case actual_value_size throws
             *found_key_size = kv->key.size();
          } else {
             *found_key_size = 0;
@@ -250,14 +250,14 @@ namespace eosio { namespace chain {
                old_value = view.get(contract, { key, key_size });
                if (!old_value)
                   return 0;
-               actual_old_value_size = kv_rksdb_actual_value_size(old_value->size()); 
+               actual_old_value_size = actual_value_size(old_value->size()); 
                view.erase(contract, { key, key_size });
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = kv_rksdb_get_payer(old_value->data());
+         account_name payer = get_payer(old_value->data());
 
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
@@ -275,11 +275,11 @@ namespace eosio { namespace chain {
             try {
                old_value = view.get(contract, { key, key_size });
                if (old_value) {
-                  old_value_size = kv_rksdb_actual_value_size(old_value->size());
+                  old_value_size = actual_value_size(old_value->size());
                }
 
                bytes final_value;
-               kv_rksdb_build_value(value, value_size, payer,final_value);
+               build_value(value, value_size, payer,final_value);
                view.set(contract, { key, key_size }, { final_value.data(), final_value.size() });
             }
             FC_LOG_AND_RETHROW()
@@ -288,7 +288,7 @@ namespace eosio { namespace chain {
 
          int64_t resource_delta;
          if (old_value) {
-            account_name old_payer = kv_rksdb_get_payer(old_value->data());
+            account_name old_payer = get_payer(old_value->data());
 
             resource_delta = update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
@@ -308,7 +308,7 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (temp_data_buffer) {
-            value_size = kv_rksdb_actual_value_size(temp_data_buffer->size());
+            value_size = actual_value_size(temp_data_buffer->size());
             return true;
          } else {
             value_size = 0;
@@ -320,8 +320,8 @@ namespace eosio { namespace chain {
          const char* temp      = nullptr;
          uint32_t    temp_size = 0;
          if (temp_data_buffer) {
-            temp      = kv_rksdb_actual_value_data(temp_data_buffer->data());
-            temp_size = kv_rksdb_actual_value_size(temp_data_buffer->size());
+            temp      = actual_value_data(temp_data_buffer->data());
+            temp_size = actual_value_size(temp_data_buffer->size());
          }
          if (offset < temp_size)
             memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
@@ -356,4 +356,4 @@ namespace eosio { namespace chain {
       CATCH_AND_EXIT_DB_FAILURE()
    }
 
-}} // namespace eosio::chain
+}}}} // namespace eosio::chain::backing_store::kv_rksdb
