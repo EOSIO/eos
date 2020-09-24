@@ -236,17 +236,15 @@ namespace eosio { namespace chain {
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
                   auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
-                  for (auto it = kv_database->lower_bound(prefix_key); it != std::end(*kv_database); ++it) {
+                  auto next_prefix = prefix_key++;
+                  for (auto it = kv_database->lower_bound(prefix_key); it != kv_database->lower_bound(next_prefix); ++it) {
                      auto key = (*it).first;
-                     if (key.size() < prefix_key.size() ||
-                         !std::equal(prefix_key.data(), prefix_key.data() + prefix_key.size(), key.data()))
-                        break;
 
                      uint64_t    contract;
                      std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
                      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
 
-                     auto key_buffer = std::vector<uint8_t>{ key.data(), key.data() + key.size() };
+                     auto key_buffer = std::vector<char>{ key.data(), key.data() + key.size() };
                      auto begin = std::begin(key_buffer) + prefix_key.size();
                      auto end = std::begin(key_buffer) + key_prefix_size;
                      b1::chain_kv::extract_key(begin, end, contract);

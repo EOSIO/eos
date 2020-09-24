@@ -15,14 +15,14 @@ namespace eosio { namespace chain {
       return (raw_value_size - kv_payer_size);
    }
 
-   static inline account_name get_payer(const uint8_t* data) {
+   static inline account_name get_payer(const char* data) {
       account_name payer;
       memcpy(&payer, data,
              kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
       return payer;
    }
 
-   static inline const uint8_t* actual_value_start(const uint8_t* data) { return data + kv_payer_size; }
+   static inline const char* actual_value_start(const char* data) { return data + kv_payer_size; }
    
    static inline uint32_t actual_key_size(const uint32_t raw_key_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
@@ -32,7 +32,7 @@ namespace eosio { namespace chain {
       return raw_key_size - prefix_size;
    }
 
-   static inline const uint8_t* actual_key_start(const uint8_t* key) {
+   static inline const char* actual_key_start(const char* key) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
       static auto prefix_size = rocks_prefix.size() + sizeof(uint64_t);
       return key + prefix_size;
@@ -96,29 +96,11 @@ namespace eosio { namespace chain {
       session_type*                   kv_session{nullptr};
       typename session_type::iterator kv_current;
 
-      static eosio::session::shared_bytes next_prefix_key(const eosio::session::shared_bytes& key) {
-          auto buffer = std::vector<uint8_t>{std::begin(key), std::end(key)};
-          
-          while (!buffer.empty()) {
-            auto start = buffer.back();
-            if (++buffer.back() > start) {
-              break;
-            }
-            buffer.pop_back();
-          }
-
-          // auto next_prefix = eosio::session::make_shared_bytes(buffer.data(), buffer.size()); 
-          // if (next_prefix < key) {
-          //    return key;
-          // }
-          return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
-      }
-
       kv_iterator_rocksdb(uint32_t& num_iterators, session_type& session, uint64_t contract, const char* user_prefix,
                           uint32_t user_prefix_size)
           : num_iterators{ num_iterators }, kv_contract{ contract }, kv_user_prefix{ user_prefix }, kv_user_prefix_size{ user_prefix_size },
             kv_prefix{ make_prefix_key(contract, user_prefix, user_prefix_size) },
-            kv_next_prefix{ next_prefix_key(kv_prefix) }, kv_session{ &session }, 
+            kv_next_prefix{ kv_prefix++ }, kv_session{ &session }, 
             kv_current{ kv_session->lower_bound(kv_next_prefix) } {
          ++num_iterators;
       }
@@ -398,8 +380,8 @@ namespace eosio { namespace chain {
                total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
                total_value.insert(total_value.end(), value, value + value_size);
 
-               auto value = eosio::session::make_shared_bytes(total_value.data(), total_value.size());
-               session->write(composite_key, value);
+               auto new_value = eosio::session::make_shared_bytes(total_value.data(), total_value.size());
+               session->write(composite_key, new_value);
             }
             FC_LOG_AND_RETHROW()
          }
@@ -439,7 +421,7 @@ namespace eosio { namespace chain {
       }
 
       uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) override {
-         const uint8_t* temp     = nullptr;
+         const char* temp        = nullptr;
          uint32_t      temp_size = 0;
          if (current_value != eosio::session::shared_bytes::invalid()) {
             temp      = actual_value_start(current_value.data());

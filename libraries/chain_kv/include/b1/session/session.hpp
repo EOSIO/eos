@@ -330,7 +330,10 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
       }
 
       auto test_set = [](const auto& pending, auto& current, const auto& comparator) {
-         if (comparator(pending, current)) {
+         if (!pending) {
+            return;
+         }
+         if (!current || comparator(pending, current)) {
             current = pending;
          }
       };

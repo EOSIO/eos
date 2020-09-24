@@ -12,6 +12,7 @@
 #include <rocksdb/slice_transform.h>
 
 #include <b1/session/session.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
 
@@ -156,7 +157,7 @@ inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db) { return
 
 inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db)
     : m_db{ [&]() {
-         assert(db);
+         EOS_ASSERT(db, eosio::chain::database_exception, "db parameter cannot be null");
          return std::move(db);
       }() } {
    m_write_options.disableWAL = true;

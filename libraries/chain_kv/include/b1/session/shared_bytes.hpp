@@ -5,6 +5,9 @@
 #include <cstring>
 #include <memory>
 #include <string_view>
+#include <vector>
+
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
 
@@ -13,7 +16,7 @@ class shared_bytes;
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
 
-inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length);
+inline shared_bytes make_shared_bytes(const char* data, size_t length);
 
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
@@ -25,9 +28,9 @@ class shared_bytes {
    template <typename T>
    friend shared_bytes make_shared_bytes(const T* data, size_t length);
 
-   friend shared_bytes make_shared_bytes(const uint8_t* data, size_t length);
+   friend shared_bytes make_shared_bytes(const char* data, size_t length);
 
-   using iterator       = const uint8_t*;
+   using iterator       = const char*;
    using const_iterator = const iterator;
 
  public:
@@ -38,16 +41,18 @@ class shared_bytes {
    shared_bytes& operator=(const shared_bytes& b) = default;
    shared_bytes& operator=(shared_bytes&& b) = default;
 
-   const uint8_t* const data() const;
-   size_t               size() const;
+   const char* const data() const;
+   size_t            size() const;
 
-   uint8_t operator[](size_t index) const;
+   char operator[](size_t index) const;
 
    bool operator==(const shared_bytes& other) const;
    bool operator!=(const shared_bytes& other) const;
 
    bool operator!() const;
         operator bool() const;
+
+   shared_bytes operator++(int);
 
    bool operator<(const shared_bytes& other) const;
    bool operator>(const shared_bytes& other) const;
@@ -61,8 +66,8 @@ class shared_bytes {
    shared_bytes() = default;
 
  private:
-   std::shared_ptr<uint8_t> m_data;
-   size_t                   m_size{ 0 };
+   std::shared_ptr<char> m_data;
+   size_t                m_size{ 0 };
 };
 
 // \brief Creates a new shared_bytes instance with the given pointer and length.
@@ -72,21 +77,21 @@ class shared_bytes {
 // length The number of items in the array.
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length) {
-   return make_shared_bytes(reinterpret_cast<const uint8_t*>(data), length * sizeof(T));
+   return make_shared_bytes(reinterpret_cast<const char*>(data), length * sizeof(T));
 }
 
-inline shared_bytes make_shared_bytes(const uint8_t* data, size_t length) {
+inline shared_bytes make_shared_bytes(const char* data, size_t length) {
    auto result = shared_bytes{};
 
    if (!data || length == 0) {
       return result;
    }
 
-   auto* chunk = std::allocator<uint8_t>{}.allocate(length);
+   auto* chunk = std::allocator<char>{}.allocate(length);
    std::memcpy(chunk, data, length);
 
-   auto deleter  = [&](auto* chunk) { std::allocator<uint8_t>{}.deallocate(chunk, length); };
-   result.m_data = std::shared_ptr<uint8_t>(chunk, deleter);
+   auto deleter  = [&](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
+   result.m_data = std::shared_ptr<char>(chunk, deleter);
    result.m_size = length;
 
    return result;
@@ -97,13 +102,25 @@ inline const shared_bytes& shared_bytes::invalid() {
    return bad;
 }
 
-inline const uint8_t* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
+inline shared_bytes shared_bytes::operator++(int) {
+   auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
+
+   while (!buffer.empty()) {
+      if (++buffer.back()) {
+         break;
+      }
+      buffer.pop_back();
+   }
+
+   return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
+}
+
+inline const char* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
 
 inline size_t shared_bytes::size() const { return m_size; }
 
-inline uint8_t shared_bytes::operator[](size_t index) const {
-   assert(index < size());
-   assert(m_data);
+inline char shared_bytes::operator[](size_t index) const {
+   EOS_ASSERT(m_data && index < size(), eosio::chain::chain_exception, "shared_bytes is invalid");
    return m_data.get()[index];
 }
 
@@ -131,9 +148,9 @@ inline bool shared_bytes::operator<(const shared_bytes& other) const {
              std::string_view{ reinterpret_cast<const char*>(other.data()), other.size() };
    }
    if (*this == eosio::session::shared_bytes::invalid()) {
-      return false;
+      return true;
    }
-   return true;
+   return false;
 }
 
 inline bool shared_bytes::operator>(const shared_bytes& other) const {

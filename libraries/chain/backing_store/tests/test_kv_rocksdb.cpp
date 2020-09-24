@@ -110,7 +110,7 @@ struct kv_rocksdb_fixture {
 
    // test case helpers
    void check_get_payer(account_name p) {
-      uint8_t buf[kv_payer_size];
+      char buf[kv_payer_size];
       memcpy(buf, &p, kv_payer_size);   // copy payer to buffer
       BOOST_CHECK(get_payer(buf) == p); // read payer from the buffer and should be equal to the original
    }
@@ -342,7 +342,7 @@ BOOST_FIXTURE_TEST_CASE(test_get_payer_4_chars, kv_rocksdb_fixture) { check_get_
 BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_payer(N(abcdefg)); }
 
 BOOST_AUTO_TEST_CASE(test_actual_value_start) {
-   uint8_t buf[10]; // any size of buffer will work
+   char buf[10]; // any size of buffer will work
    BOOST_CHECK(actual_value_start(buf) == (buf + kv_payer_size));
 }
 
