@@ -613,10 +613,11 @@ namespace eosio { namespace chain { namespace backing_store {
 
    // gets a prefix that allows for only primary key iterators
    prefix_bundle db_context_rocksdb::get_primary_slice_in_primaries(name scope, name table, uint64_t id) {
-      const bytes primary_key = db_key_value_format::create_primary_key(scope, table, id);
-      const rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(primary_key);
-      const rocksdb::Slice key = {primary_key.data(), primary_key.size()};
-      return { .composite_key = std::move(primary_key), .key = std::move(key), .prefix = std::move(prefix) };
+      bytes primary_key = db_key_value_format::create_primary_key(scope, table, id);
+      rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(primary_key);
+      rocksdb::Slice key = {primary_key.data(), primary_key.size()};
+      prefix_bundle bundle { .composite_key = std::move(primary_key), .key = std::move(key), .prefix = std::move(prefix) };
+      return bundle;
    }
 
    // gets a prefix that allows for a specific primary key, but will allow for all iterators in the table
