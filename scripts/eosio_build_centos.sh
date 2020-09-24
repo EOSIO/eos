@@ -64,6 +64,12 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
 	ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
 fi
 
+if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
+        echo "Install Development Tools ..."
+        yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+        yum install jq -y
+fi
+
 # Handle clang/compiler
 ensure-compiler
 # CMAKE Installation
