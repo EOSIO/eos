@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
       // TODO: Use non-owning memory
       fc::blob kv_key;
       fc::blob kv_value;
+      name     payer;
    };
 
    struct kv_object : public chainbase::object<kv_object_type, kv_object> {
@@ -66,5 +67,5 @@ namespace config {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_db_config_object, eosio::chain::kv_db_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::kv_object, eosio::chain::kv_index)
 FC_REFLECT(eosio::chain::kv_db_config_object, (backing_store))
-FC_REFLECT(eosio::chain::kv_object_view, (contract)(kv_key)(kv_value))
+FC_REFLECT(eosio::chain::kv_object_view, (contract)(kv_key)(kv_value)(payer))
 FC_REFLECT(eosio::chain::kv_object, (contract)(kv_key)(kv_value)(payer))
