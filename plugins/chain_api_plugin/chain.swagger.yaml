@@ -505,6 +505,60 @@ paths:
                     type: array
                     items: {}
 
+  /get_kv_table_rows:
+    post:
+      description: Returns an object containing rows from the specified kv table.
+      operationId: get_kv_table_rows
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - table
+                - index_name
+              properties:
+                code:
+                  type: string
+                  description: The name of the smart contract that controls the provided kv table
+                table:
+                  type: string
+                  description: The name of the kv table to query
+                index_name:
+                  type: string
+                  description: The name of primary or secondary index
+                encode_type:
+                  type: string ( 'bytes' for arbitray binary index value )
+                  description: Type of key specified by index_position (for example - `uint64_t` or `name`)
+                index_value:
+                  type: string
+                  description: index value used for point query encoded as 'encode_type'
+                lower_bound:
+                  type: string
+                  description:  lower bound index value for ranged query. Query result includes rows specified with lower_bound
+                upper_bound:
+                  type: string
+                  description:  upper bound index value for ranged query. Query result doesn't include rows specified with upper_bound
+                limit:
+                  type: integer
+                  description: Limit number of results returned.
+                  format: int32
+                reverse:
+                  type: boolean
+                  description: Reverse the order of returned results
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items: {}
+
   /abi_json_to_bin:
     post:
       description: Returns an object containing rows from the specified table.
@@ -680,7 +734,7 @@ paths:
                   more:
                     type: integer
                     description: "In case there's more activated protocol features than the input parameter `limit` requested, returns the ordinal of the next activated protocol feature which was not returned, otherwise zero."
- /get_accounts_by_authorizers:
+  /get_accounts_by_authorizers:
     post:
       description: Given a set of account names and public keys, find all account permission authorities that are, in part or whole, satisfiable
       operationId: get_accounts_by_authorizers
