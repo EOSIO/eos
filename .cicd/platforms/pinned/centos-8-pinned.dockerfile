@@ -11,6 +11,11 @@ RUN yum update -y && \
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     dnf --enablerepo=PowerTools install -y doxygen ocaml
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
     tar -xzf cmake-3.18.0.tar.gz && \
