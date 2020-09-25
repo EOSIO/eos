@@ -484,11 +484,11 @@ struct controller_impl {
          snapshot->validate();
          if( blog.head() ) {
             kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
-                                      conf.backing_store, authorization, resource_limits,
+                                      authorization, resource_limits,
                                       fork_db, head, snapshot_head_block, chain_id );
          } else {
             kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
-                                      conf.backing_store, authorization, resource_limits,
+                                      authorization, resource_limits,
                                       fork_db, head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
             EOS_ASSERT( lib_num > 0, snapshot_exception,
@@ -615,7 +615,7 @@ struct controller_impl {
          });
       }
 
-      kv_db.set_backing_store(conf.backing_store);
+      kv_db.check_backing_store_setting();
 
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.

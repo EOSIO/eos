@@ -116,18 +116,23 @@ namespace eosio { namespace chain {
          }() },
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
 
-   void combined_database::set_backing_store(backing_store_type backing_store) {
-      if (backing_store == backing_store_type::ROCKSDB) {
-         if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
-            return;
-         auto& idx = db.get_index<kv_index, by_kv_key>();
-         auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
-         EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
-                    "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
-                    "rocksdb");
-         db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
+   void combined_database::check_backing_store_setting() {
+      switch (backing_store) {
+      case backing_store_type::CHAINBASE:
+         EOS_ASSERT(db.get<kv_db_config_object>().backing_store == backing_store_type::CHAINBASE, database_move_kv_disk_exception,
+                    "Chainbase indicates that RocksDB is in use; resync, replay, or restore from snapshot to switch back to chainbase");
+         break;
+      case backing_store_type::ROCKSDB:
+         if (db.get<kv_db_config_object>().backing_store != backing_store_type::ROCKSDB) {
+            auto& idx = db.get_index<kv_index, by_kv_key>();
+            auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
+            EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
+                     "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
+                     "rocksdb");
+            db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
+         }
       }
-      if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
+      if (backing_store == backing_store_type::ROCKSDB)
          ilog("using rocksdb for backing store");
       else
          ilog("using chainbase for backing store");
@@ -302,9 +307,10 @@ namespace eosio { namespace chain {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start,
-                                              uint32_t blog_end, backing_store_type backing_store_,
-                                              eosio::chain::authorization_manager&                    authorization,
+   void combined_database::read_from_snapshot(const snapshot_reader_ptr& snapshot,
+                                              uint32_t blog_start,
+                                              uint32_t blog_end,
+                                              eosio::chain::authorization_manager& authorization,
                                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
                                               eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
                                               uint32_t&                          snapshot_head_block,
@@ -316,7 +322,7 @@ namespace eosio { namespace chain {
       });
 
       db.create<kv_db_config_object>([](auto&) {});
-      set_backing_store(backing_store_);
+      check_backing_store_setting();
 
       { /// load and upgrade the block header state
          block_header_state head_header_state;
