@@ -254,9 +254,17 @@ namespace eosio { namespace chain {
                      std::reverse_copy(key.data() + prefix.size(), key.data() + key_prefix_size,
                                        reinterpret_cast<char*>(&contract));
                      auto           value = it->value();
+
+                     // In KV RocksDB, payer and actual data are packed together.
+                     // Extract them.
+                     auto           payer = get_payer(value.data());
+                     auto           actual_value_data = actual_value_start(value.data());
+
                      kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
-                                         { { value.data(), value.data() + value.size() } } };
+                                         { { actual_value_data, actual_value_data + actual_value_size(value.size()) } },
+                                         payer
+                     };
                      section.add_row(row, db);
                      it->Next();
                   }
@@ -395,7 +403,12 @@ namespace eosio { namespace chain {
                      });
                      if (move_to_rocks) {
                         rocksdb::Slice key   = { move_to_rocks->kv_key.data(), move_to_rocks->kv_key.size() };
-                        rocksdb::Slice value = { move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size() };
+               
+                        // Pack payer and actual key value
+                        bytes final_kv_value;
+                        build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
+
+                        rocksdb::Slice value = { final_kv_value.data(), final_kv_value.size() };
                         batch.Put(b1::chain_kv::to_slice(b1::chain_kv::create_full_key(
                                         prefix, move_to_rocks->contract.to_uint64_t(), key)),
                                   value);

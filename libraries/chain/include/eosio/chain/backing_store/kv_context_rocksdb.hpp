@@ -7,19 +7,33 @@
 namespace eosio { namespace chain {
    static constexpr auto kv_payer_size = sizeof(account_name);
 
-   static uint32_t actual_value_size(const uint32_t raw_value_size) {
+   inline static uint32_t actual_value_size(const uint32_t raw_value_size) {
       EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
       return (raw_value_size - kv_payer_size);
    }
 
-   static account_name get_payer(const char* data) {
+   inline static account_name get_payer(const char* data) {
       account_name payer;
       memcpy(&payer, data, kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
       return payer;
    }
 
-   static const char* actual_value_start(const char* data) {
+   inline static const char* actual_value_start(const char* data) {
       return data + kv_payer_size;
+   }
+
+   // Need to store payer so that this account is properly
+   // credited when storage is removed or changed
+   // to another payer
+   inline static void build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
+      const uint32_t final_value_size = kv_payer_size + value_size;
+      final_kv_value.reserve(final_value_size);
+
+      char buf[kv_payer_size];
+      memcpy(buf, &payer, kv_payer_size);
+      final_kv_value.insert(final_kv_value.end(), std::begin(buf), std::end(buf));
+
+      final_kv_value.insert(final_kv_value.end(), value, value + value_size); 
    }
 
    template <typename View>
@@ -264,20 +278,9 @@ namespace eosio { namespace chain {
                   old_value_size = actual_value_size(old_value->size());
                }
 
-               // need to store payer to properly credit this
-               // account when storage is removed or changed
-               // to another payer
-               bytes total_value;
-               const uint32_t total_value_size = kv_payer_size + value_size;
-               total_value.reserve(total_value_size);
-
-               char buf[kv_payer_size];
-               memcpy(buf, &payer, kv_payer_size);
-               total_value.insert(total_value.end(), std::begin(buf), std::end(buf));
-
-               total_value.insert(total_value.end(), value, value + value_size); 
-               view.set(contract, { key, key_size }, { total_value.data(), total_value_size });
-
+               bytes final_value;
+               build_value(value, value_size, payer,final_value);
+               view.set(contract, { key, key_size }, { final_value.data(), final_value.size() });
             }
             FC_LOG_AND_RETHROW()
          }
