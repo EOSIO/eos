@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
    void combined_database::check_backing_store_setting() {
       switch (backing_store) {
       case backing_store_type::CHAINBASE:
-         EOS_ASSERT(db.get<kv_db_config_object>().backing_store != backing_store_type::ROCKSDB, database_move_kv_disk_exception,
+         EOS_ASSERT(db.get<kv_db_config_object>().backing_store == backing_store_type::CHAINBASE, database_move_kv_disk_exception,
                     "Chainbase indicates that RocksDB is in use; resync, replay, or restore from snapshot to switch back to chainbase");
          break;
       case backing_store_type::ROCKSDB:
