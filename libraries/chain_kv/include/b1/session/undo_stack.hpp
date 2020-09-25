@@ -99,20 +99,16 @@ void undo_stack<Session>::commit(int64_t revision) {
 
    auto  start_index       = revision - initial_revision;
    auto& session_to_commit = m_sessions[start_index++];
-   auto  current_index     = 0;
-   auto  parent            = m_sessions[0].parent();
 
-   std::visit([&](auto* parent) { session_to_commit.attach(*parent); }, parent);
+   session_to_commit.detach();
+   session_to_commit.attach(*m_head);
    session_to_commit.commit();
    session_to_commit.detach();
 
-   for (int64_t i = 0; i <= start_index; ++i) { m_sessions[i].detach(); }
-   for (int64_t i = start_index; i < static_cast<int64_t>(m_sessions.size()); ++i) {
-      m_sessions[current_index++] = std::move(m_sessions[i]);
-   }
-   m_sessions.erase(std::begin(m_sessions) + current_index, std::end(m_sessions));
+   for (int64_t i = 0; i < start_index; ++i) { m_sessions[i].detach(); }
+   m_sessions.erase(std::begin(m_sessions), std::begin(m_sessions) + start_index);
    if (!m_sessions.empty()) {
-      std::visit([&](auto* parent) { m_sessions[0].attach(*parent); }, parent);
+      m_sessions.front().attach(*m_head);
    }
 }
 

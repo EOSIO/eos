@@ -731,10 +731,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             auto writer = SNAPSHOT_SUITE::get_writer();
             chain.control->write_snapshot(writer);
             auto snapshot = SNAPSHOT_SUITE::finalize(writer);
-
-            // Set backing_store for load snapshot
-            set_backing_store(chain, resulting_backing_store);
-
             auto cfg = chain.get_config();
 
             // Set backing_store for loading snapshot in the child
