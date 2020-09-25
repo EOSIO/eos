@@ -8,11 +8,11 @@ using namespace eosio::session_tests;
 
 namespace eosio::session_tests {
 
-void perform_session_level_test(bool always_undo = false) {
+void perform_session_level_test(const std::string& dbpath, bool always_undo = false) {
    auto kvs_list     = std::vector<std::unordered_map<uint16_t, uint16_t>>{};
    auto ordered_list = std::vector<std::map<uint16_t, uint16_t>>{};
 
-   auto root_session  = eosio::session_tests::make_session();
+   auto root_session  = eosio::session_tests::make_session(dbpath);
    using session_type = eosio::session::session<decltype(root_session)>;
    kvs_list.emplace_back(generate_kvs(50));
    ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
@@ -82,12 +82,12 @@ BOOST_AUTO_TEST_SUITE(session_tests)
 
 BOOST_AUTO_TEST_CASE(session_create_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
+      auto session1 = eosio::session_tests::make_session("/tmp/session18");
       make_data_store(session1, char_key_values, string_t{});
       verify_equal(session1, char_key_values, string_t{});
    }
    {
-      auto session2 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("/tmp/session19");
       make_data_store(session2, int_key_values, int_t{});
       verify_equal(session2, int_key_values, int_t{});
    }
@@ -95,12 +95,12 @@ BOOST_AUTO_TEST_CASE(session_create_test) {
 
 BOOST_AUTO_TEST_CASE(session_rwd_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
+      auto session1 = eosio::session_tests::make_session("/tmp/session20");
       make_data_store(session1, char_key_values, string_t{});
       for (const auto& kv : char_batch_values) { verify_rwd(session1, kv.first, kv.second); }
    }
    {
-      auto session2 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("/tmp/session21");
       make_data_store(session2, int_key_values, int_t{});
       for (const auto& kv : int_batch_values) { verify_rwd(session2, kv.first, kv.second); }
    }
@@ -108,12 +108,12 @@ BOOST_AUTO_TEST_CASE(session_rwd_test) {
 
 BOOST_AUTO_TEST_CASE(session_rwd_batch_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
+      auto session1 = eosio::session_tests::make_session("/tmp/session1");
       make_data_store(session1, char_key_values, string_t{});
       verify_rwd_batch(session1, char_batch_values);
    }
    {
-      auto session2 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("/tmp/session2");
       make_data_store(session2, int_key_values, int_t{});
       verify_rwd_batch(session2, int_batch_values);
    }
@@ -121,14 +121,14 @@ BOOST_AUTO_TEST_CASE(session_rwd_batch_test) {
 
 BOOST_AUTO_TEST_CASE(session_rw_ds_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
-      auto session2 = eosio::session_tests::make_session("/tmp/testdb2");
+      auto session1 = eosio::session_tests::make_session("/tmp/session3");
+      auto session2 = eosio::session_tests::make_session("/tmp/session4");
       make_data_store(session1, char_key_values, string_t{});
       verify_read_from_datastore(session1, session2);
    }
    {
-      auto session3 = eosio::session_tests::make_session();
-      auto session4 = eosio::session_tests::make_session("/tmp/testdb2");
+      auto session3 = eosio::session_tests::make_session("/tmp/session5");
+      auto session4 = eosio::session_tests::make_session("/tmp/session6");
       make_data_store(session3, int_key_values, int_t{});
       verify_write_to_datastore(session3, session4);
    }
@@ -136,22 +136,22 @@ BOOST_AUTO_TEST_CASE(session_rw_ds_test) {
 
 BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
+      auto session1 = eosio::session_tests::make_session("/tmp/session7");
       make_data_store(session1, char_key_values, string_t{});
       verify_iterators(session1, string_t{});
    }
    {
-      auto session2 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("/tmp/session8");
       make_data_store(session2, char_key_values, string_t{});
       verify_iterators<const decltype(session2)>(session2, string_t{});
    }
    {
-      auto session3 = eosio::session_tests::make_session();
+      auto session3 = eosio::session_tests::make_session("/tmp/session9");
       make_data_store(session3, int_key_values, int_t{});
       verify_iterators(session3, int_t{});
    }
    {
-      auto session4 = eosio::session_tests::make_session();
+      auto session4 = eosio::session_tests::make_session("/tmp/session10");
       make_data_store(session4, int_key_values, int_t{});
       verify_iterators<const decltype(session4)>(session4, int_t{});
    }
@@ -159,34 +159,34 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
 
 BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
-      auto session1 = eosio::session_tests::make_session();
+      auto session1 = eosio::session_tests::make_session("/tmp/session11");
       make_data_store(session1, char_key_values, string_t{});
       verify_session_key_order(session1);
    }
    {
-      auto session2 = eosio::session_tests::make_session();
+      auto session2 = eosio::session_tests::make_session("/tmp/session12");
       make_data_store(session2, char_key_values, string_t{});
       verify_session_key_order<const decltype(session2)>(session2);
    }
    {
-      auto session3 = eosio::session_tests::make_session();
+      auto session3 = eosio::session_tests::make_session("/tmp/session13");
       make_data_store(session3, int_key_values, int_t{});
       verify_session_key_order(session3);
    }
    {
-      auto session4 = eosio::session_tests::make_session();
+      auto session4 = eosio::session_tests::make_session("/tmp/session14");
       make_data_store(session4, int_key_values, int_t{});
       verify_session_key_order<const decltype(session4)>(session4);
    }
 }
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::perform_session_level_test(); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::perform_session_level_test("/tmp/session22"); }
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test(true); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test("/tmp/session23", true); }
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
    size_t key_count      = 10;
-   auto   root_session   = eosio::session_tests::make_session();
+   auto   root_session   = eosio::session_tests::make_session("/tmp/session15");
    using session_type    = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs = generate_kvs(key_count);
    write(root_session, root_session_kvs);
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
       } while (it != begin);
    };
 
-   auto root_session  = eosio::session_tests::make_session();
+   auto root_session  = eosio::session_tests::make_session("/tmp/session16");
    using session_type = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       ds.erase(key_);
    };
 
-   auto root_session  = eosio::session_tests::make_session();
+   auto root_session  = eosio::session_tests::make_session("/tmp/session17");
    using session_type = eosio::session::session<decltype(root_session)>;
    auto root_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 10 }, { 1, 9 }, { 2, 8 }, { 3, 7 }, { 4, 6 }, { 5, 5 },
