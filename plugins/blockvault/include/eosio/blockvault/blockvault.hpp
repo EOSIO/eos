@@ -1,17 +1,49 @@
-// TOOD
+// CORE TODO
+// [ ] `net_plugin`: block broadcast decoupled from controller
+// [ ] `producer_plugin`: control block broadcast
+// [ ] `producer_plugin`: send committed blocks to BlockVault.
+// [ ] `producer_plugin`: send accepted blocks to BlockVault.
+// [ ] `producer_plugin`: store snapshots in BlockVault driven by RPC.
+//
+// [X] BlockVault "propose_constructed_block" interface.
+// [ ] BlockVault "propose_constructed_block" implementation.
+// [ ] BlockVault "propose_constructed_block" unit tests with mocked connection.
+//
+// [X] BlockVault "append_external_block" interface.
+// [ ] BlockVault "append_external_block" implementation.
+// [ ] BlockVault "append_external_block" unit tests with mocked connection.
+//
+// [X] BlockVault "propose_snapshot" interface.
+// [ ] BlockVault "propose_snapshot" implementation.
+// [ ] BlockVault "propose_snapshot" unit tests with mocked connection.
+//
+// [ ] `net_plugin`: disable `net_plugin` syncing when BlockVault is configured.
+// [ ] `chain_plugin`: `chain_plugin` integration.
+// [ ] BlockVault "sync_for_construction" interface.
+// [ ] BlockVault "sync_for_construction" implementation.
+// [ ] BlockVault "sync_for_construction" unit tests with mocked connection and consumer.
+// [ ] BlockVault "sync_for_construction" sync controller with BlockVault when configured implementation.
+// [ ] BlockVault "sync_for_construction" unit tests with mocked provider.
+
+// LONG-TERM TOOD
 // Rid all `using namespace` for verbosity-sake (or perhaps not).
 // After interface is implemented double-check documentation comments.
-// Make sure to delete all trailing whitespace.
+// Make sure to delete all trailing whitespace in all touched files.
+// Merge blockvault changes into my branch.
+// Merge develop into blockvault.
+// Submit PR to blockvault branch.
+
+// SHORT-TERM TODO
+// Finish plugin init test.
+// Finish rest of impl.
 
 #pragma once
 
 #include <optional> // std::optional
 #include <utility> // std::pair
-
 #include <appbase/application.hpp> // appbase::plugin
 // #include <eosio/chain_plugin/chain_plugin.hpp>
 // #include <eosio/http_plugin/http_plugin.hpp>
-
 #include <eosio/chain/types.hpp> // eosio::block_id_type
 #include <eosio/chain/block.hpp> // eosio::signed_block_ptr
 #include <eosio/chain/snapshot.hpp> // eosio::snapshot_reader_ptr
@@ -23,16 +55,26 @@ using namespace appbase;
 using namespace eosio;
 using namespace eosio::chain;
 
+using block_num = uint32_t;
+
+/// Documentation for blockvault.
+///
+/// blockvault is a proposed clustered component in an EOSIO network
+/// architecture which provides a replicated durable storage with strong
+/// consistency guarantees for all the input required by a redundant cluster of
+/// nodeos nodes to achieve the guarantees:
+///
+/// Guarantee against double-production of blocks
+/// Guarantee against finality violation
+/// Guarantee of liveness (ability to make progress as a blockchain)
 class blockvault : public appbase::plugin<blockvault> {
 public:
-   using block_num = uint32_t;
-
    blockvault();
    virtual ~blockvault();
- 
+
    APPBASE_PLUGIN_REQUIRES()
    virtual void set_program_options(options_description&, options_description& cfg) final;
- 
+
    void plugin_initialize(const variables_map& options);
    void plugin_startup();
    void plugin_shutdown();
@@ -71,6 +113,23 @@ public:
    ///
    void append_external_block(signed_block_ptr sbp, block_id_type lib_id);
 
+   /// \fn propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
+   ///
+   /// \brief The primary method for a nodeos node to offer snapshot data to
+   /// Block Vault that facilitates log pruning. If a snapshot's height is
+   /// greater than the current snapshot AND less than or equal to the current
+   /// implied LIB height, it will be accepted, and Block Vault will be able to
+   /// prune its state internally. Otherwise, it should reject the proposed
+   /// snapshot.
+   ///
+   /// \param snapshot Serialized snapshot.
+   ///
+   /// \param lib_id The LIB ID (also HEAD block) implied at the block height of this snapshot.
+   ///
+   /// \param watermark The producer watermark at the block height of this snapshot.
+   ///
+   void propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
+
    /// \fn sync_for_construction(std::optional<block_num> block_height)
    ///
    /// \brief The primary method for bringing a new nodeos node into sync with
@@ -89,34 +148,8 @@ public:
    ///
    void sync_for_construction(std::optional<block_num> block_height);
 
-   /// \fn propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
-   ///
-   /// \brief The primary method for a nodeos node to offer snapshot data to
-   /// Block Vault that facilitates log pruning. If a snapshot's height is
-   /// greater than the current snapshot AND less than or equal to the current
-   /// implied LIB height, it will be accepted, and Block Vault will be able to
-   /// prune its state internally. Otherwise, it should reject the proposed
-   /// snapshot.
-   ///
-   /// \param snapshot Serialized snapshot.
-   ///
-   /// \param lib_id The LIB ID (also HEAD block) implied at the block height of this snapshot.
-   ///
-   /// \param watermark The producer watermark at the block height of this snapshot.
-   ///
-   void propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
-
-private:
-   struct block_vault_state {
-      std::pair<block_num, block_timestamp_type> producer_watermark{}; ///< The  watermark for the latest accepted constructed block.
-      block_id_type lib_id{};                                          ///< The  implied LIB ID for the latest accepted constructed block.
-      block_id_type snapshot_lib_id{};                                 ///< The LIB ID for the latest snapshot.
-      std::pair<block_num, block_timestamp_type> snapshot_watermark{}; ///< The watermark for the latest snapshot.
-   };
-
 private:
    std::unique_ptr<class blockvault_impl> my;
-   block_vault_state bvs;
 };
 
 }
