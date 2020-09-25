@@ -5,6 +5,9 @@
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 
+#include <b1/session/rocks_session.hpp>
+#include <b1/session/session.hpp>
+
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
@@ -386,15 +389,32 @@ void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>
    print_results(args, num_keys, workset_size, m);
 }
 
+inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name) {
+   rocksdb::DB* cache_ptr{ nullptr };
+   auto         cache = std::shared_ptr<rocksdb::DB>{};
+
+   auto options                                 = rocksdb::Options{};
+   options.create_if_missing                    = true;
+   options.level_compaction_dynamic_level_bytes = true;
+   options.bytes_per_sync                       = 1048576;
+   options.OptimizeLevelStyleCompaction(256ull << 20);
+
+   auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
+   cache.reset(cache_ptr);
+
+   return cache;
+}
+
 // The driver
 void benchmark(const cmd_args& args) {
    if (args.backing_store == "rocksdb") {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
-      b1::chain_kv::database      kv_db{"kvrdb-tmp", true};
-      b1::chain_kv::undo_stack    kv_undo_stack{kv_db, vector<char>{make_rocksdb_undo_prefix()}};
 
-      std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<b1::chain_kv::view, b1::chain_kv::write_session, mock_resource_manager>(kv_db, kv_undo_stack, receiver, resource_manager, limits); 
+      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"));
+      auto session = eosio::session::session<decltype(rocks_session)>{rocks_session};
+
+      std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<decltype(session), mock_resource_manager>(session, receiver, resource_manager, limits); 
       benchmark_operation(args, std::move(kv_context_ptr)); // kv_context_ptr must be in the same scope as kv_db and usage_start, since they are references in create_kv_rocksdb_context
    } else {
       boost::filesystem::remove_all(chain::config::default_state_dir_name);  // Use a clean Chainbase

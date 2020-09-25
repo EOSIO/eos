@@ -415,6 +415,12 @@ class kv_tester : public tester {
 
    void test_iterase() {
       for(bool reinsert : {false, true}) {
+         if (reinsert && get_config().backing_store == eosio::chain::backing_store_type::ROCKSDB) {
+           // With the session api, erasing a key doesn't invalidate the iterator
+           // AND reinserting that key after erasing it, also doesn't invalidate the iterator.
+           // The Session iterator will still be pointing to the correct thing.
+           continue;
+         }
          // pre-inserted
          for(bool insert : {false, true}) {
             for(int i = 0; i < 8; ++i) {

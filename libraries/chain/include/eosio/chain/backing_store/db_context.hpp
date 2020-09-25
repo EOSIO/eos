@@ -96,7 +96,6 @@ namespace backing_store {
          /**
           * interface for 256-bit interger secondary
           */
-
          virtual int32_t db_idx256_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                                          const uint128_t* data) = 0;
 
