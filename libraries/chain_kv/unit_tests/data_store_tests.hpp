@@ -16,7 +16,7 @@
 
 namespace eosio::session_tests {
 
-inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name = "testdb") {
+inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name = "/tmp/testdb") {
    rocksdb::DestroyDB(name.c_str(), rocksdb::Options{});
 
    rocksdb::DB* cache_ptr{ nullptr };
@@ -567,7 +567,7 @@ void verify_write_to_datastore(eosio::session::session<Data_store>& ds, eosio::s
    compare_ds(other_ds, ds);
 }
 
-inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std::string& name = "testdb") {
+inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std::string& name = "/tmp/testdb") {
    auto rocksdb = make_rocks_db(name);
    return eosio::session::make_session(std::move(rocksdb));
 }

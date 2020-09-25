@@ -51,14 +51,14 @@ BOOST_AUTO_TEST_CASE(rocks_session_rwd_batch_test) {
 BOOST_AUTO_TEST_CASE(rocks_session_rw_ds_test) {
    {
       auto datastore1 = eosio::session_tests::make_session();
-      auto datastore2 = eosio::session_tests::make_session("testdb2");
+      auto datastore2 = eosio::session_tests::make_session("/tmp/testdb2");
       make_data_store(datastore1, char_key_values, string_t{});
       verify_read_from_datastore(datastore1, datastore2);
    }
 
    {
       auto datastore3 = eosio::session_tests::make_session();
-      auto datastore4 = eosio::session_tests::make_session("testdb2");
+      auto datastore4 = eosio::session_tests::make_session("/tmp/testdb2");
       make_data_store(datastore3, int_key_values, int_t{});
       verify_write_to_datastore(datastore3, datastore4);
    }
