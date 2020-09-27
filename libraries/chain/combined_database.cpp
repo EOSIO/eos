@@ -91,24 +91,27 @@ namespace eosio { namespace chain {
        : backing_store(backing_store_type::CHAINBASE), db(chain_db) {}
 
    combined_database::combined_database(chainbase::database& chain_db,
-                                        const std::string& rocksdb_path, bool rocksdb_create_if_missing,
-                                        uint32_t rocksdb_threads, int rocksdb_max_open_files)
+                                        const controller::config& cfg)
        : backing_store(backing_store_type::ROCKSDB), db(chain_db), kv_database{ [&]() {
             rocksdb::Options options;
-            options.create_if_missing                    = rocksdb_create_if_missing;
+            options.create_if_missing                    = !cfg.read_only;
             options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync                       = 1048576;
-            options.IncreaseParallelism(rocksdb_threads);
+            options.IncreaseParallelism(cfg.rocksdb_threads);
             options.OptimizeLevelStyleCompaction(256ull << 20);
-            options.max_open_files = rocksdb_max_open_files;
+            options.max_open_files = cfg.rocksdb_max_open_files;
+            options.write_buffer_size = cfg.rocksdb_write_buffer_size;
+            options.max_write_buffer_number = cfg.rocksdb_max_write_buffer_number;
+            options.max_bytes_for_level_base = cfg.rocksdb_max_bytes_for_level_base; 
 
             rocksdb::BlockBasedTableOptions table_options;
             table_options.format_version               = 4;
             table_options.index_block_restart_interval = 16;
+            table_options.block_cache = rocksdb::NewLRUCache(cfg.rocksdb_block_cache_capacity, 4);
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
             rocksdb::DB* p;
-            auto         status = rocksdb::DB::Open(options, rocksdb_path, &p);
+            auto         status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), &p);
             if (!status.ok())
                throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };

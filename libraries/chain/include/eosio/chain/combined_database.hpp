@@ -1,5 +1,4 @@
 #pragma once
-#warning TODO: Replace this file with db_undo_session.hpp. Use variant.
 #include <b1/chain_kv/chain_kv.hpp>
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -24,6 +23,7 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/controller.hpp>
 
 #include <b1/session/cache.hpp>
 #include <b1/session/rocks_session.hpp>
@@ -80,10 +80,7 @@ namespace eosio { namespace chain {
       combined_database(chainbase::database& chain_db);
 
       combined_database(chainbase::database& chain_db,
-                        const std::string& rocksdb_path,
-                        bool rocksdb_create_if_missing,
-                        uint32_t rocksdb_threads,
-                        int rocksdb_max_open_files);
+                        const controller::config& cfg);
 
       combined_database(const combined_database& copy) = delete;
       combined_database& operator=(const combined_database& copy) = delete;
