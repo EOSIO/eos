@@ -276,7 +276,8 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(table_store.contract, table_store.scope, table_store.table, name(key_store.primary));
       }
 
-      update_db_usage( old_payer,  -((int64_t)old_key_value.value->size() + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), event_id.c_str()) );
+      payer_payload pp(*old_key_value.value);
+      update_db_usage( old_payer,  -((int64_t)pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), event_id.c_str()) );
 
       if (auto dm_logger = context.control.get_deep_mind_logger()) {
          db_context::write_row_remove(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
@@ -625,9 +626,9 @@ namespace eosio { namespace chain { namespace backing_store {
 
    // gets a prefix that allows for a specific primary key, but will allow for all iterators in the table
    prefix_bundle db_context_rocksdb::get_primary_slice_in_table(name scope, name table, uint64_t id) {
-      const bytes primary_key = db_key_value_format::create_primary_key(scope, table, id);
-      const rocksdb::Slice prefix = db_key_value_format::prefix_slice(primary_key);
-      const rocksdb::Slice key = {primary_key.data(), primary_key.size()};
+      bytes primary_key = db_key_value_format::create_primary_key(scope, table, id);
+      rocksdb::Slice prefix = db_key_value_format::prefix_slice(primary_key);
+      rocksdb::Slice key = {primary_key.data(), primary_key.size()};
       return { .composite_key = std::move(primary_key), .key = std::move(key), .prefix = std::move(prefix) };
    }
 
@@ -706,16 +707,17 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto table_ei = primary_iter_store.cache_table(t);
 
       // if we don't have a match, we need to identify if we went past the primary types, and thus are at the end
-      auto is_same_type = [](const rocksdb::Slice& desired, const rocksdb::Slice& found) {
-         const auto found_key_type_prefix = db_key_value_format::prefix_type_slice(found);
-         return strncmp(found_key_type_prefix.data(), desired.data(), found_key_type_prefix.size()) == 0;
+      auto is_prefix_match = [](const rocksdb::Slice& desired, const rocksdb::Slice& found) {
+         return strncmp(desired.data(), found.data(), desired.size()) == 0;
       };
 
+      const auto desired_type_prefix = db_key_value_format::prefix_type_slice(slice_primary_key.key);
+      std::optional<uint64_t> primary_key;
       if (found_kv->key != slice_primary_key.key) {
          if (comparison == comp::equals) {
             return table_ei;
          }
-         else if (is_same_type(slice_primary_key.key, found_kv->key)) {
+         else if (!is_prefix_match(desired_type_prefix, found_kv->key)) {
             return table_ei;
          }
       }
@@ -723,15 +725,25 @@ namespace eosio { namespace chain { namespace backing_store {
          ++chain_kv_iter;
          found_kv = chain_kv_iter.get_kv();
          EOS_ASSERT( found_kv, db_rocksdb_invalid_operation_exception,
-         "invariant failure in find_i64, primary key found but was not followed by a table key");
-         if (is_same_type(slice_primary_key.key, found_kv->key)) {
+                     "invariant failure in find_i64, primary key found but was not followed by a table key");
+         if (!is_prefix_match(desired_type_prefix, found_kv->key)) {
             return table_ei;
          }
       }
-      backing_store::actual_value_size(found_kv->value.size()); // validate that the value at least has a payer
-      const account_name found_payer = backing_store::get_payer(found_kv->value.data());
+      else {
+         // since key is exact, and we didn't advance, it is id
+         primary_key = id;
+      }
+      const account_name found_payer = payer_payload(found_kv->value).payer;
+      if (!primary_key) {
+         uint64_t key = 0;
+         const auto valid = db_key_value_format::get_primary_key(found_kv->key, desired_type_prefix, key);
+         EOS_ASSERT( valid, db_rocksdb_invalid_operation_exception,
+                     "invariant failure in find_i64, primary key found but was not followed by a table key");
+         primary_key = key;
+      }
 
-      return primary_iter_store.add(primary_key_iter(table_ei, id, found_payer));
+      return primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
    }
 
    std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,

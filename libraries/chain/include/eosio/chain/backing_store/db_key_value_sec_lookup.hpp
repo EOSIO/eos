@@ -509,11 +509,11 @@ namespace eosio { namespace chain { namespace backing_store {
 
       // gets a prefix that allows for only this secondary key iterators, and the primary to secondary key, with a prefix key to the secondary key type
       static sec_pair_bundle get_secondary_slices_in_secondaries(name scope, name table, const SecondaryKey& secondary, uint64_t primary) {
-         const auto secondary_keys = db_key_value_format::create_secondary_key_pair(scope, table, secondary, primary);
-         const rocksdb::Slice key = {secondary_keys.secondary_key.data(), secondary_keys.secondary_key.size()};
-         const rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_keys.secondary_key);
-         const rocksdb::Slice primary_to_sec_key = {secondary_keys.primary_to_secondary_key.data(), secondary_keys.primary_to_secondary_key.size()};
-         const rocksdb::Slice primary_to_sec_type_prefix =
+         auto secondary_keys = db_key_value_format::create_secondary_key_pair(scope, table, secondary, primary);
+         rocksdb::Slice key = {secondary_keys.secondary_key.data(), secondary_keys.secondary_key.size()};
+         rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_keys.secondary_key);
+         rocksdb::Slice primary_to_sec_key = {secondary_keys.primary_to_secondary_key.data(), secondary_keys.primary_to_secondary_key.size()};
+         rocksdb::Slice primary_to_sec_type_prefix =
                db_key_value_format::prefix_primary_to_secondary_slice(secondary_keys.primary_to_secondary_key, true);
          return { .composite_key = std::move(secondary_keys.secondary_key),
                   .primary_to_sec_comp_key = std::move(secondary_keys.primary_to_secondary_key),
@@ -525,25 +525,25 @@ namespace eosio { namespace chain { namespace backing_store {
 
       // gets a specific secondary key without the trailing primary key, and will allow for only secondaries of this type (prefix)
       static prefix_bundle get_secondary_slice_in_secondaries(name scope, name table, const SecondaryKey& secondary) {
-         const bytes secondary_key = db_key_value_format::create_prefix_secondary_key(scope, table, secondary);
-         const rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_key);
-         const rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
+         bytes secondary_key = db_key_value_format::create_prefix_secondary_key(scope, table, secondary);
+         rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_key);
+         rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
          return { .composite_key = std::move(secondary_key), .key = std::move(key), .prefix = std::move(prefix) };
       }
 
       // gets a specific secondary and primary keys, and will allow for only secondaries of this type (prefix)
       static prefix_bundle get_secondary_slice_in_secondaries(name scope, name table, const SecondaryKey& secondary, uint64_t primary) {
-         const bytes secondary_key = db_key_value_format::create_secondary_key(scope, table, secondary, primary);
-         const rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_key);
-         const rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
+         bytes secondary_key = db_key_value_format::create_secondary_key(scope, table, secondary, primary);
+         rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(secondary_key);
+         rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
          return { .composite_key = std::move(secondary_key), .key = std::move(key), .prefix = std::move(prefix) };
       }
 
       // gets a prefix that allows for a specific secondary key without the trailing primary key, but will allow for all iterators in the table
       static prefix_bundle get_secondary_slice_in_table(name scope, name table, const SecondaryKey& secondary) {
-         const bytes secondary_key = db_key_value_format::create_prefix_secondary_key(scope, table, secondary);
-         const rocksdb::Slice prefix = db_key_value_format::prefix_slice(secondary_key);
-         const rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
+         bytes secondary_key = db_key_value_format::create_prefix_secondary_key(scope, table, secondary);
+         rocksdb::Slice prefix = db_key_value_format::prefix_slice(secondary_key);
+         rocksdb::Slice key = {secondary_key.data(), secondary_key.size()};
          return { .composite_key = std::move(secondary_key), .key = std::move(key), .prefix = std::move(prefix) };
       }
 
@@ -586,7 +586,7 @@ namespace eosio { namespace chain { namespace backing_store {
             return {};
          }
 
-         const account_name payer = payer_payload(found_kv.value).payer;
+         account_name payer = payer_payload(found_kv.value).payer;
          return found_keys{ std::move(secondary_key), std::move(primary_key), std::move(payer) };
       }
 
@@ -600,7 +600,7 @@ namespace eosio { namespace chain { namespace backing_store {
             return {};
          }
 
-         const account_name payer = payer_payload(found_kv.value).payer;
+         account_name payer = payer_payload(found_kv.value).payer;
          return found_keys{ std::move(secondary_key), std::move(primary_key), std::move(payer) };
       }
 

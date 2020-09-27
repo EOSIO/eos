@@ -67,14 +67,14 @@ namespace eosio { namespace chain { namespace backing_store {
    }
 
    key_bundle db_key_value_any_lookup::get_slice(name scope, name table) {
-      const bytes prefix_key = db_key_value_format::create_prefix_key(scope, table);
-      const rocksdb::Slice key {prefix_key.data(), prefix_key.size()};
+      bytes prefix_key = db_key_value_format::create_prefix_key(scope, table);
+      rocksdb::Slice key {prefix_key.data(), prefix_key.size()};
       return { .composite_key = std::move(prefix_key), .key = std::move(key) };
    }
 
    key_bundle db_key_value_any_lookup::get_table_end_slice(name scope, name table) {
-      const bytes table_key = db_key_value_format::create_table_key(scope, table);
-      const rocksdb::Slice key = {table_key.data(), table_key.size()};
+      bytes table_key = db_key_value_format::create_table_key(scope, table);
+      rocksdb::Slice key = {table_key.data(), table_key.size()};
       return { .composite_key = std::move(table_key), .key = std::move(key) };
    }
 
