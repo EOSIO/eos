@@ -63,6 +63,7 @@ namespace eosio { namespace chain {
       ~combined_session() { undo(); }
 
       combined_session& operator=(const combined_session& src) = delete;
+      combined_session& operator=(combined_session&&) = default;
 
       void push();
 

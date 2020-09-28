@@ -62,8 +62,37 @@ struct completed_block {
 
 using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
+class maybe_session {
+   public:
+      maybe_session() = default;
+      maybe_session(const maybe_session&) = delete;
+      maybe_session(maybe_session&&) = default;
+      explicit maybe_session(combined_database& db)
+         : _session(db.make_session())
+      {}
+      maybe_session& operator=(maybe_session&&) = default;
+
+      void squash() {
+         if (_session)
+            _session->squash();
+      }
+
+      void undo() {
+         if (_session)
+            _session->undo();
+      }
+
+      void push() {
+         if (_session)
+            _session->push();
+      }
+
+   private:
+      std::optional<combined_session> _session;
+};
+
 struct pending_state {
-   pending_state( combined_session&& s, const block_header_state& prev,
+   pending_state( maybe_session&& s, const block_header_state& prev,
                   block_timestamp_type when,
                   uint16_t num_prev_blocks_to_confirm,
                   const vector<digest_type>& new_protocol_feature_activations )
@@ -71,17 +100,17 @@ struct pending_state {
    ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
-   combined_session                   _db_session;
-   block_stage_type                   _block_stage;
-   controller::block_status           _block_status = controller::block_status::incomplete;
-   std::optional<block_id_type>       _producer_block_id;
+   maybe_session                _db_session;
+   block_stage_type             _block_stage;
+   controller::block_status     _block_status = controller::block_status::incomplete;
+   std::optional<block_id_type> _producer_block_id;
 
    /** @pre _block_stage cannot hold completed_block alternative */
    const pending_block_header_state& get_pending_block_header_state()const {
       if( std::holds_alternative<building_block>(_block_stage) )
          return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
@@ -995,7 +1024,9 @@ struct controller_impl {
       const bool validating = !self.is_producing_block();
       EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
-      combined_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
+      maybe_session undo_session;
+      if (!self.skip_db_sessions())
+         undo_session = maybe_session(kv_db);
 
       auto gtrx = generated_transaction(gto);
 
@@ -1364,9 +1395,9 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( kv_db.make_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(kv_db), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
-         pending.emplace( kv_db.make_no_op_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
 
       pending->_block_status = s;
