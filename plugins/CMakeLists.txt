@@ -21,7 +21,7 @@ add_subdirectory(login_plugin)
 add_subdirectory(test_control_plugin)
 add_subdirectory(test_control_api_plugin)
 
-add_subdirectory(blockvault)
+add_subdirectory(blockvault_client_plugin)
 
 if (NOT DISABLE_BLOCKVAULT_CLIENT_SERVER)
 add_subdirectory(blockvault_server)

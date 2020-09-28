@@ -45,7 +45,7 @@
 // #include <eosio/chain_plugin/chain_plugin.hpp>
 // #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain/types.hpp> // eosio::block_id_type
-#include <eosio/chain/block.hpp> // eosio::signed_block_ptr
+#include <eosio/chain/block.hpp> // eosio::signed_block
 #include <eosio/chain/snapshot.hpp> // eosio::snapshot_reader_ptr
 #include <eosio/chain/block_timestamp.hpp> // eosio::block_timestamp
 
@@ -57,20 +57,20 @@ using namespace eosio::chain;
 
 using block_num = uint32_t;
 
-/// Documentation for blockvault.
+/// Documentation for blockvault_client_plugin.
 ///
-/// blockvault is a proposed clustered component in an EOSIO network
-/// architecture which provides a replicated durable storage with strong
+/// blockvault_client_plugin is a proposed clustered component in an EOSIO
+/// network architecture which provides a replicated durable storage with strong
 /// consistency guarantees for all the input required by a redundant cluster of
 /// nodeos nodes to achieve the guarantees:
 ///
 /// Guarantee against double-production of blocks
 /// Guarantee against finality violation
 /// Guarantee of liveness (ability to make progress as a blockchain)
-class blockvault : public appbase::plugin<blockvault> {
+class blockvault_client_plugin : public appbase::plugin<blockvault_client_plugin> {
 public:
-   blockvault();
-   virtual ~blockvault();
+   blockvault_client_plugin();
+   virtual ~blockvault_client_plugin();
 
    APPBASE_PLUGIN_REQUIRES()
    virtual void set_program_options(options_description&, options_description& cfg) final;
@@ -79,7 +79,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   /// \fn propose_constructed_block(signed_block_ptr sbp, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
+   /// \fn propose_constructed_block(signed_block sb, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
    ///
    /// \brief The primary method for adding constructed blocks to the Block
    /// Vault. If a proposed constructed block is accepted, the Block Vault
@@ -88,15 +88,15 @@ public:
    /// violations. If the Block Vault cannot make that guarantee for any reason,
    /// it must reject the proposal.
    ///
-   /// \param sbp A serialized and signed constructed block.
+   /// \param sb A serialized and signed constructed block.
    ///
    /// \param lib_id The LIB ID implied by accepting this block.
    ///
    /// \param watermark The producer watermark implied by accepting this block.
    ///
-   void propose_constructed_block(signed_block_ptr sbp, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
+   void propose_constructed_block(signed_block sb, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
 
-   /// \fn append_external_block(signed_block_ptr sbp, block_id_type lib_id)
+   /// \fn append_external_block(signed_block sb, block_id_type lib_id)
    ///
    /// \brief The primary method for adding externally discovered blocks to the
    /// Block Vault. If an external block is accepted, the Block Vault cluster
@@ -107,11 +107,11 @@ public:
    /// block is older than the currently available snapshot, it is still
    /// accepted but will not affect the Block Vault cluster state.
    ///
-   /// \param sbp A serialized and signed externally discovered block.
+   /// \param sb A serialized and signed externally discovered block.
    ///
    /// \param lib_id The LIB ID implied by accepting this block.
    ///
-   void append_external_block(signed_block_ptr sbp, block_id_type lib_id);
+   void append_external_block(signed_block sb, block_id_type lib_id);
 
    /// \fn propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
    ///
@@ -149,7 +149,7 @@ public:
    void sync_for_construction(std::optional<block_num> block_height);
 
 private:
-   std::unique_ptr<class blockvault_impl> my;
+   std::unique_ptr<class blockvault_client_plugin_impl> my;
 };
 
 }
