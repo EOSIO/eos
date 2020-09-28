@@ -49,9 +49,7 @@ undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {}
 
 template <typename Session>
 undo_stack<Session>::~undo_stack() {
-  for (auto& session : m_sessions) {
-    session.undo();
-  }
+   for (auto& session : m_sessions) { session.undo(); }
 }
 
 template <typename Session>
@@ -97,7 +95,7 @@ void undo_stack<Session>::commit(int64_t revision) {
       return;
    }
 
-   auto  start_index = revision - initial_revision + 1;
+   auto start_index = revision - initial_revision + 1;
 
    for (int64_t i = start_index; i >= 0; --i) { m_sessions[i].commit(); }
    m_sessions.erase(std::begin(m_sessions), std::begin(m_sessions) + start_index);

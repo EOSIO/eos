@@ -175,8 +175,8 @@ inline shared_bytes::iterator shared_bytes::begin() const { return m_data.get();
 inline shared_bytes::iterator shared_bytes::end() const { return m_data.get() + size(); }
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
-    std::cout << fc::base64_encode({bytes.data(), bytes.size()});
-    return os;
+   std::cout << fc::base64_encode({ bytes.data(), bytes.size() });
+   return os;
 }
 
 } // namespace eosio::session

@@ -27,6 +27,8 @@ class session<rocksdb_t> {
    template <typename Iterator_traits>
    class rocks_iterator {
     public:
+      friend session<rocksdb_t>;
+
       using difference_type   = typename Iterator_traits::difference_type;
       using value_type        = typename Iterator_traits::value_type;
       using pointer           = typename Iterator_traits::pointer;
@@ -119,6 +121,9 @@ class session<rocksdb_t> {
    const_iterator lower_bound(const shared_bytes& key) const;
    iterator       upper_bound(const shared_bytes& key);
    const_iterator upper_bound(const shared_bytes& key) const;
+
+   iterator& begin(iterator& it) const;
+   iterator& end(iterator& it) const;
 
    void undo();
    void commit();
@@ -347,6 +352,29 @@ inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::find(cons
       }
    };
    return make_iterator_(predicate);
+}
+
+inline typename session<rocksdb_t>::iterator& session<rocksdb_t>::begin(iterator& it) const {
+   if (!it.m_iterator) {
+      return it;
+   }
+
+   it.m_iterator->Refresh();
+   it.m_iterator->SeekToFirst();
+   return it;
+}
+
+inline typename session<rocksdb_t>::iterator& session<rocksdb_t>::end(iterator& it) const {
+   if (!it.m_iterator) {
+      return it;
+   }
+
+   it.m_iterator->Refresh();
+   it.m_iterator->SeekToLast();
+   if (it.m_iterator->Valid()) {
+      it.m_iterator->Next();
+   }
+   return it;
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() {
