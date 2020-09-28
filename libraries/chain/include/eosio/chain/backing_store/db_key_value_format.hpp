@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 namespace eosio { namespace chain { namespace backing_store { namespace db_key_value_format {
-   using key256_t = std::array<uint128_t, 2>;
+   using key256_t = std::array<eosio::chain::uint128_t, 2>;
    constexpr uint64_t prefix_size = sizeof(name) * 2; // 8 (scope) + 8 (table)
    b1::chain_kv::bytes create_primary_key(name scope, name table, uint64_t primary_key);
 
@@ -210,9 +210,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_sec_prim_key.cend(), primary_key), bad_composite_key_exception,
                  "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
                  "string size is less than the sizeof(uint64_t)");
-      EOS_ASSERT(composite_loc == composite_trailing_sec_prim_key.cend(), bad_composite_key_exception,
-                 "DB intrinsic key-value get_trailing_sec_prim_keys extracted all keys, but there was still ${size} bytes remaining",
-                 ("size", std::distance(composite_loc, composite_trailing_sec_prim_key.cend())));
       return true;
    }
 
