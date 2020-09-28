@@ -14,7 +14,7 @@ namespace eosio { namespace chain { namespace backing_store {
       bytes value(const uint64_t& sec_key, name payer) {
          return payer_payload(payer, nullptr, 0).as_payload();
       }
-      void extract(const bytes& payload, eosio::chain::uint128_t& sec_key, name& payer) {
+      void extract(const bytes& payload, uint64_t& sec_key, name& payer) {
          payer_payload pp(payload);
          payer = pp.payer;
          EOS_ASSERT( pp.value_size == 0, db_rocksdb_invalid_operation_exception,
@@ -104,7 +104,6 @@ namespace eosio { namespace chain { namespace backing_store {
          add_table_if_needed(scope, table, payer);
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(scope, table, secondary, id);
-         REMOVE(secondary_key);
          std::shared_ptr<const bytes> old_value = view.get(parent.receiver.to_uint64_t(), secondary_key.key);
 
          EOS_ASSERT( !old_value, db_rocksdb_invalid_operation_exception, "db_${d}_store called with pre-existing key", ("d", helper.desc()));
@@ -140,7 +139,6 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( table.contract == parent.receiver, table_access_violation, "db access violation" );
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(table.scope, table.table, key_store.secondary, key_store.primary);
-         REMOVE(secondary_key);
          std::shared_ptr<const bytes> old_value = view.get(parent.receiver.to_uint64_t(), secondary_key.key);
 
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
@@ -173,7 +171,6 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( table.contract == parent.receiver, table_access_violation, "db access violation" );
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(table.scope, table.table, key_store.secondary, key_store.primary);
-         REMOVE(secondary_key);
          std::shared_ptr<const bytes> old_value = view.get(parent.receiver.to_uint64_t(), secondary_key.key);
 
          secondary_helper<SecondaryKey> helper;
@@ -293,7 +290,7 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          SecondaryKey secondary;
-         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys(found_kv->key, secondary_key.key, secondary, primary);
+         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys(found_kv->key, secondary_key.prefix, secondary, primary);
          EOS_ASSERT( valid_key, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_next_secondary, since the type slice matched, the trailing "
                      "primary key should have been extracted", ("d", helper.desc()));
@@ -358,7 +355,8 @@ namespace eosio { namespace chain { namespace backing_store {
       int find_primary( name code, name scope, name table, SecondaryKey& secondary, uint64_t primary ) {
          const bytes prim_to_sec_key = db_key_value_format::create_prefix_primary_to_secondary_key<SecondaryKey>(scope, table, primary);
          const rocksdb::Slice key = {prim_to_sec_key.data(), prim_to_sec_key.size()};
-         const rocksdb::Slice prefix = db_key_value_format::prefix_type_slice(prim_to_sec_key);
+         const rocksdb::Slice type_prefix = db_key_value_format::prefix_type_slice(prim_to_sec_key);
+         const rocksdb::Slice prefix = db_key_value_format::prefix_slice(prim_to_sec_key);
          b1::chain_kv::view::iterator chain_kv_iter = find_lowerbound(code, prefix, key);
 
          const auto found_kv = chain_kv_iter.get_kv();
@@ -370,13 +368,25 @@ namespace eosio { namespace chain { namespace backing_store {
          const unique_table t { code, scope, table };
          const auto table_ei = iter_store.cache_table(t);
 
-         if (!backing_store::db_key_value_format::get_trailing_secondary_key(found_kv->key, prefix, secondary)) {
+         // if this is not of the same type and primary key
+         if (!backing_store::db_key_value_format::get_trailing_secondary_key(found_kv->key, key, secondary)) {
             // since this is not the desired secondary key entry, reject it
             return table_ei;
          }
 
+         const bytes secondary_key = db_key_value_format::create_secondary_key(scope, table, secondary, primary);
+         std::shared_ptr<const bytes> old_value = view.get(code.to_uint64_t(), {secondary_key.data(), secondary_key.size()});
+         EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
+                     "invariant failure in db_${d}_previous_secondary, found primary to secondary key in database but "
+                     "not the secondary to primary key", ("d", helper.desc()));
+         EOS_ASSERT( old_value->data() != nullptr, db_rocksdb_invalid_operation_exception,
+                     "invariant failure in db_${d}_previous_secondary, empty value", ("d", helper.desc()));
+         EOS_ASSERT( old_value->size(), db_rocksdb_invalid_operation_exception,
+                     "invariant failure in db_${d}_previous_secondary, value has zero size", ("d", helper.desc()));
+         payer_payload pp{*old_value};
+
          return iter_store.add({ .table_ei = table_ei, .secondary = secondary, .primary = primary,
-                                 .payer = payer_payload(found_kv->value).payer});
+                                 .payer = pp.payer});
       }
 
       int lowerbound_primary( name code, name scope, name table, uint64_t primary ) {
@@ -548,19 +558,20 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       void set_value(const rocksdb::Slice& secondary_composite_key, const bytes& payload) {
-         view.set(parent.receiver.to_uint64_t(), secondary_composite_key, {payload.data(), payload.size()});
+         rocksdb::Slice payload_slice {payload.data(), payload.size()};
+         view.set(parent.receiver.to_uint64_t(), secondary_composite_key, payload_slice);
       }
 
    private:
       bool match_prefix(const rocksdb::Slice& shorter, const rocksdb::Slice& longer) {
          EOS_ASSERT( shorter.size() <= longer.size(), db_rocksdb_invalid_operation_exception,
                      "invariant failure, match_prefix expects the first key to be less than or equal to the second" );
-         return strncmp(shorter.data(), longer.data(), shorter.size()) == 0;
+         return memcmp(shorter.data(), longer.data(), shorter.size()) == 0;
       }
 
       bool match(const rocksdb::Slice& lhs, const rocksdb::Slice& rhs) {
          return lhs.size() == rhs.size() &&
-                strncmp(lhs.data(), rhs.data(), lhs.size()) == 0;
+                memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
       }
 
       b1::chain_kv::view::iterator find_lowerbound(name code, const rocksdb::Slice& prefix, const rocksdb::Slice& key) {
@@ -611,7 +622,7 @@ namespace eosio { namespace chain { namespace backing_store {
          // setting the "key space" to be the whole table, so that we either get a match or another key for this table
          b1::chain_kv::view::iterator chain_kv_iter = find_lowerbound(code, secondary_key.prefix, secondary_key.key);
 
-         const auto found_kv = chain_kv_iter.get_kv();
+         auto found_kv = chain_kv_iter.get_kv();
          if (!found_kv) {
             // no keys for this entire table
             return iter_store.invalid_iterator();
@@ -626,9 +637,9 @@ namespace eosio { namespace chain { namespace backing_store {
          }
          else if (bt == bound_type::upper) {
             // need to advance till we get to a different secondary key
-            while (match(found_kv->key, secondary_key.key)) {
+            while (match_prefix(secondary_key.key, found_kv->key)) {
                ++chain_kv_iter;
-               auto found_kv = chain_kv_iter.get_kv();
+               found_kv = chain_kv_iter.get_kv();
                EOS_ASSERT( found_kv, db_rocksdb_invalid_operation_exception,
                            "invariant failure in db_${d}_${bt_str}bound_secondary, found a secondary key that matched the "
                            "requested key, but no other keys returned following it and there should at least be a "
@@ -640,12 +651,19 @@ namespace eosio { namespace chain { namespace backing_store {
             }
          }
 
-         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys(found_kv->key, type_slice, secondary, primary);
+         SecondaryKey secondary_ret {};
+         uint64_t primary_ret = 0;
+         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys(found_kv->key, type_slice, secondary_ret, primary_ret);
          EOS_ASSERT( valid_key, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_${bt_str}bound_secondary, since the type slice matched, the trailing "
                      "keys should have been extracted", ("d", helper.desc())("bt_str",bt_str));
 
-         return iter_store.add({ .table_ei = table_ei, .secondary = secondary, .primary = primary,
+         // since this method cannot control that the input for primary and secondary having overlapping memory
+         // setting primary 1st and secondary 2nd to maintain the same results as chainbase
+         primary = primary_ret;
+         secondary = secondary_ret;
+
+         return iter_store.add({ .table_ei = table_ei, .secondary = secondary_ret, .primary = primary_ret,
                                  .payer = payer_payload(found_kv->value.data(), found_kv->value.size()).payer });
       }
 

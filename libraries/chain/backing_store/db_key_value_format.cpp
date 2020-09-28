@@ -115,7 +115,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  "DB intrinsic key-value get_trailing_primary_key was passed a full key size: ${s1} bytes that was not "
                  "exactly ${s2} bytes (the size of a primary key) larger than the secondary_key_prefix size: ${s3}",
                  ("s1", full_key.size())("s2", sizeof(primary_key))("s3", sec_prefix_size));
-      const auto comp = strncmp(secondary_key_prefix.data(), full_key.data(), sec_prefix_size);
+      const auto comp = memcmp(secondary_key_prefix.data(), full_key.data(), sec_prefix_size);
       if (comp != 0) {
          return false;
       }

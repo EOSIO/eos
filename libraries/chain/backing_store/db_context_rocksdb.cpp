@@ -206,6 +206,7 @@ namespace eosio { namespace chain { namespace backing_store {
                name(id), value, value_size);
       }
 
+#warning Should move this up to beginning to maintain same order
       primary_lookup.add_table_if_needed(scope_name, table_name, payer);
 
       const unique_table t { receiver, scope_name, table_name };
@@ -220,7 +221,7 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_key_value = get_primary_key_value(receiver, table_store.scope, table_store.table, key_store.primary);
 
       EOS_ASSERT( old_key_value.value, db_rocksdb_invalid_operation_exception,
-      "invariant failure in db_update_i64, iter store found to update but nothing in database");
+                  "invariant failure in db_update_i64, iter store found to update but nothing in database");
 
       // copy locally, since below the key_store memory will be changed
       const auto old_payer = key_store.payer;
@@ -297,7 +298,7 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_key_value = get_primary_key_value(table_store.contract, table_store.scope, table_store.table, key_store.primary);
 
       EOS_ASSERT( old_key_value.value, db_rocksdb_invalid_operation_exception,
-      "invariant failure in db_get_i64, iter store found to update but nothing in database");
+                  "invariant failure in db_get_i64, iter store found to update but nothing in database");
       const char* const actual_value = backing_store::actual_value_start(old_key_value.value->data());
       const size_t actual_size = backing_store::actual_value_size(old_key_value.value->size());
       if (value_size == 0) {
@@ -708,7 +709,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       // if we don't have a match, we need to identify if we went past the primary types, and thus are at the end
       auto is_prefix_match = [](const rocksdb::Slice& desired, const rocksdb::Slice& found) {
-         return strncmp(desired.data(), found.data(), desired.size()) == 0;
+         return memcmp(desired.data(), found.data(), desired.size()) == 0;
       };
 
       const auto desired_type_prefix = db_key_value_format::prefix_type_slice(slice_primary_key.key);
@@ -734,6 +735,7 @@ namespace eosio { namespace chain { namespace backing_store {
          // since key is exact, and we didn't advance, it is id
          primary_key = id;
       }
+
       const account_name found_payer = payer_payload(found_kv->value).payer;
       if (!primary_key) {
          uint64_t key = 0;

@@ -154,7 +154,11 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{}, std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{});
+         void              init(const setup_policy policy = setup_policy::full,
+                                db_read_mode read_mode = db_read_mode::SPECULATIVE,
+                                std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+                                std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+                                std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
          void              init(controller::config config, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, const genesis_state& genesis);
          void              init(controller::config config);
@@ -392,7 +396,11 @@ namespace eosio { namespace testing {
             return genesis;
          }
 
-         static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir, std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{}, std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{}) {
+         static std::pair<controller::config, genesis_state> default_config(
+               const fc::temp_directory& tempdir,
+               std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+               std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+               std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{}) {
             controller::config cfg;
             cfg.blog.log_dir      = tempdir.path() / config::default_blocks_dir_name;
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
@@ -417,6 +425,9 @@ namespace eosio { namespace testing {
             }
             if (config_max_nonprivileged_inline_action_size) {
                cfg.max_nonprivileged_inline_action_size = *config_max_nonprivileged_inline_action_size;
+            }
+            if (config_backing_store) {
+               cfg.backing_store = *config_backing_store;
             }
             return {cfg, gen};
          }
@@ -448,8 +459,11 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{}, std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{}) {
-         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE,
+             std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+             std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+             std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{}) {
+         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size, config_backing_store);
       }
 
       tester(controller::config config, const genesis_state& genesis) {
@@ -529,18 +543,12 @@ namespace eosio { namespace testing {
       }
       controller::config vcfg;
 
-      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         auto def_conf = default_config(tempdir);
+      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+                        std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
 
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         vcfg.trusted_producers = trusted_producers;
-
-         validating_node = create_validating_node(vcfg, def_conf.second, true);
-
-         init(def_conf.first, def_conf.second);
-         execute_setup_policy(setup_policy::full);
-      }
+      void init_with_trusted_producers(const flat_set<account_name>& trusted_producers,
+                                       std::pair<controller::config, genesis_state> config_state,
+                                       std::optional<backing_store_type> config_backing_store);
 
       static void config_validator(controller::config& vcfg) {
          FC_ASSERT( vcfg.blog.log_dir.filename().generic_string() != "."
@@ -647,6 +655,24 @@ namespace eosio { namespace testing {
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;
+   };
+
+   class rocksdb_tester : public tester {
+   public:
+      rocksdb_tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE,
+             std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+             std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{}) {
+         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size,
+              backing_store_type::ROCKSDB);
+      }
+   };
+
+   class rocksdb_validating_tester : public validating_tester {
+   public:
+      virtual ~rocksdb_validating_tester() {}
+
+      rocksdb_validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>())
+      : validating_tester(trusted_producers, {backing_store_type::ROCKSDB}){}
    };
 
    /**

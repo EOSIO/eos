@@ -81,30 +81,41 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
          b1::chain_kv::append_key(composite_key, sec_key);
       }
 
-      template<typename Key, typename CharKey>
-      bool verify_primary_to_sec_type(const CharKey& key) {
-         const auto minimum_size = prefix_size + sizeof(key_type) + sizeof(uint64_t) + sizeof(key_type);
+      template<typename Key, typename CharKey1, typename CharKey2>
+      bool verify_primary_to_sec_type(const CharKey1& key, const CharKey2& type_prefix) {
+         const auto prefix_minimum_size = prefix_size + sizeof(key_type);
+         const auto both_types_size = prefix_minimum_size + sizeof(key_type);
+         const auto both_types_and_primary_size = both_types_size + sizeof(uint64_t);
+         const bool has_sec_type = type_prefix.size() >= both_types_size;
+         EOS_ASSERT(type_prefix.size() == prefix_minimum_size || type_prefix.size() == both_types_size ||
+                    type_prefix.size() == both_types_and_primary_size, bad_composite_key_exception,
+                    "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix key size: ${s1} bytes that was not either: "
+                    "${s2}, ${s3}, or ${s4} bytes long",
+                    ("s1", type_prefix.size())("s2", prefix_minimum_size)("s3", both_types_and_primary_size)
+                    ("s4", both_types_and_primary_size));
+         const char* prefix_ptr = type_prefix.data() + prefix_size;
+         const key_type prefix_type_kt {*(prefix_ptr++)};
+         EOS_ASSERT(key_type::primary_to_sec == prefix_type_kt, bad_composite_key_exception,
+                    "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix that was the wrong type: ${type},"
+                    " it should have been of type: ${type2}",
+                    ("type", to_string(prefix_type_kt))("type2", to_string(key_type::primary_to_sec)));
+         if (has_sec_type) {
+            const key_type expected_sec_kt = determine_sec_type<Key>::kt;
+            const key_type prefix_sec_kt {*(prefix_ptr)};
+            EOS_ASSERT(expected_sec_kt == prefix_sec_kt, bad_composite_key_exception,
+                       "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix that was the wrong secondary type: ${type},"
+                       " it should have been of type: ${type2}",
+                       ("type", to_string(prefix_sec_kt))("type2", to_string(expected_sec_kt)));
+         }
+         if (memcmp(type_prefix.data(), key.data(), type_prefix.size()) != 0) {
+            return false;
+         }
+
+         const auto minimum_size = prefix_size + sizeof(key_type) + sizeof(key_type) + sizeof(uint64_t);
          EOS_ASSERT(key.size() >= minimum_size, bad_composite_key_exception,
                     "DB intrinsic key-value verify_primary_to_sec_type was passed a full key size: ${s1} bytes that was not at least "
                     "larger than the size that would include the secondary type: ${s2}",
                     ("s1", key.size())("s2", minimum_size));
-         const char* type_ptr = key.data() + prefix_size;
-         const key_type actual_kt {*(type_ptr++)};
-         EOS_ASSERT(key_type::primary_to_sec == actual_kt, bad_composite_key_exception,
-                    "DB intrinsic key-value verify_primary_to_sec_type was passed a key that was the wrong type: ${type},"
-                    " it should have been of type: ${type2}",
-                    ("type", to_string(actual_kt))("type2", to_string(key_type::primary_to_sec)));
-         const key_type expected_sec_kt = determine_sec_type<Key>::kt;
-         const key_type actual_sec_kt {*(type_ptr)};
-         if (expected_sec_kt != actual_sec_kt) {
-            return false;
-         }
-         const auto sec_key_size = sizeof(Key);
-         EOS_ASSERT(key.size() == minimum_size + sec_key_size, bad_composite_key_exception,
-                    "DB intrinsic key-value verify_primary_to_sec_type was passed a full key size: ${s1} bytes that was not exactly "
-                    "${s2} bytes (the size of the indicated secondary key) larger than the "
-                    "size that includes the secondary type: ${s3}",
-                    ("s1", key.size())("s2", sec_key_size)("s3", minimum_size));
          return true;
       }
    }
@@ -180,7 +191,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  "DB intrinsic key-value get_trailing_sec_prim_keys was passed a full key size: ${s1} bytes that was not exactly "
                  "${s2} bytes (the size of the secondary key and a primary key) larger than the secondary_type_prefix "
                  "size: ${s3}", ("s1", full_key.size())("s2", keys_size)("s3", sec_type_prefix_size));
-      const auto comp = strncmp(secondary_type_prefix.data(), full_key.data(), sec_type_prefix_size);
+      const auto comp = memcmp(secondary_type_prefix.data(), full_key.data(), sec_type_prefix_size);
       if (comp != 0) {
          return false;
       }
@@ -199,6 +210,9 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_sec_prim_key.cend(), primary_key), bad_composite_key_exception,
                  "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
                  "string size is less than the sizeof(uint64_t)");
+      EOS_ASSERT(composite_loc == composite_trailing_sec_prim_key.cend(), bad_composite_key_exception,
+                 "DB intrinsic key-value get_trailing_sec_prim_keys extracted all keys, but there was still ${size} bytes remaining",
+                 ("size", std::distance(composite_loc, composite_trailing_sec_prim_key.cend())));
       return true;
    }
 
@@ -268,14 +282,10 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
                  "DB intrinsic key-value get_trailing_prim_sec_keys was passed a primary_to_sec_type_prefix with key size: ${s1} bytes "
                  "which is not equal to the expected size: ${s2}",
                  ("s1", primary_to_sec_type_prefix_size)("s2", prefix_sec_type_size));
-      if (!detail::verify_primary_to_sec_type<Key>(full_key)) {
+      if (!detail::verify_primary_to_sec_type<Key>(full_key, primary_to_sec_type_prefix)) {
          return false;
       }
       const auto keys_size = sizeof(uint64_t) + sizeof(Key);
-      const auto comp = strncmp(primary_to_sec_type_prefix.data(), full_key.data(), primary_to_sec_type_prefix_size);
-      if (comp != 0) {
-         return false;
-      }
       auto start_offset = full_key.data() + prefix_sec_type_size;
       const b1::chain_kv::bytes composite_trailing_prim_sec_key {start_offset, start_offset + keys_size};
       auto composite_loc = composite_trailing_prim_sec_key.cbegin();
@@ -295,14 +305,10 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       EOS_ASSERT(sec_type_trailing_prefix_size == prefix_with_primary_key_size, bad_composite_key_exception,
                  "DB intrinsic key-value get_trailing_secondary_key was passed a sec_type_trailing_prefix with key size: ${s1} bytes "
                  "which is not equal to the expected size: ${s2}", ("s1", sec_type_trailing_prefix_size)("s2", prefix_with_primary_key_size));
-      if (!detail::verify_primary_to_sec_type<Key>(full_key)) {
+      if (!detail::verify_primary_to_sec_type<Key>(full_key, sec_type_trailing_prefix)) {
          return false;
       }
       const auto key_size = sizeof(Key);
-      const auto comp = strncmp(sec_type_trailing_prefix.data(), full_key.data(), sec_type_trailing_prefix_size);
-      if (comp != 0) {
-         return false;
-      }
       auto start_offset = full_key.data() + sec_type_trailing_prefix_size;
       const b1::chain_kv::bytes composite_trailing_prim_sec_key {start_offset, start_offset + key_size};
       auto composite_loc = composite_trailing_prim_sec_key.cbegin();
@@ -356,4 +362,35 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    key_type extract_primary_to_sec_key_type(const b1::chain_kv::bytes& composite_key);
 
    intermittent_decomposed_values get_prefix_thru_key_type(const b1::chain_kv::bytes& composite_key);
+
+
+   template<typename CharKey1, typename CharKey2>
+   bool get_primary_key(const CharKey1& full_key, const CharKey2& type_prefix, uint64_t& primary_key) {
+      const auto type_prefix_size = type_prefix.size();
+      const auto prefix_type_size = prefix_size + sizeof(key_type);
+      EOS_ASSERT(type_prefix_size == prefix_type_size, bad_composite_key_exception,
+                 "DB intrinsic key-value get_primary_key was passed a type_prefix with key size: ${s1} bytes "
+                 "which is not equal to the expected size: ${s2}", ("s1", type_prefix_size)("s2", prefix_type_size));
+      const auto key_size = sizeof(primary_key);
+      EOS_ASSERT(full_key.size() == type_prefix_size + key_size, bad_composite_key_exception,
+                 "DB intrinsic key-value get_primary_key was passed a full key size: ${s1} bytes that was not exactly "
+                 "${s2} bytes (the size of a primary key) larger than the type_prefix size: ${s3}",
+                 ("s1", full_key.size())("s2", key_size)("s3", type_prefix_size));
+      const auto comp = memcmp(type_prefix.data(), full_key.data(), type_prefix_size);
+      if (comp != 0) {
+         return false;
+      }
+      const key_type actual_kt {*(type_prefix.data() + type_prefix_size - 1)};
+      EOS_ASSERT(key_type::primary == actual_kt, bad_composite_key_exception,
+                 "DB intrinsic key-value get_primary_key was passed a key that was the wrong type: ${type},"
+                 " it should have been of type: ${type2}",
+                 ("type", detail::to_string(actual_kt))("type2", detail::to_string(key_type::primary)));
+      auto start_offset = full_key.data() + type_prefix_size;
+      const b1::chain_kv::bytes composite_trailing_prim_key {start_offset, start_offset + key_size};
+      auto composite_loc = composite_trailing_prim_key.cbegin();
+      EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_prim_key.cend(), primary_key), bad_composite_key_exception,
+                 "DB intrinsic key-value get_primary_key invariant has changed, extract_key should only fail if the "
+                 "remaining string size is less than the sizeof(uint64_t)");
+      return true;
+   }
 }}}} // ns eosio::chain::backing_store::db_key_value_format

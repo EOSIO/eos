@@ -416,16 +416,22 @@ template<typename Key>
 void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
    name scope;
    name table;
-   Key key;
+   Key sec_key;
    uint64_t primary_key;
-   BOOST_REQUIRE_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, scope, table, key, primary_key));
+   BOOST_REQUIRE_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_secondary_key(composite_key, scope, table, sec_key, primary_key));
+   Key sec_key2= helper<Key>{}.init;
+   uint64_t primary_key2 = 0;
+   const auto type_prefix = eosio::chain::backing_store::db_key_value_format::prefix_type_slice(composite_key);
+   BOOST_REQUIRE_NO_THROW(eosio::chain::backing_store::db_key_value_format::get_trailing_sec_prim_keys(composite_key, type_prefix, sec_key2, primary_key2));
+   BOOST_CHECK(sec_key == sec_key2);
+   BOOST_CHECK_EQUAL(primary_key, primary_key2);
 
-   const auto sec_key_pair = eosio::chain::backing_store::db_key_value_format::create_secondary_key_pair(scope, table, key, primary_key);
-   BOOST_REQUIRE_EQUAL(overhead_size + sizeof(key) + sizeof(primary_key), sec_key_pair.secondary_key.size());
+   const auto sec_key_pair = eosio::chain::backing_store::db_key_value_format::create_secondary_key_pair(scope, table, sec_key, primary_key);
+   BOOST_REQUIRE_EQUAL(overhead_size + sizeof(sec_key) + sizeof(primary_key), sec_key_pair.secondary_key.size());
    BOOST_CHECK_EQUAL(0, compare_composite_keys(composite_key, sec_key_pair.secondary_key).first);
-   BOOST_CHECK_EQUAL(overhead_size + sizeof(primary_key) + sizeof(key_type) + sizeof(key), sec_key_pair.primary_to_secondary_key.size());
-   const auto primary_to_sec_key = eosio::chain::backing_store::db_key_value_format::create_primary_to_secondary_key(scope, table, primary_key, key);
-   BOOST_CHECK_EQUAL(overhead_size + sizeof(primary_key) + sizeof(key_type) + sizeof(key), primary_to_sec_key.size());
+   BOOST_CHECK_EQUAL(overhead_size + sizeof(primary_key) + sizeof(key_type) + sizeof(sec_key), sec_key_pair.primary_to_secondary_key.size());
+   const auto primary_to_sec_key = eosio::chain::backing_store::db_key_value_format::create_primary_to_secondary_key(scope, table, primary_key, sec_key);
+   BOOST_CHECK_EQUAL(overhead_size + sizeof(primary_key) + sizeof(key_type) + sizeof(sec_key), primary_to_sec_key.size());
    BOOST_CHECK_EQUAL(0, compare_composite_keys(sec_key_pair.primary_to_secondary_key, primary_to_sec_key).first);
    const key_type actual_kt = eosio::chain::backing_store::db_key_value_format::extract_key_type(sec_key_pair.secondary_key);
    BOOST_CHECK(eosio::chain::backing_store::db_key_value_format::derive_secondary_key_type<Key>() == actual_kt);
@@ -441,9 +447,9 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
          primary_to_sec_key, primary_to_sec_prefix, extracted_primary_key2, extracted_key2);
    BOOST_REQUIRE(result);
    BOOST_CHECK_EQUAL(primary_key, extracted_primary_key2);
-   BOOST_CHECK(key == extracted_key2);
+   BOOST_CHECK(sec_key == extracted_key2);
 
-   verify_primary_to_sec_key(sec_key_pair, scope, table, primary_key, key);
+   verify_primary_to_sec_key(sec_key_pair, scope, table, primary_key, sec_key);
 
    uint64_t extracted_primary_key3 = 0xffff'ffff'ffff'ffff;
    Key extracted_key3;
@@ -452,14 +458,14 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
          primary_to_sec_key, primary_to_sec_prefix, extracted_primary_key3, extracted_key3);
    BOOST_REQUIRE(result);
    BOOST_CHECK_EQUAL(primary_key, extracted_primary_key3);
-   BOOST_CHECK(key == extracted_key3);
+   BOOST_CHECK(sec_key == extracted_key3);
 
    Key extracted_key4;
    primary_to_sec_prefix = eosio::chain::backing_store::db_key_value_format::prefix_primary_to_secondary_slice(primary_to_sec_key, true);
    result = eosio::chain::backing_store::db_key_value_format::get_trailing_secondary_key(
          primary_to_sec_key, primary_to_sec_prefix, extracted_key4);
    BOOST_REQUIRE(result);
-   BOOST_CHECK(key == extracted_key4);
+   BOOST_CHECK(sec_key == extracted_key4);
 
    const key_type kt = eosio::chain::backing_store::db_key_value_format::detail::determine_sec_type<Key>::kt;
    verify_secondary_key_pair_order(sec_key_pair, kt);
