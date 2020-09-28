@@ -18,7 +18,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
-#include <chain_kv/chain_kv.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 
 #include <new>
 
@@ -228,8 +228,10 @@ struct controller_impl {
     reversible_blocks( cfg.blog.log_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
-    kv_db(cfg.backing_store, db, (cfg.state_dir / "chain-kv").string(), !cfg.read_only,
-          cfg.rocksdb_threads, cfg.rocksdb_max_open_files),
+    kv_db(cfg.backing_store == backing_store_type::CHAINBASE
+          ? combined_database(db)
+          : combined_database(db, (cfg.state_dir / "chain-kv").string(), !cfg.read_only,
+                              cfg.rocksdb_threads, cfg.rocksdb_max_open_files)),
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -260,7 +262,6 @@ struct controller_impl {
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
       });
-
 
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
@@ -483,11 +484,11 @@ struct controller_impl {
          snapshot->validate();
          if( blog.head() ) {
             kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
-                                      conf.backing_store, authorization, resource_limits,
+                                      authorization, resource_limits,
                                       fork_db, head, snapshot_head_block, chain_id );
          } else {
             kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
-                                      conf.backing_store, authorization, resource_limits,
+                                      authorization, resource_limits,
                                       fork_db, head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
             EOS_ASSERT( lib_num > 0, snapshot_exception,
@@ -614,7 +615,7 @@ struct controller_impl {
          });
       }
 
-      kv_db.set_backing_store(conf.backing_store);
+      kv_db.check_backing_store_setting();
 
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.

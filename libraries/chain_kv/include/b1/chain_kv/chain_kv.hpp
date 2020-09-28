@@ -173,8 +173,8 @@ namespace detail {
       return float_result;
    }
 
-   template<typename Key, std::size_t N>
-   bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, Key& key) {
+   template<typename It, typename Key, std::size_t N>
+   bool extract_key(It& key_loc, It key_end, Key& key) {
       const auto distance = std::distance(key_loc, key_end);
       using t_type = typename value_storage<Key>::type;
       constexpr static auto key_size = sizeof(t_type) * N;
@@ -217,20 +217,21 @@ inline void append_key(bytes& dest, float128_t value) {
    detail::append_key<detail::uint128_t, 1>(dest, float_key);
 }
 
-template<typename T>
-auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, T& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
-   return detail::extract_key<T, 1>(key_loc, key_end, key);
+template<typename It, typename T>
+auto extract_key(It& key_loc, It key_end, T& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+   return detail::extract_key<It, T, 1>(key_loc, key_end, key);
 }
 
-template <typename T, std::size_t N>
-auto extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, std::array<T, N>& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+template <typename It, typename T, std::size_t N>
+auto extract_key(It& key_loc, It key_end, std::array<T, N>& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
    T* key_ptr = key.data();
-   return detail::extract_key<T*, N>(key_loc, key_end, key_ptr);
+   return detail::extract_key<It, T*, N>(key_loc, key_end, key_ptr);
 }
 
-inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float64_t& key) {
+template <typename It>
+bool extract_key(It& key_loc, It key_end, float64_t& key) {
    uint64_t int_key;
-   const bool extract = detail::extract_key<uint64_t, 1>(key_loc, key_end, int_key);
+   const bool extract = detail::extract_key<It, uint64_t, 1>(key_loc, key_end, int_key);
    if (!extract)
       return false;
 
@@ -238,9 +239,10 @@ inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator ke
    return true;
 }
 
-inline bool extract_key(bytes::const_iterator& key_loc, bytes::const_iterator key_end, float128_t& key) {
+template <typename It>
+bool extract_key(It& key_loc, It key_end, float128_t& key) {
    detail::uint128_t int_key;
-   const bool extract = detail::extract_key<detail::uint128_t, 1>(key_loc, key_end, int_key);
+   const bool extract = detail::extract_key<It, detail::uint128_t, 1>(key_loc, key_end, int_key);
    if (!extract)
       return false;
 
