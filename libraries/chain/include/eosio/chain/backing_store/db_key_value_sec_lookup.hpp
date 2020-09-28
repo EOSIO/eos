@@ -653,7 +653,8 @@ namespace eosio { namespace chain { namespace backing_store {
 
          SecondaryKey secondary_ret {};
          uint64_t primary_ret = 0;
-         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys(found_kv->key, type_slice, secondary_ret, primary_ret);
+         const bool valid_key = db_key_value_format::get_trailing_sec_prim_keys<SecondaryKey, rocksdb::Slice, rocksdb::Slice>(
+               found_kv->key, type_slice, secondary_ret, primary_ret);
          EOS_ASSERT( valid_key, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_${bt_str}bound_secondary, since the type slice matched, the trailing "
                      "keys should have been extracted", ("d", helper.desc())("bt_str",bt_str));
