@@ -97,15 +97,9 @@ void undo_stack<Session>::commit(int64_t revision) {
       return;
    }
 
-   auto  start_index       = revision - initial_revision;
-   auto& session_to_commit = m_sessions[start_index++];
+   auto  start_index = revision - initial_revision + 1;
 
-   session_to_commit.detach();
-   session_to_commit.attach(*m_head);
-   session_to_commit.commit();
-   session_to_commit.detach();
-
-   for (int64_t i = 0; i < start_index; ++i) { m_sessions[i].detach(); }
+   for (int64_t i = start_index; i >= 0; --i) { m_sessions[i].commit(); }
    m_sessions.erase(std::begin(m_sessions), std::begin(m_sessions) + start_index);
    if (!m_sessions.empty()) {
       m_sessions.front().attach(*m_head);
