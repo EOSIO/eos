@@ -11,7 +11,9 @@ for easy comparison.
 
 def runBenchMarking(key_file, workset):
     output = []
-    print("\nDetailed:\n")
+    print("============================================")
+    print("Benchmarking starts")
+    print("============================================\n")
 
     for op in ["create", "get", "get_data", "set", "erase", "it_create", "it_next", "it_key_value"]:
         results = []
