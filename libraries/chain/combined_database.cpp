@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
             // Good value for `total_threads` is the number of cores
             options.IncreaseParallelism(cfg.rocksdb_threads);
 
-            options.OptimizeLevelStyleCompaction(256ull << 20); // optimizes level style compaction
+            options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
 
             // Number of open files that can be used by the DB.  
             // Setting it to -1 means files opened are always kept open.
