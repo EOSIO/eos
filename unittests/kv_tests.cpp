@@ -734,7 +734,6 @@ BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-  /*
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
    test_kv_ram_usage_common();
 }
@@ -744,7 +743,6 @@ BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
    test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
-*/
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
    test_kv_key_value_limit_common();
@@ -810,7 +808,6 @@ BOOST_FIXTURE_TEST_CASE(kv_iterase_rocksdb, kv_rocksdb_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-  /*
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage_rocksdb, kv_rocksdb_tester) try { //
    test_kv_ram_usage_common();
 }
@@ -820,7 +817,6 @@ BOOST_FIXTURE_TEST_CASE(kv_resource_limit_rocksdb, kv_rocksdb_tester) try { //
    test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
-*/
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit_rocksdb, kv_rocksdb_tester) try { //
    test_kv_key_value_limit_common();
