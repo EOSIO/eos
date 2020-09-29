@@ -309,7 +309,11 @@ void session<Parent>::undo() {
 
 template <typename Parent>
 typename session<Parent>::iterator& session<Parent>::begin_(session<Parent>& s, typename session<Parent>::iterator& it) const {
-   it = std::begin(s);
+   auto it_cache = std::begin(s.m_iterator_cache);
+   it = session<Parent>::iterator{};
+   it.m_iterator_version = it_cache->second.version;
+   it.m_active_iterator = it_cache;
+   it.m_active_session = &s;
    return it;
 }
 
@@ -326,7 +330,11 @@ typename Parent::iterator& session<Parent>::begin_(Parent& p, typename Parent::i
 
 template <typename Parent>
 typename session<Parent>::iterator& session<Parent>::end_(session<Parent>& s, typename session<Parent>::iterator& it) const {
-   it = std::end(s);
+   auto it_cache = std::end(s.m_iterator_cache);
+   it = session<Parent>::iterator{};
+   it.m_iterator_version = it_cache->second.version;
+   it.m_active_iterator = it_cache;
+   it.m_active_session = &s;
    return it;
 }
 
@@ -359,7 +367,7 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
 
       if (it == *begin && it == *end) {
          // No bounds for this key;
-         return std::end(ds);
+         return end_(ds, end_holder);
       }
 
       auto test_set = [](const auto& pending, auto& current, const auto& comparator) {
@@ -378,7 +386,7 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
             end = &end_(ds, end_holder);
             if (it == begin_(ds, begin_holder) || it == *end) {
                // We wrapped around.  These are circular iterators
-               return std::end(ds);
+               return end_(ds, end_holder);
             }
          }
          test_set((*it).first, upper_bound_key, std::less<shared_bytes>{});
@@ -392,7 +400,7 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
          end = &end_(ds, end_holder);
          if (it == begin_(ds, begin_holder) || it == *end) {
             // We wrapped around. These are circular iterators.
-            return std::end(ds);
+            return end_(ds, end_holder);
          }
          test_set((*it).first, upper_bound_key, std::less<shared_bytes>{});
       } else {
@@ -400,7 +408,7 @@ std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_byte
          test_set((*(--it)).first, lower_bound_key, std::greater<shared_bytes>{});
       }
 
-      return std::end(ds);
+      return end_(ds, end_holder);
    };
    make_iterator_<iterator>(
          lower, std::less<shared_bytes>{}, [](auto& it, const auto& end) { ++it; }, true);
@@ -671,7 +679,10 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
 
    auto find_first_not = [&](auto& session, auto& it, const auto& predicate) {
       // Return the first key that passes the given predicate.
-      if (it == std::end(session)) {
+      typename std::remove_reference_t<decltype(session)>::iterator end_holder;
+      typename std::remove_reference_t<decltype(session)>::iterator begin_holder;
+
+      if (it == end_(session, end_holder)) {
          return shared_bytes::invalid();
       }
       auto beginning_key = (*it).first;
@@ -680,8 +691,8 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
          if (!predicate(pending_key)) {
             return pending_key;
          }
-         move(it, std::end(session));
-         if (it == std::end(session) || it == std::begin(session)) {
+         move(it, end_(session, end_holder));
+         if (it == end_(session, end_holder) || it == begin_(session, begin_holder)) {
             // These are circular iterators.  We might have wrapped around.
             return shared_bytes::invalid();
          }
@@ -698,9 +709,10 @@ Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const 
    std::visit(
          [&](auto* p) {
             if (p) {
+               typename std::remove_pointer_t<decltype(p)>::iterator end_holder;
                // Get the iterator from the parent
                auto it = predicate(*p);
-               if (it != std::end(*p)) {
+               if (it != end_(*p, end_holder)) {
                   current_key = (*it).first;
                   if (m_deleted_keys.find(current_key) != std::end(m_deleted_keys)) {
                      current_key = find_first_not(*p, it, deleted);
@@ -778,25 +790,25 @@ typename session<Parent>::const_iterator session<Parent>::find(const shared_byte
 
 template <typename Parent>
 typename session<Parent>::iterator session<Parent>::begin() {
-   return make_iterator_<iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
+   return make_iterator_<iterator>([&](auto& ds) { typename std::remove_reference_t<decltype(ds)>::iterator holder; return begin_(ds, holder); }, std::less<shared_bytes>{},
                                    [](auto& it, const auto& end) { ++it; });
 }
 
 template <typename Parent>
 typename session<Parent>::const_iterator session<Parent>::begin() const {
-   return make_iterator_<const_iterator>([](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
+   return make_iterator_<const_iterator>([&](auto& ds) { typename std::remove_reference_t<decltype(ds)>::iterator holder; return begin_(ds, holder); }, std::less<shared_bytes>{},
                                          [](auto& it, const auto& end) { ++it; });
 }
 
 template <typename Parent>
 typename session<Parent>::iterator session<Parent>::end() {
-   return make_iterator_<iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
+   return make_iterator_<iterator>([&](auto& ds) { typename std::remove_reference_t<decltype(ds)>::iterator holder; return end_(ds, holder); }, std::greater<shared_bytes>{},
                                    [](auto& it, const auto& end) { it = end; });
 }
 
 template <typename Parent>
 typename session<Parent>::const_iterator session<Parent>::end() const {
-   return make_iterator_<const_iterator>([](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
+   return make_iterator_<const_iterator>([&](auto& ds) {  typename std::remove_reference_t<decltype(ds)>::iterator holder; return end_(ds, holder); ; }, std::greater<shared_bytes>{},
                                          [](auto& it, const auto& end) { it = end; });
 }
 
