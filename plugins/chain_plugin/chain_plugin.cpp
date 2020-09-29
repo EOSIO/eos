@@ -298,18 +298,15 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
          ("backing-store", boost::program_options::value<eosio::chain::backing_store_type>()->default_value(eosio::chain::backing_store_type::CHAINBASE),
-          "The storage for state, CHAINBASE or ROCKSDB")
+          "The storage for state, chainbase or rocksdb")
          ("rocksdb-threads", bpo::value<uint16_t>()->default_value(config::default_rocksdb_threads),
           "Number of rocksdb threads for flush and compaction")
          ("rocksdb-files", bpo::value<int>()->default_value(config::default_rocksdb_max_open_files),
           "Max number of rocksdb files to keep open. -1 = unlimited.")
-
          ("rocksdb-write-buffer-size", bpo::value<uint64_t>()->default_value(config::default_rocksdb_write_buffer_size),
           "Size of a single rocksdb memtable")
-         ("rocksdb-max-write-buffer-number", bpo::value<uint32_t>()->default_value(config::default_rocksdb_max_write_buffer_number),
-          "Maximum number of rocksdb memtables")
-         ("rocksdb-block-cache-capacity", bpo::value<uint64_t>()->default_value(config::default_rocksdb_block_cache_capacity),
-          "Size of rocksdb block cache")
+         ("rocksdb-target-file-size-base", bpo::value<uint64_t>()->default_value(config::default_rocksdb_target_file_size_base),
+          "Size of a level-1 file")
          ("rocksdb-max-bytes-for-level-base", bpo::value<uint64_t>()->default_value(config::default_rocksdb_max_bytes_for_level_base),
           "Maximum data size for level-1")
 
@@ -849,16 +846,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                      "rocksdb-write-buffer-size ${num} must be greater than 0", ("num", my->chain_config->rocksdb_write_buffer_size) );
       }
 
-      if( options.count( "rocksdb-max-write-buffer-number" )) {
-         my->chain_config->rocksdb_max_write_buffer_number = options.at( "rocksdb-max-write-buffer-number" ).as<uint32_t>();
-         EOS_ASSERT( my->chain_config->rocksdb_max_write_buffer_number > 0, plugin_config_exception,
-                     "rocksdb-max-write-buffer-number ${num} must be greater than 0", ("num", my->chain_config->rocksdb_max_write_buffer_number) );
-      }
-
-      if( options.count( "rocksdb-block-cache-capacity" )) {
-         my->chain_config->rocksdb_block_cache_capacity = options.at( "rocksdb-block-cache-capacity" ).as<uint64_t>();
-         EOS_ASSERT( my->chain_config->rocksdb_block_cache_capacity > 0, plugin_config_exception,
-                     "rocksdb-block-cache-capacity ${num} must be greater than 0", ("num", my->chain_config->rocksdb_block_cache_capacity) );
+      if( options.count( "rocksdb-target-file-size-base" )) {
+         my->chain_config->rocksdb_target_file_size_base = options.at( "rocksdb-target-file-size-base" ).as<uint64_t>();
+         EOS_ASSERT( my->chain_config->rocksdb_target_file_size_base > 0, plugin_config_exception,
+                     "rocksdb-target-file-size-base ${num} must be greater than 0", ("num", my->chain_config->rocksdb_target_file_size_base) );
       }
 
       if( options.count( "rocksdb-max-bytes-for-level-base" )) {

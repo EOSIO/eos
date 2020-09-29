@@ -88,10 +88,9 @@ const static uint32_t   default_max_variable_signature_length        = 16384u;
 const static uint32_t   default_max_nonprivileged_inline_action_size = 4 * 1024; // 4 KB
 const static uint16_t   default_rocksdb_threads                = 1;
 const static int        default_rocksdb_max_open_files         = -1;
-const static uint64_t   default_rocksdb_write_buffer_size      = 1024 * 1024 * 1024;
-const static uint32_t   default_rocksdb_max_write_buffer_number= 5;
-const static uint64_t   default_rocksdb_block_cache_capacity   = 1024 * 1024 * 1024;
-const static uint64_t   default_rocksdb_max_bytes_for_level_base = 1024 * 1024 * 1024;
+const static uint64_t   default_rocksdb_write_buffer_size      = 128 * 1024 * 1024;
+const static uint64_t   default_rocksdb_target_file_size_base  = 50 * 1024 * 1024;
+const static uint64_t   default_rocksdb_max_bytes_for_level_base = 512 * 1024 * 1024;
 
 const static uint32_t   default_max_kv_key_size                = 1024;
 const static uint32_t   default_max_kv_value_size              = 1024*1024; // Large enough to hold most contracts

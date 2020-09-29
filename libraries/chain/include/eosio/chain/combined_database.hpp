@@ -86,7 +86,7 @@ namespace eosio { namespace chain {
       combined_database& operator=(const combined_database& copy) = delete;
 
       // Save the backing_store setting to the chainbase in order to detect
-      // when this setting is switched from CHAINBASE to ROCKSDB, in which
+      // when this setting is switched from chainbase to rocksdb, in which
       // case, check that no KV entries already exist in the chainbase.
       // Otherwise, they would become unreachable.
       void check_backing_store_setting();
