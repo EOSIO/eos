@@ -332,7 +332,6 @@ template <typename Parent>
 typename session<Parent>::iterator& session<Parent>::end_(session<Parent>& s, typename session<Parent>::iterator& it) const {
    auto it_cache = std::end(s.m_iterator_cache);
    it = session<Parent>::iterator{};
-   it.m_iterator_version = it_cache->second.version;
    it.m_active_iterator = std::move(it_cache);
    it.m_active_session = &s;
    return it;
