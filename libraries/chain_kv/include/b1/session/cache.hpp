@@ -74,7 +74,7 @@ class cache {
    cache& operator=(const cache&) = default;
    cache& operator=(cache&&) = default;
 
-   const shared_bytes& read(const shared_bytes& key) const;
+   shared_bytes read(const shared_bytes& key) const;
    void                write(const shared_bytes& key, const shared_bytes& value);
    bool                contains(const shared_bytes& key) const;
    void                erase(const shared_bytes& key);
@@ -109,7 +109,7 @@ class cache {
 
  private:
    template <typename On_cache_hit, typename On_cache_miss>
-   const shared_bytes& find_(const shared_bytes& key, const On_cache_hit& cache_hit,
+   shared_bytes find_(const shared_bytes& key, const On_cache_hit& cache_hit,
                              const On_cache_miss& cache_miss) const;
 
  private:
@@ -126,7 +126,7 @@ inline cache make_cache() { return {}; }
 // when the key is found. \param cache_miss The functor to invoke when the key is not found. \return A reference to the
 // value shared_bytes instance if found, shared_bytes::invalid() otherwise.
 template <typename on_cache_hit, typename on_cache_miss>
-const shared_bytes& cache::find_(const shared_bytes& key, const on_cache_hit& cache_hit,
+shared_bytes cache::find_(const shared_bytes& key, const on_cache_hit& cache_hit,
                                  const on_cache_miss& cache_miss) const {
    auto it = m_cache.find(key);
 
@@ -142,7 +142,7 @@ const shared_bytes& cache::find_(const shared_bytes& key, const on_cache_hit& ca
    return shared_bytes::invalid();
 }
 
-inline const shared_bytes& cache::read(const shared_bytes& key) const {
+inline shared_bytes cache::read(const shared_bytes& key) const {
    return find_(
          key, [](auto& it) { return true; }, []() {});
 }
@@ -185,13 +185,13 @@ cache::read(const Iterable& keys) const {
    auto kvs       = std::vector<std::pair<shared_bytes, shared_bytes>>{};
 
    for (const auto& key : keys) {
-      auto& value = find_(
+      auto value = find_(
             key, [](auto& it) { return true; }, []() {});
       if (!value) {
          not_found.emplace(key);
          continue;
       }
-      kvs.emplace_back(key, value);
+      kvs.emplace_back(key, std::move(value));
    }
 
    return { std::move(kvs), std::move(not_found) };
@@ -235,12 +235,12 @@ void cache::write_to(Data_store& ds, const Iterable& keys) const {
    auto kvs = std::vector<std::pair<shared_bytes, shared_bytes>>{};
 
    for (const auto& key : keys) {
-      auto& value = find_(
+      auto value = find_(
             key, [](auto& it) { return true; }, []() {});
       if (!value) {
          continue;
       }
-      kvs.emplace_back(std::pair{ key, value });
+      kvs.emplace_back(std::pair{ key, std::move(value) });
    }
 
    ds.write(kvs);
@@ -257,11 +257,11 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
    auto kvs = std::vector<std::pair<shared_bytes, shared_bytes>>{};
 
    for (const auto& key : keys) {
-      auto& value = ds.read(key);
+      auto value = ds.read(key);
       if (!value) {
          continue;
       }
-      kvs.emplace_back(std::pair{ key, value });
+      kvs.emplace_back(std::pair{ key, std::move(value) });
    }
 
    write(kvs);

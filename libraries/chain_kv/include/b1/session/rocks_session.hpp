@@ -178,7 +178,7 @@ inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
       return shared_bytes::invalid();
    }
 
-   return make_shared_bytes(pinnable_value.data(), pinnable_value.size());
+   return shared_bytes(pinnable_value.data(), pinnable_value.size());
 }
 
 inline void session<rocksdb_t>::write(const shared_bytes& key, const shared_bytes& value) {
@@ -223,9 +223,9 @@ session<rocksdb_t>::read_(const Iterable& keys) const {
          continue;
       }
 
-      auto key = make_shared_bytes(key_slices[i].data(), key_slices[i].size());
+      auto key = shared_bytes(key_slices[i].data(), key_slices[i].size());
       not_found.erase(key);
-      kvs.emplace_back(key, make_shared_bytes(values[i].data(), values[i].size()));
+      kvs.emplace_back(key, shared_bytes(values[i].data(), values[i].size()));
    }
 
    return { std::move(kvs), std::move(not_found) };
@@ -516,8 +516,8 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator*() const {
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>
@@ -529,8 +529,8 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator->() const {
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     shared_bytes(value.data(), value.size()) };
 }
 
 template <typename Iterator_traits>

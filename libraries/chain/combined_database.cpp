@@ -250,7 +250,7 @@ namespace eosio { namespace chain {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB && kv_undo_stack) {
-                  auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+                  auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
                   auto next_prefix = prefix_key++;
 
@@ -411,7 +411,7 @@ namespace eosio { namespace chain {
             if (header.version < kv_object::minimum_snapshot_version)
                return;
             if (backing_store == backing_store_type::ROCKSDB) {
-               auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+               auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                    rocksdb_contract_kv_prefix.size());
                auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
                snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
@@ -434,9 +434,9 @@ namespace eosio { namespace chain {
                         bytes final_kv_value;
                         build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
 
-                        key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
-                                                eosio::session::make_shared_bytes(final_kv_value.data(),
-                                                                                  final_kv_value.size()));                                                                                
+                        key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
+                                                eosio::session::shared_bytes(final_kv_value.data(),
+                                                                                  final_kv_value.size()));
                         db.remove(*move_to_rocks);
                      }
                   }

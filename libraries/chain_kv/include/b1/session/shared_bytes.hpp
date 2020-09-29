@@ -1,9 +1,9 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
-#include <cstring>
 #include <memory>
+#include <cstdlib>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -15,164 +15,108 @@ namespace eosio::session {
 
 class shared_bytes;
 
-template <typename T>
-shared_bytes make_shared_bytes(const T* data, size_t length);
-
-inline shared_bytes make_shared_bytes(const char* data, size_t length);
-
-template <typename T>
-shared_bytes make_shared_bytes(const T* data, size_t length);
-
 // \brief An immutable type to represent a pointer and a length.
 //
 class shared_bytes {
- public:
-   template <typename T>
-   friend shared_bytes make_shared_bytes(const T* data, size_t length);
+   public:
+      shared_bytes()                      = default;
+      shared_bytes(const shared_bytes& b) = default;
+      shared_bytes(shared_bytes&& b)      = default;
+      ~shared_bytes()                     = default;
 
-   friend shared_bytes make_shared_bytes(const char* data, size_t length);
+      template <typename T>
+      inline shared_bytes(const T* data, size_t sz)
+         : m_data(create_bytes(reinterpret_cast<const char*>(data), sz*sizeof(T))), m_size(sz*sizeof(T)) {}
+      inline shared_bytes(const std::vector<char>& v)
+         : m_data(create_bytes(v.data(), v.size())), m_size(v.size()) {}
+      inline shared_bytes(std::string_view sv)
+         : m_data(create_bytes(sv.data(), sv.size())), m_size(sv.size()) {}
+      inline shared_bytes(const std::string& s)
+         : m_data(create_bytes(s.c_str(), s.size())), m_size(s.size()) {}
 
-   using iterator       = const char*;
-   using const_iterator = const iterator;
+      shared_bytes& operator=(const shared_bytes& b) = default;
+      shared_bytes& operator=(shared_bytes&& b) = default;
 
- public:
-   shared_bytes(const shared_bytes& b) = default;
-   shared_bytes(shared_bytes&& b)      = default;
-   ~shared_bytes()                     = default;
+      inline shared_bytes& operator=(const std::vector<char>& v) {
+         m_data = create_bytes(v.data(), v.size());
+         m_size = v.size();
+         return *this;
+      }
+      inline shared_bytes& operator=(std::string_view sv) {
+         m_data = create_bytes(sv.data(), sv.size());
+         m_size = sv.size();
+         return *this;
+      }
+      inline shared_bytes& operator=(const std::string& s) {
+         m_data = create_bytes(s.data(), s.size());
+         m_size = s.size();
+         return *this;
+      }
 
-   shared_bytes& operator=(const shared_bytes& b) = default;
-   shared_bytes& operator=(shared_bytes&& b) = default;
+      using iterator       = const char*;
+      using const_iterator = const iterator;
 
-   const char* const data() const;
-   size_t            size() const;
+      inline const char* data() const { return m_data.get(); }
+      inline size_t      size() const { return m_size; }
 
-   char operator[](size_t index) const;
+      char& operator[](size_t index) { return m_data.get()[index]; }
+      char operator[](size_t index) const { return m_data.get()[index]; }
+      char& at(size_t index) {
+         EOS_ASSERT(index < m_size, eosio::chain::chain_exception, "shared_bytes index out-of-bounds");
+         EOS_ASSERT(m_data, eosio::chain::chain_exception, "shared_bytes data is null");
+         return (*this)[index];
+      }
+      char at(size_t index) const {
+         EOS_ASSERT(index < m_size, eosio::chain::chain_exception, "shared_bytes index out-of-bounds");
+         EOS_ASSERT(m_data, eosio::chain::chain_exception, "shared_bytes data is null");
+         return (*this)[index];
+      }
 
-   bool operator==(const shared_bytes& other) const;
-   bool operator!=(const shared_bytes& other) const;
+      bool operator==(const shared_bytes& other) const {
+         return m_size == other.m_size &&
+            (((m_data && other.m_data) && std::memcmp(data(), other.data(), size()) == 0) ||
+             (!m_data && !other.m_data));
+      }
+      inline bool operator!=(const shared_bytes& other) const { return !((*this) == other); }
 
-   bool operator!() const;
-        operator bool() const;
+      inline bool operator<(const shared_bytes& other) const {
+         return ((m_data && other.m_data) && std::memcmp(data(), other.data(), std::min(size(), other.size())) < 0) || (!m_data);
+      }
+      inline bool operator>(const shared_bytes& other) const {
+         return ((m_data && other.m_data) && std::memcmp(data(), other.data(), std::min(size(), other.size())) > 0) || (!m_data);
+      }
+      inline bool operator>=(const shared_bytes& other) const { return (*this) < other; }
+      inline bool operator<=(const shared_bytes& other) const { return (*this) > other; }
 
-   shared_bytes operator++(int);
+      operator bool() const { return static_cast<bool>(m_data); }
+      bool operator!() const { return !static_cast<bool>(m_data); }
 
-   bool operator<(const shared_bytes& other) const;
-   bool operator>(const shared_bytes& other) const;
+      // pop n bytes from shared_bytes and return a new instance
+      inline shared_bytes pop(size_t n=1) const {
+         EOS_ASSERT(n < m_size, eosio::chain::chain_exception, "shared_bytes pop N too large");
+         return {m_data.get(), m_size - n};
+      }
 
-   iterator begin() const;
-   iterator end() const;
+      inline shared_bytes operator++(int) const { return pop(); }
 
-   static const shared_bytes& invalid();
+      inline iterator begin() const { return data(); }
+      inline iterator end() const   { return data() + size(); }
 
- private:
-   shared_bytes() = default;
+      inline static const shared_bytes invalid() { return {}; }
 
- private:
-   std::shared_ptr<char> m_data;
-   size_t                m_size{ 0 };
+   private:
+      inline std::shared_ptr<char> create_bytes(const char* p, size_t s) {
+         if (p) {
+            std::shared_ptr<char> ret = {new char[s], std::default_delete<char[]>()};
+            std::memcpy(ret.get(), p, s);
+            return ret;
+         } else {
+            return std::shared_ptr<char>{};
+         }
+      }
+      std::shared_ptr<char> m_data = nullptr;
+      size_t                m_size = 0;
 };
-
-// \brief Creates a new shared_bytes instance with the given pointer and length.
-//
-// \tparam T The type stored in the array.
-// \\param data A pointer to an array of items to store in a shared_bytes instance. \param
-// length The number of items in the array.
-template <typename T>
-shared_bytes make_shared_bytes(const T* data, size_t length) {
-   return make_shared_bytes(reinterpret_cast<const char*>(data), length * sizeof(T));
-}
-
-inline shared_bytes make_shared_bytes(const char* data, size_t length) {
-   auto result = shared_bytes{};
-
-   if (!data || length == 0) {
-      return result;
-   }
-
-   auto* chunk = std::allocator<char>{}.allocate(length);
-   std::memcpy(chunk, data, length);
-
-   auto deleter  = [&](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
-   result.m_data = std::shared_ptr<char>(chunk, deleter);
-   result.m_size = length;
-
-   return result;
-}
-
-inline const shared_bytes& shared_bytes::invalid() {
-   static shared_bytes bad;
-   return bad;
-}
-
-inline shared_bytes shared_bytes::operator++(int) {
-   auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
-
-   while (!buffer.empty()) {
-      if (++buffer.back()) {
-         break;
-      }
-      buffer.pop_back();
-   }
-
-   return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
-}
-
-inline const char* const shared_bytes::data() const { return m_data ? &(m_data.get()[0]) : nullptr; }
-
-inline size_t shared_bytes::size() const { return m_size; }
-
-inline char shared_bytes::operator[](size_t index) const {
-   EOS_ASSERT(m_data && index < size(), eosio::chain::chain_exception, "shared_bytes is invalid");
-   return m_data.get()[index];
-}
-
-inline bool shared_bytes::operator==(const shared_bytes& other) const {
-   if (m_data == other.m_data) {
-      // Same pointer.
-      return true;
-   }
-
-   if (m_data && other.m_data) {
-      if (size() != other.size()) {
-         return false;
-      }
-      return std::memcmp(m_data.get(), other.m_data.get(), size()) == 0 ? true : false;
-   }
-
-   return false;
-}
-
-inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
-
-inline bool shared_bytes::operator<(const shared_bytes& other) const {
-   if (*this != eosio::session::shared_bytes::invalid() && other != eosio::session::shared_bytes::invalid()) {
-      return std::string_view{ reinterpret_cast<const char*>(this->data()), this->size() } <
-             std::string_view{ reinterpret_cast<const char*>(other.data()), other.size() };
-   }
-   if (*this == eosio::session::shared_bytes::invalid()) {
-      return true;
-   }
-   return false;
-}
-
-inline bool shared_bytes::operator>(const shared_bytes& other) const {
-   if (*this != eosio::session::shared_bytes::invalid() && other != eosio::session::shared_bytes::invalid()) {
-      return std::string_view{ reinterpret_cast<const char*>(this->data()), this->size() } >
-             std::string_view{ reinterpret_cast<const char*>(other.data()), other.size() };
-   }
-   if (*this == eosio::session::shared_bytes::invalid()) {
-      return false;
-   }
-   return true;
-}
-
-inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid(); }
-
-inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid(); }
-
-inline shared_bytes::iterator shared_bytes::begin() const { return m_data.get(); }
-
-inline shared_bytes::iterator shared_bytes::end() const { return m_data.get() + size(); }
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
     std::cout << fc::base64_encode({bytes.data(), bytes.size()});
@@ -182,33 +126,10 @@ inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
 } // namespace eosio::session
 
 namespace std {
-
-template <>
-struct less<eosio::session::shared_bytes> {
-   bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      return lhs < rhs;
-   };
-};
-
-template <>
-struct greater<eosio::session::shared_bytes> {
-   bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      return lhs > rhs;
-   };
-};
-
 template <>
 struct hash<eosio::session::shared_bytes> {
    size_t operator()(const eosio::session::shared_bytes& b) const {
       return std::hash<std::string_view>{}({ reinterpret_cast<const char*>(b.data()), b.size() });
    }
 };
-
-template <>
-struct equal_to<eosio::session::shared_bytes> {
-   bool operator()(const eosio::session::shared_bytes& lhs, const eosio::session::shared_bytes& rhs) const {
-      return lhs == rhs;
-   }
-};
-
 } // namespace std

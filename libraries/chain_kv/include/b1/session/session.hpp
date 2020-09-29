@@ -562,7 +562,7 @@ void session<Parent>::write_to(Other_data_store& ds, const Iterable& keys) const
    for (const auto& key : keys) {
       auto value = read(key);
       if (value != shared_bytes::invalid()) {
-         results.emplace_back(make_shared_bytes(key.data(), key.size()), make_shared_bytes(value.data(), value.size()));
+         results.emplace_back(shared_bytes(key.data(), key.size()), shared_bytes(value.data(), value.size()));
       }
    }
    ds.write(results);
