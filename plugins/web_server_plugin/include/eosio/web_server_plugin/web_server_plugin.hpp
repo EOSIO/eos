@@ -7,11 +7,15 @@
 namespace eosio {
    using namespace appbase;
 
+   using Ihttp_server_ptr = std::shared_ptr<web::Ihttp_server>;
+
    class web_server_plugin : public appbase::plugin<web_server_plugin>
    {
    public:
+      using Ihttps_server_ptr = std::shared_ptr<web::Ihttps_server>;
+
       web_server_plugin();
-      web_server_plugin(web::Ihttps_server*);
+      web_server_plugin(web::Ihttps_server_factory*);
       virtual ~web_server_plugin();
 
       APPBASE_PLUGIN_REQUIRES()
@@ -23,8 +27,10 @@ namespace eosio {
 
       void add_handler(std::string_view path, web::server_handler callback);
 
+      Ihttp_server_ptr get_server(web::server_address&& name, boost::asio::io_context* context);
+
       private:
-      std::shared_ptr<web::Ihttps_server> impl;
+      std::unique_ptr<class web_server_plugin_impl> impl;
    };
 
 }

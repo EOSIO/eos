@@ -34,7 +34,7 @@ namespace eosio {
        */
       void exec(web::schema_type schema,
                 std::string_view host,
-                uint32_t port,
+                web::port_type port,
                 web::method_type method, 
                 std::string_view path,
                 web::client_handler callback,
@@ -48,13 +48,15 @@ namespace eosio {
        * that way you can retain auth object or any object that it can return (see Ihttp_client.hpp) and 
        * use it multiple times:
        * auto server = plugin.auth(HTTPS, "127.0.0.1", 8081);
-       * server.url("/v1/snapshot").exec(callback);
-       * server.url("/v1/block1").exec(callback);
+       * server.path("/v1/snapshot").exec(callback);
+       * server.path("/v1/block1").exec(callback);
        * @param schema enum. current values are: HTTP or HTTPS
        * @param host string representation of host name. e.g. 127.0.0.1
        * @param port port to use
        */
-      web::authority auth(web::schema_type schema, const std::string& host, uint32_t port);
+      web::authority auth(web::schema_type schema, const std::string& host, web::port_type port);
+
+
 
       private:
       std::shared_ptr<web::Ihttps_client> impl;

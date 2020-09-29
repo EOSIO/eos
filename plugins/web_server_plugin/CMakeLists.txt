@@ -4,5 +4,5 @@ add_library( web_server_plugin
              beast_server.cpp
              ${HEADERS} )
 
-target_link_libraries( web_server_plugin appbase fc )
+target_link_libraries( web_server_plugin chain appbase fc )
 target_include_directories( web_server_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )

@@ -22,16 +22,16 @@ void web_client_plugin::plugin_startup(){
 }
 void web_client_plugin::plugin_shutdown(){
 }
-void exec(web::schema_type schema,
+void exec(schema_type schema,
           std::string_view host,
-          uint32_t port,
-          web::method_type method, 
+          port_type port,
+          method_type method, 
           std::string_view path,
-          web::client_handler callback,
+          client_handler callback,
           std::string_view post_data,
           const web::Ihttp_client::header_map* header){
    
 }
-web::authority web_client_plugin::auth(web::schema_type schema, const std::string& host, uint32_t port){
+authority web_client_plugin::auth(schema_type schema, const std::string& host, port_type port){
    return {schema, host, port, impl};
 }

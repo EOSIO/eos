@@ -6,8 +6,40 @@
 
 #include <boost/asio/io_context.hpp>
 
+#include <fc/io/datastream.hpp>
+#include <eosio/chain/exceptions.hpp>
+
 namespace eosio{
 namespace web{
+
+enum class schema_type : uint8_t {
+   NOT_SET,
+   HTTP,
+   HTTPS
+};
+
+template <typename DataStream>
+inline DataStream& operator << (DataStream& ds, schema_type schema){
+   switch(schema){
+      case schema_type::HTTP:
+      fc::raw::pack(ds, "http");
+      break;
+      case schema_type::HTTPS:
+      fc::raw::pack(ds, "https");
+      break;
+      default:
+      FC_EXCEPTION(chain::uri_parse_exception, "wrong schema: {s}", ("s", schema));
+   }
+
+   return ds;
+}
+
+enum class method_type : uint8_t {
+   GET,
+   POST
+};
+
+using port_type = uint16_t;
 
 /**
  * @brief http header representation
@@ -28,16 +60,45 @@ using server_handler = std::function<uint32_t(bool& chunked /*out*/,
                                               std::string& body /*out*/,
                                               IHeader& header /*in*/)>;
 
+/**
+ * structure that represents server address
+ * @param schema URI schema (HTTP, HTTPS, etc.)
+ * @param host host in format of "127.0.0.1"
+ * @param port port to use
+ */
+struct server_address{
+   schema_type schema;
+   std::string host;
+   port_type   port;
+};
+
+template <typename DataStream>
+inline DataStream& operator << (DataStream& ds, const server_address& address){
+   fc::raw::pack(ds, address.schema);
+   fc::raw::pack(ds, (const char*)"://");
+   fc::raw::pack(ds, address.host);
+   fc::raw::pack(ds, (const char*)":");
+   fc::raw::pack(ds, address.port);
+
+   return ds;
+}
+
 struct Ihttp_server{
    virtual ~Ihttp_server(){};
 
    /**
     * @brief initialize server
+    * @param address server address
     * @param context execution context
-    * @param host server host to use
-    * @param port port to listen
     */
-   virtual void init(boost::asio::io_context& context, std::string_view host, uint32_t port) = 0;
+   virtual void init(server_address&& address, boost::asio::io_context* context) = 0;
+   /**
+    * @brief initialize server
+    * @param address server address
+    * @param thread_pool_size initialize thread pool with specified size
+    */
+   virtual void init(server_address&& address, uint8_t thread_pool_size) = 0;
+   
    /**
     * @brief method for adding server API
     * @param path http path. server first checks for exact match and if not found
@@ -61,6 +122,17 @@ struct Ihttps_server : Ihttp_server{
     * @param pk private key
     */
    virtual void init_ssl(std::string_view cert, std::string_view pk) = 0;
+};
+
+struct Ihttps_server_factory{
+   
+   virtual ~Ihttps_server_factory(){};
+   /**
+    * @brief creates beast_server instance and initializes it.
+    * @param address new server address
+    * @param context execution context
+    */
+   virtual Ihttps_server* create_server(server_address&& address, boost::asio::io_context* context) = 0;
 };
 
 }}

@@ -26,25 +26,28 @@ using client_handler = std::function<void(uint32_t response_code,
                                           std::string_view body,
                                           const IHeader& header)>;
 
-enum class schema_type : uint8_t {
-   HTTP,
-   HTTPS
-};
+struct Ihttp_session{
 
-enum class method_type : uint8_t {
-   GET,
-   POST
-};
-
-struct authority;
-struct url;
-struct url_w_headers;
-
-struct Ihttp_client{
    /**
     * @brief map for input client headers
     */
    using header_map = std::vector<std::pair<std::string, fc::variant>>;
+
+   virtual ~Ihttp_session(){}
+
+   virtual void exec(method_type method, 
+                     std::string_view path,
+                     client_handler callback,
+                     std::string_view post_data,
+                     const header_map* header) = 0;
+   virtual void close() = 0;
+};
+
+struct authority;
+
+struct Ihttp_client{
+   using header_map = Ihttp_session::header_map;
+   using session_handler = std::function<void(Ihttp_session* session)>;
 
    virtual ~Ihttp_client(){};
 
@@ -55,6 +58,7 @@ struct Ihttp_client{
    virtual void init(boost::asio::io_context& context) = 0;
    /**
     * @brief execute http or https request
+    * this implies Keep-Alive = false
     * @param host server host
     * @param port server port
     * @param method request method: GET, POST
@@ -64,15 +68,30 @@ struct Ihttp_client{
     */
    virtual void exec(schema_type schema,
                      std::string_view host,
-                     uint32_t port,
+                     port_type port,
                      method_type method, 
                      std::string_view path,
                      client_handler callback,
                      std::string_view post_data,
                      const header_map* header) = 0;
-   virtual authority auth(schema_type schema,
-                          const std::string& host,
-                          uint32_t port) = 0;
+   /**
+    * @brief obtains http or https session.
+    * this implies Keep-Alive = true
+    */
+   virtual Ihttp_session* session(schema_type schema, const std::string& host, port_type port) = 0;
+   /**
+    * @brief  obtains http or https session asynchronously
+    * this implies Keep-Alive = true
+    */
+   virtual void session_async(schema_type schema, const std::string& host, port_type port, session_handler callback) = 0;
+
+   /**
+    * @brief convenience shortcut. 
+    * client.auth(schema, host, port) is equal to:
+    * authority{schema, host, port, client_ptr}
+    * TODO: think if we are really need this in our interface
+    */
+   virtual authority auth(schema_type schema, const std::string& host, port_type port) = 0;
 };
 
 struct Ihttps_client : Ihttp_client{
@@ -85,118 +104,180 @@ struct Ihttps_client : Ihttp_client{
    virtual void init_ssl(std::string_view cert) = 0;
 };
 
+using http_session_ptr = std::shared_ptr<Ihttp_session>;
+using http_client_ptr = std::shared_ptr<Ihttp_client>;
+
 struct url_w_handler {
    schema_type schema;
    std::string host;
-   uint32_t    port;
+   port_type   port;
    method_type method;
    std::string path;
    Ihttp_client::header_map headers;
    client_handler handler;
-   std::shared_ptr<Ihttp_client> client;
+   http_client_ptr client_ptr;   /* unused if session_ptr is set */
+   http_session_ptr session_ptr; /* unused if client_ptr is set */
 
-   void exec(){
-      client->exec(schema, host, port, method, path, handler, {}, &headers);
+   inline void exec(){
+      exec({});
    }
-   void post(std::string_view post_data){
-      client->exec(schema, host, port, method, path, handler, post_data, &headers);
+   inline void exec(std::string_view post_data){
+      if (session_ptr) {
+         EOS_ASSERT(!client_ptr, chain::other_http_exception, "client_ptr must be NULL if session_ptr is set");
+         session_ptr->exec(method, path, handler, {}, &headers);
+      }
+      else {
+         client_ptr->exec(schema, host, port, method, path, handler, post_data, &headers);
+      }
    }
 };
 
 struct url_w_headers {
    schema_type schema;
    std::string host;
-   uint32_t    port;
+   port_type   port;
    method_type method;
    std::string path;
    Ihttp_client::header_map headers;
-   std::shared_ptr<Ihttp_client> client;
+   http_client_ptr client_ptr;   /* unused if session_ptr is set */
+   http_session_ptr session_ptr; /* unused if client_ptr is set */
 
-   void exec(client_handler callback){
-      client->exec(schema, host, port, method, path, callback, {}, &headers);
+   inline void exec(client_handler callback){
+      exec(callback, {});
    }
-   void exec(client_handler callback, std::string_view post_data){
-      client->exec(schema, host, port, method, path, callback, post_data, &headers);
+   inline void exec(client_handler callback, std::string_view post_data){
+      if (session_ptr) {
+         EOS_ASSERT(!client_ptr, chain::other_http_exception, "client_ptr must be NULL if session_ptr is set");
+         session_ptr->exec(method, path, callback, post_data, &headers);
+      }
+      else {
+         client_ptr->exec(schema, host, port, method, path, callback, post_data, &headers);
+      }
    }
-   url_w_handler handler(client_handler callback) &{
-      return {schema, host, port, method, path, headers, callback, client};
+   inline url_w_handler handler(client_handler callback) &{
+      return {schema, host, port, method, path, headers, callback, client_ptr};
    }
-   url_w_handler handler(client_handler callback) &&{
-      return {schema, std::move(host), port, method, std::move(path), std::move(headers), callback, std::move(client)};
+   inline url_w_handler handler(client_handler callback) &&{
+      return {schema, std::move(host), port, method, std::move(path), std::move(headers), callback, std::move(client_ptr)};
    }
 };
 
 struct url {
-   schema_type schema;
-   std::string host;
-   uint32_t    port;
+   using header_map = Ihttp_client::header_map;
+
+   schema_type schema;     
+   std::string host;       
+   port_type   port;       
    method_type method;
    std::string path;
-   std::shared_ptr<Ihttp_client> client;
+   http_client_ptr client_ptr;   /* unused if session_ptr is set */
+   http_session_ptr session_ptr; /* unused if client_ptr is set */
 
-   void exec(client_handler callback){
-      client->exec(schema, host, port, method, path, callback, {}, NULL);
+   inline void exec(client_handler callback, std::string_view post_data){
+      if (session_ptr) {
+         EOS_ASSERT(!client_ptr, chain::other_http_exception, "client_ptr must be NULL if session_ptr is set");
+         session_ptr->exec(method, path, callback, post_data, NULL);
+      }
+      else {
+         client_ptr->exec(schema, host, port, method, path, callback, post_data, NULL);
+      }
    }
-   void exec(client_handler callback, std::string_view post_data){
-      client->exec(schema, host, port, method, path, callback, post_data, NULL);
+   inline void exec(client_handler callback){
+      exec(callback, {});
+   }
+   inline url_w_headers headers(header_map&& headers) &{
+      return {schema, host, port, method, path, std::move(headers), client_ptr};
+   }
+   inline url_w_headers headers(header_map&& headers) &&{
+      return {schema, std::move(host), port, method, std::move(path), std::move(headers), std::move(client_ptr)};
+   }
+   inline url_w_headers headers(header_map& headers) &{
+      return {schema, host, port, method, path, headers, client_ptr};
+   }
+   inline url_w_headers headers(header_map& headers) &&{
+      return {schema, std::move(host), port, method, std::move(path), headers, std::move(client_ptr)};
    }
 
-   url_w_headers headers(Ihttp_client::header_map&& headers) &{
-      return {schema, host, port, method, path, std::move(headers), client};
+   inline url_w_handler handler(client_handler callback) &{
+      return {schema, host, port, method, path, {}, callback, client_ptr};
    }
-   url_w_headers headers(Ihttp_client::header_map&& headers) &&{
-      return {schema, std::move(host), port, method, std::move(path), std::move(headers), std::move(client)};
+   inline url_w_handler handler(client_handler callback) &&{
+      return {schema, std::move(host), port, method, std::move(path), {}, callback, std::move(client_ptr)};
    }
-   url_w_headers headers(Ihttp_client::header_map& headers) &{
-      return {schema, host, port, method, path, headers, client};
+};
+
+struct session {
+   schema_type schema;
+   std::string host;
+   port_type   port;
+   http_session_ptr session_ptr;
+
+   inline struct url path(std::string&& path, method_type method) const &{
+      return {schema, host, port, method, std::move(path), {}, session_ptr};
    }
-   url_w_headers headers(Ihttp_client::header_map& headers) &&{
-      return {schema, std::move(host), port, method, std::move(path), headers, std::move(client)};
+   inline struct url path(std::string&& path) const &{
+      return session::path(std::forward<std::string>(path), method_type::GET);
    }
-   url_w_handler handler(client_handler callback) &{
-      return {schema, host, port, method, path, {}, callback, client};
+   inline struct url path(std::string&& path, method_type method) &&{
+      return {std::move(schema), 
+              std::move(host), 
+              std::move(port), 
+              std::move(method), 
+              std::move(path), 
+              {},
+              std::move(session_ptr)};
    }
-   url_w_handler handler(client_handler callback) &&{
-      return {schema, std::move(host), port, method, std::move(path), {}, callback, std::move(client)};
+   inline struct url path(std::string&& path) &&{
+      return session::path(std::forward<std::string>(path), method_type::GET);
+   }
+   inline void close(){
+      session_ptr->close();
+      session_ptr.reset();//we don't need closed session
    }
 };
 
 struct authority {
+   using session_handler = std::function<void(session&&)>;
+
    schema_type schema;
    std::string host;
-   uint32_t    port;
+   port_type   port;
    std::shared_ptr<Ihttp_client> client;
    
-   void exec(method_type method, std::string_view path, client_handler callback){
+   void exec(method_type method, std::string_view path, client_handler callback) const{
       client->exec(schema, host, port, method, path, callback, {}, NULL);
    }
-   inline struct url url(const std::string& path) &{
-      return {schema, host, port, method_type::GET, path, client};
+   inline struct url path(std::string&& path, method_type method) const &{
+      return {schema, host, port, method, std::move(path), client, {}};
    }
-   inline struct url url(std::string&& path) &&{
-      return {schema, std::move(host), port, method_type::GET, std::move(path), std::move(client)};
+   inline struct url path(std::string&& path) const &{
+      return authority::path(std::forward<std::string>(path), method_type::GET);
    }
-   inline struct url url(method_type method, const std::string& path) &{
-      return {schema, host, port, method, path, client};
-   }
-   inline struct url url(method_type method, std::string&& path) &{
-      return {schema, host, port, method, std::move(path), client};
-   }
-   inline struct url url(method_type method, const std::string& path) &&{
+   inline struct url path(std::string&& path, method_type method) &&{
       return {std::move(schema), 
               std::move(host), 
               std::move(port), 
-              method, 
-              path, 
-              std::move(client)};
-   }
-   inline struct url url(method_type method, std::string&& path) &&{
-      return {std::move(schema), 
-              std::move(host), 
-              std::move(port), 
-              method, 
+              std::move(method), 
               std::move(path), 
-              std::move(client)};
+              std::move(client),
+              {}};
+   }
+   inline struct url path(std::string&& path) &&{
+      return authority::path(std::forward<std::string>(path), method_type::GET);
+   }
+   inline struct session session() const &{
+      return { schema, host, port, http_session_ptr(client->session(schema, host, port)) };
+   }
+   inline struct session session() const &&{
+      return { std::move(schema), std::move(host), std::move(port), http_session_ptr(client->session(schema, host, port)) };
+   }
+   inline void session_async(session_handler callback) const{
+      client->session_async(schema, 
+                            host, 
+                            port, 
+                            [&](Ihttp_session* sess) { 
+                               callback( {schema, host, port, http_session_ptr(sess)} );
+                            });
    }
 };
 
