@@ -309,10 +309,9 @@ void session<Parent>::undo() {
 
 template <typename Parent>
 typename session<Parent>::iterator& session<Parent>::begin_(session<Parent>& s, typename session<Parent>::iterator& it) const {
-   auto it_cache = std::begin(s.m_iterator_cache);
    it = session<Parent>::iterator{};
    it.m_iterator_version = it_cache->second.version;
-   it.m_active_iterator = it_cache;
+   it.m_active_iterator = std::begin(s.m_iterator_cache);
    it.m_active_session = &s;
    return it;
 }
@@ -330,10 +329,9 @@ typename Parent::iterator& session<Parent>::begin_(Parent& p, typename Parent::i
 
 template <typename Parent>
 typename session<Parent>::iterator& session<Parent>::end_(session<Parent>& s, typename session<Parent>::iterator& it) const {
-   auto it_cache = std::end(s.m_iterator_cache);
    it = session<Parent>::iterator{};
    it.m_iterator_version = it_cache->second.version;
-   it.m_active_iterator = it_cache;
+   it.m_active_iterator = std::end(s.m_iterator_cache);
    it.m_active_session = &s;
    return it;
 }
