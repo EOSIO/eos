@@ -1,5 +1,6 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -134,6 +135,19 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
                  pack_row);
 
    return deltas;
+}
+
+std::vector<table_delta> create_deltas(const b1::chain_kv::database& db, bool full_snapshot) {
+    std::vector<table_delta>    deltas;
+//    b1::chain_kv::undo_stack    undo_stack_obj(db);
+
+//    const auto& updated_keys = undo_stack_obj.updated_keys();
+//    const auto& deleted_keys = undo_stack_obj.deleted_keys();
+
+    // get undo session
+    // for full_snapshot, loop over all undo
+    // otherwise, loop over the last undo
+    return deltas;
 }
 
 } // namespace state_history

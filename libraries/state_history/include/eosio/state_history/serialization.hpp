@@ -14,29 +14,30 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/state_history/types.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 
 #include <type_traits>
 
-template <typename T>
+template <typename DB, typename T>
 struct history_serial_wrapper {
-   const chainbase::database& db;
-   const T&                   obj;
+   const DB&   db;
+   const T&    obj;
 };
 
-template <typename T>
-history_serial_wrapper<std::decay_t<T>> make_history_serial_wrapper(const chainbase::database& db, const T& obj) {
+template <typename DB, typename T>
+history_serial_wrapper<std::decay_t<DB>, std::decay_t<T>> make_history_serial_wrapper(const DB& db, const T& obj) {
    return {db, obj};
 }
 
-template <typename P, typename T>
+template <typename DB, typename P, typename T>
 struct history_context_wrapper {
-   const chainbase::database& db;
-   const P&                   context;
-   const T&                   obj;
+   const DB&   db;
+   const P&    context;
+   const T&    obj;
 };
 
-template <typename P, typename T>
-history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const chainbase::database& db,
+template <typename DB, typename P, typename T>
+history_context_wrapper<std::decay_t<DB>, std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const DB& db,
                                                                                        const P& context, const T& obj) {
    return {db, context, obj};
 }
@@ -53,16 +54,16 @@ const T& as_type(const T& x) {
    return x;
 }
 
-template <typename ST, typename T>
-ST& history_serialize_container(ST& ds, const chainbase::database& db, const T& v) {
+template <typename DB, typename ST, typename T>
+ST& history_serialize_container(ST& ds, const DB& db, const T& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v)
       ds << make_history_serial_wrapper(db, x);
    return ds;
 }
 
-template <typename ST, typename T>
-ST& history_serialize_container(ST& ds, const chainbase::database& db, const std::vector<std::shared_ptr<T>>& v) {
+template <typename DB, typename ST, typename T>
+ST& history_serialize_container(ST& ds, const DB& db, const std::vector<std::shared_ptr<T>>& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v) {
       EOS_ASSERT(!!x, eosio::chain::plugin_exception, "null inside container");
@@ -71,8 +72,8 @@ ST& history_serialize_container(ST& ds, const chainbase::database& db, const std
    return ds;
 }
 
-template <typename ST, typename P, typename T>
-ST& history_context_serialize_container(ST& ds, const chainbase::database& db, const P& context,
+template <typename DB, typename ST, typename P, typename T>
+ST& history_context_serialize_container(ST& ds, const DB& db, const P& context,
                                         const std::vector<T>& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (const auto& x : v) {
@@ -114,25 +115,25 @@ void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v)
       history_pack_big_bytes(ds, *v);
 }
 
-template <typename ST, typename T>
-ST& operator<<(ST& ds, const history_serial_wrapper<std::vector<T>>& obj) {
+template <typename DB, typename ST, typename T>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, std::vector<T>>& obj) {
    return history_serialize_container(ds, obj.db, obj.obj);
 }
 
-template <typename ST, typename P, typename T>
-ST& operator<<(ST& ds, const history_context_wrapper<P, std::vector<T>>& obj) {
+template <typename DB, typename ST, typename P, typename T>
+ST& operator<<(ST& ds, const history_context_wrapper<DB, P, std::vector<T>>& obj) {
    return history_context_serialize_container(ds, obj.db, obj.context, obj.obj);
 }
 
-template <typename ST, typename First, typename Second>
-ST& operator<<(ST& ds, const history_serial_wrapper<std::pair<First, Second>>& obj) {
+template <typename DB, typename ST, typename First, typename Second>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, std::pair<First, Second>>& obj) {
    fc::raw::pack(ds, obj.obj.first);
    fc::raw::pack(ds, obj.obj.second);
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::account_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::block_timestamp_type>(obj.obj.creation_date));
@@ -140,8 +141,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_object
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_metadata_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::account_metadata_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.to_uint64_t()));
    fc::raw::pack(ds, as_type<bool>(obj.obj.is_privileged()));
@@ -156,8 +157,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_metada
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::code_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::code_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_version));
@@ -166,8 +167,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::code_object>& 
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::table_id_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::table_id_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.scope.to_uint64_t()));
@@ -176,9 +177,9 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::table_id_objec
    return ds;
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                           ds,
-               const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::key_value_object>& obj) {
+               const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::key_value_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.context.code.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.context.scope.to_uint64_t()));
@@ -231,38 +232,38 @@ ST& serialize_secondary_index(ST& ds, const eosio::chain::table_id_object& conte
    return ds;
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                         ds,
-               const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index64_object>& obj) {
+               const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::index64_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                          ds,
-               const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index128_object>& obj) {
+               const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::index128_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                          ds,
-               const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index256_object>& obj) {
+               const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::index256_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                              ds,
-               const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_double_object>& obj) {
+               const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::index_double_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(
-    ST& ds, const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
+    ST& ds, const history_context_wrapper<DB, eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::kv_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::kv_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.contract.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_key));
@@ -270,30 +271,30 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::kv_object>& ob
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_block_signing_authority_v0>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::shared_block_signing_authority_v0>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    history_serialize_container(ds, obj.db,
                                as_type<eosio::chain::shared_vector<eosio::chain::shared_key_weight>>(obj.obj.keys));
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::shared_producer_authority>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_block_signing_authority>(obj.obj.authority));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority_schedule>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::shared_producer_authority_schedule>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.version));
    history_serialize_container(
        ds, obj.db, as_type<eosio::chain::shared_vector<eosio::chain::shared_producer_authority>>(obj.obj.producers));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::chain_config>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max_block_net_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.target_block_net_usage_pct));
@@ -315,8 +316,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::global_property_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<std::optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
@@ -327,8 +328,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_propert
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::generated_transaction_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::generated_transaction_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.sender.to_uint64_t()));
    fc::raw::pack(ds, as_type<__uint128_t>(obj.obj.sender_id));
@@ -338,52 +339,52 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::generated_tran
    return ds;
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                            ds,
-               const history_serial_wrapper<eosio::chain::protocol_state_object::activated_protocol_feature>& obj) {
+               const history_serial_wrapper<DB, eosio::chain::protocol_state_object::activated_protocol_feature>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.feature_digest));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.activation_block_num));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::protocol_state_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::protocol_state_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    history_serialize_container(ds, obj.db, obj.obj.activated_protocol_features);
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_key_weight>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::shared_key_weight>& obj) {
    fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.key));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_level>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::permission_level>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.actor.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.permission.to_uint64_t()));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_level_weight>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::permission_level_weight>& obj) {
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::permission_level>(obj.obj.permission)));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::wait_weight>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::wait_weight>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.wait_sec));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_authority>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::shared_authority>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    history_serialize_container(ds, obj.db, obj.obj.keys);
    history_serialize_container(ds, obj.db, obj.obj.accounts);
@@ -391,20 +392,20 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_authori
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::permission_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.to_uint64_t()));
    if (obj.obj.parent._id) {
-      auto&       index  = obj.db.get_index<eosio::chain::permission_index>();
+      auto&       index  = obj.db.template get_index<eosio::chain::permission_index>();
       const auto* parent = index.find(obj.obj.parent);
       if (!parent) {
          auto undo = index.last_undo_session();
          auto it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(),
-                                [&](auto& x) { return x.id._id == obj.obj.parent; });
+                              [&](auto& x) { return x.id._id == obj.obj.parent; });
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
-                    "can not find parent of permission_object");
+                  "can not find parent of permission_object");
          parent = &*it;
       }
       fc::raw::pack(ds, as_type<uint64_t>(parent->name.to_uint64_t()));
@@ -416,8 +417,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_obj
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_link_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::permission_link_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.to_uint64_t()));
@@ -426,8 +427,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::permission_lin
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::resource_limits_object>& obj) {
    EOS_ASSERT(!obj.obj.pending, eosio::chain::plugin_exception,
               "accepted_block sent while resource_limits_object in pending state");
    fc::raw::pack(ds, fc::unsigned_int(0));
@@ -438,8 +439,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limit
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::usage_accumulator>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::usage_accumulator>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.last_ordinal));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.value_ex));
@@ -447,8 +448,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limit
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::resource_usage_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::resource_usage_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.to_uint64_t()));
    fc::raw::pack(ds, make_history_serial_wrapper(
@@ -459,8 +460,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limit
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_state_object>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::resource_limits_state_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::resource_limits::usage_accumulator>(
                                                              obj.obj.average_block_net_usage)));
@@ -474,16 +475,16 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limit
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::ratio>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::ratio>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.numerator));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.denominator));
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limits::elastic_limit_parameters>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::resource_limits::elastic_limit_parameters>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.target));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max));
@@ -496,9 +497,9 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::resource_limit
    return ds;
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(ST&                                                                                         ds,
-               const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_config_object>& obj) {
+               const history_serial_wrapper<DB, eosio::chain::resource_limits::resource_limits_config_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(
        ds, make_history_serial_wrapper(
@@ -511,8 +512,8 @@ ST& operator<<(ST&                                                              
    return ds;
 };
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::action>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::action>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.to_uint64_t()));
    history_serialize_container(ds, obj.db, as_type<std::vector<eosio::chain::permission_level>>(obj.obj.authorization));
@@ -520,8 +521,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::action>& obj) 
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::action_receipt>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::action_receipt>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.receiver.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
@@ -533,8 +534,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::action_receipt
    return ds;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::account_delta>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_serial_wrapper<DB, eosio::chain::account_delta>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.to_uint64_t()));
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.delta));
    return ds;
@@ -557,8 +558,8 @@ inline std::optional<uint64_t> cap_error_code(const std::optional<uint64_t>& err
    return result;
 }
 
-template <typename ST>
-ST& operator<<(ST& ds, const history_context_wrapper<bool, eosio::chain::action_trace>& obj) {
+template <typename DB, typename ST>
+ST& operator<<(ST& ds, const history_context_wrapper<DB, bool, eosio::chain::action_trace>& obj) {
    bool debug_mode = obj.context;
    fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
@@ -592,10 +593,10 @@ ST& operator<<(ST& ds, const history_context_wrapper<bool, eosio::chain::action_
    return ds;
 }
 
-template <typename ST>
+template <typename DB, typename ST>
 ST& operator<<(
     ST&                                                                                                      ds,
-    const history_context_wrapper<trace_receipt_context, eosio::state_history::augmented_transaction_trace>& obj) {
+    const history_context_wrapper<DB, trace_receipt_context, eosio::state_history::augmented_transaction_trace>& obj) {
    auto& trace      = *obj.obj.trace;
    bool  debug_mode = obj.context.debug_mode;
    fc::raw::pack(ds, fc::unsigned_int(0));
