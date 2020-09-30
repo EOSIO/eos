@@ -2886,9 +2886,9 @@ int main( int argc, char** argv ) {
    getKvTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
    getKvTable->add_option( "--encode-type", encode_type,
                            localized("The encoding type of index_value, lower bound, upper bound"
-                           " 'bytes' for arbitrary hexdecimal bytes"
-                           " 'dec' for decimal encoding string of (uint64t , uint128_t , float64, float128)"
-                           " 'hex' for hexdecimal encoding string" ));
+                           " 'bytes' for hexdecimal encoded bytes"
+                           " 'dec' for decimal encoding of (uint[64|32|16|8], int[64|32|16|8], float64)"
+                           " 'hex' for hexdecimal encoding of (uint[64|32|16|8], int[64|32|16|8], sha256, ripemd160" ));
    getKvTable->add_flag("-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON"));
    getKvTable->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
    getKvTable->add_flag("--show-payer", show_payer, localized("Show RAM payer"));
