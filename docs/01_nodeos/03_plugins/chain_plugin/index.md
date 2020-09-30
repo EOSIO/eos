@@ -113,6 +113,12 @@ Config Options for eosio::chain_plugin:
                                         Safely shut down node when free space 
                                         remaining in the chain state database 
                                         drops below this size (in MiB).
+  --backing-store arg (=rocksdb)        The storage for state, NATIVE or 
+                                        ROCKSDB
+  --rocksdb-threads arg (=1)            Number of rocksdb threads for flush and
+                                        compaction
+  --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
+                                        open. -1 = unlimited.
   --reversible-blocks-db-size-mb arg (=340)
                                         Maximum size (in MiB) of the reversible
                                         blocks database
