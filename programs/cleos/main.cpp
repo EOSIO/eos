@@ -2872,6 +2872,46 @@ int main( int argc, char** argv ) {
                 << std::endl;
    });
 
+   // get kv_table
+   string index_name;
+   string index_value;
+   encode_type = "bytes";
+   auto getKvTable = get->add_subcommand("kv_table", localized("Retrieve the contents of a database kv_table"));
+   getKvTable->add_option( "account", code, localized("The account who owns the table") )->required();
+   getKvTable->add_option( "table", table, localized("The name of the kv_table as specified by the contract abi") )->required();
+   getKvTable->add_option( "index_name", index_name, localized("The name of the kv_table index as specified by the contract abi") )->required();
+   getKvTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getKvTable->add_option( "-k,--key", index_value, localized("Index value") );
+   getKvTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
+   getKvTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
+   getKvTable->add_option( "--encode-type", encode_type,
+                           localized("The encoding type of index_value, lower bound, upper bound"
+                           " 'bytes' for hexdecimal encoded bytes"
+                           " 'dec' for decimal encoding of (uint[64|32|16|8], int[64|32|16|8], float64)"
+                           " 'hex' for hexdecimal encoding of (uint[64|32|16|8], int[64|32|16|8], sha256, ripemd160" ));
+   getKvTable->add_flag("-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON"));
+   getKvTable->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
+   getKvTable->add_flag("--show-payer", show_payer, localized("Show RAM payer"));
+
+
+   getKvTable->callback([&] {
+      auto result = call(get_kv_table_func, fc::mutable_variant_object("json", !binary)
+                         ("code",code)
+                         ("table",table)
+                         ("index_name",index_name)
+                         ("index_value",index_value)
+                         ("lower_bound",lower)
+                         ("upper_bound",upper)
+                         ("limit",limit)
+                         ("encode_type", encode_type)
+                         ("reverse", reverse)
+                         ("show_payer", show_payer)
+                         );
+
+      std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
+   });
+
    auto getScope = get->add_subcommand( "scope", localized("Retrieve a list of scopes and tables owned by a contract"));
    getScope->add_option( "contract", code, localized("The contract who owns the table") )->required();
    getScope->add_option( "-t,--table", table, localized("The name of the table as filter") );

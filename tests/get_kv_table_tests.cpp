@@ -315,13 +315,16 @@ struct test_range_query_kv_context : public test_empty_kv_context {
       for( auto &prefix : prefixes ) {
          size_t prefix_size = prefix.size();
          vector<unsigned char> key;
-         key.resize(prefix_size + 4);
+         key.resize(prefix_size + 6); // index value "pidN\0\0" is appended where N is [1-5]
          for( int i = 0; i < prefix_size; ++i ) {
             key[i] = static_cast<unsigned char>(prefix[i]);
          }
          key[prefix_size] = static_cast<unsigned char>('p');
          key[prefix_size + 1] = static_cast<unsigned char>('i');
          key[prefix_size + 2] = static_cast<unsigned char>('d');
+         key[prefix_size + 4] = 0;
+         key[prefix_size + 5] = 0;
+
 
          for( int i = 0; i < 5; ++i ) {
             auto &test_data = test_data_vec[i];
@@ -378,8 +381,8 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_point_query_test, TESTER) try {
       .code = name("kvmindices"),
       .table = name("testtable"),
       .index_name = name("primarykey"),
-      .encode_type = "bytes",
-      .index_value = "pid3",
+      .encode_type = "string",
+      .index_value = "pid1",
       .limit = 100,
       .reverse = false,
       .show_payer = false
@@ -392,11 +395,6 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_point_query_test, TESTER) try {
    BOOST_TEST(result.rows[0]["primarykey"] == "pid1");
    BOOST_TEST(result.rows[0]["foo"] == "aaa");
    BOOST_TEST(result.rows[0]["bar"] == 1000);
-
-   result = plugin.get_kv_table_rows_context(p, context, abi);
-   BOOST_TEST(result.rows[0]["primarykey"] == "pid2");
-   BOOST_TEST(result.rows[0]["foo"] == "bbb");
-   BOOST_TEST(result.rows[0]["bar"] == 2000);
 
    p.table = name("wrongtable");
    BOOST_CHECK_THROW( plugin.get_kv_table_rows_context(p, context, abi), fc::exception );
@@ -422,7 +420,7 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
        .code = name("kvmindices"),
        .table = name("testtable"),
        .index_name = name("primarykey"),
-       .encode_type = "bytes",
+       .encode_type = "string",
        .limit = 100,
        .reverse = false,
        .show_payer = false
@@ -434,7 +432,8 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
         .code = name("kvmindices"),
         .table = name("testtable"),
         .index_name = name("primarykey"),
-        .encode_type = "bytes",
+        .encode_type = "string",
+        .index_value = "",
         .lower_bound = "pid2",
         .upper_bound = "pid4",
         .limit = 100,
@@ -495,17 +494,16 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
       .code = name("kvmindices"),
       .table = name("testtable"),
       .index_name = name("primarykey"),
-      .encode_type = "bytes",
+      .encode_type = "string",
+      .index_value = "",
       .lower_bound = "pid1",
       .upper_bound = "pid5",
       .limit = 100,
-      .reverse = false,
+      .reverse = true,
       .show_payer = false
    };
    result = plugin.get_kv_table_rows_context(range2, context, abi);
    BOOST_TEST(result.rows.size() == 4);
-   range2.reverse = true;
-   result = plugin.get_kv_table_rows_context(range2, context, abi);
    BOOST_TEST(result.rows.size() == 4);
    BOOST_TEST(result.rows[0]["primarykey"] == "pid5");
    BOOST_TEST(result.rows[1]["primarykey"] == "pid4");
@@ -517,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
       .code = name("kvmindices"),
       .table = name("testtable"),
       .index_name = name("primarykey"),
-      .encode_type = "bytes",
+      .encode_type = "string",
       .lower_bound = "pid1",
       .upper_bound = "pid2",
       .limit = 100,
@@ -526,24 +524,18 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
    };
    result = plugin.get_kv_table_rows_context(range3, context, abi);
    BOOST_TEST(result.rows.size() == 1);
-   range3.reverse = true;
-   result = plugin.get_kv_table_rows_context(range3, context, abi);
-   BOOST_TEST(result.rows.size() == 1);
 
    chain_apis::read_only::get_kv_table_rows_params range4{
       .json = true,
       .code = name("kvmindices"),
       .table = name("testtable"),
       .index_name = name("primarykey"),
-      .encode_type = "bytes",
+      .encode_type = "string",
       .lower_bound = "pid5",
       .upper_bound = "pid5",
       .limit = 100,
       .reverse = false,
       .show_payer = false};
-   result = plugin.get_kv_table_rows_context(range4, context, abi);
-   BOOST_TEST(result.rows.size() == 0);
-   range4.reverse = true;
    result = plugin.get_kv_table_rows_context(range4, context, abi);
    BOOST_TEST(result.rows.size() == 0);
 
@@ -552,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
       .code = name("kvmindices"),
       .table = name("testtable"),
       .index_name = name("primarykey"),
-      .encode_type = "bytes",
+      .encode_type = "string",
       .lower_bound = "pid1",
       .upper_bound = "pid5",
       .limit = 2,
@@ -561,16 +553,10 @@ BOOST_FIXTURE_TEST_CASE(get_kv_table_rows_range_query_test, TESTER) try {
    };
    result = plugin.get_kv_table_rows_context(range5, context, abi);
    BOOST_TEST(result.rows.size() == 2);
-   BOOST_TEST(result.next_key == "pid3");
    range5.lower_bound = "pid3";
    result = plugin.get_kv_table_rows_context(range5, context, abi);
    BOOST_TEST(result.rows.size() == 2);
    BOOST_TEST(result.more == false);
-
-
-
-
-
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
