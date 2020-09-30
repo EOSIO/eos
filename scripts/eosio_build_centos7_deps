@@ -3,6 +3,7 @@ autoconf,rpm -qa
 automake,rpm -qa
 libtool,rpm -qa
 make,rpm -qa
+cmake,rpm -qa
 bzip2,rpm -qa
 doxygen,rpm -qa
 graphviz,rpm -qa
@@ -11,6 +12,7 @@ openssl-devel,rpm -qa
 gmp-devel,rpm -qa
 ocaml,rpm -qa
 python,rpm -qa
+python3,rpm -qa
 python-devel,rpm -qa
 rh-python36,rpm -qa
 gettext-devel,rpm -qa
@@ -20,3 +22,6 @@ libcurl-devel,rpm -qa
 patch,rpm -qa
 llvm-toolset-7.0-llvm-devel,rpm -qa
 llvm-toolset-7.0-llvm-static,rpm -qa
+epel-release,rpm -qa
+jq,rpm -qa
+

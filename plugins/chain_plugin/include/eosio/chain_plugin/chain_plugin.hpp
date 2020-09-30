@@ -12,6 +12,8 @@
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
+#include <eosio/chain/kv_context.hpp>
+#include <eosio/to_key.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -325,6 +327,20 @@ public:
       std::optional<bool>  show_payer; // show RAM pyer
     };
 
+   struct get_kv_table_rows_params {
+        bool                   json = false;          // true if you want output rows in json format, false as variant
+        name                   code;                  // name of contract
+        name                   table;                 // name of kv table,
+        name                   index_name;            // name of index index
+        string                 encode_type = "bytes"; // "bytes" : binary values in index_value/lower_bound/upper_bound
+        std::optional<string>  index_value;           // index value for point query.  If this is set, it is processed as a point query
+        std::optional<string>  lower_bound;           // lower bound value of index of index_name. If index_value is not set and lower_bound is not set, return from the beginning of range in the prefix
+        std::optional<string>  upper_bound;           // upper bound value of index of index_name, If index_value is not set and upper_bound is not set, It is set to the beginning of the next prefix range.
+        uint32_t               limit = 10;            // max number of rows
+        bool                   reverse = false;       // if true output rows in reverse order
+        bool                   show_payer = false;
+   };
+
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
@@ -332,6 +348,12 @@ public:
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
+
+   constexpr uint32_t prefix_size() const { return  1 + 2 * sizeof(uint64_t); }
+   void convert_key(const string& index_type, const string& encode_type, const string& index_value, vector<char>& bin)const;
+   void make_prefix(eosio::name table_name,  eosio::name index_name, uint8_t status, vector<char> &prefix)const;
+   get_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
+   get_table_rows_result get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, eosio::chain::kv_context &kv_context, const abi_def &abi )const;
 
    struct get_table_by_scope_params {
       name                 code; // mandatory
@@ -796,6 +818,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_kv_table_rows_params, (json)(code)(table)(index_name)(encode_type)(index_value)(lower_bound)(upper_bound)(limit)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
