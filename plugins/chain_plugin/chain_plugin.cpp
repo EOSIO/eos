@@ -1919,21 +1919,16 @@ void read_only::convert_key(const string& index_type, const string& encode_type,
    try {
       // converts arbitrary hex strings to bytes ex) "FFFEFD" to {255, 254, 253}
       if( encode_type == "bytes" ) {
-         if( bin.capacity() < index_value.size() ) {
-            bin.reserve(index_value.size());
-         }
          string bytes_data = boost::algorithm::unhex(index_value);
          auto bytes_datasize = bytes_data.size();
-         for( char c : bytes_data ) {
-            bin.push_back(c);
+         if( bin.size() < bytes_datasize ) {
+            bin.resize(index_value.size());
          }
+         memcpy(bin.data(), bytes_data.data(), bytes_datasize);
          return;
       }
 
       if( encode_type == "string" ) {
-         if( bin.capacity() < index_value.size() ) {
-            bin.reserve(index_value.size() + 2); // two zeros at the end
-         }
          convert_to_key(index_value, bin);
          return;
       }
@@ -1948,16 +1943,10 @@ void read_only::convert_key(const string& index_type, const string& encode_type,
       if( encode_type == "hex" ) {
          if( index_type == "sha256" || index_type == "i256" ) {
             checksum256_type sha{index_value};
-            const char* sha_data = sha.data();
-            for( int i = 0; i < sha.data_size(); ++i ) {
-               bin[i] = sha_data[i];
-            }
+            memcpy(bin.data(), sha.data(), sha.data_size());
          } else if( index_type == "ripemd160" ) {
             checksum160_type ripem160{index_value};
-            const char* ripem160_data = ripem160.data();
-            for( int i = 0; i < ripem160.data_size(); ++i ) {
-               bin[i] = ripem160_data[i];
-            }
+            memcpy(bin.data(), ripem160.data(), ripem160.data_size());
          } else if( index_type == "uint64" ) {
             uint64_t u64 = std::stoul(index_value, &pos, hex_base);
             if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
@@ -2037,13 +2026,13 @@ void read_only::convert_key(const string& index_type, const string& encode_type,
          }
       }
    } catch( const std::invalid_argument& e) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid argument for index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
    } catch( const std::out_of_range& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Out of range for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
    } catch( boost::bad_lexical_cast& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Bad lexical cast for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
    } catch( boost::exception& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid index type/encode_type/Index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
    }
 }
 
@@ -2223,7 +2212,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
       if( reverse ) cmp *= -1;
 
-      fc::variant row_var;
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
          row_value.clear();

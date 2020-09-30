@@ -315,7 +315,7 @@ struct test_range_query_kv_context : public test_empty_kv_context {
       for( auto &prefix : prefixes ) {
          size_t prefix_size = prefix.size();
          vector<unsigned char> key;
-         key.resize(prefix_size + 6);
+         key.resize(prefix_size + 6); // index value "pidN\0\0" is appended where N is [1-5]
          for( int i = 0; i < prefix_size; ++i ) {
             key[i] = static_cast<unsigned char>(prefix[i]);
          }
