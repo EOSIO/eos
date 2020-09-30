@@ -21,18 +21,29 @@ add_executable(t0006_wscos.run t0006_wscos.cpp)
 add_executable(t0007_wssts.run t0007_wssts.cpp)
 add_executable(t0008_as.run t0008_as.cpp)
 add_executable(t0009_asf.run t0009_asf.cpp)
-add_executable(t0010_wsf.run t0010_wsf.cpp)
-add_executable(t0011_wsa.run t0011_wsa.cpp)
-add_executable(t0012_wsco.run t0012_wsco.cpp)
-add_executable(t0013_wsst.run t0013_wsst.cpp)
 message(STATUS "SSL_LIB=${SSL_LIB}, CRYPTO_LIB=${CRYPTO_LIB}")
-target_link_libraries( t0002_hsss.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0004_wsss.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0005_wsas.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0006_wscos.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY}  ${COROUTINE_LIB} ${THREAD_LIB} ${CONTEXT_LIB})
-target_link_libraries( t0007_wssts.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0008_as.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0009_asf.run ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} )
-target_link_libraries( t0010_wsf.run ${COROUTINE_LIB} ${THREAD_LIB} ${CONTEXT_LIB})
-target_link_libraries( t0012_wsco.run   ${COROUTINE_LIB}    ${THREAD_LIB}   ${CONTEXT_LIB})
+target_link_libraries( t0002_hsss.run 
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries( t0004_wsss.run 
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries( t0005_wsas.run
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries( t0006_wscos.run
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} 
+                        ${COROUTINE_LIB}
+                        ${THREAD_LIB}
+                        ${CONTEXT_LIB})
+target_link_libraries( t0007_wssts.run
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries( t0008_as.run
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries( t0009_asf.run
+                        ${OPENSSL_SSL_LIBRARY}
+                        ${OPENSSL_CRYPTO_LIBRARY} )
 #target_include_directories( blockvault_svr_tst_net PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
