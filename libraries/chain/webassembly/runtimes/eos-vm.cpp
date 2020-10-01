@@ -163,7 +163,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 };
 
 class eos_vm_profiling_module : public wasm_instantiated_module_interface {
-      using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
+      using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit_profile, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
    public:
       eos_vm_profiling_module(std::unique_ptr<backend_t> mod, const char * code, std::size_t code_size) :
          _instantiated_module(std::move(mod)),
@@ -274,7 +274,7 @@ bool eos_vm_profile_runtime::inject_module(IR::Module& module) {
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_profile_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>,
                                                                                                const digest_type&, const uint8_t&, const uint8_t&) {
 
-   using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
+   using backend_t = eosio::vm::backend<eos_vm_host_functions_t, eosio::vm::jit_profile, webassembly::eos_vm_runtime::apply_options, vm::profile_instr_map>;
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
       apply_options options = { .max_pages = 65536,

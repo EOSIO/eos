@@ -64,8 +64,10 @@ namespace eosio { namespace chain {
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
 #endif
 #ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
-         if(vm == wasm_interface::vm_type::eos_vm_jit && profile)
+         if(vm == wasm_interface::vm_type::eos_vm_jit && profile) {
+            eosio::vm::set_profile_interval_us(200);
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_profile_runtime>();
+         }
          if(vm == wasm_interface::vm_type::eos_vm_jit && !profile)
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
 #endif
