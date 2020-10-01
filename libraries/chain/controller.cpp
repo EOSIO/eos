@@ -230,8 +230,7 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
           ? combined_database(db)
-          : combined_database(db, (cfg.state_dir / "chain-kv").string(), !cfg.read_only,
-                              cfg.rocksdb_threads, cfg.rocksdb_max_open_files)),
+          : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
