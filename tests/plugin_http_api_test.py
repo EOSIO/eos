@@ -324,6 +324,56 @@ class PluginHttpTest(unittest.TestCase):
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
+        # get_kv_table_rows with empty parameter
+        default_cmd = cmd_base + "get_kv_table_rows"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"index_value\":\"pid1\"")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid4\"",)
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid5\"",
+                                                              "\"limit\":\"2\"")
+
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+
         # get_table_by_scope with empty parameter
         default_cmd = cmd_base + "get_table_by_scope"
         ret_json = Utils.runCmdReturnJson(default_cmd)
