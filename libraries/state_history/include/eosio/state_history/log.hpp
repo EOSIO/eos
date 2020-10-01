@@ -6,13 +6,15 @@
 
 #include <cstddef>
 #include <eosio/chain/block_header.hpp>
-#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/log_catalog.hpp>
 #include <eosio/chain/log_data_base.hpp>
 #include <eosio/chain/log_index.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/combined_database.hpp>
+#include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/transaction_trace_cache.hpp>
+#include <eosio/state_history/trace_converter.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/io/cfile.hpp>
 #include <fc/io/datastream.hpp>
@@ -213,6 +215,47 @@ class state_history_chain_state_log : public state_history_log {
    template <typename DB>
    void store(const DB& db, const chain::block_state_ptr& block_state);
 };
+
+template <>
+void state_history_traces_log::store(const chain::combined_database& db, const chain::block_state_ptr& block_state) {
+   store(db.chainbase_db(), block_state);
+   if (db.kv_db()) {
+      store(*db.kv_db(), block_state);
+   }
+}
+
+template <typename DB>
+void state_history_traces_log::store(const DB& db, const chain::block_state_ptr& block_state) {
+
+   state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = block_state->id};
+   auto                     trace = cache.prepare_traces(block_state);
+
+   this->write_entry(header, block_state->block->previous, [&](auto& stream) {
+      state_history::trace_converter::pack(stream, db, trace_debug_mode, trace, compression);
+   });
+}
+
+template <>
+void state_history_chain_state_log::store(const chain::combined_database& db,
+                                          const chain::block_state_ptr&   block_state) {
+   store(db.chainbase_db(), block_state);
+   if (db.kv_db()) {
+      store(*db.kv_db(), block_state);
+   }
+}
+
+template <typename DB>
+void state_history_chain_state_log::store(const DB& db, const chain::block_state_ptr& block_state) {
+   bool fresh = this->begin_block() == this->end_block();
+   if (fresh)
+      ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
+
+   using namespace state_history;
+   std::vector<table_delta> deltas = create_deltas(db, fresh);
+   state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = block_state->id};
+
+   this->write_entry(header, block_state->block->previous, [&deltas](auto& stream) { zlib_pack(stream, deltas); });
+}
 
 } // namespace eosio
 
