@@ -171,7 +171,9 @@ private:
 };
 
 amqp_trx_plugin::amqp_trx_plugin()
-: my(std::make_shared<amqp_trx_plugin_impl>()) {}
+: my(std::make_shared<amqp_trx_plugin_impl>()) {
+   app().register_config_type<ack_mode>();
+}
 
 amqp_trx_plugin::~amqp_trx_plugin() {}
 
