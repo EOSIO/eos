@@ -184,8 +184,9 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
       "Allow non-ordered speculative execution of transactions");
-   op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::executed),
-      "When AMQP is ack. When received from AMQP, when executed, or when block is produced that contains trx.");
+   op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
+      "AMQP ack when 'received' from AMQP, when 'executed', or when 'in_block' is produced that contains trx.\n"
+      "Options: received, executed, in_block");
 }
 
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
