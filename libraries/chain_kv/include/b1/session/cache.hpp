@@ -32,7 +32,7 @@ class cache {
       cache_iterator()                         = default;
       cache_iterator(const cache_iterator& it) = default;
       cache_iterator(cache_iterator&&)         = default;
-      cache_iterator(Iterator_type it);
+      cache_iterator(cache_type& cache, Iterator_type it);
 
       cache_iterator& operator=(const cache_iterator& it) = default;
       cache_iterator& operator=(cache_iterator&&) = default;
@@ -45,6 +45,7 @@ class cache {
       bool            operator!=(const cache_iterator& other) const;
 
     private:
+      cache_type*   m_cache;
       Iterator_type m_it;
    };
 
@@ -269,32 +270,43 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
    return;
 }
 
-inline typename cache::iterator cache::find(const shared_bytes& key) { return { m_cache.find(key) }; }
+inline typename cache::iterator cache::find(const shared_bytes& key) { return { m_cache, m_cache.find(key) }; }
 
-inline typename cache::const_iterator cache::find(const shared_bytes& key) const { return { m_cache.find(key) }; }
-
-inline typename cache::iterator cache::begin() { return { std::begin(m_cache) }; }
-
-inline typename cache::const_iterator cache::begin() const { return { std::begin(m_cache) }; }
-
-inline typename cache::iterator cache::end() { return { std::end(m_cache) }; }
-
-inline typename cache::const_iterator cache::end() const { return { std::end(m_cache) }; }
-
-inline typename cache::iterator cache::lower_bound(const shared_bytes& key) { return { m_cache.lower_bound(key) }; }
-
-inline typename cache::const_iterator cache::lower_bound(const shared_bytes& key) const {
-   return { m_cache.lower_bound(key) };
+inline typename cache::const_iterator cache::find(const shared_bytes& key) const {
+   return { const_cast<cache_type&>(m_cache), m_cache.find(key) };
 }
 
-inline typename cache::iterator cache::upper_bound(const shared_bytes& key) { return { m_cache.upper_bound(key) }; }
+inline typename cache::iterator cache::begin() { return { m_cache, std::begin(m_cache) }; }
+
+inline typename cache::const_iterator cache::begin() const {
+   return { const_cast<cache_type&>(m_cache), std::begin(m_cache) };
+}
+
+inline typename cache::iterator cache::end() { return { m_cache, std::end(m_cache) }; }
+
+inline typename cache::const_iterator cache::end() const {
+   return { const_cast<cache_type&>(m_cache), std::end(m_cache) };
+}
+
+inline typename cache::iterator cache::lower_bound(const shared_bytes& key) {
+   return { m_cache, m_cache.lower_bound(key) };
+}
+
+inline typename cache::const_iterator cache::lower_bound(const shared_bytes& key) const {
+   return { const_cast<cache_type&>(m_cache), m_cache.lower_bound(key) };
+}
+
+inline typename cache::iterator cache::upper_bound(const shared_bytes& key) {
+   return { m_cache, m_cache.upper_bound(key) };
+}
 
 inline typename cache::const_iterator cache::upper_bound(const shared_bytes& key) const {
-   return { m_cache.upper_bound(key) };
+   return { const_cast<cache_type&>(m_cache), m_cache.upper_bound(key) };
 }
 
 template <typename Iterator_type, typename Iterator_traits>
-cache::cache_iterator<Iterator_type, Iterator_traits>::cache_iterator(Iterator_type it) : m_it{ std::move(it) } {}
+cache::cache_iterator<Iterator_type, Iterator_traits>::cache_iterator(cache_type& cache, Iterator_type it)
+    : m_cache{ &cache }, m_it{ std::move(it) } {}
 
 template <typename Iterator_type, typename Iterator_traits>
 using cache_iterator_alias = typename cache::template cache_iterator<Iterator_type, Iterator_traits>;
@@ -302,26 +314,40 @@ using cache_iterator_alias = typename cache::template cache_iterator<Iterator_ty
 template <typename Iterator_type, typename Iterator_traits>
 cache_iterator_alias<Iterator_type, Iterator_traits>&
 cache::cache_iterator<Iterator_type, Iterator_traits>::operator++() {
-   ++m_it;
+   if (m_it == std::end(*m_cache)) {
+      m_it = std::begin(*m_cache);
+   } else {
+      ++m_it;
+   }
    return *this;
 }
 
 template <typename Iterator_type, typename Iterator_traits>
 cache_iterator_alias<Iterator_type, Iterator_traits>&
 cache::cache_iterator<Iterator_type, Iterator_traits>::operator--() {
-   --m_it;
+   if (m_it == std::begin(*m_cache)) {
+      m_it = std::end(*m_cache);
+   } else {
+      --m_it;
+   }
    return *this;
 }
 
 template <typename Iterator_type, typename Iterator_traits>
 typename cache_iterator_alias<Iterator_type, Iterator_traits>::value_type
 cache::cache_iterator<Iterator_type, Iterator_traits>::operator*() const {
+   if (m_it == std::end(*m_cache)) {
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
+   }
    return std::pair{ m_it->first, m_it->second };
 }
 
 template <typename Iterator_type, typename Iterator_traits>
 typename cache_iterator_alias<Iterator_type, Iterator_traits>::value_type
 cache::cache_iterator<Iterator_type, Iterator_traits>::operator->() const {
+   if (m_it == std::end(*m_cache)) {
+      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
+   }
    return std::pair{ m_it->first, m_it->second };
 }
 

@@ -8,6 +8,8 @@
 #include <softfloat.hpp>
 #include <algorithm>
 
+#include <b1/session/shared_bytes.hpp>
+
 namespace b1::chain_kv {
 
 class exception : public std::exception {
@@ -145,6 +147,21 @@ namespace detail {
       dest.insert(dest.end(), t_array_as_char_begin, t_array_as_char_end);
    }
 
+   template <typename T, std::size_t N>
+   auto insert_key(eosio::session::shared_bytes& dest, size_t index, T value) {
+
+      using t_type = typename value_storage<T>::type;
+      t_type t_array[N];
+      const t_type* first = value_storage<T>().as_ptr(value);
+      const t_type* last = first + N;
+      std::reverse_copy(first, last, std::begin(t_array));
+
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
+      std::memcpy(dest.data() + index, t_array_as_char_begin, t_array_as_char_end - t_array_as_char_begin);
+   }
+
    template <typename UInt, typename T>
    UInt float_to_key(T value) {
       static_assert(sizeof(T) == sizeof(UInt), "Expected unsigned int of the same size");
@@ -215,6 +232,27 @@ inline void append_key(bytes& dest, float128_t value) {
    auto float_key = detail::float_to_key<detail::uint128_t>(value);
    // underlying storage is implemented as uint64_t[2], but it is laid out like it is uint128_t
    detail::append_key<detail::uint128_t, 1>(dest, float_key);
+}
+
+template <typename T>
+auto insert_key(eosio::session::shared_bytes& dest, size_t index, T value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   detail::insert_key<T, 1>(dest, index, value);
+}
+
+template <typename T, std::size_t N>
+auto insert_key(eosio::session::shared_bytes& dest, size_t index, std::array<T, N> value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   detail::insert_key<T*, N>(dest, index, value.data());
+}
+
+inline void insert_key(eosio::session::shared_bytes& dest, size_t index, float64_t value) {
+   auto float_key = detail::float_to_key<uint64_t>(value);
+   detail::insert_key<uint64_t, 1>(dest, index, float_key);
+}
+
+inline void insert_key(eosio::session::shared_bytes& dest, size_t index, float128_t value) {
+   auto float_key = detail::float_to_key<detail::uint128_t>(value);
+   // underlying storage is implemented as uint64_t[2], but it is laid out like it is uint128_t
+   detail::insert_key<detail::uint128_t, 1>(dest, index, float_key);
 }
 
 template<typename It, typename T>

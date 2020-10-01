@@ -10,23 +10,23 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
    static const auto      char_length = strlen(char_value) - 1;
    static constexpr auto  int_value   = int64_t{ 100000000 };
 
-   auto b1 = make_shared_bytes(char_value, char_length);
+   auto b1 = shared_bytes(char_value, char_length);
    BOOST_REQUIRE(memcmp(b1.data(), reinterpret_cast<const int8_t*>(char_value), char_length) == 0);
    BOOST_REQUIRE(b1.size() == char_length);
 
-   auto b2 = make_shared_bytes(reinterpret_cast<const int8_t*>(char_value), char_length);
+   auto b2 = shared_bytes(reinterpret_cast<const int8_t*>(char_value), char_length);
    BOOST_REQUIRE(memcmp(b1.data(), reinterpret_cast<const int8_t*>(char_value), char_length) == 0);
    BOOST_REQUIRE(b2.size() == char_length);
 
-   auto b3 = make_shared_bytes(&int_value, 1);
+   auto b3 = shared_bytes(&int_value, 1);
    BOOST_REQUIRE(*(reinterpret_cast<const decltype(int_value)*>(b3.data())) == int_value);
    BOOST_REQUIRE(b3.size() == sizeof(decltype(int_value)));
 
-   auto b4 = make_shared_bytes(char_value, char_length);
+   auto b4 = shared_bytes(char_value, char_length);
    BOOST_REQUIRE(memcmp(b4.data(), reinterpret_cast<const int8_t*>(char_value), char_length) == 0);
    BOOST_REQUIRE(b4.size() == char_length);
 
-   auto invalid = make_shared_bytes(static_cast<int8_t*>(nullptr), 0);
+   auto invalid = shared_bytes(static_cast<int8_t*>(nullptr), 0);
    BOOST_REQUIRE(invalid.data() == nullptr);
    BOOST_REQUIRE(invalid.size() == 0);
 
