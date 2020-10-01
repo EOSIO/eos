@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <eosio/chain/block_header.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/log_catalog.hpp>
 #include <eosio/chain/log_data_base.hpp>
@@ -16,7 +17,6 @@
 #include <fc/io/cfile.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/log/logger.hpp>
-#include <b1/chain_kv/chain_kv.hpp>
 
 namespace eosio {
 
@@ -195,8 +195,8 @@ class state_history_traces_log : public state_history_log {
 
    void block_start(uint32_t block_num) { cache.clear(); }
 
-   void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
-   void store(const b1::chain_kv::database& db, const chain::block_state_ptr& block_state);
+   template <typename DB>
+   void store(const DB& db, const chain::block_state_ptr& block_state);
 
    /**
     *  @param[in,out] ids The ids to been pruned and returns the ids not found in the specified block
@@ -210,8 +210,8 @@ class state_history_chain_state_log : public state_history_log {
 
    chain::bytes get_log_entry(block_num_type block_num);
 
-   void store(const chainbase::database& db, const chain::block_state_ptr& block_state);
-   void store(const b1::chain_kv::database& db, const chain::block_state_ptr& block_state);
+   template <typename DB>
+   void store(const DB& db, const chain::block_state_ptr& block_state);
 };
 
 } // namespace eosio

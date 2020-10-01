@@ -1,6 +1,5 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
-#include <b1/chain_kv/chain_kv.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -118,8 +117,6 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    process_table("contract_index_double", db.get_index<chain::index_double_index>(), pack_contract_row);
    process_table("contract_index_long_double", db.get_index<chain::index_long_double_index>(), pack_contract_row);
 
-   process_table("key_value", db.get_index<chain::kv_index>(), pack_row);
-
    process_table("global_property", db.get_index<chain::global_property_multi_index>(), pack_row);
    process_table("generated_transaction", db.get_index<chain::generated_transaction_multi_index>(), pack_row);
    process_table("protocol_state", db.get_index<chain::protocol_state_multi_index>(), pack_row);
@@ -137,17 +134,34 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    return deltas;
 }
 
-std::vector<table_delta> create_deltas(const b1::chain_kv::database& db, bool full_snapshot) {
-    std::vector<table_delta>    deltas;
-//    b1::chain_kv::undo_stack    undo_stack_obj(db);
+std::vector<table_delta> create_deltas(const chain::rocks_db_type& db, bool full_snapshot) {
+   std::vector<table_delta> deltas;
 
-//    const auto& updated_keys = undo_stack_obj.updated_keys();
-//    const auto& deleted_keys = undo_stack_obj.deleted_keys();
+   //    b1::chain_kv::undo_stack    undo_stack_obj(db);
 
-    // get undo session
-    // for full_snapshot, loop over all undo
-    // otherwise, loop over the last undo
-    return deltas;
+   //    const auto& updated_keys = undo_stack_obj.updated_keys();
+   //    const auto& deleted_keys = undo_stack_obj.deleted_keys();
+
+   /*
+      // get info from prefix,
+      prefix == db_type (first byte, kv table or multi index table), next prefix is the contract, next prefix table
+      name, Brian J, iterate through each elemnet to lower_bound, get table name.
+
+      // undo
+      process_table("contract_table", db.get_index<chain::table_id_multi_index>(), pack_row);
+      process_table("contract_row", db.get_index<chain::key_value_index>(), pack_contract_row);
+      process_table("contract_index64", db.get_index<chain::index64_index>(), pack_contract_row);
+      process_table("contract_index128", db.get_index<chain::index128_index>(), pack_contract_row);
+      process_table("contract_index256", db.get_index<chain::index256_index>(), pack_contract_row);
+      process_table("contract_index_double", db.get_index<chain::index_double_index>(), pack_contract_row);
+      process_table("contract_index_long_double", db.get_index<chain::index_long_double_index>(), pack_contract_row);
+      process_table("key_value", db.get_index<chain::kv_index>(), pack_row);
+
+   */
+   // get undo session
+   // for full_snapshot, loop over all undo
+   // otherwise, loop over the last undo
+   return deltas;
 }
 
 } // namespace state_history

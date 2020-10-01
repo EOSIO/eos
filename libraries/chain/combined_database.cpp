@@ -541,4 +541,6 @@ namespace eosio { namespace chain {
    std::vector<char> make_rocksdb_undo_prefix() { return rocksdb_undo_prefix; }
    std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
 
+   const chainbase::database& combined_database::chainbase_db() const { return db; }
+   const std::unique_ptr<rocks_db_type>& combined_database::kv_db() const { return kv_database; }
 }} // namespace eosio::chain

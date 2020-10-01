@@ -2343,6 +2343,7 @@ const fork_database& controller::fork_db()const { return my->fork_db; }
 eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
+const chain::combined_database& controller::combined_db() const { return my->kv_db; }
 
 void controller::preactivate_feature( uint32_t action_id, const digest_type& feature_digest ) {
    const auto& pfs = my->protocol_features.get_protocol_feature_set();

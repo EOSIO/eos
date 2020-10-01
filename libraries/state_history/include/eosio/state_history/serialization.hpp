@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -14,7 +15,6 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/state_history/types.hpp>
-#include <b1/chain_kv/chain_kv.hpp>
 
 #include <type_traits>
 

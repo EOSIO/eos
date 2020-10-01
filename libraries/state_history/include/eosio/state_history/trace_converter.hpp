@@ -179,9 +179,9 @@ struct trace_pruner {
    }
 };
 
-template <typename OSTREAM>
-void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
-          const std::vector<augmented_transaction_trace>& traces, compression_type compression) {
+template <typename OSTREAM, typename DB>
+void pack(OSTREAM&& strm, const DB& db, bool trace_debug_mode, const std::vector<augmented_transaction_trace>& traces,
+          compression_type compression) {
 
    // In version 1 of SHiP traces log disk format, it log entry consists of 3 parts.
    //  1. a zlib compressed unprunable section contains the serialization of the vector of traces excluding
@@ -196,21 +196,6 @@ void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
       size_with_padding += trace_converter::pack(strm, pt.get_prunable_data(), compression);
    });
    strm.seekp(pos + size_with_padding);
-}
-
-template <typename OSTREAM>
-void pack(OSTREAM&& strm, const b1::chain_kv::database& db, bool trace_debug_mode,
-          const std::vector<augmented_transaction_trace>& traces, compression_type compression) {
-
-    // This function is overload chainbase function to support chain_kv
-    zlib_pack(strm, make_history_context_wrapper(db, trace_receipt_context{.debug_mode = trace_debug_mode}, traces));
-    fc::raw::pack(strm, static_cast<uint8_t>(compression));
-    const auto pos               = strm.tellp();
-    size_t     size_with_padding = 0;
-    for_each_packed_transaction(traces, [&strm, &size_with_padding, compression](const chain::packed_transaction& pt) {
-        size_with_padding += trace_converter::pack(strm, pt.get_prunable_data(), compression);
-    });
-    strm.seekp(pos + size_with_padding);
 }
 
 template <typename ISTREAM>

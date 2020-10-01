@@ -353,9 +353,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_accepted_block(const block_state_ptr& block_state) {
       if (trace_log)
-         trace_log->store(chain_plug->chain().db(), block_state);
+         trace_log->store(chain_plug->chain().combined_db(), block_state);
       if (chain_state_log)
-         chain_state_log->store(chain_plug->chain().db(), block_state);
+         chain_state_log->store(chain_plug->chain().combined_db(), block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
