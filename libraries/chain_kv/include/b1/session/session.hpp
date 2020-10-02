@@ -74,8 +74,8 @@ class session {
       bool deleted() const;
 
     protected:
-      template <typename Test_predicate, typename Move_predicate>
-      void move_(const Test_predicate& test, const Move_predicate& move);
+      template <typename Test_predicate, typename Move_predicate, typename Cache_update>
+      void move_(const Test_predicate& test, const Move_predicate& move, Cache_update& update_cache);
       void move_next_();
       void move_previous_();
 
@@ -135,7 +135,6 @@ class session {
    bool         contains(const shared_bytes& key) const;
    void         erase(const shared_bytes& key);
    void         clear();
-   bool         is_deleted(const shared_bytes& key) const;
 
    // returns a pair containing the key/value pairs found and the keys not found.
    template <typename Iterable>
@@ -155,31 +154,20 @@ class session {
    template <typename Other_data_store, typename Iterable>
    void read_from(const Other_data_store& ds, const Iterable& keys);
 
-   iterator       find(const shared_bytes& key);
-   const_iterator find(const shared_bytes& key) const;
-   iterator       begin();
-   const_iterator begin() const;
-   iterator       end();
-   const_iterator end() const;
-   iterator       lower_bound(const shared_bytes& key);
-   const_iterator lower_bound(const shared_bytes& key) const;
-   iterator       upper_bound(const shared_bytes& key);
-   const_iterator upper_bound(const shared_bytes& key) const;
+   iterator find(const shared_bytes& key) const;
+   iterator begin() const;
+   iterator end() const;
+   iterator lower_bound(const shared_bytes& key) const;
 
  private:
-   template <typename Iterator_type, typename Predicate, typename Comparator, typename Move>
-   Iterator_type make_iterator_(const Predicate& predicate, const Comparator& comparator, const Move& move,
-                                bool prime_cache_only = false) const;
+   void         prime_cache_();
+   shared_bytes next_key_(const shared_bytes& key) const;
+   shared_bytes previous_key_(const shared_bytes& key) const;
 
-   void                                  prime_cache_();
-   std::pair<shared_bytes, shared_bytes> bounds_(const shared_bytes& key) const;
-
-   struct iterator_cache_params {
-      bool prime_only{ false };
-      bool mark_deleted{ false };
-      bool overwrite{ true };
-   };
-   void update_iterator_cache_(const shared_bytes& key, const iterator_cache_params& params) const;
+   template <typename It>
+   It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
+   template <typename It>
+   It& first_not_deleted_in_cache_(It& it, const It& end) const;
 
  private:
    parent_type m_parent{ nullptr };
@@ -232,10 +220,10 @@ void session<Parent>::prime_cache_() {
               m_parent);
 
    if (lower_key) {
-      m_iterator_cache.try_emplace(lower_key, iterator_state{});
+      m_iterator_cache.emplace(lower_key, iterator_state{});
    }
    if (upper_key) {
-      m_iterator_cache.try_emplace(upper_key, iterator_state{});
+      m_iterator_cache.emplace(upper_key, iterator_state{});
    }
 }
 
@@ -297,100 +285,106 @@ void session<Parent>::undo() {
 }
 
 template <typename Parent>
-std::pair<shared_bytes, shared_bytes> session<Parent>::bounds_(const shared_bytes& key) const {
-   auto lower_bound_key = shared_bytes::invalid();
-   auto upper_bound_key = shared_bytes::invalid();
+shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
+   auto result = shared_bytes::invalid();
 
-   // We need to be careful about requesting iterators on the session since it will be rentrant into this
-   // method.  Ask for the iterator in a way that isn't reentrant.  We can do this by invoking the make_iterator_
-   // method directly.
-
-   auto lower = [&](auto& ds) {
-      auto test_set = [](const auto& pending, auto& current, const auto& comparator) {
-         if (!pending) {
-            return;
-         }
-         if (!current || comparator(pending, current)) {
-            current = pending;
+   if (key) {
+      auto find_previous_not_deleted = [&](auto& it, const auto& end) {
+         while (it != end && m_deleted_keys.find((*it).first) != std::end(m_deleted_keys)) { --it; }
+      };
+      auto find_previous_not_deleted_in_cache = [&](auto& it, const auto& begin, const auto& end) {
+         while (it != begin && it->second.deleted) { --it; }
+         if (it->second.deleted) {
+            it = end;
          }
       };
 
-      auto it          = ds.lower_bound(key);
-      auto current_key = (*it).first;
+      std::visit(
+            [&](auto* p) {
+               auto it  = p->lower_bound(key);
+               auto end = std::end(*p);
+               find_previous_not_deleted(it, end);
 
-      if (current_key == key) {
-         // Possible previous and next.
+               if ((*it).first == key) {
+                  --it;
+                  find_previous_not_deleted(it, end);
+               } else {
+                  --it;
+                  find_previous_not_deleted(it, end);
+                  if ((*it).first) {
+                     --it;
+                     find_previous_not_deleted(it, end);
+                  }
+               }
+               result = (*it).first;
+            },
+            m_parent);
+
+      auto it    = m_iterator_cache.lower_bound(key);
+      auto end   = std::end(m_iterator_cache);
+      auto begin = std::begin(m_iterator_cache);
+      find_previous_not_deleted_in_cache(it, begin, end);
+      if (it == end || (*it).first == key) {
          --it;
-         current_key = (*it).first;
-         if (current_key) {
-            test_set(current_key, lower_bound_key, std::greater<shared_bytes>{});
-         }
-         ++(++it);
-         current_key = (*it).first;
-         if (current_key) {
-            test_set(current_key, upper_bound_key, std::less<shared_bytes>{});
-         }
-      } else if (!current_key) {
-         // This indicates we hit the end iterator on the lower_bound call.
-         // We at best have a previous key.
-         --it;
-         current_key = (*it).first;
-         if (current_key) {
-            test_set(current_key, lower_bound_key, std::greater<shared_bytes>{});
-         }
+         find_previous_not_deleted_in_cache(it, begin, end);
       } else {
-         // This indicates we found a lower_bound.  Possible previous and net.
-         test_set(current_key, upper_bound_key, std::less<shared_bytes>{});
          --it;
-         current_key = (*it).first;
-         if (current_key) {
-            test_set(current_key, lower_bound_key, std::greater<shared_bytes>{});
+         find_previous_not_deleted_in_cache(it, begin, end);
+         if ((*it).first) {
+            --it;
+            find_previous_not_deleted_in_cache(it, begin, end);
          }
       }
 
-      return it;
-   };
-
-   if (key) {
-      make_iterator_<iterator>(
-            lower, std::less<shared_bytes>{}, [](auto& it, const auto& end) { ++it; }, true);
+      if (it != end) {
+         auto pending = (*it).first;
+         if (!result || pending > result) {
+            result = pending;
+         }
+      }
    }
 
-   return std::pair{ lower_bound_key, upper_bound_key };
+   return result;
 }
 
 template <typename Parent>
-void session<Parent>::update_iterator_cache_(const shared_bytes& key, const iterator_cache_params& params) const {
-   auto result = m_iterator_cache.try_emplace(key, iterator_state{});
+shared_bytes session<Parent>::next_key_(const shared_bytes& key) const {
+   auto result = shared_bytes::invalid();
 
-   auto& it = result.first;
+   if (key) {
+      std::visit(
+            [&](auto* p) {
+               auto it  = p->lower_bound(key);
+               auto end = std::end(*p);
+               first_not_deleted_in_cache_(it, end);
+               if ((*it).first == key) {
+                  ++it;
+                  first_not_deleted_in_cache_(it, end);
+               }
+               result = (*it).first;
+            },
+            m_parent);
 
-   if (params.overwrite) {
-      // Force an overwrite
-      if (it->second.deleted && !params.mark_deleted) {
-         ++it->second.version;
+      auto it  = m_iterator_cache.lower_bound(key);
+      auto end = std::end(m_iterator_cache);
+      first_not_deleted_in_iterator_cache_(it, end);
+      if (it != end) {
+         auto pending = (*it).first;
+         if (pending == key) {
+            ++it;
+            first_not_deleted_in_iterator_cache_(it, end);
+            pending = shared_bytes::invalid();
+         }
+         if (it != end) {
+            pending = (*it).first;
+            if (!result || pending < result) {
+               result = pending;
+            }
+         }
       }
-      it->second.deleted = params.mark_deleted;
    }
 
-   if (params.prime_only || (it->second.next_in_cache && it->second.previous_in_cache)) {
-      // We only want to make sure the key exists in the iterator cache.
-      return;
-   }
-
-   auto [lower_bound, upper_bound] = bounds_(key);
-
-   if (lower_bound != shared_bytes::invalid()) {
-      auto lower_it                        = m_iterator_cache.try_emplace(lower_bound, iterator_state{});
-      lower_it.first->second.next_in_cache = true;
-      it->second.previous_in_cache         = true;
-   }
-
-   if (upper_bound != shared_bytes::invalid()) {
-      auto upper_it                            = m_iterator_cache.try_emplace(upper_bound, iterator_state{});
-      upper_it.first->second.previous_in_cache = true;
-      it->second.next_in_cache                 = true;
-   }
+   return result;
 }
 
 template <typename Parent>
@@ -469,7 +463,7 @@ shared_bytes session<Parent>::read(const shared_bytes& key) const {
 
    if (value != shared_bytes::invalid()) {
       m_cache.write(key, value);
-      update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
+      m_iterator_cache.emplace(key, iterator_state{});
    }
 
    return value;
@@ -480,7 +474,7 @@ void session<Parent>::write(const shared_bytes& key, const shared_bytes& value) 
    m_updated_keys.emplace(key);
    m_deleted_keys.erase(key);
    m_cache.write(key, value);
-   update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = true });
+   m_iterator_cache.emplace(key, iterator_state{}).first->second.deleted = false;
 }
 
 template <typename Parent>
@@ -498,7 +492,7 @@ bool session<Parent>::contains(const shared_bytes& key) const {
    return std::visit(
          [&](auto* p) {
             if (p && p->contains(key)) {
-               update_iterator_cache_(key, { .prime_only = true, .mark_deleted = false, .overwrite = false });
+               m_iterator_cache.emplace(key, iterator_state{});
                return true;
             }
             return false;
@@ -511,7 +505,10 @@ void session<Parent>::erase(const shared_bytes& key) {
    m_deleted_keys.emplace(key);
    m_updated_keys.erase(key);
    m_cache.erase(key);
-   update_iterator_cache_(key, { .prime_only = true, .mark_deleted = true, .overwrite = true });
+
+   auto it            = m_iterator_cache.emplace(key, iterator_state{}).first;
+   it->second.deleted = true;
+   ++it->second.version;
 }
 
 // Reads a batch of keys from the session.
@@ -580,194 +577,118 @@ void session<Parent>::read_from(const Other_data_store& ds, const Iterable& keys
 }
 
 template <typename Parent>
-bool session<Parent>::is_deleted(const shared_bytes& key) const {
-   if (m_deleted_keys.find(key) != std::end(m_deleted_keys)) {
-      return true;
-   } else if (m_updated_keys.find(key) != std::end(m_updated_keys)) {
-      return false;
-   }
-
-   return std::visit(
-         [&](auto* p) {
-            if (p) {
-               return p->is_deleted(key);
-            }
-            return false;
-         },
-         m_parent);
+template <typename It>
+It& session<Parent>::first_not_deleted_in_iterator_cache_(It& it, const It& end) const {
+   while (it != end && it->second.deleted) { ++it; }
+   return it;
 }
 
-// Factor for creating the initial session iterator.
-//
-// \tparam Predicate A functor used for getting the starting iterating in the cache list and the persistent data store.
-// \tparam Comparator A functor for determining if the "current" iterator points to the cache list or the persistent
-// data store.
 template <typename Parent>
-template <typename Iterator_type, typename Predicate, typename Comparator, typename Move>
-Iterator_type session<Parent>::make_iterator_(const Predicate& predicate, const Comparator& comparator,
-                                              const Move& move, bool prime_cache_only) const {
-   // This method is the workhorse of the iterator and iterator cache updating.
-   // It will search through all the session levels to find the best key that matches
-   // the requested iterator.  Once that key has been identified, it will force an update
-   // on the iterator cache by inserting that key and (possibly) the previous key from that key
-   // and the next key from that key.
-
-   auto deleted = [&](auto& key) { return is_deleted(key); };
-
-   auto find_first_not = [&](auto& session, auto& it, const auto& predicate) {
-      // Return the first key that passes the given predicate.
-      if (!(*it).first) {
-         return shared_bytes::invalid();
+template <typename It>
+It& session<Parent>::first_not_deleted_in_cache_(It& it, const It& end) const {
+   while (it != end) {
+      if (m_deleted_keys.find((*it).first) == std::end(m_deleted_keys)) {
+         break;
       }
-      auto beginning_key = (*it).first;
-      auto pending_key   = (*it).first;
-      auto end           = std::end(session);
-      while (true) {
-         if (!predicate(pending_key)) {
-            return pending_key;
-         }
-         move(it, end);
+      ++it;
+   }
+   return it;
+}
+
+template <typename Parent>
+typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key) const {
+   auto version = uint64_t{ 0 };
+   auto end     = std::end(m_iterator_cache);
+   auto it      = m_iterator_cache.find(key);
+   if (it == end) {
+      std::visit(
+            [&](auto* p) {
+               auto pit = p->find(key);
+               if (pit != std::end(*p)) {
+                  it = m_iterator_cache.emplace(key, iterator_state{}).first;
+               }
+            },
+            m_parent);
+   }
+
+   if (it != end) {
+      version = it->second.version;
+      if (it->second.deleted) {
+         it = std::move(end);
+      }
+   }
+   return { const_cast<session*>(this), std::move(it), version };
+}
+
+template <typename Parent>
+typename session<Parent>::iterator session<Parent>::begin() const {
+   auto end     = std::end(m_iterator_cache);
+   auto it      = std::begin(m_iterator_cache);
+   auto version = uint64_t{ 0 };
+
+   if (it != end && it->second.deleted && !it->second.next_in_cache) {
+      std::visit(
+            [&](auto* p) {
+               auto pit = std::begin(*p);
+               auto end = std::end(*p);
+               first_not_deleted_in_cache_(pit, end);
+               if (pit != end) {
+                  it = m_iterator_cache.emplace((*pit).first, iterator_state{}).first;
+               }
+            },
+            m_parent);
+   } else {
+      first_not_deleted_in_iterator_cache_(it, end);
+   }
+
+   if (it != end) {
+      version = it->second.version;
+   }
+   return { const_cast<session*>(this), std::move(it), version };
+}
+
+template <typename Parent>
+typename session<Parent>::iterator session<Parent>::end() const {
+   return { const_cast<session*>(this), std::end(m_iterator_cache), 0 };
+}
+
+template <typename Parent>
+typename session<Parent>::iterator session<Parent>::lower_bound(const shared_bytes& key) const {
+   auto version = uint64_t{ 0 };
+   auto end     = std::end(m_iterator_cache);
+   auto it      = m_iterator_cache.lower_bound(key);
+   first_not_deleted_in_iterator_cache_(it, end);
+   if (it == end || ((*it).first != key && !(*it).second.previous_in_cache)) {
+      // So either:
+      // 1.  We didn't find a key in the iterator cache (pending_key is invalid).
+      // 2.  The pending_key is not exactly the key and the found key in the iterator cache currently doesn't know what
+      // its previous key is.
+      auto pending_key = shared_bytes::invalid();
+      if (it != end) {
          pending_key = (*it).first;
-         if (pending_key < beginning_key) {
-            return shared_bytes::invalid();
-         }
       }
-   };
-
-   auto current_key = shared_bytes::invalid();
-
-   std::visit(
-         [&](auto* p) {
-            if (p) {
-               // Get the iterator from the parent
-               auto it     = predicate(*p);
-               current_key = (*it).first;
-               if (current_key) {
-                  if (m_deleted_keys.find(current_key) != std::end(m_deleted_keys)) {
-                     current_key = find_first_not(*p, it, deleted);
+      std::visit(
+            [&](auto* p) {
+               auto pit = p->lower_bound(key);
+               auto end = std::end(*p);
+               first_not_deleted_in_cache_(pit, end);
+               if (pit != end) {
+                  auto current_key = (*pit).first;
+                  if (current_key < pending_key) {
+                     it = m_iterator_cache.emplace(current_key, iterator_state{}).first;
                   }
                }
-            }
-         },
-         m_parent);
-
-   // Get the iterator from this
-   auto pending     = predicate(m_cache);
-   auto pending_key = shared_bytes::invalid();
-   if (pending != std::end(m_cache)) {
-      pending_key = (*pending).first;
+            },
+            m_parent);
    }
 
-   if (!current_key || (pending_key && comparator(pending_key, current_key))) {
-      current_key = pending_key;
-   }
-
-   auto it_cache_it = std::end(m_iterator_cache);
-   auto version     = uint64_t{ 0 };
-
-   if (current_key) {
-      // Update the iterator cache with this key.  It has to exist in the cache before
-      // we can get an iterator to it.  In some cases, we will only be inserting the new
-      // key and bypassing the search for its previous and next key.
-      update_iterator_cache_(current_key,
-                             { .prime_only = prime_cache_only, .mark_deleted = false, .overwrite = false });
-      it_cache_it = m_iterator_cache.find(current_key);
-      if (it_cache_it != std::end(m_iterator_cache)) {
-         if (it_cache_it->second.deleted) {
-            it_cache_it = std::end(m_iterator_cache);
-         } else {
-            version = it_cache_it->second.version;
-         }
+   if (it != end) {
+      version = it->second.version;
+      if (it->second.deleted) {
+         it = std::move(end);
       }
    }
-
-   return { const_cast<session*>(this), std::move(it_cache_it), version };
-}
-
-template <typename Parent>
-typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key) {
-   // This comparator just chooses the one that isn't invalid.
-   static auto comparator = [](const auto& left, const auto& right) {
-      if (!left && !right) {
-         return true;
-      }
-
-      if (!left) {
-         return false;
-      }
-
-      return true;
-   };
-
-   return make_iterator_<iterator>([&](auto& ds) { return ds.find(key); }, comparator,
-                                   [](auto& it, const auto& end) { it = end; });
-}
-
-template <typename Parent>
-typename session<Parent>::const_iterator session<Parent>::find(const shared_bytes& key) const {
-   // This comparator just chooses the one that isn't invalid.
-   static auto comparator = [](const auto& left, const auto& right) {
-      if (!left && !right) {
-         return true;
-      }
-
-      if (!left) {
-         return false;
-      }
-
-      return true;
-   };
-
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.find(key); }, comparator,
-                                         [](auto& it, const auto& end) { it = end; });
-}
-
-template <typename Parent>
-typename session<Parent>::iterator session<Parent>::begin() {
-   return make_iterator_<iterator>([&](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
-                                   [](auto& it, const auto& end) { ++it; });
-}
-
-template <typename Parent>
-typename session<Parent>::const_iterator session<Parent>::begin() const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return std::begin(ds); }, std::less<shared_bytes>{},
-                                         [](auto& it, const auto& end) { ++it; });
-}
-
-template <typename Parent>
-typename session<Parent>::iterator session<Parent>::end() {
-   return make_iterator_<iterator>([&](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
-                                   [](auto& it, const auto& end) { it = end; });
-}
-
-template <typename Parent>
-typename session<Parent>::const_iterator session<Parent>::end() const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return std::end(ds); }, std::greater<shared_bytes>{},
-                                         [](auto& it, const auto& end) { it = end; });
-}
-
-template <typename Parent>
-typename session<Parent>::iterator session<Parent>::lower_bound(const shared_bytes& key) {
-   return make_iterator_<iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::less<shared_bytes>{},
-                                   [](auto& it, const auto& end) { ++it; });
-}
-
-template <typename Parent>
-typename session<Parent>::const_iterator session<Parent>::lower_bound(const shared_bytes& key) const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.lower_bound(key); }, std::less<shared_bytes>{},
-                                         [](auto& it, const auto& end) { ++it; });
-}
-
-template <typename Parent>
-typename session<Parent>::iterator session<Parent>::upper_bound(const shared_bytes& key) {
-   return make_iterator_<iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{},
-                                   [](auto& it, const auto& end) { ++it; });
-}
-
-template <typename Parent>
-typename session<Parent>::const_iterator session<Parent>::upper_bound(const shared_bytes& key) const {
-   return make_iterator_<const_iterator>([&](auto& ds) { return ds.upper_bound(key); }, std::less<shared_bytes>{},
-                                         [](auto& it, const auto& end) { ++it; });
+   return { const_cast<session*>(this), std::move(it), version };
 }
 
 template <typename Parent>
@@ -782,13 +703,13 @@ session<Parent>::session_iterator<Iterator_traits>::session_iterator(
 // \tparam Comparator A functor used to determine what the current iterator is.
 template <typename Parent>
 template <typename Iterator_traits>
-template <typename Test_predicate, typename Move_predicate>
-void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predicate& test, const Move_predicate& move) {
+template <typename Test_predicate, typename Move_predicate, typename Cache_update>
+void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predicate& test, const Move_predicate& move,
+                                                               Cache_update& update_cache) {
    do {
       if (m_active_iterator != std::end(m_active_session->m_iterator_cache) && !test(m_active_iterator)) {
          // Force an update to see if we pull in a next or previous key from the current key.
-         m_active_session->update_iterator_cache_(m_active_iterator->first,
-                                                  { .prime_only = false, .mark_deleted = false, .overwrite = false });
+         update_cache(m_active_iterator);
          if (!test(m_active_iterator)) {
             // The test still fails.  We are at the end.
             m_active_iterator = std::end(m_active_session->m_iterator_cache);
@@ -807,13 +728,21 @@ void session<Parent>::session_iterator<Iterator_traits>::move_(const Test_predic
 template <typename Parent>
 template <typename Iterator_traits>
 void session<Parent>::session_iterator<Iterator_traits>::move_next_() {
-   auto move = [](auto& it) { ++it; };
-   auto test = [](auto& it) { return it->second.next_in_cache; };
+   auto move         = [](auto& it) { ++it; };
+   auto test         = [](auto& it) { return it->second.next_in_cache; };
+   auto update_cache = [&](auto& it) mutable {
+      auto key = (*it).first;
+      if (auto next_key = m_active_session->next_key_(key)) {
+         auto nit                            = m_active_session->m_iterator_cache.emplace(next_key, iterator_state{});
+         nit.first->second.previous_in_cache = true;
+         m_active_session->m_iterator_cache.find(key)->second.next_in_cache = true;
+      }
+   };
 
    if (m_active_iterator == std::end(m_active_session->m_iterator_cache)) {
       m_active_iterator = std::begin(m_active_session->m_iterator_cache);
    } else {
-      move_(test, move);
+      move_(test, move, update_cache);
    }
 }
 
@@ -827,11 +756,19 @@ void session<Parent>::session_iterator<Iterator_traits>::move_previous_() {
       }
       return true;
    };
+   auto update_cache = [&](auto& it) mutable {
+      auto key = (*it).first;
+      if (auto previous_key = m_active_session->previous_key_(key)) {
+         auto pit                        = m_active_session->m_iterator_cache.emplace(previous_key, iterator_state{});
+         pit.first->second.next_in_cache = true;
+         m_active_session->m_iterator_cache.find(key)->second.previous_in_cache = true;
+      }
+   };
 
    if (m_active_iterator == std::begin(m_active_session->m_iterator_cache)) {
       m_active_iterator = std::end(m_active_session->m_iterator_cache);
    } else {
-      move_(test, move);
+      move_(test, move, update_cache);
    }
 }
 

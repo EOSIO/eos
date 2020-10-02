@@ -302,10 +302,6 @@ void verify_iterators(T& ds, string_t) {
    BOOST_REQUIRE(std::begin(ds) != std::end(ds));
    BOOST_REQUIRE(*ds.lower_bound(eosio::session::shared_bytes("fffff", 5)) ==
                  std::pair(eosio::session::shared_bytes("fffff", 5), eosio::session::shared_bytes("5", 1)));
-   BOOST_REQUIRE(
-         *ds.upper_bound(eosio::session::shared_bytes("fffff", 5)) ==
-         std::pair(eosio::session::shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54),
-                   eosio::session::shared_bytes("ffffffffffffffffffffffffffffffffffffffffffffffffffffff", 54)));
 }
 
 template <typename T>
@@ -328,11 +324,6 @@ void verify_iterators(T& ds, int_t) {
    auto result_key   = int32_t{ 14 };
    auto result_value = int32_t{ 9 };
    BOOST_REQUIRE(*ds.lower_bound(eosio::session::shared_bytes(&search_key, 1)) ==
-                 std::pair(eosio::session::shared_bytes(&result_key, 1),
-                           eosio::session::shared_bytes(&result_value, 1)));
-   result_key   = int32_t{ 15 };
-   result_value = int32_t{ 8 };
-   BOOST_REQUIRE(*ds.upper_bound(eosio::session::shared_bytes(&search_key, 1)) ==
                  std::pair(eosio::session::shared_bytes(&result_key, 1),
                            eosio::session::shared_bytes(&result_value, 1)));
 }

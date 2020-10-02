@@ -108,16 +108,10 @@ class session<rocksdb_t> {
    template <typename Other_data_store, typename Iterable>
    void read_from(const Other_data_store& ds, const Iterable& keys);
 
-   iterator       find(const shared_bytes& key);
-   const_iterator find(const shared_bytes& key) const;
-   iterator       begin();
-   const_iterator begin() const;
-   iterator       end();
-   const_iterator end() const;
-   iterator       lower_bound(const shared_bytes& key);
-   const_iterator lower_bound(const shared_bytes& key) const;
-   iterator       upper_bound(const shared_bytes& key);
-   const_iterator upper_bound(const shared_bytes& key) const;
+   iterator find(const shared_bytes& key) const;
+   iterator begin() const;
+   iterator end() const;
+   iterator lower_bound(const shared_bytes& key) const;
 
    void undo();
    void commit();
@@ -138,10 +132,7 @@ class session<rocksdb_t> {
    read_(const Iterable& keys) const;
 
    template <typename Predicate>
-   iterator make_iterator_(const Predicate& setup);
-
-   template <typename Predicate>
-   const_iterator make_iterator_(const Predicate& setup) const;
+   iterator make_iterator_(const Predicate& setup) const;
 
    rocksdb::ColumnFamilyHandle* column_family_() const;
 
@@ -312,28 +303,7 @@ using rocks_iterator_alias = typename session<rocksdb_t>::template rocks_iterato
 // \tparam Predicate A function used for preparing the initial iterator.  It has the signature of
 // void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename Predicate>
-typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) {
-   auto rit        = std::unique_ptr<rocksdb::Iterator>{};
-   bool from_cache = true;
-   if (!m_available_iterators.empty()) {
-      rit = std::unique_ptr<rocksdb::Iterator>{ m_available_iterators.back().release() };
-      m_available_iterators.pop_back();
-      rit->Refresh();
-   } else {
-      rit        = std::unique_ptr<rocksdb::Iterator>{ m_db->NewIterator(m_read_options, column_family_()) };
-      from_cache = false;
-   }
-   setup(*rit);
-
-   return { *this, std::move(rit), from_cache };
-}
-
-// Instantiates an iterator for iterating over the rocksdb data store.
-//
-// \tparam Predicate A function used for preparing the initial iterator.  It has the signature of
-// void(std::shared_ptr<rocksdb::Iterator>&)
-template <typename Predicate>
-typename session<rocksdb_t>::const_iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
+typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
    auto rit        = std::unique_ptr<rocksdb::Iterator>{};
    bool from_cache = true;
    if (!m_available_iterators.empty()) {
@@ -349,7 +319,7 @@ typename session<rocksdb_t>::const_iterator session<rocksdb_t>::make_iterator_(c
    return { *const_cast<session<rocksdb_t>*>(this), std::move(rit), from_cache };
 }
 
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shared_bytes& key) {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shared_bytes& key) const {
    auto predicate = [&](auto& it) {
       auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
       it.Seek(key_slice);
@@ -364,30 +334,11 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shar
    return make_iterator_(predicate);
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::find(const shared_bytes& key) const {
-   auto predicate = [&](auto& it) {
-      auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
-      it.Seek(key_slice);
-      if (it.Valid() && it.key().compare(key_slice) != 0) {
-         // Get an invalid iterator
-         it.SeekToLast();
-         if (it.Valid()) {
-            it.Next();
-         }
-      }
-   };
-   return make_iterator_(predicate);
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() const {
    return make_iterator_([](auto& it) { it.SeekToFirst(); });
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::begin() const {
-   return make_iterator_([](auto& it) { it.SeekToFirst(); });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() const {
    return make_iterator_([](auto& it) {
       it.SeekToLast();
       if (it.Valid())
@@ -395,39 +346,9 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() {
    });
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::end() const {
-   return make_iterator_([](auto& it) {
-      it.SeekToLast();
-      if (it.Valid())
-         it.Next();
-   });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
    return make_iterator_([&](auto& it) {
       it.Seek(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-   });
-}
-
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
-   return make_iterator_([&](auto& it) {
-      it.Seek(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-   });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::upper_bound(const shared_bytes& key) {
-   return make_iterator_([&](auto& it) {
-      it.SeekForPrev(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-      if (it.Valid())
-         it.Next();
-   });
-}
-
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::upper_bound(const shared_bytes& key) const {
-   return make_iterator_([&](auto& it) {
-      it.SeekForPrev(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-      if (it.Valid())
-         it.Next();
    });
 }
 

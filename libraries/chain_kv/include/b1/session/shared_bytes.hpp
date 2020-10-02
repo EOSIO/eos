@@ -84,7 +84,7 @@ inline shared_bytes::shared_bytes(size_t size)
          }
 
          auto actual_size = ((size / 8) + 1) * 8;
-         auto result = std::shared_ptr<char>{ new char[actual_size], std::default_delete<char[]>() };
+         auto result      = std::shared_ptr<char>{ new char[actual_size], std::default_delete<char[]>() };
          std::memset(result.get(), 0, actual_size);
          return result;
       }() },
@@ -120,7 +120,7 @@ inline char shared_bytes::operator[](size_t index) const {
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
-     return true;
+      return true;
    }
 
    return size() == other.size() && std::memcmp(data(), other.data(), size()) == 0;
@@ -130,7 +130,7 @@ inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !
 
 inline bool shared_bytes::operator<(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
-     return false;
+      return false;
    }
 
    int32_t cmp = std::memcmp(data(), other.data(), std::min(size(), other.size()));
@@ -139,7 +139,7 @@ inline bool shared_bytes::operator<(const shared_bytes& other) const {
 
 inline bool shared_bytes::operator>(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
-     return false;
+      return false;
    }
 
    int32_t cmp = std::memcmp(data(), other.data(), std::min(size(), other.size()));

@@ -97,16 +97,10 @@ class cache {
    template <typename Data_store, typename Iterable>
    void read_from(const Data_store& ds, const Iterable& keys);
 
-   iterator       find(const shared_bytes& key);
    const_iterator find(const shared_bytes& key) const;
-   iterator       begin();
    const_iterator begin() const;
-   iterator       end();
    const_iterator end() const;
-   iterator       lower_bound(const shared_bytes& key);
    const_iterator lower_bound(const shared_bytes& key) const;
-   iterator       upper_bound(const shared_bytes& key);
-   const_iterator upper_bound(const shared_bytes& key) const;
 
  private:
    template <typename On_cache_hit, typename On_cache_miss>
@@ -270,38 +264,20 @@ void cache::read_from(const Data_store& ds, const Iterable& keys) {
    return;
 }
 
-inline typename cache::iterator cache::find(const shared_bytes& key) { return { m_cache, m_cache.find(key) }; }
-
 inline typename cache::const_iterator cache::find(const shared_bytes& key) const {
    return { const_cast<cache_type&>(m_cache), m_cache.find(key) };
 }
-
-inline typename cache::iterator cache::begin() { return { m_cache, std::begin(m_cache) }; }
 
 inline typename cache::const_iterator cache::begin() const {
    return { const_cast<cache_type&>(m_cache), std::begin(m_cache) };
 }
 
-inline typename cache::iterator cache::end() { return { m_cache, std::end(m_cache) }; }
-
 inline typename cache::const_iterator cache::end() const {
    return { const_cast<cache_type&>(m_cache), std::end(m_cache) };
 }
 
-inline typename cache::iterator cache::lower_bound(const shared_bytes& key) {
-   return { m_cache, m_cache.lower_bound(key) };
-}
-
 inline typename cache::const_iterator cache::lower_bound(const shared_bytes& key) const {
    return { const_cast<cache_type&>(m_cache), m_cache.lower_bound(key) };
-}
-
-inline typename cache::iterator cache::upper_bound(const shared_bytes& key) {
-   return { m_cache, m_cache.upper_bound(key) };
-}
-
-inline typename cache::const_iterator cache::upper_bound(const shared_bytes& key) const {
-   return { const_cast<cache_type&>(m_cache), m_cache.upper_bound(key) };
 }
 
 template <typename Iterator_type, typename Iterator_traits>

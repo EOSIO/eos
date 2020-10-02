@@ -393,13 +393,77 @@ inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name) {
    rocksdb::DB* cache_ptr{ nullptr };
    auto         cache = std::shared_ptr<rocksdb::DB>{};
 
-   auto options                                 = rocksdb::Options{};
-   options.create_if_missing                    = true;
-   options.level_compaction_dynamic_level_bytes = true;
-   options.bytes_per_sync                       = 1048576;
-   options.OptimizeLevelStyleCompaction(256ull << 20);
+  auto options                                 = rocksdb::Options{};
+  options.create_if_missing = true; // Creates a database if it is missing
+  options.level_compaction_dynamic_level_bytes = true;
+  options.bytes_per_sync = 1048576; // used to control the write rate of flushes and compactions.
+
+  // By default, RocksDB uses only one background thread
+  // for flush and compaction.
+  // Good value for `total_threads` is the number of cores
+  options.IncreaseParallelism(7);
+
+  options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
+
+  // Number of open files that can be used by the DB.  
+  // Setting it to -1 means files opened are always kept open.
+  options.max_open_files = -1;
+
+  // Use this option to increase the number of threads
+  // used to open the files.
+  options.max_file_opening_threads = 7; // Default should be the # of Cores
+
+  // Write Buffer Size - Sets the size of a single
+  // memtable. Once memtable exceeds this size, it is
+  // marked immutable and a new one is created.
+  // Default should be 128MB
+  options.write_buffer_size = 128 * 1024 * 1024;
+  options.max_write_buffer_number = 10; // maximum number of memtables, both active and immutable
+  options.min_write_buffer_number_to_merge = 2; // minimum number of memtables to be merged before flushing to storage
+
+  // Once level 0 reaches this number of files, L0->L1 compaction is triggered.
+  options.level0_file_num_compaction_trigger = 2;
+
+  // Size of L0 = write_buffer_size * min_write_buffer_number_to_merge * level0_file_num_compaction_trigger
+  // therefore: L0 in stable state = 128MB * 2 * 2 = 512MB
+  // max_bytes_for_level_basei is total size of level 1.
+  // For optimal performance make this equal to L0 hence 512MB
+  options.max_bytes_for_level_base = 512 * 1024 * 1024; 
+
+  // Files in level 1 will have target_file_size_base
+  // bytes. It’s recommended setting target_file_size_base
+  // to be max_bytes_for_level_base / 10,
+  // so that there are 10 files in level 1.i.e. 512MB/10
+  options.target_file_size_base = (512 * 1024 * 1024) / 10;
+
+  // This value represents the maximum number of threads
+  // that will concurrently perform a compaction job by
+  // breaking it into multiple,
+  // smaller ones that are run simultaneously.
+  options.max_subcompactions = 7;	// Default should be the # of CPUs
+
+  // Full and partitioned filters in the block-based table
+  // use an improved Bloom filter implementation, enabled
+  // with format_version 5 (or above) because previous
+  // releases cannot read this filter. This replacement is
+  // faster and more accurate, especially for high bits
+  // per key or millions of keys in a single (full) filter.
+  rocksdb::BlockBasedTableOptions table_options;
+  table_options.format_version               = 5;
+  table_options.index_block_restart_interval = 16;
+
+  // Sets the bloom filter - Given an arbitrary key, 
+  // this bit array may be used to determine if the key 
+  // may exist or definitely does not exist in the key set.
+  table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
+  table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
+
+  // Incorporates the Table options into options
+  options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+
 
    auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
+
    cache.reset(cache_ptr);
 
    return cache;
@@ -411,7 +475,7 @@ void benchmark(const cmd_args& args) {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
 
-      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), 1024);
+      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), 5000);
       auto session = eosio::session::session<decltype(rocks_session)>{rocks_session};
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<decltype(session), mock_resource_manager>(session, receiver, resource_manager, limits); 
