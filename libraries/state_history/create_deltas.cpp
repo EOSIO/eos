@@ -134,9 +134,66 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    return deltas;
 }
 
-std::vector<table_delta> create_deltas(const chain::rocks_db_type& db, bool full_snapshot) {
+std::vector<table_delta> create_deltas(const session::undo_stack<chain::rocks_db_type>& undo_stack, bool full_snapshot) {
    std::vector<table_delta> deltas;
 
+   if (undo_stack.empty()) {
+      return deltas;
+   }
+/*
+   auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
+   auto pack_contract_row = [&](auto& row) {
+      return fc::raw::pack(make_history_context_wrapper(db, get_table_id(row.t_id._id), row));
+   };
+
+      process_table("contract_table", db.get_index<chain::table_id_multi_index>(), pack_row);
+      three uint64 
+      code:  
+      scope: 
+      table: 
+
+
+      process_table("contract_row", db.get_index<chain::key_value_index>(), pack_contract_row);
+      process_table("contract_index64", db.get_index<chain::index64_index>(), pack_contract_row);
+      process_table("contract_index128", db.get_index<chain::index128_index>(), pack_contract_row);
+      process_table("contract_index256", db.get_index<chain::index256_index>(), pack_contract_row);
+      process_table("contract_index_double", db.get_index<chain::index_double_index>(), pack_contract_row);
+      process_table("contract_index_long_double", db.get_index<chain::index_long_double_index>(), pack_contract_row);
+      process_table("key_value", db.get_index<chain::kv_index>(), pack_row);
+
+   auto process_table = [&](auto* name, auto& pack_row) {   
+      if (full_snapshot) {
+
+            if (index.indices().empty())
+            return;
+         deltas.push_back({});
+         auto& delta = deltas.back();
+         delta.name  = name;
+         for (auto& row : index.indices())
+            delta.rows.obj.emplace_back(true, pack_row(row));
+      } else {
+         auto last = 
+
+         auto undo = index.last_undo_session();
+         if (undo.old_values.empty() && undo.new_values.empty() && undo.removed_values.empty())
+            return;
+         deltas.push_back({});
+         auto& delta = deltas.back();
+         delta.name  = name;
+         for (auto& old : undo.old_values) {
+            auto& row = index.get(old.id);
+            if (include_delta(old, row))
+               delta.rows.obj.emplace_back(true, pack_row(row));
+         }
+         for (auto& old : undo.removed_values)
+            delta.rows.obj.emplace_back(false, pack_row(old));
+         for (auto& row : undo.new_values) {
+            delta.rows.obj.emplace_back(true, pack_row(row));
+         }
+         
+      }
+   };
+      
    //    b1::chain_kv::undo_stack    undo_stack_obj(db);
 
    //    const auto& updated_keys = undo_stack_obj.updated_keys();
@@ -161,6 +218,7 @@ std::vector<table_delta> create_deltas(const chain::rocks_db_type& db, bool full
    // get undo session
    // for full_snapshot, loop over all undo
    // otherwise, loop over the last undo
+
    return deltas;
 }
 

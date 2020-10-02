@@ -7,7 +7,7 @@ namespace eosio {
 namespace state_history {
 
 std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_snapshot);
-std::vector<table_delta> create_deltas(const chain::rocks_db_type& db, bool full_snapshot);
+std::vector<table_delta> create_deltas(const session::undo_stack<chain::rocks_db_type>& undo_stack, bool full_snapshot);
 
 } // namespace state_history
 } // namespace eosio

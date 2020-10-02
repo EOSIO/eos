@@ -218,9 +218,9 @@ class state_history_chain_state_log : public state_history_log {
 
 template <>
 inline void state_history_traces_log::store(const chain::combined_database& db, const chain::block_state_ptr& block_state) {
-   store(db.chainbase_db(), block_state);
-   if (db.kv_db()) {
-      store(*db.kv_db(), block_state);
+   store(db.get_chainbase_db(), block_state);
+   if (db.get_kv_undo_stack()) {
+      store(*db.get_kv_undo_stack(), block_state);
    }
 }
 
@@ -238,9 +238,9 @@ inline void state_history_traces_log::store(const DB& db, const chain::block_sta
 template <>
 inline void state_history_chain_state_log::store(const chain::combined_database& db,
                                           const chain::block_state_ptr&   block_state) {
-   store(db.chainbase_db(), block_state);
-   if (db.kv_db()) {
-      store(*db.kv_db(), block_state);
+   store(db.get_chainbase_db(), block_state);
+   if (db.get_kv_undo_stack()) {
+      store(*db.get_kv_undo_stack(), block_state);
    }
 }
 
