@@ -488,12 +488,10 @@ namespace eosio { namespace chain {
                                       move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
 
                         // Pack payer and actual key value
-                        bytes final_kv_value;
-                        build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
+                        auto final_kv_value = build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer);
 
                         key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
-                                                eosio::session::shared_bytes(final_kv_value.data(),
-                                                                                  final_kv_value.size()));                                                                                
+                                                std::move(final_kv_value));                                                                                
                         db.remove(*move_to_rocks);
                      }
                   }

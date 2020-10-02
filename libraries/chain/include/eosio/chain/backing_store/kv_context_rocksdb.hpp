@@ -42,15 +42,15 @@ namespace eosio { namespace chain {
    // Need to store payer so that this account is properly
    // credited when storage is removed or changed
    // to another payer
-   inline static void build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
+   inline static eosio::session::shared_bytes build_value(const char* value, uint32_t value_size, const account_name& payer) {
       const uint32_t final_value_size = kv_payer_size + value_size;
-      final_kv_value.reserve(final_value_size);
+      auto result = eosio::session::shared_bytes(final_value_size);
 
       char buf[kv_payer_size];
       memcpy(buf, &payer, kv_payer_size);
-      final_kv_value.insert(final_kv_value.end(), std::begin(buf), std::end(buf));
-
-      final_kv_value.insert(final_kv_value.end(), value, value + value_size); 
+      std::memcpy(result.data(), buf, kv_payer_size);
+      std::memcpy(result.data() + kv_payer_size, value, value_size);
+      return result;
    }
 
 
@@ -379,9 +379,7 @@ namespace eosio { namespace chain {
                   old_value_size = actual_value_size(old_value.size());
                }
 
-               bytes final_value;
-               build_value(value, value_size, payer,final_value);
-               auto new_value = eosio::session::shared_bytes(final_value.data(), final_value.size());
+               auto new_value = build_value(value, value_size, payer);
                session->write(composite_key, new_value);
             }
             FC_LOG_AND_RETHROW()
