@@ -118,6 +118,8 @@ namespace eosio { namespace chain {
                               eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
                               uint32_t& snapshot_head_block, const eosio::chain::chain_id_type& chain_id);
 
+      const chainbase::database& chainbase_db() const;
+      const std::unique_ptr<rocks_db_type>& kv_db() const;
     private:
       void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;
       void read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot);

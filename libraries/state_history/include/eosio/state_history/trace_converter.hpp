@@ -179,9 +179,9 @@ struct trace_pruner {
    }
 };
 
-template <typename OSTREAM>
-void pack(OSTREAM&& strm, const chainbase::database& db, bool trace_debug_mode,
-          const std::vector<augmented_transaction_trace>& traces, compression_type compression) {
+template <typename OSTREAM, typename DB>
+void pack(OSTREAM&& strm, const DB& db, bool trace_debug_mode, const std::vector<augmented_transaction_trace>& traces,
+          compression_type compression) {
 
    // In version 1 of SHiP traces log disk format, it log entry consists of 3 parts.
    //  1. a zlib compressed unprunable section contains the serialization of the vector of traces excluding

@@ -191,7 +191,8 @@ namespace eosio { namespace chain {
 
          const chainbase::database& db()const;
          const chainbase::database& reversible_db() const;
-
+         const chain::combined_database& combined_db() const;  
+         
          const fork_database& fork_db()const;
 
          const account_object&                 get_account( account_name n )const;

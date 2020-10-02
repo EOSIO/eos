@@ -2340,6 +2340,7 @@ chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
+const eosio::chain::combined_database& controller::combined_db() const {return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
