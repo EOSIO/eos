@@ -128,7 +128,7 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_status() override {
          if (kv_current == kv_end) 
             return kv_it_stat::iterator_end; 
-         else if ((*kv_current).first < kv_prefix) 
+         else if (kv_current.key() < kv_prefix) 
             return kv_it_stat::iterator_end; 
          else if (kv_current.deleted())
             return kv_it_stat::iterator_erased;
@@ -158,7 +158,7 @@ namespace eosio { namespace chain {
                   return -1;
                }
 
-               auto result = compare_bytes((*kv_current).first, (*r.kv_current).first);
+               auto result = compare_bytes(kv_current.key(), r.kv_current.key());
                if (result) {
                  return result;
                }
@@ -175,7 +175,7 @@ namespace eosio { namespace chain {
             try {
                auto current_key = eosio::session::shared_bytes::invalid();
                if (kv_it_status() == kv_it_stat::iterator_ok) {
-                  current_key = (*kv_current).first;
+                  current_key = kv_current.key();
                } else {
                   return 1;
                }
@@ -255,18 +255,17 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
 
-         auto kv = std::pair{ eosio::session::shared_bytes::invalid(), eosio::session::shared_bytes::invalid() };
+         auto key = eosio::session::shared_bytes::invalid();
          try {
             try {
                if (kv_it_status() == kv_it_stat::iterator_ok) {
-                  kv = *kv_current;
+                  key = kv_current.key();
                }
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         auto& key = kv.first;
          if (key) {
             actual_size = actual_key_size(key.size());
             if (offset < actual_size) {

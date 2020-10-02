@@ -46,7 +46,9 @@ class shared_bytes {
    shared_bytes operator++(int);
 
    bool operator<(const shared_bytes& other) const;
+   bool operator<=(const shared_bytes& other) const;
    bool operator>(const shared_bytes& other) const;
+   bool operator>=(const shared_bytes& other) const;
 
    iterator begin() const;
    iterator end() const;
@@ -137,6 +139,15 @@ inline bool shared_bytes::operator<(const shared_bytes& other) const {
    return (cmp == 0 && size() < other.size()) || cmp < 0;
 }
 
+inline bool shared_bytes::operator<=(const shared_bytes& other) const {
+   if (m_data.get() == other.m_data.get()) {
+      return true;
+   }
+
+   int32_t cmp = std::memcmp(data(), other.data(), std::min(size(), other.size()));
+   return cmp <= 0 && size() <= other.size();
+}
+
 inline bool shared_bytes::operator>(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return false;
@@ -144,6 +155,15 @@ inline bool shared_bytes::operator>(const shared_bytes& other) const {
 
    int32_t cmp = std::memcmp(data(), other.data(), std::min(size(), other.size()));
    return (cmp == 0 && size() > other.size()) || cmp > 0;
+}
+
+inline bool shared_bytes::operator>=(const shared_bytes& other) const {
+   if (m_data.get() == other.m_data.get()) {
+      return true;
+   }
+
+   int32_t cmp = std::memcmp(data(), other.data(), std::min(size(), other.size()));
+   return cmp >= 0 && size() >= other.size();
 }
 
 inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid(); }

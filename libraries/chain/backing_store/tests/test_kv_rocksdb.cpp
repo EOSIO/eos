@@ -51,7 +51,7 @@ struct kv_rocksdb_fixture {
          bool operator!=(const iterator& other) const { return !(*this == other); }
 
          bool deleted() const { return m_fixture->mock_is_erased(); }
-
+         eosio::session::shared_bytes key() { return m_fixture->mock_get_kv().first; }
        private:
          kv_rocksdb_fixture* m_fixture;
          bool                m_is_end{ false };

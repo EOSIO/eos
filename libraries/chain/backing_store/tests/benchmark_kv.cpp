@@ -475,7 +475,7 @@ void benchmark(const cmd_args& args) {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
 
-      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), 5000);
+      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), 1024);
       auto session = eosio::session::session<decltype(rocks_session)>{rocks_session};
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<decltype(session), mock_resource_manager>(session, receiver, resource_manager, limits); 

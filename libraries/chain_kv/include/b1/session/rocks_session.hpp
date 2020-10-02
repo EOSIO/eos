@@ -52,6 +52,8 @@ class session<rocksdb_t> {
       bool            operator==(const rocks_iterator& other) const;
       bool            operator!=(const rocks_iterator& other) const;
 
+      shared_bytes key() const;
+
     private:
       session<rocksdb_t>*                m_session{ nullptr };
       std::unique_ptr<rocksdb::Iterator> m_iterator;
@@ -66,15 +68,6 @@ class session<rocksdb_t> {
       using iterator_category = std::bidirectional_iterator_tag;
    };
    using iterator = rocks_iterator<iterator_traits>;
-
-   struct const_iterator_traits {
-      using difference_type   = std::ptrdiff_t;
-      using value_type        = const std::pair<shared_bytes, shared_bytes>;
-      using pointer           = value_type*;
-      using reference         = value_type&;
-      using iterator_category = std::bidirectional_iterator_tag;
-   };
-   using const_iterator = rocks_iterator<const_iterator_traits>;
 
  public:
    session()               = default;
@@ -473,6 +466,16 @@ rocks_iterator_alias<Iterator_traits>& session<rocksdb_t>::rocks_iterator<Iterat
       }
    }
    return *this;
+}
+
+template <typename Iterator_traits>
+shared_bytes session<rocksdb_t>::rocks_iterator<Iterator_traits>::key() const {
+   if (!m_iterator->Valid()) {
+      return shared_bytes::invalid();
+   }
+
+   auto key_slice = m_iterator->key();
+   return shared_bytes(key_slice.data(), key_slice.size());
 }
 
 template <typename Iterator_traits>
