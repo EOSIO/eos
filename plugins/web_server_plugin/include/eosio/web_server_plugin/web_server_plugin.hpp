@@ -15,7 +15,7 @@ namespace eosio {
       using Ihttps_server_ptr = std::shared_ptr<web::Ihttps_server>;
 
       web_server_plugin();
-      web_server_plugin(web::Ihttps_server_factory*);
+      web_server_plugin(web::Ihttp_server_factory*);
       virtual ~web_server_plugin();
 
       APPBASE_PLUGIN_REQUIRES()

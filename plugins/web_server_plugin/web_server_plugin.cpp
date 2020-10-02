@@ -14,7 +14,7 @@ namespace eosio{
 
 class web_server_plugin_impl{
 public:
-   std::unique_ptr<Ihttps_server_factory> server_factory;
+   std::unique_ptr<Ihttp_server_factory> server_factory;
 
    struct server_address_cmp{
       size_t operator() (const server_address& lhs, const server_address& rhs) const {
@@ -30,8 +30,8 @@ public:
       }
    };
 
-   web_server_plugin_impl() : server_factory(new beast_factory{}) {}
-   web_server_plugin_impl(Ihttps_server_factory* factory) : server_factory(factory) {}
+   web_server_plugin_impl() : server_factory(new beastimpl::web_server_factory{}) {}
+   web_server_plugin_impl(Ihttp_server_factory* factory) : server_factory(factory) {}
    ~web_server_plugin_impl(){}
 
    Ihttp_server_ptr get_server(server_address&& address, asio::io_context* context){
@@ -45,7 +45,7 @@ public:
       Ihttp_server_ptr p_server( server_factory->create_server(server_address{address}, context) );
       auto pair = make_pair(forward<server_address>(address), p_server);
       server_list.emplace( move(pair) );
-
+      
       return p_server;
    }
 
@@ -56,7 +56,7 @@ private:
 web_server_plugin::web_server_plugin() 
    : impl(new web_server_plugin_impl{} ){
 }
-web_server_plugin::web_server_plugin(Ihttps_server_factory* factory)
+web_server_plugin::web_server_plugin(Ihttp_server_factory* factory)
    : impl(new web_server_plugin_impl(factory) ){
 }
 web_server_plugin::~web_server_plugin(){

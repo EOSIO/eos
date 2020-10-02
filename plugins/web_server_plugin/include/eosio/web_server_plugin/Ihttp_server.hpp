@@ -1,16 +1,17 @@
 #pragma once
 
-#include <functional>
-#include <string>
-#include <string_view>
+#include <string>                      /* string */
+#include <string_view>                 /* string_view */
+#include <type_traits>                 /* underlying_type */
 
-#include <boost/asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>   /* io_context */
 
-#include <fc/io/datastream.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <fc/io/datastream.hpp>        /* fc::datastream */
+#include <fc/io/raw.hpp>               /* fc::raw::pack, unpack */
 
-namespace eosio{
-namespace web{
+#include <eosio/chain/exceptions.hpp>  /* uri_parse_exception, etc. */
+
+namespace eosio::web{
 
 enum class schema_type : uint8_t {
    NOT_SET,
@@ -70,6 +71,8 @@ struct server_address{
    schema_type schema;
    std::string host;
    port_type   port;
+
+   std::string as_string() const;
 };
 
 template <typename DataStream>
@@ -81,6 +84,14 @@ inline DataStream& operator << (DataStream& ds, const server_address& address){
    fc::raw::pack(ds, address.port);
 
    return ds;
+}
+
+std::string server_address::as_string() const{
+   std::vector<char> buffer(fc::raw::pack_size(*this));
+   fc::datastream<char*> ds(buffer.data(), buffer.size());
+   ds << *this;
+
+   return std::string(buffer.data(), ds.tellp());
 }
 
 struct Ihttp_server{
@@ -101,9 +112,8 @@ struct Ihttp_server{
    
    /**
     * @brief method for adding server API
-    * @param path http path. server first checks for exact match and if not found
-    * it uses string::starts_with so if you specify partial path
-    * it will be called for all requests where path starts from this string
+    * @param path http path.
+    * @param callback function to be called to fill out server's response
     */
    virtual void add_handler(std::string_view path, server_handler callback) = 0;
    /**
@@ -112,7 +122,7 @@ struct Ihttp_server{
    virtual void run() = 0;
 };
 
-struct Ihttps_server : Ihttp_server{
+struct Ihttps_server : virtual Ihttp_server{
    virtual ~Ihttps_server(){};
 
    /**
@@ -124,15 +134,25 @@ struct Ihttps_server : Ihttp_server{
    virtual void init_ssl(std::string_view cert, std::string_view pk) = 0;
 };
 
-struct Ihttps_server_factory{
+struct Ihttp_server_factory{
    
-   virtual ~Ihttps_server_factory(){};
+   virtual ~Ihttp_server_factory(){};
    /**
     * @brief creates beast_server instance and initializes it.
+    * returns Ihttp_server* or Ihttps_server* depending on address.schema
     * @param address new server address
     * @param context execution context
     */
-   virtual Ihttps_server* create_server(server_address&& address, boost::asio::io_context* context) = 0;
+   virtual Ihttp_server* create_server(server_address&& address, boost::asio::io_context* context) = 0;
 };
 
-}}
+}
+
+namespace fc{
+   inline void to_variant( const eosio::web::schema_type& schema, fc::variant& var ){
+      var = variant(static_cast<std::underlying_type_t<eosio::web::schema_type>>(schema));
+   }
+   inline void from_variant( const fc::variant& var,  eosio::web::schema_type& schema ){
+      schema = static_cast<eosio::web::schema_type>(var.as_uint64());
+   }
+}
