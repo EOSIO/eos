@@ -1,9 +1,8 @@
-#ifndef __CONNECT_MANAGER_CONFIG_H 
-#define __CONNECT_MANAGER_CONFIG_H 
+#pragma once
 
 #define CONNECT_MGR_THREAD_SAFE
-#define LOAD_BALANCE
-#define LOAD_BALANCE_RANDOM
+#define CONNECT_MGR_LOAD_BALANCE
+#define CONNECT_MGR_LOAD_BALANCE_RANDOM
 #define CLUSTER_INIT_FILE_PATH        "~/blockvault_cluster.ini"
 #define ALIGN_BYTES          8
 
@@ -16,5 +15,3 @@
 //#define FULL_CONNECTION
 #define RE_CONNECTION
 
-
-#endif   //  end of __CONNECT_MANAGER_CONFIG_H
