@@ -279,7 +279,6 @@ namespace {
    }
 }
 
-/*Lin
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
@@ -457,9 +456,7 @@ static auto get_extra_args() {
 
    return std::make_tuple(save_snapshot, generate_log);
 }
-Lin*/
 
-/*Lin
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
@@ -530,7 +527,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
-Lin*/
 
 /* TODO: need new bin/json gzipped files
 // TODO: make this insensitive to abi_def changes, which isn't part of consensus or part of the database format
@@ -606,7 +602,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
 }
 */
 
-/*Lin
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_block_log, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
@@ -658,19 +653,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    snap_chain.push_block(block);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
-Lin*/
 
+// Psudo code for the following WAST:
+//    kv_get(receiver, ...)
+//    uint64_t buff[1];
+//    kv_get_data(offset, buff, ...)
+//    buff[0] = buff[0]++;
+//    kv_set(receiver, key, key_size, buff, ...)
 static const char kv_snapshot_wast[] = R"=====(
 (module
-  (func $kv_get (import "env" "kv_get") (param i64 i64 i32 i32 i32) (result i32))
-  (func $kv_get_data (import "env" "kv_get_data") (param i64 i32 i32 i32) (result i32))
-  (func $kv_set (import "env" "kv_set") (param i64 i64 i32 i32 i32 i32) (result i64))
+  (func $kv_get (import "env" "kv_get") (param i64 i32 i32 i32) (result i32))
+  (func $kv_get_data (import "env" "kv_get_data") (param i32 i32 i32) (result i32))
+  (func $kv_set (import "env" "kv_set") (param i64 i32 i32 i32 i32 i64) (result i64))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
-    (drop (call $kv_get (get_local 2) (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
-    (drop (call $kv_get_data (get_local 2) (i32.const 0) (i32.const 0) (i32.const 8)))
+    (drop (call $kv_get (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
+    (drop (call $kv_get_data (i32.const 0) (i32.const 0) (i32.const 8)))
     (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
-    (drop (call $kv_set (get_local 2) (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8)))
+    (drop (call $kv_set (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8) (get_local 0)))
   )
 )
 )=====";
@@ -678,12 +678,12 @@ static const char kv_snapshot_wast[] = R"=====(
 static const char kv_snapshot_bios[] = R"=====(
 (module
   (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
-  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i64 i32 i32))
+  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i32 i32))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
-    (call $kv_set_parameters_packed (i64.const 6138663586874765568) (i32.const 0) (i32.const 16))
-    (call $kv_set_parameters_packed (i64.const 6138663586881971200) (i32.const 0) (i32.const 16))
-    (call $set_resource_limit (get_local 2) (i64.const 5454140623722381312) (i64.const -1))
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $set_resource_limit (get_local 0) (i64.const 13376816793197215744) (i64.const -1))
   )
   (data (i32.const 4) "\00\04\00\00")
   (data (i32.const 8) "\00\00\10\00")
@@ -691,20 +691,20 @@ static const char kv_snapshot_bios[] = R"=====(
 )
 )=====";
 
+static void set_backing_store(tester& chain, const backing_store_type backing_store) {
+   chain.close(); // clean up chain so no dirty db error
+   auto cfg = chain.get_config();
+   cfg.backing_store = backing_store;
+   chain.init(cfg); // enable new config
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
-   //for (bool rocks_save : { false, true }) {
-   //   for (bool rocks_load : { false, true }) {
-
-# warning TODO: Take out the return when snapshot is done with rewriting.
-   // snapshot handling is being rewritten.
-   // do not waste time to update soon-to-be-changed
-   // code to work. This is OK since we are in a
-   // development branch.
-   return;
-
-   for (bool rocks_save : { true }) {
-      for (bool rocks_load : { true }) {
+   for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
          tester chain;
+
+         // Set backing_store for save snapshot
+         set_backing_store(chain, origin_backing_store);
 
          chain.create_accounts({N(snapshot), N(manager)});
          chain.set_code(N(manager), kv_snapshot_bios);
@@ -727,22 +727,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
          std::list<snapshotted_tester> sub_testers;
 
          for (int generation = 0; generation < generation_count; generation++) {
-            std::cout << "generation: " << generation << std::endl;
             // create a new snapshot child
             auto writer = SNAPSHOT_SUITE::get_writer();
             chain.control->write_snapshot(writer);
             auto snapshot = SNAPSHOT_SUITE::finalize(writer);
-
             auto cfg = chain.get_config();
-            if (rocks_load) {
-               cfg.backing_store = eosio::chain::backing_store_type::ROCKSDB;
-            } else {
-               cfg.backing_store = eosio::chain::backing_store_type::NATIVE;
-            }
+
+            // Set backing_store for loading snapshot in the child
+            cfg.backing_store = resulting_backing_store;
+            
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
-            // increment the test contract
+            // Calling apply method which will increment the
+            // current value stored
             signed_transaction trx;
             trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
             chain.set_transaction_headers(trx);
@@ -752,6 +750,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // produce block
             auto new_block = chain.produce_block();
 
+#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
+
             // undo the auto-pending from tester
             chain.control->abort_block();
 
@@ -759,10 +759,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // push that block to all sub testers and validate the integrity of the database after it.
             for (auto& other: sub_testers) {
-              std::cout << "rocks_save: " << rocks_save << ", rocks_load: " << rocks_load << std::endl;
                other.push_block(new_block);
                verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *other.control);
-               //BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
+               BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
             }
          }
       }

@@ -7,10 +7,10 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 #include <eosio/chain/block_log_config.hpp>
+#include <eosio/chain/backing_store.hpp>
 
 namespace chainbase {
    class database;
@@ -24,17 +24,14 @@ namespace boost { namespace asio {
 }}
 
 namespace eosio { namespace chain {
-# warning TODO: move those to lower layer
-   // chainlib reserves prefixes 0x10 - 0x2F.
-   static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
-   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
-   static const std::vector<char> rocksdb_contract_db_prefix{0x12 }; // for DB API
 
    class authorization_manager;
 
    namespace resource_limits {
       class resource_limits_manager;
    };
+
+   class combined_database;
 
    struct controller_impl;
    using chainbase::database;
@@ -65,11 +62,6 @@ namespace eosio { namespace chain {
       LIGHT
    };
 
-   enum class backing_store_type {
-      NATIVE,  // A name for regular users. Uses Chainbase.
-      ROCKSDB
-   };
-
    class controller {
       public:
          struct config {
@@ -90,9 +82,12 @@ namespace eosio { namespace chain {
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
-            backing_store_type       backing_store              =  backing_store_type::ROCKSDB;
+            backing_store_type       backing_store              = backing_store_type::CHAINBASE;
             uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
             int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
+            uint64_t                 rocksdb_write_buffer_size =  chain::config::default_rocksdb_write_buffer_size;
+            uint64_t                 rocksdb_target_file_size_base = chain::config::default_rocksdb_target_file_size_base;
+            uint64_t                 rocksdb_max_bytes_for_level_base =  chain::config::default_rocksdb_max_bytes_for_level_base;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
@@ -401,8 +396,7 @@ namespace eosio { namespace chain {
          friend class transaction_context;
 
          chainbase::database& mutable_db()const;
-         b1::chain_kv::database& kv_database();
-         b1::chain_kv::undo_stack& kv_undo_stack();
+         eosio::chain::combined_database& kv_db();
 
          std::unique_ptr<controller_impl> my;
 
