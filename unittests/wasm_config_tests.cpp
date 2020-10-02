@@ -681,11 +681,23 @@ static const char access_biggest_memory_wast[] = R"=====(
 )
 )=====";
 
+static const char intrinsic_biggest_memory_wast[] = R"=====(
+(module
+  (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+  (memory 0)
+  (func (export "apply") (param i64 i64 i64)
+    (drop (grow_memory (i32.wrap/i64 (get_local 2))))
+    (drop (call $memcpy (i32.mul (i32.wrap/i64 (get_local 2)) (i32.const 65536)) (i32.const 0) (i32.const 0)))
+  )
+)
+)=====";
+
 BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
    produce_blocks(2);
 
-   create_accounts( { N(bigmem), N(accessmem) } );
+   create_accounts( { N(bigmem), N(accessmem), N(intrinsicmem) } );
    set_code(N(accessmem), access_biggest_memory_wast);
+   set_code(N(intrinsicmem), intrinsic_biggest_memory_wast);
    produce_block();
    auto params = genesis_state::default_initial_wasm_configuration;
    for(uint64_t max_pages : {600, 400}) { // above and below the default limit
@@ -727,8 +739,24 @@ BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
          BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_exception);
       };
 
+
+      // verify checking of intrinsic arguments
+      auto pushintrinsic = [&](uint64_t pages) {
+         action act;
+         act.account = N(intrinsicmem);
+         act.name = name(pages);
+         act.authorization = vector<permission_level>{{N(intrinsicmem),config::active_name}};
+         signed_transaction trx;
+         trx.actions.push_back(act);
+
+         set_transaction_headers(trx);
+         trx.sign(get_private_key( N(intrinsicmem), "active" ), control->get_chain_id());
+         BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_exception);
+      };
+
       pushit(1);
       checkaccess(max_pages - 1);
+      pushintrinsic(max_pages);
       produce_blocks(1);
 
       // Increase memory limit

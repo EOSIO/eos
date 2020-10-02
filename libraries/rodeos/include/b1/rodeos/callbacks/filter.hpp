@@ -32,8 +32,8 @@ struct filter_callbacks {
    template <typename Rft>
    static void register_callbacks() {
       // todo: preconditions
-      Rft::template add<&Derived::push_data>("env", "push_data");
-      Rft::template add<&Derived::print_time_us>("env", "print_time_us");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, push_data);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, print_time_us);
    }
 }; // query_callbacks
 

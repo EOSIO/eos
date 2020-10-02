@@ -17,10 +17,6 @@ namespace eosio { namespace chain { namespace webassembly {
       constexpr std::integral_constant<bool, A != 0> is_legacy_span(legacy_span<T, A>);
       template <typename T>
       constexpr std::false_type is_legacy_span(T);
-      template <typename T>
-      constexpr std::true_type is_unvalidated_ptr(unvalidated_ptr<T>);
-      template <typename T>
-      constexpr std::false_type is_unvalidated_ptr(T);
 
       template<typename T>
       inline constexpr bool is_softfloat_type_v =
@@ -34,9 +30,11 @@ namespace eosio { namespace chain { namespace webassembly {
       struct is_whitelisted_legacy_type {
          static constexpr bool value = std::is_same_v<float128_t, T> ||
                                        std::is_same_v<null_terminated_ptr, T> ||
+                                       std::is_same_v<memcpy_params, T> ||
+                                       std::is_same_v<memcmp_params, T> ||
+                                       std::is_same_v<memset_params, T> ||
                                        std::is_same_v<decltype(is_legacy_ptr(std::declval<T>())), std::true_type> ||
                                        std::is_same_v<decltype(is_legacy_span(std::declval<T>())), std::true_type> ||
-                                       std::is_same_v<decltype(is_unvalidated_ptr(std::declval<T>())), std::true_type> ||
                                        std::is_same_v<name, T> ||
                                        std::is_arithmetic_v<T>;
       };
@@ -103,15 +101,6 @@ namespace eosio { namespace chain { namespace webassembly {
    inline static bool is_nan( const float128_t& f ) {
       return f128_is_nan( f );
    }
-
-   EOS_VM_PRECONDITION(null_pointer_check,
-         EOS_VM_INVOKE_ON_ALL([&](auto&& arg, auto&&... rest) {
-            using namespace eosio::vm;
-            using arg_t = std::decay_t<decltype(arg)>;
-            if constexpr (decltype(detail::is_legacy_ptr(std::declval<arg_t>()))::value) {
-               EOS_ASSERT(arg.get_original_pointer() != ctx.get_interface().get_memory(), wasm_execution_error, "references cannot be created for null pointers");
-            }
-         }));
 
    EOS_VM_PRECONDITION(context_free_check,
          EOS_VM_INVOKE_ONCE([&](auto&&...) {

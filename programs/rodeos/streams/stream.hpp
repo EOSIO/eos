@@ -36,8 +36,8 @@ class stream_handler {
 
 inline std::vector<eosio::name> extract_routes(const std::string& routes_str) {
    std::vector<eosio::name> streaming_routes{};
-   bool star = false;
-   std::string routings = routes_str;
+   bool                     star     = false;
+   std::string              routings = routes_str;
    while (routings.size() > 0) {
       size_t      pos          = routings.find(",");
       size_t      route_length = pos == std::string::npos ? routings.length() : pos;
