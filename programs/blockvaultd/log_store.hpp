@@ -5,11 +5,19 @@
 #include <map>
 #include <mutex>
 
+namespace nuraft {
+class logger;
+}
+
 namespace blockvault {
+struct log_store_impl;
 
 class log_store : public nuraft::log_store {
 public:
-    log_store(std::filesystem::path dir);
+    log_store(std::filesystem::path log_dir, uint32_t log_stride);
+    ~log_store();
+    log_store(const log_store&) = delete;
+    const log_store& operator=(const log_store&) = delete;
 
     ulong next_slot() const override;
 
@@ -38,13 +46,10 @@ public:
 
     bool flush() override { return true; }
 
-private:
+    void for_each_app_entry(ulong start_index, ulong end_index, const std::function <void(ulong, std::string_view)>&);
 
-    std::filesystem::path log_dir_;
-    ulong                 start_idx_, next_slot_;
-
-    mutable std::mutex logs_lock_;
-    
+  private:
+    log_store_impl* impl_;  
 };
 
 }
