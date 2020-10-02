@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
           log.add_transaction(std::get<0>(t), std::get<1>(t));
        });
 
-   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->combined_db(), bs); });
    chain.control->block_start.connect([&](uint32_t block_num) { log.block_start(block_num); } );
 
    deploy_test_api(chain);
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    uint32_t last_accepted_block_num = 0;
 
    chain.control->accepted_block.connect([&](const block_state_ptr& block_state) {
-      log.store(chain.control->db(), block_state);
+      log.store(chain.control->combined_db(), block_state);
       last_accepted_block_num = block_state->block_num;
    });
 
@@ -193,8 +193,8 @@ struct state_history_tester : state_history_tester_logs, tester {
        });
 
       control.accepted_block.connect([&](const block_state_ptr& bs) { 
-         traces_log.store(control.db(), bs); 
-         chain_state_log.store(control.db(), bs); 
+         traces_log.store(control.combined_db(), bs); 
+         chain_state_log.store(control.combined_db(), bs); 
       });
       control.block_start.connect([&](uint32_t block_num) { traces_log.block_start(block_num); } );
    }) {}
@@ -430,7 +430,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
             onblock_test_executed = true;
          }
    });
-   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->db(), bs); });
+   chain.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(chain.control->combined_db(), bs); });
 
    auto tr_ptr = chain.create_account(N(newacc));
 
