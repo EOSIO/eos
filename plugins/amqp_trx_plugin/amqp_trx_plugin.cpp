@@ -109,7 +109,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
       if( acked == ack_mode::in_block ) {
          const auto& entry = tracked_delivery_tags.find( bsp->block_num );
          if( entry != tracked_delivery_tags.end() ) {
-            amqp_trx->ack( entry->second );
+            amqp_trx->ack( entry->second, true );
             tracked_delivery_tags.erase( entry );
          }
       }
