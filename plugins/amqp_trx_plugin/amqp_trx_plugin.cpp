@@ -60,7 +60,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    std::string amqp_trx_address;
    ack_mode acked = ack_mode::executed;
-   std::map<uint32_t, chain::deque<eosio::amqp::delivery_tag_t>> tracked_delivery_tags;
+   std::map<uint32_t, eosio::amqp::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -102,9 +102,6 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    }
 
    void on_block_abort( uint32_t bn ) {
-      if( acked == ack_mode::in_block ) {
-         tracked_delivery_tags.erase( bn );
-      }
       trx_queue_ptr->on_block_stop();
    }
 
@@ -112,9 +109,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
       if( acked == ack_mode::in_block ) {
          const auto& entry = tracked_delivery_tags.find( bsp->block_num );
          if( entry != tracked_delivery_tags.end() ) {
-            for( const auto& q : entry->second ) {
-               amqp_trx->ack( q );
-            }
+            amqp_trx->ack( entry->second );
             tracked_delivery_tags.erase( entry );
          }
       }
@@ -134,16 +129,9 @@ private:
 
       trx_queue_ptr->push( trx,
                 [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
-            if( my->acked == ack_mode::executed ) {
-               my->amqp_trx->ack( delivery_tag );
-            } else if ( my->acked == ack_mode::in_block ) {
-               my->tracked_delivery_tags[my->chain_plug->chain().head_block_num() + 1].emplace_back( delivery_tag );
-            }
-
             auto trx_trace = fc_create_trace("Transaction");
             auto trx_span = fc_create_span(trx_trace, "Processed");
             fc_add_str_tag(trx_span, "trx_id", trx->id().str());
-
 
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( result.contains<chain::exception_ptr>() ) {
@@ -153,9 +141,11 @@ private:
                }
                fc_add_str_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+               if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
+                  my->amqp_trx->ack( delivery_tag );
+               }
             } else {
                auto& trace = result.get<chain::transaction_trace_ptr>();
-               dlog( "accept_transaction ${id}", ("id", trx->id()) );
                fc_add_str_tag(trx_span, "block_num", std::to_string(trace->block_num));
                fc_add_str_tag(trx_span, "block_time", std::string(trace->block_time.to_time_point()));
                fc_add_str_tag(trx_span, "elapsed", std::to_string(trace->elapsed.count()));
@@ -164,6 +154,12 @@ private:
                }
                if( trace->except ) {
                   fc_add_str_tag(trx_span, "error", trace->except->to_string());
+               }
+               dlog( "accept_transaction ${id}", ("id", trx->id()) );
+               if( my->acked == ack_mode::executed ) {
+                  my->amqp_trx->ack( delivery_tag );
+               } else if ( my->acked == ack_mode::in_block ) {
+                  my->tracked_delivery_tags[trace->block_num] = delivery_tag;
                }
             }
          } );
@@ -205,6 +201,9 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
       my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
       my->allow_speculative_execution = options.at("amqp-trx-speculative-execution").as<bool>();
+
+      EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
+                  "amqp-trx-ack-mode = in_block not supported with amqp-trx-speculative-execution" );
    }
    FC_LOG_AND_RETHROW()
 }
