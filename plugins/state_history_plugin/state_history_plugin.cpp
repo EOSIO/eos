@@ -185,7 +185,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                fc_dlog(_log, "block ${block_num} is not available", ("block_num", cp.block_num));
             } else if (*id != cp.block_id) {
                fc_dlog(_log, "the id for block ${block_num} in block request have_positions does not match the existing", ("block_num", cp.block_num));
-            }         
+            }
          }
          req.have_positions.clear();
          fc_dlog(_log, "  get_blocks_request_v0 start_block_num set to ${num}", ("num", req.start_block_num));
@@ -230,7 +230,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
             ++current_request->start_block_num;
          }
-         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
+         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue",
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
          send(std::move(result));
@@ -353,9 +353,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_accepted_block(const block_state_ptr& block_state) {
       if (trace_log)
-         trace_log->store(chain_plug->chain().db(), block_state);
+         trace_log->store(chain_plug->chain().combined_db(), block_state);
       if (chain_state_log)
-         chain_state_log->store(chain_plug->chain().db(), block_state);
+         chain_state_log->store(chain_plug->chain().combined_db(), block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
@@ -395,7 +395,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
          "and a new current history log and index will be created with the most recent blocks. All files following\n"
          "this format will be used to construct an extended history log.");
    options("max-retained-history-files", bpo::value<uint32_t>()->default_value(10),
-          "the maximum number of history file groups to retain so that the blocks in those files can be queried.\n" 
+          "the maximum number of history file groups to retain so that the blocks in those files can be queried.\n"
           "When the number is reached, the oldest history file would be moved to archive dir or deleted if the archive dir is empty.\n"
           "The retained history log files should not be manipulated by users." );
    cli.add_options()("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
@@ -406,7 +406,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "your internal network.");
    options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
            "enable debug mode for trace history");
-   options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
+   options("context-free-data-compression", bpo::value<string>()->default_value("zlib"),
            "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
 }
 
@@ -458,8 +458,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.at("trace-history").as<bool>()) {
          my->trace_log.emplace(config);
-         if (options.at("trace-history-debug-mode").as<bool>()) 
-            my->trace_log->trace_debug_mode = true;  
+         if (options.at("trace-history-debug-mode").as<bool>())
+            my->trace_log->trace_debug_mode = true;
 
          auto compression = options.at("context-free-data-compression").as<string>();
          if (compression == "zlib") {
@@ -477,9 +477,9 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
 
-void state_history_plugin::plugin_startup() { 
+void state_history_plugin::plugin_startup() {
    handle_sighup(); // setup logging
-   my->listen(); 
+   my->listen();
 }
 
 void state_history_plugin::plugin_shutdown() {

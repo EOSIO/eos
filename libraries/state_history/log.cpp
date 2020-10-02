@@ -314,7 +314,7 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
    write_log.flush();
 }
 
-void state_history_traces_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
+void state_history_traces_log::store(const chain::combined_database& db, const chain::block_state_ptr& block_state) {
 
    state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = block_state->id};
    auto                     trace = cache.prepare_traces(block_state);
@@ -346,7 +346,7 @@ chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_n
    return state_history::zlib_decompress(read_log);
 }
 
-void state_history_chain_state_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
+void state_history_chain_state_log::store(const chain::combined_database_wrapper& db, const chain::block_state_ptr& block_state) {
    bool fresh = this->begin_block() == this->end_block();
    if (fresh)
       ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/trace.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <variant>
 
 namespace eosio {

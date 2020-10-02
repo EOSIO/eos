@@ -12,34 +12,41 @@
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/state_history/types.hpp>
 
 #include <type_traits>
 
-template <typename T>
+template <typename T, typename DB>
 struct history_serial_wrapper {
-   const chainbase::database& db;
-   const T&                   obj;
+   const DB& db;
+   const T&  obj;
 };
 
-template <typename T>
-history_serial_wrapper<std::decay_t<T>> make_history_serial_wrapper(const chainbase::database& db, const T& obj) {
+template <typename T, typename DB>
+history_serial_wrapper<std::decay_t<T>> make_history_serial_wrapper(const DB& db, const T& obj) {
    return {db, obj};
 }
 
-template <typename P, typename T>
+template <typename P, typename T, typename DB>
 struct history_context_wrapper {
-   const chainbase::database& db;
-   const P&                   context;
-   const T&                   obj;
+   const DB& db;
+   const P&  context;
+   const T&  obj;
 };
 
-template <typename P, typename T>
+template <typename P, typename T, typename DB>
+history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const DB& db, const P& context, const T& obj) {
+   return {db, context, obj};
+}
+
+template <typename P, typename T, typename>
 history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const chainbase::database& db,
                                                                                        const P& context, const T& obj) {
    return {db, context, obj};
 }
+
 
 struct trace_receipt_context {
    uint8_t  failed_status = eosio::chain::transaction_receipt_header::hard_fail;

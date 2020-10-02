@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/chain_id_type.hpp>
+#include <eosio/chain/combined_database.hpp>
 
 #include <chainbase/chainbase.hpp>
 

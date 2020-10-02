@@ -166,7 +166,7 @@ struct pending_state {
       if( std::holds_alternative<building_block>(_block_stage) )
          return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
@@ -2758,13 +2758,13 @@ void controller::startup(std::function<void()> shutdown, std::function<bool()> c
 }
 
 const chainbase::database& controller::db()const { return my->db; }
+const b1::chain_kv::undo_stack& controller::kv_undo_stack() const { return my->kv_undo_stack; }
 
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 b1::chain_kv::database& controller::kv_database() { return my->kv_database; }
 b1::chain_kv::undo_stack& controller::kv_undo_stack() { return my->kv_undo_stack; }
-
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
 void controller::preactivate_feature( uint32_t action_id, const digest_type& feature_digest ) {

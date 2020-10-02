@@ -55,9 +55,8 @@ bool include_delta(const chain::protocol_state_object& old, const chain::protoco
    return old.activated_protocol_features != curr.activated_protocol_features;
 }
 
-std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_snapshot) {
-   std::vector<table_delta>                          deltas;
-   const auto&                                       table_id_index = db.get_index<chain::table_id_multi_index>();
+void create_deltas(const chainbase::database& db, bool full_snapshot, std::vector<table_delta>& deltas) {
+   const auto& table_id_index = db.get_index<chain::table_id_multi_index>();
    std::map<uint64_t, const chain::table_id_object*> removed_table_id;
    for (auto& rem : table_id_index.last_undo_session().removed_values)
       removed_table_id[rem.id._id] = &rem;
@@ -133,6 +132,54 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    process_table("resource_limits_config", db.get_index<chain::resource_limits::resource_limits_config_index>(),
                  pack_row);
 
+   return deltas;
+}
+
+template <typename T>
+void create_deltas(const T& db, bool full_snapshot, std::vector<table_delta>& deltas) {
+   const auto get_db_typeT = [](const auto& bytes) { return bytes[0]; };
+   const auto get_code = [](const auto& bytes) {
+      chain::name c;
+      std::memcpy(&c,&bytes[1], sizeof(name));
+      return c;
+   };
+   const auto get_scope = [](const auto& bytes) {
+      uint64_t s;
+      std::memcpy(&s, &bytes[9], sizeof(s));
+      return s;
+   };
+   const auto get_table = [](const auto& bytes) {
+      chain::name t;
+      std::memcpy(&t, &bytes[17], sizeof(t));
+      return t;
+   };
+   const auto generate_delta = [&](std::string_view nm, auto&& obj, bool removed=false) {
+     auto& delta = deltas.back();
+     delta.name  = name;
+     delta.rows.obj.emplace_back(!removed, pack_row(std::move(obj)));
+   };
+
+   table_id_object last_found;
+   const auto process_deltas = [&](const auto& keys, bool removed) {
+      for (const auto elem : keys) {
+         table_id_object tid = {0, get_code(elem),
+                                   get_scope(elem),
+                                   get_table(elem) };
+         if (tid != last_found)
+            generate_delta("contract_table", tid);
+
+         key_value_objet kvo = {tid, get_payer(elem), get_primary_key(elem), get_payload(elem)};
+      }
+   };
+
+   process_deltas(db.removed_keys(), true);
+   process_deltas(db.updated_keys(), false);
+}
+
+std::vector<table_delta> create_deltas(const chain::combined_database_wrapper& db, bool full_snapshot) {
+   std::vector<table_delta> deltas;
+   create_deltas(db.chainbase_db(), full_snapshot, deltas);
+   create_deltas(db.kv_undo_stack_db(), full_snapshot, deltas);
    return deltas;
 }
 

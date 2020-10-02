@@ -87,4 +87,14 @@ namespace eosio { namespace chain {
       }
    };
 
+   // TODO Victor, replace these template types for the actual types
+   template <typename CB, typename KV>
+   struct combined_database_wrapper {
+      combined_database_wrapper( const CB& cb, const KV& kv )
+         : cb_db(cb), kv_db(kv) {}
+      const auto& chainbase_db() const { return cb_db; }
+      const auto& kv_undo_stack_db() const { return kv_db; }
+      const CB& cb_db;
+      const KV& kv_db;
+   };
 }} // namespace eosio::chain
