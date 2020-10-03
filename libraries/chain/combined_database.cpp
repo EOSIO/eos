@@ -333,11 +333,11 @@ namespace eosio { namespace chain {
                      // In KV RocksDB, payer and actual data are packed together.
                      // Extract them.
                      auto           value = (*it).second;
-                     auto           payer = get_payer(value.data());
-                     auto           actual_value_data = actual_value_start(value.data());
+                     auto           payer = get_payer(value->data());
+                     auto           actual_value_data = actual_value_start(value->data());
                      kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
-                                         { { actual_value_data, actual_value_data + actual_value_size(value.size()) } },
+                                         { { actual_value_data, actual_value_data + actual_value_size(value->size()) } },
                                          payer
                      };
                      section.add_row(row, db);

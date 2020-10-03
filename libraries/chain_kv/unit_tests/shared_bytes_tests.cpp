@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
 
    BOOST_REQUIRE(b1 == b2);
    BOOST_REQUIRE(b1 == b4);
-   BOOST_REQUIRE(invalid == shared_bytes::invalid());
+   BOOST_REQUIRE(invalid == shared_bytes{});
    BOOST_REQUIRE(b1 != b3);
 
    auto b5 = b1;

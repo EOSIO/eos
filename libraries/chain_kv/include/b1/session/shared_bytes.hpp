@@ -21,6 +21,7 @@ class shared_bytes {
    using const_iterator = const iterator;
 
  public:
+   shared_bytes() = default;
    template <typename T>
    shared_bytes(const T* data, size_t size);
    shared_bytes(size_t size);
@@ -52,11 +53,6 @@ class shared_bytes {
 
    iterator begin() const;
    iterator end() const;
-
-   static const shared_bytes& invalid();
-
- private:
-   shared_bytes() = default;
 
  private:
    std::shared_ptr<char> m_data;
@@ -91,11 +87,6 @@ inline shared_bytes::shared_bytes(size_t size)
          return result;
       }() },
       m_size{ size } {}
-
-inline const shared_bytes& shared_bytes::invalid() {
-   static shared_bytes bad;
-   return bad;
-}
 
 inline shared_bytes shared_bytes::operator++(int) {
    auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
@@ -166,9 +157,9 @@ inline bool shared_bytes::operator>=(const shared_bytes& other) const {
    return cmp >= 0 && size() >= other.size();
 }
 
-inline bool shared_bytes::operator!() const { return *this == shared_bytes::invalid(); }
+inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
 
-inline shared_bytes::operator bool() const { return *this != shared_bytes::invalid(); }
+inline shared_bytes::operator bool() const { return *this != shared_bytes{}; }
 
 inline shared_bytes::iterator shared_bytes::begin() const { return m_data.get(); }
 
