@@ -2057,22 +2057,24 @@ void read_only::make_prefix(eosio::name table_name,  eosio::name index_name, uin
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p)const {
-   const string &index_value = *p.index_value;
-   const string &lower_bound = *p.lower_bound;
-   const string &upper_bound = *p.upper_bound;
-
+   auto &gp = db.get_global_properties();
+   auto &kv_config = gp.kv_configuration;
+   const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
-   auto& gp = db.get_global_properties();
-   auto& kv_config = gp.kv_configuration;
-   const chain::kv_database_config& limits = kv_config.kvram;
 
-   auto& database = db.db();
-   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database&>(database), database_id, chain::name{0}, {}, limits);
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
+#if 0
+   // Enable the code block once rocksdb_nodeos_integratin is merged
+   const chain::kv_database_config &limits = kv_config;
+   auto &kv_database = const_cast<chain::combined_database &>(db.kv_db());
+   // To do: provide kv_resource_manmager to create_kv_context
+   auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
+#else
+   const chain::kv_database_config &limits = kv_config.kvram;
+   auto &database = db.db();
+   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database &>(database), database_id, chain::name{0}, {}, limits);
+#endif
 
-   // TO DO: Once rocksdb change is available, we need to add rocksdb context support here
-
-   return get_kv_table_rows_context( p, *kv_context, abi );
+   return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
