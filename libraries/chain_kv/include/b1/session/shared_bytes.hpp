@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 #include <vector>
+#include <numeric>
 
 #include <fc/crypto/base64.hpp>
 
@@ -23,6 +24,9 @@ inline shared_bytes make_shared_bytes(const char* data, size_t length);
 template <typename T>
 shared_bytes make_shared_bytes(const T* data, size_t length);
 
+template<typename StringView, std::size_t N>
+shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
+
 // \brief An immutable type to represent a pointer and a length.
 //
 class shared_bytes {
@@ -31,6 +35,9 @@ class shared_bytes {
    friend shared_bytes make_shared_bytes(const T* data, size_t length);
 
    friend shared_bytes make_shared_bytes(const char* data, size_t length);
+
+   template<typename StringView, std::size_t N>
+   friend shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
 
    using iterator       = const char*;
    using const_iterator = const iterator;
@@ -54,7 +61,7 @@ class shared_bytes {
    bool operator!() const;
         operator bool() const;
 
-   shared_bytes operator++(int);
+   shared_bytes operator++(int) const;
 
    bool operator<(const shared_bytes& other) const;
    bool operator>(const shared_bytes& other) const;
@@ -92,7 +99,36 @@ inline shared_bytes make_shared_bytes(const char* data, size_t length) {
    auto* chunk = std::allocator<char>{}.allocate(length);
    std::memcpy(chunk, data, length);
 
-   auto deleter  = [&](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
+   auto deleter  = [length](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
+   result.m_data = std::shared_ptr<char>(chunk, deleter);
+   result.m_size = length;
+
+   return result;
+}
+
+template<typename StringView, std::size_t N>
+shared_bytes make_shared_bytes(std::array<StringView, N>&& data) {
+   auto result = shared_bytes{};
+
+   const std::size_t length =
+         std::accumulate(data.begin(), data.end(), 0, [](std::size_t a, const StringView& b) { return a + b.size(); });
+
+   if (length == 0) {
+      return result;
+   }
+
+   auto* const chunk = std::allocator<char>{}.allocate(length);
+   char* chunk_ptr = chunk;
+   for (const auto& view : data) {
+      const char* const view_ptr = view.data();
+      if (!view_ptr || !view.size()) {
+         continue;
+      }
+      std::memcpy(chunk_ptr, view_ptr, view.size());
+      chunk_ptr += view.size();
+   }
+
+   auto deleter  = [length](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
    result.m_data = std::shared_ptr<char>(chunk, deleter);
    result.m_size = length;
 
@@ -104,7 +140,7 @@ inline const shared_bytes& shared_bytes::invalid() {
    return bad;
 }
 
-inline shared_bytes shared_bytes::operator++(int) {
+inline shared_bytes shared_bytes::operator++(int) const {
    auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
 
    while (!buffer.empty()) {

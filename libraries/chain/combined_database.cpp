@@ -220,7 +220,7 @@ namespace eosio { namespace chain {
    std::unique_ptr<db_context> combined_database::create_db_context(apply_context& context, name receiver) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return backing_store::create_db_rocksdb_context(context, receiver, *kv_database, *kv_undo_stack);
+            return backing_store::create_db_rocksdb_context(context, receiver, kv_undo_stack->top());
          case backing_store_type::CHAINBASE:
             return backing_store::create_db_chainbase_context(context, receiver);
          default:

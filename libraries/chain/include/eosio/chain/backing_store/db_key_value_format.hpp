@@ -4,12 +4,21 @@
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
+#include <b1/session/shared_bytes.hpp>
 #include <memory>
 #include <stdint.h>
 
-namespace eosio { namespace chain { namespace backing_store { namespace db_key_value_format {
+namespace eosio {
+   namespace session {
+      class shared_bytes;
+   }
+
+namespace chain { namespace backing_store { namespace db_key_value_format {
    using key256_t = std::array<eosio::chain::uint128_t, 2>;
-   constexpr uint64_t prefix_size = sizeof(name) * 2; // 8 (scope) + 8 (table)
+
+   // NOTE: very limited use till redesign
+   constexpr uint64_t db_type_and_code_size = sizeof(char) + sizeof(name); // 1 (db type) + 8 (contract)
+
    b1::chain_kv::bytes create_primary_key(name scope, name table, uint64_t primary_key);
 
    bool get_primary_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table, uint64_t& primary_key);
@@ -26,7 +35,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       table = std::numeric_limits<char>::max() // require to be highest value for a given scope/table
    };
 
-   enum class decomposed_types { scope = 0, table, key_loc, type_of_key};
    using intermittent_decomposed_values = std::tuple<name, name, b1::chain_kv::bytes::const_iterator, key_type>;
 
    namespace detail {
@@ -49,6 +57,46 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       template<>
       struct determine_sec_type<float128_t> { static constexpr key_type kt = key_type::sec_long_double; };
 
+      template<typename CharKey>
+      struct associated;
+
+      template<>
+      struct associated<eosio::session::shared_bytes> {
+         using stored_key = eosio::session::shared_bytes;
+      };
+
+      template<typename CharKey>
+      struct associated {
+         using stored_key = b1::chain_kv::bytes;
+      };
+
+      template<typename CharKey>
+      constexpr std::size_t prefix_size() {
+         constexpr uint64_t legacy_prefix_size = sizeof(name) * 2; // 8 (scope) + 8 (table)
+         if constexpr (std::is_same_v<CharKey, eosio::session::shared_bytes>) {
+            constexpr uint64_t db_type_and_code_size = sizeof(char) + sizeof(name); // 1 (db type) + 4 (contract)
+            return db_type_and_code_size + legacy_prefix_size;
+         }
+         else if constexpr (std::is_same_v<CharKey, rocksdb::Slice>) {
+            return legacy_prefix_size;
+         }
+         else {
+            static_assert(std::is_same_v<CharKey, b1::chain_kv::bytes>);
+            return legacy_prefix_size;
+         }
+      }
+
+      template<typename CharKey1, typename CharKey2>
+      constexpr void consistent_keys() {
+         if constexpr (std::is_same_v<CharKey1, CharKey2>) {
+            return;
+         }
+         else {
+            static_assert(!std::is_same_v<CharKey1, eosio::session::shared_bytes>);
+            static_assert(!std::is_same_v<CharKey2, eosio::session::shared_bytes>);
+         }
+      }
+
       std::string to_string(const key_type& kt);
 
       b1::chain_kv::bytes prepare_composite_key_prefix(name scope, name table, std::size_t type_size, std::size_t key_size, std::size_t extension_size);
@@ -70,6 +118,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       template<typename Key>
       void append_primary_and_secondary_key_types(b1::chain_kv::bytes& composite_key) {
          composite_key.push_back(static_cast<const char>(key_type::primary_to_sec));
+         // NOTE: db_key_value_any_lookup end_of_prefix::at_prim_to_sec_type tied to this layout
          const key_type kt = determine_sec_type<Key>::kt;
          composite_key.push_back(static_cast<const char>(kt));
       }
@@ -77,46 +126,119 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       template<typename Key>
       void append_primary_and_secondary_keys(b1::chain_kv::bytes& composite_key, uint64_t primary_key, const Key& sec_key) {
          append_primary_and_secondary_key_types<Key>(composite_key);
+         // NOTE: db_key_value_any_lookup end_of_prefix::at_prim_to_sec_primary_key tied to this layout
          b1::chain_kv::append_key(composite_key, primary_key);
          b1::chain_kv::append_key(composite_key, sec_key);
       }
 
-      template<typename Key, typename CharKey1, typename CharKey2>
-      bool verify_primary_to_sec_type(const CharKey1& key, const CharKey2& type_prefix) {
-         const auto prefix_minimum_size = prefix_size + sizeof(key_type);
+      template<typename CharKey>
+      bool validate_primary_to_sec_type_prefix(const CharKey& type_prefix, std::size_t start_prefix_size, key_type expected_sec_kt) {
+         // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
+         const auto prefix_minimum_size = start_prefix_size + sizeof(key_type);
          const auto both_types_size = prefix_minimum_size + sizeof(key_type);
          const auto both_types_and_primary_size = both_types_size + sizeof(uint64_t);
          const bool has_sec_type = type_prefix.size() >= both_types_size;
          EOS_ASSERT(type_prefix.size() == prefix_minimum_size || type_prefix.size() == both_types_size ||
                     type_prefix.size() == both_types_and_primary_size, bad_composite_key_exception,
-                    "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix key size: ${s1} bytes that was not either: "
-                    "${s2}, ${s3}, or ${s4} bytes long",
+                    "DB intrinsic key-value validate_primary_to_sec_type_prefix was passed a prefix key size: ${s1} "
+                    "bytes that was not either: ${s2}, ${s3}, or ${s4} bytes long",
                     ("s1", type_prefix.size())("s2", prefix_minimum_size)("s3", both_types_and_primary_size)
                     ("s4", both_types_and_primary_size));
-         const char* prefix_ptr = type_prefix.data() + prefix_size;
+         const char* prefix_ptr = type_prefix.data() + start_prefix_size;
          const key_type prefix_type_kt {*(prefix_ptr++)};
          EOS_ASSERT(key_type::primary_to_sec == prefix_type_kt, bad_composite_key_exception,
-                    "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix that was the wrong type: ${type},"
-                    " it should have been of type: ${type2}",
+                    "DB intrinsic key-value validate_primary_to_sec_type_prefix was passed a prefix that was the wrong "
+                    "type: ${type}, it should have been of type: ${type2}",
                     ("type", to_string(prefix_type_kt))("type2", to_string(key_type::primary_to_sec)));
          if (has_sec_type) {
-            const key_type expected_sec_kt = determine_sec_type<Key>::kt;
             const key_type prefix_sec_kt {*(prefix_ptr)};
             EOS_ASSERT(expected_sec_kt == prefix_sec_kt, bad_composite_key_exception,
-                       "DB intrinsic key-value verify_primary_to_sec_type was passed a prefix that was the wrong secondary type: ${type},"
-                       " it should have been of type: ${type2}",
+                       "DB intrinsic key-value validate_primary_to_sec_type_prefix was passed a prefix that was the "
+                       "wrong secondary type: ${type}, it should have been of type: ${type2}",
                        ("type", to_string(prefix_sec_kt))("type2", to_string(expected_sec_kt)));
          }
+         return has_sec_type;
+      }
+
+      template<typename Key, typename CharKey>
+      void validate_primary_to_sec_type_size(const CharKey& full_key, std::size_t start_prefix_size) {
+         const auto prefix_minimum_size = start_prefix_size + sizeof(key_type);
+         const auto both_types_size = prefix_minimum_size + sizeof(key_type);
+         const auto full_size = both_types_size + sizeof(uint64_t) + sizeof(Key);
+         EOS_ASSERT(full_key.size() == full_size, bad_composite_key_exception,
+                    "DB intrinsic key-value validate_primary_to_sec_type_size was passed a full key size: ${s1} bytes that was not at least "
+                    "larger than the size that would include the secondary type: ${s2}",
+                    ("s1", full_key.size())("s2", full_size));
+      }
+
+      template<typename Key, typename CharKey1, typename CharKey2>
+      bool verify_primary_to_sec_type(const CharKey1& key, const CharKey2& type_prefix) {
+         detail::consistent_keys<CharKey1, CharKey2>();
+
+         const std::size_t start_prefix_size = prefix_size<CharKey2>();
+         // >> validate that the type prefix is actually of primary_to_sec key type
+         const key_type expected_sec_kt = determine_sec_type<Key>::kt;
+         const auto check_sec_type = !validate_primary_to_sec_type_prefix(type_prefix, start_prefix_size, expected_sec_kt);
+
+         // check if key is prefixed with type_prefix
          if (memcmp(type_prefix.data(), key.data(), type_prefix.size()) != 0) {
             return false;
          }
+         if (check_sec_type) {
+            const key_type prefix_sec_kt {*(key.data() + start_prefix_size + sizeof(key_type))};
+            // key was not the right sec type
+            if (expected_sec_kt != prefix_sec_kt) {
+               return false;
+            }
+         }
 
-         const auto minimum_size = prefix_size + sizeof(key_type) + sizeof(key_type) + sizeof(uint64_t);
-         EOS_ASSERT(key.size() >= minimum_size, bad_composite_key_exception,
-                    "DB intrinsic key-value verify_primary_to_sec_type was passed a full key size: ${s1} bytes that was not at least "
-                    "larger than the size that would include the secondary type: ${s2}",
-                    ("s1", key.size())("s2", minimum_size));
+         validate_primary_to_sec_type_size<Key>(key, start_prefix_size);
          return true;
+      }
+
+      template<typename Key, typename CharKey>
+      std::pair<rocksdb::Slice, rocksdb::Slice> locate_trailing_primary_and_secondary_keys(const CharKey& key) {
+         // this method just points to the data, it expects validation to be done prior to calling
+         const auto both_type_size = prefix_size<CharKey>() + sizeof(key_type) + sizeof(key_type);
+         const auto primary_offset = key.data() + both_type_size;
+         return { rocksdb::Slice{primary_offset, sizeof(uint64_t)},
+                  rocksdb::Slice{primary_offset + sizeof(uint64_t), sizeof(Key)}};
+      }
+
+      template<typename Key, typename CharKey>
+      void extract_trailing_primary_and_secondary_keys(const CharKey& key, uint64_t& primary_key, Key& sec_key) {
+         const auto key_offsets = locate_trailing_primary_and_secondary_keys<Key>(key);
+         const auto keys_sizes = key_offsets.first.size() + key_offsets.second.size();
+         const auto start_offset = key_offsets.first.data();
+         const b1::chain_kv::bytes composite_trailing_prim_sec_key {start_offset, start_offset + keys_sizes};
+         auto composite_loc = composite_trailing_prim_sec_key.cbegin();
+         EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_prim_sec_key.cend(), primary_key), bad_composite_key_exception,
+                    "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
+                    "string size is less than the sizeof(uint64_t)");
+         EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_prim_sec_key.cend(), sec_key), bad_composite_key_exception,
+                    "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
+                    "string size is less than: ${s} bytes, which was already verified", ("s", key_offsets.second.size()));
+         EOS_ASSERT(composite_loc == composite_trailing_prim_sec_key.cend(), bad_composite_key_exception,
+                    "DB intrinsic key-value store invariant has changed, calls to extract the pimary and secondary "
+                    "keys should have resulted in the passed in buffer being consumed fully");
+      }
+
+      template<std::size_t N, typename CharKey>
+      auto assemble(std::array<rocksdb::Slice, N>&& data) {
+         if constexpr (std::is_same_v<CharKey, eosio::session::shared_bytes>) {
+            return session::make_shared_bytes<rocksdb::Slice, N>(std::move(data));
+         }
+         else {
+            b1::chain_kv::bytes key_data;
+            const std::size_t init = 0;
+            const std::size_t length = std::accumulate(data.begin(), data.end(), init,
+                                                       [](std::size_t a, const rocksdb::Slice& b) { return a + b.size(); });
+            key_data.reserve(length);
+            for (const auto& d : data) {
+               key_data.insert(key_data.end(), d.data(), d.data() + d.size());
+            }
+            return key_data;
+         }
       }
    }
 
@@ -124,6 +246,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    constexpr key_type derive_secondary_key_type() {
       return detail::determine_sec_type<Key>::kt;
    }
+
    template<typename Key>
    b1::chain_kv::bytes create_secondary_key(name scope, name table, const Key& sec_key, uint64_t primary_key) {
       const key_type kt = detail::determine_sec_type<Key>::kt;
@@ -174,33 +297,67 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    template<typename Key>
    secondary_key_pair create_secondary_key_pair(name scope, name table, const Key& sec_key, uint64_t primary_key) {
       b1::chain_kv::bytes secondary_key = create_secondary_key(scope, table, sec_key, primary_key);
-      b1::chain_kv::bytes primary_to_secondary_key(secondary_key.begin(), secondary_key.begin() + prefix_size);
+      b1::chain_kv::bytes primary_to_secondary_key(secondary_key.begin(), secondary_key.begin() + detail::prefix_size<b1::chain_kv::bytes>());
       detail::append_primary_and_secondary_keys(primary_to_secondary_key, primary_key, sec_key);
       return { std::move(secondary_key), std::move(primary_to_secondary_key) };
    }
 
+   template<typename Key, typename CharKey>
+   CharKey create_secondary_key_from_primary_to_sec_key(const CharKey& primary_to_sec_key) {
+      // checking size first, to validate that the key is the correct size before it is split
+      const auto start_prefix_size = detail::prefix_size<CharKey>();
+      detail::validate_primary_to_sec_type_size<Key>(primary_to_sec_key, start_prefix_size);
+      const auto both_types_and_primary_size = detail::prefix_size<CharKey>() + sizeof(key_type) + sizeof(key_type) + sizeof(uint64_t);
+      const rocksdb::Slice prefix {primary_to_sec_key.data(), both_types_and_primary_size};
+      // now validating the front end of the key
+      const key_type expected_sec_kt = detail::determine_sec_type<Key>::kt;
+      // NOTE: using Slice, but it has the new db type and contract prefix
+      const auto sec_kt_checked = detail::validate_primary_to_sec_type_prefix(prefix, start_prefix_size, expected_sec_kt);
+      EOS_ASSERT(sec_kt_checked, bad_composite_key_exception,
+                 "DB intrinsic invariant failure, key-value create_secondary_key_from_primary_to_sec_key was passed a "
+                 "key that was verified as long enough but validate_primary_to_sec_type_prefix indicated that it wasn't "
+                 "long enough to verify the secondary type");
+      const auto key_offsets = detail::locate_trailing_primary_and_secondary_keys<Key>(primary_to_sec_key);
+      using return_type = typename detail::associated<CharKey>::stored_key;
+      const auto new_kt = static_cast<char>(expected_sec_kt);
+      const char* new_kt_ptr = &new_kt;
+      // already have everything in char format/order, so just need to assemble it
+      return detail::assemble<4, return_type>({rocksdb::Slice{primary_to_sec_key.data(), start_prefix_size},
+                                               rocksdb::Slice{new_kt_ptr, 1},
+                                               key_offsets.second,
+                                               key_offsets.first});
+   }
+
    template<typename Key, typename CharKey1, typename CharKey2>
    bool get_trailing_sec_prim_keys(const CharKey1& full_key, const CharKey2& secondary_type_prefix, Key& sec_key, uint64_t& primary_key) {
+      detail::consistent_keys<CharKey1, CharKey2>();
+
+      // >> verify that secondary_type_prefix is really a valid secondary type prefix
+
+      // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
       const auto sec_type_prefix_size = secondary_type_prefix.size();
-      const auto prefix_type_size = prefix_size + sizeof(key_type);
+      const auto prefix_type_size = detail::prefix_size<CharKey1>() + sizeof(key_type);
       EOS_ASSERT(sec_type_prefix_size == prefix_type_size, bad_composite_key_exception,
                  "DB intrinsic key-value get_trailing_sec_prim_keys was passed a secondary_type_prefix with key size: ${s1} bytes "
                  "which is not equal to the expected size: ${s2}", ("s1", sec_type_prefix_size)("s2", prefix_type_size));
-      const auto keys_size = sizeof(sec_key) + sizeof(primary_key);
-      EOS_ASSERT(full_key.size() == sec_type_prefix_size + keys_size, bad_composite_key_exception,
-                 "DB intrinsic key-value get_trailing_sec_prim_keys was passed a full key size: ${s1} bytes that was not exactly "
-                 "${s2} bytes (the size of the secondary key and a primary key) larger than the secondary_type_prefix "
-                 "size: ${s3}", ("s1", full_key.size())("s2", keys_size)("s3", sec_type_prefix_size));
-      const auto comp = memcmp(secondary_type_prefix.data(), full_key.data(), sec_type_prefix_size);
-      if (comp != 0) {
-         return false;
-      }
       const key_type expected_kt = detail::determine_sec_type<Key>::kt;
       const key_type actual_kt {*(secondary_type_prefix.data() + sec_type_prefix_size - 1)};
       EOS_ASSERT(expected_kt == actual_kt, bad_composite_key_exception,
                  "DB intrinsic key-value get_trailing_sec_prim_keys was passed a key that was the wrong type: ${type},"
                  " it should have been of type: ${type2}",
                  ("type", detail::to_string(actual_kt))("type2", detail::to_string(expected_kt)));
+      const auto keys_size = sizeof(sec_key) + sizeof(primary_key);
+      EOS_ASSERT(full_key.size() == sec_type_prefix_size + keys_size, bad_composite_key_exception,
+                 "DB intrinsic key-value get_trailing_sec_prim_keys was passed a full key size: ${s1} bytes that was not exactly "
+                 "${s2} bytes (the size of the secondary key and a primary key) larger than the secondary_type_prefix "
+                 "size: ${s3}", ("s1", full_key.size())("s2", keys_size)("s3", sec_type_prefix_size));
+
+      // >> identify if the passed in key matches the prefix
+
+      const auto comp = memcmp(secondary_type_prefix.data(), full_key.data(), sec_type_prefix_size);
+      if (comp != 0) {
+         return false;
+      }
       auto start_offset = full_key.data() + sec_type_prefix_size;
       const b1::chain_kv::bytes composite_trailing_sec_prim_key {start_offset, start_offset + keys_size};
       auto composite_loc = composite_trailing_sec_prim_key.cbegin();
@@ -271,34 +428,25 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    template<typename Key, typename CharKey1, typename CharKey2>
    bool get_trailing_prim_sec_keys(const CharKey1& full_key, const CharKey2& primary_to_sec_type_prefix,
                                    uint64_t& primary_key, Key& sec_key) {
-      const auto primary_to_sec_type_prefix_size = primary_to_sec_type_prefix.size();
-      const auto prefix_type_size = prefix_size + sizeof(key_type);
-      const bool extract_sec_type = primary_to_sec_type_prefix_size == prefix_type_size;
-      const auto prefix_sec_type_size = prefix_type_size + sizeof(key_type);
-      EOS_ASSERT(extract_sec_type || primary_to_sec_type_prefix_size == prefix_sec_type_size, bad_composite_key_exception,
-                 "DB intrinsic key-value get_trailing_prim_sec_keys was passed a primary_to_sec_type_prefix with key size: ${s1} bytes "
-                 "which is not equal to the expected size: ${s2}",
-                 ("s1", primary_to_sec_type_prefix_size)("s2", prefix_sec_type_size));
+      detail::consistent_keys<CharKey1, CharKey2>();
+
+      // >> verify that secondary_type_prefix is really a valid secondary type prefix
+
+      // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
       if (!detail::verify_primary_to_sec_type<Key>(full_key, primary_to_sec_type_prefix)) {
          return false;
       }
-      const auto keys_size = sizeof(uint64_t) + sizeof(Key);
-      auto start_offset = full_key.data() + prefix_sec_type_size;
-      const b1::chain_kv::bytes composite_trailing_prim_sec_key {start_offset, start_offset + keys_size};
-      auto composite_loc = composite_trailing_prim_sec_key.cbegin();
-      EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_prim_sec_key.cend(), primary_key), bad_composite_key_exception,
-                 "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
-                 "string size is less than the sizeof(uint64_t)");
-      EOS_ASSERT(b1::chain_kv::extract_key(composite_loc, composite_trailing_prim_sec_key.cend(), sec_key), bad_composite_key_exception,
-                 "DB intrinsic key-value store invariant has changed, extract_key should only fail if the remaining "
-                 "string size is less than: ${s} bytes, which was already verified", ("s", keys_size));
+
+      detail::extract_trailing_primary_and_secondary_keys(full_key, primary_key, sec_key);
       return true;
    }
 
    template<typename Key, typename CharKey1, typename CharKey2>
    bool get_trailing_secondary_key(const CharKey1& full_key, const CharKey2& sec_type_trailing_prefix, Key& sec_key) {
+      detail::consistent_keys<CharKey1, CharKey2>();
+      // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
       const auto sec_type_trailing_prefix_size = sec_type_trailing_prefix.size();
-      const auto prefix_with_primary_key_size = prefix_size + sizeof(key_type) * 2 + sizeof(uint64_t);
+      const auto prefix_with_primary_key_size = detail::prefix_size<CharKey1>() + sizeof(key_type) * 2 + sizeof(uint64_t);
       EOS_ASSERT(sec_type_trailing_prefix_size == prefix_with_primary_key_size, bad_composite_key_exception,
                  "DB intrinsic key-value get_trailing_secondary_key was passed a sec_type_trailing_prefix with key size: ${s1} bytes "
                  "which is not equal to the expected size: ${s2}", ("s1", sec_type_trailing_prefix_size)("s2", prefix_with_primary_key_size));
@@ -317,6 +465,8 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    b1::chain_kv::bytes create_table_key(name scope, name table);
 
+   eosio::session::shared_bytes create_table_key(const eosio::session::shared_bytes& prefix_key);
+
    bool get_table_key(const b1::chain_kv::bytes& composite_key, name& scope, name& table);
 
    b1::chain_kv::bytes create_prefix_key(name scope, name table);
@@ -325,6 +475,8 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    template<typename CharKey>
    rocksdb::Slice prefix_slice(const CharKey& composite_key) {
+      detail::consistent_keys<rocksdb::Slice, CharKey>();
+      const auto prefix_size = detail::prefix_size<rocksdb::Slice>();
       EOS_ASSERT(composite_key.size() >= prefix_size, bad_composite_key_exception,
                  "Cannot extract a prefix from a key that is not big enough to contain a prefix");
       return rocksdb::Slice(composite_key.data(), prefix_size);
@@ -332,7 +484,8 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    template<typename CharKey>
    rocksdb::Slice prefix_type_slice(const CharKey& composite_key) {
-      const auto prefix_type_size = prefix_size + sizeof(key_type);
+      detail::consistent_keys<rocksdb::Slice, CharKey>();
+      const auto prefix_type_size = detail::prefix_size<rocksdb::Slice>() + sizeof(key_type);
       EOS_ASSERT(composite_key.size() >= prefix_type_size, bad_composite_key_exception,
                  "Cannot extract a prefix from a key that is not big enough to contain a prefix");
       return rocksdb::Slice(composite_key.data(), prefix_type_size);
@@ -340,6 +493,9 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    template<typename CharKey>
    rocksdb::Slice prefix_primary_to_secondary_slice(const CharKey& composite_key, bool with_primary_key) {
+      detail::consistent_keys<rocksdb::Slice, CharKey>();
+      // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
+      static constexpr auto prefix_size = detail::prefix_size<CharKey>();
       static constexpr auto prefix_type_size = prefix_size + sizeof(key_type);
       auto expected_size = prefix_type_size + sizeof(key_type) + (with_primary_key ? sizeof(uint64_t) : 0);
       EOS_ASSERT(composite_key.size() >= expected_size, bad_composite_key_exception,
@@ -360,11 +516,31 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
 
    intermittent_decomposed_values get_prefix_thru_key_type(const b1::chain_kv::bytes& composite_key);
 
+   b1::chain_kv::bytes extract_legacy_key(const eosio::session::shared_bytes& complete_key);
+
+   rocksdb::Slice extract_legacy_slice(const eosio::session::shared_bytes& complete_key);
+
+   eosio::session::shared_bytes create_full_key(const b1::chain_kv::bytes& ck, name code);
+   enum class end_of_prefix { pre_type, at_type, at_prim_to_sec_type, at_prim_to_sec_primary_key };
+   eosio::session::shared_bytes create_full_key_prefix(const eosio::session::shared_bytes& ck, end_of_prefix prefix_end);
+
+   struct full_key_data {
+      char                               db_type;
+      std::optional<name>                contract;
+      std::optional<b1::chain_kv::bytes> legacy_key;
+      std::optional<name>                scope;
+      std::optional<name>                table;
+      std::optional<key_type>            kt;
+      rocksdb::Slice                     type_prefix;
+   };
+   full_key_data parse_full_key(const eosio::session::shared_bytes& full_key);
 
    template<typename CharKey1, typename CharKey2>
    bool get_primary_key(const CharKey1& full_key, const CharKey2& type_prefix, uint64_t& primary_key) {
+      detail::consistent_keys<CharKey1, CharKey2>();
+      // possibly add the extra_prefix_size (to cover db_type and contract for a full key)
       const auto type_prefix_size = type_prefix.size();
-      const auto prefix_type_size = prefix_size + sizeof(key_type);
+      const auto prefix_type_size = detail::prefix_size<CharKey1>() + sizeof(key_type);
       EOS_ASSERT(type_prefix_size == prefix_type_size, bad_composite_key_exception,
                  "DB intrinsic key-value get_primary_key was passed a type_prefix with key size: ${s1} bytes "
                  "which is not equal to the expected size: ${s2}", ("s1", type_prefix_size)("s2", prefix_type_size));

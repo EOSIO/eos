@@ -8,11 +8,16 @@ namespace chainbase {
    class database;
 }
 
-namespace eosio { namespace chain {
+namespace eosio {
+   namespace session {
+      struct rocksdb_t;
+      template<typename Parent>
+      class session;
+   }
+namespace chain {
 
       class apply_context;
 
-      constexpr name dbram_id  = N(eosio.dbram);
 namespace backing_store {
       struct db_context {
          db_context(apply_context& c, name recv) : context(c), receiver(recv) {}
@@ -208,7 +213,6 @@ namespace backing_store {
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);
       std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
-                                                            b1::chain_kv::database& database,
-                                                            b1::chain_kv::undo_stack& kv_undo_stack);
+                                                            eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>& session);
 
 }}} // ns eosio::chain::backing_store
