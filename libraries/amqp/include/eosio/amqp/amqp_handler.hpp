@@ -70,11 +70,12 @@ public:
    }
 
    /// ack consume message
-   void ack( const delivery_tag_t& delivery_tag ) {
+   /// @param multiple true if given delivery_tag and all previous should be ack'ed
+   void ack( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( *handler_->amqp_strand(),
-            [my = this, delivery_tag]() {
+            [my = this, delivery_tag, multiple]() {
                try {
-                  my->channel_->ack( delivery_tag );
+                  my->channel_->ack( delivery_tag, multiple ? AMQP::multiple : 0 );
                } FC_LOG_AND_DROP()
             } );
    }
