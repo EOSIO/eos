@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cassert>
+#include <forward_list>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -35,14 +37,14 @@ class session<rocksdb_t> {
       using reference         = typename Iterator_traits::reference;
       using iterator_category = typename Iterator_traits::iterator_category;
 
-      rocks_iterator() = default;
-      rocks_iterator(const rocks_iterator& it);
-      rocks_iterator(rocks_iterator&&) = default;
-      rocks_iterator(rocksdb::DB& db, std::unique_ptr<rocksdb::Iterator> rit,
-                     rocksdb::ColumnFamilyHandle* column_family, rocksdb::ReadOptions read_options);
+      rocks_iterator()                            = default;
+      rocks_iterator(const rocks_iterator& other) = delete;
+      rocks_iterator(rocks_iterator&& other);
+      rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit, int64_t index = -1);
+      ~rocks_iterator();
 
-      rocks_iterator& operator=(const rocks_iterator& it);
-      rocks_iterator& operator=(rocks_iterator&&) = default;
+      rocks_iterator& operator=(const rocks_iterator& other) = delete;
+      rocks_iterator& operator                               =(rocks_iterator&& other);
 
       rocks_iterator& operator++();
       rocks_iterator& operator--();
@@ -51,49 +53,38 @@ class session<rocksdb_t> {
       bool            operator==(const rocks_iterator& other) const;
       bool            operator!=(const rocks_iterator& other) const;
 
-    protected:
-      rocks_iterator make_iterator_() const;
+      shared_bytes key() const;
 
     private:
-      rocksdb::DB*                       m_db{ nullptr };
-      std::unique_ptr<rocksdb::Iterator> m_iterator;
-      rocksdb::ColumnFamilyHandle*       m_column_family{ nullptr };
-      rocksdb::ReadOptions               m_read_options;
+      session<rocksdb_t>* m_session{ nullptr };
+      rocksdb::Iterator*  m_iterator{ nullptr };
+      int64_t             m_index{ -1 };
    };
 
    struct iterator_traits {
       using difference_type   = std::ptrdiff_t;
-      using value_type        = std::pair<shared_bytes, shared_bytes>;
+      using value_type        = std::pair<shared_bytes, std::optional<shared_bytes>>;
       using pointer           = value_type*;
       using reference         = value_type&;
       using iterator_category = std::bidirectional_iterator_tag;
    };
    using iterator = rocks_iterator<iterator_traits>;
 
-   struct const_iterator_traits {
-      using difference_type   = std::ptrdiff_t;
-      using value_type        = const std::pair<shared_bytes, shared_bytes>;
-      using pointer           = value_type*;
-      using reference         = value_type&;
-      using iterator_category = std::bidirectional_iterator_tag;
-   };
-   using const_iterator = rocks_iterator<const_iterator_traits>;
-
  public:
    session()               = default;
    session(const session&) = default;
    session(session&&)      = default;
-   session(std::shared_ptr<rocksdb::DB> db);
+   session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators);
 
    session& operator=(const session&) = default;
    session& operator=(session&&) = default;
 
-   shared_bytes read(const shared_bytes& key) const;
-   void         write(const shared_bytes& key, const shared_bytes& value);
-   bool         contains(const shared_bytes& key) const;
-   void         erase(const shared_bytes& key);
-   void         clear();
-   bool         is_deleted(const shared_bytes& key) const;
+   std::optional<shared_bytes> read(const shared_bytes& key) const;
+   void                        write(const shared_bytes& key, const shared_bytes& value);
+   bool                        contains(const shared_bytes& key) const;
+   void                        erase(const shared_bytes& key);
+   void                        clear();
+   bool                        is_deleted(const shared_bytes& key) const;
 
    template <typename Iterable>
    const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
@@ -111,19 +102,10 @@ class session<rocksdb_t> {
    template <typename Other_data_store, typename Iterable>
    void read_from(const Other_data_store& ds, const Iterable& keys);
 
-   iterator       find(const shared_bytes& key);
-   const_iterator find(const shared_bytes& key) const;
-   iterator       begin();
-   const_iterator begin() const;
-   iterator       end();
-   const_iterator end() const;
-   iterator       lower_bound(const shared_bytes& key);
-   const_iterator lower_bound(const shared_bytes& key) const;
-   iterator       upper_bound(const shared_bytes& key);
-   const_iterator upper_bound(const shared_bytes& key) const;
-
-   iterator& begin(iterator& it) const;
-   iterator& end(iterator& it) const;
+   iterator find(const shared_bytes& key) const;
+   iterator begin() const;
+   iterator end() const;
+   iterator lower_bound(const shared_bytes& key) const;
 
    void undo();
    void commit();
@@ -144,10 +126,7 @@ class session<rocksdb_t> {
    read_(const Iterable& keys) const;
 
    template <typename Predicate>
-   iterator make_iterator_(const Predicate& setup);
-
-   template <typename Predicate>
-   const_iterator make_iterator_(const Predicate& setup) const;
+   iterator make_iterator_(const Predicate& setup) const;
 
    rocksdb::ColumnFamilyHandle* column_family_() const;
 
@@ -155,15 +134,46 @@ class session<rocksdb_t> {
    std::shared_ptr<rocksdb::DB>                 m_db;
    std::shared_ptr<rocksdb::ColumnFamilyHandle> m_column_family;
    rocksdb::ReadOptions                         m_read_options;
+   rocksdb::ReadOptions                         m_iterator_read_options;
    rocksdb::WriteOptions                        m_write_options;
+
+   mutable std::vector<std::unique_ptr<rocksdb::Iterator>> m_iterators;
+   mutable std::vector<size_t>                             m_free_list;
 };
 
-inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db) { return { std::move(db) }; }
+inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators) {
+   return { std::move(db), max_iterators };
+}
 
-inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db)
+inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators)
     : m_db{ [&]() {
          EOS_ASSERT(db, eosio::chain::database_exception, "db parameter cannot be null");
          return std::move(db);
+      }() },
+      m_iterator_read_options{ [&]() {
+         auto read_options             = rocksdb::ReadOptions{};
+         read_options.readahead_size   = 256 * 1024 * 1024;
+         read_options.verify_checksums = false;
+         read_options.fill_cache       = false;
+         // read_options.tailing = true;
+         read_options.background_purge_on_iterator_cleanup = true;
+         read_options.pin_data                             = true;
+         return read_options;
+      }() },
+      m_iterators{ [&]() {
+         auto iterators = decltype(m_iterators){};
+         iterators.reserve(max_iterators);
+
+         auto column_family = column_family_();
+         for (size_t i = 0; i < max_iterators; ++i) {
+            iterators.emplace_back(m_db->NewIterator(m_iterator_read_options, column_family));
+         }
+         return iterators;
+      }() },
+      m_free_list{ [&]() {
+         auto list = decltype(m_free_list)(m_iterators.size());
+         for (size_t i = 0; i < m_iterators.size(); ++i) { list[i] = i; }
+         return list;
       }() } {
    m_write_options.disableWAL = true;
 }
@@ -174,16 +184,16 @@ inline void session<rocksdb_t>::commit() {}
 
 inline bool session<rocksdb_t>::is_deleted(const shared_bytes& key) const { return false; }
 
-inline shared_bytes session<rocksdb_t>::read(const shared_bytes& key) const {
+inline std::optional<shared_bytes> session<rocksdb_t>::read(const shared_bytes& key) const {
    auto key_slice      = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
    auto pinnable_value = rocksdb::PinnableSlice{};
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
    if (status.code() != rocksdb::Status::Code::kOk) {
-      return shared_bytes::invalid();
+      return {};
    }
 
-   return make_shared_bytes(pinnable_value.data(), pinnable_value.size());
+   return shared_bytes(pinnable_value.data(), pinnable_value.size());
 }
 
 inline void session<rocksdb_t>::write(const shared_bytes& key, const shared_bytes& value) {
@@ -228,9 +238,9 @@ session<rocksdb_t>::read_(const Iterable& keys) const {
          continue;
       }
 
-      auto key = make_shared_bytes(key_slices[i].data(), key_slices[i].size());
+      auto key = shared_bytes(key_slices[i].data(), key_slices[i].size());
       not_found.erase(key);
-      kvs.emplace_back(key, make_shared_bytes(values[i].data(), values[i].size()));
+      kvs.emplace_back(key, shared_bytes(values[i].data(), values[i].size()));
    }
 
    return { std::move(kvs), std::move(not_found) };
@@ -307,24 +317,23 @@ using rocks_iterator_alias = typename session<rocksdb_t>::template rocks_iterato
 // \tparam Predicate A function used for preparing the initial iterator.  It has the signature of
 // void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename Predicate>
-typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) {
-   auto rit = std::unique_ptr<rocksdb::Iterator>{ m_db->NewIterator(m_read_options, column_family_()) };
+typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
+   rocksdb::Iterator* rit   = nullptr;
+   int64_t            index = -1;
+   if (!m_free_list.empty()) {
+      index = m_free_list.back();
+      m_free_list.pop_back();
+      rit = m_iterators[index].get();
+      rit->Refresh();
+   } else {
+      rit = m_db->NewIterator(m_iterator_read_options, column_family_());
+   }
    setup(*rit);
-   return { *m_db, std::move(rit), column_family_(), m_read_options };
+
+   return { *const_cast<session<rocksdb_t>*>(this), *rit, index };
 }
 
-// Instantiates an iterator for iterating over the rocksdb data store.
-//
-// \tparam Predicate A function used for preparing the initial iterator.  It has the signature of
-// void(std::shared_ptr<rocksdb::Iterator>&)
-template <typename Predicate>
-typename session<rocksdb_t>::const_iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
-   auto rit = std::unique_ptr<rocksdb::Iterator>{ m_db->NewIterator(m_read_options, column_family_()) };
-   setup(*rit);
-   return { *m_db, std::move(rit), column_family_(), m_read_options };
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shared_bytes& key) {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shared_bytes& key) const {
    auto predicate = [&](auto& it) {
       auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
       it.Seek(key_slice);
@@ -339,53 +348,11 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shar
    return make_iterator_(predicate);
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::find(const shared_bytes& key) const {
-   auto predicate = [&](auto& it) {
-      auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
-      it.Seek(key_slice);
-      if (it.Valid() && it.key().compare(key_slice) != 0) {
-         // Get an invalid iterator
-         it.SeekToLast();
-         if (it.Valid()) {
-            it.Next();
-         }
-      }
-   };
-   return make_iterator_(predicate);
-}
-
-inline typename session<rocksdb_t>::iterator& session<rocksdb_t>::begin(iterator& it) const {
-   if (!it.m_iterator) {
-      return it;
-   }
-
-   it.m_iterator->Refresh();
-   it.m_iterator->SeekToFirst();
-   return it;
-}
-
-inline typename session<rocksdb_t>::iterator& session<rocksdb_t>::end(iterator& it) const {
-   if (!it.m_iterator) {
-      return it;
-   }
-
-   it.m_iterator->Refresh();
-   it.m_iterator->SeekToLast();
-   if (it.m_iterator->Valid()) {
-      it.m_iterator->Next();
-   }
-   return it;
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() const {
    return make_iterator_([](auto& it) { it.SeekToFirst(); });
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::begin() const {
-   return make_iterator_([](auto& it) { it.SeekToFirst(); });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() const {
    return make_iterator_([](auto& it) {
       it.SeekToLast();
       if (it.Valid())
@@ -393,39 +360,9 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() {
    });
 }
 
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::end() const {
-   return make_iterator_([](auto& it) {
-      it.SeekToLast();
-      if (it.Valid())
-         it.Next();
-   });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) {
+inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
    return make_iterator_([&](auto& it) {
       it.Seek(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-   });
-}
-
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
-   return make_iterator_([&](auto& it) {
-      it.Seek(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-   });
-}
-
-inline typename session<rocksdb_t>::iterator session<rocksdb_t>::upper_bound(const shared_bytes& key) {
-   return make_iterator_([&](auto& it) {
-      it.SeekForPrev(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-      if (it.Valid())
-         it.Next();
-   });
-}
-
-inline typename session<rocksdb_t>::const_iterator session<rocksdb_t>::upper_bound(const shared_bytes& key) const {
-   return make_iterator_([&](auto& it) {
-      it.SeekForPrev(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-      if (it.Valid())
-         it.Next();
    });
 }
 
@@ -463,50 +400,43 @@ inline rocksdb::ColumnFamilyHandle* session<rocksdb_t>::column_family_() const {
 }
 
 template <typename Iterator_traits>
-session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(const rocks_iterator& it)
-    : m_db{ it.m_db }, m_iterator{ [&]() {
-         auto new_it =
-               std::unique_ptr<rocksdb::Iterator>{ it.m_db->NewIterator(it.m_read_options, it.m_column_family) };
-         if (it.m_iterator->Valid()) {
-            new_it->Seek(it.m_iterator->key());
-         }
-         return new_it;
-      }() },
-      m_column_family{ it.m_column_family }, m_read_options{ it.m_read_options } {}
+session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(rocks_iterator&& it)
+    : m_session{ it.m_session }, m_iterator{ it.m_iterator }, m_index{ it.m_index } {
+   it.m_session  = nullptr;
+   it.m_iterator = nullptr;
+   it.m_index    = -1;
+}
 
 template <typename Iterator_traits>
-session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(rocksdb::DB&                       db,
-                                                                    std::unique_ptr<rocksdb::Iterator> rit,
-                                                                    rocksdb::ColumnFamilyHandle*       column_family,
-                                                                    rocksdb::ReadOptions               read_options)
-    : m_db{ &db }, m_iterator{ std::move(rit) }, m_column_family{ column_family }, m_read_options{ std::move(
-                                                                                         read_options) } {}
+session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit,
+                                                                    int64_t index)
+    : m_session{ &session }, m_iterator{ &rit }, m_index{ index } {}
 
 template <typename Iterator_traits>
 rocks_iterator_alias<Iterator_traits>&
-session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(const rocks_iterator& it) {
+session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(rocks_iterator&& it) {
    if (this == &it) {
       return *this;
    }
 
-   m_db            = it.m_db;
-   m_column_family = it.m_column_family;
-   m_read_options  = it.m_read_options;
-   m_iterator      = std::unique_ptr<rocksdb::Iterator>{ m_db->NewIterator(m_read_options, m_column_family) };
-   if (it.m_iterator->Valid()) {
-      m_iterator->Seek(it.m_iterator->key());
-   }
+   m_session     = it.m_session;
+   m_iterator    = it.m_iterator;
+   m_index       = it.m_index;
+   it.m_session  = nullptr;
+   it.m_iterator = nullptr;
+   it.m_index    = -1;
+
    return *this;
 }
 
 template <typename Iterator_traits>
-rocks_iterator_alias<Iterator_traits> session<rocksdb_t>::rocks_iterator<Iterator_traits>::make_iterator_() const {
-   auto read_options = rocksdb::ReadOptions{};
-   auto rit          = std::unique_ptr<rocksdb::Iterator>{ m_db->NewIterator(m_read_options, m_column_family) };
-   if (m_iterator->Valid()) {
-      rit->Seek(m_iterator->key());
+session<rocksdb_t>::rocks_iterator<Iterator_traits>::~rocks_iterator() {
+   if (m_index > -1) {
+      m_session->m_free_list.push_back(m_index);
+   } else if (m_iterator) {
+      delete m_iterator;
    }
-   return { *m_db, std::move(rit), m_column_family, m_read_options };
+   m_iterator = nullptr;
 }
 
 template <typename Iterator_traits>
@@ -536,29 +466,39 @@ rocks_iterator_alias<Iterator_traits>& session<rocksdb_t>::rocks_iterator<Iterat
 }
 
 template <typename Iterator_traits>
+shared_bytes session<rocksdb_t>::rocks_iterator<Iterator_traits>::key() const {
+   if (!m_iterator->Valid()) {
+      return shared_bytes{};
+   }
+
+   auto key_slice = m_iterator->key();
+   return shared_bytes(key_slice.data(), key_slice.size());
+}
+
+template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator*() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
+      return std::pair{ shared_bytes{}, std::optional<shared_bytes>{} };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     std::optional<shared_bytes>{ shared_bytes(value.data(), value.size()) } };
 }
 
 template <typename Iterator_traits>
 typename rocks_iterator_alias<Iterator_traits>::value_type
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator->() const {
    if (!m_iterator->Valid()) {
-      return std::pair{ shared_bytes::invalid(), shared_bytes::invalid() };
+      return std::pair{ shared_bytes{}, std::optional<shared_bytes>{} };
    }
 
    auto key_slice = m_iterator->key();
    auto value     = m_iterator->value();
-   return std::pair{ make_shared_bytes(key_slice.data(), key_slice.size()),
-                     make_shared_bytes(value.data(), value.size()) };
+   return std::pair{ shared_bytes(key_slice.data(), key_slice.size()),
+                     std::optional<shared_bytes>{ shared_bytes(value.data(), value.size()) } };
 }
 
 template <typename Iterator_traits>
