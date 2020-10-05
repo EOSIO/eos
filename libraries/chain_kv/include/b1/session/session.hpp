@@ -152,9 +152,11 @@ class session {
    iterator lower_bound(const shared_bytes& key) const;
 
  private:
-   void         prime_cache_();
-   shared_bytes next_key_(const shared_bytes& key) const;
-   shared_bytes previous_key_(const shared_bytes& key) const;
+   void prime_cache_();
+   template <typename It>
+   shared_bytes next_key_(const shared_bytes& key, It& pit, It& pend) const;
+   template <typename It>
+   shared_bytes previous_key_(const shared_bytes& key, It& pit, It& pbegin, It& pend) const;
    void         update_iterator_cache_(const shared_bytes& key, bool deleted, bool overwrite) const;
    template <typename It>
    It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
@@ -276,7 +278,8 @@ void session<Parent>::undo() {
 }
 
 template <typename Parent>
-shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
+template <typename It>
+shared_bytes session<Parent>::previous_key_(const shared_bytes& key, It& pit, It& pbegin, It& pend) const {
    auto result = shared_bytes{};
 
    if (key) {
@@ -293,25 +296,22 @@ shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
          }
       };
 
-      std::visit(
-            [&](auto* p) {
-               auto it    = p->lower_bound(key);
-               auto begin = std::begin(*p);
-               if (it == begin && it.key() >= key) {
-                  return;
-               }
-               auto end = std::end(*p);
-               while (it.key() >= key) {
-                  --it;
-                  if (it == end) {
-                     return;
-                  }
-               }
-               if (it != end) {
-                  m_iterator_cache.emplace(it.key(), iterator_state{});
-               }
-            },
-            m_parent);
+      if (pit != pbegin) {
+         size_t decrement_count = 0;
+         while (pit.key() >= key) {
+            --pit;
+            ++decrement_count;
+            if (pit == pend) {
+               break;
+            }
+         }
+
+         if (pit != pend) {
+            m_iterator_cache.emplace(pit.key(), iterator_state{});
+         }
+
+         for (size_t i = 0; i < decrement_count; ++i) { ++pit; }
+      }
 
       auto& it_cache = const_cast<iterator_cache_type&>(m_iterator_cache);
       auto  it       = it_cache.lower_bound(key);
@@ -328,22 +328,22 @@ shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
 }
 
 template <typename Parent>
-shared_bytes session<Parent>::next_key_(const shared_bytes& key) const {
+template <typename It>
+shared_bytes session<Parent>::next_key_(const shared_bytes& key, It& pit, It& pend) const {
    auto result = shared_bytes{};
 
    if (key) {
-      std::visit(
-            [&](auto* p) {
-               auto it  = p->lower_bound(key);
-               auto end = std::end(*p);
-               if (it.key() == key) {
-                  ++it;
-               }
-               if (it != end) {
-                  m_iterator_cache.emplace(it.key(), iterator_state{});
-               }
-            },
-            m_parent);
+      bool decrement = false;
+      if (pit.key() == key) {
+         ++pit;
+         decrement = true;
+      }
+      if (pit != pend) {
+         m_iterator_cache.emplace(pit.key(), iterator_state{});
+      }
+      if (decrement) {
+         --pit;
+      }
 
       auto& it_cache = const_cast<iterator_cache_type&>(m_iterator_cache);
       auto  it       = it_cache.lower_bound(key);
@@ -427,19 +427,47 @@ void session<Parent>::update_iterator_cache_(const shared_bytes& key, bool delet
    }
 
    if (result.second) {
-      if (!it->second.next_in_cache) {
-         if (auto next_key = next_key_(key)) {
-            auto nit                            = m_iterator_cache.emplace(next_key, iterator_state{});
-            nit.first->second.previous_in_cache = true;
-            it->second.next_in_cache            = true;
-         }
+      auto next_key     = shared_bytes{};
+      auto previous_key = shared_bytes{};
+
+      if (!it->second.next_in_cache && !it->second.previous_in_cache) {
+         std::visit(
+               [&](auto* p) {
+                  auto pit     = p->lower_bound(key);
+                  auto end     = std::end(*p);
+                  auto begin   = std::begin(*p);
+                  next_key     = next_key_(key, pit, end);
+                  previous_key = previous_key_(key, pit, begin, end);
+               },
+               m_parent);
+      } else if (!it->second.next_in_cache) {
+         std::visit(
+               [&](auto* p) {
+                  auto pit = p->lower_bound(key);
+                  auto end = std::end(*p);
+                  next_key = next_key_(key, pit, end);
+               },
+               m_parent);
+      } else if (!it->second.previous_in_cache) {
+         std::visit(
+               [&](auto* p) {
+                  auto pit     = p->lower_bound(key);
+                  auto end     = std::end(*p);
+                  auto begin   = std::begin(*p);
+                  previous_key = previous_key_(key, pit, begin, end);
+               },
+               m_parent);
       }
-      if (!it->second.previous_in_cache) {
-         if (auto previous_key = previous_key_(key)) {
-            auto pit                        = m_iterator_cache.emplace(previous_key, iterator_state{});
-            pit.first->second.next_in_cache = true;
-            it->second.previous_in_cache    = true;
-         }
+
+      if (next_key) {
+         auto nit                            = m_iterator_cache.emplace(next_key, iterator_state{});
+         nit.first->second.previous_in_cache = true;
+         it->second.next_in_cache            = true;
+      }
+      if (previous_key) {
+         auto pit                        = m_iterator_cache.emplace(previous_key, iterator_state{});
+         pit.first->second.next_in_cache = true;
+         it->second.previous_in_cache    = true;
       }
    }
 }

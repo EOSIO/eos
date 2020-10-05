@@ -37,14 +37,14 @@ class session<rocksdb_t> {
       using reference         = typename Iterator_traits::reference;
       using iterator_category = typename Iterator_traits::iterator_category;
 
-      rocks_iterator() = default;
+      rocks_iterator()                            = default;
       rocks_iterator(const rocks_iterator& other) = delete;
       rocks_iterator(rocks_iterator&& other);
       rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit, int64_t index = -1);
       ~rocks_iterator();
 
       rocks_iterator& operator=(const rocks_iterator& other) = delete;
-      rocks_iterator& operator=(rocks_iterator&& other);
+      rocks_iterator& operator                               =(rocks_iterator&& other);
 
       rocks_iterator& operator++();
       rocks_iterator& operator--();
@@ -150,16 +150,16 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          EOS_ASSERT(db, eosio::chain::database_exception, "db parameter cannot be null");
          return std::move(db);
       }() },
-      m_iterator_read_options{[&](){
-         auto read_options = rocksdb::ReadOptions{};
-         read_options.readahead_size = 256 * 1024 * 1024;
+      m_iterator_read_options{ [&]() {
+         auto read_options             = rocksdb::ReadOptions{};
+         read_options.readahead_size   = 256 * 1024 * 1024;
          read_options.verify_checksums = false;
-         read_options.fill_cache = false;
-         //read_options.tailing = true;
+         read_options.fill_cache       = false;
+         // read_options.tailing = true;
          read_options.background_purge_on_iterator_cleanup = true;
-         read_options.pin_data = true;
+         read_options.pin_data                             = true;
          return read_options;
-      }()},
+      }() },
       m_iterators{ [&]() {
          auto iterators = decltype(m_iterators){};
          iterators.reserve(max_iterators);
@@ -171,7 +171,7 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          return iterators;
       }() },
       m_free_list{ [&]() {
-         auto list = decltype(m_free_list)( m_iterators.size() );
+         auto list = decltype(m_free_list)(m_iterators.size());
          for (size_t i = 0; i < m_iterators.size(); ++i) { list[i] = i; }
          return list;
       }() } {
@@ -402,9 +402,9 @@ inline rocksdb::ColumnFamilyHandle* session<rocksdb_t>::column_family_() const {
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(rocks_iterator&& it)
     : m_session{ it.m_session }, m_iterator{ it.m_iterator }, m_index{ it.m_index } {
-   it.m_session = nullptr;
+   it.m_session  = nullptr;
    it.m_iterator = nullptr;
-   it.m_index   = -1;
+   it.m_index    = -1;
 }
 
 template <typename Iterator_traits>
@@ -419,12 +419,12 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(rocks_iterator&& 
       return *this;
    }
 
-   m_session    = it.m_session;
-   m_iterator   = it.m_iterator;
-   m_index      = it.m_index;
-   it.m_session = nullptr;
+   m_session     = it.m_session;
+   m_iterator    = it.m_iterator;
+   m_index       = it.m_index;
+   it.m_session  = nullptr;
    it.m_iterator = nullptr;
-   it.m_index   = -1;
+   it.m_index    = -1;
 
    return *this;
 }
