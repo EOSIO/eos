@@ -134,6 +134,7 @@ class session<rocksdb_t> {
    std::shared_ptr<rocksdb::DB>                 m_db;
    std::shared_ptr<rocksdb::ColumnFamilyHandle> m_column_family;
    rocksdb::ReadOptions                         m_read_options;
+   rocksdb::ReadOptions                         m_iterator_read_options;
    rocksdb::WriteOptions                        m_write_options;
 
    mutable std::vector<std::unique_ptr<rocksdb::Iterator>> m_iterators;
@@ -149,12 +150,23 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          EOS_ASSERT(db, eosio::chain::database_exception, "db parameter cannot be null");
          return std::move(db);
       }() },
+      m_iterator_read_options{[&](){
+         auto read_options = rocksdb::ReadOptions{};
+         read_options.readahead_size = 256 * 1024 * 1024;
+         read_options.verify_checksums = false;
+         read_options.fill_cache = false;
+         //read_options.tailing = true;
+         read_options.background_purge_on_iterator_cleanup = true;
+         read_options.pin_data = true;
+         return read_options;
+      }()},
       m_iterators{ [&]() {
          auto iterators = decltype(m_iterators){};
          iterators.reserve(max_iterators);
+
          auto column_family = column_family_();
          for (size_t i = 0; i < max_iterators; ++i) {
-            iterators.emplace_back(m_db->NewIterator(m_read_options, column_family));
+            iterators.emplace_back(m_db->NewIterator(m_iterator_read_options, column_family));
          }
          return iterators;
       }() },
@@ -314,7 +326,7 @@ typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const P
       rit = m_iterators[index].get();
       rit->Refresh();
    } else {
-      rit = m_db->NewIterator(m_read_options, column_family_());
+      rit = m_db->NewIterator(m_iterator_read_options, column_family_());
    }
    setup(*rit);
 

@@ -89,7 +89,7 @@ inline shared_bytes::shared_bytes(size_t size)
       m_size{ size } {}
 
 inline shared_bytes shared_bytes::next() {
-   auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
+   auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
 
    while (!buffer.empty()) {
       if (++buffer.back()) {
