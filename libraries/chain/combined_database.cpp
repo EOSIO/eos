@@ -126,16 +126,13 @@ namespace eosio { namespace chain {
             options.level0_file_num_compaction_trigger = 2;
 
             // Size of L0 = write_buffer_size * min_write_buffer_number_to_merge * level0_file_num_compaction_trigger
-            // therefore: L0 in stable state = 128MB * 2 * 2 = 512MB
-            // max_bytes_for_level_basei is total size of level 1.
-            // For optimal performance make this equal to L0 hence 512MB
-            options.max_bytes_for_level_base = cfg.rocksdb_max_bytes_for_level_base; 
+            // For optimal performance make this equal to L0
+            options.max_bytes_for_level_base = cfg.rocksdb_write_buffer_size * options.min_write_buffer_number_to_merge * options.level0_file_num_compaction_trigger; 
 
             // Files in level 1 will have target_file_size_base
             // bytes. It’s recommended setting target_file_size_base
-            // to be max_bytes_for_level_base / 10,
-            // so that there are 10 files in level 1.i.e. 512MB/10
-            options.target_file_size_base = cfg.rocksdb_target_file_size_base;
+            // to be max_bytes_for_level_base / 10.
+            options.target_file_size_base = options.max_bytes_for_level_base / 10;
 
             // This value represents the maximum number of threads
             // that will concurrently perform a compaction job by
