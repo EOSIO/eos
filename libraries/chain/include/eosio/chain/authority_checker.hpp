@@ -129,7 +129,7 @@ namespace detail {
             return {range.begin(), range.end()};
          }
 
-         static optional<permission_cache_status>
+         static std::optional<permission_cache_status>
          permission_status_in_cache( const permission_cache_type& permissions,
                                      const permission_level& level )
          {
@@ -141,7 +141,7 @@ namespace detail {
             if( itr != permissions.end() )
                return itr->second;
 
-            return optional<permission_cache_status>();
+            return std::optional<permission_cache_status>();
          }
 
       private:
@@ -173,9 +173,9 @@ namespace detail {
             };
 
             permissions.reserve(authority.waits.size() + authority.keys.size() + authority.accounts.size());
-            std::for_each(authority.accounts.begin(), authority.accounts.end(), boost::bind<void>(emplace_permission, 1, _1));
-            std::for_each(authority.keys.begin(), authority.keys.end(), boost::bind<void>(emplace_permission, 2, _1));
-            std::for_each(authority.waits.begin(), authority.waits.end(), boost::bind<void>(emplace_permission, 3, _1));
+            std::for_each(authority.accounts.begin(), authority.accounts.end(), std::bind(emplace_permission, 1, std::placeholders::_1));
+            std::for_each(authority.keys.begin(), authority.keys.end(), std::bind(emplace_permission, 2, std::placeholders::_1));
+            std::for_each(authority.waits.begin(), authority.waits.end(), std::bind(emplace_permission, 3, std::placeholders::_1));
 
             // Check all permissions, from highest weight to lowest, seeing if provided authorization factors satisfies them or not
             for( const auto& p: permissions )
@@ -210,7 +210,7 @@ namespace detail {
 
             template<typename KeyWeight, typename = std::enable_if_t<detail::is_any_of_v<KeyWeight, shared_key_weight, key_weight>>>
             uint32_t operator()(const KeyWeight& permission) {
-               auto itr = boost::find( checker.provided_keys, permission.key );
+               auto itr = boost::range::find( checker.provided_keys, permission.key );
                if( itr != checker.provided_keys.end() ) {
                   checker._used_keys[itr - checker.provided_keys.begin()] = true;
                   total_weight += permission.weight;

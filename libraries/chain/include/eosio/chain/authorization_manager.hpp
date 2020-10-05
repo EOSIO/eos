@@ -31,6 +31,7 @@ namespace eosio { namespace chain {
                                                      permission_name name,
                                                      permission_id_type parent,
                                                      const authority& auth,
+                                                     uint32_t action_id,
                                                      time_point initial_creation_time = time_point()
                                                    );
 
@@ -38,12 +39,13 @@ namespace eosio { namespace chain {
                                                      permission_name name,
                                                      permission_id_type parent,
                                                      authority&& auth,
+                                                     uint32_t action_id,
                                                      time_point initial_creation_time = time_point()
                                                    );
 
-         void modify_permission( const permission_object& permission, const authority& auth );
+         void modify_permission( const permission_object& permission, const authority& auth, uint32_t action_id );
 
-         void remove_permission( const permission_object& permission );
+         void remove_permission( const permission_object& permission, uint32_t action_id );
 
          void update_permission_usage( const permission_object& permission );
 
@@ -59,10 +61,10 @@ namespace eosio { namespace chain {
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
           */
-         optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
-                                                              scope_name code_account,
-                                                              action_name type
-                                                            )const;
+         std::optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
+                                                                   scope_name code_account,
+                                                                   action_name type
+                                                                 )const;
 
          /**
           *  @brief Check authorizations of a vector of actions with provided keys, permission levels, and delay
@@ -124,10 +126,10 @@ namespace eosio { namespace chain {
          void             check_unlinkauth_authorization( const unlinkauth& unlink, const vector<permission_level>& auths )const;
          fc::microseconds check_canceldelay_authorization( const canceldelay& cancel, const vector<permission_level>& auths )const;
 
-         optional<permission_name> lookup_linked_permission( account_name authorizer_account,
-                                                             scope_name code_account,
-                                                             action_name type
-                                                           )const;
+         std::optional<permission_name> lookup_linked_permission( account_name authorizer_account,
+                                                                  scope_name code_account,
+                                                                  action_name type
+                                                                )const;
    };
 
 } } /// namespace eosio::chain

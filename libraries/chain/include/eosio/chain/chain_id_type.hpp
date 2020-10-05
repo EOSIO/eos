@@ -17,6 +17,11 @@ namespace eosio {
 
 namespace chain {
 
+   namespace legacy {
+      struct snapshot_global_property_object_v3;
+      struct snapshot_global_property_object_v4;
+   }
+
    struct chain_id_type : public fc::sha256 {
       using fc::sha256::sha256;
 
@@ -34,6 +39,8 @@ namespace chain {
 
       void reflector_init()const;
 
+      bool empty() const { return *this == chain_id_type{};}
+
       private:
          chain_id_type() = default;
 
@@ -46,11 +53,14 @@ namespace chain {
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
          friend class block_log;
-         friend struct trim_data;
+         friend struct block_log_preamble;
+         friend struct block_log_verifier;
          friend class controller;
          friend struct controller_impl;
          friend class global_property_object;
          friend struct snapshot_global_property_object;
+         friend struct legacy::snapshot_global_property_object_v3;
+         friend struct legacy::snapshot_global_property_object_v4;
    };
 
 } }  // namespace eosio::chain

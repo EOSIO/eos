@@ -277,7 +277,7 @@ namespace eosio { namespace chain {
 
       // Even though fork database no longer needs block or trxs when a block state becomes a root of the tree,
       // avoid mutating the block state at all, for example clearing the block shared pointer, because other
-      // parts of the code which run asynchronously (e.g. mongo_db_plugin) may later expect it remain unmodified.
+      // parts of the code which run asynchronously may later expect it remain unmodified.
 
       my->root = new_root;
    }
@@ -315,7 +315,7 @@ namespace eosio { namespace chain {
             const auto& exts = n->header_exts;
 
             if( exts.count(protocol_feature_activation::extension_id()) > 0 ) {
-               const auto& new_protocol_features = exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+               const auto& new_protocol_features = std::get<protocol_feature_activation>(exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
                validator( n->header.timestamp, prev_bh->activated_protocol_features->protocol_features, new_protocol_features );
             }
          } EOS_RETHROW_EXCEPTIONS( fork_database_exception, "serialized fork database is incompatible with configured protocol features"  )

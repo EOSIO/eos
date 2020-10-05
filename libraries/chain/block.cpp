@@ -1,4 +1,5 @@
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/types.hpp>
 
 namespace eosio { namespace chain {
    void additional_block_signatures_extension::reflector_init() {
@@ -20,7 +21,30 @@ namespace eosio { namespace chain {
       }
    }
 
-   flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
+   struct transaction_receipt_translator {
+      bool legacy = true;
+      std::variant<transaction_id_type, packed_transaction> operator()(const transaction_id_type& tid) const {
+         return tid;
+      }
+      std::variant<transaction_id_type, packed_transaction> operator()(const packed_transaction_v0& ptrx) const {
+         return packed_transaction(ptrx, legacy);
+      }
+      std::variant<transaction_id_type, packed_transaction> operator()(packed_transaction_v0&& ptrx) const {
+         return packed_transaction(std::move(ptrx), legacy);
+      }
+   };
+
+   transaction_receipt::transaction_receipt(const transaction_receipt_v0& other, bool legacy)
+     : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
+       trx(std::visit(transaction_receipt_translator{legacy}, other.trx))
+   {}
+
+   transaction_receipt::transaction_receipt(transaction_receipt_v0&& other, bool legacy)
+     : transaction_receipt_header(std::move(static_cast<transaction_receipt_header&>(other))),
+       trx(std::visit(transaction_receipt_translator{legacy}, std::move(other.trx)))
+   {}
+
+   static flat_multimap<uint16_t, block_extension> validate_and_extract_block_extensions(const extensions_type& block_extensions) {
       using decompose_t = block_extension_types::decompose_t;
 
       flat_multimap<uint16_t, block_extension> results;
@@ -61,4 +85,71 @@ namespace eosio { namespace chain {
 
    }
 
+   flat_multimap<uint16_t, block_extension> signed_block_v0::validate_and_extract_extensions()const {
+      return validate_and_extract_block_extensions( block_extensions );
+   }
+
+   signed_block::signed_block( const signed_block_v0& other, bool legacy )
+     : signed_block_header(static_cast<const signed_block_header&>(other)),
+       prune_state(legacy ? prune_state_type::complete_legacy : prune_state_type::complete),
+       block_extensions(other.block_extensions)
+   {
+      for(const auto& trx : other.transactions) {
+         transactions.emplace_back(trx, legacy);
+      }
+   }
+
+   signed_block::signed_block( signed_block_v0&& other, bool legacy )
+     : signed_block_header(std::move(static_cast<signed_block_header&>(other))),
+       prune_state(legacy ? prune_state_type::complete_legacy : prune_state_type::complete),
+       block_extensions(std::move(other.block_extensions))
+   {
+      for(auto& trx : other.transactions) {
+         transactions.emplace_back(std::move(trx), legacy);
+      }
+   }
+
+   static std::size_t pruned_trx_receipt_packed_size(const packed_transaction& obj, packed_transaction::cf_compression_type segment_compression) {
+      return obj.maximum_pruned_pack_size(segment_compression);
+   }
+   static std::size_t pruned_trx_receipt_packed_size(const transaction_id_type& obj, packed_transaction::cf_compression_type) {
+      return fc::raw::pack_size(obj);
+   }
+
+   std::size_t transaction_receipt::maximum_pruned_pack_size( packed_transaction::cf_compression_type segment_compression ) const {
+      return fc::raw::pack_size(*static_cast<const transaction_receipt_header*>(this)) + 1 +
+         std::visit([&](const auto& obj){ return pruned_trx_receipt_packed_size(obj, segment_compression); }, trx);
+   }
+
+   std::size_t signed_block::maximum_pruned_pack_size( packed_transaction::cf_compression_type segment_compression ) const {
+      std::size_t result = fc::raw::pack_size(fc::unsigned_int(transactions.size()));
+      for(const transaction_receipt& r: transactions) {
+         result += r.maximum_pruned_pack_size( segment_compression );
+      }
+      return fc::raw::pack_size(*static_cast<const signed_block_header*>(this)) + fc::raw::pack_size(prune_state) + result + fc::raw::pack_size(block_extensions);
+   }
+
+   flat_multimap<uint16_t, block_extension> signed_block::validate_and_extract_extensions()const {
+      return validate_and_extract_block_extensions( block_extensions );
+   }
+
+   std::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
+      if (prune_state != prune_state_type::complete_legacy)
+         return {};
+
+      signed_block_v0 result(*static_cast<const signed_block_header*>(this));
+      result.block_extensions = this->block_extensions;
+
+      auto visitor = overloaded{
+          [](const transaction_id_type &id) -> transaction_receipt_v0::trx_type { return id; },
+          [](const packed_transaction &trx) -> transaction_receipt_v0::trx_type {
+             const auto& legacy = std::get<packed_transaction::prunable_data_type::full_legacy>(trx.get_prunable_data().prunable_data);
+             return packed_transaction_v0(trx.get_packed_transaction(), legacy.signatures, legacy.packed_context_free_data, trx.get_compression());
+          }};
+
+      for (const transaction_receipt &r : transactions){
+         result.transactions.emplace_back(transaction_receipt_v0{r, std::visit(visitor, r.trx)});
+      }
+      return result;
+   }
 } } /// namespace eosio::chain

@@ -40,6 +40,8 @@ namespace eosio {
          MAKE_READ_WASM_ABI(deferred_test,         deferred_test,         test-contracts)
          MAKE_READ_WASM_ABI(get_sender_test,       get_sender_test,       test-contracts)
          MAKE_READ_WASM_ABI(get_table_test,        get_table_test,        test-contracts)
+         MAKE_READ_WASM_ABI(kv_bios,               kv_bios,               test-contracts)
+         MAKE_READ_WASM_ABI(kv_test,               kv_test,               test-contracts)
          MAKE_READ_WASM_ABI(noop,                  noop,                  test-contracts)
          MAKE_READ_WASM_ABI(payloadless,           payloadless,           test-contracts)
          MAKE_READ_WASM_ABI(proxy,                 proxy,                 test-contracts)
@@ -51,6 +53,10 @@ namespace eosio {
          MAKE_READ_WASM_ABI(test_api_db,           test_api_db,           test-contracts)
          MAKE_READ_WASM_ABI(test_api_multi_index,  test_api_multi_index,  test-contracts)
          MAKE_READ_WASM_ABI(test_ram_limit,        test_ram_limit,        test-contracts)
+         MAKE_READ_WASM_ABI(action_results,        action_results,        test-contracts)
+         MAKE_READ_WASM_ABI(wasm_config_bios,      wasm_config_bios,      test-contracts)
+         MAKE_READ_WASM_ABI(params_test,           params_test,           test-contracts)
+         MAKE_READ_WASM_ABI(kv_table_test,         kv_table_test,         test-contracts)
       };
    } /// eosio::testing
 }  /// eosio

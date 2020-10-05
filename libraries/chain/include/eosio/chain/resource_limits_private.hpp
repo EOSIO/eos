@@ -2,6 +2,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -124,6 +125,43 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;
 
+   namespace legacy {
+      struct snapshot_resource_limits_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_limits_object_v3 is no longer needed");
+         account_name owner;
+
+         int64_t net_weight;
+         int64_t cpu_weight;
+         int64_t ram_bytes;
+      };
+      struct snapshot_resource_usage_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_usage_object_v3 is no longer needed");
+         account_name owner;
+         usage_accumulator        net_usage;
+         usage_accumulator        cpu_usage;
+         uint64_t                 ram_usage;
+      };
+      struct snapshot_resource_limits_state_object_v3 {
+         static constexpr uint32_t minimum_version = 0;
+         static constexpr uint32_t maximum_version = 3;
+         static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_resource_limits_state_object_v3 is no longer needed");
+
+         usage_accumulator average_block_net_usage;
+         usage_accumulator average_block_cpu_usage;
+         uint64_t pending_net_usage;
+         uint64_t pending_cpu_usage;
+         uint64_t total_net_weight;
+         uint64_t total_cpu_weight;
+         uint64_t total_ram_bytes;
+         uint64_t virtual_net_limit;
+         uint64_t virtual_cpu_limit;
+      };
+   }
+
    /**
     * Every account that authorizes a transaction is billed for the full size of that transaction. This object
     * tracks the average usage of that account.
@@ -139,6 +177,15 @@ namespace eosio { namespace chain { namespace resource_limits {
       int64_t net_weight = -1;
       int64_t cpu_weight = -1;
       int64_t ram_bytes = -1;
+
+      using v3 = legacy::snapshot_resource_limits_object_v3;
+      void initialize_from( const v3& legacy) {
+         owner = legacy.owner;
+         pending = false;
+         net_weight = legacy.net_weight;
+         cpu_weight = legacy.cpu_weight;
+         ram_bytes = legacy.ram_bytes;
+      }
 
    };
 
@@ -168,6 +215,13 @@ namespace eosio { namespace chain { namespace resource_limits {
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
+      using v3 = legacy::snapshot_resource_usage_object_v3;
+      void initialize_from( const v3& legacy ) {
+         owner = legacy.owner;
+         net_usage = legacy.net_usage;
+         cpu_usage = legacy.cpu_usage;
+         ram_usage = legacy.ram_usage;
+      }
    };
 
    using resource_usage_index = chainbase::shared_multi_index_container<
@@ -194,6 +248,8 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       uint32_t account_cpu_usage_average_window = config::account_cpu_usage_average_window_ms / config::block_interval_ms;
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
+
+      using v3 = resource_limits_config_object;
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<
@@ -249,6 +305,19 @@ namespace eosio { namespace chain { namespace resource_limits {
        */
       uint64_t virtual_cpu_limit = 0ULL;
 
+      using v3 = legacy::snapshot_resource_limits_state_object_v3;
+      void initialize_from( const v3& legacy ) {
+         average_block_net_usage = legacy.average_block_net_usage;
+         average_block_cpu_usage = legacy.average_block_cpu_usage;
+         pending_net_usage = legacy.pending_net_usage;
+         pending_cpu_usage = legacy.pending_cpu_usage;
+         total_net_weight = legacy.total_net_weight;
+         total_cpu_weight = legacy.total_cpu_weight;
+         total_ram_bytes = legacy.total_ram_bytes;
+         virtual_net_limit = legacy.virtual_net_limit;
+         virtual_cpu_limit = legacy.virtual_cpu_limit;
+      }
+
    };
 
    using resource_limits_state_index = chainbase::shared_multi_index_container<
@@ -272,3 +341,7 @@ FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (owner)(net_we
 FC_REFLECT(eosio::chain::resource_limits::resource_usage_object,  (owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))
+
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_limits_object_v3, (owner)(net_weight)(cpu_weight)(ram_bytes))
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_usage_object_v3,  (owner)(net_usage)(cpu_usage)(ram_usage))
+FC_REFLECT(eosio::chain::resource_limits::legacy::snapshot_resource_limits_state_object_v3, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))

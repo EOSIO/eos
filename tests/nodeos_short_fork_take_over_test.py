@@ -339,12 +339,12 @@ try:
         Utils.errorExit("Expected the node 1 to have shutdown.")
 
     Print("Relaunching the non-producing bridge node to connect the node 0 (defproducera, defproducerb)")
-    if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
+    if not nonProdNode.relaunch():
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
     Print("Relaunch node 1 (defproducerc) and let it connect to brigde node that already synced up with node 0")
     time.sleep(10)
-    if not node1.relaunch(nodeId=1, chainArg=" --enable-stale-production "):
+    if not node1.relaunch(chainArg=" --enable-stale-production "):
         errorExit("Failure - (non-production) node 1 should have restarted")
 
     Print("Waiting to allow forks to resolve")

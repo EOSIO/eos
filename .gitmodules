@@ -1,20 +1,6 @@
-[submodule "libraries/chainbase"]
-	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
-        ignore = dirty
-[submodule "libraries/appbase"]
-	path = libraries/appbase
-	url = https://github.com/eosio/appbase
-        ignore = dirty
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
-[submodule "libraries/fc"]
-	path = libraries/fc
-	url = https://github.com/EOSIO/fc
-[submodule "libraries/wabt"]
-	path = libraries/wabt
-	url = https://github.com/EOSIO/wabt
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
@@ -24,3 +10,21 @@
 [submodule "eosio-wasm-spec-tests"]
 	path = eosio-wasm-spec-tests
 	url = https://github.com/EOSIO/eosio-wasm-spec-tests
+[submodule "libraries/abieos"]
+	path = libraries/abieos
+	url = https://github.com/EOSIO/abieos.git
+[submodule "libraries/rocksdb"]
+	path = libraries/rocksdb
+	url = https://github.com/facebook/rocksdb.git
+[submodule "libraries/amqp-cpp"]
+	path = libraries/amqp-cpp
+	url = https://github.com/CopernicaMarketingSoftware/AMQP-CPP
+[submodule "libraries/fc"]
+	path = libraries/fc
+	url = https://github.com/eosio/fc
+[submodule "libraries/chainbase"]
+	path = libraries/chainbase
+	url = https://github.com/eosio/chainbase
+[submodule "libraries/appbase"]
+	path = libraries/appbase
+	url = https://github.com/eosio/appbase

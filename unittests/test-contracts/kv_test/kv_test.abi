@@ -1,0 +1,298 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "erase",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "k",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "get",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "k",
+                    "type": "bytes"
+                },
+                {
+                    "name": "v",
+                    "type": "bytes?"
+                }
+            ]
+        },
+        {
+            "name": "getdata",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "itlifetime",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "itlimit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "params",
+                    "type": "itparam[]"
+                }
+            ]
+        },
+        {
+            "name": "itparam",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "count",
+                    "type": "uint32"
+                },
+                {
+                    "name": "erase",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "itstaterased",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "prefix",
+                    "type": "bytes"
+                },
+                {
+                    "name": "k",
+                    "type": "bytes"
+                },
+                {
+                    "name": "v",
+                    "type": "bytes"
+                },
+                {
+                    "name": "test_id",
+                    "type": "int32"
+                },
+                {
+                    "name": "insert",
+                    "type": "bool"
+                },
+                {
+                    "name": "reinsert",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "kv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "k",
+                    "type": "bytes"
+                },
+                {
+                    "name": "v",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "scan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "prefix",
+                    "type": "bytes"
+                },
+                {
+                    "name": "lower",
+                    "type": "bytes?"
+                },
+                {
+                    "name": "expected",
+                    "type": "kv[]"
+                }
+            ]
+        },
+        {
+            "name": "scanrev",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "prefix",
+                    "type": "bytes"
+                },
+                {
+                    "name": "lower",
+                    "type": "bytes?"
+                },
+                {
+                    "name": "expected",
+                    "type": "kv[]"
+                }
+            ]
+        },
+        {
+            "name": "set",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "k",
+                    "type": "bytes"
+                },
+                {
+                    "name": "v",
+                    "type": "bytes"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "setmany",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "kvs",
+                    "type": "kv[]"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "erase",
+            "type": "erase",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "getdata",
+            "type": "getdata",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "itlifetime",
+            "type": "itlifetime",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "itlimit",
+            "type": "itlimit",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "itstaterased",
+            "type": "itstaterased",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "scan",
+            "type": "scan",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "scanrev",
+            "type": "scanrev",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "set",
+            "type": "set",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setmany",
+            "type": "setmany",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

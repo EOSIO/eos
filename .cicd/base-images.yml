@@ -1,0 +1,163 @@
+steps:
+  - wait
+
+  - label: ":aws: Amazon_Linux 2 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: amazon_linux-2-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    
+  - label: ":centos: CentOS 7.7 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: centos-7.7-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    
+  - label: ":darwin: macOS 10.14 - Base Image Pinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/pinned/macos-10.14-pinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.14.6_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
+
+  - label: ":darwin: macOS 10.15 - Base Image Pinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/pinned/macos-10.15-pinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 16.04 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: ubuntu-16.04-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 18.04 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: ubuntu-18.04-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+
+  - label: ":aws: Amazon_Linux 2 - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: amazon_linux-2-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    
+  - label: ":centos: CentOS 7.7 - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: centos-7.7-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    
+  - label: ":darwin: macOS 10.14 - Base Image Unpinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/unpinned/macos-10.14-unpinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.14.6_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
+
+  - label: ":darwin: macOS 10.15 - Base Image Unpinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
+    
+  - label: ":ubuntu: Ubuntu 18.04 - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: ubuntu-18.04-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180

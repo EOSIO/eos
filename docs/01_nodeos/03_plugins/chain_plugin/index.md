@@ -1,5 +1,3 @@
-# chain_plugin
-
 ## Description
 
 The `chain_plugin` is a core plugin required to process and aggregate chain data on an EOSIO node.
@@ -67,13 +65,45 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
+  --blocks-log-stride arg (=4294967295)
+                                        split the block log file when the head
+                                        block number is the multiple of the
+                                        stride. When the stride is reached, the
+                                        current block log and index will be
+                                        renamed '<blocks-retained-dir>/blocks-
+                                        <start num>-<end num>.log/index' and a
+                                        new current block log and index will be
+                                        created with the most recent block. All
+                                        files following this format will be
+                                        used to construct an extended block log
+  --max-retained-block-files arg (=10)  the maximum number of blocks files to
+                                        retain so that the blocks in those
+                                        files can be queried. When the number
+                                        is reached, the oldest block file would
+                                        be moved to archive dir or deleted if
+                                        the archive dir is empty. The retained
+                                        block log files should not be
+                                        manipulated by users.
+  --blocks-retained-dir arg (="")       the location of the blocks retained
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty, it
+                                        is set to the value of blocks dir.
+  --blocks-archive-dir (="archive")     the location of the blocks archive
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty,
+                                        blocks files beyond the retained limit
+                                        will be deleted. All files in the
+                                        archive directory are completely under
+                                        user's control, i.e. they won't be
+                                        accessed by nodeos anymore.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
                                         application config dir)
   --checkpoint arg                      Pairs of [BLOCK_NUM,BLOCK_ID] that 
                                         should be enforced as checkpoints.
-  --wasm-runtime wavm/wabt              Override default WASM runtime
+  --wasm-runtime eos-vm|eos-vm-jit      Override default WASM runtime (eos-vm-jit)
+  --eos-vm-oc-enable                    Enable optimized compilation in WASM
   --abi-serializer-max-time-ms arg (=15000)
                                         Override default maximum ABI 
                                         serialization time allowed in ms
@@ -168,6 +198,13 @@ Config Options for eosio::chain_plugin:
   --database-hugepage-path arg          Optional path for database hugepages 
                                         when in "locked" mode (may specify 
                                         multiple times)
+                                        
+  --max-nonprivileged-inline-action-size arg          
+                                        Sets the maximum limit for 
+                                        non-privileged inline actions. 
+                                        The default value is 4 KB 
+                                        and if this threshold is exceeded,
+                                        the transaction will subjectively fail.                                       
 ```
 
 ## Dependencies

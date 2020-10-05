@@ -236,7 +236,7 @@ struct faucet_testnet_plugin_impl {
 
       _blocking_accounts = true;
       _timer.expires_from_now(boost::posix_time::microseconds(_create_interval_msec * 1000));
-      _timer.async_wait(boost::bind(&faucet_testnet_plugin_impl::timer_fired, this));
+      _timer.async_wait(std::bind(&faucet_testnet_plugin_impl::timer_fired, this));
 
       return std::make_pair(account_created, fc::variant(eosio::detail::faucet_testnet_empty()));
    }
@@ -315,8 +315,14 @@ void faucet_testnet_plugin::plugin_startup() {
 void faucet_testnet_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
-   } catch(fc::exception& e) {
+   } catch ( const std::bad_alloc& ) {
+      throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch(const fc::exception& e) {
       edump((e.to_detail_string()));
+   } catch (const std::exception& e){
+      edump((fc::std_exception_wrapper::from_current_exception(e).to_detail_string()));
    }
 }
 

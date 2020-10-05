@@ -2,6 +2,7 @@
 
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/wasm_config.hpp>
 #include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
@@ -19,7 +20,7 @@ namespace legacy {
       static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_genesis_state_v3 is no longer needed");
       time_point                               initial_timestamp;
       public_key_type                          initial_key;
-      chain_config                             initial_configuration;
+      chain_config_v0                          initial_configuration;
    };
 
 }
@@ -29,7 +30,7 @@ struct genesis_state {
 
    static const string eosio_root_key;
 
-   chain_config   initial_configuration = {
+   chain_config_v0   initial_configuration = {
       .max_block_net_usage                  = config::default_max_block_net_usage,
       .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
       .max_transaction_net_usage            = config::default_max_transaction_net_usage,
@@ -49,6 +50,20 @@ struct genesis_state {
       .max_inline_action_size               = config::default_max_inline_action_size,
       .max_inline_action_depth              = config::default_max_inline_action_depth,
       .max_authority_depth                  = config::default_max_auth_depth,
+   };
+
+   static constexpr wasm_config default_initial_wasm_configuration {
+      .max_mutable_global_bytes = config::default_max_wasm_mutable_global_bytes,
+      .max_table_elements       = config::default_max_wasm_table_elements,
+      .max_section_elements     = config::default_max_wasm_section_elements,
+      .max_linear_memory_init   = config::default_max_wasm_linear_memory_init,
+      .max_func_local_bytes     = config::default_max_wasm_func_local_bytes,
+      .max_nested_structures    = config::default_max_wasm_nested_structures,
+      .max_symbol_bytes         = config::default_max_wasm_symbol_bytes,
+      .max_module_bytes         = config::default_max_wasm_module_bytes,
+      .max_code_bytes           = config::default_max_wasm_code_bytes,
+      .max_pages                = config::default_max_wasm_pages,
+      .max_call_depth           = config::default_max_wasm_call_depth
    };
 
    time_point                               initial_timestamp;
@@ -75,11 +90,15 @@ struct genesis_state {
       initial_key              = legacy.initial_key;
       initial_protocol_features = {};
    }
+   legacy::snapshot_genesis_state_v3 to_v3() const {
+      EOS_ASSERT(initial_protocol_features.empty(), block_log_exception, "Cannot represent genesis state with protocol features as v3");
+      return { initial_timestamp, initial_key, initial_configuration };
+   }
 };
 
 } } // namespace eosio::chain
 
-
+// @swap initial_timestamp initial_key initial_configuration
 FC_REFLECT(eosio::chain::genesis_state,
            (initial_timestamp)(initial_key)(initial_configuration)(initial_protocol_features))
 

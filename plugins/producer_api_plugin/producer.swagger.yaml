@@ -1,0 +1,497 @@
+openapi: 3.0.0
+info:
+  title: Producer API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    url: https://eos.io
+tags:
+  - name: eosio
+servers:
+  - url: "{protocol}://{host}:{port}/v1/"
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: http
+      host:
+        default: localhost
+      port:
+        default: "8080"
+components:
+  securitySchemes: {}
+  schemas: {}
+security:
+  - {}
+paths:
+  /producer/pause:
+    post:
+      summary: pause
+      description: Pause producer node
+      operationId: pause
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: boolean
+                description: "returns status"
+  /producer/resume:
+    post:
+      summary: resume
+      description: Resume producer node
+      operationId: resume
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Resumes activity for producer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+  /producer/paused:
+    post:
+      summary: paused
+      description: Retreives paused status for producer node
+      operationId: paused
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: boolean
+                description: True if producer is paused, false otherwise
+  /producer/get_runtime_options:
+    post:
+      summary: get_runtime_options
+      description: Retreives run time options for producer node
+      operationId: get_runtime_options
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Returns run time options set for the producer
+                properties:
+                  max_transaction_time:
+                    type: integer
+                    description: Max transaction time
+                  max_irreversible_block_age:
+                    type: integer
+                    description: Max irreversible block age
+                  produce_time_offset_us:
+                    type: integer
+                    description: Time offset
+                  last_block_time_offset_us:
+                    type: integer
+                    description: Last block time offset
+                  max_scheduled_transaction_time_per_block_ms:
+                    type: integer
+                    description: Max scheduled transaction time per block in ms
+                  subjective_cpu_leeway_us:
+                    type: integer
+                    description: Subjective CPU leeway
+                  incoming_defer_ratio:
+                    type: integer
+                    description: Incoming defer ration
+  /producer/update_runtime_options:
+    post:
+      summary: update_runtime_options
+      description: Update run time options for producer node
+      operationId: update_runtime_options
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - options
+              properties:
+                options:
+                  type: object
+                  description: Defines the run time options to set for the producer
+                  properties:
+                    max_transaction_time:
+                      type: integer
+                      description: Max transaction time
+                    max_irreversible_block_age:
+                      type: integer
+                      description: Max irreversible block age
+                    produce_time_offset_us:
+                      type: integer
+                      description: Time offset
+                    last_block_time_offset_us:
+                      type: integer
+                      description: Last block time offset
+                    max_scheduled_transaction_time_per_block_ms:
+                      type: integer
+                      description: Max scheduled transaction time per block in ms
+                    subjective_cpu_leeway_us:
+                      type: integer
+                      description: Subjective CPU leeway
+                    incoming_defer_ratio:
+                      type: integer
+                      description: Incoming defer ration
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+  /producer/get_greylist:
+    post:
+      summary: get_greylist
+      description: Retreives the greylist for producer node
+      operationId: get_greylist
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of account names stored in the greylist
+                items:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+  /producer/add_greylist_accounts:
+    post:
+      summary: add_greylist_accounts
+      description: Adds accounts to grey list for producer node
+      operationId: add_greylist_accounts
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  properties:
+                    accounts:
+                      type: array
+                      description: List of account names to add
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+  /producer/remove_greylist_accounts:
+    post:
+      summary: remove_greylist_accounts
+      description: Removes accounts from greylist for producer node
+      operationId: remove_greylist_accounts
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  properties:
+                    accounts:
+                      type: array
+                      description: List of account names to remove
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of account names stored in the greylist
+                items:
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+
+  /producer/get_whitelist_blacklist:
+    post:
+      summary: get_whitelist_blacklist
+      description: Retreives the white list and black list for producer node
+      operationId: get_whitelist_blacklist
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Defines the actor whitelist and blacklist, the contract whitelist and blacklist, the action blacklist and key blacklist
+                properties:
+                  actor_whitelist:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  actor_blacklist:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  contract_whitelist:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  contract_blacklist:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                  action_blacklist:
+                    type: array
+                    items:
+                      type: array
+                      description: Array of two string values, the account name as the first and action name as the second
+                      items:
+                        allOf:
+                          - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                          - $ref: "https://eosio.github.io/schemata/v2.0/oas/CppSignature.yaml"
+                  key_blacklist:
+                    type: array
+                    items:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/KeyType.yaml"
+
+  /producer/set_whitelist_blacklist:
+    post:
+      summary: set_whitelist_blacklist
+      description: Sets the white list and black list for producer node
+      operationId: set_whitelist_blacklist
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  description: Defines the actor whitelist and blacklist, the contract whitelist and blacklist, the action blacklist and key blacklist
+                  properties:
+                    actor_whitelist:
+                      type: array
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                    actor_blacklist:
+                      type: array
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                    contract_whitelist:
+                      type: array
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                    contract_blacklist:
+                      type: array
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                    action_blacklist:
+                      type: array
+                      items:
+                        type: array
+                        description: Array of two string values, the account name as the first and action name as the second
+                        items:
+                          allOf:
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
+                            - $ref: "https://eosio.github.io/schemata/v2.0/oas/CppSignature.yaml"
+                    key_blacklist:
+                      type: array
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/KeyType.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+  /producer/create_snapshot:
+    post:
+      summary: create_snapshot
+      description: Creates a snapshot for producer node
+      operationId: create_snapshot
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - next
+              properties:
+                next:
+                  type: object
+                  description: Defines the snapshot to be created
+                  properties:
+                    snapshot_name:
+                      type: string
+                      description: The name of the snapshot
+                    head_block_id:
+                      $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+
+  /producer/get_integrity_hash:
+    post:
+      summary: get_integrity_hash
+      description: Retreives the integrity hash for producer node
+      operationId: get_integrity_hash
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Defines the integrity hash information details
+                properties:
+                  integrity_hash:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+                  head_block_id:
+                    $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+
+  /producer/schedule_protocol_feature_activations:
+    post:
+      summary: schedule_protocol_feature_activations
+      description: Schedule protocol feature activation for producer node
+      operationId: schedule_protocol_feature_activations
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - schedule
+              properties:
+                schedule:
+                  type: object
+                  properties:
+                    protocol_features_to_activate:
+                      type: array
+                      description: List of protocol features to activate
+                      items:
+                        $ref: "https://eosio.github.io/schemata/v2.0/oas/Sha256.yaml"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                description: Returns Nothing
+
+  /producer/get_supported_protocol_features:
+    post:
+      summary: get_supported_protocol_features
+      description: Retreives supported protocol features for producer node
+      operationId: get_supported_protocol_features
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - params
+              properties:
+                params:
+                  type: object
+                  description: Defines filters based on which to return the supported protocol features
+                  properties:
+                    exclude_disabled:
+                      type: boolean
+                      description: Exclude disabled protocol features
+                    exclude_unactivatable:
+                      type: boolean
+                      description: Exclude unactivatable protocol features
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Variant type, an array of strings with the supported protocol features
+                items:
+                  type: string

@@ -63,23 +63,18 @@ function set_system_vars() {
         export OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
         export OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
         export OS_PATCH=$(echo "${OS_VER}" | cut -d'.' -f3)
-        export MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
-        export DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
-        export blksize=$(df . | head -1 | awk '{print $2}' | cut -d- -f1)
-        export gbfactor=$(( 1073741824 / blksize ))
-        export total_blks=$(df . | tail -1 | awk '{print $2}')
-        export avail_blks=$(df . | tail -1 | awk '{print $4}')
-        export DISK_TOTAL=$((total_blks / gbfactor ))
-        export DISK_AVAIL=$((avail_blks / gbfactor ))
+        export MEM_GIG=$(($(sysctl -in hw.memsize) / 1024 / 1024 /1024))
     else
-        export DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
-        export DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
-        export DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
         export MEM_GIG=$(( ( ( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1000 ) / 1000 ) ))
-        export DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
-        export DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
     fi
-    export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))}
+    local IFS=' '
+    set `df -k . | tail -1`
+    export DISK_INSTALL=$1
+    export DISK_TOTAL=$(($2 / 1024 / 1024))
+    export DISK_AVAIL=$(($4 / 1024 / 1024))
+    # For a basic hueristic here, let's require at least 2GB of available RAM per parallel job.
+    # CPU_CORES is the number of logical cores available.
+    export JOBS=${JOBS:-$(( MEM_GIG / 2 >= CPU_CORES ? CPU_CORES : MEM_GIG / 2 ))}
 }
 
 function install-package() {
@@ -90,6 +85,19 @@ function install-package() {
     # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
     ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
+  fi
+  true # Required; Weird behavior without it
+}
+
+function group-install-package() {
+  if [[ $ARCH == "Linux" ]]; then
+    EXECUTION_FUNCTION="execute"
+    [[ $2 == "WETRUN" ]] && EXECUTION_FUNCTION="execute-always"
+    ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
+    # Can't use $SUDO_COMMAND: https://askubuntu.com/questions/953485/where-do-i-find-the-sudo-command-environment-variable
+    [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS groupinstall -y '$1'
     ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it

@@ -1,18 +1,16 @@
 #pragma once
 
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/webassembly/wavm.hpp>
-#include <eosio/chain/webassembly/wabt.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #else
 #define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 #endif
-#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/code_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -22,9 +20,8 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/vm/allocator.hpp>
-#endif
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
@@ -52,7 +49,9 @@ namespace eosio { namespace chain {
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
-         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
+         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db)
+          : cc(d, c, db), exec(cc),
+            mem(wasm_constraints::maximum_linear_memory/wasm_constraints::wasm_page_size) {}
          eosvmoc::code_cache_async cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
@@ -60,8 +59,6 @@ namespace eosio { namespace chain {
 #endif
 
       wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
-         if(vm == wasm_interface::vm_type::wabt)
-            runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::eos_vm)
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
@@ -164,6 +161,7 @@ namespace eosio { namespace chain {
             try {
                Serialization::MemoryInputStream stream((const U8*)bytes.data(),
                                                        bytes.size());
+               WASM::scoped_skip_checks no_check;
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch (const Serialization::FatalSerializationException& e) {
@@ -215,52 +213,8 @@ namespace eosio { namespace chain {
       const wasm_interface::vm_type wasm_runtime_time;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      fc::optional<eosvmoc_tier> eosvmoc;
+      std::optional<eosvmoc_tier> eosvmoc;
 #endif
    };
-
-#define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
-#define _ADD_PAREN_2(...) ((__VA_ARGS__)) _ADD_PAREN_1
-#define _ADD_PAREN_1_END
-#define _ADD_PAREN_2_END
-#define _WRAPPED_SEQ(SEQ) BOOST_PP_CAT(_ADD_PAREN_1 SEQ, _END)
-
-#define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
-   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
-   _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)       \
-   _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
-
-#define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG )
-
-#define _REGISTER_INTRINSIC3(CLS, MOD, METHOD, WASM_SIG, NAME)\
-   _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, decltype(&CLS::METHOD) )
-
-#define _REGISTER_INTRINSIC2(CLS, MOD, METHOD, WASM_SIG)\
-   _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, BOOST_PP_STRINGIZE(METHOD), decltype(&CLS::METHOD) )
-
-#define _REGISTER_INTRINSIC1(CLS, MOD, METHOD)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":" BOOST_PP_STRINGIZE(METHOD) " without a signature");
-
-#define _REGISTER_INTRINSIC0(CLS, MOD, METHOD)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":<unknown> without a method name and signature");
-
-#define _UNWRAP_SEQ(...) __VA_ARGS__
-
-#define _EXPAND_ARGS(CLS, MOD, INFO)\
-   ( CLS, MOD, _UNWRAP_SEQ INFO )
-
-#define _REGISTER_INTRINSIC(R, CLS, INFO)\
-   BOOST_PP_CAT(BOOST_PP_OVERLOAD(_REGISTER_INTRINSIC, _UNWRAP_SEQ INFO) _EXPAND_ARGS(CLS, "env", INFO), BOOST_PP_EMPTY())
-
-#define REGISTER_INTRINSICS(CLS, MEMBERS)\
-   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
-
-#define _REGISTER_INJECTED_INTRINSIC(R, CLS, INFO)\
-   BOOST_PP_CAT(BOOST_PP_OVERLOAD(_REGISTER_INTRINSIC, _UNWRAP_SEQ INFO) _EXPAND_ARGS(CLS, EOSIO_INJECTED_MODULE_NAME, INFO), BOOST_PP_EMPTY())
-
-#define REGISTER_INJECTED_INTRINSICS(CLS, MEMBERS)\
-   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INJECTED_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
 
 } } // eosio::chain

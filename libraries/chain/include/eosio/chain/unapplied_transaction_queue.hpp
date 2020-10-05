@@ -28,7 +28,7 @@ enum class trx_enum_type {
    incoming = 5 // incoming_end() needs to be updated if this changes
 };
 
-using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
+using next_func_t = std::function<void(const std::variant<fc::exception_ptr, transaction_trace_ptr>&)>;
 
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
@@ -139,18 +139,22 @@ public:
       if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
       for( const auto& receipt : bs->block->transactions ) {
-         if( receipt.trx.contains<packed_transaction>() ) {
-            const auto& pt = receipt.trx.get<packed_transaction>();
-            auto itr = queue.get<by_trx_id>().find( pt.id() );
-            if( itr != queue.get<by_trx_id>().end() ) {
+         if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+            const auto& pt = std::get<packed_transaction>(receipt.trx);
+            auto itr = idx.find( pt.id() );
+            if( itr != idx.end() ) {
+               if( itr->next ) {
+                  itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                                FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
+               }
                if( itr->trx_type != trx_enum_type::persisted &&
                    itr->trx_type != trx_enum_type::incoming_persisted ) {
-                  if( itr->next ) {
-                     itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
-                                   FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
-                  }
                   removed( itr );
                   idx.erase( itr );
+               } else if( itr->next ) {
+                  idx.modify( itr, [](auto& un){
+                     un.next = nullptr;
+                  } );
                }
             }
          }
@@ -188,6 +192,8 @@ public:
          auto insert_itr = queue.insert( { trx, expiry, trx_enum_type::persisted } );
          if( insert_itr.second ) added( insert_itr.first );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
+         if (itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted)
+            --incoming_count;
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
          } );
@@ -202,6 +208,9 @@ public:
                { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
       } else {
+         if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
+            ++incoming_count;
+
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
             un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
             un.next = std::move( next );
@@ -254,8 +263,7 @@ private:
    }
 
    static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
-      // packed_trx caches unpacked transaction so double
-      return (trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size()) * 2 + sizeof( *trx );
+      return sizeof(unapplied_transaction) + trx->get_estimated_size();
    }
 
 };

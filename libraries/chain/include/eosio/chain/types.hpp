@@ -8,7 +8,6 @@
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
-#include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
@@ -66,7 +65,6 @@ namespace eosio { namespace chain {
    using                               fc::variant_object;
    using                               fc::variant;
    using                               fc::enum_type;
-   using                               fc::optional;
    using                               fc::unsigned_int;
    using                               fc::signed_int;
    using                               fc::time_point_sec;
@@ -75,7 +73,7 @@ namespace eosio { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_multimap;
    using                               fc::flat_set;
-   using                               fc::static_variant;
+   using                               std::variant;
    using                               fc::ecc::range_proof_type;
    using                               fc::ecc::range_proof_info;
    using                               fc::ecc::commitment_type;
@@ -130,6 +128,71 @@ namespace eosio { namespace chain {
          shared_blob(const allocator_type& a)
          :shared_string(a)
          {}
+   };
+
+   /* Compares equivalent to any blob that has this as a prefix. */
+   struct blob_prefix {
+      std::string_view _data;
+      const char* data() const { return _data.data(); }
+      std::size_t size() const { return _data.size(); }
+   };
+
+   /**
+    * Compare vector, string, string_view, shared_blob (unsigned)
+    */
+   template<typename A, typename B>
+   inline int compare_blob(const A& a, const B& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
+      auto r = memcmp(
+         a.data(),
+         b.data(),
+         std::min(a.size(), b.size()));
+      if (r)
+         return r;
+      if (a.size() < b.size())
+         return -1;
+      if (a.size() > b.size())
+         return 1;
+      return 0;
+   }
+
+   template<typename A>
+   inline int compare_blob(const A& a, const blob_prefix& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() < b.size())
+         return -1;
+      return 0;
+   }
+
+   template<typename B>
+   inline int compare_blob(const blob_prefix& a, const B& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() > b.size())
+         return 1;
+      return 0;
+   }
+
+   /**
+    * Compare vector, string, string_view, shared_blob (unsigned)
+    */
+   struct unsigned_blob_less {
+      template<typename A, typename B>
+      bool operator()(const A& a, const B& b) const {
+         return compare_blob(a, b) < 0;
+      }
    };
 
    using action_name      = name;
@@ -193,6 +256,7 @@ namespace eosio { namespace chain {
       account_ram_correction_object_type,
       code_object_type,
       database_header_object_type,
+      kv_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -342,7 +406,7 @@ namespace eosio { namespace chain {
       struct decompose<> {
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             return {};
          }
@@ -355,7 +419,7 @@ namespace eosio { namespace chain {
 
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             if( id == head_t::extension_id() ) {
                result = fc::raw::unpack<head_t>( data );

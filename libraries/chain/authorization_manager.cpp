@@ -133,11 +133,12 @@ namespace eosio { namespace chain {
                                                                       permission_name name,
                                                                       permission_id_type parent,
                                                                       const authority& auth,
+                                                                      uint32_t action_id,
                                                                       time_point initial_creation_time
                                                                     )
    {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when creating permission");
 
       auto creation_time = initial_creation_time;
@@ -156,6 +157,13 @@ namespace eosio { namespace chain {
          p.name         = name;
          p.last_updated = creation_time;
          p.auth         = auth;
+
+         if (auto dm_logger = _control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", p)
+            );
+         }
       });
       return perm;
    }
@@ -164,11 +172,12 @@ namespace eosio { namespace chain {
                                                                       permission_name name,
                                                                       permission_id_type parent,
                                                                       authority&& auth,
+                                                                      uint32_t action_id,
                                                                       time_point initial_creation_time
                                                                     )
    {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when creating permission");
 
       auto creation_time = initial_creation_time;
@@ -187,28 +196,60 @@ namespace eosio { namespace chain {
          p.name         = name;
          p.last_updated = creation_time;
          p.auth         = std::move(auth);
+
+         if (auto dm_logger = _control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "PERM_OP INS ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", p)
+            );
+         }
       });
       return perm;
    }
 
-   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
+   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth, uint32_t action_id ) {
       for(const key_weight& k: auth.keys)
-         EOS_ASSERT(k.key.which() < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+         EOS_ASSERT(static_cast<uint32_t>(k.key.which()) < _db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
            "Unactivated key type used when modifying permission");
 
       _db.modify( permission, [&](permission_object& po) {
+         auto dm_logger = _control.get_deep_mind_logger();
+
+         fc::variant old_permission;
+         if (dm_logger) {
+            old_permission = po;
+         }
+
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
+
+         if (auto dm_logger = _control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "PERM_OP UPD ${action_id} ${data}",
+               ("action_id", action_id)
+               ("data", fc::mutable_variant_object()
+                  ("old", old_permission)
+                  ("new", po)
+               )
+            );
+         }
       });
    }
 
-   void authorization_manager::remove_permission( const permission_object& permission ) {
+   void authorization_manager::remove_permission( const permission_object& permission, uint32_t action_id) {
       const auto& index = _db.template get_index<permission_index, by_parent>();
       auto range = index.equal_range(permission.id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
       _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
+
+      if (auto dm_logger = _control.get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "PERM_OP REM ${action_id} ${data}",
+              ("action_id", action_id)
+              ("data", permission)
+         );
+      }
+
       _db.remove( permission );
    }
 
@@ -235,10 +276,10 @@ namespace eosio { namespace chain {
       return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
-   optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
-                                                                              account_name scope,
-                                                                              action_name act_name
-                                                                            )const
+   std::optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
+                                                                                   account_name scope,
+                                                                                   action_name act_name
+                                                                                 )const
    {
       try {
          // First look up a specific link for this message act_name
@@ -254,16 +295,14 @@ namespace eosio { namespace chain {
          if (link != nullptr) {
             return link->required_permission;
          }
-         return optional<permission_name>();
-
-       //  return optional<permission_name>();
+         return std::optional<permission_name>();
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
    }
 
-   optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
-                                                                               account_name scope,
-                                                                               action_name act_name
-                                                                             )const
+   std::optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
+                                                                                    account_name scope,
+                                                                                    action_name act_name
+                                                                                  )const
    {
       // Special case native actions cannot be linked to a minimum permission, so there is no need to check.
       if( scope == config::system_account_name ) {
@@ -277,12 +316,12 @@ namespace eosio { namespace chain {
       }
 
       try {
-         optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
+         std::optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
          if( !linked_permission )
             return config::active_name;
 
          if( *linked_permission == config::eosio_any_name )
-            return optional<permission_name>();
+            return std::optional<permission_name>();
 
          return linked_permission;
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
@@ -340,7 +379,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       if( link.code == config::system_account_name
-            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) ) 
+            || !_control.is_builtin_activated( builtin_protocol_feature_t::fix_linkauth_restriction ) )
       {
          EOS_ASSERT( link.type != updateauth::get_name(),  action_validate_exception,
                      "Cannot link eosio::updateauth to a minimum permission" );
@@ -377,7 +416,7 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
-      EOS_ASSERT( unlinked_permission_name.valid(), transaction_exception,
+      EOS_ASSERT( unlinked_permission_name, transaction_exception,
                   "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
                   ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
 

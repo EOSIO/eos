@@ -52,16 +52,28 @@ void resource_limits_manager::add_indices() {
 }
 
 void resource_limits_manager::initialize_database() {
-   const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
+   const auto& config = _db.create<resource_limits_config_object>([this](resource_limits_config_object& config){
       // see default settings in the declaration
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG INS ${data}",
+            ("data", config)
+         );
+      }
    });
 
-   _db.create<resource_limits_state_object>([&config](resource_limits_state_object& state){
+   _db.create<resource_limits_state_object>([this, &config](resource_limits_state_object& state){
       // see default settings in the declaration
 
       // start the chain off in a way that it is "congested" aka slow-start
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE INS ${data}",
+            ("data", state)
+         );
+      }
    });
 }
 
@@ -75,8 +87,25 @@ void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapsh
    });
 }
 
-void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t version ) {
+   resource_index_set::walk_indices([this, &snapshot, version]( auto utils ){
+      using value_t = typename decltype(utils)::index_t::value_type;
+      if constexpr ( !std::is_same_v<typename value_t::v3, value_t> ) {
+         using v3 = typename value_t::v3;
+         if ( v3::minimum_version <= version && version <= v3::maximum_version ) {
+            snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+               bool more = !section.empty();
+               while(more) {
+                  decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+                     v3 legacy_row;
+                     more = section.read_row(legacy_row, _db);
+                     row.initialize_from(legacy_row);
+                  });
+               }
+            });
+            return;
+         }
+      }
       snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
          bool more = !section.empty();
          while(more) {
@@ -91,10 +120,22 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
 void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
       bl.owner = account;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS INS ${data}",
+            ("data", bl)
+         );
+      }
    });
 
    _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE INS ${data}",
+            ("data", bu)
+         );
+      }
    });
 }
 
@@ -104,9 +145,16 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
    const auto& config = _db.get<resource_limits_config_object>();
    if( config.cpu_limit_parameters == cpu_limit_parameters && config.net_limit_parameters == net_limit_parameters )
       return;
+
    _db.modify(config, [&](resource_limits_config_object& c){
       c.cpu_limit_parameters = cpu_limit_parameters;
       c.net_limit_parameters = net_limit_parameters;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP CONFIG UPD ${data}",
+            ("data", c)
+         );
+      }
    });
 }
 
@@ -136,6 +184,12 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       _db.modify( usage, [&]( auto& bu ){
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
+
+         if (auto dm_logger = _get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_USAGE UPD ${data}",
+               ("data", bu)
+            );
+         }
       });
 
       if( cpu_weight >= 0 && state.total_cpu_weight > 0 ) {
@@ -187,7 +241,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta, const storage_usage_trace& trace ) {
    if (ram_delta == 0) {
       return;
    }
@@ -200,7 +254,20 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
               "Ram usage delta would underflow UINT64_MAX");
 
    _db.modify( usage, [&]( auto& u ) {
-     u.ram_usage += ram_delta;
+      u.ram_usage += ram_delta;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
+            ("action_id", trace.action_id)
+            ("event_id", trace.event_id)
+            ("family", trace.family)
+            ("operation", trace.operation)
+            ("legacy_tag", trace.legacy_tag)
+            ("payer", account)
+            ("new_usage", u.ram_usage)
+            ("delta", ram_delta)
+         );
+      }
    });
 }
 
@@ -220,71 +287,68 @@ int64_t resource_limits_manager::get_account_ram_usage( const account_name& name
    return _db.get<resource_usage_object,by_owner>( name ).ram_usage;
 }
 
-
-bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-   //const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+const resource_limits_object& resource_limits_manager::get_or_create_pending_account_limits( const account_name& account ) {
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
     * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
     * the actual state at the next appropriate boundary.
     */
-   auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
-      const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
-      if (pending_limits == nullptr) {
-         const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
-         return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
-            pending_limits.owner = limits.owner;
-            pending_limits.ram_bytes = limits.ram_bytes;
-            pending_limits.net_weight = limits.net_weight;
-            pending_limits.cpu_weight = limits.cpu_weight;
-            pending_limits.pending = true;
-         });
-      } else {
-         return *pending_limits;
-      }
-   };
+   const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
+   if (pending_limits == nullptr) {
+      const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
+      return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
+         pending_limits.owner = limits.owner;
+         pending_limits.ram_bytes = limits.ram_bytes;
+         pending_limits.net_weight = limits.net_weight;
+         pending_limits.cpu_weight = limits.cpu_weight;
+         pending_limits.pending = true;
+      });
+   } else {
+     return *pending_limits;
+   }
+}
 
+bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
    // update the users weights directly
-   auto& limits = find_or_create_pending_limits();
+   auto& limits = get_or_create_pending_account_limits( account );
 
    bool decreased_limit = false;
 
    if( ram_bytes >= 0 ) {
-
       decreased_limit = ( (limits.ram_bytes < 0) || (ram_bytes < limits.ram_bytes) );
-
-      /*
-      if( limits.ram_bytes < 0 ) {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      } else {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      }
-      */
    }
 
    _db.modify( limits, [&]( resource_limits_object& pending_limits ){
       pending_limits.ram_bytes = ram_bytes;
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP ACCOUNT_LIMITS UPD ${data}",
+            ("data", pending_limits)
+         );
+      }
    });
 
    return decreased_limit;
 }
 
-void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
+const resource_limits_object& resource_limits_manager::get_account_limits( const account_name& account ) const {
    const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
    if (pending_buo) {
-      ram_bytes  = pending_buo->ram_bytes;
-      net_weight = pending_buo->net_weight;
-      cpu_weight = pending_buo->cpu_weight;
+      return *pending_buo;
    } else {
       const auto& buo = _db.get<resource_limits_object,by_owner>( boost::make_tuple( false, account ) );
-      ram_bytes  = buo.ram_bytes;
-      net_weight = buo.net_weight;
-      cpu_weight = buo.cpu_weight;
+      return buo;
    }
 }
 
+void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
+   const auto& buo = get_account_limits(account);
+   ram_bytes  = buo.ram_bytes;
+   net_weight = buo.net_weight;
+   cpu_weight = buo.cpu_weight;
+}
 
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
@@ -322,6 +386,12 @@ void resource_limits_manager::process_account_limit_updates() {
 
          multi_index.remove(*itr);
       }
+
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD ${data}",
+            ("data", state)
+         );
+      }
    });
 }
 
@@ -339,6 +409,11 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.update_virtual_net_limit(config);
       state.pending_net_usage = 0;
 
+      if (auto dm_logger = _get_deep_mind_logger()) {
+         fc_dlog(*dm_logger, "RLIMIT_OP STATE UPD ${data}",
+            ("data", state)
+         );
+      }
    });
 
 }
@@ -370,7 +445,8 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_cpu_limit( const a
    return {arl.available, greylisted};
 }
 
-std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
+std::pair<account_resource_limit, bool>
+resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -380,19 +456,23 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu
    get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
-      return {{ -1, -1, -1 }, false};
+      return {{ -1, -1, -1, block_timestamp_type(usage.cpu_usage.last_ordinal), -1 }, false};
    }
 
    account_resource_limit arl;
 
    uint128_t window_size = config.account_cpu_usage_average_window;
-   uint64_t  greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_cpu_capacity_in_window = window_size;
-   if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
-      virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
+         virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
+         greylisted = true;
+      } else {
+         virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
+      }
    } else {
       virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
    }
@@ -410,6 +490,15 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu
 
    arl.used = impl::downgrade_cast<int64_t>(cpu_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
+   arl.last_usage_update_time = block_timestamp_type(usage.cpu_usage.last_ordinal);
+   arl.current_used = arl.used;
+   if ( current_time ) {
+      if (current_time->slot > usage.cpu_usage.last_ordinal) {
+         auto history_usage = usage.cpu_usage;
+         history_usage.add(0, current_time->slot, window_size);
+         arl.current_used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil((uint128_t)history_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision));
+      }
+   }
    return {arl, greylisted};
 }
 
@@ -418,7 +507,8 @@ std::pair<int64_t, bool> resource_limits_manager::get_account_net_limit( const a
    return {arl.available, greylisted};
 }
 
-std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
+std::pair<account_resource_limit, bool>
+resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit, const std::optional<block_timestamp_type>& current_time) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -427,19 +517,23 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net
    get_account_limits( name, x, net_weight, y );
 
    if( net_weight < 0 || state.total_net_weight == 0) {
-      return {{ -1, -1, -1 }, false};
+      return {{ -1, -1, -1, block_timestamp_type(usage.net_usage.last_ordinal), -1 }, false};
    }
 
    account_resource_limit arl;
 
    uint128_t window_size = config.account_net_usage_average_window;
-   uint64_t  greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
 
    bool greylisted = false;
    uint128_t virtual_network_capacity_in_window = window_size;
-   if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
-      virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
-      greylisted = true;
+   if( greylist_limit < config::maximum_elastic_resource_multiplier ) {
+      uint64_t greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
+      if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
+         virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
+         greylisted = true;
+      } else {
+         virtual_network_capacity_in_window *= state.virtual_net_limit;
+      }
    } else {
       virtual_network_capacity_in_window *= state.virtual_net_limit;
    }
@@ -457,6 +551,15 @@ std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net
 
    arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
+   arl.last_usage_update_time = block_timestamp_type(usage.net_usage.last_ordinal);
+   arl.current_used = arl.used;
+   if ( current_time ) {
+      if (current_time->slot > usage.net_usage.last_ordinal) {
+         auto history_usage = usage.net_usage;
+         history_usage.add(0, current_time->slot, window_size);
+         arl.current_used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil((uint128_t)history_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision));
+      }
+   }
    return {arl, greylisted};
 }
 

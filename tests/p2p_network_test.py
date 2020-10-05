@@ -41,7 +41,6 @@ parser.add_argument("--stress_network", help="test load/stress network", action=
 parser.add_argument("--not_kill_wallet", help="not killing walletd", action='store_true')
 
 args = parser.parse_args()
-enableMongo=False
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 
@@ -56,7 +55,7 @@ elif args.stress_network:
 else:
     errorExit("one of impaired_network, lossy_network or stress_network must be set. Please also check peer configs in p2p_test_peers.py.")
 
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
+cluster=testUtils.Cluster(walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
 

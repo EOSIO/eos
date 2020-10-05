@@ -27,8 +27,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static std::map<uint32_t, uint32_t>              injected_index_mapping;
       static uint32_t                                  next_injected_index;
 
-      static void init( Module& mod ) { 
-         type_slots.clear(); 
+      static void init( Module& mod ) {
+         type_slots.clear();
          registered_injected.clear();
          injected_index_mapping.clear();
          build_type_slots( mod );
@@ -42,7 +42,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             for ( auto param : mod.types[i]->parameters )
                type_slot_list.push_back( static_cast<uint16_t>(param) );
             type_slots.emplace( type_slot_list, i );
-         } 
+         }
       }
 
       template <ResultType Result, ValueType... Params>
@@ -67,10 +67,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
             int actual_index;
             get_next_indices( module, index, actual_index );
             registered_injected.emplace( func_name, index );
-            decltype(module.functions.imports) new_import = { {{func_type_index}, EOSIO_INJECTED_MODULE_NAME, std::move(func_name)} };
+            decltype(module.functions.imports) new_import = { {{func_type_index}, eosio_injected_module_name, std::move(func_name)} };
             // prepend to the head of the imports
-            module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
-            injected_index_mapping.emplace( index, actual_index ); 
+            module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() );
+            injected_index_mapping.emplace( index, actual_index );
 
             // shift all exported functions by 1
             for ( size_t i=0; i < module.exports.size(); i++ ) {
@@ -95,7 +95,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
    };
-   
+
    struct noop_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
@@ -110,18 +110,13 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
-   
+
    struct tables_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
 
    struct globals_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-
-   struct max_memory_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
@@ -133,8 +128,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
-  
-   // just pass 
+
+   // just pass
    struct no_injections_injectors {
       static void inject( IR::Module& m ) {}
    };
@@ -154,10 +149,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
    struct instruction_counter {
       static constexpr bool kills = false;
       static constexpr bool post = false;
-      static void init() { 
-         icnt=0; 
-         tcnt=0; 
-         bcnt=0; 
+      static void init() {
+         icnt=0;
+         tcnt=0;
+         bcnt=0;
          while ( !fcnts.empty() )
             fcnts.pop();
       }
@@ -168,7 +163,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static uint32_t icnt; /* instructions so far */
       static uint32_t tcnt; /* total instructions */
       static uint32_t bcnt; /* total instructions from block types */
-      static std::queue<uint32_t> fcnts; 
+      static std::queue<uint32_t> fcnts;
    };
 
    struct checktime_block_type {
@@ -178,7 +173,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       while( !x.empty() ) \
          x.pop()
 
-      static void init() { 
+      static void init() {
          CLEAR(block_stack);
          CLEAR(type_stack);
          CLEAR(orderings);
@@ -204,7 +199,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         if ( checktime_block_type::type_stack.empty() ) 
+         if ( checktime_block_type::type_stack.empty() )
             return;
          if ( !checktime_block_type::type_stack.top() ) { // empty or is not a loop
             checktime_block_type::block_stack.pop();
@@ -240,7 +235,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          auto mapped_index = injector_utils::injected_index_mapping.find(chktm_idx);
 
-         wasm_ops::op_types<>::call_t chktm; 
+         wasm_ops::op_types<>::call_t chktm;
          chktm.field = mapped_index->second;
          chktm.pack(arg.new_code);
       }
@@ -266,35 +261,30 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
 
    };
-   
+
    struct call_depth_check_and_insert_checktime {
       static constexpr bool kills = true;
       static constexpr bool post = false;
-      static int32_t global_idx; 
-      static void init() {
-         global_idx = -1;
+      static int32_t global_idx;
+      static void init( Module& mod) {
+         mod.globals.defs.push_back({{ValueType::i32, true}, {(I32)eosio::chain::wasm_constraints::maximum_call_depth}});
+         global_idx = mod.globals.size()-1;
       }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         if ( global_idx == -1 ) {
-            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) eosio::chain::wasm_constraints::maximum_call_depth}});
-         }
-
-         global_idx = arg.module->globals.size()-1;
-
          int32_t assert_idx;
          injector_utils::add_import<ResultType::none>(*(arg.module), "call_depth_assert", assert_idx);
 
          wasm_ops::op_types<>::call_t call_assert;
          wasm_ops::op_types<>::call_t call_checktime;
-         wasm_ops::op_types<>::get_global_t get_global_inst; 
+         wasm_ops::op_types<>::get_global_t get_global_inst;
          wasm_ops::op_types<>::set_global_t set_global_inst;
 
-         wasm_ops::op_types<>::i32_eqz_t eqz_inst; 
-         wasm_ops::op_types<>::i32_const_t const_inst; 
+         wasm_ops::op_types<>::i32_eqz_t eqz_inst;
+         wasm_ops::op_types<>::i32_const_t const_inst;
          wasm_ops::op_types<>::i32_add_t add_inst;
          wasm_ops::op_types<>::end_t end_inst;
-         wasm_ops::op_types<>::if__t if_inst; 
-         wasm_ops::op_types<>::else__t else_inst; 
+         wasm_ops::op_types<>::if__t if_inst;
+         wasm_ops::op_types<>::else__t else_inst;
 
          call_assert.field = assert_idx;
          call_checktime.field = checktime_injection::chktm_idx;
@@ -327,7 +317,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
 
          const_inst.field = 1;
-         INSERT_INJECTED(get_global_inst); 
+         INSERT_INJECTED(get_global_inst);
          INSERT_INJECTED(const_inst);
          INSERT_INJECTED(add_inst);
          INSERT_INJECTED(set_global_inst);
@@ -335,7 +325,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
 #undef INSERT_INJECTED
       }
-   }; 
+   };
 
    // float injections
    constexpr const char* inject_which_op( uint16_t opcode ) {
@@ -662,7 +652,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          f32promote.pack(arg.new_code);
       }
    };
-   
+
    struct f64_demote_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
@@ -677,7 +667,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      // float binops 
+      // float binops
       using f32_add_t         = wasm_ops::f32_add                 <f32_binop_injector<wasm_ops::f32_add_code>>;
       using f32_sub_t         = wasm_ops::f32_sub                 <f32_binop_injector<wasm_ops::f32_sub_code>>;
       using f32_div_t         = wasm_ops::f32_div                 <f32_binop_injector<wasm_ops::f32_div_code>>;
@@ -701,7 +691,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using f32_gt_t          = wasm_ops::f32_gt                  <f32_relop_injector<wasm_ops::f32_gt_code>>;
       using f32_ge_t          = wasm_ops::f32_ge                  <f32_relop_injector<wasm_ops::f32_ge_code>>;
 
-      // float binops 
+      // float binops
       using f64_add_t         = wasm_ops::f64_add                 <f64_binop_injector<wasm_ops::f64_add_code>>;
       using f64_sub_t         = wasm_ops::f64_sub                 <f64_binop_injector<wasm_ops::f64_sub_code>>;
       using f64_div_t         = wasm_ops::f64_div                 <f64_binop_injector<wasm_ops::f64_div_code>>;
@@ -729,7 +719,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using f64_promote_f32_t = wasm_ops::f64_promote_f32         <f32_promote_injector>;
       using f32_demote_f64_t  = wasm_ops::f32_demote_f64          <f64_demote_injector>;
 
-      
+
       using i32_trunc_s_f32_t = wasm_ops::i32_trunc_s_f32         <f32_trunc_i32_injector<wasm_ops::i32_trunc_s_f32_code>>;
       using i32_trunc_u_f32_t = wasm_ops::i32_trunc_u_f32         <f32_trunc_i32_injector<wasm_ops::i32_trunc_u_f32_code>>;
       using i32_trunc_s_f64_t = wasm_ops::i32_trunc_s_f64         <f64_trunc_i32_injector<wasm_ops::i32_trunc_s_f64_code>>;
@@ -738,7 +728,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_trunc_u_f32_t = wasm_ops::i64_trunc_u_f32         <f32_trunc_i64_injector<wasm_ops::i64_trunc_u_f32_code>>;
       using i64_trunc_s_f64_t = wasm_ops::i64_trunc_s_f64         <f64_trunc_i64_injector<wasm_ops::i64_trunc_s_f64_code>>;
       using i64_trunc_u_f64_t = wasm_ops::i64_trunc_u_f64         <f64_trunc_i64_injector<wasm_ops::i64_trunc_u_f64_code>>;
-   
+
       using f32_convert_s_i32 = wasm_ops::f32_convert_s_i32       <i32_convert_f32_injector<wasm_ops::f32_convert_s_i32_code>>;
       using f32_convert_s_i64 = wasm_ops::f32_convert_s_i64       <i64_convert_f32_injector<wasm_ops::f32_convert_s_i64_code>>;
       using f32_convert_u_i32 = wasm_ops::f32_convert_u_i32       <i32_convert_f32_injector<wasm_ops::f32_convert_u_i32_code>>;
@@ -777,24 +767,23 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
    };
- 
+
    // "full injection" gives checktime & depth counting along with softfloat injection.
    // Otherwise you'll just get softfloat injection
    template<bool full_injection>
    class wasm_binary_injection {
-      using standard_module_injectors = module_injectors< max_memory_injection_visitor >;
 
       public:
-         wasm_binary_injection( IR::Module& mod )  : _module( &mod ) { 
-            _module_injectors.init();
+         wasm_binary_injection( IR::Module& mod )  : _module( &mod ) {
             // initialize static fields of injectors
             injector_utils::init( mod );
             checktime_injection::init();
-            call_depth_check_and_insert_checktime::init();
+            if constexpr (full_injection) {
+               call_depth_check_and_insert_checktime::init( mod );
+            }
          }
 
          void inject() {
-            _module_injectors.inject( *_module );
             // inject checktime first
             if constexpr (full_injection)
                injector_utils::add_import<ResultType::none>( *_module, u8"checktime", checktime_injection::chktm_idx );
@@ -844,7 +833,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       private:
          IR::Module* _module;
-         standard_module_injectors _module_injectors;
    };
 
 }}} // namespace wasm_constraints, chain, eosio
