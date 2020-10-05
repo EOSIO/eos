@@ -38,10 +38,12 @@ class session<rocksdb_t> {
       using iterator_category = typename Iterator_traits::iterator_category;
 
       rocks_iterator() = default;
+      rocks_iterator(const rocks_iterator& other) = delete;
       rocks_iterator(rocks_iterator&& other);
       rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit, int64_t index = -1);
       ~rocks_iterator();
 
+      rocks_iterator& operator=(const rocks_iterator& other) = delete;
       rocks_iterator& operator=(rocks_iterator&& other);
 
       rocks_iterator& operator++();
@@ -135,7 +137,7 @@ class session<rocksdb_t> {
    rocksdb::WriteOptions                        m_write_options;
 
    mutable std::vector<std::unique_ptr<rocksdb::Iterator>> m_iterators;
-   mutable std::vector<size_t>                             m_free_list{ 0 };
+   mutable std::vector<size_t>                             m_free_list;
 };
 
 inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators) {
@@ -157,7 +159,7 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          return iterators;
       }() },
       m_free_list{ [&]() {
-         auto list = decltype(m_free_list){ m_iterators.size() };
+         auto list = decltype(m_free_list)( m_iterators.size() );
          for (size_t i = 0; i < m_iterators.size(); ++i) { list[i] = i; }
          return list;
       }() } {
@@ -304,8 +306,8 @@ using rocks_iterator_alias = typename session<rocksdb_t>::template rocks_iterato
 // void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename Predicate>
 typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
-   rocksdb::Iterator* rit        = nullptr;
-   int64_t index = -1;
+   rocksdb::Iterator* rit   = nullptr;
+   int64_t            index = -1;
    if (!m_free_list.empty()) {
       index = m_free_list.back();
       m_free_list.pop_back();
@@ -387,9 +389,10 @@ inline rocksdb::ColumnFamilyHandle* session<rocksdb_t>::column_family_() const {
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(rocks_iterator&& it)
-    : m_session{ it.m_session }, m_iterator{ std::move(it.m_iterator) }, m_index{ it.m_index } {
-   it.m_session    = nullptr;
-   it.m_index = false;
+    : m_session{ it.m_session }, m_iterator{ it.m_iterator }, m_index{ it.m_index } {
+   it.m_session = nullptr;
+   it.m_iterator = nullptr;
+   it.m_index   = -1;
 }
 
 template <typename Iterator_traits>
@@ -404,10 +407,11 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(rocks_iterator&& 
       return *this;
    }
 
-   m_session  = it.m_session;
-   m_iterator = std::move(it.m_iterator);
-   m_index    = it.m_index;
+   m_session    = it.m_session;
+   m_iterator   = it.m_iterator;
+   m_index      = it.m_index;
    it.m_session = nullptr;
+   it.m_iterator = nullptr;
    it.m_index   = -1;
 
    return *this;
@@ -415,9 +419,9 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(rocks_iterator&& 
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::~rocks_iterator() {
-   if (m_iterator && m_index > -1) {
+   if (m_index > -1) {
       m_session->m_free_list.push_back(m_index);
-   } else {
+   } else if (m_iterator) {
       delete m_iterator;
    }
    m_iterator = nullptr;

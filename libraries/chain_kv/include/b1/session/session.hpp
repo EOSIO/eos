@@ -280,18 +280,6 @@ shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
    auto result = shared_bytes{};
 
    if (key) {
-      auto find_previous_not_deleted = [&](auto& key, auto& it, const auto& begin, auto& end) {
-         if (it == begin && it.key() >= key) {
-            it = std::move(end);
-            return;
-         }
-         while (it.key() >= key) {
-            --it;
-            if (it == end) {
-               break;
-            }
-         }
-      };
       auto find_previous_not_deleted_in_cache = [&](auto& key, auto& it, const auto& begin, const auto& end) {
          if (it == begin && it->first >= key) {
             it = end;
@@ -308,9 +296,17 @@ shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
       std::visit(
             [&](auto* p) {
                auto it    = p->lower_bound(key);
-               auto end   = std::end(*p);
                auto begin = std::begin(*p);
-               find_previous_not_deleted(key, it, begin, end);
+               if (it == begin && it.key() >= key) {
+                  return;
+               }
+               auto end = std::end(*p);
+               while (it.key() >= key) {
+                  --it;
+                  if (it == end) {
+                     return;
+                  }
+               }
                if (it != end) {
                   m_iterator_cache.emplace(it.key(), iterator_state{});
                }
