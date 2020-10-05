@@ -894,10 +894,11 @@ session<Parent>::session_iterator<Iterator_traits>::operator->() const {
 template <typename Parent>
 template <typename Iterator_traits>
 bool session<Parent>::session_iterator<Iterator_traits>::operator==(const session_iterator& other) const {
-   if (m_active_iterator == std::end(m_active_session->m_cache) && m_active_iterator == other.m_active_iterator) {
+   auto end = std::end(m_active_session->m_cache);
+   if (m_active_iterator == end && m_active_iterator == other.m_active_iterator) {
       return true;
    }
-   if (other.m_active_iterator == std::end(m_active_session->m_cache)) {
+   if (other.m_active_iterator == end) {
       return false;
    }
    return this->m_active_iterator == other.m_active_iterator;

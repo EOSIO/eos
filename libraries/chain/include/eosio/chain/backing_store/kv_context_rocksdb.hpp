@@ -128,8 +128,6 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_status() override {
          if (kv_current == kv_end) 
             return kv_it_stat::iterator_end; 
-         else if (kv_current.key() < kv_prefix) 
-            return kv_it_stat::iterator_end; 
          else if (kv_current.deleted())
             return kv_it_stat::iterator_erased;
          else
@@ -204,24 +202,27 @@ namespace eosio { namespace chain {
 
       kv_it_stat kv_it_next(uint32_t* found_key_size, uint32_t* found_value_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
+         kv_it_stat status;
          try {
             try {
-               if (kv_it_status() == kv_it_stat::iterator_end) {
+               if (kv_current == kv_end) {
                   kv_current = kv_begin;
                } else {
                   ++kv_current;
                }
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = kv_it_status();
+               get_current_key_value_sizes(found_key_size, found_value_size, status);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_prev(uint32_t* found_key_size, uint32_t* found_value_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
+         kv_it_stat status;
          try {
             try {
                if (kv_current == kv_begin) {
@@ -229,17 +230,19 @@ namespace eosio { namespace chain {
                } else {
                   --kv_current;
                }
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = kv_it_status();
+               get_current_key_value_sizes(found_key_size, found_value_size, status);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_lower_bound(const char* key, uint32_t size, uint32_t* found_key_size,
                                    uint32_t* found_value_size) override {
+         kv_it_stat status;
          try {
             try {
                auto key_bytes = make_composite_key(kv_contract, nullptr, 0, key, size);
@@ -248,13 +251,14 @@ namespace eosio { namespace chain {
                }
 
                kv_current = kv_session->lower_bound(key_bytes);
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = kv_it_status();
+               get_current_key_value_sizes(found_key_size, found_value_size, status);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
@@ -310,8 +314,8 @@ namespace eosio { namespace chain {
       }
 
     private:
-      void get_current_key_value_sizes(uint32_t* found_key_size, uint32_t* found_value_size) {
-         if (kv_it_status() == kv_it_stat::iterator_ok) {
+      void get_current_key_value_sizes(uint32_t* found_key_size, uint32_t* found_value_size, kv_it_stat status) {
+         if (status == kv_it_stat::iterator_ok) {
             // Not end or at an erased kv pair
             auto kv = *kv_current;
             // kv is always non-null due to the check of is_valid()
