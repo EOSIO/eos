@@ -44,7 +44,7 @@ class shared_bytes {
    bool operator!() const;
         operator bool() const;
 
-   shared_bytes operator++(int);
+   shared_bytes next();
 
    bool operator<(const shared_bytes& other) const;
    bool operator<=(const shared_bytes& other) const;
@@ -88,7 +88,7 @@ inline shared_bytes::shared_bytes(size_t size)
       }() },
       m_size{ size } {}
 
-inline shared_bytes shared_bytes::operator++(int) {
+inline shared_bytes shared_bytes::next() {
    auto buffer = std::vector<char>{ std::begin(*this), std::end(*this) };
 
    while (!buffer.empty()) {

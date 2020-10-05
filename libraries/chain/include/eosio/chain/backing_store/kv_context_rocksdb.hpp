@@ -115,7 +115,7 @@ namespace eosio { namespace chain {
           : num_iterators{ num_iterators }, kv_contract{ contract }, kv_user_prefix{ user_prefix }, kv_user_prefix_size{ user_prefix_size },
             kv_prefix{ make_prefix_key(contract, user_prefix, user_prefix_size) },
             kv_session{ &session }, kv_begin{ kv_session->lower_bound(kv_prefix) }, 
-            kv_end{ [&](){ auto kv_next_prefix = kv_prefix++; return kv_session->lower_bound(kv_next_prefix); }() },
+            kv_end{ [&](){ auto kv_next_prefix = kv_prefix.next(); return kv_session->lower_bound(kv_next_prefix); }() },
             kv_current{ kv_end } {
          ++num_iterators;
       }

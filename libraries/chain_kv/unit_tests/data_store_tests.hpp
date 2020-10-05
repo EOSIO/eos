@@ -189,8 +189,7 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    } while (kv_it != begin);
    BOOST_REQUIRE(count == container.size());
 
-   auto end = std::end(ds);
-   kv_it    = end;
+   kv_it    = std::end(ds);
    --kv_it;
    count = 0;
    while (true) {
@@ -267,8 +266,7 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
    } while (kv_it != begin);
    BOOST_REQUIRE(count == container.size());
 
-   auto end = std::end(ds);
-   kv_it    = end;
+   kv_it    = std::end(ds);
    --kv_it;
    count = 0;
    while (true) {

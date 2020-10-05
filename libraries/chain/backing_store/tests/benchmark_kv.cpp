@@ -461,7 +461,6 @@ inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name) {
     // Incorporates the Table options into options
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
-
     auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
 
     cache.reset(cache_ptr);
@@ -475,7 +474,8 @@ void benchmark(const cmd_args& args) {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
 
-      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), 1024);
+      constexpr size_t max_rocks_iterators = 1024;
+      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), max_rocks_iterators);
       auto session = eosio::session::session<decltype(rocks_session)>{rocks_session};
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<decltype(session), mock_resource_manager>(session, receiver, resource_manager, limits); 

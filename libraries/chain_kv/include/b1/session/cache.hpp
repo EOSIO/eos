@@ -277,7 +277,7 @@ cache::cache_iterator<Iterator_type, Iterator_traits>::operator*() const {
    if (m_it == std::end(*m_cache)) {
       return std::pair{ shared_bytes{}, std::optional<shared_bytes>{} };
    }
-   return std::pair{ m_it->first, std::optional<shared_bytes>{m_it->second} };
+   return std::pair{ m_it->first, std::optional<shared_bytes>{ m_it->second } };
 }
 
 template <typename Iterator_type, typename Iterator_traits>
@@ -286,7 +286,7 @@ cache::cache_iterator<Iterator_type, Iterator_traits>::operator->() const {
    if (m_it == std::end(*m_cache)) {
       return std::pair{ shared_bytes{}, std::optional<shared_bytes>{} };
    }
-   return std::pair{ m_it->first, std::optional<shared_bytes>{m_it->second} };
+   return std::pair{ m_it->first, std::optional<shared_bytes>{ m_it->second } };
 }
 
 template <typename Iterator_type, typename Iterator_traits>

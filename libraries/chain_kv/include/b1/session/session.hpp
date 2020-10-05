@@ -280,9 +280,9 @@ shared_bytes session<Parent>::previous_key_(const shared_bytes& key) const {
    auto result = shared_bytes{};
 
    if (key) {
-      auto find_previous_not_deleted = [&](auto& key, auto& it, const auto& begin, const auto& end) {
+      auto find_previous_not_deleted = [&](auto& key, auto& it, const auto& begin, auto& end) {
          if (it == begin && it.key() >= key) {
-            it = end;
+            it = std::move(end);
             return;
          }
          while (it.key() >= key) {

@@ -307,7 +307,7 @@ namespace eosio { namespace chain {
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB && kv_undo_stack) {
                   auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
-                  auto next_prefix = prefix_key++;
+                  auto next_prefix = prefix_key.next();
 
                   auto undo = false;
                   if (kv_undo_stack->empty()) {
