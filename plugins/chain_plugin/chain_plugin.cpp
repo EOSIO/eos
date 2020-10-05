@@ -1019,7 +1019,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
 
             if( options.count( "genesis-timestamp" ) ) {
-               provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
+               provided_genesis.initial_timestamp() = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
 
                ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
                      ("genesis", genesis_file.generic_string()) );
@@ -1080,18 +1080,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                );
 
                ilog( "Starting fresh blockchain state using default genesis state." );
-               my->genesis.emplace();
                is_default_genesis = true;
                if ( options.at( "activate-all-features" ).as<bool>() ) {
+                  my->genesis.emplace(genesis_state_v1());
+                  auto& initial_protocol_features = *my->genesis->initial_protocol_features();
                   for( const protocol_feature& f : pfs ) {
-                     if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
+                     if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp() ) == protocol_feature_set::recognized_t::ready &&
                          std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
-                            return std::find( my->genesis->initial_protocol_features.begin(), my->genesis->initial_protocol_features.end(), d ) == my->genesis->initial_protocol_features.end();
+                            return std::find( initial_protocol_features.begin(), initial_protocol_features.end(), d ) == initial_protocol_features.end();
                                                                                     } ) ) {
                         ilog( "genesis protocol feature: ${digest}", ("digest", f.feature_digest) );
-                        my->genesis->initial_protocol_features.push_back( f.feature_digest );
+                        initial_protocol_features.push_back( f.feature_digest );
                      }
                   }
+               } else {
+                  my->genesis.emplace();
                }
                chain_id = my->genesis->compute_chain_id();
             }
@@ -1288,7 +1291,7 @@ void chain_plugin::plugin_startup()
 
    if (my->genesis) {
       ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp()));
    }
    else {
       ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));

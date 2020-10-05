@@ -460,15 +460,15 @@ struct controller_impl {
     */
    void initialize_blockchain_state(const genesis_state& genesis) {
       wlog( "Initializing new blockchain with genesis state" );
-      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{genesis.initial_key, 1}} } } } };
-      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, genesis.initial_key}} };
+      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{genesis.initial_key(), 1}} } } } };
+      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, genesis.initial_key()}} };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
       // NOTE: if wtmsig block signatures are enabled at genesis time this will be updated to the hash of a producer authority schedule
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
-      genheader.header.timestamp               = genesis.initial_timestamp;
+      genheader.header.timestamp               = genesis.initial_timestamp();
       genheader.header.action_mroot            = genesis.compute_chain_id();
       genheader.id                             = genheader.header.calculate_id();
       genheader.block_num                      = genheader.header.block_num();
@@ -480,14 +480,14 @@ struct controller_impl {
       db.set_revision( head->block_num );
       initialize_database(genesis);
       // protocol_features.init happens after this, and will pick up pso.activated_protocol_features.
-      if(genesis.initial_protocol_features.size()) {
-         *head->activated_protocol_features = protocol_feature_activation_set(*head->activated_protocol_features, genesis.initial_protocol_features);
+      if(auto* initial_protocol_features = genesis.initial_protocol_features()) {
+         *head->activated_protocol_features = protocol_feature_activation_set(*head->activated_protocol_features, *initial_protocol_features);
          const auto& pfs = protocol_features.get_protocol_feature_set();
          bool has_preactivate_feature = false;
-         for( auto iter = genesis.initial_protocol_features.begin(), end = genesis.initial_protocol_features.end(); iter != end; ++iter ) {
+         for( auto iter = initial_protocol_features->begin(), end = initial_protocol_features->end(); iter != end; ++iter ) {
             const auto& feature_digest = *iter;
             auto dependency_checker =  [&]( const digest_type& d ) -> bool {
-               return std::find(genesis.initial_protocol_features.begin(), iter, d) != iter;
+               return std::find(initial_protocol_features->begin(), iter, d) != iter;
             };
             EOS_ASSERT( pfs.validate_dependencies( feature_digest, dependency_checker ), protocol_feature_exception,
                         "not all dependencies of protocol feature with digest '${digest} have been activated'");
@@ -928,7 +928,7 @@ struct controller_impl {
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
          genesis.emplace();
          snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            legacy::snapshot_genesis_state_v3 legacy_genesis;
+            genesis_state_v0 legacy_genesis;
             section.read_row(legacy_genesis);
             genesis.initialize_from(legacy_genesis);
          });
@@ -1004,7 +1004,7 @@ struct controller_impl {
 
                   db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
                      gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{},
-                                        genesis_state::default_initial_wasm_configuration);
+                                        genesis_state_v1::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -1017,7 +1017,7 @@ struct controller_impl {
 
                   db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
                      gpo.initalize_from(legacy_global_properties, kv_config{},
-                                        genesis_state::default_initial_wasm_configuration);
+                                        genesis_state_v1::default_initial_wasm_configuration);
                   });
                });
                return; // early out to avoid default processing
@@ -1130,12 +1130,12 @@ struct controller_impl {
          bs.block_id = head->id;
       });
 
-      genesis.initial_configuration.validate();
+      genesis.initial_configuration().validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
-         gpo.configuration = genesis.initial_configuration;
+         gpo.configuration = genesis.initial_configuration();
          gpo.kv_configuration = kv_config{};
          // TODO: Update this when genesis protocol features are enabled.
-         gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
+         gpo.wasm_configuration = genesis_state_v1::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
       });
 
@@ -1144,8 +1144,10 @@ struct controller_impl {
          for( const auto& i : genesis_intrinsics ) {
             add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
          }
-         for( const auto& feature_digest : genesis.initial_protocol_features ) {
-            pso.activated_protocol_features.emplace_back( feature_digest, 1 );
+         if(auto* initial_protocol_features = genesis.initial_protocol_features()) {
+            for( const auto& feature_digest : *initial_protocol_features ) {
+               pso.activated_protocol_features.emplace_back( feature_digest, 1 );
+            }
          }
       });
 
@@ -1154,28 +1156,28 @@ struct controller_impl {
       authorization.initialize_database();
       resource_limits.initialize_database();
 
-      authority system_auth(genesis.initial_key);
-      create_native_account( genesis.initial_timestamp, config::system_account_name, system_auth, system_auth, true );
+      authority system_auth(genesis.initial_key());
+      create_native_account( genesis.initial_timestamp(), config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_native_account( genesis.initial_timestamp, config::null_account_name, empty_authority, empty_authority );
-      create_native_account( genesis.initial_timestamp, config::producers_account_name, empty_authority, active_producers_authority );
+      create_native_account( genesis.initial_timestamp(), config::null_account_name, empty_authority, empty_authority );
+      create_native_account( genesis.initial_timestamp(), config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
       const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::majority_producers_permission_name,
                                                                              active_permission.id,
                                                                              active_producers_authority,
                                                                              0,
-                                                                             genesis.initial_timestamp );
+                                                                             genesis.initial_timestamp() );
       const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
                                                                              active_producers_authority,
                                                                              0,
-                                                                             genesis.initial_timestamp );
+                                                                             genesis.initial_timestamp() );
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.

@@ -86,7 +86,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_mutable_global_bytes, data::make(
    create_accounts({"globals"_n});
    produce_block();
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_mutable_global_bytes = n_globals;
    set_wasm_params(params);
 
@@ -193,7 +193,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_section_elements,
    }
    std::string code = fc::format_string(wast, fc::mutable_variant_object("SECTION", buf));
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_section_elements = n_elements;
    set_wasm_params(params);
 
@@ -229,7 +229,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_section_elements_export,
    }
    std::string code = fc::format_string(many_exports_wast, fc::mutable_variant_object("SECTION", buf));
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_section_elements = n_elements;
    set_wasm_params(params);
 
@@ -268,7 +268,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_linear_memory_init,
 
    std::string code = fc::format_string(max_linear_memory_wast, fc::mutable_variant_object("OFFSET", n_init + oversize - 4));
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_linear_memory_init = n_init;
    set_wasm_params(params);
 
@@ -301,7 +301,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_func_local_bytes, data::make({0, 
    create_accounts({"stackz"_n});
    produce_block();
 
-   auto def_params = genesis_state::default_initial_wasm_configuration;
+   auto def_params = genesis_state_v1::default_initial_wasm_configuration;
    auto high_params = def_params;
    high_params.max_func_local_bytes = 16384;
    auto low_params = def_params;
@@ -372,7 +372,7 @@ BOOST_FIXTURE_TEST_CASE(max_func_local_bytes_mixed, wasm_config_tester) {
       ss << ")";
       code = ss.str();
    }
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_func_local_bytes = 4 + 16 + 16 + 64 + 64 + 256 + 256 + 1024;
    set_code("stackz"_n, code.c_str());
    set_code("stackz"_n, std::vector<uint8_t>{});
@@ -465,7 +465,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_table_elements, data::make({512, 
       push_transaction(trx);
    };
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_table_elements = max_table_elements;
    set_wasm_params(params);
 
@@ -503,7 +503,7 @@ BOOST_DATA_TEST_CASE_F(wasm_config_tester, max_nested_structures,
       return ss.str();
    }();
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_nested_structures = n_nesting;
    set_wasm_params(params);
 
@@ -560,7 +560,7 @@ BOOST_DATA_TEST_CASE_F( wasm_config_tester, max_symbol_bytes_export, data::make(
    std::string name(n_symbol + oversize, 'x');
    std::string code = fc::format_string(wast, fc::mutable_variant_object("NAME", name));
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_symbol_bytes = n_symbol;
    set_wasm_params(params);
 
@@ -592,7 +592,7 @@ BOOST_FIXTURE_TEST_CASE( max_symbol_bytes_import, wasm_config_tester ) {
 
    constexpr int n_symbol = 33;
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_symbol_bytes = n_symbol;
    set_wasm_params(params);
 
@@ -635,7 +635,7 @@ BOOST_FIXTURE_TEST_CASE( max_module_bytes, wasm_config_tester ) {
 
    const int n_module = small_contract_wasm.size();
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_module_bytes = n_module;
    set_wasm_params(params);
 
@@ -656,7 +656,7 @@ BOOST_FIXTURE_TEST_CASE( max_code_bytes, wasm_config_tester ) {
 
    constexpr int n_code = 224;
 
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    params.max_code_bytes = n_code;
    set_wasm_params(params);
 
@@ -699,7 +699,7 @@ BOOST_FIXTURE_TEST_CASE( max_pages, wasm_config_tester ) try {
    set_code("accessmem"_n, access_biggest_memory_wast);
    set_code("intrinsicmem"_n, intrinsic_biggest_memory_wast);
    produce_block();
-   auto params = genesis_state::default_initial_wasm_configuration;
+   auto params = genesis_state_v1::default_initial_wasm_configuration;
    for(uint64_t max_pages : {600, 400}) { // above and below the default limit
       params.max_pages = max_pages;
       set_wasm_params(params);
@@ -812,7 +812,7 @@ BOOST_FIXTURE_TEST_CASE( call_depth, wasm_config_tester ) try {
    produce_block();
 
    uint32_t max_call_depth = 150;
-   auto high_params = genesis_state::default_initial_wasm_configuration;
+   auto high_params = genesis_state_v1::default_initial_wasm_configuration;
    high_params.max_call_depth = max_call_depth + 1;
    wasm_config low_params = high_params;
    low_params.max_call_depth = 50;
@@ -936,7 +936,7 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
          return setcode{ "eosio"_n, 0, 0, bytes(code.begin(), code.end()) };
       };
       trx.actions.push_back({ { { "eosio"_n, config::active_name} }, make_setcode(wast_to_wasm(min_set_parameters_wast)) });
-      trx.actions.push_back({ { { "eosio"_n, config::active_name} }, "eosio"_n, ""_n, fc::raw::pack(genesis_state::default_initial_wasm_configuration) });
+      trx.actions.push_back({ { { "eosio"_n, config::active_name} }, "eosio"_n, ""_n, fc::raw::pack(genesis_state_v1::default_initial_wasm_configuration) });
       trx.actions.push_back({ { { "eosio"_n, config::active_name} }, make_setcode(contracts::eosio_bios_wasm()) });
       set_transaction_headers(trx);
       trx.sign(get_private_key("eosio"_n, "active"), control->get_chain_id());
@@ -944,7 +944,7 @@ BOOST_FIXTURE_TEST_CASE(reset_chain_tests, wasm_config_tester) {
    }
    produce_block();
    // Make sure that a normal contract works
-   set_wasm_params(genesis_state::default_initial_wasm_configuration);
+   set_wasm_params(genesis_state_v1::default_initial_wasm_configuration);
    produce_block();
 }
 

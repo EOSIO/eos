@@ -716,7 +716,7 @@ BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
    fc::temp_directory tempdir;
    auto conf_genesis = tester::default_config( tempdir );
 
-   auto& cfg = conf_genesis.second.initial_configuration;
+   auto& cfg = conf_genesis.second.initial_configuration();
 
    cfg.max_block_net_usage        = 128 * 1024; // 64 KiB max block size
    cfg.target_block_net_usage_pct = config::percent_1/10;

@@ -206,11 +206,16 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
    tester c0;
    auto pfm = c0.control->get_protocol_feature_manager();
 
+   genesis_state default_genesis{genesis_state_v1()};
+   default_genesis.initial_timestamp() = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+   default_genesis.initial_key() = get_public_key( config::system_account_name, "active" );
+
    {
       // preactivate_feature missing
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis = default_genesis;
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
       BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
    }
 
@@ -218,8 +223,9 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
       // missing dependency replace_deferred
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      genesis = default_genesis;
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
       BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
    }
 
@@ -227,8 +233,9 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
       // preactivate_feature activated too late
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis = default_genesis;
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
       BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
    }
 
@@ -236,9 +243,10 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
       // dependency replace_deferred activated too late
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
+      genesis = default_genesis;
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
       BOOST_CHECK_THROW(tester(config, genesis), protocol_feature_exception);
    }
 
@@ -246,10 +254,11 @@ BOOST_AUTO_TEST_CASE( genesis_activation ) try {
       // In order activation
       fc::temp_directory dir;
       auto [config, genesis] = tester::default_config(dir);
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
-      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
+      genesis = default_genesis;
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred ) );
+      genesis.initial_protocol_features()->push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id ) );
       tester c(config, genesis);
       BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
       BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) );

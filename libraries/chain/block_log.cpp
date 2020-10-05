@@ -66,7 +66,7 @@ namespace eosio { namespace chain {
             if(version >= genesis_protocol_features_version) {
                fc::raw::unpack(ds, std::get<genesis_state>(chain_context));
             } else {
-               legacy::snapshot_genesis_state_v3 gs;
+               genesis_state_v0 gs;
                fc::raw::unpack(ds, gs);
                std::get<genesis_state>(chain_context).initialize_from(gs);
             }
