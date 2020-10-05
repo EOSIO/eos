@@ -1,5 +1,4 @@
 #include "data_store_tests.hpp"
-#include <b1/session/cache.hpp>
 #include <b1/session/rocks_session.hpp>
 #include <b1/session/session.hpp>
 #include <b1/session/undo_stack.hpp>

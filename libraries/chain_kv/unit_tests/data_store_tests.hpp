@@ -10,7 +10,6 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
-#include <b1/session/cache.hpp>
 #include <b1/session/rocks_session.hpp>
 #include <b1/session/session.hpp>
 
