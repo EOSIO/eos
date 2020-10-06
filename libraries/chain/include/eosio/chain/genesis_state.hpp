@@ -17,7 +17,7 @@ struct genesis_state_v0 {
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
 
-   chain_config_v0   initial_configuration = {
+   static constexpr chain_config_v0 default_initial_configuration = {
       .max_block_net_usage                  = config::default_max_block_net_usage,
       .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
       .max_transaction_net_usage            = config::default_max_transaction_net_usage,
@@ -38,35 +38,26 @@ struct genesis_state_v0 {
       .max_inline_action_depth              = config::default_max_inline_action_depth,
       .max_authority_depth                  = config::default_max_auth_depth,
    };
+
+   void validate() const { initial_configuration.validate(); }
+
+   chain_config_v0   initial_configuration = default_initial_configuration;
    friend inline bool operator==( const genesis_state_v0& lhs, const genesis_state_v0& rhs ) {
       return std::tie( lhs.initial_configuration, lhs.initial_timestamp, lhs.initial_key )
                == std::tie( rhs.initial_configuration, rhs.initial_timestamp, rhs.initial_key );
    };
 };
 
+struct genesis_state_chain_config_v1 : chain_config_v0 {
+   std::optional<uint32_t> max_action_return_value_size;
+};
+
 struct genesis_state_v1 {
    genesis_state_v1();
 
-   chain_config_v0   initial_configuration = {
-      .max_block_net_usage                  = config::default_max_block_net_usage,
-      .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
-      .max_transaction_net_usage            = config::default_max_transaction_net_usage,
-      .base_per_transaction_net_usage       = config::default_base_per_transaction_net_usage,
-      .net_usage_leeway                     = config::default_net_usage_leeway,
-      .context_free_discount_net_usage_num  = config::default_context_free_discount_net_usage_num,
-      .context_free_discount_net_usage_den  = config::default_context_free_discount_net_usage_den,
-
-      .max_block_cpu_usage                  = config::default_max_block_cpu_usage,
-      .target_block_cpu_usage_pct           = config::default_target_block_cpu_usage_pct,
-      .max_transaction_cpu_usage            = config::default_max_transaction_cpu_usage,
-      .min_transaction_cpu_usage            = config::default_min_transaction_cpu_usage,
-
-      .max_transaction_lifetime             = config::default_max_trx_lifetime,
-      .deferred_trx_expiration_window       = config::default_deferred_trx_expiration_window,
-      .max_transaction_delay                = config::default_max_trx_delay,
-      .max_inline_action_size               = config::default_max_inline_action_size,
-      .max_inline_action_depth              = config::default_max_inline_action_depth,
-      .max_authority_depth                  = config::default_max_auth_depth,
+   genesis_state_chain_config_v1 initial_configuration = {
+      { genesis_state_v0::default_initial_configuration },
+      std::nullopt
    };
 
    static constexpr wasm_config default_initial_wasm_configuration {
@@ -87,6 +78,11 @@ struct genesis_state_v1 {
    public_key_type                          initial_key;
    std::vector<digest_type>                 initial_protocol_features;
 
+   // protocol feature specific initialization
+   std::optional<uint32_t> max_action_return_value_size;
+
+   void validate() const;
+
    friend inline bool operator==( const genesis_state_v1& lhs, const genesis_state_v1& rhs ) {
       return std::tie( lhs.initial_configuration, lhs.initial_timestamp, lhs.initial_key, lhs.initial_protocol_features )
                == std::tie( rhs.initial_configuration, rhs.initial_timestamp, rhs.initial_key, rhs.initial_protocol_features );
@@ -102,8 +98,8 @@ struct genesis_state {
    genesis_state(genesis_state_v0&&);
    genesis_state(genesis_state_v1&&);
 
-   const chain_config_v0&   initial_configuration() const { return std::visit([](const auto& v) -> decltype(auto) { return (v.initial_configuration); }, _impl); }
-   chain_config_v0&         initial_configuration() { return std::visit([](auto& v) -> decltype(auto) { return (v.initial_configuration); }, _impl); }
+   const chain_config_v0&   initial_configuration() const { return std::visit([](const auto& v) -> const chain_config_v0& { return (v.initial_configuration); }, _impl); }
+   chain_config_v0&         initial_configuration() { return std::visit([](auto& v) -> chain_config_v0& { return (v.initial_configuration); }, _impl); }
    const time_point&        initial_timestamp() const { return std::visit([](const auto& v) -> decltype(auto) { return (v.initial_timestamp); }, _impl); }
    time_point&              initial_timestamp() { return std::visit([](auto& v) -> decltype(auto) { return (v.initial_timestamp); }, _impl); }
    const public_key_type&   initial_key() const { return std::visit([](const auto& v) -> decltype(auto) { return (v.initial_key); }, _impl); }
@@ -123,6 +119,23 @@ struct genesis_state {
                                    [](auto& v){
                                       return &v.initial_protocol_features;
                                    }}, _impl);
+   }
+
+   chain_config_v1 initial_configuration_v1() const {
+      return std::visit(overloaded{[](const genesis_state_v0& v) -> chain_config_v1 { return {{v.initial_configuration}}; },
+                                   [](const genesis_state_v1& v) -> chain_config_v1 { return {v.initial_configuration.v0(), *v.initial_configuration.max_action_return_value_size}; }}, _impl);
+   }
+
+   // Configuration for specific protocol features
+   const uint32_t* max_action_return_value_size() const;
+
+   // Checks that configuration related to specific protocol features was not provided
+   void validate_no_action_return_value() const;
+   void validate_no_kv() const;
+   void validate_no_wasm_config() const;
+
+   void validate() const {
+      std::visit([](const auto& v) { v.validate(); }, _impl);
    }
 
    /**
@@ -156,6 +169,9 @@ void to_variant(const genesis_state& gs, fc::variant&);
 
 FC_REFLECT(eosio::chain::genesis_state_v0,
            (initial_timestamp)(initial_key)(initial_configuration))
+
+FC_REFLECT_DERIVED(eosio::chain::genesis_state_chain_config_v1, (eosio::chain::chain_config_v0),
+           (max_action_return_value_size))
 
 // @swap initial_timestamp initial_key initial_configuration
 FC_REFLECT(eosio::chain::genesis_state_v1,

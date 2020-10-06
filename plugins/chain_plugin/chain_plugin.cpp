@@ -1082,10 +1082,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ilog( "Starting fresh blockchain state using default genesis state." );
                is_default_genesis = true;
                if ( options.at( "activate-all-features" ).as<bool>() ) {
-                  my->genesis.emplace(genesis_state_v1());
-                  auto& initial_protocol_features = *my->genesis->initial_protocol_features();
+                  genesis_state_v1 genesis;
+                  auto& initial_protocol_features = genesis.initial_protocol_features;
                   for( const protocol_feature& f : pfs ) {
-                     if( pfs.is_recognized( f.feature_digest, my->genesis->initial_timestamp() ) == protocol_feature_set::recognized_t::ready &&
+                     if( pfs.is_recognized( f.feature_digest, genesis.initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
                          std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
                             return std::find( initial_protocol_features.begin(), initial_protocol_features.end(), d ) == initial_protocol_features.end();
                                                                                     } ) ) {
@@ -1093,6 +1093,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         initial_protocol_features.push_back( f.feature_digest );
                      }
                   }
+                  genesis.initial_configuration.max_action_return_value_size = config::default_max_action_return_value_size;
+                  my->genesis.emplace(std::move(genesis));
                } else {
                   my->genesis.emplace();
                }

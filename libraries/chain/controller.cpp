@@ -484,6 +484,7 @@ struct controller_impl {
          *head->activated_protocol_features = protocol_feature_activation_set(*head->activated_protocol_features, *initial_protocol_features);
          const auto& pfs = protocol_features.get_protocol_feature_set();
          bool has_preactivate_feature = false;
+         bool has_action_return_value = false;
          for( auto iter = initial_protocol_features->begin(), end = initial_protocol_features->end(); iter != end; ++iter ) {
             const auto& feature_digest = *iter;
             auto dependency_checker =  [&]( const digest_type& d ) -> bool {
@@ -505,8 +506,26 @@ struct controller_impl {
                if ( *f.builtin_feature == builtin_protocol_feature_t::wtmsig_block_signatures ) {
                   genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_schedule);
                }
+               if ( *f.builtin_feature == builtin_protocol_feature_t::action_return_value ) {
+                  has_action_return_value = true;
+               }
             }
          }
+
+         // Protocol feature specific initialization
+         const uint32_t* max_action_return_value_size = genesis.max_action_return_value_size();
+
+         const auto& gpo = db.get<global_property_object>();
+         db.modify(db.get<global_property_object>(), [&](auto& gpo) {
+            if( has_action_return_value ) {
+               EOS_ASSERT( max_action_return_value_size != nullptr, action_validate_exception,
+                           "max_action_return_value_size must be specified when activating ACTION_RETURN_VALUE at genesis" );
+               gpo.configuration.max_action_return_value_size = *max_action_return_value_size;
+            } else {
+               EOS_ASSERT( max_action_return_value_size == nullptr, action_validate_exception,
+                           "max_action_return_value_size requires ACTION_RETURN_VALUE to be activated");
+            }
+         });
       }
    }
 
@@ -1130,7 +1149,7 @@ struct controller_impl {
          bs.block_id = head->id;
       });
 
-      genesis.initial_configuration().validate();
+      genesis.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration();
          gpo.kv_configuration = kv_config{};

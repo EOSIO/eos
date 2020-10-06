@@ -12,6 +12,18 @@ genesis_state_v1::genesis_state_v1() {
    initial_key = fc::variant(genesis_state::eosio_root_key).as<public_key_type>();
 }
 
+void genesis_state_v1::validate() const {
+   if(initial_configuration.max_action_return_value_size) {
+      chain_config_v1 full_config = {
+         initial_configuration.v0(),
+         *initial_configuration.max_action_return_value_size
+      };
+      full_config.validate();
+   } else {
+      initial_configuration.validate();
+   }
+}
+
 genesis_state::genesis_state() : genesis_state(genesis_state_v0{}) {}
 
 genesis_state::genesis_state(genesis_state_v0&& state) : _impl(std::move(state)) {}
@@ -28,6 +40,27 @@ chain::chain_id_type genesis_state::compute_chain_id() const {
    }
 
    return chain_id_type{enc.result()};
+}
+
+const uint32_t* genesis_state::max_action_return_value_size() const {
+   return std::visit(overloaded{[](const genesis_state_v0& v) -> const uint32_t* { return nullptr; },
+                                [](const genesis_state_v1& v) -> const uint32_t* {
+                                   if(v.initial_configuration.max_action_return_value_size) {
+                                      return &*v.initial_configuration.max_action_return_value_size;
+                                   } else {
+                                      return nullptr;
+                                   }
+                                }}, _impl);
+}
+
+void genesis_state::validate_no_action_return_value() const {
+   return std::visit(overloaded{[](const genesis_state_v0& v) {},
+                                [](const genesis_state_v1& v) {
+                                   EOS_ASSERT(v.initial_configuration.max_action_return_value_size == config::default_max_action_return_value_size,
+                                                action_validate_exception,
+                                                "Cannot set max_action_return_value_size without activating ACTION_RETURN_VALUE"
+                                                );
+                                }}, _impl);
 }
 
 void from_variant(const fc::variant& v, genesis_state& gs) {
@@ -48,12 +81,12 @@ void from_variant(const fc::variant& v, genesis_state& gs) {
 }
 
 void to_variant(const genesis_state& gs, fc::variant& v) {
-   auto obj = v.get_object();
    fc::mutable_variant_object mvo;
    mvo("version", gs._impl.index());
    std::visit([&](const auto& v) {
       fc::reflector<std::decay_t<decltype(v)>>::visit( fc::to_variant_visitor( mvo, v ) );
    }, gs._impl);
+   v = mvo;
 }
 
 } } // namespace eosio::chain
