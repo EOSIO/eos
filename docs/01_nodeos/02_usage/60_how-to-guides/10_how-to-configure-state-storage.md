@@ -20,13 +20,13 @@ Config Options for eosio::chain_plugin:
 To use `RocksDB` for state storage:
 
 ```shell
-nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’ROCKSDB’ --rocksdb-threads=’4’ --rocksdb-files=’2’ --plugin eosio::http_plugin 
+nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’rocksdb’ --rocksdb-threads=’4’ --rocksdb-files=’2’ --plugin eosio::http_plugin 
 ```
 
 To use `chainbase` for state storage:
 
 ```shell
-nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’CHAINBASE’ --plugin eosio::http_plugin 
+nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’chainbase’ --plugin eosio::http_plugin 
 ```
 
 or
