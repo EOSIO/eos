@@ -136,7 +136,7 @@ struct genesis_state {
       _impl = legacy;
    }
 
-   genesis_state_v0 to_v3() const {
+   genesis_state_v0 v0() const {
       return std::get<genesis_state_v0>(_impl);
    }
 

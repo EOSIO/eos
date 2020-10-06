@@ -101,7 +101,7 @@ namespace eosio { namespace chain {
 
             std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
                                   [&ds, version=version](const genesis_state& state) {
-                                      auto data = version < genesis_protocol_features_version ? fc::raw::pack(state.to_v3()) : fc::raw::pack(state);
+                                      auto data = version < genesis_protocol_features_version ? fc::raw::pack(state.v0()) : fc::raw::pack(state);
                                       ds.write(data.data(), data.size());
                                   }}, 
                        chain_context);
@@ -111,7 +111,7 @@ namespace eosio { namespace chain {
          }
          else {
             const auto& state = std::get<genesis_state>(chain_context);
-            auto data = fc::raw::pack(state.to_v3());
+            auto data = fc::raw::pack(state.v0());
             ds.write(data.data(), data.size());
          }
       }
