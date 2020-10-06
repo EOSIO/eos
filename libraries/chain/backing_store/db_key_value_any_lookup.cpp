@@ -27,7 +27,8 @@ namespace eosio { namespace chain { namespace backing_store {
          apply_context& context = parent.context;
          const auto& scope = std::get<0>(extracted_data);
          const auto& table = std::get<1>(extracted_data);
-         if (context.control.get_deep_mind_logger() != nullptr) {
+         auto dm_logger = context.control.get_deep_mind_logger();
+         if (dm_logger != nullptr) {
             event_id = db_context::table_event(parent.receiver, scope, table);
          }
 
@@ -36,7 +37,7 @@ namespace eosio { namespace chain { namespace backing_store {
          payer_payload pp(payer, nullptr, 0);
          current_session.write(table_key, pp.as_payload());
 
-         if (auto dm_logger = context.control.get_deep_mind_logger()) {
+         if (dm_logger != nullptr) {
             db_context::write_insert_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
          }
       }
@@ -65,13 +66,14 @@ namespace eosio { namespace chain { namespace backing_store {
       const name payer = payer_payload{key_value.second}.payer;
       std::string event_id;
       apply_context& context = parent.context;
-      if (context.control.get_deep_mind_logger() != nullptr) {
+      auto dm_logger = context.control.get_deep_mind_logger();
+      if (dm_logger != nullptr) {
          event_id = db_context::table_event(parent.receiver, scope, table);
       }
 
       context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), event_id.c_str()) );
 
-      if (auto dm_logger = context.control.get_deep_mind_logger()) {
+      if (dm_logger != nullptr) {
          db_context::write_remove_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
       }
 

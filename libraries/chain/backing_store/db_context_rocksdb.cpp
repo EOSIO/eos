@@ -184,16 +184,17 @@ namespace eosio { namespace chain { namespace backing_store {
       const payer_payload pp{payer, value, value_size};
       set_value(old_key_value.full_key, pp);
 
-      const int64_t billable_size = (int64_t)(value_size + db_key_value_any_lookup::overhead);
+      const int64_t billable_size = static_cast<int64_t>(value_size + db_key_value_any_lookup::overhead);
 
       std::string event_id;
-      if (context.control.get_deep_mind_logger() != nullptr) {
+      auto dm_logger = context.control.get_deep_mind_logger();
+      if (dm_logger != nullptr) {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
       }
 
       update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), event_id.c_str()) );
 
-      if (auto dm_logger = context.control.get_deep_mind_logger()) {
+      if (dm_logger != nullptr) {
          db_context::write_row_insert(*dm_logger, context.get_action_id(), receiver, scope_name, table_name, payer,
                name(id), value, value_size);
       }
@@ -214,7 +215,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       // copy locally, since below the key_store memory will be changed
       const auto old_payer = key_store.payer;
-      if (payer == name{}) {
+      if (payer.empty()) {
          payer = old_payer;
       }
 
@@ -224,12 +225,13 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_value_actual_size = pp.value_size;
 
       std::string event_id;
-      if (context.control.get_deep_mind_logger() != nullptr) {
+      auto dm_logger = context.control.get_deep_mind_logger();
+      if (dm_logger != nullptr) {
          event_id = db_context::table_event(table_store.contract, table_store.scope, table_store.table, name(key_store.primary));
       }
 
-      const int64_t old_size = (int64_t)(old_value_actual_size + db_key_value_any_lookup::overhead);
-      const int64_t new_size = (int64_t)(value_size + db_key_value_any_lookup::overhead);
+      const int64_t old_size = static_cast<int64_t>(old_value_actual_size + db_key_value_any_lookup::overhead);
+      const int64_t new_size = static_cast<int64_t>(value_size + db_key_value_any_lookup::overhead);
       if( old_payer != payer ) {
          // refund the existing payer
          update_db_usage( old_payer, -(old_size), db_context::row_update_rem_trace(context.get_action_id(), event_id.c_str()) );
@@ -243,7 +245,7 @@ namespace eosio { namespace chain { namespace backing_store {
          update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), event_id.c_str()) );
       }
 
-      if (auto dm_logger = context.control.get_deep_mind_logger()) {
+      if (dm_logger != nullptr) {
          db_context::write_row_update(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
          table_store.table, old_payer, payer, name(key_store.primary),
          old_key_value.value.data(), old_key_value.value.size(), value, value_size);
@@ -262,14 +264,15 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_payer = key_store.payer;
 
       std::string event_id;
-      if (context.control.get_deep_mind_logger() != nullptr) {
+      auto dm_logger = context.control.get_deep_mind_logger();
+      if (dm_logger != nullptr) {
          event_id = db_context::table_event(table_store.contract, table_store.scope, table_store.table, name(key_store.primary));
       }
 
       payer_payload pp(old_key_value.value);
       update_db_usage( old_payer,  -((int64_t)pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), event_id.c_str()) );
 
-      if (auto dm_logger = context.control.get_deep_mind_logger()) {
+      if (dm_logger != nullptr) {
          db_context::write_row_remove(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
                                       table_store.table, old_payer, name(key_store.primary), old_key_value.value.data(),
                                       old_key_value.value.size());

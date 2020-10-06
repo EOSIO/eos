@@ -39,7 +39,6 @@ namespace eosio { namespace chain { namespace backing_store {
       using shared_bytes = eosio::session::shared_bytes;
 
       db_key_value_any_lookup(db_context& c, session_type& session) : parent(c), current_session(session) {}
-      virtual ~db_key_value_any_lookup() {}
 
       static key_bundle get_slice(name code, name scope, name table);
       static key_bundle get_table_end_slice(name code, name scope, name table);
