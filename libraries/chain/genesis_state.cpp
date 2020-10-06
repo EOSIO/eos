@@ -22,6 +22,9 @@ void genesis_state_v1::validate() const {
    } else {
       initial_configuration.validate();
    }
+   if(initial_wasm_configuration) {
+      initial_wasm_configuration->validate();
+   }
 }
 
 genesis_state::genesis_state() : genesis_state(genesis_state_v0{}) {}
@@ -53,13 +56,25 @@ const uint32_t* genesis_state::max_action_return_value_size() const {
                                 }}, _impl);
 }
 
-void genesis_state::validate_no_action_return_value() const {
-   return std::visit(overloaded{[](const genesis_state_v0& v) {},
-                                [](const genesis_state_v1& v) {
-                                   EOS_ASSERT(v.initial_configuration.max_action_return_value_size == config::default_max_action_return_value_size,
-                                                action_validate_exception,
-                                                "Cannot set max_action_return_value_size without activating ACTION_RETURN_VALUE"
-                                                );
+const kv_config* genesis_state::initial_kv_configuration() const {
+   return std::visit(overloaded{[](const genesis_state_v0& v) -> const kv_config* { return nullptr; },
+                                [](const genesis_state_v1& v) -> const kv_config* {
+                                   if(v.initial_kv_configuration) {
+                                      return &*v.initial_kv_configuration;
+                                   } else {
+                                      return nullptr;
+                                   }
+                                }}, _impl);
+}
+
+const wasm_config* genesis_state::initial_wasm_configuration() const {
+   return std::visit(overloaded{[](const genesis_state_v0& v) -> const wasm_config* { return nullptr; },
+                                [](const genesis_state_v1& v) -> const wasm_config* {
+                                   if(v.initial_wasm_configuration) {
+                                      return &*v.initial_wasm_configuration;
+                                   } else {
+                                      return nullptr;
+                                   }
                                 }}, _impl);
 }
 

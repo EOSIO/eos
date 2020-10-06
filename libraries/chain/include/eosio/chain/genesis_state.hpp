@@ -3,6 +3,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/wasm_config.hpp>
+#include <eosio/chain/kv_config.hpp>
 #include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
@@ -50,6 +51,10 @@ struct genesis_state_v0 {
 
 struct genesis_state_chain_config_v1 : chain_config_v0 {
    std::optional<uint32_t> max_action_return_value_size;
+   friend inline bool operator==( const genesis_state_chain_config_v1& lhs, const genesis_state_chain_config_v1& rhs ) {
+     return std::tie( lhs.v0(), lhs.max_action_return_value_size )
+         == std::tie( rhs.v0(), rhs.max_action_return_value_size );
+   };
 };
 
 struct genesis_state_v1 {
@@ -79,13 +84,16 @@ struct genesis_state_v1 {
    std::vector<digest_type>                 initial_protocol_features;
 
    // protocol feature specific initialization
-   std::optional<uint32_t> max_action_return_value_size;
+   std::optional<kv_config> initial_kv_configuration;
+   std::optional<wasm_config> initial_wasm_configuration;
 
    void validate() const;
 
    friend inline bool operator==( const genesis_state_v1& lhs, const genesis_state_v1& rhs ) {
-      return std::tie( lhs.initial_configuration, lhs.initial_timestamp, lhs.initial_key, lhs.initial_protocol_features )
-               == std::tie( rhs.initial_configuration, rhs.initial_timestamp, rhs.initial_key, rhs.initial_protocol_features );
+     return std::tie( lhs.initial_configuration, lhs.initial_timestamp, lhs.initial_key, lhs.initial_protocol_features,
+                      lhs.initial_kv_configuration, lhs.initial_wasm_configuration )
+         == std::tie( rhs.initial_configuration, rhs.initial_timestamp, rhs.initial_key, rhs.initial_protocol_features,
+                      rhs.initial_kv_configuration, rhs.initial_wasm_configuration);
    };
 
    friend inline bool operator!=( const genesis_state_v1& lhs, const genesis_state_v1& rhs ) { return !(lhs == rhs); }
@@ -121,18 +129,10 @@ struct genesis_state {
                                    }}, _impl);
    }
 
-   chain_config_v1 initial_configuration_v1() const {
-      return std::visit(overloaded{[](const genesis_state_v0& v) -> chain_config_v1 { return {{v.initial_configuration}}; },
-                                   [](const genesis_state_v1& v) -> chain_config_v1 { return {v.initial_configuration.v0(), *v.initial_configuration.max_action_return_value_size}; }}, _impl);
-   }
-
    // Configuration for specific protocol features
    const uint32_t* max_action_return_value_size() const;
-
-   // Checks that configuration related to specific protocol features was not provided
-   void validate_no_action_return_value() const;
-   void validate_no_kv() const;
-   void validate_no_wasm_config() const;
+   const kv_config* initial_kv_configuration() const;
+   const wasm_config* initial_wasm_configuration() const;
 
    void validate() const {
       std::visit([](const auto& v) { v.validate(); }, _impl);
@@ -175,6 +175,6 @@ FC_REFLECT_DERIVED(eosio::chain::genesis_state_chain_config_v1, (eosio::chain::c
 
 // @swap initial_timestamp initial_key initial_configuration
 FC_REFLECT(eosio::chain::genesis_state_v1,
-           (initial_timestamp)(initial_key)(initial_configuration)(initial_protocol_features))
+           (initial_timestamp)(initial_key)(initial_configuration)(initial_protocol_features)(initial_kv_configuration)(initial_wasm_configuration))
 
 FC_REFLECT(eosio::chain::genesis_state, (_impl))

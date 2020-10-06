@@ -485,6 +485,8 @@ struct controller_impl {
          const auto& pfs = protocol_features.get_protocol_feature_set();
          bool has_preactivate_feature = false;
          bool has_action_return_value = false;
+         bool has_kv_database = false;
+         bool has_configurable_wasm_limits = false;
          for( auto iter = initial_protocol_features->begin(), end = initial_protocol_features->end(); iter != end; ++iter ) {
             const auto& feature_digest = *iter;
             auto dependency_checker =  [&]( const digest_type& d ) -> bool {
@@ -509,22 +511,38 @@ struct controller_impl {
                if ( *f.builtin_feature == builtin_protocol_feature_t::action_return_value ) {
                   has_action_return_value = true;
                }
+               if ( *f.builtin_feature == builtin_protocol_feature_t::kv_database ) {
+                  has_kv_database = true;
+               }
+               if ( *f.builtin_feature == builtin_protocol_feature_t::configurable_wasm_limits ) {
+                  has_configurable_wasm_limits = true;
+               }
             }
          }
 
          // Protocol feature specific initialization
          const uint32_t* max_action_return_value_size = genesis.max_action_return_value_size();
+         const kv_config* initial_kv_configuration = genesis.initial_kv_configuration();
+         const wasm_config* initial_wasm_configuration = genesis.initial_wasm_configuration();
 
          const auto& gpo = db.get<global_property_object>();
          db.modify(db.get<global_property_object>(), [&](auto& gpo) {
-            if( has_action_return_value ) {
-               EOS_ASSERT( max_action_return_value_size != nullptr, action_validate_exception,
-                           "max_action_return_value_size must be specified when activating ACTION_RETURN_VALUE at genesis" );
-               gpo.configuration.max_action_return_value_size = *max_action_return_value_size;
-            } else {
-               EOS_ASSERT( max_action_return_value_size == nullptr, action_validate_exception,
-                           "max_action_return_value_size requires ACTION_RETURN_VALUE to be activated");
-            }
+            auto set_config = [](auto& var, bool feature_enabled, auto* init, const char* feature_name, const char* option_name) {
+               if( feature_enabled ) {
+                  EOS_ASSERT( init != nullptr, action_validate_exception,
+                              "${opt} must be specified when activating ${feature} at genesis", ("opt", option_name)("feature", feature_name) );
+                  var = *init;
+               } else {
+                  EOS_ASSERT( init == nullptr, action_validate_exception,
+                              "${opt} requires ${feature} to be activated", ("opt", option_name)("feature", feature_name));
+               }
+            };
+            set_config(gpo.configuration.max_action_return_value_size, has_action_return_value, max_action_return_value_size,
+                       "ACTION_RETURN_VALUE", "max_action_return_value_size");
+            set_config(gpo.kv_configuration, has_kv_database, initial_kv_configuration,
+                       "KV_DATABASE", "initial_kv_configuration");
+            set_config(gpo.wasm_configuration, has_configurable_wasm_limits, initial_wasm_configuration,
+                       "CONFIGURABLE_WASM_LIMITS", "initial_wasm_configuration");
          });
       }
    }

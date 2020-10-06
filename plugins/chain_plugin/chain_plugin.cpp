@@ -1094,6 +1094,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                      }
                   }
                   genesis.initial_configuration.max_action_return_value_size = config::default_max_action_return_value_size;
+                  genesis.initial_kv_configuration = { {
+                     .max_key_size = config::default_max_kv_key_size,
+                     .max_value_size = config::default_max_kv_value_size,
+                     .max_iterators = config::default_max_kv_iterators
+                  } };
+                  genesis.initial_wasm_configuration = genesis_state_v1::default_initial_wasm_configuration;
                   my->genesis.emplace(std::move(genesis));
                } else {
                   my->genesis.emplace();

@@ -319,6 +319,102 @@ BOOST_AUTO_TEST_CASE( genesis_action_return_value ) try {
    }
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( genesis_kv_database ) try {
+   tester c0;
+   auto pfm = c0.control->get_protocol_feature_manager();
+
+   genesis_state_v1 default_genesis_v1;
+   default_genesis_v1.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+   default_genesis_v1.initial_key = get_public_key( config::system_account_name, "active" );
+
+   {
+      // kv_config missing
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::kv_database ) );
+      BOOST_CHECK_THROW(tester(config, genesis_state(std::move(genesis))), action_validate_exception);
+   }
+
+   {
+      // kv_config extra
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_kv_configuration = {{ 1024, 1048576, 1024 }};
+      BOOST_CHECK_THROW(tester(config, genesis_state(std::move(genesis))), action_validate_exception);
+   }
+
+
+   {
+      // kv_database okay
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::kv_database ) );
+      genesis.initial_kv_configuration = {{ 1024, 1048576, 1024 }};
+      tester c(config, genesis_state(std::move(genesis)));
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::kv_database ) );
+   }
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( genesis_configurable_wasm_limits ) try {
+   tester c0;
+   auto pfm = c0.control->get_protocol_feature_manager();
+
+   genesis_state_v1 default_genesis_v1;
+   default_genesis_v1.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+   default_genesis_v1.initial_key = get_public_key( config::system_account_name, "active" );
+
+   {
+      // wasm_config missing
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::configurable_wasm_limits ) );
+      BOOST_CHECK_THROW(tester(config, genesis_state(std::move(genesis))), action_validate_exception);
+   }
+
+   {
+      // wasm_config extra
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_wasm_configuration = {{ 1024, 1048576, 1024 }};
+      BOOST_CHECK_THROW(tester(config, genesis_state(std::move(genesis))), action_validate_exception);
+   }
+
+   {
+      // wasm_config invalid
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::configurable_wasm_limits ) );
+      genesis.initial_wasm_configuration = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+      BOOST_CHECK_THROW(tester(config, genesis_state(std::move(genesis))), action_validate_exception);
+   }
+
+   {
+      // configurable_wasm_limits okay
+      fc::temp_directory dir;
+      auto [config, _] = tester::default_config(dir);
+      genesis_state_v1 genesis = default_genesis_v1;
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature ) );
+      genesis.initial_protocol_features.push_back( *pfm.get_builtin_digest( builtin_protocol_feature_t::configurable_wasm_limits ) );
+      genesis.initial_wasm_configuration = genesis_state_v1::default_initial_wasm_configuration;
+      tester c(config, genesis_state(std::move(genesis)));
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+      BOOST_TEST( c.control->is_builtin_activated( builtin_protocol_feature_t::configurable_wasm_limits ) );
+   }
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = c.control->get_protocol_feature_manager();
