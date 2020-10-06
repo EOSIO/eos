@@ -2063,18 +2063,18 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    name database_id = chain::kvram_id;
 
 #if 0
-   // Enable the code block once rocksdb_nodeos_integratin is merged
+  // Enable the code block once rocksdb_nodeos_integratin is merged
    const chain::kv_database_config &limits = kv_config;
    auto &kv_database = const_cast<chain::combined_database &>(db.kv_db());
    // To do: provide kv_resource_manmager to create_kv_context
    auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
 #else
-   const chain::kv_database_config &limits = kv_config.kvram;
-   auto &database = db.db();
-   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database &>(database), database_id, chain::name{0}, {}, limits);
+  const chain::kv_database_config &limits = kv_config.kvram;
+  auto &database = db.db();
+  auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database &>(database), database_id, chain::name{0}, {}, limits);
 #endif
 
-   return get_kv_table_rows_context(p, *kv_context, abi);
+  return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
@@ -2106,6 +2106,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
 
    get_table_rows_result result;
+   uint32_t key_size;
    uint32_t value_size;
 
    auto cur_time = fc::time_point::now();
@@ -2131,6 +2132,15 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          value.resize(value_size);
          auto return_size = kv_context.kv_get_data(offset, value.data(), value_size);
          EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception,  "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
+
+         if( !is_primary_idx) {
+            success = kv_context.kv_get(p.code.to_uint64_t(), value.data(), value.size(), value_size);
+            if (success) {
+               value.resize(value_size);
+               return_size = kv_context.kv_get_data(offset, value.data(), value_size);
+               EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception, "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
+            }
+         }
 
          fc::variant row_var;
          if( p.json ) {
@@ -2201,15 +2211,14 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    // iterate the range
    auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
       uint32_t actual_size = 0;
-      uint32_t key_size;
-      uint32_t val_size;
+
       const vector<char> &end_key = (reverse ? lb_key : ub_key);
       if( reverse ) {
          key_size = ub_key_size;
-         val_size = ub_value_size;
+         value_size = ub_value_size;
       } else {
          key_size = lb_key_size;
-         val_size = lb_value_size;
+         value_size = lb_value_size;
       }
       auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
       if( reverse ) cmp *= -1;
@@ -2217,8 +2226,21 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
          row_value.clear();
-         row_value.resize(val_size);
-         status = itr->kv_it_value(offset, row_value.data(), val_size, actual_size);
+         row_value.resize(value_size);
+         status = itr->kv_it_value(offset, row_value.data(), value_size, actual_size);
+         EOS_ASSERT(status_lb == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid key in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+         if (!is_primary_idx) {
+            std::swap(row_key, row_value);
+            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_key.data(), row_key.size(), value_size);
+            if (success) {
+               row_value.resize(value_size);
+               actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            } else {
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            }
+         }
 
          fc::variant row_var;
          if( p.json ) {
@@ -2246,14 +2268,15 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
          cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
          if( reverse ) cmp *= -1;
-      }
-      if( count == p.limit && cmp < 0  ) {
-         result.more = true;
-         row_key.resize(key_size);
-         auto status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-         EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && actual_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-         result.next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
-      }
+
+         if( count == p.limit && cmp < 0  ) {
+            result.more = true;
+            row_key.resize(key_size);
+            auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+            EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+            result.next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
+         }
+      } // end of for
    };
 
    if( p.reverse ) {
