@@ -17,20 +17,31 @@ int main(int argc, char** argv)
 {
     try
     {
-        // Check command line arguments.
-        if(argc != 4 && argc != 5)
+        int version =  11;
+      char * default_address="127.0.0.1";
+      char * default_port="8105";
+      char * config_address;
+      char * config_port;
+      if (argc == 3 )
         {
-            std::cerr <<
-                "Usage: http-client-sync <host> <port> <target> [<HTTP version: 1.0 or 1.1(default)>]\n" <<
-                "Example:\n" <<
-                "    http-client-sync  127.0.0.1 8080  /    \n" <<
-                "    http-client-sync  192.168.1.1  8080   /index.html   1.0 \n";
-            return EXIT_FAILURE;
+            //std::cerr <<
+            //    "Usage: websocket-server-sync <address> <port>\n" <<
+            //    "Example:\n" <<
+            //    "    websocket-server-sync 0.0.0.0 8080\n";
+            //return EXIT_FAILURE;
+            config_address = argv[1];
+            config_port = argv[2];
+        }else if(argc == 2){
+           config_address = argv[1];
+           config_port = default_port;
+        }else {
+           config_address = default_address;
+           config_port = default_port;
         }
-        auto const host = argv[1];
-        auto const port = argv[2];
-        auto const target = argv[3];
-        int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
+      
+        
+      auto const host = config_address;
+      auto const port = config_port;
 
         // The io_context is required for all I/O
         net::io_context ioc;
@@ -46,9 +57,9 @@ int main(int argc, char** argv)
         stream.connect(results);
 
         // Set up an HTTP GET request message
-        http::request<http::string_body> req{http::verb::get, target, version};
+        http::request<http::string_body> req{http::verb::get, std::string("/v1/*/cluster"), version};
         req.set(http::field::host, host);
-        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        req.set(http::field::user_agent, "Blockvault client");
 
         // Send the HTTP request to the remote host
         http::write(stream, req);
