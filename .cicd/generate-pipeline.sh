@@ -4,6 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
+[[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
@@ -262,7 +263,7 @@ EOF
         IFS=$nIFS
     done
     IFS=$oIFS
-    if [[ "$ROUND" != "$ROUNDS" ]]; then
+    if [[ "$ROUND" != "$ROUNDS" && "$(( $ROUND % $ROUND_SIZE ))" == '0' ]]; then
         echo '  - wait'
         echo ''
     fi
