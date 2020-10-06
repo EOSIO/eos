@@ -2,20 +2,20 @@
 #include <memory>                                     /* shared_ptr */
 
 #include <appbase/application.hpp>                    /* appbase */
-#include <eosio/web_server_plugin/Ihttp_server.hpp>   /* Ihttps_server */
+#include <eosio/web_server_plugin/http_server_interface.hpp>   /* https_server_interface */
 
 namespace eosio {
    using namespace appbase;
 
-   using Ihttp_server_ptr = std::shared_ptr<web::Ihttp_server>;
+   using http_server_interface_ptr = std::shared_ptr<web::http_server_interface>;
 
    class web_server_plugin : public appbase::plugin<web_server_plugin>
    {
    public:
-      using Ihttps_server_ptr = std::shared_ptr<web::Ihttps_server>;
+      using https_server_interface_ptr = std::shared_ptr<web::https_server_interface>;
 
       web_server_plugin();
-      web_server_plugin(web::Ihttp_server_factory*);
+      web_server_plugin(web::http_server_factory_interface*);
       virtual ~web_server_plugin();
 
       APPBASE_PLUGIN_REQUIRES()
@@ -27,7 +27,7 @@ namespace eosio {
 
       void add_handler(std::string_view path, web::server_handler callback);
 
-      Ihttp_server_ptr get_server(web::server_address&& name, boost::asio::io_context* context);
+      http_server_interface_ptr get_server(web::server_address&& name, boost::asio::io_context* context);
 
       private:
       std::unique_ptr<class web_server_plugin_impl> impl;

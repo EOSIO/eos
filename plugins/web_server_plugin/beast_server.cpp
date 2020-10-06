@@ -83,9 +83,9 @@ void https_server::init_ssl(std::string_view cert, std::string_view pk, password
 web_server_factory::web_server_factory(){}
 web_server_factory::~web_server_factory(){}
 
-Ihttp_server* web_server_factory::create_server(server_address&& address, boost::asio::io_context* context){
+http_server_interface* web_server_factory::create_server(server_address&& address, boost::asio::io_context* context){
    
-   unique_ptr<Ihttp_server> p_srv;
+   unique_ptr<http_server_interface> p_srv;
    
    switch (address.schema){
       case schema_type::HTTP:

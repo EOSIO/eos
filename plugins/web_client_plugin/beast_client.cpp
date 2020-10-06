@@ -22,7 +22,7 @@ void beast_client::exec(schema_type schema,
 authority beast_client::auth(schema_type schema, const std::string& host, port_type port){
    return {schema, host, port, shared_from_this()};
 }
-Ihttp_session* beast_client::session(schema_type schema, const std::string& host, port_type port){
+http_session_interface* beast_client::session(schema_type schema, const std::string& host, port_type port){
    return NULL;
 }
 void beast_client::session_async(schema_type schema, 

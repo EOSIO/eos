@@ -7,7 +7,7 @@ using namespace eosio::web;
 web_client_plugin::web_client_plugin()
    : impl(new beast_client{} ){
 }
-web_client_plugin::web_client_plugin(web::Ihttps_client* client)
+web_client_plugin::web_client_plugin(web::https_client_interface* client)
    : impl(client){
 }
 
@@ -29,7 +29,7 @@ void exec(schema_type schema,
           std::string_view path,
           client_handler callback,
           std::string_view post_data,
-          const web::Ihttp_client::header_map* header){
+          const web::http_client_interface::header_map* header){
    
 }
 authority web_client_plugin::auth(schema_type schema, const std::string& host, port_type port){

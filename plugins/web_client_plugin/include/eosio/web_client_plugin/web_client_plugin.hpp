@@ -2,7 +2,7 @@
 #include <memory>                                     /* shared_ptr */
 
 #include <appbase/application.hpp>                    /* appbase */
-#include <eosio/web_client_plugin/Ihttp_client.hpp>  /* Ihttps_client */
+#include <eosio/web_client_plugin/http_client_interface.hpp>  /* https_client_interface */
 
 namespace eosio {
    using namespace appbase;
@@ -11,7 +11,7 @@ namespace eosio {
    {
    public:
       web_client_plugin();
-      web_client_plugin(web::Ihttps_client* client);
+      web_client_plugin(web::https_client_interface* client);
       virtual ~web_client_plugin();
 
       APPBASE_PLUGIN_REQUIRES()
@@ -39,13 +39,13 @@ namespace eosio {
                 std::string_view path,
                 web::client_handler callback,
                 std::string_view post_data,
-                const web::Ihttp_client::header_map* header);
+                const web::http_client_interface::header_map* header);
       /**
-       * @brief returns authority object. Authority object itself has a Ihttp_client reference,
+       * @brief returns authority object. Authority object itself has a http_client_interface reference,
        * so it is convenient to make http(s) calls from there.
        * example:
        * auth(HTTPS, "127.0.0.1", 8081).url("/v1/snapshot").exec(callback);
-       * that way you can retain auth object or any object that it can return (see Ihttp_client.hpp) and 
+       * that way you can retain auth object or any object that it can return (see http_client_interface.hpp) and 
        * use it multiple times:
        * auto server = plugin.auth(HTTPS, "127.0.0.1", 8081);
        * server.path("/v1/snapshot").exec(callback);
@@ -59,7 +59,7 @@ namespace eosio {
 
 
       private:
-      std::shared_ptr<web::Ihttps_client> impl;
+      std::shared_ptr<web::https_client_interface> impl;
    };
 
 }

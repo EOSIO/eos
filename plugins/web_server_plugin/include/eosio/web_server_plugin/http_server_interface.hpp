@@ -45,8 +45,8 @@ using port_type = uint16_t;
 /**
  * @brief http header representation
  */
-struct IHeader{
-   virtual ~IHeader(){};
+struct header_interface{
+   virtual ~header_interface(){};
    virtual std::string_view get(std::string_view name) = 0;
    virtual void set(std::string_view name, std::string_view value) = 0;
 };
@@ -61,7 +61,7 @@ struct IHeader{
 using server_handler = std::function<uint32_t(method_type method,
                                               bool& chunked /*out*/, 
                                               std::string& body /*out*/,
-                                              IHeader& header /*in*/)>;
+                                              header_interface& header /*in*/)>;
 
 /**
  * structure that represents server address
@@ -96,8 +96,8 @@ std::string server_address::as_string() const{
    return std::string(buffer.data(), ds.tellp());
 }
 
-struct Ihttp_server{
-   virtual ~Ihttp_server(){};
+struct http_server_interface{
+   virtual ~http_server_interface(){};
 
    /**
     * @brief initialize server
@@ -131,8 +131,8 @@ struct Ihttp_server{
 using password_callback = std::function<std::string(std::size_t, boost::asio::ssl::context_base::password_purpose)>;
 std::string empty_callback(std::size_t, boost::asio::ssl::context_base::password_purpose){ return ""; };
 
-struct Ihttps_server : virtual Ihttp_server{
-   virtual ~Ihttps_server(){};
+struct https_server_interface : virtual http_server_interface{
+   virtual ~https_server_interface(){};
 
    /**
     * @brief initialize TLS part. 
@@ -145,16 +145,16 @@ struct Ihttps_server : virtual Ihttp_server{
    virtual void init_ssl(std::string_view cert, std::string_view pk, password_callback pwd_callback, std::string_view dh) = 0;
 };
 
-struct Ihttp_server_factory{
+struct http_server_factory_interface{
    
-   virtual ~Ihttp_server_factory(){};
+   virtual ~http_server_factory_interface(){};
    /**
     * @brief creates beast_server instance and initializes it.
-    * returns Ihttp_server* or Ihttps_server* depending on address.schema
+    * returns http_server_interface* or https_server_interface* depending on address.schema
     * @param address new server address
     * @param context execution context
     */
-   virtual Ihttp_server* create_server(server_address&& address, boost::asio::io_context* context) = 0;
+   virtual http_server_interface* create_server(server_address&& address, boost::asio::io_context* context) = 0;
 };
 
 }

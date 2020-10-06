@@ -7,7 +7,7 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include <eosio/web_server_plugin/Ihttp_server.hpp>
+#include <eosio/web_server_plugin/http_server_interface.hpp>
 #include <fc/variant.hpp>
 
 namespace eosio{
@@ -24,16 +24,16 @@ namespace web{
 using client_handler = std::function<void(uint32_t response_code, 
                                           bool last_chunk, 
                                           std::string_view body,
-                                          const IHeader& header)>;
+                                          const header_interface& header)>;
 
-struct Ihttp_session{
+struct http_session_interface{
 
    /**
     * @brief map for input client headers
     */
    using header_map = std::vector<std::pair<std::string, fc::variant>>;
 
-   virtual ~Ihttp_session(){}
+   virtual ~http_session_interface(){}
 
    virtual void exec(method_type method, 
                      std::string_view path,
@@ -45,11 +45,11 @@ struct Ihttp_session{
 
 struct authority;
 
-struct Ihttp_client{
-   using header_map = Ihttp_session::header_map;
-   using session_handler = std::function<void(Ihttp_session* session)>;
+struct http_client_interface{
+   using header_map = http_session_interface::header_map;
+   using session_handler = std::function<void(http_session_interface* session)>;
 
-   virtual ~Ihttp_client(){};
+   virtual ~http_client_interface(){};
 
    /**
     * @brief initialize client
@@ -78,7 +78,7 @@ struct Ihttp_client{
     * @brief obtains http or https session.
     * this implies Keep-Alive = true
     */
-   virtual Ihttp_session* session(schema_type schema, const std::string& host, port_type port) = 0;
+   virtual http_session_interface* session(schema_type schema, const std::string& host, port_type port) = 0;
    /**
     * @brief  obtains http or https session asynchronously
     * this implies Keep-Alive = true
@@ -94,8 +94,8 @@ struct Ihttp_client{
    virtual authority auth(schema_type schema, const std::string& host, port_type port) = 0;
 };
 
-struct Ihttps_client : Ihttp_client{
-   virtual ~Ihttps_client(){};
+struct https_client_interface : http_client_interface{
+   virtual ~https_client_interface(){};
 
    /**
     * @brief setup certificate for https requests
@@ -104,8 +104,8 @@ struct Ihttps_client : Ihttp_client{
    virtual void init_ssl(std::string_view cert) = 0;
 };
 
-using http_session_ptr = std::shared_ptr<Ihttp_session>;
-using http_client_ptr = std::shared_ptr<Ihttp_client>;
+using http_session_ptr = std::shared_ptr<http_session_interface>;
+using http_client_ptr = std::shared_ptr<http_client_interface>;
 
 struct url_w_handler {
    schema_type schema;
@@ -113,7 +113,7 @@ struct url_w_handler {
    port_type   port;
    method_type method;
    std::string path;
-   Ihttp_client::header_map headers;
+   http_client_interface::header_map headers;
    client_handler handler;
    http_client_ptr client_ptr;   /* unused if session_ptr is set */
    http_session_ptr session_ptr; /* unused if client_ptr is set */
@@ -138,7 +138,7 @@ struct url_w_headers {
    port_type   port;
    method_type method;
    std::string path;
-   Ihttp_client::header_map headers;
+   http_client_interface::header_map headers;
    http_client_ptr client_ptr;   /* unused if session_ptr is set */
    http_session_ptr session_ptr; /* unused if client_ptr is set */
 
@@ -163,7 +163,7 @@ struct url_w_headers {
 };
 
 struct url {
-   using header_map = Ihttp_client::header_map;
+   using header_map = http_client_interface::header_map;
 
    schema_type schema;     
    std::string host;       
@@ -242,7 +242,7 @@ struct authority {
    schema_type schema;
    std::string host;
    port_type   port;
-   std::shared_ptr<Ihttp_client> client;
+   std::shared_ptr<http_client_interface> client;
    
    void exec(method_type method, std::string_view path, client_handler callback) const{
       client->exec(schema, host, port, method, path, callback, {}, NULL);
@@ -275,7 +275,7 @@ struct authority {
       client->session_async(schema, 
                             host, 
                             port, 
-                            [&](Ihttp_session* sess) { 
+                            [&](http_session_interface* sess) { 
                                callback( {schema, host, port, http_session_ptr(sess)} );
                             });
    }
