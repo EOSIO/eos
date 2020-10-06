@@ -120,7 +120,7 @@ void apply_context::exec_one()
 
             if( ( receiver_account->code_hash != digest_type() ) &&
                   (  !( act->account == config::system_account_name
-                        && act->name == N( setcode )
+                        && act->name == "setcode"_n
                         && receiver == config::system_account_name )
                      || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
                   )

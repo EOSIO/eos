@@ -14,6 +14,7 @@ struct shared_state {
    uint32_t                                max_console_size = {};
    uint32_t                                wasm_cache_size  = {};
    uint64_t                                max_exec_time_ms = {};
+   uint32_t                                max_action_return_value_size = {};
    std::string                             contract_dir     = {};
    std::shared_ptr<wasm_ql::backend_cache> backend_cache    = {};
    std::shared_ptr<chain_kv::database>     db;

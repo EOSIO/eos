@@ -671,7 +671,7 @@ chain::action create_buyram(const name& creator, const name& newaccount, const a
          ("receiver", newaccount.to_string())
          ("quant", quantity.to_string());
    return create_action(get_account_permissions(tx_permission, {creator,config::active_name}),
-                        config::system_account_name, N(buyram), act_payload);
+                        config::system_account_name, "buyram"_n, act_payload);
 }
 
 chain::action create_buyrambytes(const name& creator, const name& newaccount, uint32_t numbytes) {
@@ -680,7 +680,7 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
          ("receiver", newaccount.to_string())
          ("bytes", numbytes);
    return create_action(get_account_permissions(tx_permission, {creator,config::active_name}),
-                        config::system_account_name, N(buyrambytes), act_payload);
+                        config::system_account_name, "buyrambytes"_n, act_payload);
 }
 
 chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu, bool transfer) {
@@ -691,7 +691,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
          ("stake_cpu_quantity", cpu.to_string())
          ("transfer", transfer);
    return create_action(get_account_permissions(tx_permission, {from,config::active_name}),
-                        config::system_account_name, N(delegatebw), act_payload);
+                        config::system_account_name, "delegatebw"_n, act_payload);
 }
 
 fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
@@ -710,7 +710,7 @@ chain::action create_open(const string& contract, const name& owner, symbol sym,
       ("ram_payer", ram_payer);
     return action {
       get_account_permissions(tx_permission, {ram_payer, config::active_name}),
-      name(contract), N(open), variant_to_bin( name(contract), N(open), open_ )
+      name(contract), "open"_n, variant_to_bin( name(contract), "open"_n, open_ )
    };
 }
 
@@ -724,7 +724,7 @@ chain::action create_transfer(const string& contract, const name& sender, const 
 
    return action {
       get_account_permissions(tx_permission, {sender,config::active_name}),
-      name(contract), N(transfer), variant_to_bin( name(contract), N(transfer), transfer )
+      name(contract), "transfer"_n, variant_to_bin( name(contract), "transfer"_n, transfer )
    };
 }
 
@@ -822,7 +822,7 @@ asset to_asset( account_name code, const string& s ) {
 }
 
 inline asset to_asset( const string& s ) {
-   return to_asset( N(eosio.token), s );
+   return to_asset( "eosio.token"_n, s );
 }
 
 struct set_account_permission_subcommand {
@@ -1101,7 +1101,7 @@ struct register_producer_subcommand {
 
          auto regprod_var = regproducer_variant(name(producer_str), producer_key, url, loc );
          auto accountPermissions = get_account_permissions(tx_permission, {name(producer_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproducer), regprod_var)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "regproducer"_n, regprod_var)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1213,7 +1213,7 @@ struct unregister_producer_subcommand {
                   ("producer", producer_str);
 
          auto accountPermissions = get_account_permissions(tx_permission, {name(producer_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(unregprod), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "unregprod"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1234,7 +1234,7 @@ struct vote_producer_proxy_subcommand {
                   ("proxy", proxy_str)
                   ("producers", std::vector<account_name>{});
          auto accountPermissions = get_account_permissions(tx_permission, {name(voter_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "voteproducer"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1258,7 +1258,7 @@ struct vote_producers_subcommand {
                   ("proxy", "")
                   ("producers", producer_names);
          auto accountPermissions = get_account_permissions(tx_permission, {name(voter_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "voteproducer"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1311,7 +1311,7 @@ struct approve_producer_subcommand {
                ("proxy", "")
                ("producers", prods);
             auto accountPermissions = get_account_permissions(tx_permission, {name(voter), config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)}, signing_keys_opt.get_keys());
+            send_actions({create_action(accountPermissions, config::system_account_name, "voteproducer"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1363,7 +1363,7 @@ struct unapprove_producer_subcommand {
                ("proxy", "")
                ("producers", prods);
             auto accountPermissions = get_account_permissions(tx_permission, {name(voter), config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)}, signing_keys_opt.get_keys());
+            send_actions({create_action(accountPermissions, config::system_account_name, "voteproducer"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1536,7 +1536,7 @@ struct delegate_bandwidth_subcommand {
                   ("stake_cpu_quantity", to_asset(stake_cpu_amount))
                   ("transfer", transfer);
          auto accountPermissions = get_account_permissions(tx_permission, {name(from_str), config::active_name});
-         std::vector<chain::action> acts{create_action(accountPermissions, config::system_account_name, N(delegatebw), act_payload)};
+         std::vector<chain::action> acts{create_action(accountPermissions, config::system_account_name, "delegatebw"_n, act_payload)};
          EOSC_ASSERT( !(buy_ram_amount.size()) || !buy_ram_bytes, "ERROR: --buyram and --buy-ram-bytes cannot be set at the same time" );
          if (buy_ram_amount.size()) {
             acts.push_back( create_buyram(name(from_str), name(receiver_str), to_asset(buy_ram_amount)) );
@@ -1570,7 +1570,7 @@ struct undelegate_bandwidth_subcommand {
                   ("unstake_net_quantity", to_asset(unstake_net_amount))
                   ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
          auto accountPermissions = get_account_permissions(tx_permission, {name(from_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "undelegatebw"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1592,7 +1592,7 @@ struct bidname_subcommand {
                   ("newname", newname_str)
                   ("bid", to_asset(bid_amount));
          auto accountPermissions = get_account_permissions(tx_permission, {name(bidder_str), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(bidname), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "bidname"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1719,7 +1719,7 @@ struct sellram_subcommand {
                ("account", receiver_str)
                ("bytes", amount);
             auto accountPermissions = get_account_permissions(tx_permission, {name(receiver_str), config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(sellram), act_payload)}, signing_keys_opt.get_keys());
+            send_actions({create_action(accountPermissions, config::system_account_name, "sellram"_n, act_payload)}, signing_keys_opt.get_keys());
          });
    }
 };
@@ -1736,7 +1736,7 @@ struct claimrewards_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner);
          auto accountPermissions = get_account_permissions(tx_permission, {name(owner), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(claimrewards), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "claimrewards"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1754,7 +1754,7 @@ struct regproxy_subcommand {
                   ("proxy", proxy)
                   ("isproxy", true);
          auto accountPermissions = get_account_permissions(tx_permission, {name(proxy), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "regproxy"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1772,7 +1772,7 @@ struct unregproxy_subcommand {
                   ("proxy", proxy)
                   ("isproxy", false);
          auto accountPermissions = get_account_permissions(tx_permission, {name(proxy), config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "regproxy"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1795,7 +1795,7 @@ struct canceldelay_subcommand {
                   ("canceling_auth", canceling_auth)
                   ("trx_id", trx_id);
          auto accountPermissions = get_account_permissions(tx_permission, canceling_auth);
-         send_actions({create_action(accountPermissions, config::system_account_name, N(canceldelay), act_payload)}, signing_keys_opt.get_keys());
+         send_actions({create_action(accountPermissions, config::system_account_name, "canceldelay"_n, act_payload)}, signing_keys_opt.get_keys());
       });
    }
 };
@@ -1803,7 +1803,7 @@ struct canceldelay_subcommand {
 struct deposit_subcommand {
    string owner_str;
    string amount_str;
-   const name act_name{ N(deposit) };
+   const name act_name{ "deposit"_n };
 
    deposit_subcommand(CLI::App* actionRoot) {
       auto deposit = actionRoot->add_subcommand("deposit", localized("Deposit into owner's REX fund by transfering from owner's liquid token balance"));
@@ -1823,7 +1823,7 @@ struct deposit_subcommand {
 struct withdraw_subcommand {
    string owner_str;
    string amount_str;
-   const name act_name{ N(withdraw) };
+   const name act_name{ "withdraw"_n };
 
    withdraw_subcommand(CLI::App* actionRoot) {
       auto withdraw = actionRoot->add_subcommand("withdraw", localized("Withdraw from owner's REX fund by transfering to owner's liquid token balance"));
@@ -1843,7 +1843,7 @@ struct withdraw_subcommand {
 struct buyrex_subcommand {
    string from_str;
    string amount_str;
-   const name act_name{ N(buyrex) };
+   const name act_name{ "buyrex"_n };
 
    buyrex_subcommand(CLI::App* actionRoot) {
       auto buyrex = actionRoot->add_subcommand("buyrex", localized("Buy REX using tokens in owner's REX fund"));
@@ -1863,8 +1863,8 @@ struct buyrex_subcommand {
 struct lendrex_subcommand {
    string from_str;
    string amount_str;
-   const name act_name1{ N(deposit) };
-   const name act_name2{ N(buyrex) };
+   const name act_name1{ "deposit"_n };
+   const name act_name2{ "buyrex"_n };
 
    lendrex_subcommand(CLI::App* actionRoot) {
       auto lendrex = actionRoot->add_subcommand("lendrex", localized("Deposit tokens to REX fund and use the tokens to buy REX"));
@@ -1890,7 +1890,7 @@ struct unstaketorex_subcommand {
    string receiver_str;
    string from_net_str;
    string from_cpu_str;
-   const name act_name{ N(unstaketorex) };
+   const name act_name{ "unstaketorex"_n };
 
    unstaketorex_subcommand(CLI::App* actionRoot) {
       auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
@@ -1914,7 +1914,7 @@ struct unstaketorex_subcommand {
 struct sellrex_subcommand {
    string from_str;
    string rex_str;
-   const name act_name{ N(sellrex) };
+   const name act_name{ "sellrex"_n };
 
    sellrex_subcommand(CLI::App* actionRoot) {
       auto sellrex = actionRoot->add_subcommand("sellrex", localized("Sell REX tokens"));
@@ -1933,7 +1933,7 @@ struct sellrex_subcommand {
 
 struct cancelrexorder_subcommand {
    string owner_str;
-   const name act_name{ N(cnclrexorder) };
+   const name act_name{ "cnclrexorder"_n };
 
    cancelrexorder_subcommand(CLI::App* actionRoot) {
       auto cancelrexorder = actionRoot->add_subcommand("cancelrexorder", localized("Cancel queued REX sell order if one exists"));
@@ -1952,7 +1952,7 @@ struct rentcpu_subcommand {
    string receiver_str;
    string loan_payment_str;
    string loan_fund_str;
-   const name act_name{ N(rentcpu) };
+   const name act_name{ "rentcpu"_n };
 
    rentcpu_subcommand(CLI::App* actionRoot) {
       auto rentcpu = actionRoot->add_subcommand("rentcpu", localized("Rent CPU bandwidth for 30 days"));
@@ -1978,7 +1978,7 @@ struct rentnet_subcommand {
    string receiver_str;
    string loan_payment_str;
    string loan_fund_str;
-   const name act_name{ N(rentnet) };
+   const name act_name{ "rentnet"_n };
 
    rentnet_subcommand(CLI::App* actionRoot) {
       auto rentnet = actionRoot->add_subcommand("rentnet", localized("Rent Network bandwidth for 30 days"));
@@ -2003,7 +2003,7 @@ struct fundcpuloan_subcommand {
    string from_str;
    string loan_num_str;
    string payment_str;
-   const name act_name{ N(fundcpuloan) };
+   const name act_name{ "fundcpuloan"_n };
 
    fundcpuloan_subcommand(CLI::App* actionRoot) {
       auto fundcpuloan = actionRoot->add_subcommand("fundcpuloan", localized("Deposit into a CPU loan fund"));
@@ -2026,7 +2026,7 @@ struct fundnetloan_subcommand {
    string from_str;
    string loan_num_str;
    string payment_str;
-   const name act_name{ N(fundnetloan) };
+   const name act_name{ "fundnetloan"_n };
 
    fundnetloan_subcommand(CLI::App* actionRoot) {
       auto fundnetloan = actionRoot->add_subcommand("fundnetloan", localized("Deposit into a Network loan fund"));
@@ -2049,7 +2049,7 @@ struct defcpuloan_subcommand {
    string from_str;
    string loan_num_str;
    string amount_str;
-   const name act_name{ N(defcpuloan) };
+   const name act_name{ "defcpuloan"_n };
 
    defcpuloan_subcommand(CLI::App* actionRoot) {
       auto defcpuloan = actionRoot->add_subcommand("defundcpuloan", localized("Withdraw from a CPU loan fund"));
@@ -2072,7 +2072,7 @@ struct defnetloan_subcommand {
    string from_str;
    string loan_num_str;
    string amount_str;
-   const name act_name{ N(defnetloan) };
+   const name act_name{ "defnetloan"_n };
 
    defnetloan_subcommand(CLI::App* actionRoot) {
       auto defnetloan = actionRoot->add_subcommand("defundnetloan", localized("Withdraw from a Network loan fund"));
@@ -2094,7 +2094,7 @@ struct defnetloan_subcommand {
 struct mvtosavings_subcommand {
    string owner_str;
    string rex_str;
-   const name act_name{ N(mvtosavings) };
+   const name act_name{ "mvtosavings"_n };
 
    mvtosavings_subcommand(CLI::App* actionRoot) {
       auto mvtosavings = actionRoot->add_subcommand("mvtosavings", localized("Move REX tokens to savings bucket"));
@@ -2114,7 +2114,7 @@ struct mvtosavings_subcommand {
 struct mvfrsavings_subcommand {
    string owner_str;
    string rex_str;
-   const name act_name{ N(mvfrsavings) };
+   const name act_name{ "mvfrsavings"_n };
 
    mvfrsavings_subcommand(CLI::App* actionRoot) {
       auto mvfrsavings = actionRoot->add_subcommand("mvfromsavings", localized("Move REX tokens out of savings bucket"));
@@ -2133,7 +2133,7 @@ struct mvfrsavings_subcommand {
 
 struct updaterex_subcommand {
    string owner_str;
-   const name act_name{ N(updaterex) };
+   const name act_name{ "updaterex"_n };
 
    updaterex_subcommand(CLI::App* actionRoot) {
       auto updaterex = actionRoot->add_subcommand("updaterex", localized("Update REX owner vote stake and vote weight"));
@@ -2149,7 +2149,7 @@ struct updaterex_subcommand {
 
 struct consolidate_subcommand {
    string owner_str;
-   const name act_name{ N(consolidate) };
+   const name act_name{ "consolidate"_n };
 
    consolidate_subcommand(CLI::App* actionRoot) {
       auto consolidate = actionRoot->add_subcommand("consolidate", localized("Consolidate REX maturity buckets into one that matures in 4 days"));
@@ -2166,7 +2166,7 @@ struct consolidate_subcommand {
 struct rexexec_subcommand {
    string user_str;
    string max_str;
-   const name act_name{ N(rexexec) };
+   const name act_name{ "rexexec"_n };
 
    rexexec_subcommand(CLI::App* actionRoot) {
       auto rexexec = actionRoot->add_subcommand("rexexec", localized("Perform REX maintenance by processing expired loans and unfilled sell orders"));
@@ -2185,7 +2185,7 @@ struct rexexec_subcommand {
 
 struct closerex_subcommand {
    string owner_str;
-   const name act_name{ N(closerex) };
+   const name act_name{ "closerex"_n };
 
    closerex_subcommand(CLI::App* actionRoot) {
       auto closerex = actionRoot->add_subcommand("closerex", localized("Delete unused REX-related user table entries"));
@@ -2863,6 +2863,46 @@ int main( int argc, char** argv ) {
                          ("limit",limit)
                          ("key_type",key_type)
                          ("index_position", index_position)
+                         ("encode_type", encode_type)
+                         ("reverse", reverse)
+                         ("show_payer", show_payer)
+                         );
+
+      std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
+   });
+
+   // get kv_table
+   string index_name;
+   string index_value;
+   encode_type = "bytes";
+   auto getKvTable = get->add_subcommand("kv_table", localized("Retrieve the contents of a database kv_table"));
+   getKvTable->add_option( "account", code, localized("The account who owns the table") )->required();
+   getKvTable->add_option( "table", table, localized("The name of the kv_table as specified by the contract abi") )->required();
+   getKvTable->add_option( "index_name", index_name, localized("The name of the kv_table index as specified by the contract abi") )->required();
+   getKvTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getKvTable->add_option( "-k,--key", index_value, localized("Index value") );
+   getKvTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
+   getKvTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
+   getKvTable->add_option( "--encode-type", encode_type,
+                           localized("The encoding type of index_value, lower bound, upper bound"
+                           " 'bytes' for hexdecimal encoded bytes"
+                           " 'dec' for decimal encoding of (uint[64|32|16|8], int[64|32|16|8], float64)"
+                           " 'hex' for hexdecimal encoding of (uint[64|32|16|8], int[64|32|16|8], sha256, ripemd160" ));
+   getKvTable->add_flag("-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON"));
+   getKvTable->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
+   getKvTable->add_flag("--show-payer", show_payer, localized("Show RAM payer"));
+
+
+   getKvTable->callback([&] {
+      auto result = call(get_kv_table_func, fc::mutable_variant_object("json", !binary)
+                         ("code",code)
+                         ("table",table)
+                         ("index_name",index_name)
+                         ("index_value",index_value)
+                         ("lower_bound",lower)
+                         ("upper_bound",upper)
+                         ("limit",limit)
                          ("encode_type", encode_type)
                          ("reverse", reverse)
                          ("show_payer", show_payer)
@@ -3679,7 +3719,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, N(eosio.msig), N(propose), variant_to_bin( N(eosio.msig), N(propose), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, "propose"_n, variant_to_bin( "eosio.msig"_n, "propose"_n, args ) }}, signing_keys_opt.get_keys());
    });
 
    //multisig propose transaction
@@ -3712,7 +3752,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, N(eosio.msig), N(propose), variant_to_bin( N(eosio.msig), N(propose), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, "propose"_n, variant_to_bin( "eosio.msig"_n, "propose"_n, args ) }}, signing_keys_opt.get_keys());
    });
 
 
@@ -3929,7 +3969,7 @@ int main( int argc, char** argv ) {
       }
 
       auto accountPermissions = get_account_permissions(tx_permission, {name(proposer), config::active_name});
-      send_actions({chain::action{accountPermissions, N(eosio.msig), name(action), variant_to_bin( N(eosio.msig), name(action), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, name(action), variant_to_bin( "eosio.msig"_n, name(action), args ) }}, signing_keys_opt.get_keys());
    };
 
    // multisig approve
@@ -3959,7 +3999,7 @@ int main( int argc, char** argv ) {
          ("account", invalidator);
 
       auto accountPermissions = get_account_permissions(tx_permission, {name(invalidator), config::active_name});
-      send_actions({chain::action{accountPermissions, N(eosio.msig), N(invalidate), variant_to_bin( N(eosio.msig), N(invalidate), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, "invalidate"_n, variant_to_bin( "eosio.msig"_n, "invalidate"_n, args ) }}, signing_keys_opt.get_keys());
    });
 
    // multisig cancel
@@ -3986,7 +4026,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("canceler", canceler);
 
-      send_actions({chain::action{accountPermissions, N(eosio.msig), N(cancel), variant_to_bin( N(eosio.msig), N(cancel), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, "cancel"_n, variant_to_bin( "eosio.msig"_n, "cancel"_n, args ) }}, signing_keys_opt.get_keys());
       }
    );
 
@@ -4015,7 +4055,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("executer", executer);
 
-      send_actions({chain::action{accountPermissions, N(eosio.msig), N(exec), variant_to_bin( N(eosio.msig), N(exec), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, "eosio.msig"_n, "exec"_n, variant_to_bin( "eosio.msig"_n, "exec"_n, args ) }}, signing_keys_opt.get_keys());
       }
    );
 
@@ -4045,7 +4085,7 @@ int main( int argc, char** argv ) {
          ("executer", executer )
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, name(wrap_con), N(exec), variant_to_bin( name(wrap_con), N(exec), args ) }}, signing_keys_opt.get_keys());
+      send_actions({chain::action{accountPermissions, name(wrap_con), "exec"_n, variant_to_bin( name(wrap_con), "exec"_n, args ) }}, signing_keys_opt.get_keys());
    });
 
    // system subcommand

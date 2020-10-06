@@ -2233,7 +2233,7 @@ struct controller_impl {
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
-      on_block_act.name = N(onblock);
+      on_block_act.name = "onblock"_n;
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(self.head_block_header());
 
@@ -2962,6 +2962,10 @@ validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
 }
 
+const flat_set<account_name>& controller::get_trusted_producers()const {
+   return my->conf.trusted_producers;
+}
+
 uint32_t controller::get_terminate_at_block()const {
    return my->conf.terminate_at_block;
 }
@@ -3195,11 +3199,22 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    }
 
    chain_id_type chain_id;
-   snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
-      snapshot_global_property_object global_properties;
-      section.read_row(global_properties);
-      chain_id = global_properties.chain_id;
-   });
+   using v4 = legacy::snapshot_global_property_object_v4;
+   if (header.version <= v4::maximum_version) {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         v4 global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      }); 
+   }
+   else {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         snapshot_global_property_object global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      });      
+   }
+
    return chain_id;
 }
 

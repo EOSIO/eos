@@ -304,6 +304,7 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
+         const flat_set<account_name>& get_trusted_producers()const;
          uint32_t get_terminate_at_block()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);

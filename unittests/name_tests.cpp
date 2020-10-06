@@ -349,38 +349,38 @@ try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(nmacro_test) {
+BOOST_AUTO_TEST_CASE(n_operator_test) {
 try {
-   
+
    // ------------------------------------
-   // N() macro
-   BOOST_TEST( name{} == N() );
+   // ""_n operator
+   BOOST_TEST( name{} == ""_n );
 
-   BOOST_TEST( name{"1"} == N(1) );
-   BOOST_TEST( name{"5"} == N(5) );
-   BOOST_TEST( name{"a"} == N(a) );
-   BOOST_TEST( name{"z"} == N(z) );
+   BOOST_TEST( name{"1"} == "1"_n );
+   BOOST_TEST( name{"5"} == "5"_n );
+   BOOST_TEST( name{"a"} == "a"_n );
+   BOOST_TEST( name{"z"} == "z"_n );
 
-   BOOST_TEST( name{"abc"} == N(abc) );
-   BOOST_TEST( name{"123"} == N(123) );
+   BOOST_TEST( name{"abc"} == "abc"_n );
+   BOOST_TEST( name{"123"} == "123"_n );
 
-   BOOST_TEST( name{".abc"} == N(.abc) );
-   BOOST_TEST( name{".........abc"} == N(.........abc) );
-   BOOST_TEST( name{"123."} == N(123.) );
-   BOOST_TEST( name{"123........."} == N(123.........) );
-   BOOST_TEST( name{".a.b.c.1.2.3."} == N(.a.b.c.1.2.3.) );
+   BOOST_TEST( name{".abc"} == ".abc"_n );
+   BOOST_TEST( name{".........abc"} == ".........abc"_n );
+   BOOST_TEST( name{"123."} == "123."_n );
+   BOOST_TEST( name{"123........."} == "123........."_n );
+   BOOST_TEST( name{".a.b.c.1.2.3."} == ".a.b.c.1.2.3."_n );
 
-   BOOST_TEST( name{"abc.123"} == N(abc.123) );
-   BOOST_TEST( name{"123.abc"} == N(123.abc) );
+   BOOST_TEST( name{"abc.123"} == "abc.123"_n );
+   BOOST_TEST( name{"123.abc"} == "123.abc"_n );
 
-   BOOST_TEST( name{"12345abcdefgj"} == N(12345abcdefgj) );
-   BOOST_TEST( name{"hijklmnopqrsj"} == N(hijklmnopqrsj) );
-   BOOST_TEST( name{"tuvwxyz.1234j"} == N(tuvwxyz.1234j) );
+   BOOST_TEST( name{"12345abcdefgj"} == "12345abcdefgj"_n );
+   BOOST_TEST( name{"hijklmnopqrsj"} == "hijklmnopqrsj"_n );
+   BOOST_TEST( name{"tuvwxyz.1234j"} == "tuvwxyz.1234j"_n );
 
-   BOOST_TEST( name{"111111111111j"} == N(111111111111j) );
-   BOOST_TEST( name{"555555555555j"} == N(555555555555j) );
-   BOOST_TEST( name{"aaaaaaaaaaaaj"} == N(aaaaaaaaaaaaj) );
-   BOOST_TEST( name{"zzzzzzzzzzzzj"} == N(zzzzzzzzzzzzj) );
+   BOOST_TEST( name{"111111111111j"} == "111111111111j"_n );
+   BOOST_TEST( name{"555555555555j"} == "555555555555j"_n );
+   BOOST_TEST( name{"aaaaaaaaaaaaj"} == "aaaaaaaaaaaaj"_n );
+   BOOST_TEST( name{"zzzzzzzzzzzzj"} == "zzzzzzzzzzzzj"_n );
 } FC_LOG_AND_RETHROW() }
 
 

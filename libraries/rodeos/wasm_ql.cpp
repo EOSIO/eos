@@ -32,12 +32,6 @@ using eosio::ship_protocol::transaction_trace_v0;
 
 namespace eosio {
 
-// todo: move to abieos
-template <typename T, typename S>
-void to_json(const might_not_exist<T>& val, S& stream) {
-   return to_json(val.value, stream);
-}
-
 // todo: abieos support for pair. Used by extensions_type.
 template <typename S>
 void to_json(const std::pair<uint16_t, std::vector<char>>&, S& stream) {
