@@ -29,7 +29,8 @@ struct http_server : virtual Ihttp_server{
     * @param path http path. server first checks for exact match and if not found
     * it uses string::starts_with so if you specify partial path
     * it will be called for all requests where path starts from this string
-    * @param callback callback to fill out client's response
+    * @param callback callback to fill out client's response. server get's 
+    * related data through the callback parameters (method, other headers, etc)
     * @throw other_http_exception if server is already running
     */
    virtual void add_handler(std::string_view path, server_handler callback);
@@ -55,16 +56,26 @@ protected:
 };
 
 struct https_server : http_server, Ihttps_server{
-   using ssl_context = boost::asio::ssl::context;
+   using ssl_context            = boost::asio::ssl::context;
+   
 
    https_server();
    virtual ~https_server();
    //Ihttp_server
    virtual void run();
 
-   //Ihttps_server:
-   //use PEM format for certificate and pk
-   virtual void init_ssl(std::string_view cert, std::string_view pk);
+   /**
+    * Ihttps_server implementation:
+    * @param cert certificate in PEM format
+    * @param pk server's private ket
+    * @param pwd_callback password callback. optional
+    * @param dh parameters for Ephemeral Diffie-Hellman key agreement protocol. optional
+    * if not specified static Diffie-Hellman protocol will be used.
+    */
+   virtual void init_ssl(std::string_view cert, 
+                         std::string_view pk, 
+                         password_callback pwd_callback = empty_callback, 
+                         std::string_view dh = {});
    
 protected:
    ssl_context    ssl_ctx;

@@ -32,12 +32,12 @@ void http_server::init(server_address&& addr, boost::asio::io_context* ctx){
 }
 void http_server::init(server_address&& addr, uint8_t thread_pool_size){
 
-   thread_pool.emplace( addr.as_string(), thread_pool_size );//TODO customize
+   thread_pool.emplace( addr.as_string(), thread_pool_size );
    address = move(addr);
 }
 
-void http_server::add_handler(std::string_view path, server_handler callback){
-   EOS_ASSERT(!running, other_http_exception, "can't add API after server has started");
+void http_server::add_handler(std::string_view path, method_type method, server_handler callback){
+   EOS_ASSERT(!running, http_exception, "can't add API after server has started");
 
    handlers[string(path)] = callback;
 }
@@ -56,8 +56,28 @@ void https_server::run(){
    ssl_listener.emplace(move(ep), get_executor(), handlers, ssl_ctx);
    ssl_listener->run();
 }
-void https_server::init_ssl(std::string_view cert, std::string_view pk){
+void https_server::init_ssl(std::string_view cert, std::string_view pk, password_callback pwd_callback, std::string_view dh){
+   ssl_ctx.set_password_callback(pwd_callback);
+   ssl_ctx.set_options(ssl::context::default_workarounds |
+                       ssl::context::no_sslv2 |
+                       ssl::context::no_sslv3 |
+                       ssl::context::no_tlsv1 |
+                       ssl::context::no_tlsv1_1 |
+                       ssl::context::single_dh_use);
+   ssl_ctx.use_certificate_chain(asio::buffer(cert));
+   ssl_ctx.use_private_key(asio::buffer(pk), ssl::context::file_format::pem);
+   
+   if (!dh.empty())
+      ssl_ctx.use_tmp_dh(asio::buffer(dh));
 
+   //just in case you are missing elliptic curve setup here:
+   //in openssl version > 1.1.0 elliptic curve is enabled by default. no need to set it explicitly
+   
+   //EECDH key agreement will be used only if dh parameter was set 
+   const char* cipher_list = "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:"
+                             "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL";
+   if(!SSL_CTX_set_cipher_list(ssl_ctx.native_handle(), cipher_list))
+      EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
 }
 
 web_server_factory::web_server_factory(){}

@@ -54,7 +54,6 @@ void https_listener::start_accept(){
    start_accept([pthis](beast::error_code ec, tcp::socket s){
                   pthis->on_accept(ec, move(s));
                 });
-   //TODO: don't duplicate http_listener::start_accept here. think of redesign
 }
 void https_listener::on_accept(boost::beast::error_code ec, socket s){
    //create session here and return pointer to caller

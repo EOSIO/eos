@@ -37,15 +37,18 @@ protected:
 };
 
 struct https_listener : http_listener, std::enable_shared_from_this<https_listener>{
-   using socket_acceptor = http_listener::socket_acceptor;
-   using io_context = http_listener::io_context;
-   using ssl_context = boost::asio::ssl::context;
-   using ssl_context_ref = std::reference_wrapper<ssl_context>;
-   using endpoint = boost::asio::ip::tcp::endpoint;
+   using socket_acceptor   = http_listener::socket_acceptor;
+   using io_context        = http_listener::io_context;
+   using ssl_context       = boost::asio::ssl::context;
+   using ssl_context_ref   = std::reference_wrapper<ssl_context>;
+   using endpoint          = boost::asio::ip::tcp::endpoint;
 
    ssl_context_ref            ssl_ctx;
 
-   https_listener(const endpoint& ep, io_context& ctx, const handler_map& handlers, ssl_context& ssl_ctx);
+   https_listener(const endpoint& ep, 
+                  io_context& ctx, 
+                  const handler_map& handlers, 
+                  ssl_context& ssl_ctx);
    void start_accept();
    void on_accept(boost::beast::error_code ec, socket s);
 };
