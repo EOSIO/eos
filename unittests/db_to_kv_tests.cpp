@@ -537,7 +537,7 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
    using end_of_prefix = eosio::chain::backing_store::db_key_value_format::end_of_prefix;
    uint64_t extracted_primary_key5 = default_primary_key;
    Key extracted_key5;
-   name contract = N(mycontract);
+   name contract = "mycontract"_n;
    auto full_primary_to_sec_key = eosio::chain::backing_store::db_key_value_format::create_full_key(primary_to_sec_key, contract);
    auto prefix_primary_to_sec_key = eosio::chain::backing_store::db_key_value_format::create_full_key_prefix(full_primary_to_sec_key, end_of_prefix::at_type);
    result = eosio::chain::backing_store::db_key_value_format::get_trailing_prim_sec_keys(
@@ -572,8 +572,8 @@ void verify_secondary_key_pair(const b1::chain_kv::bytes& composite_key) {
 }
 
 BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const uint64_t key = 0xdead87654321beef;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_primary_key(scope, table, key);
    BOOST_REQUIRE_EQUAL(legacy_overhead_size + sizeof(key), composite_key.size());
@@ -596,8 +596,8 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
    const bool skip_trailing_prim_key = true;
    check_ordered_keys(keys, &prim_drop_extra_key, skip_trailing_prim_key);
 
-   const name scope2 = N(myscope);
-   const name table2 = N(thisscope);
+   const name scope2 = "myscope"_n;
+   const name table2 = "thisscope"_n;
    const uint64_t key2 = 0xdead87654321beef;
    const uint64_t primary_key2 = 0x0123456789abcdef;
    const auto composite_key2 = eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope2, table2, key2, primary_key2);
@@ -623,8 +623,8 @@ BOOST_AUTO_TEST_CASE(ui64_keys_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const eosio::chain::uint128_t key = create_uint128(0xdead12345678beef, 0x0123456789abcdef);
    const uint64_t primary_key = 0x0123456789abcdef;
 
@@ -660,8 +660,8 @@ BOOST_AUTO_TEST_CASE(ui128_key_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const eosio::chain::key256_t key = create_key256(create_uint128(0xdead12345678beef, 0x0123456789abcdef),
                                                     create_uint128(0xbadf2468013579ec, 0xf0e1d2c3b4a59687));
    const uint64_t primary_key = 0x0123456789abcdef;
@@ -699,8 +699,8 @@ BOOST_AUTO_TEST_CASE(ui256_key_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(float64_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const float64_t key = to_softfloat64(6.0);
    const uint64_t primary_key = 0x0123456789abcdef;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
@@ -734,8 +734,8 @@ BOOST_AUTO_TEST_CASE(float64_key_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(float128_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const float128_t key = to_softfloat128(99.99);
    const uint64_t primary_key = 0x0123456789abcdef;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_secondary_key(scope, table, key, primary_key);
@@ -819,8 +819,8 @@ BOOST_AUTO_TEST_CASE(compare_span_of_long_doubles_test) {
 }
 
 BOOST_AUTO_TEST_CASE(table_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_table_key(scope, table);
    BOOST_REQUIRE_EQUAL(legacy_overhead_size, composite_key.size());
 
@@ -833,8 +833,8 @@ BOOST_AUTO_TEST_CASE(table_key_conversions_test) {
 }
 
 BOOST_AUTO_TEST_CASE(prefix_key_conversions_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_prefix_key(scope, table);
    BOOST_REQUIRE_EQUAL(legacy_overhead_size_without_type, composite_key.size());  //
 
@@ -911,8 +911,8 @@ void verify_secondary_exception(const b1::chain_kv::bytes& composite_key, const 
 }
 
 BOOST_AUTO_TEST_CASE(verify_no_type_in_key_test) {
-   const name scope = N(myscope);
-   const name table = N(thisscope);
+   const name scope = "myscope"_n;
+   const name table = "thisscope"_n;
    const auto composite_key = eosio::chain::backing_store::db_key_value_format::create_prefix_key(scope, table);
    const std::string starts_with = "DB intrinsic key-value store composite key is malformed, it does not contain an indication of the type of the db-key";
    verify_primary_exception<eosio::chain::bad_composite_key_exception>(composite_key, starts_with);
