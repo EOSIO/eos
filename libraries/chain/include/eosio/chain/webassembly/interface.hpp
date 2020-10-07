@@ -253,9 +253,6 @@ namespace webassembly {
          */
          void set_parameters_packed( span<const char> packed_parameters );
 
-         uint32_t get_kv_parameters_packed(span<char>, uint32_t) const;
-         void set_kv_parameters_packed(span<const char>);
-
          /**
           * Gets the maximum key size, maximum value size, and maximum iterators of a kv database and returns the size of the data.
           * The kv parameters are encoded as 16 bytes, representing four 32-bit little-endian values.
@@ -276,7 +273,7 @@ namespace webassembly {
           * @return Returns the size required in the buffer (if the buffer is too small, nothing is written).
           *
          */
-         uint32_t get_kv_parameters_packed(name db, span<char> packed_kv_parameters, uint32_t max_version) const;
+         uint32_t get_kv_parameters_packed(span<char>, uint32_t) const;
 
          /**
           * Sets the maximum key size, and maximum value size, and maximum iterators of a kv database.
@@ -287,7 +284,7 @@ namespace webassembly {
           * @ingroup privileged
           * @param packed_kv_parameters - the buffer containing the packed kv parameters to be set.
          */
-         void set_kv_parameters_packed(name db, span<const char> packed_kv_parameters);
+         void set_kv_parameters_packed(span<const char>);
 
          /**
           * Check if an account is privileged.
