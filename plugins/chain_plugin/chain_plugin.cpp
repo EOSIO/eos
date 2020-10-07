@@ -2115,19 +2115,13 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
 
-#if 0
-  // Enable the code block once rocksdb_nodeos_integratin is merged
+   // Enable the code block once rocksdb_nodeos_integratin is merged
    const chain::kv_database_config &limits = kv_config;
    auto &kv_database = const_cast<chain::combined_database &>(db.kv_db());
    // To do: provide kv_resource_manmager to create_kv_context
    auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
-#else
-  const chain::kv_database_config &limits = kv_config.kvram;
-  auto &database = db.db();
-  auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database &>(database), database_id, chain::name{0}, {}, limits);
-#endif
 
-  return get_kv_table_rows_context(p, *kv_context, abi);
+   return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
