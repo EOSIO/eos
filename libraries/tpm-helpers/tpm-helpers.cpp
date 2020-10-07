@@ -197,17 +197,23 @@ std::set<TPM2_HANDLE> persistent_handles(esys_context& esys_ctx) {
    TSS2_RC rc;
    std::set<TPM2_HANDLE> handles;
 
-   //This implementation ignores the more_data return as I couldn't find an impl to test against
-   TPMS_CAPABILITY_DATA* capability_data = nullptr;
-   rc = Esys_GetCapability(esys_ctx.ctx(), ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, TPM2_CAP_HANDLES, TPM2_PERSISTENT_FIRST, TPM2_MAX_CAP_HANDLES, &more_data, &capability_data);
-   FC_ASSERT(!rc, "Failed to query persistent handles: ${m}", ("m", Tss2_RC_Decode(rc)));
-   auto cleanup_capability_data = fc::make_scoped_exit([&]() {free(capability_data);});
+   UINT32 prop = TPM2_PERSISTENT_FIRST;
 
-   FC_ASSERT(capability_data->capability == TPM2_CAP_HANDLES, "TPM returned non-handle reply");
+   do {
+      TPMS_CAPABILITY_DATA* capability_data = nullptr;
+      rc = Esys_GetCapability(esys_ctx.ctx(), ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, TPM2_CAP_HANDLES, prop, TPM2_MAX_CAP_HANDLES, &more_data, &capability_data);
+      FC_ASSERT(!rc, "Failed to query persistent handles: ${m}", ("m", Tss2_RC_Decode(rc)));
+      auto cleanup_capability_data = fc::make_scoped_exit([&]() {free(capability_data);});
 
-   for(unsigned i = 0; i < capability_data->data.handles.count; ++i)
-      if(capability_data->data.handles.handle[i] < TPM2_PLATFORM_PERSISTENT)
-         handles.emplace(capability_data->data.handles.handle[i]);
+      FC_ASSERT(capability_data->capability == TPM2_CAP_HANDLES, "TPM returned non-handle reply");
+
+      for(unsigned i = 0; i < capability_data->data.handles.count; ++i)
+         if(capability_data->data.handles.handle[i] < TPM2_PLATFORM_PERSISTENT)
+            handles.emplace(capability_data->data.handles.handle[i]);
+
+      if(capability_data->data.handles.count)
+         prop = capability_data->data.handles.handle[capability_data->data.handles.count-1] + 1;
+   } while(more_data == TPM2_YES && prop < TPM2_PLATFORM_PERSISTENT);
 
    return handles;
 }
