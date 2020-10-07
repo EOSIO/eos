@@ -1937,7 +1937,7 @@ using tester_suites = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
 BOOST_AUTO_TEST_CASE_TEMPLATE(db_tests, TESTER_T, tester_suites) { try {
    TESTER_T t;
    t.produce_blocks(2);
-   t.create_account( "testapi"_n) );
+   t.create_account( "testapi"_n );
    t.create_account( "testapi2"_n );
    t.produce_blocks(10);
    t.set_code( "testapi"_n, contracts::test_api_db_wasm() );
