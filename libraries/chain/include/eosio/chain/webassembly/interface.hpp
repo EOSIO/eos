@@ -1622,7 +1622,7 @@ namespace webassembly {
           *
           * @return change in resource usage.
           */
-         int64_t  kv_erase(uint64_t db, uint64_t contract, span<const char> key);
+         int64_t  kv_erase(uint64_t contract, span<const char> key);
 
          /**
           * Set a key-value pair.
@@ -1636,7 +1636,7 @@ namespace webassembly {
           *
           * @return change in resource usage.
           */
-         int64_t  kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value, account_name payer);
+         int64_t  kv_set(uint64_t contract, span<const char> key, span<const char> value, account_name payer);
 
          /**
           * Check the existence of a key.
@@ -1652,7 +1652,7 @@ namespace webassembly {
           *
           * @return false if the provided key doesn't exist, true otherwise.
           */
-         bool     kv_get(uint64_t db, uint64_t contract, span<const char> key, uint32_t* value_size);
+         bool     kv_get(uint64_t contract, span<const char> key, uint32_t* value_size);
 
          /**
           * Fetches data from temporary buffer starting at offset.
@@ -1664,7 +1664,7 @@ namespace webassembly {
           *
           * @return number of bytes written in data.
           */
-         uint32_t kv_get_data(uint64_t, uint32_t offset, span<char> data);
+         uint32_t kv_get_data(uint32_t offset, span<char> data);
 
          /**
           * Create a kv iterator.
@@ -1681,7 +1681,7 @@ namespace webassembly {
           *
           * @return handle of the created iterator
           */
-         uint32_t kv_it_create(uint64_t, uint64_t contract, span<const char> prefix);
+         uint32_t kv_it_createuint64_t contract, span<const char> prefix);
 
          /**
           * Destroy a kv iterator.
