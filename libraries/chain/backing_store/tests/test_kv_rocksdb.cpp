@@ -338,11 +338,11 @@ BOOST_AUTO_TEST_CASE(test_actual_value_size_small_value) {
    BOOST_CHECK_THROW(actual_value_size(payer_in_value_size - 1), kv_rocksdb_bad_value_size_exception);
 }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture) { check_get_payer(N(a)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture) { check_get_payer("a"_n); }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_4_chars, kv_rocksdb_fixture) { check_get_payer(N(abcd)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_4_chars, kv_rocksdb_fixture) { check_get_payer("abcd"_n); }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_payer(N(abcdefg)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_payer("abcdefg"_n); }
 
 BOOST_AUTO_TEST_CASE(test_actual_value_start) {
    char buf[10]; // any size of buffer will work
