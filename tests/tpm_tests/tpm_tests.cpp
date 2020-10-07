@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE se_tests
+#define BOOST_TEST_MODULE tpm_tests
 #include <boost/test/included/unit_test.hpp>
 
 #include <eosio/tpm-helpers/tpm-helpers.hpp>
