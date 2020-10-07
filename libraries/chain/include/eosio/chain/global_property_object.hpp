@@ -49,7 +49,7 @@ namespace eosio { namespace chain {
          producer_authority_schedule         proposed_schedule;
          chain_config_v0                     configuration;
          chain_id_type                       chain_id;
-         kv_config                           kv_configuration;
+         kv_database_config                  kv_configuration;
          wasm_config                         wasm_configuration;
       };
    }
