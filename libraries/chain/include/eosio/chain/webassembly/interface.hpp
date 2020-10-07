@@ -1681,7 +1681,7 @@ namespace webassembly {
           *
           * @return handle of the created iterator
           */
-         uint32_t kv_it_createuint64_t contract, span<const char> prefix);
+         uint32_t kv_it_create(uint64_t contract, span<const char> prefix);
 
          /**
           * Destroy a kv iterator.
