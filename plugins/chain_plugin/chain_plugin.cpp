@@ -2238,7 +2238,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
                actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
                EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
             } else {
-               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+               EOS_ASSERT(false, chain::contract_table_query_exception, "range query failed to get data: ${t} ${i}", ("t", p.table)("i", p.index_name));
             }
          }
 
