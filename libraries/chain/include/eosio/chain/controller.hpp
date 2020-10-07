@@ -386,12 +386,12 @@ namespace eosio { namespace chain {
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
 
+         eosio::chain::combined_database& kv_db();
       private:
          friend class apply_context;
          friend class transaction_context;
 
          chainbase::database& mutable_db()const;
-         eosio::chain::combined_database& kv_db();
 
          std::unique_ptr<controller_impl> my;
 
