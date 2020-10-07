@@ -15,6 +15,9 @@ public:
    tpm_key(const std::string& tcti, const fc::crypto::public_key& pubkey, const std::vector<unsigned>& pcrs);
    ~tpm_key();
 
+   tpm_key(const tpm_key&) = delete;
+   tpm_key& operator=(const tpm_key&) = delete;
+
    fc::crypto::signature sign(const fc::sha256& digest);
 
 private:
@@ -31,6 +34,9 @@ public:
    nv_data(const std::string& tcti, unsigned nv_index, const std::vector<unsigned>& pcrs);
    ~nv_data();
 
+   nv_data(const nv_data&) = delete;
+   nv_data& operator=(const nv_data&) = delete;
+
    std::optional<std::vector<char>> data();
    void set_data(const std::vector<char>& data);
 
@@ -44,6 +50,9 @@ class swtpm {
 public:
    swtpm();
    ~swtpm();
+
+   swtpm(const swtpm&) = delete;
+   swtpm& operator=(const swtpm&) = delete;
 
    std::string tcti() const;
 
