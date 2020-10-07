@@ -70,11 +70,12 @@ public:
    }
 
    /// ack consume message
-   void ack( const delivery_tag_t& delivery_tag ) {
+   /// @param multiple true if given delivery_tag and all previous should be ack'ed
+   void ack( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( *handler_->amqp_strand(),
-            [my = this, delivery_tag]() {
+            [my = this, delivery_tag, multiple]() {
                try {
-                  my->channel_->ack( delivery_tag );
+                  my->channel_->ack( delivery_tag, multiple ? AMQP::multiple : 0 );
                } FC_LOG_AND_DROP()
             } );
    }
@@ -98,7 +99,14 @@ public:
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
          boost::asio::post( *handler_->amqp_strand(), [&]() {
-            stop_promise.set_value();
+            if( channel_ ) {
+               auto& cb = channel_->close();
+               cb.onFinalize( [&]() {
+                  stop_promise.set_value();
+               } );
+            } else {
+               stop_promise.set_value();
+            }
          } );
          future.wait();
 

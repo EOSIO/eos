@@ -11,7 +11,7 @@ from Node import Node
 from WalletMgr import WalletMgr
 
 class PluginHttpTest(unittest.TestCase):
-    sleep_s = 2
+    sleep_s = 5
     base_node_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT)
     base_wallet_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT)
     keosd = WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
@@ -893,7 +893,7 @@ class PluginHttpTest(unittest.TestCase):
         self.assertEqual(ret_json["error"]["code"], 3200006)
         # update_runtime_options with valid parameter
         valid_cmd = default_cmd + self.http_post_str + ("'{%s, %s, %s, %s, %s, %s, %s, %s}'") % ("\"max_transaction_time\":30",
-                                                                                                 "\"max_irreversible_block_age\":1",
+                                                                                                 "\"max_irreversible_block_age\":-1",
                                                                                                  "\"produce_time_offset_us\":10000",
                                                                                                  "\"last_block_time_offset_us\":0",
                                                                                                  "\"max_scheduled_transaction_time_per_block_ms\":10000",

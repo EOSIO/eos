@@ -38,6 +38,10 @@ void witness_plugin::set_program_options(options_description& cli, options_descr
 void witness_plugin::plugin_initialize(const variables_map& options) {}
 
 void witness_plugin::plugin_startup() {
+   auto& controller = app().get_plugin<chain_plugin>().chain();
+   EOS_ASSERT(controller.get_validation_mode() == chain::validation_mode::FULL, chain::plugin_config_exception, "witness_plugin requires full validation mode");
+   EOS_ASSERT(controller.get_trusted_producers().empty(), chain::plugin_config_exception, "witness_plugin requires no trusted producers");
+
    my->thread = std::thread([this]() {
       fc::set_os_thread_name("witness");
       do {
@@ -49,7 +53,7 @@ void witness_plugin::plugin_startup() {
    });
 
 
-   app().get_plugin<chain_plugin>().chain().irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
+   controller.irreversible_block.connect([&](const chain::block_state_ptr& bsp) {
       std::list<std::pair<witness_plugin::witness_callback_func, std::shared_ptr<void>>> locks;
       auto it = my->callbacks.begin();
       while(it != my->callbacks.end()) {
