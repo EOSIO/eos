@@ -11,6 +11,7 @@
 using key_type = eosio::chain::backing_store::db_key_value_format::key_type;
 using name = eosio::chain::name;
 using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
+using namespace eosio::chain::literals;
 
 BOOST_AUTO_TEST_SUITE(db_to_kv_tests)
 
