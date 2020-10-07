@@ -12,7 +12,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
