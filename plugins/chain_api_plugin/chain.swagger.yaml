@@ -67,6 +67,28 @@ paths:
             application/json:
               schema:
                 $ref: "https://eosio.github.io/schemata/v2.0/oas/Block.yaml"
+  /get_block_info:
+    post:
+      description: Similar to `get_block` but returns a fixed-size smaller subset of the block data.
+      operationId: get_block_info
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - block_num
+              properties:
+                block_num:
+                  type: integer
+                  description: Provide a `block number`
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "https://eosio.github.io/schemata/v2.1/oas/BlockInfo.yaml"
   /get_info:
     post:
       description: Returns an object containing various details about the blockchain.
