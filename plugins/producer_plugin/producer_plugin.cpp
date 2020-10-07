@@ -864,6 +864,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
             my->_signature_providers[pubkey] = provider;
          } catch(secure_enclave_exception& e) {
             elog("Error with Secure Enclave signature provider: ${e}; ignoring ${val}", ("e", e.top_message())("val", key_spec_pair));
+         } catch (fc::exception& e) {
+            elog("Malformed signature provider: \"${val}\": ${e}, ignoring!", ("val", key_spec_pair)("e", e));
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
          }
