@@ -51,7 +51,8 @@ class signature_provider_plugin_impl {
          std::vector<unsigned> pcrs;
 
          boost::split(params,spec_data,boost::is_any_of("|"));
-         if(params.size() >= 2) {
+         EOS_ASSERT(params.size() <= 2, chain::plugin_config_exception, "Too many extra fields given to TPM provider via '|' parameter");
+         if(params.size() == 2) {
             vector<string> pcr_strs;
             boost::split(pcr_strs,params[1],boost::is_any_of(","));
             for(const auto& ps : pcr_strs)
