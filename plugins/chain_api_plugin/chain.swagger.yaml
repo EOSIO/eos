@@ -439,9 +439,15 @@ paths:
                   type: integer
                   description: Limit number of results returned.
                   format: int32
+                  default: 10
                 reverse:
                   type: boolean
                   description: Reverse the order of returned results
+                  default: false
+                show_payer:
+                  type: boolean
+                  description: Show RAM payer
+                  default: false
       responses:
         "200":
           description: OK
@@ -499,6 +505,14 @@ paths:
                   description: Limit number of results returned.
                   format: int32
                   default: 10
+                reverse:
+                  type: boolean
+                  description: Reverse the order of returned results
+                  default: false
+                show_payer:
+                  type: boolean
+                  description: Show RAM payer
+                  default: false
 
       responses:
         "200":
