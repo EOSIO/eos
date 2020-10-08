@@ -258,8 +258,8 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
 
 BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
    auto verify_key_value = [](auto& ds, uint16_t key, uint16_t expected_value) {
-      auto key_       = eosio::session::make_shared_bytes(&key, 1);
-      auto value      = eosio::session::make_shared_bytes(&expected_value, 1);
+      auto key_       = eosio::session::shared_bytes(&key, 1);
+      auto value      = eosio::session::shared_bytes(&expected_value, 1);
       auto value_read = ds.read(key_);
       BOOST_REQUIRE(value_read == value);
 
@@ -326,8 +326,8 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
 BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    auto verify_keys_deleted = [](auto& ds, const auto& keys) {
       for (const uint16_t& key : keys) {
-         auto key_ = eosio::session::make_shared_bytes(&key, 1);
-         BOOST_REQUIRE(ds.read(key_) == eosio::session::shared_bytes::invalid());
+         auto key_ = eosio::session::shared_bytes(&key, 1);
+         BOOST_REQUIRE(!ds.read(key_).has_value());
          BOOST_REQUIRE(ds.find(key_) == std::end(ds));
          BOOST_REQUIRE(ds.contains(key_) == false);
       }
@@ -346,9 +346,9 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
 
    auto verify_keys_exist = [](auto& ds, const auto& key_values) {
       for (const auto& key_value : key_values) {
-         auto key   = eosio::session::make_shared_bytes(&key_value.first, 1);
-         auto value = eosio::session::make_shared_bytes(&key_value.second, 1);
-         BOOST_REQUIRE(ds.read(key) == value);
+         auto key   = eosio::session::shared_bytes(&key_value.first, 1);
+         auto value = eosio::session::shared_bytes(&key_value.second, 1);
+         BOOST_REQUIRE(*ds.read(key) == value);
          BOOST_REQUIRE(ds.find(key) != std::end(ds));
          BOOST_REQUIRE(ds.contains(key) == true);
       }
@@ -364,7 +364,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
          }
          auto key_value = *it;
          auto key       = *reinterpret_cast<const uint16_t*>(key_value.first.data());
-         auto value     = *reinterpret_cast<const uint16_t*>(key_value.second.data());
+         auto value     = *reinterpret_cast<const uint16_t*>(key_value.second->data());
 
          auto kv_it = key_values.find(key);
          if (kv_it != std::end(key_values)) {
@@ -378,7 +378,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    };
 
    auto delete_key = [](auto& ds, uint16_t key) {
-      auto key_ = eosio::session::make_shared_bytes(&key, 1);
+      auto key_ = eosio::session::shared_bytes(&key, 1);
       ds.erase(key_);
    };
 

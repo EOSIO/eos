@@ -26,49 +26,47 @@ namespace eosio { namespace chain {
    // Need to store payer so that this account is properly
    // credited when storage is removed or changed
    // to another payer
-   inline static void build_value(const char* value, uint32_t value_size, const account_name& payer, bytes& final_kv_value) {
+   inline static eosio::session::shared_bytes build_value(const char* value, uint32_t value_size, const account_name& payer) {
+#warning replace with make_shared_bytes
       const uint32_t final_value_size = backing_store::payer_in_value_size + value_size;
-      final_kv_value.reserve(final_value_size);
+      auto result = eosio::session::shared_bytes(final_value_size);
 
       char buf[backing_store::payer_in_value_size];
       memcpy(buf, &payer, backing_store::payer_in_value_size);
-      final_kv_value.insert(final_kv_value.end(), std::begin(buf), std::end(buf));
-
-      final_kv_value.insert(final_kv_value.end(), value, value + value_size); 
+      std::memcpy(result.data(), buf, backing_store::payer_in_value_size);
+      std::memcpy(result.data() + backing_store::payer_in_value_size, value, value_size);
+      return result;
    }
 
 
    static inline eosio::session::shared_bytes make_prefix_key(uint64_t contract, const char* user_prefix, uint32_t user_prefix_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
 
-      auto buffer = std::vector<char>{};
-      buffer.reserve(rocks_prefix.size() + sizeof(contract) + user_prefix_size);
-      buffer.insert(std::end(buffer), std::begin(rocks_prefix), std::end(rocks_prefix));
-      b1::chain_kv::append_key(buffer, contract);
-      buffer.insert(std::end(buffer), user_prefix, user_prefix + user_prefix_size);
-      return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
+      auto result = eosio::session::shared_bytes(rocks_prefix.size() + sizeof(contract) + user_prefix_size);
+      std::memcpy(result.data(), rocks_prefix.data(), rocks_prefix.size());
+      b1::chain_kv::insert_key(result, rocks_prefix.size(), contract);
+      std::memcpy(result.data() + rocks_prefix.size() + sizeof(contract), user_prefix, user_prefix_size);
+      return result;
    }
 
    static inline eosio::session::shared_bytes
    make_composite_key(uint64_t contract, const char* user_prefix, uint32_t user_prefix_size, const char* key, uint32_t key_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix(); 
 
-      auto buffer = std::vector<char>{};
-      buffer.reserve(rocks_prefix.size() + sizeof(contract) + user_prefix_size + key_size);
-      buffer.insert(std::end(buffer), std::begin(rocks_prefix), std::end(rocks_prefix));
-      b1::chain_kv::append_key(buffer, contract);
-      buffer.insert(std::end(buffer), user_prefix, user_prefix + user_prefix_size);
-      buffer.insert(std::end(buffer), key, key + key_size);
-      return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
+      auto result = eosio::session::shared_bytes(rocks_prefix.size() + sizeof(contract) + user_prefix_size + key_size);
+      std::memcpy(result.data(), rocks_prefix.data(), rocks_prefix.size());
+      b1::chain_kv::insert_key(result, rocks_prefix.size(), contract);
+      std::memcpy(result.data() + rocks_prefix.size() + sizeof(contract), user_prefix, user_prefix_size);
+      std::memcpy(result.data() + rocks_prefix.size() + sizeof(contract) + user_prefix_size, key, key_size);
+      return result;
    }
 
    static inline eosio::session::shared_bytes make_composite_key(const eosio::session::shared_bytes& prefix,
                                                                  const char* key, uint32_t key_size) {
-      auto buffer = std::vector<char>{};
-      buffer.reserve(prefix.size() + key_size);
-      buffer.insert(std::end(buffer), prefix.data(), prefix.data() + prefix.size());
-      buffer.insert(std::end(buffer), key, key + key_size);
-      return eosio::session::make_shared_bytes(buffer.data(), buffer.size());
+      auto result = eosio::session::shared_bytes(prefix.size() + key_size);
+      std::memcpy(result.data(), prefix.data(), prefix.size());
+      std::memcpy(result.data() + prefix.size(), key, key_size);
+      return result;
    }
 
    static inline int32_t compare_bytes(const eosio::session::shared_bytes& left, const eosio::session::shared_bytes& right) {
@@ -92,16 +90,18 @@ namespace eosio { namespace chain {
       const char*                     kv_user_prefix{nullptr};
       uint32_t                        kv_user_prefix_size{0};
       eosio::session::shared_bytes    kv_prefix; // Format: [contract, prefix]
-      eosio::session::shared_bytes    kv_next_prefix;
       session_type*                   kv_session{nullptr};
+      typename session_type::iterator kv_begin;
+      typename session_type::iterator kv_end;
       typename session_type::iterator kv_current;
 
       kv_iterator_rocksdb(uint32_t& num_iterators, session_type& session, uint64_t contract, const char* user_prefix,
                           uint32_t user_prefix_size)
           : num_iterators{ num_iterators }, kv_contract{ contract }, kv_user_prefix{ user_prefix }, kv_user_prefix_size{ user_prefix_size },
             kv_prefix{ make_prefix_key(contract, user_prefix, user_prefix_size) },
-            kv_next_prefix{ kv_prefix++ }, kv_session{ &session }, 
-            kv_current{ kv_session->lower_bound(kv_next_prefix) } {
+            kv_session{ &session }, kv_begin{ kv_session->lower_bound(kv_prefix) }, 
+            kv_end{ [&](){ auto kv_next_prefix = kv_prefix.next(); return kv_session->lower_bound(kv_next_prefix); }() },
+            kv_current{ kv_end } {
          ++num_iterators;
       }
 
@@ -111,11 +111,9 @@ namespace eosio { namespace chain {
       bool is_kv_rocksdb_context_iterator() const override { return true; }
 
       kv_it_stat kv_it_status() override {
-         if (kv_current == std::end(*kv_session))
+         if (kv_current == kv_end) 
             return kv_it_stat::iterator_end; 
-         else if (kv_current == kv_session->lower_bound(kv_next_prefix)) 
-            return kv_it_stat::iterator_end; 
-         else if ((*kv_current).first < kv_prefix) 
+         else if (kv_current.key() < kv_prefix) 
             return kv_it_stat::iterator_end; 
          else if (kv_current.deleted())
             return kv_it_stat::iterator_erased;
@@ -145,11 +143,16 @@ namespace eosio { namespace chain {
                   return -1;
                }
 
-               auto result = compare_bytes((*kv_current).first, (*r.kv_current).first);
+               auto result = compare_bytes(kv_current.key(), r.kv_current.key());
                if (result) {
                  return result;
                }
-               return compare_bytes((*kv_current).second, (*r.kv_current).second);
+               auto left = (*kv_current).second;
+               auto right = (*r.kv_current).second;
+               if (left && right) {
+                  return compare_bytes(*left, *right);
+               }
+               return left.has_value() == right.has_value();
             }
             FC_LOG_AND_RETHROW()
          }
@@ -160,9 +163,9 @@ namespace eosio { namespace chain {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
          try {
             try {
-               auto current_key = eosio::session::shared_bytes::invalid();
+               auto current_key = eosio::session::shared_bytes{};
                if (kv_it_status() == kv_it_stat::iterator_ok) {
-                  current_key = (*kv_current).first;
+                  current_key = kv_current.key();
                } else {
                   return 1;
                }
@@ -176,7 +179,7 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_move_to_end() override {
          try {
             try {
-               kv_current = std::end(*kv_session);
+               kv_current = kv_end;
                return kv_it_stat::iterator_end;
             }
             FC_LOG_AND_RETHROW()
@@ -189,7 +192,7 @@ namespace eosio { namespace chain {
          try {
             try {
                if (kv_it_status() == kv_it_stat::iterator_end) {
-                  kv_current = kv_session->lower_bound(kv_prefix);
+                  kv_current = kv_begin;
                } else {
                   ++kv_current;
                }
@@ -206,8 +209,8 @@ namespace eosio { namespace chain {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
          try {
             try {
-               if (kv_current == kv_session->lower_bound(kv_prefix)) {
-                  kv_current = kv_session->lower_bound(kv_next_prefix);
+               if (kv_current == kv_begin) {
+                  kv_current = kv_end;
                } else {
                   --kv_current;
                }
@@ -242,19 +245,18 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
 
-         auto kv = std::pair{ eosio::session::shared_bytes::invalid(), eosio::session::shared_bytes::invalid() };
+         auto key = eosio::session::shared_bytes{};
          try {
             try {
                if (kv_it_status() == kv_it_stat::iterator_ok) {
-                  kv = *kv_current;
+                  key = kv_current.key();
                }
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         auto& key = kv.first;
-         if (key != eosio::session::shared_bytes::invalid()) {
+         if (key) {
             actual_size = actual_key_size(key.size());
             if (offset < actual_size) {
                memcpy(dest, actual_key_start(key.data()) + offset, std::min(size, actual_size - offset));
@@ -269,7 +271,7 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
 
-         auto kv = std::pair{ eosio::session::shared_bytes::invalid(), eosio::session::shared_bytes::invalid() };
+         auto kv = std::pair{ eosio::session::shared_bytes{}, std::optional<eosio::session::shared_bytes>{} };
          try {
             try {
                if (kv_it_status() == kv_it_stat::iterator_ok) {
@@ -281,10 +283,10 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          auto& value = kv.second;
-         if (value != eosio::session::shared_bytes::invalid()) {
-            actual_size = backing_store::actual_value_size(value.size());
+         if (value) {
+            actual_size = backing_store::actual_value_size(value->size());
             if (offset < actual_size)
-               memcpy(dest, backing_store::actual_value_start(value.data()) + offset, std::min(size, actual_size - offset));
+               memcpy(dest, backing_store::actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -297,9 +299,8 @@ namespace eosio { namespace chain {
          if (kv_it_status() == kv_it_stat::iterator_ok) {
             // Not end or at an erased kv pair
             auto kv = *kv_current;
-            // kv is always non-null due to the check of is_valid()
             *found_value_size = backing_store::actual_value_size(
-                  kv.second.size()); // This must be before *found_key_size in case actual_value_size throws
+                  kv.second->size()); // This must be before *found_key_size in case actual_value_size throws
             *found_key_size = actual_key_size(kv.first.size());
          } else {
             *found_key_size   = 0;
@@ -312,13 +313,13 @@ namespace eosio { namespace chain {
    struct kv_context_rocksdb : kv_context {
       using session_type = std::remove_pointer_t<Session>;
 
-      session_type*                session;
-      name                         receiver;
-      Resource_manager             resource_manager;
-      const kv_database_config&    limits;
-      uint32_t                     num_iterators = 0;
-      eosio::session::shared_bytes current_key{ eosio::session::shared_bytes::invalid() };
-      eosio::session::shared_bytes current_value{ eosio::session::shared_bytes::invalid() };
+      session_type*                               session;
+      name                                        receiver;
+      Resource_manager                            resource_manager;
+      const kv_database_config&                   limits;
+      uint32_t                                    num_iterators = 0;
+      eosio::session::shared_bytes                current_key;
+      std::optional<eosio::session::shared_bytes> current_value;
 
       kv_context_rocksdb(session_type& the_session, name receiver, Resource_manager /*kv_resource_manager*/ resource_manager,
                          const kv_database_config& limits)
@@ -327,10 +328,10 @@ namespace eosio { namespace chain {
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
          EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
-
-         current_key                = eosio::session::shared_bytes::invalid();
-         current_value              = eosio::session::shared_bytes::invalid();
-         auto old_value             = eosio::session::shared_bytes::invalid();
+         
+         current_value.reset();
+         current_key                = eosio::session::shared_bytes{};
+         auto old_value             = std::optional<eosio::session::shared_bytes>{};
          auto actual_old_value_size = uint32_t{ 0 };
          try {
             try {
@@ -338,14 +339,14 @@ namespace eosio { namespace chain {
                old_value          = session->read(composite_key);
                if (!old_value)
                   return 0;
-               actual_old_value_size = backing_store::actual_value_size(old_value.size());
+               actual_old_value_size = backing_store::actual_value_size(old_value->size());
                session->erase(composite_key);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = backing_store::get_payer(old_value.data());
+         account_name payer = backing_store::get_payer(old_value->data());
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
 
@@ -355,21 +356,19 @@ namespace eosio { namespace chain {
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
          EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
 
-         current_key         = eosio::session::shared_bytes::invalid();
-         current_value       = eosio::session::shared_bytes::invalid();
-         auto old_value      = eosio::session::shared_bytes::invalid();
+         current_value.reset();
+         current_key                = eosio::session::shared_bytes{};
+         auto old_value             = std::optional<eosio::session::shared_bytes>{};
          auto old_value_size = int64_t{ 0 };
          try {
             try {
                auto composite_key = make_composite_key(contract, nullptr, 0, key, key_size);
                old_value          = session->read(composite_key);
-               if (old_value != eosio::session::shared_bytes::invalid()) {
-                  old_value_size = backing_store::actual_value_size(old_value.size());
+               if (old_value) {
+                  old_value_size = backing_store::actual_value_size(old_value->size());
                }
 
-               bytes final_value;
-               build_value(value, value_size, payer, final_value);
-               auto new_value = eosio::session::make_shared_bytes(final_value.data(), final_value.size());
+               auto new_value = build_value(value, value_size, payer);
                session->write(composite_key, new_value);
             }
             FC_LOG_AND_RETHROW()
@@ -377,8 +376,8 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          auto resource_delta = int64_t{ 0 };
-         if (old_value != eosio::session::shared_bytes::invalid()) {
-            account_name old_payer = backing_store::get_payer(old_value.data());
+         if (old_value) {
+            account_name old_payer = backing_store::get_payer(old_value->data());
             resource_delta =
                   update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
@@ -389,8 +388,8 @@ namespace eosio { namespace chain {
       }
 
       bool kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) override {
-         current_key   = eosio::session::shared_bytes::invalid();
-         current_value = eosio::session::shared_bytes::invalid();
+         current_key = eosio::session::shared_bytes{};
+         current_value.reset();
          try {
             try {
                current_key   = make_composite_key(contract, nullptr, 0, key, key_size);
@@ -400,8 +399,8 @@ namespace eosio { namespace chain {
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         if (current_value != eosio::session::shared_bytes::invalid()) {
-            value_size = backing_store::actual_value_size(current_value.size());
+         if (current_value) {
+            value_size = backing_store::actual_value_size(current_value->size());
             return true;
          } else {
             value_size = 0;
@@ -412,9 +411,9 @@ namespace eosio { namespace chain {
       uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) override {
          const char* temp        = nullptr;
          uint32_t      temp_size = 0;
-         if (current_value != eosio::session::shared_bytes::invalid()) {
-            temp      = backing_store::actual_value_start(current_value.data());
-            temp_size = backing_store::actual_value_size(current_value.size());
+         if (current_value) {
+            temp      = backing_store::actual_value_start(current_value->data());
+            temp_size = backing_store::actual_value_size(current_value->size());
          }
          if (offset < temp_size)
             memcpy(data, temp + offset, std::min(data_size, temp_size - offset));

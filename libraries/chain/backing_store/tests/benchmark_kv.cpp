@@ -270,61 +270,79 @@ measurement_t benchmark_erase(const cmd_args& args, const std::unique_ptr<kv_con
 measurement_t benchmark_it_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
    rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
-
    auto i = 0;
    std::string prefix = "a";
    while (i < args.num_runs) {
       kv_context_ptr->kv_it_create(contract, prefix.c_str(), 0); // kv_it_create creates a unique pointer. Will be destoryed at the end of the scope.
       ++i;
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
+
    return calculated_measurement(args.num_runs, usage_start, usage_end);
 }
 
 // Benchmark "it_next" operation
-measurement_t benchmark_it_next(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
-   rusage usage_start, usage_end;
-   getrusage(RUSAGE_SELF, &usage_start);
-
+measurement_t benchmark_it_next(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t num_keys) {
    uint32_t found_key_size, found_value_size;
    auto it = kv_context_ptr->kv_it_create(contract, "", 0);
    it->kv_it_next(&found_key_size, &found_value_size);
 
-   uint32_t num_runs = 0;
+   rusage usage_start, usage_end;
+   getrusage(RUSAGE_SELF, &usage_start);
    while (it->kv_it_status() != kv_it_stat::iterator_end) {
       it->kv_it_next(&found_key_size, &found_value_size);
-      ++num_runs;
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
-   return calculated_measurement(num_runs, usage_start, usage_end);
+
+   // As we are iterate the whole set of the keys, the number of runs
+   // is num_keys.
+   return calculated_measurement(num_keys, usage_start, usage_end);
 }
 
-// Benchmark "it_key_value" operation
-measurement_t benchmark_it_key_value(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
+// Benchmark "it_key" operation
+measurement_t benchmark_it_key(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t num_keys) {
    uint32_t offset = 0;
    char* dest = new char[args.value_size];
    uint32_t actual_size;
    uint32_t found_key_size, found_value_size;
 
+   auto it = kv_context_ptr->kv_it_create(contract, "", 0);
+   it->kv_it_next(&found_key_size, &found_value_size);  // move to the first position
+
    rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
+   while (it->kv_it_status() != kv_it_stat::iterator_end) {
+      it->kv_it_key(offset, dest, found_key_size, actual_size);
+      it->kv_it_next(&found_key_size, &found_value_size);
+   }
+   getrusage(RUSAGE_SELF, &usage_end);
+
+   // As we are iterate the whole set of the keys, the number of runs
+   // is num_keys.
+   return calculated_measurement(num_keys, usage_start, usage_end);
+}
+
+// Benchmark "it_value" operation
+measurement_t benchmark_it_value(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr, uint32_t num_keys) {
+   uint32_t offset = 0;
+   char* dest = new char[args.value_size];
+   uint32_t actual_size;
+   uint32_t found_key_size, found_value_size;
 
    auto it = kv_context_ptr->kv_it_create(contract, "", 0);
    it->kv_it_next(&found_key_size, &found_value_size);  // move to the first position
 
-   uint64_t num_runs = 0;
+   rusage usage_start, usage_end;
+   getrusage(RUSAGE_SELF, &usage_start);
    while (it->kv_it_status() != kv_it_stat::iterator_end) {
-      it->kv_it_key(offset, dest, found_key_size, actual_size);
       it->kv_it_value(offset, dest, found_value_size, actual_size);
-
       it->kv_it_next(&found_key_size, &found_value_size);
-      ++num_runs;
    }
-
    getrusage(RUSAGE_SELF, &usage_end);
-   return calculated_measurement(num_runs, usage_start, usage_end);
+
+   // As we are iterate the whole set of the keys, the number of runs
+   // is num_keys.
+   return calculated_measurement(num_keys, usage_start, usage_end);
 }
 
 // Print out benchmarking results
@@ -373,9 +391,11 @@ void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>
       if (args.operation == "it_create" ) {
          m = benchmark_it_create(args, std::move(kv_context_ptr));
       } else if (args.operation == "it_next" ) {
-         m = benchmark_it_next(args, std::move(kv_context_ptr));
-      } else if (args.operation == "it_key_value" ) {
-         m = benchmark_it_key_value(args, std::move(kv_context_ptr));
+         m = benchmark_it_next(args, std::move(kv_context_ptr), num_keys);
+      } else if (args.operation == "it_key" ) {
+         m = benchmark_it_key(args, std::move(kv_context_ptr), num_keys);
+      } else if (args.operation == "it_value" ) {
+         m = benchmark_it_value(args, std::move(kv_context_ptr), num_keys);
       } else if (args.operation == "create" ) {
          m = benchmark_create(args, std::move(kv_context_ptr), num_keys);
       } else if (args.operation == "erase" ) {
@@ -390,19 +410,82 @@ void benchmark_operation(const cmd_args& args, const std::unique_ptr<kv_context>
 }
 
 inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name) {
-   rocksdb::DB* cache_ptr{ nullptr };
-   auto         cache = std::shared_ptr<rocksdb::DB>{};
+    rocksdb::DB* cache_ptr{ nullptr };
+    auto         cache = std::shared_ptr<rocksdb::DB>{};
 
-   auto options                                 = rocksdb::Options{};
-   options.create_if_missing                    = true;
-   options.level_compaction_dynamic_level_bytes = true;
-   options.bytes_per_sync                       = 1048576;
-   options.OptimizeLevelStyleCompaction(256ull << 20);
+    auto options                                 = rocksdb::Options{};
+    options.create_if_missing = true; // Creates a database if it is missing
+    options.level_compaction_dynamic_level_bytes = true;
+    options.bytes_per_sync = 1048576; // used to control the write rate of flushes and compactions.
 
-   auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
-   cache.reset(cache_ptr);
+    // By default, RocksDB uses only one background thread
+    // for flush and compaction.
+    // Good value for `total_threads` is the number of cores
+    options.IncreaseParallelism(7);
 
-   return cache;
+    options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
+
+    // Number of open files that can be used by the DB.  
+    // Setting it to -1 means files opened are always kept open.
+    options.max_open_files = -1;
+
+    // Use this option to increase the number of threads
+    // used to open the files.
+    options.max_file_opening_threads = 7; // Default should be the # of Cores
+
+    // Write Buffer Size - Sets the size of a single
+    // memtable. Once memtable exceeds this size, it is
+    // marked immutable and a new one is created.
+    // Default should be 128MB
+    options.write_buffer_size = 128 * 1024 * 1024;
+    options.max_write_buffer_number = 10; // maximum number of memtables, both active and immutable
+    options.min_write_buffer_number_to_merge = 2; // minimum number of memtables to be merged before flushing to storage
+
+    // Once level 0 reaches this number of files, L0->L1 compaction is triggered.
+    options.level0_file_num_compaction_trigger = 2;
+
+    // Size of L0 = write_buffer_size * min_write_buffer_number_to_merge * level0_file_num_compaction_trigger
+    // therefore: L0 in stable state = 128MB * 2 * 2 = 512MB
+    // max_bytes_for_level_basei is total size of level 1.
+    // For optimal performance make this equal to L0 hence 512MB
+    options.max_bytes_for_level_base = 512 * 1024 * 1024; 
+
+    // Files in level 1 will have target_file_size_base
+    // bytes. It’s recommended setting target_file_size_base
+    // to be max_bytes_for_level_base / 10,
+    // so that there are 10 files in level 1.i.e. 512MB/10
+    options.target_file_size_base = (512 * 1024 * 1024) / 10;
+
+    // This value represents the maximum number of threads
+    // that will concurrently perform a compaction job by
+    // breaking it into multiple,
+    // smaller ones that are run simultaneously.
+    options.max_subcompactions = 7;	// Default should be the # of CPUs
+
+    // Full and partitioned filters in the block-based table
+    // use an improved Bloom filter implementation, enabled
+    // with format_version 5 (or above) because previous
+    // releases cannot read this filter. This replacement is
+    // faster and more accurate, especially for high bits
+    // per key or millions of keys in a single (full) filter.
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.format_version               = 5;
+    table_options.index_block_restart_interval = 16;
+
+    // Sets the bloom filter - Given an arbitrary key, 
+    // this bit array may be used to determine if the key 
+    // may exist or definitely does not exist in the key set.
+    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
+    table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
+
+    // Incorporates the Table options into options
+    options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+
+    auto status = rocksdb::DB::Open(options, name.c_str(), &cache_ptr);
+
+    cache.reset(cache_ptr);
+
+    return cache;
 }
 
 // The driver
@@ -411,7 +494,8 @@ void benchmark(const cmd_args& args) {
       boost::filesystem::remove_all("kvrdb-tmp");  // Use a clean RocksDB
       boost::filesystem::remove_all(chain::config::default_state_dir_name);
 
-      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"));
+      constexpr size_t max_rocks_iterators = 1024;
+      auto rocks_session = eosio::session::make_session(make_rocks_db("kvrdb-tmp"), max_rocks_iterators);
       auto session = eosio::session::session<decltype(rocks_session)>{rocks_session};
 
       std::unique_ptr<kv_context> kv_context_ptr = create_kv_rocksdb_context<decltype(session), mock_resource_manager>(session, receiver, resource_manager, limits); 
@@ -439,14 +523,14 @@ int main(int argc, char* argv[]) {
    
    std::string gts;
    cli.add_options()
-     ("key-file,k", bpo::value<string>()->required(), "the file storing all the keys")
-     ("workset,w", bpo::value<string>(), "the file storing workset keys, required for get, get_data, set")
-     ("operation,o", bpo::value<string>()->required(), "operation to be benchmarked: get, get_data, set, create, erase, it_create, it_next, it_key_value")
-     ("backing-store,b", bpo::value<string>()->required(), "the database where kay vlaues are stored, rocksdb or chainbase .")
+     ("key-file,k", bpo::value<string>()->required(), "the file storing all the keys, mandatory")
+     ("workset,w", bpo::value<string>(), "the file storing workset keys, which must be constructed from key-file and be random; the operation is repeatedly run against the workset; mandatory for get, get_data, and set")
+     ("operation,o", bpo::value<string>()->required(), "operation to be benchmarked: get, get_data, set, create, erase, it_create, it_next, it_key, or it_value, mandatory")
+     ("backing-store,b", bpo::value<string>()->required(), "the database where kay vlaues are stored, rocksdb or chainbase, mandatory")
      ("value-size,v", bpo::value<uint32_t>(), "value size for the keys")
-     ("state-size-mul,s", bpo::value<uint32_t>(), "multiples of 1GB for Chainbase state")
-     ("num-runs,n", bpo::value<uint64_t>(), "minimum number of runs over the operation to be benchmarked")
-     ("help,h","print this list");
+     ("state-size-multiples,s", bpo::value<uint32_t>(), "multiples of 1GB for Chainbase state storage")
+     ("num-runs,n", bpo::value<uint64_t>(), "minimum number of runs of the benchmarked operation")
+     ("help,h","microbenchmarks KV operations get, get_data, set, create (set to a new key), erase, it_create, it_next, it_key, and it_value against chainbase and rocksdb. Please note: numbers in it_key and it_value include those in it_next");
 
    try {
       bpo::store(bpo::parse_command_line(argc, argv, cli), vmap);
@@ -465,16 +549,16 @@ int main(int argc, char* argv[]) {
       }
       if (vmap.count("operation") > 0) {
          args.operation = vmap["operation"].as<std::string>();
-         if (args.operation != "get" && args.operation != "get_data" && args.operation != "set" && args.operation != "create" && args.operation != "erase" && args.operation != "it_create" && args.operation != "it_next" && args.operation != "it_key_value") {
-            std::cerr << "\'--operation\' must be get, get_data, set, create, erase, it_create, it_next, or it_key_value" << std::endl;
+         if (args.operation != "get" && args.operation != "get_data" && args.operation != "set" && args.operation != "create" && args.operation != "erase" && args.operation != "it_create" && args.operation != "it_next" && args.operation != "it_key" && args.operation != "it_value") {
+            std::cerr << "\'--operation\' must be get, get_data, set, create, erase, it_create, it_next, it_key, or it_value" << std::endl;
             return 1;
          }
       }
       if (vmap.count("value-size") > 0) {
          args.value_size = vmap["value-size"].as<uint32_t>();
       }
-      if (vmap.count("state-size-mul") > 0) {
-         args.state_size_multiples = vmap["state-size-mul"].as<uint32_t>();
+      if (vmap.count("state-size-multiples") > 0) {
+         args.state_size_multiples = vmap["state-size-multiples"].as<uint32_t>();
       }
       if (vmap.count("num-runs") > 0) {
          args.num_runs = vmap["num-runs"].as<uint64_t>();
@@ -487,6 +571,16 @@ int main(int argc, char* argv[]) {
             return 1;
          }
       }
+   } catch (boost::wrapexcept<boost::program_options::required_option>& ex) {
+      // This exception is thrown whenever required options are not supplied.
+      // Need to catch it or we will get a crash.
+      if (vmap.count("help") == 0) {
+         // Missing required options is not an exception in "--help" case,
+         // do not report it as an exception
+         std::cerr << ex.what() << std::endl;
+      }
+      cli.print (std::cerr);
+      return 1;
    } catch (bpo::unknown_option &ex) {
       std::cerr << ex.what() << std::endl;
       cli.print (std::cerr);
@@ -494,7 +588,7 @@ int main(int argc, char* argv[]) {
    }
 
    if ((args.operation == "get" || args.operation == "get_data" || args.operation == "set") && args.workset_file.empty()) {
-      std::cerr << "\'workset\' is required for get, get_data, or set" << std::endl;
+      std::cerr << "\'--workset\' is required for get, get_data, and set" << std::endl;
       cli.print(std::cerr);
       return 1;
    }

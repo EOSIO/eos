@@ -92,28 +92,80 @@ namespace eosio { namespace chain {
        : backing_store(backing_store_type::CHAINBASE), db(chain_db) {}
 
    combined_database::combined_database(chainbase::database& chain_db,
-                                        const std::string& rocksdb_path, bool rocksdb_create_if_missing,
-                                        uint32_t rocksdb_threads, int rocksdb_max_open_files)
+                                        const controller::config& cfg)
        : backing_store(backing_store_type::ROCKSDB), db(chain_db), kv_database{ [&]() {
             rocksdb::Options options;
-            options.create_if_missing                    = rocksdb_create_if_missing;
-            options.level_compaction_dynamic_level_bytes = true;
-            options.bytes_per_sync                       = 1048576;
-            options.IncreaseParallelism(rocksdb_threads);
-            options.OptimizeLevelStyleCompaction(256ull << 20);
-            options.max_open_files = rocksdb_max_open_files;
 
+            options.create_if_missing = !cfg.read_only; // Creates a database if it is missing
+            options.level_compaction_dynamic_level_bytes = true;
+            options.bytes_per_sync = 1048576; // used to control the write rate of flushes and compactions.
+
+            // By default, RocksDB uses only one background thread
+            // for flush and compaction.
+            // Good value for `total_threads` is the number of cores
+            options.IncreaseParallelism(cfg.rocksdb_threads);
+
+            options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
+
+            // Number of open files that can be used by the DB.  
+            // Setting it to -1 means files opened are always kept open.
+            options.max_open_files = cfg.rocksdb_max_open_files;
+
+            // Use this option to increase the number of threads
+            // used to open the files.
+            options.max_file_opening_threads = cfg.rocksdb_threads; // Default should be the # of Cores
+
+            // Write Buffer Size - Sets the size of a single
+            // memtable. Once memtable exceeds this size, it is
+            // marked immutable and a new one is created.
+            // Default should be 128MB
+            options.write_buffer_size = cfg.rocksdb_write_buffer_size;
+            options.max_write_buffer_number = 10; // maximum number of memtables, both active and immutable
+            options.min_write_buffer_number_to_merge = 2; // minimum number of memtables to be merged before flushing to storage
+
+            // Once level 0 reaches this number of files, L0->L1 compaction is triggered.
+            options.level0_file_num_compaction_trigger = 2;
+
+            // Size of L0 = write_buffer_size * min_write_buffer_number_to_merge * level0_file_num_compaction_trigger
+            // For optimal performance make this equal to L0
+            options.max_bytes_for_level_base = cfg.rocksdb_write_buffer_size * options.min_write_buffer_number_to_merge * options.level0_file_num_compaction_trigger; 
+
+            // Files in level 1 will have target_file_size_base
+            // bytes. It’s recommended setting target_file_size_base
+            // to be max_bytes_for_level_base / 10.
+            options.target_file_size_base = options.max_bytes_for_level_base / 10;
+
+            // This value represents the maximum number of threads
+            // that will concurrently perform a compaction job by
+            // breaking it into multiple,
+            // smaller ones that are run simultaneously.
+            options.max_subcompactions = cfg.rocksdb_threads;	// Default should be the # of CPUs
+
+            // Full and partitioned filters in the block-based table
+            // use an improved Bloom filter implementation, enabled
+            // with format_version 5 (or above) because previous
+            // releases cannot read this filter. This replacement is
+            // faster and more accurate, especially for high bits
+            // per key or millions of keys in a single (full) filter.
             rocksdb::BlockBasedTableOptions table_options;
-            table_options.format_version               = 4;
+            table_options.format_version               = 5;
             table_options.index_block_restart_interval = 16;
+
+            // Sets the bloom filter - Given an arbitrary key, 
+            // this bit array may be used to determine if the key 
+            // may exist or definitely does not exist in the key set.
+	          table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
+	          table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
+
+            // Incorporates the Table options into options
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
             rocksdb::DB* p;
-            auto         status = rocksdb::DB::Open(options, rocksdb_path, &p);
+            auto         status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), &p);
             if (!status.ok())
                throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
-            return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb)));
+            return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
 
@@ -262,9 +314,9 @@ namespace eosio { namespace chain {
                // This ordering depends on the fact the eosio.kvdisk is before eosio.kvram and only eosio.kvdisk can be
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB && kv_undo_stack) {
-                  auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+                  auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                       rocksdb_contract_kv_prefix.size());
-                  auto next_prefix = prefix_key++;
+                  auto next_prefix = prefix_key.next();
 
                   auto undo = false;
                   if (kv_undo_stack->empty()) {
@@ -272,8 +324,10 @@ namespace eosio { namespace chain {
                     kv_undo_stack->push();
                     undo = true;
                   }
-
-                  for (auto it = kv_undo_stack->top().lower_bound(prefix_key); it != kv_undo_stack->top().lower_bound(next_prefix); ++it) {
+                  
+                  auto begin_it = kv_undo_stack->top().lower_bound(prefix_key);
+                  auto end_it = kv_undo_stack->top().lower_bound(next_prefix);
+                  for (auto it = begin_it; it != end_it; ++it) {
                      auto key = (*it).first;
 
                      uint64_t    contract;
@@ -288,11 +342,11 @@ namespace eosio { namespace chain {
                      // In KV RocksDB, payer and actual data are packed together.
                      // Extract them.
                      auto           value = (*it).second;
-                     auto           payer = backing_store::get_payer(value.data());
-                     auto           actual_value_data = backing_store::actual_value_start(value.data());
+                     auto           payer = backing_store::get_payer(value->data());
+                     auto           actual_value_data = backing_store::actual_value_start(value->data());
                      kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
-                                         { { actual_value_data, actual_value_data + backing_store::actual_value_size(value.size()) } },
+                                         { { actual_value_data, actual_value_data + backing_store::actual_value_size(value->size()) } },
                                          payer
                      };
                      section.add_row(row, db);
@@ -423,7 +477,7 @@ namespace eosio { namespace chain {
             if (header.version < kv_object::minimum_snapshot_version)
                return;
             if (backing_store == backing_store_type::ROCKSDB) {
-               auto prefix_key = eosio::session::make_shared_bytes(rocksdb_contract_kv_prefix.data(),
+               auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                    rocksdb_contract_kv_prefix.size());
                auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
                snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
@@ -443,12 +497,10 @@ namespace eosio { namespace chain {
                                       move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
 
                         // Pack payer and actual key value
-                        bytes final_kv_value;
-                        build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer, final_kv_value);
+                        auto final_kv_value = build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer);
 
-                        key_values.emplace_back(eosio::session::make_shared_bytes(buffer.data(), buffer.size()),
-                                                eosio::session::make_shared_bytes(final_kv_value.data(),
-                                                                                  final_kv_value.size()));                                                                                
+                        key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
+                                                std::move(final_kv_value));                                                                                
                         db.remove(*move_to_rocks);
                      }
                   }

@@ -415,12 +415,6 @@ class kv_tester : public tester {
 
    void test_iterase() {
       for(bool reinsert : {false, true}) {
-         if (reinsert && get_config().backing_store == eosio::chain::backing_store_type::ROCKSDB) {
-           // With the session api, erasing a key doesn't invalidate the iterator
-           // AND reinserting that key after erasing it, also doesn't invalidate the iterator.
-           // The Session iterator will still be pointing to the correct thing.
-           continue;
-         }
          // pre-inserted
          for(bool insert : {false, true}) {
             for(int i = 0; i < 8; ++i) {
@@ -734,7 +728,6 @@ BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-  /*
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
    test_kv_ram_usage_common();
 }
@@ -744,7 +737,6 @@ BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
    test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
-*/
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
    test_kv_key_value_limit_common();
@@ -810,7 +802,6 @@ BOOST_FIXTURE_TEST_CASE(kv_iterase_rocksdb, kv_rocksdb_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-  /*
 BOOST_FIXTURE_TEST_CASE(kv_ram_usage_rocksdb, kv_rocksdb_tester) try { //
    test_kv_ram_usage_common();
 }
@@ -820,7 +811,6 @@ BOOST_FIXTURE_TEST_CASE(kv_resource_limit_rocksdb, kv_rocksdb_tester) try { //
    test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
-*/
 
 BOOST_FIXTURE_TEST_CASE(kv_key_value_limit_rocksdb, kv_rocksdb_tester) try { //
    test_kv_key_value_limit_common();

@@ -13,7 +13,7 @@ BOOST_AUTO_TEST_SUITE(session_undo_stack_tests)
 
 BOOST_AUTO_TEST_CASE(undo_stack_test) {
    // Push the head session into the undo stack.
-   auto data_store    = eosio::session::make_session(make_rocks_db());
+   auto data_store    = eosio::session::make_session(make_rocks_db(), 16);
    auto undo          = eosio::session::undo_stack(data_store);
    auto session_kvs_1 = std::unordered_map<uint16_t, uint16_t>{
       { 1, 100 }, { 2, 200 }, { 3, 300 }, { 4, 400 }, { 5, 500 },
@@ -82,10 +82,10 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
                 collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }),
                 int_t{});
 
-   // Commit revision 13 and verify that the top session has the correct key values.
+   // Commit revision 3 and verify that the top session has the correct key values.
    undo.commit(3);
    BOOST_REQUIRE(undo.revision() == 4);
-   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_5, session_kvs_6 }), int_t{});
+   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }), int_t{});
 }
 
 BOOST_AUTO_TEST_SUITE_END();

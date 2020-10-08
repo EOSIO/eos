@@ -83,8 +83,9 @@ namespace eosio { namespace chain {
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
             backing_store_type       backing_store              = backing_store_type::CHAINBASE;
-            uint16_t                 rocksdb_threads        =  chain::config::default_rocksdb_threads;
+            uint16_t                 rocksdb_threads        =  0; // Will be set to number of cores dynamically or by user configuration;
             int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
+            uint64_t                 rocksdb_write_buffer_size =  chain::config::default_rocksdb_write_buffer_size;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;

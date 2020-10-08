@@ -15,7 +15,7 @@ def runBenchMarking(key_file, workset):
     print("Benchmarking starts")
     print("============================================\n")
 
-    for op in ["create", "get", "get_data", "set", "erase", "it_create", "it_next", "it_key_value"]:
+    for op in ["create", "get", "get_data", "set", "erase", "it_create", "it_next", "it_key", "it_value"]:
         results = []
         for db in ["rocksdb", "chainbase"]:
             cmd = "./benchmark_kv -k " + key_file + " -o " + op + " -b " + db + " -v 512 -s 7"
