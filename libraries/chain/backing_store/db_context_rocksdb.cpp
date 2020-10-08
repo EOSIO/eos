@@ -248,7 +248,7 @@ namespace eosio { namespace chain { namespace backing_store {
       if (dm_logger != nullptr) {
          db_context::write_row_update(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
          table_store.table, old_payer, payer, name(key_store.primary),
-         old_key_value.value.data(), old_key_value.value.size(), value, value_size);
+         old_key_value.value->data(), old_key_value.value->size(), value, value_size);
       }
    }
 
@@ -269,13 +269,13 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(table_store.contract, table_store.scope, table_store.table, name(key_store.primary));
       }
 
-      payer_payload pp(old_key_value.value);
+      payer_payload pp(*old_key_value.value);
       update_db_usage( old_payer,  -((int64_t)pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), event_id.c_str()) );
 
       if (dm_logger != nullptr) {
          db_context::write_row_remove(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
-                                      table_store.table, old_payer, name(key_store.primary), old_key_value.value.data(),
-                                      old_key_value.value.size());
+                                      table_store.table, old_payer, name(key_store.primary), pp.value,
+                                      pp.value_size);
       }
 
       current_session.erase(old_key_value.full_key);
@@ -291,7 +291,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       EOS_ASSERT( old_key_value.value, db_rocksdb_invalid_operation_exception,
                   "invariant failure in db_get_i64, iter store found to update but nothing in database");
-      payer_payload pp {old_key_value.value};
+      payer_payload pp {*old_key_value.value};
       const char* const actual_value = pp.value;
       const size_t actual_size = pp.value_size;
       if (value_size == 0) {
@@ -645,8 +645,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
    pv_bundle db_context_rocksdb::get_primary_key_value(name code, name scope, name table, uint64_t id) {
       prefix_bundle primary_key = get_primary_slice_in_primaries(code, scope, table, id);
-      auto value = current_session.read(primary_key.full_key);
-      return { std::move(primary_key), std::move(value) };
+      return { primary_key, current_session.read(primary_key.full_key) };
    }
 
    void db_context_rocksdb::set_value(const shared_bytes& primary_key, const payer_payload& pp) {
@@ -668,7 +667,7 @@ namespace eosio { namespace chain { namespace backing_store {
       EOS_ASSERT( db_key_value_format::get_primary_key((*session_iter).first, type_prefix, found_key), db_rocksdb_invalid_operation_exception,
                   "invariant failure in find_and_store_primary_key, iter store found to update but no primary keys in database");
 
-      const account_name found_payer = payer_payload((*session_iter).second).payer;
+      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
 
       return primary_iter_store.add(primary_key_iter(table_ei, found_key, found_payer));
    }
@@ -727,7 +726,7 @@ namespace eosio { namespace chain { namespace backing_store {
          primary_key = id;
       }
 
-      const account_name found_payer = payer_payload((*session_iter).second).payer;
+      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
       if (!primary_key) {
          uint64_t key = 0;
          const auto valid = db_key_value_format::get_primary_key((*session_iter).first, desired_type_prefix, key);

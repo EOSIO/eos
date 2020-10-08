@@ -216,7 +216,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       EOS_ASSERT( full_prefix_size < full_key.size(), db_rocksdb_invalid_operation_exception,
                   "invariant failure in prefix_bundle, the passed in full_key was: ${size1} bytes, but it needs to "
                   "be at least: ${size2}", ("size1", full_key.size())("size2", full_prefix_size));
-      return eosio::session::make_shared_bytes(full_key.data(), full_prefix_size);
+      return eosio::session::shared_bytes(full_key.data(), full_prefix_size);
    }
 
    full_key_data parse_full_key(const eosio::session::shared_bytes& full_key) {

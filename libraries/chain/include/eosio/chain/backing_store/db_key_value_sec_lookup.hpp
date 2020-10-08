@@ -180,7 +180,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
          // identify if this primary key already has a secondary key of this type
          auto primary_sec_uesless_value = current_session.read(secondary_key.full_primary_to_sec_key);
-#warning currently using useless_value to distinguish between no key and no value, eventually will just store empty value
          EOS_ASSERT( primary_sec_uesless_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_update, the secondary to primary lookup key was found, but not the "
                      "primary to secondary lookup key", ("d", helper.desc()));
@@ -209,6 +208,7 @@ namespace eosio { namespace chain { namespace backing_store {
             set_value(db_key_value_format::create_full_key(new_secondary_keys.secondary_key, parent.receiver), helper.value(secondary, payer));
 
             // store the new primary to secondary key
+#warning currently using useless_value to distinguish between no key and no value, eventually will just store empty value
             set_value(db_key_value_format::create_full_key(new_secondary_keys.primary_to_secondary_key, parent.receiver), useless_value);
          }
          else {
@@ -243,7 +243,7 @@ namespace eosio { namespace chain { namespace backing_store {
                      "get_trailing_primary_key indicated that it couldn't extract", ("d", helper.desc()));
 
          return iter_store.add({ .table_ei = table_ei, .secondary = secondary, .primary = primary,
-                                 .payer = payer_payload((*session_iter).second).payer });
+                                 .payer = payer_payload(*(*session_iter).second).payer });
       }
 
       int lowerbound_secondary( name code, name scope, name table, SecondaryKey& secondary, uint64_t& primary ) {
@@ -281,7 +281,7 @@ namespace eosio { namespace chain { namespace backing_store {
                      "primary key should have been extracted", ("d", helper.desc()));
 
          return iter_store.add({ .table_ei = key_store.table_ei, .secondary = secondary, .primary = primary,
-                                 .payer = payer_payload((*session_iter).second).payer });
+                                 .payer = payer_payload(*(*session_iter).second).payer });
       }
 
       int previous_secondary( int iterator, uint64_t& primary ) {
@@ -291,7 +291,7 @@ namespace eosio { namespace chain { namespace backing_store {
             constexpr static auto kt = db_key_value_format::derive_secondary_key_type<SecondaryKey>();
             const bytes legacy_type_key = db_key_value_format::create_prefix_type_key<kt>(table->scope, table->table);
             const shared_bytes type_prefix = db_key_value_format::create_full_key(legacy_type_key, table->contract);
-            const shared_bytes next_type_prefix = type_prefix++;
+            const shared_bytes next_type_prefix = type_prefix.next();
             auto session_iter = current_session.lower_bound(next_type_prefix);
             --session_iter; // move back to the last secondary key of this type (if there is one)
             // check if there is any secondary key of this type
@@ -357,11 +357,11 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_previous_secondary, found primary to secondary key in database but "
                      "not the secondary to primary key", ("d", helper.desc()));
-         EOS_ASSERT( old_value.data() != nullptr, db_rocksdb_invalid_operation_exception,
+         EOS_ASSERT( old_value->data() != nullptr, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_previous_secondary, empty value", ("d", helper.desc()));
-         EOS_ASSERT( old_value.size(), db_rocksdb_invalid_operation_exception,
+         EOS_ASSERT( old_value->size(), db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_previous_secondary, value has zero size", ("d", helper.desc()));
-         payer_payload pp{old_value};
+         payer_payload pp{*old_value};
 
          return iter_store.add({ .table_ei = table_ei, .secondary = secondary, .primary = primary,
                                  .payer = pp.payer});
@@ -413,7 +413,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
             // create the key pointing to the start of the primary to secondary keys of this type, and then increment it to be past the end
             const shared_bytes type_prefix = db_key_value_format::create_full_key(types_key, table->contract);
-            const shared_bytes next_type_prefix = type_prefix++;
+            const shared_bytes next_type_prefix = type_prefix.next();
             auto session_iter = current_session.lower_bound(next_type_prefix); //upperbound of this primary_to_sec key type
             --session_iter; // move back to the last primary key of this type (if there is one)
             // check if no keys exist for this type
@@ -516,7 +516,7 @@ namespace eosio { namespace chain { namespace backing_store {
       };
 
       template<typename CharCont>
-      std::optional<found_keys> find_matching_sec_prim(const std::pair<shared_bytes, shared_bytes>& found_kv,
+      std::optional<found_keys> find_matching_sec_prim(const std::pair<shared_bytes, std::optional<shared_bytes> >& found_kv,
                                                        const CharCont& prefix) {
          SecondaryKey secondary_key;
          uint64_t primary_key;
@@ -525,12 +525,15 @@ namespace eosio { namespace chain { namespace backing_store {
             return {};
          }
 
-         account_name payer = payer_payload(found_kv.second).payer;
+         EOS_ASSERT( found_kv.second, db_rocksdb_invalid_operation_exception,
+                     "invariant failure in db_${d}_previous_secondary, the secondary key was found but it had no value "
+                     "(the payer) stored for it", ("d", helper.desc()));
+         account_name payer = payer_payload(*found_kv.second).payer;
          return found_keys{ std::move(secondary_key), std::move(primary_key), std::move(payer) };
       }
 
       template<typename CharKey>
-      std::optional<found_keys> find_matching_prim_sec(const std::pair<shared_bytes, shared_bytes>& found_kv,
+      std::optional<found_keys> find_matching_prim_sec(const std::pair<shared_bytes, std::optional<shared_bytes>>& found_kv,
                                                        const shared_bytes& prefix) {
          SecondaryKey secondary_key;
          uint64_t primary_key;
@@ -539,7 +542,15 @@ namespace eosio { namespace chain { namespace backing_store {
             return {};
          }
 
-         account_name payer = payer_payload(found_kv.second).payer;
+         auto full_secondary_key = backing_store::db_key_value_format::create_secondary_key_from_primary_to_sec_key<SecondaryKey>(found_kv.first);
+         auto session_iter = current_session.read(full_secondary_key);
+         EOS_ASSERT( match(found_kv.first, session_iter), db_rocksdb_invalid_operation_exception,
+                     "invariant failure in find_matching_prim_sec, the primary to sec key was found in the database, "
+                     "but no secondary to primary key");
+         EOS_ASSERT( (*session_iter)->second, db_rocksdb_invalid_operation_exception,
+                     "invariant failure in find_matching_prim_sec, the secondary key was found but it had no value "
+                     "(the payer) stored for it");
+         account_name payer = payer_payload(*(*session_iter)->second).payer;
          return found_keys{ std::move(secondary_key), std::move(primary_key), std::move(payer) };
       }
 
@@ -586,7 +597,7 @@ namespace eosio { namespace chain { namespace backing_store {
          secondary = secondary_ret;
 
          return iter_store.add({ .table_ei = table_ei, .secondary = secondary_ret, .primary = primary_ret,
-                                 .payer = payer_payload((*session_iter).second).payer });
+                                 .payer = payer_payload(*(*session_iter).second).payer });
       }
 
       int bound_primary( name code, name scope, name table, uint64_t primary, bound_type bt ){

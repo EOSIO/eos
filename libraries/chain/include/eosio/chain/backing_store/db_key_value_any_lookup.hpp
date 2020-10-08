@@ -27,8 +27,9 @@ namespace eosio { namespace chain { namespace backing_store {
 
    template<typename Key>
    struct value_bundle : Key {
-      value_bundle(Key&& key, eosio::session::shared_bytes&& v) : Key(std::move(key)), value(std::move(v)) {}
-      eosio::session::shared_bytes value;
+      value_bundle(Key&& key, std::optional<eosio::session::shared_bytes>&& v) : Key(std::move(key)), value(std::move(v)) {}
+      value_bundle(const Key& key, std::optional<eosio::session::shared_bytes>&& v) : Key(key), value(std::move(v)) {}
+      std::optional<eosio::session::shared_bytes> value;
    };
 
    using kv_bundle = value_bundle<key_bundle>;

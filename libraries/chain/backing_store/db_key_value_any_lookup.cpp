@@ -10,7 +10,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
    eosio::session::shared_bytes make_useless_value() {
       const char null = '\0';
-      return eosio::session::make_shared_bytes(&null, 1);
+      return eosio::session::shared_bytes {&null, 1};
    }
 
    const eosio::session::shared_bytes db_key_value_any_lookup::useless_value = make_useless_value();
@@ -63,7 +63,7 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto& scope = std::get<0>(extracted_data);
       const auto& table = std::get<1>(extracted_data);
 
-      const name payer = payer_payload{key_value.second}.payer;
+      const name payer = payer_payload{*key_value.second}.payer;
       std::string event_id;
       apply_context& context = parent.context;
       auto dm_logger = context.control.get_deep_mind_logger();
