@@ -2,6 +2,7 @@
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
+#include <eosio/chain/backing_store/db_context.hpp>
 
 namespace eosio { namespace chain {
    combined_session::combined_session(chainbase::database& cb_database, eosio::session::undo_stack<rocks_db_type>* undo_stack)
@@ -268,6 +269,17 @@ namespace eosio { namespace chain {
       EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
    }
 
+   std::unique_ptr<db_context> combined_database::create_db_context(apply_context& context, name receiver) {
+      switch (backing_store) {
+         case backing_store_type::ROCKSDB:
+            return backing_store::create_db_rocksdb_context(context, receiver, kv_undo_stack->top());
+         case backing_store_type::CHAINBASE:
+            return backing_store::create_db_chainbase_context(context, receiver);
+         default:
+            EOS_ASSERT(false, action_validate_exception, "Unknown backing store.");
+      }
+   }
+
    void combined_database::add_to_snapshot(
          const eosio::chain::snapshot_writer_ptr& snapshot, const eosio::chain::block_state& head,
          const eosio::chain::authorization_manager&                    authorization,
@@ -330,11 +342,11 @@ namespace eosio { namespace chain {
                      // In KV RocksDB, payer and actual data are packed together.
                      // Extract them.
                      auto           value = (*it).second;
-                     auto           payer = get_payer(value->data());
-                     auto           actual_value_data = actual_value_start(value->data());
+                     auto           payer = backing_store::get_payer(value->data());
+                     auto           actual_value_data = backing_store::actual_value_start(value->data());
                      kv_object_view row{ name(contract),
                                          { { key.data() + key_prefix_size, key.data() + key.size() } },
-                                         { { actual_value_data, actual_value_data + actual_value_size(value->size()) } },
+                                         { { actual_value_data, actual_value_data + backing_store::actual_value_size(value->size()) } },
                                          payer
                      };
                      section.add_row(row, db);
@@ -592,5 +604,6 @@ namespace eosio { namespace chain {
 
    std::vector<char> make_rocksdb_undo_prefix() { return rocksdb_undo_prefix; }
    std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
+   std::vector<char> make_rocksdb_contract_db_prefix() { return rocksdb_contract_db_prefix; }
 
 }} // namespace eosio::chain

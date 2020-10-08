@@ -334,6 +334,8 @@ namespace eosio { namespace chain {
                                     3060008, "The size of value returned from RocksDB is less than payer's size" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
                                     3060009, "Retrieved composite key from key/value store that was formatted incorrectly" )
+      FC_DECLARE_DERIVED_EXCEPTION( db_rocksdb_invalid_operation_exception, database_exception,
+                                    3060010, "Requested operation not valid for database state." )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )

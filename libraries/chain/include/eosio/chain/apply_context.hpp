@@ -56,16 +56,11 @@ class apply_context {
                  ++t.count;
 
                   if (context.control.get_deep_mind_logger() != nullptr) {
-                     event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
-                        ("code", t.code)
-                        ("scope", t.scope)
-                        ("table", t.table)
-                        ("index_name", name(id))
-                     );
+                     event_id = backing_store::db_context::table_event(t.code, t.scope, t.table, name(id));
                   }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType>, storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_add") );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, backing_store::db_context::secondary_add_trace(context.get_action_id(), event_id.c_str()) );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -79,15 +74,10 @@ class apply_context {
 
                std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
-                     ("code", table_obj.code)
-                     ("scope", table_obj.scope)
-                     ("table", table_obj.table)
-                     ("index_name", name(obj.primary_key))
-                  );
+                  event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
                }
 
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_remove") );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), backing_store::db_context::secondary_rem_trace(context.get_action_id(), event_id.c_str()) );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -117,17 +107,12 @@ class apply_context {
 
                std::string event_id;
                if (context.control.get_deep_mind_logger() != nullptr) {
-                  event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}:${index_name}",
-                     ("code", table_obj.code)
-                     ("scope", table_obj.scope)
-                     ("table", table_obj.table)
-                     ("index_name", name(obj.primary_key))
-                  );
+                  event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
                }
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "remove", "secondary_index_update_remove_old_payer") );
-                  context.update_db_usage( payer, +(billing_size), storage_usage_trace(context.get_action_id(), event_id.c_str(), "secondary_index", "add", "secondary_index_update_add_new_payer") );
+                  context.update_db_usage( obj.payer, -(billing_size), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), event_id.c_str()) );
+                  context.update_db_usage( payer, +(billing_size), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), event_id.c_str()) );
                }
 
                context.db.modify( obj, [&]( auto& o ) {
@@ -406,16 +391,16 @@ class apply_context {
 
       void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
-      int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
-      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
-      void db_remove_i64( int iterator );
-      int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
-      int  db_next_i64( int iterator, uint64_t& primary );
-      int  db_previous_i64( int iterator, uint64_t& primary );
-      int  db_find_i64( name code, name scope, name table, uint64_t id );
-      int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_end_i64( name code, name scope, name table );
+      int  db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      void db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size );
+      void db_remove_i64_chainbase( int iterator );
+      int  db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size );
+      int  db_next_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_previous_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_find_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_end_i64_chainbase( name code, name scope, name table );
 
 # warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
       backing_store::db_context& db_get_context();
@@ -425,8 +410,6 @@ class apply_context {
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void                   remove_table( const table_id_object& tid );
-
-      int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
    /// KV Database methods:
    public:
@@ -451,7 +434,6 @@ class apply_context {
       }
 
    private:
-      kv_context& kv_get_db(uint64_t db);
       void kv_check_iterator(uint32_t itr);
 
    /// Misc methods:

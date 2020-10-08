@@ -2,6 +2,7 @@
 
 #include <boost/test/included/unit_test.hpp>
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
+#include <eosio/chain/backing_store/chain_kv_payer.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <b1/session/shared_bytes.hpp>
@@ -23,6 +24,8 @@ constexpr uint32_t max_key_size   = 100;
 constexpr uint32_t max_value_size = 1020 * 1024;
 constexpr uint32_t max_iterators  = 3;
 kv_database_config limits{ max_key_size, max_value_size, max_iterators };
+
+using namespace eosio::chain::backing_store;
 
 struct kv_rocksdb_fixture {
 
@@ -110,9 +113,9 @@ struct kv_rocksdb_fixture {
 
    // test case helpers
    void check_get_payer(account_name p) {
-      char buf[kv_payer_size];
-      memcpy(buf, &p, kv_payer_size);   // copy payer to buffer
-      BOOST_CHECK(get_payer(buf) == p); // read payer from the buffer and should be equal to the original
+      char buf[backing_store::payer_in_value_size];
+      memcpy(buf, &p, backing_store::payer_in_value_size); // copy payer to buffer
+      BOOST_CHECK(backing_store::get_payer(buf) == p); // read payer from the buffer and should be equal to the original
    }
 
    struct kv_pair {
@@ -144,7 +147,7 @@ struct kv_rocksdb_fixture {
    void check_set_existing_value(const kv_pair& kv, uint32_t old_raw_value_size) {
       uint32_t key_size       = kv.key.size();
       uint32_t value_size     = kv.value.size();
-      int64_t  resource_delta = value_size - (old_raw_value_size - kv_payer_size);
+      int64_t  resource_delta = value_size - (old_raw_value_size - backing_store::payer_in_value_size);
 
       BOOST_CHECK(my_kv_context->kv_set(contract, kv.key.c_str(), key_size, kv.value.c_str(), value_size, payer) ==
                   resource_delta);
@@ -273,7 +276,7 @@ struct kv_rocksdb_fixture {
 
       if (expected_status == kv_it_stat::iterator_ok) {
          BOOST_CHECK(actual_size == value_size);
-         BOOST_CHECK(memcmp(value.c_str() + kv_payer_size, dest, value_size) == 0);
+         BOOST_CHECK(memcmp(value.c_str() + backing_store::payer_in_value_size, dest, value_size) == 0);
       } else {
          BOOST_CHECK(actual_size == 0);
       }
@@ -325,14 +328,14 @@ struct kv_rocksdb_fixture {
 BOOST_AUTO_TEST_SUITE(kv_rocksdb_unittests)
 
 BOOST_AUTO_TEST_CASE(test_actual_value_size) {
-   BOOST_CHECK(actual_value_size(kv_payer_size) == 0);
-   BOOST_CHECK(actual_value_size(kv_payer_size + 1) == 1);
-   BOOST_CHECK(actual_value_size(kv_payer_size + 10) == 10);
+   BOOST_CHECK(actual_value_size(payer_in_value_size) == 0);
+   BOOST_CHECK(actual_value_size(payer_in_value_size + 1) == 1);
+   BOOST_CHECK(actual_value_size(payer_in_value_size + 10) == 10);
 }
 
 BOOST_AUTO_TEST_CASE(test_actual_value_size_small_value) {
    // any raw size less than kv_payer_size should throw
-   BOOST_CHECK_THROW(actual_value_size(kv_payer_size - 1), kv_rocksdb_bad_value_size_exception);
+   BOOST_CHECK_THROW(actual_value_size(payer_in_value_size - 1), kv_rocksdb_bad_value_size_exception);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture) { check_get_payer(N(a)); }
@@ -343,7 +346,7 @@ BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_
 
 BOOST_AUTO_TEST_CASE(test_actual_value_start) {
    char buf[10]; // any size of buffer will work
-   BOOST_CHECK(actual_value_start(buf) == (buf + kv_payer_size));
+   BOOST_CHECK(actual_value_start(buf) == (buf + payer_in_value_size));
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_erase, kv_rocksdb_fixture) {
@@ -483,11 +486,11 @@ BOOST_FIXTURE_TEST_CASE(test_kv_get_data, kv_rocksdb_fixture) {
 
    // offset starts at 0
    BOOST_CHECK(my_kv_context->kv_get_data(0, data, data_size) == data_size);
-   BOOST_CHECK(memcmp(data, v.c_str() + kv_payer_size, data_size) == 0);
+   BOOST_CHECK(memcmp(data, v.c_str() + payer_in_value_size, data_size) == 0);
 
    // offset less than actual data size
    BOOST_CHECK(my_kv_context->kv_get_data(5, data, data_size) == data_size);
-   BOOST_CHECK(memcmp(data, v.c_str() + kv_payer_size + 5, data_size - 5) == 0);
+   BOOST_CHECK(memcmp(data, v.c_str() + payer_in_value_size + 5, data_size - 5) == 0);
 
    // offset greater than actual data size. Data should not be modified
    std::string pattern = "mypattern1";

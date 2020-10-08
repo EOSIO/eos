@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 #include <vector>
+#include <numeric>
 
 #include <fc/crypto/base64.hpp>
 
@@ -13,10 +14,18 @@
 
 namespace eosio::session {
 
+class shared_bytes;
+
+template<typename StringView, std::size_t N>
+shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
+
 // \brief An immutable type to represent a pointer and a length.
 //
 class shared_bytes {
  public:
+   template<typename StringView, std::size_t N>
+   friend shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
+
    using iterator       = const char*;
    using const_iterator = const iterator;
 
@@ -44,7 +53,7 @@ class shared_bytes {
    bool operator!() const;
         operator bool() const;
 
-   shared_bytes next();
+   shared_bytes next() const;
 
    bool operator<(const shared_bytes& other) const;
    bool operator<=(const shared_bytes& other) const;
@@ -58,6 +67,35 @@ class shared_bytes {
    std::shared_ptr<char> m_data;
    size_t                m_size{ 0 };
 };
+
+template<typename StringView, std::size_t N>
+shared_bytes make_shared_bytes(std::array<StringView, N>&& data) {
+   auto result = shared_bytes{};
+
+   const std::size_t length =
+         std::accumulate(data.begin(), data.end(), 0, [](std::size_t a, const StringView& b) { return a + b.size(); });
+
+   if (length == 0) {
+      return result;
+   }
+
+   auto* const chunk = std::allocator<char>{}.allocate(length);
+   char* chunk_ptr = chunk;
+   for (const auto& view : data) {
+      const char* const view_ptr = view.data();
+      if (!view_ptr || !view.size()) {
+         continue;
+      }
+      std::memcpy(chunk_ptr, view_ptr, view.size());
+      chunk_ptr += view.size();
+   }
+
+   auto deleter  = [length](auto* chunk) { std::allocator<char>{}.deallocate(chunk, length); };
+   result.m_data = std::shared_ptr<char>(chunk, deleter);
+   result.m_size = length;
+
+   return result;
+}
 
 template <typename T>
 shared_bytes::shared_bytes(const T* data, size_t size)
@@ -88,7 +126,7 @@ inline shared_bytes::shared_bytes(size_t size)
       }() },
       m_size{ size } {}
 
-inline shared_bytes shared_bytes::next() {
+inline shared_bytes shared_bytes::next() const {
    auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
 
    while (!buffer.empty()) {

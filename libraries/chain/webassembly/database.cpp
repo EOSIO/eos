@@ -43,10 +43,10 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.db_get_context().db_idx64_store( scope, table, account_name(payer), id, *secondary );
    }
    void interface::db_idx64_update( int32_t iterator, uint64_t payer, legacy_ptr<const uint64_t> secondary ) {
-      return context.db_get_context().db_idx64_update( iterator, account_name(payer), *secondary );
+      context.db_get_context().db_idx64_update( iterator, account_name(payer), *secondary );
    }
    void interface::db_idx64_remove( int32_t iterator ) {
-      return context.db_get_context().db_idx64_remove( iterator );
+      context.db_get_context().db_idx64_remove( iterator );
    }
    int32_t interface::db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<const uint64_t> secondary, legacy_ptr<uint64_t> primary ) {
       return context.db_get_context().db_idx64_find_secondary(code, scope, table, *secondary, *primary);
@@ -55,16 +55,16 @@ namespace eosio { namespace chain { namespace webassembly {
       return context.db_get_context().db_idx64_find_primary(code, scope, table, *secondary, primary);
    }
    int32_t interface::db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      int32_t result = context.db_get_context().db_idx64_lowerbound(code, scope, table, *secondary, *primary);
+      const int32_t ret = context.db_get_context().db_idx64_lowerbound(code, scope, table, *secondary, *primary);
       (void)legacy_ptr<uint64_t>(std::move(secondary));
       (void)legacy_ptr<uint64_t>(std::move(primary));
-      return result;
+      return ret;
    }
    int32_t interface::db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, legacy_ptr<uint64_t> secondary, legacy_ptr<uint64_t> primary ) {
-      int32_t result = context.db_get_context().db_idx64_upperbound(code, scope, table, *secondary, *primary);
+      const int32_t ret = context.db_get_context().db_idx64_upperbound(code, scope, table, *secondary, *primary);
       (void)legacy_ptr<uint64_t>(std::move(secondary));
       (void)legacy_ptr<uint64_t>(std::move(primary));
-      return result;
+      return ret;
    }
    int32_t interface::db_idx64_end( uint64_t code, uint64_t scope, uint64_t table ) {
       return context.db_get_context().db_idx64_end(code, scope, table);

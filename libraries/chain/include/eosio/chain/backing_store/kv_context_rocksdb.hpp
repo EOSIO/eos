@@ -3,24 +3,12 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
+#include <eosio/chain/backing_store/chain_kv_payer.hpp>
 
 #include <b1/session/session.hpp>
 
 namespace eosio { namespace chain {
-   static constexpr auto kv_payer_size = sizeof(account_name);
 
-   inline static uint32_t actual_value_size(const uint32_t raw_value_size) {
-      EOS_ASSERT(raw_value_size >= kv_payer_size, kv_rocksdb_bad_value_size_exception , "The size of value returned from RocksDB is less than payer's size");
-      return (raw_value_size - kv_payer_size);
-   }
-
-   inline static account_name get_payer(const char* data) {
-      account_name payer;
-      memcpy(&payer, data,
-             kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
-      return payer;
-   }
-   
    static inline uint32_t actual_key_size(const uint32_t raw_key_size) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
       static auto prefix_size = rocks_prefix.size() + sizeof(uint64_t); // kv.db prefix + contract size.
@@ -35,21 +23,18 @@ namespace eosio { namespace chain {
       return key + prefix_size;
    }
 
-   inline static const char* actual_value_start(const char* data) {
-      return data + kv_payer_size;
-   }
-
    // Need to store payer so that this account is properly
    // credited when storage is removed or changed
    // to another payer
    inline static eosio::session::shared_bytes build_value(const char* value, uint32_t value_size, const account_name& payer) {
-      const uint32_t final_value_size = kv_payer_size + value_size;
+#warning replace with make_shared_bytes
+      const uint32_t final_value_size = backing_store::payer_in_value_size + value_size;
       auto result = eosio::session::shared_bytes(final_value_size);
 
-      char buf[kv_payer_size];
-      memcpy(buf, &payer, kv_payer_size);
-      std::memcpy(result.data(), buf, kv_payer_size);
-      std::memcpy(result.data() + kv_payer_size, value, value_size);
+      char buf[backing_store::payer_in_value_size];
+      memcpy(buf, &payer, backing_store::payer_in_value_size);
+      std::memcpy(result.data(), buf, backing_store::payer_in_value_size);
+      std::memcpy(result.data() + backing_store::payer_in_value_size, value, value_size);
       return result;
    }
 
@@ -299,9 +284,9 @@ namespace eosio { namespace chain {
 
          auto& value = kv.second;
          if (value) {
-            actual_size = actual_value_size(value->size());
+            actual_size = backing_store::actual_value_size(value->size());
             if (offset < actual_size)
-               memcpy(dest, actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
+               memcpy(dest, backing_store::actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -314,8 +299,7 @@ namespace eosio { namespace chain {
          if (kv_it_status() == kv_it_stat::iterator_ok) {
             // Not end or at an erased kv pair
             auto kv = *kv_current;
-            // kv is always non-null due to the check of is_valid()
-            *found_value_size = actual_value_size(
+            *found_value_size = backing_store::actual_value_size(
                   kv.second->size()); // This must be before *found_key_size in case actual_value_size throws
             *found_key_size = actual_key_size(kv.first.size());
          } else {
@@ -355,14 +339,14 @@ namespace eosio { namespace chain {
                old_value          = session->read(composite_key);
                if (!old_value)
                   return 0;
-               actual_old_value_size = actual_value_size(old_value->size());
+               actual_old_value_size = backing_store::actual_value_size(old_value->size());
                session->erase(composite_key);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = get_payer(old_value->data());
+         account_name payer = backing_store::get_payer(old_value->data());
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
 
@@ -381,7 +365,7 @@ namespace eosio { namespace chain {
                auto composite_key = make_composite_key(contract, nullptr, 0, key, key_size);
                old_value          = session->read(composite_key);
                if (old_value) {
-                  old_value_size = actual_value_size(old_value->size());
+                  old_value_size = backing_store::actual_value_size(old_value->size());
                }
 
                auto new_value = build_value(value, value_size, payer);
@@ -393,7 +377,7 @@ namespace eosio { namespace chain {
 
          auto resource_delta = int64_t{ 0 };
          if (old_value) {
-            account_name old_payer = get_payer(old_value->data());
+            account_name old_payer = backing_store::get_payer(old_value->data());
             resource_delta =
                   update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
@@ -416,7 +400,7 @@ namespace eosio { namespace chain {
          CATCH_AND_EXIT_DB_FAILURE()
 
          if (current_value) {
-            value_size = actual_value_size(current_value->size());
+            value_size = backing_store::actual_value_size(current_value->size());
             return true;
          } else {
             value_size = 0;
@@ -428,8 +412,8 @@ namespace eosio { namespace chain {
          const char* temp        = nullptr;
          uint32_t      temp_size = 0;
          if (current_value) {
-            temp      = actual_value_start(current_value->data());
-            temp_size = actual_value_size(current_value->size());
+            temp      = backing_store::actual_value_start(current_value->data());
+            temp_size = backing_store::actual_value_size(current_value->size());
          }
          if (offset < temp_size)
             memcpy(data, temp + offset, std::min(data_size, temp_size - offset));

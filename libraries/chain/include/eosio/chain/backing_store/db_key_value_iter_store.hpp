@@ -16,10 +16,10 @@ struct secondary_key {
    int       table_ei;
    T         secondary;
    uint64_t  primary;
-   uint64_t  payer;
+   account_name payer;
 };
 
-bool operator<(const unique_table& lhs, const unique_table& rhs) {
+inline bool operator<(const unique_table& lhs, const unique_table& rhs) {
    return std::tie(lhs.contract, lhs.scope, lhs.table) < std::tie(rhs.contract, rhs.scope, rhs.table);
 }
 
@@ -70,6 +70,14 @@ class db_key_value_iter_store {
          return &_end_iterator_to_table[indx];
       }
 
+      const unique_table& get_table( const secondary_obj_type& obj )const {
+         EOS_ASSERT( obj.table_ei < invalid_iterator(), invalid_table_iterator, "not an end iterator" );
+         auto indx = end_iterator_to_index(obj.table_ei);
+         EOS_ASSERT( indx < _end_iterator_to_table.size(), table_not_in_cache,
+                     "an invariant was broken, secondary object references table that is not in cache" );
+         return _end_iterator_to_table[indx];
+      }
+
       const secondary_obj_type& get( int iterator ) const {
          validate_object_iterator(iterator, "dereference of end iterator");
          // grab a const ref, to ensure that we are returning a reference to the actual object in the vector
@@ -88,7 +96,7 @@ class db_key_value_iter_store {
          _iterator_to_object[iterator].reset();
       }
 
-      void swap( int iterator, const secondary_key_type& secondary, uint64_t payer ) {
+      void swap( int iterator, const secondary_key_type& secondary, account_name payer ) {
          validate_object_iterator(iterator, "cannot call swap on end iterators");
 
          auto& optional_obj = _iterator_to_object[iterator];
@@ -108,10 +116,18 @@ class db_key_value_iter_store {
          }
       }
 
-      int add( const secondary_obj_type& obj ) {
+      int find( const secondary_obj_type& obj ) const {
          auto itr = _object_to_iterator.find( obj );
          if( itr != _object_to_iterator.end() )
-              return itr->second;
+            return itr->second;
+
+         return invalid_iterator();
+      }
+
+      int add( const secondary_obj_type& obj ) {
+         auto itr = find( obj );
+         if( itr != invalid_iterator() )
+              return itr;
 
          EOS_ASSERT( obj.table_ei < invalid_iterator(), invalid_table_iterator, "not an end iterator" );
          const auto indx = end_iterator_to_index(obj.table_ei);
@@ -128,6 +144,7 @@ class db_key_value_iter_store {
          EOS_ASSERT( iterator >= 0, table_operation_not_permitted, explanation_for_no_end_iterators );
          EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
       }
+
       map<unique_table, int>                    _table_cache;
       vector<unique_table>                      _end_iterator_to_table;
       vector<std::optional<secondary_obj_type>> _iterator_to_object;
