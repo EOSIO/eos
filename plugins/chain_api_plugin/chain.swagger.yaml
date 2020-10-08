@@ -488,10 +488,17 @@ paths:
                   description: Type of key specified by index_position (for example - `uint64_t` or `name`)
                 encode_type:
                   type: string
-                upper_bound:
-                  type: string
-                lower_bound:
-                  type: string
+                  lower_bound:
+                    type: string
+                    description: Filters results to return the first element that is not less than provided value in set
+                  upper_bound:
+                    type: string
+                    description: Filters results to return the first element that is greater than provided value in set
+                limit:
+                  type: integer
+                  description: Limit number of results returned.
+                  format: int32
+                  default: 10
 
       responses:
         "200":
