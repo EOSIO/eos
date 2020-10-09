@@ -115,16 +115,13 @@ Config Options for eosio::chain_plugin:
                                         drops below this size (in MiB).
   --backing-store arg (=chainbase)      The storage for state, chainbase or 
                                         rocksdb
-  --rocksdb-threads arg (=1)            Number of rocksdb threads for flush and
-                                        compaction
+  --rocksdb-threads arg 	            Number of rocksdb threads for flush and
+                                        compaction.  Defaults to the number of 
+										available cores.  
   --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
-  --rocksdb-write-buffer-size arg (=134217728)
+  --rocksdb-write-buffer-size-mb arg (=134217728)
                                         Size of a single rocksdb memtable
-  --rocksdb-target-file-size-base arg (=52428800)
-                                        Size of a level-1 file
-  --rocksdb-max-bytes-for-level-base arg (=536870912)
-                                        Maximum data size for level-1
   --reversible-blocks-db-size-mb arg (=340)
                                         Maximum size (in MiB) of the reversible
                                         blocks database
