@@ -551,7 +551,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    uint32_t trx_size = 0;
    std::string event_id;
-   std::string operation;
+   const char* operation = "";
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
@@ -666,7 +666,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                subjective_block_production_exception,
                "Cannot charge RAM to other accounts during notify."
    );
-   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", operation.c_str(), "deferred_trx_add") );
+   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", operation, "deferred_trx_add") );
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
