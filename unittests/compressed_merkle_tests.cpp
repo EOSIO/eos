@@ -26,7 +26,7 @@ static const char inliner_wast[] = R"=====(
  (memory $0 1)
  (data (i32.const  4) "\00\00\00\00\00\00\00\00")             ;;account (to be filled)
  (data (i32.const 12) "\00\00\00\00\00\00\00\00")             ;;action (to be filled)
- (data (i32.const 20) "\00")                                  ;;no permission (will get eosio.code implictly)
+ (data (i32.const 20) "\00")                                  ;;no permission (will get eosio.code implicitly)
  (data (i32.const 21) "\00")                                  ;;no data
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
    (i64.store (i32.const 4) (get_local $0))                   ;;copy over account
@@ -40,6 +40,46 @@ static const char inliner_wast[] = R"=====(
      (set_local $2 (i64.sub (get_local $2) (i64.const 1)))    ;;subtract 1 from loop
      (br_if 0 (i32.wrap/i64 (get_local $2)))                  ;;if non-zero loop back around
    )
+ )
+)
+)=====";
+
+static const char send_def_then_blowup_wast[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (import "env" "send_deferred" (func $send_deferred (param i32 i64 i32 i32 i32)))
+ (import "env" "send_inline" (func $send_inline (param i32 i32)))
+ (memory $0 1)
+
+ ;; construct payload for a deferred trx
+ (data (i32.const 500) "\00\00\00\00")                      ;;expiration
+ (data (i32.const 504) "\00\00\00\00\00\00")                ;;ref_block_num & ref_block_prefix
+ (data (i32.const 510) "\7f")                               ;;max_net_usage_words
+ (data (i32.const 511) "\7f")                               ;;max_cpu_usage_ms
+ (data (i32.const 512) "\02")                               ;;delay_sec
+ (data (i32.const 513) "\00")                               ;;no CFA
+ (data (i32.const 514) "\01")                               ;;one action
+   (data (i32.const 515) "\00\00\00\00\00\00\00\00")        ;;account (to be filled)
+   (data (i32.const 523) "\00\00\00\e0\aa\a5\12\4d")        ;;action: "dodefer"
+   (data (i32.const 531) "\01")                             ;;one permission
+     (data (i32.const 532) "\00\00\00\00\00\00\00\00")      ;;account (to be filled)
+     (data (i32.const 540) "\00\00\00\00\a8\ed\32\32")      ;;active
+   (data (i32.const 548) "\00")                             ;;nodata
+ (data (i32.const 549) "\00")                               ;;no trx extensions
+
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (i64.store (i32.const 515) (get_local $0))                   ;;copy over account
+   (i64.store (i32.const 532) (get_local $0))                   ;;copy over account
+
+   ;;if action is "dodefer", blow up
+   (if (i64.eq (get_local $2) (i64.const 0x4d12a5aae0000000)) (then
+    (unreachable)
+   ))
+   ;;if action is "dothedew", send the deferred trx
+   (if (i64.eq (get_local $2) (i64.const 0x4d32d5255c000000)) (then
+    (call $send_deferred (i32.const 4) (get_local $0) (i32.const 500) (i32.const 512) (i32.const 0))
+   ))
+   ;;other actions, like "onerror", fall through successfully
  )
 )
 )=====";
@@ -114,7 +154,7 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expecting_callback);
-         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(interested));
          });
       }
@@ -149,7 +189,7 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
          return true;
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
-         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {});
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {});
       }
    )});
 
@@ -239,7 +279,7 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
          return act.account == N(interested);
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
-         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(interested));
             num_actions++;
          });
@@ -272,7 +312,7 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
          return true;
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
-         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
             seen_interested |= name(receiver) == N(interested);
          });
       }
@@ -302,6 +342,47 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
    BOOST_CHECK(seen_interested);
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE(test_proof_deferred_soft_fail) try {
+   tester chain(setup_policy::none);
+   fc::sha256 computed_action_mroot;
+   bool seen_interested = false;
+
+   compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
+      [&](const chain::action& act) {
+         return true;
+      },
+      [&](std::vector<char>&& serialized_compressed_proof) {
+         computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
+            seen_interested |= name(receiver) == N(interested) && action_name(action) == N(onerror);
+         });
+      }
+   )});
+
+   auto produce_and_check = [&]() {
+      sha256 new_mroot = chain.produce_block()->action_mroot;
+      BOOST_CHECK(new_mroot == computed_action_mroot);
+   };
+
+   chain.create_account(N(interested));
+   chain.set_code(N(interested), send_def_then_blowup_wast);
+   chain.set_abi(N(interested), test_account_abi);
+   produce_and_check();
+
+   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0), 100);
+
+   produce_and_check();
+   produce_and_check();
+   BOOST_CHECK(seen_interested == false);
+
+   //no specific number, but enough for the deferred trx to execute
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   produce_and_check();
+   BOOST_CHECK(seen_interested);
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
    tester chain(setup_policy::none);
 
@@ -315,7 +396,7 @@ BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_spoon);
-         computed_action_mroot1 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {
+         computed_action_mroot1 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(spoon));
          });
       }
@@ -327,7 +408,7 @@ BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
       },
       [&](std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_banana);
-         computed_action_mroot2 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver) {
+         computed_action_mroot2 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(spoon));
          });
       }
