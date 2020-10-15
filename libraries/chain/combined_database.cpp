@@ -125,7 +125,9 @@ namespace eosio { namespace chain {
          // Extract them.
          auto value = (*it).second;
 
-         function(contract, key.data(), key.size(), value->data(), value->size());
+         const char* post_contract = key.data() + key_prefix_size;
+         const std::size_t remaining = key.size() - key_prefix_size;
+         function(contract, post_contract, remaining, value->data(), value->size());
       }
    }
 
@@ -145,7 +147,7 @@ namespace eosio { namespace chain {
                            std::size_t value_size) {
                   backing_store::payer_payload pp(value, value_size);
                   kv_object_view row{name(contract),
-                                     {{key + sizeof(contract), key + key_size}},
+                                     {{key, key + key_size}},
                                       {{pp.value, pp.value + pp.value_size}},
                                      pp.payer};
                   function(row);
@@ -651,7 +653,7 @@ db.remove(*move_to_rocks);
          EOS_ASSERT( b1::chain_kv::extract_key(remaining, key_end, secondary_key), bad_composite_key_exception, "DB intrinsic key-value store composite key is malformed" );
          EOS_ASSERT( b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception , "DB intrinsic key-value store composite key is malformed" );
          backing_store::payer_payload pp(value, value_size);
-         indices.emplace_back(secondary_index_view<IndexType>{primary_key, pp.payer, secondary_key});  
+         indices.emplace_back(secondary_index_view<IndexType>{primary_key, pp.payer, secondary_key});
       }
 
       template <typename IndexType>
@@ -666,7 +668,7 @@ db.remove(*move_to_rocks);
       void operator() (uint64_t contract, const char* key, std::size_t key_size,
                      const char* value, std::size_t value_size){
 
-         b1::chain_kv::bytes composite_key(key + sizeof(contract), key + key_size);
+         b1::chain_kv::bytes composite_key(key, key + key_size);
          auto [scope, table, remaining, type] = backing_store::db_key_value_format::get_prefix_thru_key_type(composite_key);
 
          if (type == key_type::table) {

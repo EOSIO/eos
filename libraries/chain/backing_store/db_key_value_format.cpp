@@ -5,6 +5,29 @@
 
 namespace eosio { namespace chain { namespace backing_store { namespace db_key_value_format {
    namespace detail {
+      constexpr std::size_t key_size(key_type kt) {
+         switch(kt) {
+            case key_type::primary:
+               return sizeof(uint64_t);
+            case key_type::sec_i64:
+               return sizeof(uint64_t);
+            case key_type::sec_i128:
+               return sizeof(eosio::chain::uint128_t);
+            case key_type::sec_i256:
+               return sizeof(key256_t);
+            case key_type::sec_double:
+               return sizeof(float64_t);
+            case key_type::sec_long_double:
+               return sizeof(float128_t);
+            case key_type::table:
+               return 0;
+            default:
+               FC_THROW_EXCEPTION(bad_composite_key_exception,
+                                  "DB intrinsic key-value store composite key is malformed, key_size should not be "
+                                  "called with key_type: ${kt}", ("kt", to_string(kt)));
+         }
+      }
+
       b1::chain_kv::bytes prepare_composite_key_prefix(name scope, name table, std::size_t type_size, std::size_t key_size, std::size_t extension_size) {
          constexpr static auto scope_size = sizeof(scope);
          constexpr static auto table_size = sizeof(table);
@@ -32,6 +55,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
             case key_type::sec_i256: return "secondary key of type key256_t";
             case key_type::sec_double: return "secondary key of type float64_t";
             case key_type::sec_long_double: return "secondary key of type float128_t";
+            case key_type::table: return "table end key";
             default:
                const int kt_as_int = static_cast<char>(kt);
                return std::string("<invalid key_type: ") + std::to_string(kt_as_int) + ">";

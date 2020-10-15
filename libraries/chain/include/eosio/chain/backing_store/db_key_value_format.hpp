@@ -97,6 +97,8 @@ namespace chain { namespace backing_store { namespace db_key_value_format {
          }
       }
 
+      constexpr std::size_t key_size(key_type kt);
+
       std::string to_string(const key_type& kt);
 
       b1::chain_kv::bytes prepare_composite_key_prefix(name scope, name table, std::size_t type_size, std::size_t key_size, std::size_t extension_size);

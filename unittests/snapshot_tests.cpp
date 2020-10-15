@@ -278,79 +278,98 @@ namespace {
    }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
-{
-   using backing_store_type = eosio::chain::backing_store_type;
+template<typename SnapshotSuite>
+void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
+                         const eosio::chain::backing_store_type sub_store) {
+   fc::temp_directory temp_dir;
+   tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
 
-   for (auto main_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-      for (auto sub_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-         fc::temp_directory temp_dir;
-         tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
+   chain.create_account(N(snapshot));
+   chain.produce_blocks(1);
+   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
 
-         chain.create_account(N(snapshot));
-         chain.produce_blocks(1);
-         chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-         chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
-         chain.produce_blocks(1);
+//   chain.create_account(N(snapshot2));
+//   chain.produce_blocks(1);
+//   chain.set_code(N(snapshot2), contracts::snapshot_test_wasm());
+//   chain.set_abi(N(snapshot2), contracts::snapshot_test_abi().data());
+//
+//   chain.produce_blocks(1);
 
-         chain.create_account(N(snapshot2));
-         chain.produce_blocks(1);
-         chain.set_code(N(snapshot2), contracts::snapshot_test_wasm());
-         chain.set_abi(N(snapshot2), contracts::snapshot_test_abi().data());
+   // increment the test contract
+   chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+         ( "value", 1 )
+   );
 
-         chain.produce_blocks(1);
+   chain.produce_blocks(1);
 
-         // increment the test contract
-         chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+//   chain.push_action(N(snapshot2), N(increment), N(snapshot2), mutable_variant_object()
+//         ( "value", 1 )
+//   );
+//
+//   chain.produce_blocks(1);
+
+   chain.control->abort_block();
+
+   static const int generation_count = 8;
+   std::list<snapshotted_tester> sub_testers;
+
+   for (int generation = 0; generation < generation_count; generation++) {
+      // create a new snapshot child
+      auto writer = SnapshotSuite::get_writer();
+      chain.control->write_snapshot(writer);
+      auto snapshot = SnapshotSuite::finalize(writer);
+
+      // create a new child at this snapshot
+      auto new_config                  = chain.get_config();
+      new_config.backing_store = sub_store;
+      sub_testers.emplace_back(new_config, SnapshotSuite::get_reader(snapshot), generation);
+
+      // increment the test contract
+      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
             ( "value", 1 )
-         );
+      );
 
-         chain.produce_blocks(1);
+      // produce block
+      auto new_block = chain.produce_block();
 
-         chain.push_action(N(snapshot2), N(increment), N(snapshot2), mutable_variant_object()
-            ( "value", 1 )
-         );
+      // undo the auto-pending from tester
+      chain.control->abort_block();
 
-         chain.produce_blocks(1);
+      auto integrity_value = chain.control->calculate_integrity_hash();
 
-         chain.control->abort_block();
-
-         static const int generation_count = 8;
-         std::list<snapshotted_tester> sub_testers;
-
-         for (int generation = 0; generation < generation_count; generation++) {
-            // create a new snapshot child
-            auto writer = SNAPSHOT_SUITE::get_writer();
-            chain.control->write_snapshot(writer);
-            auto snapshot = SNAPSHOT_SUITE::finalize(writer);
-
-            // create a new child at this snapshot
-            auto new_config                  = chain.get_config();
-            new_config.backing_store = sub_store;
-            sub_testers.emplace_back(new_config, SNAPSHOT_SUITE::get_reader(snapshot), generation);
-
-            // increment the test contract
-            chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
-               ( "value", 1 )
-            );
-
-            // produce block
-            auto new_block = chain.produce_block();
-
-            // undo the auto-pending from tester
-            chain.control->abort_block();
-
-            auto integrity_value = chain.control->calculate_integrity_hash();
-
-            // push that block to all sub testers and validate the integrity of the database after it.
-            for (auto& other: sub_testers) {
-               other.push_block(new_block);
-               verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *other.control);
-               BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
-            }
-         }
+      // push that block to all sub testers and validate the integrity of the database after it.
+      for (auto& other: sub_testers) {
+         other.push_block(new_block);
+         verify_integrity_hash<SnapshotSuite>(*chain.control, *other.control);
+         BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
       }
    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::ROCKSDB);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::ROCKSDB);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
