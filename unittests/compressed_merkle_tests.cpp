@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
 
    compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const auto&){return true;},  //include all actions in proof
-      [&](auto&& x) {
+      [&](auto bsp, auto&& x) {
          //but no actions in block means no callback should ever be fired
          BOOST_FAIL("Callback should not be called");
       }
@@ -151,7 +151,7 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
       [&](const chain::action& act){
          return act.account == N(interested);
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expecting_callback);
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(interested));
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
       [&](const chain::action& act){
          return true;
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {});
       }
    )});
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
          [&](const chain::action& act){
             return true;
          },
-         [&](std::vector<char>&& serialized_compressed_proof) {
+         [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
       )});
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(test_proof_presist_reversible) try {
          [&](const chain::action& act){
             return true;
          },
-         [&](std::vector<char>&& serialized_compressed_proof) {
+         [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
             blocks_seen++;
          }
       )});
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
       [&](const chain::action& act) {
          return act.account == N(interested);
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(interested));
             num_actions++;
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
       [&](const chain::action& act) {
          return true;
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
             seen_interested |= name(receiver) == N(interested);
          });
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE(test_proof_deferred_soft_fail) try {
       [&](const chain::action& act) {
          return true;
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
             seen_interested |= name(receiver) == N(interested) && action_name(action) == N(onerror);
          });
@@ -393,7 +393,7 @@ BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
       [&](const chain::action& act){
          return act.account == N(spoon);
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_spoon);
          computed_action_mroot1 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(spoon));
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
       [&](const chain::action& act){
          return act.account == N(spoon) && act.name == N(banana);
       },
-      [&](std::vector<char>&& serialized_compressed_proof) {
+      [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_banana);
          computed_action_mroot2 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
             BOOST_CHECK(name(receiver) == N(spoon));
