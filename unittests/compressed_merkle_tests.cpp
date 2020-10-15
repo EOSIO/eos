@@ -48,7 +48,6 @@ static const char send_def_then_blowup_wast[] = R"=====(
 (module
  (export "apply" (func $apply))
  (import "env" "send_deferred" (func $send_deferred (param i32 i64 i32 i32 i32)))
- (import "env" "send_inline" (func $send_inline (param i32 i32)))
  (memory $0 1)
 
  ;; construct payload for a deferred trx
