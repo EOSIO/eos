@@ -3,18 +3,11 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <eosio/amqp/reliable_amqp_publisher.hpp>
-
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/key.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <fc/io/cfile.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 
-using namespace boost::multi_index;
 using namespace std::string_literals;
 
 namespace eosio {
@@ -171,7 +164,7 @@ struct compressed_proof_generator_impl {
          }
 
          if(any_interested)
-            cb.second(cc.generate_serialized_proof(action_return_value_active_this_block));
+            cb.second(bsp, cc.generate_serialized_proof(action_return_value_active_this_block));
       }
    }
 
@@ -292,7 +285,7 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
                   }
                   return false;
                },
-               [&publisher](std::vector<char>&& serialized_proof) {
+               [&publisher](const chain::block_state_ptr& bsp, std::vector<char>&& serialized_proof) {
                   publisher.publish_message_raw(std::move(serialized_proof));
                }
             ));
