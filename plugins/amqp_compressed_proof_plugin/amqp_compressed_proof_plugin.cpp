@@ -110,13 +110,15 @@ struct compressed_proof_generator_impl {
    void on_applied_transaction(const chain::transaction_trace_ptr& trace) {
       if(!trace->receipt)
          return;
-      //only executed & delayed transaction traces would make it in to action_mroot
       if(trace->receipt->status != chain::transaction_receipt::status_enum::executed &&
+         trace->receipt->status != chain::transaction_receipt::status_enum::soft_fail &&
          trace->receipt->status != chain::transaction_receipt::status_enum::delayed)
          return;
 
       if(chain::is_onblock(*trace))
          onblock_trace.emplace(trace);
+      else if(trace->failed_dtrx_trace)
+         cached_traces[trace->failed_dtrx_trace->id] = trace;
       else
          cached_traces[trace->id] = trace;
    }

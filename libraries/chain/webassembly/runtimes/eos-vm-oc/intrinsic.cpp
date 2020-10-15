@@ -10,6 +10,7 @@
 #include <array>
 #include <string_view>
 #include <utility>
+#include <stdexcept>
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
