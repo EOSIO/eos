@@ -290,12 +290,7 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
    chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
 
-//   chain.create_account(N(snapshot2));
-//   chain.produce_blocks(1);
-//   chain.set_code(N(snapshot2), contracts::snapshot_test_wasm());
-//   chain.set_abi(N(snapshot2), contracts::snapshot_test_abi().data());
-//
-//   chain.produce_blocks(1);
+#warning add a snapshot2 account and send the action against it as well, so that we are actually walking through more than just one contract's data'
 
    // increment the test contract
    chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
@@ -303,12 +298,6 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
    );
 
    chain.produce_blocks(1);
-
-//   chain.push_action(N(snapshot2), N(increment), N(snapshot2), mutable_variant_object()
-//         ( "value", 1 )
-//   );
-//
-//   chain.produce_blocks(1);
 
    chain.control->abort_block();
 
