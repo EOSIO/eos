@@ -19,17 +19,19 @@ namespace eosio { namespace chain {
     *            from block 1
     * Version 4: changes the block entry from the serialization of signed_block to a tuple of offset to next entry,
     *            compression_status and pruned_block.
+    * Version 5: additional fields added to genesis state
     */
 
    enum versions {
       initial_version = 1,
       block_x_start_version = 2,
       genesis_state_or_chain_id_version = 3,
-      pruned_transaction_version = 4
+      pruned_transaction_version = 4,
+      genesis_protocol_features_version = 5
    };
 
    const uint32_t block_log::min_supported_version = initial_version;
-   const uint32_t block_log::max_supported_version = pruned_transaction_version;
+   const uint32_t block_log::max_supported_version = genesis_protocol_features_version;
 
    struct block_log_preamble {
       uint32_t version         = 0;
@@ -61,7 +63,13 @@ namespace eosio { namespace chain {
 
          if (block_log::contains_genesis_state(version, first_block_num)) {
             chain_context.emplace<genesis_state>();
-            fc::raw::unpack(ds, std::get<genesis_state>(chain_context));
+            if(version >= genesis_protocol_features_version) {
+               fc::raw::unpack(ds, std::get<genesis_state>(chain_context));
+            } else {
+               genesis_state_v0 gs;
+               fc::raw::unpack(ds, gs);
+               std::get<genesis_state>(chain_context).initialize_from(gs);
+            }
          } else if (block_log::contains_chain_id(version, first_block_num)) {
             chain_context = chain_id_type{};
             ds >> std::get<chain_id_type>(chain_context);
@@ -92,8 +100,8 @@ namespace eosio { namespace chain {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
             std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                                  [&ds](const genesis_state& state) {
-                                      auto data = fc::raw::pack(state);
+                                  [&ds, version=version](const genesis_state& state) {
+                                      auto data = version < genesis_protocol_features_version ? fc::raw::pack(state.v0()) : fc::raw::pack(state);
                                       ds.write(data.data(), data.size());
                                   }}, 
                        chain_context);
@@ -103,7 +111,7 @@ namespace eosio { namespace chain {
          }
          else {
             const auto& state = std::get<genesis_state>(chain_context);
-            auto data = fc::raw::pack(state);
+            auto data = fc::raw::pack(state.v0());
             ds.write(data.data(), data.size());
          }
       }
@@ -170,8 +178,8 @@ namespace eosio { namespace chain {
 
       std::vector<char> pack(const signed_block& block, packed_transaction::cf_compression_type compression) {
          const std::size_t padded_size = block.maximum_pruned_pack_size(compression);
-         static_assert( block_log::max_supported_version == pruned_transaction_version,
-                     "Code was written to support format of version 4, need to update this code for latest format." );
+         static_assert( block_log::max_supported_version == genesis_protocol_features_version,
+                     "Code was written to support format of version 5, need to update this code for latest format." );
          std::vector<char>     buffer(padded_size + offset_to_block_start(block_log::max_supported_version));
          fc::datastream<char*> stream(buffer.data(), buffer.size());
 
@@ -1045,8 +1053,8 @@ namespace eosio { namespace chain {
       fc::create_directories(temp_dir);
       fc::path new_block_filename = temp_dir / "blocks.log";
    
-      static_assert( block_log::max_supported_version == pruned_transaction_version,
-                     "Code was written to support format of version 4 or lower, need to update this code for latest format." );
+      static_assert( block_log::max_supported_version == genesis_protocol_features_version,
+                     "Code was written to support format of version 5 or lower, need to update this code for latest format." );
       
       const auto     preamble_size           = block_log_preamble::nbytes_with_chain_id;
       const auto     num_blocks_to_truncate  = truncate_at_block - log_bundle.log_data.first_block_num();

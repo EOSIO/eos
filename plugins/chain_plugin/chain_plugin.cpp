@@ -353,6 +353,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("activate-all-features", bpo::bool_switch()->default_value(false), "Activate all known protocol features at genesis")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -941,6 +942,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_ASSERT( options.count( "genesis-json" ) == 0,
                      plugin_config_exception,
                      "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
+         EOS_ASSERT( !options.at( "activate-all-features" ).as<bool>(),
+                     plugin_config_exception,
+                     "--activate-all-features can only be used when starting a fresh chain");
 
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
          EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
@@ -1008,11 +1012,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         plugin_config_exception,
                        "Specified genesis file '${genesis}' does not exist.",
                        ("genesis", genesis_file.generic_string()));
+            EOS_ASSERT( !options.at( "activate-all-features" ).as<bool>(),
+                        plugin_config_exception,
+                        "--activate-all-features is incompatible with --genesis-json");
 
             genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
 
             if( options.count( "genesis-timestamp" ) ) {
-               provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
+               provided_genesis.initial_timestamp() = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
 
                ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
                      ("genesis", genesis_file.generic_string()) );
@@ -1058,6 +1065,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
+         bool is_default_genesis = false;
          if( !chain_id ) {
             if( my->genesis ) {
                // Uninitialized state database and genesis state extracted from block log
@@ -1072,10 +1080,36 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                );
 
                ilog( "Starting fresh blockchain state using default genesis state." );
-               my->genesis.emplace();
+               is_default_genesis = true;
+               if ( options.at( "activate-all-features" ).as<bool>() ) {
+                  genesis_state_v1 genesis;
+                  auto& initial_protocol_features = genesis.initial_protocol_features;
+                  for( const protocol_feature& f : pfs ) {
+                     if( pfs.is_recognized( f.feature_digest, genesis.initial_timestamp ) == protocol_feature_set::recognized_t::ready &&
+                         std::none_of(f.dependencies.begin(), f.dependencies.end(), [&](auto& d) {
+                            return std::find( initial_protocol_features.begin(), initial_protocol_features.end(), d ) == initial_protocol_features.end();
+                                                                                    } ) ) {
+                        ilog( "genesis protocol feature: ${digest}", ("digest", f.feature_digest) );
+                        initial_protocol_features.push_back( f.feature_digest );
+                     }
+                  }
+                  genesis.initial_configuration.max_action_return_value_size = config::default_max_action_return_value_size;
+                  genesis.initial_kv_configuration = { {
+                     .max_key_size = config::default_max_kv_key_size,
+                     .max_value_size = config::default_max_kv_value_size,
+                     .max_iterators = config::default_max_kv_iterators
+                  } };
+                  genesis.initial_wasm_configuration = genesis_state_v1::default_initial_wasm_configuration;
+                  my->genesis.emplace(std::move(genesis));
+               } else {
+                  my->genesis.emplace();
+               }
                chain_id = my->genesis->compute_chain_id();
             }
          }
+         EOS_ASSERT( is_default_genesis || !options.at( "activate-all-features" ).as<bool>(),
+                     plugin_config_exception,
+                     "--activate-all-features can only be used when starting a fresh chain");
       }
 
       if ( options.count("read-mode") ) {
@@ -1265,7 +1299,7 @@ void chain_plugin::plugin_startup()
 
    if (my->genesis) {
       ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp()));
    }
    else {
       ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));

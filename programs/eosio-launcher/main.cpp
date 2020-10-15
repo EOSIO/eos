@@ -1193,11 +1193,11 @@ launcher_def::init_genesis () {
    string bioskey = network.nodes["bios"].keys[0].get_public_key().to_string();
 
    fc::json::from_file(genesis_path).as<eosio::chain::genesis_state>(genesis_from_file);
-   genesis_from_file.initial_key = public_key_type(bioskey);
+   genesis_from_file.initial_key() = public_key_type(bioskey);
    if (max_block_cpu_usage)
-      genesis_from_file.initial_configuration.max_block_cpu_usage = *max_block_cpu_usage;
+      genesis_from_file.initial_configuration().max_block_cpu_usage = *max_block_cpu_usage;
    if (max_transaction_cpu_usage)
-      genesis_from_file.initial_configuration.max_transaction_cpu_usage = *max_transaction_cpu_usage;
+      genesis_from_file.initial_configuration().max_transaction_cpu_usage = *max_transaction_cpu_usage;
 }
 
 void

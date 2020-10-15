@@ -386,8 +386,8 @@ namespace eosio { namespace testing {
 
          static genesis_state default_genesis() {
             genesis_state genesis;
-            genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-            genesis.initial_key = get_public_key( config::system_account_name, "active" );
+            genesis.initial_timestamp() = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+            genesis.initial_key() = get_public_key( config::system_account_name, "active" );
 
             return genesis;
          }
@@ -413,7 +413,7 @@ namespace eosio { namespace testing {
             }
             auto gen = default_genesis();
             if (genesis_max_inline_action_size) {
-               gen.initial_configuration.max_inline_action_size = *genesis_max_inline_action_size;
+               gen.initial_configuration().max_inline_action_size = *genesis_max_inline_action_size;
             }
             if (config_max_nonprivileged_inline_action_size) {
                cfg.max_nonprivileged_inline_action_size = *config_max_nonprivileged_inline_action_size;
