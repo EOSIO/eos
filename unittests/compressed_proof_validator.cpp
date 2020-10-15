@@ -99,15 +99,15 @@ static sha256 action_hash_post_rv(const action_entry& input) {
    return hashpair[0];
 }
 
-static sha256 validate_single_action(bool return_value_active, const action_entry& input, std::function<void(uint64_t)> on_action_receiver) {
+static sha256 validate_single_action(bool return_value_active, const action_entry& input, std::function<void(uint64_t, uint64_t)> on_action_receiver) {
    const sha256 action_hash = return_value_active ? action_hash_post_rv(input) : action_hash_pre_rv(input);
 
    check(input.action_receipt.act_digest.get() == action_hash, "action digest in action receipt does not match computed action digest");
 
    //For a real validation application, you would do something more "interesting" here. In this example code,
-   // just make a call out to a function with the receiver as a uint64_t so that it can be validated. Anything more
+   // just make a call out to a function with the receiver & action as a uint64_t so that it can be validated. Anything more
    // advanced is tricky with abieos vs fc/chain together.
-   on_action_receiver(input.action_receipt.receiver.value);
+   on_action_receiver(input.action_receipt.receiver.value, input.action.name.value);
 
    sha256 ret;
    SHA256((const unsigned char*)input.action_receipt_range.start, input.action_receipt_range.size(), ret.data());
@@ -118,7 +118,7 @@ static sha256 validate_single_action(bool return_value_active, const action_entr
 
 using namespace proof_validator;
 
-fc::sha256 validate_compressed_merkle_proof(const std::vector<char>& input, std::function<void(uint64_t)> on_action_receiver) {
+fc::sha256 validate_compressed_merkle_proof(const std::vector<char>& input, std::function<void(uint64_t, uint64_t)> on_action_receiver) {
    input_stream is(input);
    bool arv_activated;
    unsigned_int num_cmds;
