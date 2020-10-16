@@ -12,7 +12,8 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
@@ -2127,17 +2128,11 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
 
-#if 0
    // Enable the code block once rocksdb_nodeos_integratin is merged
    const chain::kv_database_config &limits = kv_config;
-   auto &kv_database = const_cast<chain::combined_database &>(db.kv_db());
+   auto &kv_database = const_cast<chain::controller&>(db).kv_db();
    // To do: provide kv_resource_manmager to create_kv_context
    auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
-#else
-   const chain::kv_database_config &limits = kv_config.kvram;
-   auto &database = db.db();
-   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database &>(database), database_id, chain::name{0}, {}, limits);
-#endif
 
    return get_kv_table_rows_context(p, *kv_context, abi);
 }
