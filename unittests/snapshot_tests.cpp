@@ -706,20 +706,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
          // Set backing_store for save snapshot
          set_backing_store(chain, origin_backing_store);
 
-         chain.create_accounts({N(snapshot), N(manager)});
-         chain.set_code(N(manager), kv_snapshot_bios);
-         chain.push_action(N(eosio), N(setpriv), N(eosio), mutable_variant_object()("account", "manager")("is_priv", 1));
+         chain.create_accounts({"snapshot"_n, "manager"_n});
+         chain.set_code("manager"_n, kv_snapshot_bios);
+         chain.push_action("eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "manager")("is_priv", 1));
 
          chain.produce_blocks(1);
          {
             signed_transaction trx;
-            trx.actions.push_back({{{N(manager), N(active)}}, N(manager), N(snapshot), {}});
+            trx.actions.push_back({{{"manager"_n, "active"_n}}, "manager"_n, "snapshot"_n, {}});
             chain.set_transaction_headers(trx);
-            trx.sign(chain.get_private_key(N(manager), "active"), chain.control->get_chain_id());
+            trx.sign(chain.get_private_key("manager"_n, "active"), chain.control->get_chain_id());
             chain.push_transaction(trx);
          }
          chain.produce_blocks(1);
-         chain.set_code(N(snapshot), kv_snapshot_wast);
+         chain.set_code("snapshot"_n, kv_snapshot_wast);
          chain.produce_blocks(1);
          chain.control->abort_block();
 
@@ -742,9 +742,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // Calling apply method which will increment the
             // current value stored
             signed_transaction trx;
-            trx.actions.push_back({{{N(snapshot), N(active)}}, N(snapshot), N(eosio.kvram), {}});
+            trx.actions.push_back({{{"snapshot"_n, "active"_n}}, "snapshot"_n, "eosio.kvram"_n, {}});
             chain.set_transaction_headers(trx);
-            trx.sign(chain.get_private_key(N(snapshot), "active"), chain.control->get_chain_id());
+            trx.sign(chain.get_private_key("snapshot"_n, "active"), chain.control->get_chain_id());
             chain.push_transaction(trx);
 
             // produce block
