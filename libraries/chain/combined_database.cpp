@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
    void walk_index(const index_utils<kv_db_config_index>& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack, const chainbase::database& db, F function) {}
 
    template <typename F>
-   void for_each_rocksdb_index_with_prefix(const eosio::session::undo_stack<rocks_db_type>& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
+   void walk_rocksdb_entries_with_prefix(const eosio::session::undo_stack<rocks_db_type>& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
       const auto prefix_key = eosio::session::shared_bytes(prefix.data(), prefix.size());
       const auto next_prefix = prefix_key.next();
       auto begin_it = kv_undo_stack.top().lower_bound(prefix_key);
@@ -121,8 +121,6 @@ namespace eosio { namespace chain {
          auto end = std::begin(key_buffer) + key_prefix_size;
          b1::chain_kv::extract_key(begin, end, contract);
 
-         // In KV RocksDB, payer and actual data are packed together.
-         // Extract them.
          auto value = (*it).second;
 
          const char* post_contract = key.data() + key_prefix_size;
@@ -141,10 +139,12 @@ namespace eosio { namespace chain {
             kv_undo_stack->push();
             undo = true;
          }
-         for_each_rocksdb_index_with_prefix(
+         walk_rocksdb_entries_with_prefix(
                *kv_undo_stack, rocksdb_contract_kv_prefix,
                [&function](uint64_t contract, const char* key, std::size_t key_size, const char* value,
                            std::size_t value_size) {
+                  // In KV RocksDB, payer and actual data are packed together.
+                  // Extract them.
                   backing_store::payer_payload pp(value, value_size);
                   kv_object_view row{name(contract),
                                      {{key, key + key_size}},
@@ -714,7 +714,7 @@ db.remove(*move_to_rocks);
                kv_undo_stack->push();
                undo = true;
             }
-            for_each_rocksdb_index_with_prefix(*kv_undo_stack, rocksdb_contract_db_prefix, writer);
+            walk_rocksdb_entries_with_prefix(*kv_undo_stack, rocksdb_contract_db_prefix, writer);
             if (undo) {
                kv_undo_stack->undo();
             }
@@ -786,7 +786,6 @@ db.remove(*move_to_rocks);
             static const eosio::session::shared_bytes  empty_payload;
             unsigned_int       size;
             read_row(size);
-            // std::cout << " " << size;
             for (int i = 0; i < size.value; ++i) {
                secondary_index_view<index_t> row;
                read_row(row);

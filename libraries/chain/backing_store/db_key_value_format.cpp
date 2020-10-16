@@ -20,7 +20,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
             case key_type::sec_long_double:
                return sizeof(float128_t);
             case key_type::table:
-               return 0;
+               return 0; // a table entry ends at the type and has no trailing sub-"keys"
             default:
                FC_THROW_EXCEPTION(bad_composite_key_exception,
                                   "DB intrinsic key-value store composite key is malformed, key_size should not be "
