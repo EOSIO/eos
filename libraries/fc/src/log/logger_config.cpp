@@ -9,6 +9,7 @@
 #include <fc/log/dmlog_appender.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/exception/exception.hpp>
+#include <random>
 
 namespace fc {
 
@@ -23,6 +24,17 @@ namespace fc {
       std::lock_guard g( log_config::get().log_mutex );
       log_config::get().appender_factory_map[type] = f;
       return true;
+   }
+
+   uint64_t log_config::get_next_unique_id() {
+      auto& lc = log_config::get();
+      std::lock_guard g( lc.log_mutex );
+      if( lc.next_id == 0 ) {
+         std::mt19937_64 engine( std::random_device{}() );
+         std::uniform_int_distribution<uint64_t> distribution;
+         lc.next_id = distribution( engine );
+      }
+      return lc.next_id++;
    }
 
    logger log_config::get_logger( const fc::string& name ) {

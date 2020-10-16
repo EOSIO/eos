@@ -43,7 +43,7 @@ namespace fc
    :my( std::make_shared<detail::log_context_impl>() ){}
 
    log_context::log_context( log_level ll, const char* file, uint64_t line, 
-                                            const char* method )
+                                            const char* method, const char* task )
    :my( std::make_shared<detail::log_context_impl>() )
    {
       my->level       = ll;
@@ -52,6 +52,7 @@ namespace fc
       my->method      = method;
       my->timestamp   = time_point::now();
       my->thread_name = fc::get_thread_name();
+      if( task != nullptr ) my->task_name = task;
    }
 
    log_context::log_context( const variant& v )
@@ -186,8 +187,10 @@ namespace fc
                ( "hostname",     my->hostname            )
                ( "thread_name",  my->thread_name         )
                ( "timestamp",    variant(my->timestamp)  );
+      if( !my->task_name.empty() )
+         o( "task_name", my->task_name );
 
-      if( my->context.size() ) 
+      if( !my->context.empty() )
          o( "context",      my->context             );
 
       return o;
