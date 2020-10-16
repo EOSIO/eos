@@ -15,7 +15,7 @@ namespace fc {
 } // fc
 
 namespace eosio::chain {
-   static constexpr uint64_t char_to_symbol( char c ) {
+   constexpr uint64_t char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
@@ -24,7 +24,7 @@ namespace eosio::chain {
          return 0;
       else
          FC_THROW_EXCEPTION(name_type_exception, "Name contains invalid character: (${c}) ", ("c", std::string(1, c)));
-      
+
       //unreachable
       return 0;
    }
@@ -32,26 +32,23 @@ namespace eosio::chain {
    // true if std::string can be converted to name
    bool is_string_valid_name(std::string_view str);
 
-   static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
+   constexpr uint64_t string_to_uint64_t( std::string_view str ) {
       EOS_ASSERT(str.size() <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
 
       uint64_t n = 0;
-      int i = 0;
-      for ( ; str[i] && i < 12; ++i) {
-         // NOTE: char_to_symbol() returns char type, and without this explicit
-         // expansion to uint64 type, the compilation fails at the point of usage
-         // of string_to_name(), where the usage requires constant (compile time) expression.
-         n |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
-      }
+      int i = (int) str.size();
+      if (i >= 13) {
+         // Only the first 12 characters can be full-range ([.1-5a-z]).
+         i = 12;
 
-      // The for-loop encoded up to 60 high bits into uint64 'name' variable,
-      // if (strlen(str) > 12) then encode str[12] into the low (remaining)
-      // 4 bits of 'name'
-      if (i == 12 && str[12])
-      {
-         uint64_t cur_v = char_to_symbol(str[12]);
-         EOS_ASSERT(cur_v <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
-         n |= cur_v;
+         // The 13th character must be in the range [.1-5a-j] because it needs to be encoded
+         // using only four bits (64_bits - 5_bits_per_char * 12_chars).
+         n = char_to_symbol(str[12]);
+         EOS_ASSERT(n <= 0x0Full, name_type_exception, "invalid 13th character: (${c})", ("c", std::string(1, str[12])));
+      }
+      // Encode full-range characters.
+      while (--i >= 0) {
+         n |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
       }
       return n;
    }
@@ -98,12 +95,21 @@ namespace eosio::chain {
    // to its 5-bit slot starting with the highest slot for the first char.
    // The 13th char, if str is long enough, is encoded into 4-bit chunk
    // and placed in the lowest 4 bits. 64 = 12 * 5 + 4
-   static constexpr name string_to_name( std::string_view str )
+   constexpr name string_to_name( std::string_view str )
    {
       return name( string_to_uint64_t( str ) );
    }
 
-#define N(X) eosio::chain::string_to_name(#X)
+   inline namespace literals {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+      template <typename T, T... Str>
+      inline constexpr name operator""_n() {
+         constexpr const char buf[] = {Str...};
+         return name{std::integral_constant<uint64_t, string_to_uint64_t(std::string_view{buf, sizeof(buf)})>::value};
+      }
+#pragma clang diagnostic pop
+   } // namespace literals
 
 } // eosio::chain
 

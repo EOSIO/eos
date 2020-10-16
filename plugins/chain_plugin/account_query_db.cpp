@@ -16,6 +16,7 @@
 #include <shared_mutex>
 
 using namespace eosio;
+using namespace eosio::chain::literals;
 using namespace boost::multi_index;
 using namespace boost::bimaps;
 
@@ -68,7 +69,7 @@ namespace {
       if (p->action_traces.empty())
          return false;
       const auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+      if (act.account != eosio::chain::config::system_account_name || act.name != "onblock"_n ||
           act.authorization.size() != 1)
          return false;
       const auto& auth = act.authorization[0];
@@ -288,8 +289,8 @@ namespace eosio::chain_apis {
                   updated.erase(*itr);
                } else if (at.act.name == chain::newaccount::get_name()) {
                   auto data = at.act.data_as<chain::newaccount>();
-                  updated.emplace(chain::permission_level{data.name, N(owner)});
-                  updated.emplace(chain::permission_level{data.name, N(active)});
+                  updated.emplace(chain::permission_level{data.name, "owner"_n});
+                  updated.emplace(chain::permission_level{data.name, "active"_n});
                }
             }
          };

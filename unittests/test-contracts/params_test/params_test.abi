@@ -37,6 +37,16 @@
             "name": "setthrow3",
             "base": "",
             "fields": []
+        },
+        {
+            "name": "throwrvia1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "throwrvia2",
+            "base": "",
+            "fields": []
         }
     ],
     "actions": [
@@ -73,6 +83,16 @@
         {
             "name": "setthrow3",
             "type": "setthrow3",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "throwrvia1",
+            "type": "throwrvia1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "throwrvia2",
+            "type": "throwrvia2",
             "ricardian_contract": ""
         }
     ],

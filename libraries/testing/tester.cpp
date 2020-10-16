@@ -970,7 +970,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->db();
-      const auto* tbl = db.template find<table_id_object, by_code_scope_table>(boost::make_tuple(code, account, N(accounts)));
+      const auto* tbl = db.template find<table_id_object, by_code_scope_table>(boost::make_tuple(code, account, "accounts"_n));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -1102,7 +1102,7 @@ namespace eosio { namespace testing {
          schedule_variant.emplace_back(e.get_abi_variant());
       }
 
-      return push_action( config::system_account_name, N(setprods), config::system_account_name,
+      return push_action( config::system_account_name, "setprods"_n, config::system_account_name,
                           fc::mutable_variant_object()("schedule", schedule_variant));
 
    }
@@ -1119,7 +1119,7 @@ namespace eosio { namespace testing {
          }, p.authority);
       }
 
-      return push_action( config::system_account_name, N(setprods), config::system_account_name,
+      return push_action( config::system_account_name, "setprods"_n, config::system_account_name,
                           fc::mutable_variant_object()("schedule", legacy_keys));
 
    }
@@ -1140,7 +1140,7 @@ namespace eosio { namespace testing {
 
    void base_tester::preactivate_protocol_features(const vector<digest_type> feature_digests) {
       for( const auto& feature_digest: feature_digests ) {
-         push_action( config::system_account_name, N(activate), config::system_account_name,
+         push_action( config::system_account_name, "activate"_n, config::system_account_name,
                       fc::mutable_variant_object()("feature_digest", feature_digest) );
       }
    }
