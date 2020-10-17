@@ -457,6 +457,7 @@ static auto get_extra_args() {
    return std::make_tuple(save_snapshot, generate_log);
 }
 
+/*
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
@@ -527,6 +528,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
+*/
 
 /* TODO: need new bin/json gzipped files
 // TODO: make this insensitive to abi_def changes, which isn't part of consensus or part of the database format
