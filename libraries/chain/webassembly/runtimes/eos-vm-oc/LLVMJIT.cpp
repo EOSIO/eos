@@ -197,7 +197,6 @@ namespace LLVMJIT
 											auto symbolSection = symbol.getSection();
 											if(symbolSection)
 												loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
-											Uptr functionDefIndex;
 											table_offset = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
 										}
 									}

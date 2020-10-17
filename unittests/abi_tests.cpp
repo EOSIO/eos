@@ -1793,8 +1793,8 @@ struct action1 {
    uint64_t blah1;
    uint32_t blah2;
    uint8_t blah3;
-   static account_name get_account() { return N(acount1); }
-   static account_name get_name() { return N(action1); }
+   static account_name get_account() { return "acount1"_n; }
+   static account_name get_name() { return "action1"_n; }
 
    template<typename Stream>
    friend Stream& operator<<( Stream& ds, const action1& act ) {
@@ -1815,8 +1815,8 @@ struct action2 {
    uint32_t blah1;
    uint64_t blah2;
    uint8_t blah3;
-   static account_name get_account() { return N(acount2); }
-   static account_name get_name() { return N(action2); }
+   static account_name get_account() { return "acount2"_n; }
+   static account_name get_name() { return "action2"_n; }
 
    template<typename Stream>
    friend Stream& operator<<( Stream& ds, const action2& act ) {
@@ -1865,9 +1865,9 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.ref_block_num = 1;
    txn.ref_block_prefix = 2;
    txn.expiration.from_iso_string("2021-12-20T15:30");
-   name a = N(alice);
+   name a = "alice"_n;
    txn.context_free_actions.emplace_back(
-         vector<permission_level>{{N(testapi1), config::active_name}},
+         vector<permission_level>{{"testapi1"_n, config::active_name}},
          newaccount{
                .creator  = config::system_account_name,
                .name     = a,
@@ -1875,13 +1875,13 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
                .active   = authority( get_public_key( a, "active" ) )
          });
    txn.context_free_actions.emplace_back(
-         vector<permission_level>{{N(testapi2), config::active_name}},
+         vector<permission_level>{{"testapi2"_n, config::active_name}},
          action1{ 15, 23, (uint8_t)3});
    txn.actions.emplace_back(
-         vector<permission_level>{{N(testapi3), config::active_name}},
+         vector<permission_level>{{"testapi3"_n, config::active_name}},
          action2{ 42, 67, (uint8_t)1});
    txn.actions.emplace_back(
-         vector<permission_level>{{N(testapi4), config::active_name}},
+         vector<permission_level>{{"testapi4"_n, config::active_name}},
          action2{ 61, 23, (uint8_t)2});
    txn.max_net_usage_words = 15;
    txn.max_cpu_usage_ms = 43;

@@ -116,6 +116,14 @@ struct kv_table_def {
    type_name                             type;                // the name of the struct_def
    primary_index_def                     primary_index;       // primary index field
    map<index_name, secondary_index_def>  secondary_indices;   // secondary indices fields
+
+   string get_index_type(const string& index_name)const {
+      if( index_name == primary_index.name.to_string() ) return primary_index.type;
+      for( const auto& kv : secondary_indices ) {
+         if( index_name == kv.first.to_string() ) return kv.second.type;
+      }
+      return {};
+   }
  };
 
 struct clause_pair {

@@ -53,13 +53,13 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    c.produce_block();
 
-   BOOST_CHECK_EXCEPTION( c.push_action( config::system_account_name, N(reqactivated), config::system_account_name,
+   BOOST_CHECK_EXCEPTION( c.push_action( config::system_account_name, "reqactivated"_n, config::system_account_name,
                                           mutable_variant_object()("feature_digest",  digest_type()) ),
                            eosio_assert_message_exception,
                            eosio_assert_message_is( "protocol feature is not activated" )
    );
 
-   c.push_action( config::system_account_name, N(reqactivated), config::system_account_name, mutable_variant_object()
+   c.push_action( config::system_account_name, "reqactivated"_n, config::system_account_name, mutable_variant_object()
       ("feature_digest",  *d )
    );
 
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE( double_preactivation ) try {
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
    BOOST_REQUIRE( d );
 
-   c.push_action( config::system_account_name, N(activate), config::system_account_name,
+   c.push_action( config::system_account_name, "activate"_n, config::system_account_name,
                   fc::mutable_variant_object()("feature_digest", *d), 10 );
 
    std::string expected_error_msg("protocol feature with digest '");
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE( double_preactivation ) try {
       expected_error_msg += "' is already pre-activated";
    }
 
-   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(activate), config::system_account_name,
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, "activate"_n, config::system_account_name,
                                           fc::mutable_variant_object()("feature_digest", *d), 20 ),
                            protocol_feature_exception,
                            fc_exception_message_is( expected_error_msg )
@@ -208,9 +208,9 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
    BOOST_REQUIRE( d );
 
-   c.create_accounts( {N(alice), N(bob), N(charlie)} );
+   c.create_accounts( {"alice"_n, "bob"_n, "charlie"_n} );
 
-   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(bob), fc::mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, "linkauth"_n, "bob"_n, fc::mutable_variant_object()
                               ("account", "bob")
                               ("code", name(config::system_account_name))
                               ("type", "")
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
                            fc_exception_message_is( "Failed to retrieve permission: test" )
    );
 
-   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(charlie), fc::mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, "linkauth"_n, "charlie"_n, fc::mutable_variant_object()
                               ("account", "charlie")
                               ("code", name(config::system_account_name))
                               ("type", "")
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
                            fc_exception_message_is( "Failed to retrieve permission: test" )
    );
 
-   c.push_action( config::system_account_name, N(updateauth), N(alice), fc::mutable_variant_object()
+   c.push_action( config::system_account_name, "updateauth"_n, "alice"_n, fc::mutable_variant_object()
       ("account", "alice")
       ("permission", "test")
       ("parent", "active")
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    c.produce_block();
 
    // Verify the incorrect behavior prior to ONLY_LINK_TO_EXISTING_PERMISSION activation.
-   c.push_action( config::system_account_name, N(linkauth), N(bob), fc::mutable_variant_object()
+   c.push_action( config::system_account_name, "linkauth"_n, "bob"_n, fc::mutable_variant_object()
       ("account", "bob")
       ("code", name(config::system_account_name))
       ("type", "")
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    c.produce_block();
 
    // Verify the correct behavior after ONLY_LINK_TO_EXISTING_PERMISSION activation.
-   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(charlie), fc::mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, "linkauth"_n, "charlie"_n, fc::mutable_variant_object()
                               ("account", "charlie")
                               ("code", name(config::system_account_name))
                               ("type", "")
@@ -373,25 +373,25 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
 
-   c.create_accounts( {N(alice), N(bob), N(test)} );
-   c.set_code( N(test), contracts::deferred_test_wasm() );
-   c.set_abi( N(test), contracts::deferred_test_abi().data() );
+   c.create_accounts( {"alice"_n, "bob"_n, "test"_n} );
+   c.set_code( "test"_n, contracts::deferred_test_wasm() );
+   c.set_abi( "test"_n, contracts::deferred_test_abi().data() );
    c.produce_block();
 
-   auto alice_ram_usage0 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   auto alice_ram_usage0 = c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n );
 
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
       ("payload", 100)
    );
 
-   auto alice_ram_usage1 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   auto alice_ram_usage1 = c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n );
 
    // Verify subjective mitigation is in place
    BOOST_CHECK_EXCEPTION(
-      c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
                         ("payer", "alice")
                         ("sender_id", 42)
                         ("contract", "test")
@@ -401,7 +401,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
       fc_exception_message_is( "Replacing a deferred transaction is temporarily disabled." )
    );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    c.control->abort_block();
 
@@ -410,29 +410,29 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    cfg.disable_all_subjective_mitigations = true;
    c.init( cfg );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage0 );
 
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
       ("payload", 100)
    );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
    auto dtrxs = c.get_scheduled_transactions();
    BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
    auto first_dtrx_id = dtrxs[0];
 
    // With the subjective mitigation disabled, replacing the deferred transaction is allowed.
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
       ("payload", 101)
    );
 
-   auto alice_ram_usage2 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   auto alice_ram_usage2 = c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n );
    BOOST_CHECK_EQUAL( alice_ram_usage2, alice_ram_usage1 + (alice_ram_usage1 - alice_ram_usage0) );
 
    dtrxs = c.get_scheduled_transactions();
@@ -441,7 +441,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
    c.produce_block();
 
-   auto alice_ram_usage3 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   auto alice_ram_usage3 = c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n );
    BOOST_CHECK_EQUAL( alice_ram_usage3, alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
@@ -461,37 +461,37 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage0 );
 
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
       ("payload", 100)
    );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
    BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
    auto first_dtrx_id2 = dtrxs[0];
 
    // With REPLACE_DEFERRED activated, replacing the deferred transaction is allowed and now should work properly.
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
       ("payload", 101)
    );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
    BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
    BOOST_CHECK( first_dtrx_id2 != dtrxs[0] );
 
    // Replace again with a deferred transaction identical to the first one
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 42)
       ("contract", "test")
@@ -499,7 +499,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
       100 // Needed to make this input transaction unique
    );
 
-   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
    BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
@@ -511,14 +511,14 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
    tester c2( setup_policy::none );
 
-   c.create_accounts( {N(alice), N(test)} );
-   c.set_code( N(test), contracts::deferred_test_wasm() );
-   c.set_abi( N(test), contracts::deferred_test_abi().data() );
+   c.create_accounts( {"alice"_n, "test"_n} );
+   c.set_code( "test"_n, contracts::deferred_test_wasm() );
+   c.set_abi( "test"_n, contracts::deferred_test_abi().data() );
    c.produce_block();
 
    push_blocks( c, c2 );
 
-   c2.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c2.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   c.push_action( config::system_account_name, N(reqauth), N(alice), fc::mutable_variant_object()
+   c.push_action( config::system_account_name, "reqauth"_n, "alice"_n, fc::mutable_variant_object()
       ("from", "alice"),
       5, 2
    );
@@ -581,7 +581,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    auto d2 = pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id );
    BOOST_REQUIRE( d2 );
 
-   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -633,7 +633,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    };
 
    BOOST_CHECK_EXCEPTION(
-      c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
                         ("payer", "alice")
                         ("sender_id", 1)
                         ("contract", "test")
@@ -645,7 +645,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace2 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   auto trace2 = c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -656,14 +656,14 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace2->id,
-                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
-                             N(test) );
+                             ((static_cast<unsigned __int128>("alice"_n.to_uint64_t()) << 64) | 1),
+                             "test"_n );
 
    c.produce_block();
 
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace3 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   auto trace3 = c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -674,8 +674,8 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace3->id,
-                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
-                             N(test) );
+                             ((static_cast<unsigned __int128>("alice"_n.to_uint64_t()) << 64) | 1),
+                             "test"_n );
 
    c.produce_block();
 
@@ -684,10 +684,10 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    tester chain( setup_policy::preactivate_feature_and_new_bios );
 
-   const auto& tester_account = N(tester);
+   const auto& tester_account = "tester"_n;
 
    chain.produce_blocks();
-   chain.create_account(N(currency));
+   chain.create_account("currency"_n);
    chain.create_account(tester_account);
    chain.produce_blocks();
 
@@ -769,7 +769,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
                             fc_exception_message_is( "Producer schedule cannot be empty" ) );
 
    // Setting non empty producer schedule should still be fine
-   vector<name> producer_names = {N(alice),N(bob),N(carol)};
+   vector<name> producer_names = {"alice"_n,"bob"_n,"carol"_n};
    c.create_accounts( producer_names );
    c.set_producers_legacy( producer_names );
    c.produce_blocks(2);
@@ -785,30 +785,30 @@ BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::restrict_action_to_self );
    BOOST_REQUIRE( d );
 
-   c.create_accounts( {N(testacc), N(acctonotify), N(alice)} );
-   c.set_code( N(testacc), contracts::restrict_action_test_wasm() );
-   c.set_abi( N(testacc), contracts::restrict_action_test_abi().data() );
+   c.create_accounts( {"testacc"_n, "acctonotify"_n, "alice"_n} );
+   c.set_code( "testacc"_n, contracts::restrict_action_test_wasm() );
+   c.set_abi( "testacc"_n, contracts::restrict_action_test_abi().data() );
 
-   c.set_code( N(acctonotify), contracts::restrict_action_test_wasm() );
-   c.set_abi( N(acctonotify), contracts::restrict_action_test_abi().data() );
+   c.set_code( "acctonotify"_n, contracts::restrict_action_test_wasm() );
+   c.set_abi( "acctonotify"_n, contracts::restrict_action_test_abi().data() );
 
    // Before the protocol feature is preactivated
    // - Sending inline action to self = no problem
    // - Sending deferred trx to self = throw subjective exception
    // - Sending inline action to self from notification = throw subjective exception
    // - Sending deferred trx to self from notification = throw subjective exception
-   BOOST_CHECK_NO_THROW( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice")) );
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+   BOOST_CHECK_NO_THROW( c.push_action( "testacc"_n, "sendinline"_n, "alice"_n, mutable_variant_object()("authorizer", "alice")) );
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "senddefer"_n, "alice"_n,
                                            mutable_variant_object()("authorizer", "alice")("senderid", 0)),
                             subjective_block_production_exception,
                             fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
 
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "notifyinline"_n, "alice"_n,
                                         mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")),
                             subjective_block_production_exception,
                             fc_exception_message_starts_with( "Authorization failure with inline action sent to self" ) );
 
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "notifydefer"_n, "alice"_n,
                                            mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 1)),
                             subjective_block_production_exception,
                             fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
@@ -817,21 +817,21 @@ BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
    c.produce_block();
 
    // After the protocol feature is preactivated, all the 4 cases will throw an objective unsatisfied_authorization exception
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice") ),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "sendinline"_n, "alice"_n, mutable_variant_object()("authorizer", "alice") ),
                             unsatisfied_authorization,
                             fc_exception_message_starts_with( "transaction declares authority" ) );
 
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "senddefer"_n, "alice"_n,
                                            mutable_variant_object()("authorizer", "alice")("senderid", 3)),
                             unsatisfied_authorization,
                             fc_exception_message_starts_with( "transaction declares authority" ) );
 
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "notifyinline"_n, "alice"_n,
                                            mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice") ),
                             unsatisfied_authorization,
                             fc_exception_message_starts_with( "transaction declares authority" ) );
 
-   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+   BOOST_REQUIRE_EXCEPTION( c.push_action( "testacc"_n, "notifydefer"_n, "alice"_n,
                                            mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 4)),
                             unsatisfied_authorization,
                             fc_exception_message_starts_with( "transaction declares authority" ) );
@@ -841,20 +841,20 @@ BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
 BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
    tester chain( setup_policy::preactivate_feature_and_new_bios );
 
-   const auto& tester_account = N(tester);
-   const auto& tester_account2 = N(tester2);
+   const auto& tester_account = "tester"_n;
+   const auto& tester_account2 = "tester2"_n;
 
    chain.produce_blocks();
    chain.create_account(tester_account);
    chain.create_account(tester_account2);
 
-   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+   chain.push_action(config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
       ("account", name(tester_account).to_string())
       ("ram_bytes", 10000)
       ("net_weight", 1000)
       ("cpu_weight", 1000));
 
-   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+   chain.push_action(config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
       ("account", name(tester_account2).to_string())
       ("ram_bytes", 10000)
       ("net_weight", 1000)
@@ -867,7 +867,7 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
    {
       action act;
       act.account = tester_account;
-      act.name = N(null);
+      act.name = "null"_n;
       act.authorization = vector<permission_level>{
          {tester_account, config::active_name},
          {tester_account2, config::active_name}
@@ -912,7 +912,7 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
    {
       action act;
       act.account = tester_account;
-      act.name = N(null2);
+      act.name = "null2"_n;
       act.authorization = vector<permission_level>{
          {tester_account, config::active_name},
          {tester_account2, config::active_name}
@@ -948,8 +948,8 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
 BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    tester c( setup_policy::preactivate_feature_only );
 
-   const auto& tester1_account = N(tester1);
-   const auto& tester2_account = N(tester2);
+   const auto& tester1_account = "tester1"_n;
+   const auto& tester2_account = "tester2"_n;
    c.create_accounts( {tester1_account, tester2_account} );
 
    // Deploy contract that rejects all actions dispatched to it with the following exceptions:
@@ -982,7 +982,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    push_blocks( c, c2 ); // make a backup of the chain to enable testing further conditions.
 
    c.set_before_producer_authority_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
-   c.create_account( N(rejectall) );
+   c.create_account( "rejectall"_n );
    c.produce_block();
    // The existence of the rejectall account will make the reject_all contract reject all actions with no exception.
 
@@ -995,7 +995,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
 
    // Going back to the backup chain, we can create the rejectall account while the reject_all contract is
    // already deployed on eosio.
-   c2.create_account( N(rejectall) );
+   c2.create_account( "rejectall"_n );
    c2.produce_block();
    // Now all actions dispatched to the eosio account should be rejected.
 
@@ -1030,30 +1030,30 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
    c.set_abi( tester2_account, contracts::get_sender_test_abi().data() );
    c.produce_block();
 
-   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(sendinline), tester1_account, mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, "sendinline"_n, tester1_account, mutable_variant_object()
                                              ("to", tester2_account.to_string())
                                              ("expected_sender", account_name{}) ),
                            eosio_assert_message_exception,
                            eosio_assert_message_is( "sender did not match" ) );
 
-   c.push_action( tester1_account, N(sendinline), tester1_account, mutable_variant_object()
+   c.push_action( tester1_account, "sendinline"_n, tester1_account, mutable_variant_object()
       ("to", tester2_account.to_string())
       ("expected_sender", tester1_account.to_string())
    );
 
-   c.push_action( tester1_account, N(notify), tester1_account, mutable_variant_object()
+   c.push_action( tester1_account, "notify"_n, tester1_account, mutable_variant_object()
       ("to", tester2_account.to_string())
       ("expected_sender", tester1_account.to_string())
       ("send_inline", false)
    );
 
-   c.push_action( tester1_account, N(notify), tester1_account, mutable_variant_object()
+   c.push_action( tester1_account, "notify"_n, tester1_account, mutable_variant_object()
       ("to", tester2_account.to_string())
       ("expected_sender", tester2_account.to_string())
       ("send_inline", true)
    );
 
-   c.push_action( tester1_account, N(assertsender), tester1_account, mutable_variant_object()
+   c.push_action( tester1_account, "assertsender"_n, tester1_account, mutable_variant_object()
       ("expected_sender", account_name{})
    );
 } FC_LOG_AND_RETHROW() }
@@ -1075,7 +1075,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    c.produce_block();
 
    // Basic setup
-   c.push_action( tester1_account, N(setdata), alice_account, mutable_variant_object()
+   c.push_action( tester1_account, "setdata"_n, alice_account, mutable_variant_object()
       ("len1", 10)
       ("len2", 0)
       ("payer", alice_account)
@@ -1083,7 +1083,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Cannot bill more RAM to another account that has not authorized the action.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester1_account, N(setdata), bob_account, mutable_variant_object()
+      c.push_action( tester1_account, "setdata"_n, bob_account, mutable_variant_object()
          ("len1", 20)
          ("len2", 0)
          ("payer", alice_account)
@@ -1095,7 +1095,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Cannot migrate data from table1 to table2 paid by another account
    // in a RAM usage neutral way without the authority of that account.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester1_account, N(setdata), bob_account, mutable_variant_object()
+      c.push_action( tester1_account, "setdata"_n, bob_account, mutable_variant_object()
          ("len1", 0)
          ("len2", 10)
          ("payer", alice_account)
@@ -1108,7 +1108,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // even if the account authorized the original action.
    // This is due to the subjective mitigation in place.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifysetdat"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("len1", 20)
          ("len2", 0)
@@ -1122,7 +1122,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // in a RAM usage neutral way within a notification.
    // This is due to the subjective mitigation in place.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifysetdat"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("len1", 0)
          ("len2", 10)
@@ -1134,7 +1134,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Cannot send deferred transaction paid by another account that has not authorized the action.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester1_account, N(senddefer), bob_account, mutable_variant_object()
+      c.push_action( tester1_account, "senddefer"_n, bob_account, mutable_variant_object()
          ("senderid", 123)
          ("payer", alice_account)
       ),
@@ -1146,7 +1146,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // even if the account authorized the original action.
    // This is due to the subjective mitigation in place.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifydefer), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifydefer"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("senderid", 123)
          ("payer", alice_account)
@@ -1156,7 +1156,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    );
 
    // Can send deferred transaction paid by another account if it has authorized the action.
-   c.push_action( tester1_account, N(senddefer), alice_account, mutable_variant_object()
+   c.push_action( tester1_account, "senddefer"_n, alice_account, mutable_variant_object()
       ("senderid", 123)
       ("payer", alice_account)
    );
@@ -1164,7 +1164,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Can migrate data from table1 to table2 paid by another account
    // in a RAM usage neutral way with the authority of that account.
-   c.push_action( tester1_account, N(setdata), alice_account, mutable_variant_object()
+   c.push_action( tester1_account, "setdata"_n, alice_account, mutable_variant_object()
       ("len1", 0)
       ("len2", 10)
       ("payer", alice_account)
@@ -1183,7 +1183,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Without the subjective mitigation, it is now possible to bill more RAM to another account
    // within a notification if the account authorized the original action.
    // This is due to the subjective mitigation in place.
-   c.push_action( tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+   c.push_action( tester2_account, "notifysetdat"_n, alice_account, mutable_variant_object()
       ("acctonotify", tester1_account)
       ("len1", 10)
       ("len2", 10)
@@ -1191,7 +1191,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    );
 
    // Reset back to the original state.
-   c.push_action( tester1_account, N(setdata), alice_account, mutable_variant_object()
+   c.push_action( tester1_account, "setdata"_n, alice_account, mutable_variant_object()
       ("len1", 10)
       ("len2", 0)
       ("payer", alice_account)
@@ -1209,7 +1209,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // even if the account authorized the original action.
    // This is due to the subjective mitigation in place.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifysetdat"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("len1", 10)
          ("len2", 10)
@@ -1230,7 +1230,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Cannot send deferred transaction paid by another account that has not authorized the action.
    // This still fails objectively, but now with another error message.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester1_account, N(senddefer), bob_account, mutable_variant_object()
+      c.push_action( tester1_account, "senddefer"_n, bob_account, mutable_variant_object()
          ("senderid", 123)
          ("payer", alice_account)
       ),
@@ -1242,7 +1242,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // even if the account authorized the original action.
    // This now fails with an objective error.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifydefer), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifydefer"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("senderid", 123)
          ("payer", alice_account)
@@ -1255,7 +1255,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // even if the account authorized the original action.
    // This now fails with an objective error.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      c.push_action( tester2_account, "notifysetdat"_n, alice_account, mutable_variant_object()
          ("acctonotify", tester1_account)
          ("len1", 20)
          ("len2", 0)
@@ -1268,7 +1268,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Cannot bill more RAM to another account that has not authorized the action.
    // This still fails objectively, but now with another error message.
    BOOST_REQUIRE_EXCEPTION(
-      c.push_action( tester1_account, N(setdata), bob_account, mutable_variant_object()
+      c.push_action( tester1_account, "setdata"_n, bob_account, mutable_variant_object()
          ("len1", 20)
          ("len2", 0)
          ("payer", alice_account)
@@ -1278,7 +1278,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    );
 
    // Still can send deferred transaction paid by another account if it has authorized the action.
-   c.push_action( tester1_account, N(senddefer), alice_account, mutable_variant_object()
+   c.push_action( tester1_account, "senddefer"_n, alice_account, mutable_variant_object()
       ("senderid", 123)
       ("payer", alice_account)
    );
@@ -1286,7 +1286,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Now can migrate data from table1 to table2 paid by another account
    // in a RAM usage neutral way without the authority of that account.
-   c.push_action( tester1_account, N(setdata), bob_account, mutable_variant_object()
+   c.push_action( tester1_account, "setdata"_n, bob_account, mutable_variant_object()
       ("len1", 0)
       ("len2", 10)
       ("payer", alice_account)
@@ -1294,7 +1294,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Now can also migrate data from table2 to table1 paid by another account
    // in a RAM usage neutral way even within a notification .
-   c.push_action( tester2_account, N(notifysetdat), bob_account, mutable_variant_object()
+   c.push_action( tester2_account, "notifysetdat"_n, bob_account, mutable_variant_object()
       ("acctonotify", "tester1")
       ("len1", 10)
       ("len2", 0)
@@ -1303,7 +1303,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    // Of course it should also be possible to migrate data from table1 to table2 paid by another account
    // in a way that reduces RAM usage as well, even within a notification.
-   c.push_action( tester2_account, N(notifysetdat), bob_account, mutable_variant_object()
+   c.push_action( tester2_account, "notifysetdat"_n, bob_account, mutable_variant_object()
       ("acctonotify", "tester1")
       ("len1", 0)
       ("len2", 5)
@@ -1313,7 +1313,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // It should also still be possible for the receiver to take over payment of the RAM
    // if it is necessary to increase RAM usage without the authorization of the original payer.
    // This should all be possible to do even within a notification.
-   c.push_action( tester2_account, N(notifysetdat), bob_account, mutable_variant_object()
+   c.push_action( tester2_account, "notifysetdat"_n, bob_account, mutable_variant_object()
       ("acctonotify", "tester1")
       ("len1", 10)
       ("len2", 10)
@@ -1331,20 +1331,20 @@ BOOST_AUTO_TEST_CASE( webauthn_producer ) { try {
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::webauthn_key );
    BOOST_REQUIRE( d );
 
-   c.create_account(N(waprod));
+   c.create_account("waprod"_n);
    c.produce_block();
 
-   vector<legacy::producer_key> waprodsched = {{N(waprod), public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)}};
+   vector<legacy::producer_key> waprodsched = {{"waprod"_n, public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)}};
 
    BOOST_CHECK_THROW(
-      c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched)),
+      c.push_action(config::system_account_name, "setprods"_n, config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched)),
       eosio::chain::unactivated_key_type
    );
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
 
-   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched));
+   c.push_action(config::system_account_name, "setprods"_n, config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( webauthn_create_account ) { try {
@@ -1361,7 +1361,7 @@ BOOST_AUTO_TEST_CASE( webauthn_create_account ) { try {
    trx.actions.emplace_back(vector<permission_level>{{config::system_account_name,config::active_name}},
                               newaccount{
                                  .creator  = config::system_account_name,
-                                 .name     = N(waaccount),
+                                 .name     = "waaccount"_n,
                                  .owner    = auth,
                                  .active   = auth,
                               });
@@ -1382,17 +1382,17 @@ BOOST_AUTO_TEST_CASE( webauthn_update_account_auth ) { try {
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
    BOOST_REQUIRE(d);
 
-   c.create_account(N(billy));
+   c.create_account("billy"_n);
    c.produce_block();
 
-   BOOST_CHECK_THROW(c.set_authority(N(billy), config::active_name,
+   BOOST_CHECK_THROW(c.set_authority("billy"_n, config::active_name,
                         authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s))),
                      eosio::chain::unactivated_key_type);
 
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
 
-   c.set_authority(N(billy), config::active_name, authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)));
+   c.set_authority("billy"_n, config::active_name, authority(public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)));
 } FC_LOG_AND_RETHROW() }
 
 /*
@@ -1433,19 +1433,19 @@ BOOST_AUTO_TEST_CASE( webauthn_recover_key ) { try {
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
    BOOST_REQUIRE(d);
 
-   c.create_account(N(bob));
-   c.set_code(N(bob), webauthn_recover_key_wast);
+   c.create_account("bob"_n);
+   c.set_code("bob"_n, webauthn_recover_key_wast);
    c.produce_block();
 
    signed_transaction trx;
    action act;
-   act.account = N(bob);
-   act.name = N();
-   act.authorization = vector<permission_level>{{N(bob),config::active_name}};
+   act.account = "bob"_n;
+   act.name = ""_n;
+   act.authorization = vector<permission_level>{{"bob"_n,config::active_name}};
    trx.actions.push_back(act);
 
    c.set_transaction_headers(trx);
-   trx.sign(c.get_private_key( N(bob), "active" ), c.control->get_chain_id());
+   trx.sign(c.get_private_key( "bob"_n, "active" ), c.control->get_chain_id());
    BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_signature_type);
 
    c.preactivate_protocol_features( {*d} );
@@ -1481,19 +1481,19 @@ BOOST_AUTO_TEST_CASE( webauthn_assert_recover_key ) { try {
    const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
    BOOST_REQUIRE(d);
 
-   c.create_account(N(bob));
-   c.set_code(N(bob), webauthn_assert_recover_key_wast);
+   c.create_account("bob"_n);
+   c.set_code("bob"_n, webauthn_assert_recover_key_wast);
    c.produce_block();
 
    signed_transaction trx;
    action act;
-   act.account = N(bob);
-   act.name = N();
-   act.authorization = vector<permission_level>{{N(bob),config::active_name}};
+   act.account = "bob"_n;
+   act.name = ""_n;
+   act.authorization = vector<permission_level>{{"bob"_n,config::active_name}};
    trx.actions.push_back(act);
 
    c.set_transaction_headers(trx);
-   trx.sign(c.get_private_key( N(bob), "active" ), c.control->get_chain_id());
+   trx.sign(c.get_private_key( "bob"_n, "active" ), c.control->get_chain_id());
    BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_signature_type);
 
    c.preactivate_protocol_features( {*d} );
@@ -1547,7 +1547,7 @@ BOOST_AUTO_TEST_CASE( set_proposed_producers_ex_test ) { try {
            "alice does not have permission to call this API"
    );
 
-   c.push_action(config::system_account_name, N(setpriv), config::system_account_name,  fc::mutable_variant_object()("account", alice_account)("is_priv", 1));
+   c.push_action(config::system_account_name, "setpriv"_n, config::system_account_name,  fc::mutable_variant_object()("account", alice_account)("is_priv", 1));
 
    //ensure it can be called w/ privilege
    BOOST_REQUIRE_EQUAL(c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()), c.success());
@@ -1593,7 +1593,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
       // re-sign the bad block
       auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
       auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
-      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+      bad_block->producer_signature = remote.get_private_key("eosio"_n, "active").sign(sig_digest);
 
       // ensure it is rejected as an unknown extension
       BOOST_REQUIRE_EXCEPTION(
@@ -1612,7 +1612,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
       // re-sign the bad block
       auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
       auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
-      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+      bad_block->producer_signature = remote.get_private_key("eosio"_n, "active").sign(sig_digest);
 
       // ensure it is accepted (but rejected because it doesn't match expected state)
       BOOST_REQUIRE_EXCEPTION(
@@ -1640,7 +1640,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
       // re-sign the bad block
       auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
       auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
-      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+      bad_block->producer_signature = remote.get_private_key("eosio"_n, "active").sign(sig_digest);
 
       // ensure it is rejected because it doesn't match expected state (but the extention was accepted)
       BOOST_REQUIRE_EXCEPTION(
@@ -1659,7 +1659,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
       // re-sign the bad block
       auto header_bmroot = digest_type::hash( std::make_pair( bad_block->digest(), remote.control->head_block_state()->blockroot_merkle ) );
       auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
-      bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
+      bad_block->producer_signature = remote.get_private_key("eosio"_n, "active").sign(sig_digest);
 
       // ensure it is rejected because the new_producers field is not null
       BOOST_REQUIRE_EXCEPTION(
@@ -1683,8 +1683,8 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
 
    // activate the feature, and start an in-flight producer schedule change with the legacy format
    c.preactivate_protocol_features( {*d} );
-   vector<legacy::producer_key> sched = {{N(eosio), c.get_public_key(N(eosio), "bsk")}};
-   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", sched));
+   vector<legacy::producer_key> sched = {{"eosio"_n, c.get_public_key("eosio"_n, "bsk")}};
+   c.push_action(config::system_account_name, "setprods"_n, config::system_account_name, fc::mutable_variant_object()("schedule", sched));
    c.produce_block();
 
    // ensure the last legacy block contains a new_producers
@@ -1698,7 +1698,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
    BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
    c.control->abort_block();
 
-   c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));
+   c.block_signing_private_keys.emplace(get_public_key("eosio"_n, "bsk"), get_private_key("eosio"_n, "bsk"));
    c.produce_block();
 
 } FC_LOG_AND_RETHROW() }
@@ -1717,8 +1717,8 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
    c.produce_block();
 
    // start an in-flight producer schedule change before the activation is availble to header only validators
-   vector<legacy::producer_key> sched = {{N(eosio), c.get_public_key(N(eosio), "bsk")}};
-   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", sched));
+   vector<legacy::producer_key> sched = {{"eosio"_n, c.get_public_key("eosio"_n, "bsk")}};
+   c.push_action(config::system_account_name, "setprods"_n, config::system_account_name, fc::mutable_variant_object()("schedule", sched));
    c.produce_block();
 
    // ensure the first possible new block contains a producer_schedule_change_extension
@@ -1734,7 +1734,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
    BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
    c.control->abort_block();
 
-   c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));
+   c.block_signing_private_keys.emplace(get_public_key("eosio"_n, "bsk"), get_private_key("eosio"_n, "bsk"));
    c.produce_block();
 
 } FC_LOG_AND_RETHROW() }
