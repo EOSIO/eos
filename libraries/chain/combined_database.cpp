@@ -90,18 +90,18 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
    template <typename Util, typename F>
-   void walk_index(const Util& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {
-      utils.walk(db, function);
+   void walk_index(const Util& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {
+      utils.walk(db, std::forward<F>(function));
    }
 
    template <typename F>
-   void walk_index(const index_utils<table_id_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<table_id_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
 
    template <typename F>
-   void walk_index(const index_utils<database_header_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<database_header_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
 
    template <typename F>
-   void walk_index(const index_utils<kv_db_config_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<kv_db_config_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
 
    template <typename F>
    void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
@@ -156,10 +156,10 @@ namespace eosio { namespace chain {
                   function(row);
                });
 
-         utils.walk<by_kv_key>(db, function);
+         utils.walk<by_kv_key>(db, std::forward<F>(function));
       }
       else  {
-         utils.walk(db, function);
+         utils.walk(db, std::forward<F>(function));
       }
    }
 
