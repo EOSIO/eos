@@ -41,6 +41,7 @@
 namespace eosio { namespace chain {
    using rocks_db_type = eosio::session::session<eosio::session::rocksdb_t>;
    using session_type = eosio::session::session<rocks_db_type>;
+   using kv_undo_stack_ptr = std::unique_ptr<eosio::session::undo_stack<rocks_db_type>>;
 
    using controller_index_set =
          index_set<account_index, account_metadata_index, account_ram_correction_index, global_property_multi_index,
@@ -133,7 +134,7 @@ namespace eosio { namespace chain {
       backing_store_type                                         backing_store;
       chainbase::database&                                       db;
       std::unique_ptr<rocks_db_type>                             kv_database;
-      std::unique_ptr<eosio::session::undo_stack<rocks_db_type>> kv_undo_stack;
+      kv_undo_stack_ptr                                          kv_undo_stack;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);

@@ -90,25 +90,30 @@ namespace eosio { namespace chain {
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
    template <typename Util, typename F>
-   void walk_index(const Util& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack, const chainbase::database& db, F function) {
+   void walk_index(const Util& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {
       utils.walk(db, function);
    }
 
    template <typename F>
-   void walk_index(const index_utils<table_id_multi_index>& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<table_id_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
 
    template <typename F>
-   void walk_index(const index_utils<database_header_multi_index>& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<database_header_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
 
    template <typename F>
-   void walk_index(const index_utils<kv_db_config_index>& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack, const chainbase::database& db, F function) {}
+   void walk_index(const index_utils<kv_db_config_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F function) {}
 
    template <typename F>
-   void walk_rocksdb_entries_with_prefix(const eosio::session::undo_stack<rocks_db_type>& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
+   void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
+      const auto undo = kv_undo_stack->empty();
+      if (undo) {
+         // Get a session to iterate over.
+         kv_undo_stack->push();
+      }
       const auto prefix_key = eosio::session::shared_bytes(prefix.data(), prefix.size());
       const auto next_prefix = prefix_key.next();
-      auto begin_it = kv_undo_stack.top().lower_bound(prefix_key);
-      auto end_it = kv_undo_stack.top().lower_bound(next_prefix);
+      auto begin_it = kv_undo_stack->top().lower_bound(prefix_key);
+      auto end_it = kv_undo_stack->top().lower_bound(next_prefix);
       for (auto it = begin_it; it != end_it; ++it) {
          auto key = (*it).first;
 
@@ -127,20 +132,18 @@ namespace eosio { namespace chain {
          const std::size_t remaining = key.size() - key_prefix_size;
          function(contract, post_contract, remaining, value->data(), value->size());
       }
+
+      if (undo) {
+         kv_undo_stack->undo();
+      }
    }
 
    template <typename F>
-   void walk_index(const index_utils<kv_index>& utils, eosio::session::undo_stack<rocks_db_type>* kv_undo_stack,
+   void walk_index(const index_utils<kv_index>& utils, const kv_undo_stack_ptr& kv_undo_stack,
                    const chainbase::database& db, F&& function) {
       if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-         auto undo = false;
-         if (kv_undo_stack->empty()) {
-            // Get a session to iterate over.
-            kv_undo_stack->push();
-            undo = true;
-         }
          walk_rocksdb_entries_with_prefix(
-               *kv_undo_stack, rocksdb_contract_kv_prefix,
+               kv_undo_stack, rocksdb_contract_kv_prefix,
                [&function](uint64_t contract, const char* key, std::size_t key_size, const char* value,
                            std::size_t value_size) {
                   // In KV RocksDB, payer and actual data are packed together.
@@ -152,9 +155,6 @@ namespace eosio { namespace chain {
                                      pp.payer};
                   function(row);
                });
-         if (undo) {
-            kv_undo_stack->undo();
-         }
 
          utils.walk<by_kv_key>(db, function);
       }
@@ -253,7 +253,7 @@ namespace eosio { namespace chain {
       case backing_store_type::ROCKSDB:
          if (db.get<kv_db_config_object>().backing_store != backing_store_type::ROCKSDB) {
             auto& idx = db.get_index<kv_index, by_kv_key>();
-            auto  it  = idx.lower_bound(boost::make_tuple(name{}, std::string_view{}));
+            auto  it  = idx.lower_bound(std::make_tuple(name{}, std::string_view{}));
             EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
                      "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
                      "rocksdb");
@@ -369,7 +369,7 @@ namespace eosio { namespace chain {
          using value_t = typename decltype(utils)::index_t::value_type;
 
          snapshot->write_section<value_t>([utils, this](auto& section) {
-            walk_index(utils, this->kv_undo_stack.get(), db, [this, &section](const auto& row) { section.add_row(row, db); });
+            walk_index(utils, this->kv_undo_stack, db, [this, &section](const auto& row) { section.add_row(row, db); });
          });
       });
 
@@ -553,16 +553,13 @@ db.remove(*move_to_rocks);
             using value_t     = typename utils_t::index_t::value_type;
             using by_table_id = object_to_table_id_tag_t<value_t>;
 
-            auto tid_key      = boost::make_tuple(table_row.id);
-            auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+            auto tid_key      = std::make_tuple(table_row.id);
+            auto next_tid_key = std::make_tuple(table_id_object::id_type(table_row.id._id + 1));
 
             unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
             section.add_row(size, db);
 
             utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [&db, &section](const auto& row) {
-               static int count = 0;
-               if (row.t_id == 7 && row.primary_key == 1)
-                  ++count;
                section.add_row(row, db);
             });
          });
@@ -708,16 +705,7 @@ db.remove(*move_to_rocks);
       snapshot->write_section("contract_tables", [this](auto& section) {
          if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
             rocksdb_contract_table_writer<std::decay_t < decltype(section)>> writer(section, db, *kv_undo_stack);
-            auto undo = false;
-            if (kv_undo_stack->empty()) {
-               // Get a session to iterate over.
-               kv_undo_stack->push();
-               undo = true;
-            }
-            walk_rocksdb_entries_with_prefix(*kv_undo_stack, rocksdb_contract_db_prefix, writer);
-            if (undo) {
-               kv_undo_stack->undo();
-            }
+            walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_db_prefix, writer);
          }
          else {
             chainbase_add_contract_tables_to_snapshot(db, section);
