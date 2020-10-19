@@ -38,7 +38,7 @@ namespace eosio { namespace chain { namespace backing_store {
          current_session.write(table_key, pp.as_payload());
 
          if (dm_logger != nullptr) {
-            db_context::write_insert_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
+            db_context::log_insert_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
          }
       }
    }
@@ -74,7 +74,7 @@ namespace eosio { namespace chain { namespace backing_store {
       context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), event_id) );
 
       if (dm_logger != nullptr) {
-         db_context::write_remove_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
+         db_context::log_remove_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);
       }
 
       current_session.erase(key_value.first);

@@ -746,7 +746,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       t_id.payer = payer;
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         db_context::write_insert_table(*dm_logger, get_action_id(), code, scope, table, payer);
+         db_context::log_insert_table(*dm_logger, get_action_id(), code, scope, table, payer);
       }
    });
 }
@@ -760,7 +760,7 @@ void apply_context::remove_table( const table_id_object& tid ) {
    update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), event_id) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      db_context::write_remove_table(*dm_logger, get_action_id(), tid.code, tid.scope, tid.table, tid.payer);
+      db_context::log_remove_table(*dm_logger, get_action_id(), tid.code, tid.scope, tid.table, tid.payer);
    }
 
    db.remove(tid);
@@ -880,7 +880,7 @@ int apply_context::db_store_i64_chainbase( name scope, name table, const account
    update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), event_id) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      db_context::write_row_insert(*dm_logger, get_action_id(), tab.code, tab.scope, tab.table, payer, name(obj.primary_key), buffer, buffer_size);
+      db_context::log_row_insert(*dm_logger, get_action_id(), tab.code, tab.scope, tab.table, payer, name(obj.primary_key), buffer, buffer_size);
    }
 
    db_iter_store.cache_table( tab );
@@ -917,7 +917,7 @@ void apply_context::db_update_i64_chainbase( int iterator, account_name payer, c
    }
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      db_context::write_row_update(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table,
+      db_context::log_row_update(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table,
                                    obj.payer, payer, name(obj.primary_key), obj.value.data(), obj.value.size(),
                                    buffer, buffer_size);
    }
@@ -944,7 +944,7 @@ void apply_context::db_remove_i64_chainbase( int iterator ) {
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), event_id) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      db_context::write_row_remove(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table, obj.payer, name(obj.primary_key), obj.value.data(), obj.value.size());
+      db_context::log_row_remove(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table, obj.payer, name(obj.primary_key), obj.value.data(), obj.value.size());
    }
 
    db.modify( table_obj, [&]( auto& t ) {

@@ -262,8 +262,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
    std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
 
-   // It is optimal that number of threads equals to the number of cores
-   uint16_t default_rocksdb_threads = std::thread::hardware_concurrency();
+   uint16_t default_rocksdb_threads = 1;
 
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
