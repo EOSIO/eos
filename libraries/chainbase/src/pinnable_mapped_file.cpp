@@ -20,25 +20,25 @@ std::string chainbase_error_category::message(int ev) const {
       case db_error_code::ok: 
          return "Ok";
       case db_error_code::dirty:
-	 return "Database dirty flag set";
+         return "Database dirty flag set";
       case db_error_code::incompatible:
-	 return "Database incompatible; All environment parameters must match";
+         return "Database incompatible; All environment parameters must match";
       case db_error_code::incorrect_db_version:
-	 return "Database format not compatible with this version of chainbase";
+         return "Database format not compatible with this version of chainbase";
       case db_error_code::not_found:
-	 return "Database file not found";
+         return "Database file not found";
       case db_error_code::bad_size:
-	 return "Bad size";
+         return "Bad size";
       case db_error_code::unsupported_win32_mode:
-	 return "Heap and locked mode are not supported on win32";
+         return "Heap and locked mode are not supported on win32";
       case db_error_code::bad_header:
-	 return "Failed to read DB header";
+         return "Failed to read DB header";
       case db_error_code::no_access:
-	 return "Could not gain write access to the shared memory file";
+         return "Could not gain write access to the shared memory file";
       case db_error_code::aborted:
-	 return "Database load aborted";
+         return "Database load aborted";
       case db_error_code::no_mlock:
-	 return "Failed to mlock database";
+         return "Failed to mlock database";
       default:
          return "Unrecognized error code";
    }
@@ -164,7 +164,7 @@ pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, 
             if(mlock(_non_file_mapped_mapping, _non_file_mapped_mapping_size)) {
                std::string what_str("Failed to mlock database \"" + _database_name + "\"");
                BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::no_mlock), what_str));
-	       }
+            }
             std::cerr << "CHAINBASE: Database \"" << _database_name << "\" has been successfully locked in memory" << std::endl;
          }
 #endif
