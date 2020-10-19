@@ -50,7 +50,7 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 
 	produce_blocks(10);
 
-	account_name tester_account = N(tester);
+	account_name tester_account = "tester"_n;
 	const auto trace_ptr =  create_account(tester_account);
 	aq_db.cache_transaction_trace(trace_ptr);
 	produce_block();
@@ -75,14 +75,14 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
 
     produce_blocks(10);
 
-	const auto& tester_account = N(tester);
+	const auto& tester_account = "tester"_n;
 	const string role = "first";
 	produce_block();
 	create_account(tester_account);
 
 	const auto trace_ptr = push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
 			("account", tester_account)
-			("permission", N(role))
+			("permission", "role"_n)
 			("parent", "active")
 			("auth",  authority(get_public_key(tester_account, role), 5))
 	);
@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
 	pars.keys.emplace_back(get_public_key(tester_account, role));
 	const auto results = aq_db.get_accounts_by_authorizers(pars);
 
-	BOOST_TEST_REQUIRE(find_account_auth(results, tester_account, N(role)) == true);
+	BOOST_TEST_REQUIRE(find_account_auth(results, tester_account, "role"_n) == true);
 
 } FC_LOG_AND_RETHROW() }
 

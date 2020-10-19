@@ -42,15 +42,6 @@ namespace eosio { namespace chain { namespace webassembly {
       (void)legacy_ptr<int64_t>(std::move(cpu_weight));
    }
 
-   /**
-    * update a single resource limit associated with an account.
-    *
-    * @param account - the account whose limits are being modified
-    * @param resource - the resource to update, which should be either ram, cpu, or net.
-    * @param limit - the new limit.  A value of -1 means unlimited.
-    *
-    * @pre limit >= -1
-    */
    void interface::set_resource_limit( account_name account, name resource, int64_t limit ) {
       EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for ${resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
       auto& manager = context.control.get_mutable_resource_limits_manager();

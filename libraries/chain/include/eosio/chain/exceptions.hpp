@@ -312,7 +312,9 @@ namespace eosio { namespace chain {
                                     3050012, "Inline action exceeds maximum size limit for a non-privileged account" )
       FC_DECLARE_DERIVED_EXCEPTION( unauthorized_disk_usage_increase, action_validate_exception,
                                     3050013, "Action attempts to increase disk usage of account without authorization" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( action_return_value_exception, action_validate_exception,
+                                    3050014, "action return value size too big" )
+      
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
 

@@ -321,20 +321,20 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       double uncongested_cpu_time_per_period = congested_cpu_time_per_period * config::maximum_elastic_resource_multiplier;
       wdump((uncongested_cpu_time_per_period));
 
-      initialize_account( N(dan) );
-      initialize_account( N(everyone) );
-      set_account_limits( N(dan), 0, 0, user_stake );
-      set_account_limits( N(everyone), 0, 0, (total_staked_tokens - user_stake) );
+      initialize_account( "dan"_n );
+      initialize_account( "everyone"_n );
+      set_account_limits( "dan"_n, 0, 0, user_stake );
+      set_account_limits( "everyone"_n, 0, 0, (total_staked_tokens - user_stake) );
       process_account_limit_updates();
 
       // dan cannot consume more than 34 us per day
-      BOOST_REQUIRE_THROW( add_transaction_usage( {N(dan)}, 35, 0, 1 ), tx_cpu_usage_exceeded );
+      BOOST_REQUIRE_THROW( add_transaction_usage( {"dan"_n}, 35, 0, 1 ), tx_cpu_usage_exceeded );
 
       // Ensure CPU usage is 0 by "waiting" for one day's worth of blocks to pass.
-      add_transaction_usage( {N(dan)}, 0, 0, 1 + blocks_per_day );
+      add_transaction_usage( {"dan"_n}, 0, 0, 1 + blocks_per_day );
 
       // But dan should be able to consume up to 34 us per day.
-      add_transaction_usage( {N(dan)}, 34, 0, 2 + blocks_per_day );
+      add_transaction_usage( {"dan"_n}, 34, 0, 2 + blocks_per_day );
    } FC_LOG_AND_RETHROW()
 
    /**
@@ -434,13 +434,13 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       // Create test account with limited NET quota
       main.create_accounts( {test_account, test_account2} );
-      main.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      main.push_action( config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
          ("account",    test_account)
          ("ram_bytes",  -1)
          ("net_weight", net_weight)
          ("cpu_weight", -1)
       );
-      main.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      main.push_action( config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
          ("account",    test_account2)
          ("ram_bytes",  -1)
          ("net_weight", other_net_weight)
@@ -464,11 +464,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       // NET quota of test account should be enough to support one but not two reqauth transactions.
       int64_t before_net_usage = rlm.get_account_net_limit_ex( test_account ).first.used;
-      main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 6 );
+      main.push_action( config::system_account_name, "reqauth"_n, test_account, fc::mutable_variant_object()("from", "alice"), 6 );
       int64_t after_net_usage = rlm.get_account_net_limit_ex( test_account ).first.used;
       int64_t reqauth_net_usage_delta = after_net_usage - before_net_usage;
       BOOST_REQUIRE_EXCEPTION(
-         main.push_action( config::system_account_name, N(reqauth), test_account, fc::mutable_variant_object()("from", "alice"), 7 ),
+         main.push_action( config::system_account_name, "reqauth"_n, test_account, fc::mutable_variant_object()("from", "alice"), 7 ),
          fc::exception, fc_exception_code_is( tx_net_usage_exceeded::code_value )
       );
       trigger_block = main.produce_block();

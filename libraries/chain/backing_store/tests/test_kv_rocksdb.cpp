@@ -11,9 +11,9 @@ using namespace eosio;
 using namespace eosio::chain;
 
 // Global test data
-constexpr account_name receiver              = N(kvrdb);
+constexpr account_name receiver              = "kvrdb"_n;
 constexpr uint64_t     contract              = receiver.to_uint64_t();
-constexpr account_name payer                 = N(payernam);
+constexpr account_name payer                 = "payernam"_n;
 std::string            prefix                = "prefix";
 constexpr uint32_t     it_key_size           = 10;
 constexpr uint64_t     default_billable_size = 12;
@@ -89,7 +89,7 @@ struct kv_rocksdb_fixture {
 
    kv_rocksdb_fixture() 
    : session {*this} {
-      account_name          receiver{ N(kvrdb) };
+      account_name          receiver{ "kvrdb"_n };
       mock_resource_manager resource_manager;
 
       my_kv_context = std::make_unique<kv_context_rocksdb<mock_session, mock_resource_manager>>(session, receiver, resource_manager, limits);
@@ -338,11 +338,11 @@ BOOST_AUTO_TEST_CASE(test_actual_value_size_small_value) {
    BOOST_CHECK_THROW(actual_value_size(payer_in_value_size - 1), kv_rocksdb_bad_value_size_exception);
 }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture) { check_get_payer(N(a)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_1_char, kv_rocksdb_fixture) { check_get_payer("a"_n); }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_4_chars, kv_rocksdb_fixture) { check_get_payer(N(abcd)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_4_chars, kv_rocksdb_fixture) { check_get_payer("abcd"_n); }
 
-BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_payer(N(abcdefg)); }
+BOOST_FIXTURE_TEST_CASE(test_get_payer_8_chars, kv_rocksdb_fixture) { check_get_payer("abcdefg"_n); }
 
 BOOST_AUTO_TEST_CASE(test_actual_value_start) {
    char buf[10]; // any size of buffer will work

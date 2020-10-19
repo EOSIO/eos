@@ -17,9 +17,9 @@ using namespace eosio::chain;
 namespace kv_benchmark {
 
 // Global test data
-constexpr account_name receiver = N(kvrdb);
+constexpr account_name receiver = "kvrdb"_n;
 constexpr uint64_t contract = receiver.to_uint64_t();
-constexpr account_name payer = N(payer);
+constexpr account_name payer = "payer"_n;
 constexpr uint64_t default_billable_size = 12;
 
 struct cmd_args {

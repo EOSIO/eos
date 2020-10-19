@@ -11,7 +11,8 @@ bool is_onblock(const transaction_trace_ptr& p) {
    if (p->action_traces.size() != 1)
       return false;
    auto& act = p->action_traces[0].act;
-   if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+   using namespace eosio::chain::literals;
+   if (act.account != eosio::chain::config::system_account_name || act.name != "onblock"_n ||
        act.authorization.size() != 1)
       return false;
    auto& auth = act.authorization[0];

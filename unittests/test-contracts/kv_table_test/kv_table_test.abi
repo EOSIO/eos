@@ -1,0 +1,68 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "my_struct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "primary_key",
+                    "type": "name"
+                },
+                {
+                    "name": "foo",
+                    "type": "uint64"
+                },
+                {
+                    "name": "bar",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "setup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "verify",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "setup",
+            "type": "setup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "verify",
+            "type": "verify",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "kvtable": {
+            "type": "my_struct",
+            "primary_index": {
+                "name": "primarykey",
+                "type": "name"
+            },
+            "secondary_indices": {
+                "foo": {
+                    "type": "uint64"
+                },
+                "bar": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}
