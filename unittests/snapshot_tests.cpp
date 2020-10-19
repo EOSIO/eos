@@ -293,7 +293,7 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
 #warning add a snapshot2 account and send the action against it as well, so that we are actually walking through more than just one contract's data'
 
    // increment the test contract
-   chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+   chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
    );
 
