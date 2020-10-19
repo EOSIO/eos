@@ -593,34 +593,20 @@ db.remove(*move_to_rocks);
    struct primary_index_view {
       uint64_t     primary_key;
       account_name payer;
-      blob     value;
+      blob         value;
    };
 
    template <typename SecondaryKeyType>
    struct secondary_index_view {
-      using secondary_key_type = SecondaryKeyType;
       uint64_t primary_key;
       account_name payer;
       SecondaryKeyType secondary_key;
    };
 
    template <typename Section>
-   struct rocksdb_contract_table_writer {
+   class rocksdb_contract_table_writer {
+   public:
       using key_type = eosio::chain::backing_store::db_key_value_format::key_type;
-
-      Section&                                   section_;
-      const chainbase::database&                 db_;
-      eosio::session::undo_stack<rocks_db_type>& kv_undo_stack_;
-      std::vector<primary_index_view>            primary_indices;
-      std::tuple<std::vector<secondary_index_view<uint64_t>>,
-                 std::vector<secondary_index_view<uint128_t>>,
-                 std::vector<secondary_index_view<key256_t>>,
-                 std::vector<secondary_index_view<float64_t>>,
-                 std::vector<secondary_index_view<float128_t>> >
-          all_secondary_indices;
-
-      using extract_index_member_fun_t = void (rocksdb_contract_table_writer::*)(b1::chain_kv::bytes::const_iterator, b1::chain_kv::bytes::const_iterator, const char*, std::size_t);
-      const static extract_index_member_fun_t extract_index_member_fun[7];
 
       rocksdb_contract_table_writer(Section& s, const chainbase::database& db, eosio::session::undo_stack<rocks_db_type>& kus)
          : section_(s), db_(db), kv_undo_stack_(kus){}
@@ -632,12 +618,12 @@ db.remove(*move_to_rocks);
          EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
                     "DB intrinsic key-value store composite key is malformed");
          backing_store::payer_payload pp(value, value_size);
-         primary_indices.emplace_back(primary_index_view{primary_key, pp.payer, {std::string{pp.value, value + value_size}}});
+         primary_indices_.emplace_back(primary_index_view{primary_key, pp.payer, {std::string{pp.value, pp.value + pp.value_size}}});
       }
 
       template <typename IndexType>
       auto& secondary_indices() {
-         return std::get<std::vector<secondary_index_view<IndexType>>>(all_secondary_indices);
+         return std::get<std::vector<secondary_index_view<IndexType>>>(all_secondary_indices_);
       }
 
       template <typename IndexType>
@@ -674,26 +660,45 @@ db.remove(*move_to_rocks);
             auto add_row = [this](const auto& row) { section_.add_row(row, db_); };
 
             std::tuple<uint64_t, uint128_t, key256_t, float64_t, float128_t> secondary_key_types;
-            uint32_t total_count = primary_indices.size();
+            uint32_t total_count = primary_indices_.size();
             std::apply([this, &total_count](auto... index) {
                total_count += ( this->secondary_indices<decltype(index)>().size() + ...); }, secondary_key_types);
 
             add_row(table_id_object_view{account_name{contract}, scope, table, pp.payer, total_count});
 
-            add_row(fc::unsigned_int(primary_indices.size()));
-            std::for_each (primary_indices.begin(), primary_indices.end(), add_row);
-            primary_indices.clear();
+            add_row(fc::unsigned_int(primary_indices_.size()));
+            std::for_each (primary_indices_.begin(), primary_indices_.end(), add_row);
+            primary_indices_.clear();
             std::apply([this](auto... index) { (this->write_secondary_indices(index),...); }, secondary_key_types);
          } else if (type != key_type::primary_to_sec) {
-            std::invoke(extract_index_member_fun[ static_cast<int>(type) ], this, remaining, composite_key.end(), value, value_size);
+            std::invoke(extract_index_member_fun_[ static_cast<int>(type) ], this, remaining, composite_key.end(), value, value_size);
          }
       }
+
+   private:
+      Section&                                   section_;
+      const chainbase::database&                 db_;
+      eosio::session::undo_stack<rocks_db_type>& kv_undo_stack_;
+      std::vector<primary_index_view>            primary_indices_;
+      template<typename T>
+      using secondary_index_views = std::vector<secondary_index_view<T>>;
+      std::tuple<secondary_index_views<uint64_t>,
+                 secondary_index_views<uint128_t>,
+                 secondary_index_views<key256_t>,
+                 secondary_index_views<float64_t>,
+                 secondary_index_views<float128_t> >
+         all_secondary_indices_;
+
+      using extract_index_member_fun_t = void (rocksdb_contract_table_writer::*)(b1::chain_kv::bytes::const_iterator, b1::chain_kv::bytes::const_iterator, const char*, std::size_t);
+      constexpr static unsigned member_fun_count = static_cast<unsigned char>(key_type::sec_long_double) + 1;
+      const static extract_index_member_fun_t extract_index_member_fun_[member_fun_count];
    };
 
+   // array mapping db_key_value_format::key_type values (except table) to functions to break down to component parts
    template <typename Section>
-   const typename rocksdb_contract_table_writer<Section>::extract_index_member_fun_t rocksdb_contract_table_writer<Section>::extract_index_member_fun[] = {
+   const typename rocksdb_contract_table_writer<Section>::extract_index_member_fun_t rocksdb_contract_table_writer<Section>::extract_index_member_fun_[] = {
       &rocksdb_contract_table_writer<Section>::extract_primary_index,
-      nullptr,
+      nullptr,                                                                      // primary_to_sec type is covered by writing the secondary key type
       &rocksdb_contract_table_writer<Section>::extract_secondary_index<uint64_t>,
       &rocksdb_contract_table_writer<Section>::extract_secondary_index<uint128_t>,
       &rocksdb_contract_table_writer<Section>::extract_secondary_index<key256_t>,
