@@ -237,6 +237,19 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          --current_request->max_messages_in_flight;
          need_to_send_update = current_request->start_block_num <= current &&
                                current_request->start_block_num < current_request->end_block_num;
+
+         std::visit( []( auto&& ptr ) {
+            if( ptr ) {
+               if (fc::logger::get(fc::zipkin_logger_name).is_enabled( ::fc::log_level::debug )) {
+                  auto id = ptr->calculate_id();
+                  auto blk_trace = fc_create_trace_with_id( "Block", id );
+                  auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
+                  fc_add_tag( blk_span, "block_id", id );
+                  fc_add_tag( blk_span, "block_num", ptr->block_num() );
+                  fc_add_tag( blk_span, "block_time", ptr->timestamp.to_time_point() );
+               }
+            }
+         }, result.block );
       }
 
       void send_update(const block_state_ptr& block_state) {
@@ -352,6 +365,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
+      auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
+      auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+      fc_add_tag(blk_span, "block_id", block_state->id);
+      fc_add_tag(blk_span, "block_num", block_state->block_num);
+      fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());
       if (trace_log)
          trace_log->store(chain_plug->chain().db(), block_state);
       if (chain_state_log)

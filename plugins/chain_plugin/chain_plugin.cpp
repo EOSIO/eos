@@ -41,6 +41,7 @@ FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 const fc::string deep_mind_logger_name("deep-mind");
 fc::logger _deep_mind_log;
+fc::logger _zipkin_logger;
 
 namespace eosio {
 
@@ -1351,10 +1352,12 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
+   fc::log_config::shutdown_appenders();
 }
 
 void chain_plugin::handle_sighup() {
    fc::logger::update( deep_mind_logger_name, _deep_mind_log );
+   fc::logger::update( fc::zipkin_logger_name, _zipkin_logger );
 }
 
 chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions)
@@ -2768,12 +2771,34 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "push_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
@@ -2889,12 +2914,33 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "send_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
