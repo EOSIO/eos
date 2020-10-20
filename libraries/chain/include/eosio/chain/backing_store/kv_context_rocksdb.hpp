@@ -87,8 +87,6 @@ namespace eosio { namespace chain {
 
       uint32_t&                       num_iterators;
       uint64_t                        kv_contract{0};
-      const char*                     kv_user_prefix{nullptr};
-      uint32_t                        kv_user_prefix_size{0};
       eosio::session::shared_bytes    kv_prefix; // Format: [contract, prefix]
       session_type*                   kv_session{nullptr};
       typename session_type::iterator kv_begin;
@@ -97,7 +95,7 @@ namespace eosio { namespace chain {
 
       kv_iterator_rocksdb(uint32_t& num_iterators, session_type& session, uint64_t contract, const char* user_prefix,
                           uint32_t user_prefix_size)
-          : num_iterators{ num_iterators }, kv_contract{ contract }, kv_user_prefix{ user_prefix }, kv_user_prefix_size{ user_prefix_size },
+          : num_iterators{ num_iterators }, kv_contract{ contract },
             kv_prefix{ make_prefix_key(contract, user_prefix, user_prefix_size) },
             kv_session{ &session }, kv_begin{ kv_session->lower_bound(kv_prefix) }, 
             kv_end{ [&](){ auto kv_next_prefix = kv_prefix.next(); return kv_session->lower_bound(kv_next_prefix); }() },
