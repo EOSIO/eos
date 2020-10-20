@@ -3,6 +3,11 @@
 #include "streams/stream.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
+
+#include <fc/log/logger.hpp>
+#include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -28,6 +33,8 @@ using rodeos::rodeos_db_snapshot;
 using rodeos::rodeos_filter;
 
 struct cloner_session;
+
+fc::logger _zipkin_logger;
 
 struct cloner_config : ship_client::connection_config {
    uint32_t    skip_to                   = 0;
@@ -283,13 +290,21 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
    FC_LOG_AND_RETHROW()
 }
 
-void cloner_plugin::plugin_startup() { my->start(); }
+void cloner_plugin::plugin_startup() {
+   handle_sighup();
+   my->start();
+}
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
       my->session->connection->close(false);
    my->timer.cancel();
+   fc::log_config::shutdown_appenders();
    ilog("cloner_plugin stopped");
+}
+
+void cloner_plugin::handle_sighup() {
+   fc::logger::update( fc::zipkin_logger_name, _zipkin_logger );
 }
 
 void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {
