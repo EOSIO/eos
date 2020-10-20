@@ -325,49 +325,60 @@ namespace eosio { namespace chain {
             resource_manager{ resource_manager }, limits{ limits } {}
 
       int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) override {
-         EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
+         const name contract_name {contract};
+         EOS_ASSERT(contract_name == receiver, table_operation_not_permitted, "Can not write to this key");
          
          current_value.reset();
          current_key                = eosio::session::shared_bytes{};
          auto old_value             = std::optional<eosio::session::shared_bytes>{};
-         auto actual_old_value_size = uint32_t{ 0 };
+         std::optional<backing_store::payer_payload> pp;
          try {
             try {
                auto composite_key = make_composite_key(contract, nullptr, 0, key, key_size);
-               old_value          = session->read(composite_key);
+               const auto old_value = session->read(composite_key);
                if (!old_value)
                   return 0;
-               actual_old_value_size = backing_store::actual_value_size(old_value->size());
+               pp = backing_store::payer_payload(*old_value);
                session->erase(composite_key);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = backing_store::get_payer(old_value->data());
-         return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
+         const int64_t resource_delta = erase_table_usage(resource_manager, pp->payer, key, key_size, pp->value_size);
+
+         if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "KV_OP REM ${action_id} ${db} ${payer} ${key} ${odata}",
+                    ("action_id", resource_manager._context->get_action_id())
+                    ("contract", contract_name)
+                    ("payer", pp->payer)
+                    ("key", fc::to_hex(key, key_size))
+                    ("odata", fc::to_hex(pp->value, pp->value_size))
+            );
+         }
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size,
                      account_name payer) override {
-         EOS_ASSERT(name{ contract } == receiver, table_operation_not_permitted, "Can not write to this key");
+         const name contract_name {contract};
+         EOS_ASSERT(contract_name == receiver, table_operation_not_permitted, "Can not write to this key");
          EOS_ASSERT(key_size <= limits.max_key_size, kv_limit_exceeded, "Key too large");
          EOS_ASSERT(value_size <= limits.max_value_size, kv_limit_exceeded, "Value too large");
 
          current_value.reset();
          current_key                = eosio::session::shared_bytes{};
          auto old_value             = std::optional<eosio::session::shared_bytes>{};
-         auto old_value_size = int64_t{ 0 };
+         std::optional<backing_store::payer_payload> old_pp;
          try {
             try {
                auto composite_key = make_composite_key(contract, nullptr, 0, key, key_size);
                old_value          = session->read(composite_key);
                if (old_value) {
-                  old_value_size = backing_store::actual_value_size(old_value->size());
+                  old_pp = backing_store::payer_payload(*old_value);
                }
 
-               auto new_value = build_value(value, value_size, payer);
-               session->write(composite_key, new_value);
+               backing_store::payer_payload new_value (payer, value, value_size);
+               session->write(composite_key, new_value.as_payload());
             }
             FC_LOG_AND_RETHROW()
          }
@@ -375,11 +386,31 @@ namespace eosio { namespace chain {
 
          auto resource_delta = int64_t{ 0 };
          if (old_value) {
-            account_name old_payer = backing_store::get_payer(old_value->data());
             resource_delta =
-                  update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
+                  update_table_usage(resource_manager, old_pp->payer, payer, key, key_size, old_pp->value_size, value_size);
+
+            if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
+               fc_dlog(*dm_logger, "KV_OP UPD ${action_id} ${db} ${payer} ${key} ${odata}:${ndata}",
+                       ("action_id", resource_manager._context->get_action_id())
+                       ("contract", contract_name)
+                       ("payer", payer)
+                       ("key", fc::to_hex(key, key_size))
+                       ("odata", fc::to_hex(old_pp->value, old_pp->value_size))
+                       ("ndata", fc::to_hex(value, value_size))
+               );
+            }
          } else {
             resource_delta = create_table_usage(resource_manager, payer, key, key_size, value_size);
+
+            if (auto dm_logger = resource_manager._context->control.get_deep_mind_logger()) {
+               fc_dlog(*dm_logger, "KV_OP INS ${action_id} ${db} ${payer} ${key} ${ndata}",
+                       ("action_id", resource_manager._context->get_action_id())
+                       ("contract", contract_name)
+                       ("payer", payer)
+                       ("key", fc::to_hex(key, key_size))
+                       ("ndata", fc::to_hex(value, value_size))
+               );
+            }
          }
 
          return resource_delta;

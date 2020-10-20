@@ -84,6 +84,16 @@ struct kv_rocksdb_fixture {
    struct mock_resource_manager {
       uint64_t billable_size = default_billable_size;
 
+      struct mock_context {
+         struct mock_control {
+            fc::logger* get_deep_mind_logger() { return nullptr; }
+         };
+         uint32_t get_action_id() { return 0; }
+         mock_control control;
+      };
+      mock_context real;
+      mock_context* _context = &real;
+
       int64_t update_table_usage(account_name payer, int64_t delta, const kv_resource_trace& trace) { return 0; }
    };
 

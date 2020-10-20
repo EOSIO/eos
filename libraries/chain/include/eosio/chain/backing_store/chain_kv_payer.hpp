@@ -44,9 +44,9 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       // pointer to the actual value portion of the payload
-      const char* const value;
+      const char* value;
       // size of the actual value portion of the payload
-      const std::size_t value_size;
-      const account_name payer;
+      std::size_t value_size;
+      account_name payer;
    };
 }}} // ns eosio::chain::backing_store
