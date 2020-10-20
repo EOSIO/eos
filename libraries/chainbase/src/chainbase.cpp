@@ -10,8 +10,8 @@
 namespace chainbase {
 
    database::database(const bfs::path& dir, open_flags flags, uint64_t shared_file_size, bool allow_dirty,
-                      pinnable_mapped_file::map_mode db_map_mode, std::vector<std::string> hugepage_paths ) :
-      _db_file(dir, flags & database::read_write, shared_file_size, allow_dirty, db_map_mode, hugepage_paths),
+                      pinnable_mapped_file::map_mode db_map_mode) :
+      _db_file(dir, flags & database::read_write, shared_file_size, allow_dirty, db_map_mode),
       _read_only(flags == database::read_only)
    {
    }
