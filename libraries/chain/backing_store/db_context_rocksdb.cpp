@@ -477,17 +477,27 @@ namespace eosio { namespace chain { namespace backing_store {
       return sec_lookup_i128.previous_secondary(iterator, primary);
    }
 
+   eosio::chain::key256_t convert(const uint128_t* data) {
+      eosio::chain::key256_t secondary;
+      std::memcpy(secondary.data(), data, sizeof(secondary));
+      return secondary;
+   }
+
+   void convert_back(uint128_t* data, const eosio::chain::key256_t& secondary) {
+      std::memcpy(data, secondary.data(), sizeof(secondary));
+   }
+
    /**
     * interface for 256-bit interger secondary
     */
    int32_t db_context_rocksdb::db_idx256_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                            const uint128_t* data) {
-      const eosio::chain::key256_t& secondary = *reinterpret_cast<const eosio::chain::key256_t*>(data);
+      const auto secondary = convert(data);
       return sec_lookup_i256.store(name{scope}, name{table}, payer, id, secondary);
    }
 
    void db_context_rocksdb::db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data) {
-      const eosio::chain::key256_t& secondary = *reinterpret_cast<const eosio::chain::key256_t*>(data);
+      const auto secondary = convert(data);
       sec_lookup_i256.update(iterator, payer, secondary);
    }
 
@@ -497,26 +507,32 @@ namespace eosio { namespace chain { namespace backing_store {
 
    int32_t db_context_rocksdb::db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
                                     uint64_t& primary) {
-      const eosio::chain::key256_t& secondary = *reinterpret_cast<const eosio::chain::key256_t*>(data);
+      const auto secondary = convert(data);
       return sec_lookup_i256.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
    int32_t db_context_rocksdb::db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                   uint64_t primary) {
-      eosio::chain::key256_t& secondary = *reinterpret_cast<eosio::chain::key256_t*>(data);
-      return sec_lookup_i256.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
+      auto secondary = convert(data);
+      auto ret = sec_lookup_i256.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
+      convert_back(data, secondary);
+      return ret;
    }
 
    int32_t db_context_rocksdb::db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                 uint64_t& primary) {
-      eosio::chain::key256_t& secondary = *reinterpret_cast<eosio::chain::key256_t*>(data);
-      return sec_lookup_i256.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
+      auto secondary = convert(data);
+      auto ret = sec_lookup_i256.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
+      convert_back(data, secondary);
+      return ret;
    }
 
    int32_t db_context_rocksdb::db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                 uint64_t& primary) {
-      eosio::chain::key256_t& secondary = *reinterpret_cast<eosio::chain::key256_t*>(data);
-      return sec_lookup_i256.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
+      auto secondary = convert(data);
+      auto ret = sec_lookup_i256.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
+      convert_back(data, secondary);
+      return ret;
    }
 
    int32_t db_context_rocksdb::db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
