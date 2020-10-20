@@ -196,7 +196,7 @@ void apply_eosio_setcode(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      std::string operation;
+      const char* operation = "";
       std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
@@ -236,7 +236,7 @@ void apply_eosio_setabi(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      std::string operation;
+      const char* operation = "";
       std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
