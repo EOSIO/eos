@@ -357,6 +357,7 @@ namespace eosio { namespace chain {
                     ("odata", fc::to_hex(pp->value, pp->value_size))
             );
          }
+         return resource_delta;
       }
 
       int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size,
