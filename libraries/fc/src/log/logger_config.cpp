@@ -7,6 +7,7 @@
 #include <fc/log/console_appender.hpp>
 #include <fc/log/gelf_appender.hpp>
 #include <fc/log/dmlog_appender.hpp>
+#include <fc/log/zipkin_appender.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/exception/exception.hpp>
 #include <random>
@@ -61,6 +62,12 @@ namespace fc {
          iter.second->initialize( ios );
    }
 
+   void log_config::shutdown_appenders() {
+      std::lock_guard g( log_config::get().log_mutex );
+      for( auto& iter : log_config::get().appender_map )
+         iter.second->shutdown();
+   }
+
    void configure_logging( const fc::path& lc ) {
       configure_logging( fc::json::from_file<logging_config>(lc) );
    }
@@ -73,6 +80,7 @@ namespace fc {
       static bool reg_console_appender = log_config::register_appender<console_appender>( "console" );
       static bool reg_gelf_appender = log_config::register_appender<gelf_appender>( "gelf" );
       static bool reg_dmlog_appender = log_config::register_appender<dmlog_appender>( "dmlog" );
+      static bool reg_zipkin_appender = log_config::register_appender<zipkin_appender>( "zipkin" );
 
       std::lock_guard g( log_config::get().log_mutex );
       log_config::get().logger_map.clear();
@@ -107,7 +115,7 @@ namespace fc {
             }
          }
       }
-      return reg_console_appender || reg_gelf_appender || reg_dmlog_appender;
+      return reg_console_appender || reg_gelf_appender || reg_dmlog_appender || reg_zipkin_appender;
       } catch ( exception& e )
       {
          std::cerr<<e.to_detail_string()<<"\n";

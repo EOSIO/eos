@@ -56,6 +56,8 @@ namespace fc {
 
       static void initialize_appenders( boost::asio::io_service& ios );
 
+      static void shutdown_appenders();
+
       static bool configure_logging( const logging_config& l );
 
       static uint64_t get_next_unique_id();
