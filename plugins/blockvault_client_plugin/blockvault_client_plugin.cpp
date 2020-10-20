@@ -83,43 +83,43 @@ void blockvault_client_plugin::plugin_shutdown() {
 // TODO: How can I ensure that it's serialized?
 void blockvault_client_plugin::propose_constructed_block(signed_block sb, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark) {
    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_constructed_block`"});   
-   if (std::get<block_num>(watermark) > std::get<block_num>(my->bvs.producer_watermark) &&
-       std::get<block_timestamp_type>(watermark) > std::get<block_timestamp_type>(my->bvs.producer_watermark)) {
-      my->proposed_blocks.push_back(sb);
-      my->bvs.producer_lib_id = lib_id;
-      my->bvs.producer_watermark = watermark;
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_constructed_block` proposed block accepted"});
-   }
-   else {
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_constructed_block` proposed block rejected"});
-   }
+   // if (std::get<block_num>(watermark) > std::get<block_num>(my->bvs.producer_watermark) &&
+   //     std::get<block_timestamp_type>(watermark) > std::get<block_timestamp_type>(my->bvs.producer_watermark)) {
+   //    my->proposed_blocks.push_back(sb);
+   //    my->bvs.producer_lib_id = lib_id;
+   //    my->bvs.producer_watermark = watermark;
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_constructed_block` proposed block accepted"});
+   // }
+   // else {
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_constructed_block` proposed block rejected"});
+   // }
    FC_LOG_MESSAGE(debug, std::string{"`\blockvault_client_plugin::propose_constructed_block`"});
 }
     
 void blockvault_client_plugin::append_external_block(signed_block sb, block_id_type lib_id) {
    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block`"});
-   if (lib_id == my->bvs.producer_lib_id &&
-       sb.block_num() == std::get<block_num>(my->bvs.snapshot_watermark) &&
-       (lib_id > std::get<block_num>(my->bvs.producer_watermark) || std::get<block_num>(my->bvs.producer_watermark) > lib_id)) {
-      my->appended_blocks.push_back(sb);
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` appended block accepted"});
-   } else {
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` appended block rejected"});
-   }
+   // if (lib_id == my->bvs.producer_lib_id &&
+   //     sb.block_num() == std::get<block_num>(my->bvs.snapshot_watermark) &&
+   //     (lib_id > std::get<block_num>(my->bvs.producer_watermark) || std::get<block_num>(my->bvs.producer_watermark) > lib_id)) {
+   //    my->appended_blocks.push_back(sb);
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` appended block accepted"});
+   // } else {
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` appended block rejected"});
+   // }
    FC_LOG_MESSAGE(debug, std::string{"`\blockvault_client_plugin::append_external_block`"});
 }
 
 void blockvault_client_plugin::propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark) {
    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::propose_snapshot`"});
-   if (std::get<block_num>(watermark) > std::get<block_num>(my->bvs.snapshot_watermark) &&
-       std::get<block_num>(watermark) < std::get<block_num>(my->bvs.producer_watermark)) {
-      my->bvs.prune_state();
-      my->bvs.snapshot_lib_id = lib_id;
-      my->bvs.watermark = watermark;
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` snapshot accepted"});
-   } else {
-      FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` snapshot rejected"});
-   }
+   // if (std::get<block_num>(watermark) > std::get<block_num>(my->bvs.snapshot_watermark) &&
+   //     std::get<block_num>(watermark) < std::get<block_num>(my->bvs.producer_watermark)) {
+   //    my->bvs.prune_state();
+   //    my->bvs.snapshot_lib_id = lib_id;
+   //    my->bvs.watermark = watermark;
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` snapshot accepted"});
+   // } else {
+   //    FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin::append_external_block` snapshot rejected"});
+   // }
    FC_LOG_MESSAGE(debug, std::string{"`\blockvault_client_plugin::propose_snapshot`"});
 }
 

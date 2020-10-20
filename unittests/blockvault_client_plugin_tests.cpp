@@ -8,10 +8,6 @@
 BOOST_AUTO_TEST_SUITE(blockvault_client_plugin_tests)
 
 BOOST_AUTO_TEST_CASE( blockvault_client_plugin_init_plugin ) try {
-   BOOST_REQUIRE(blockvault_client_plugin::my->bvs.producer_lib_id == block_id_type{});
-   BOOST_REQUIRE(blockvault_client_plugin::my->bvs.producer_watermark == std::pair<block_num, block_timestamp_type>{});
-   BOOST_REQUIRE(blockvault_client_plugin::my->bvs.snapshot_lib_id == block_id_type{});
-   BOOST_REQUIRE(blockvault_client_plugin::my->bvs.snapshot_watermark == std::pair<block_num, block_timestamp_type>{});
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE( blockvault_client_plugin_propose_constructed_block ) try {
