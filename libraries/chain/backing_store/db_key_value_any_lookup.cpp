@@ -32,7 +32,7 @@ namespace eosio { namespace chain { namespace backing_store {
             event_id = db_context::table_event(parent.receiver, scope, table);
          }
 
-         context.update_db_usage(payer, table_overhead, db_context::add_table_trace(context.get_action_id(), event_id));
+         context.update_db_usage(payer, table_overhead, db_context::add_table_trace(context.get_action_id(), std::move(event_id)));
 
          payer_payload pp(payer, nullptr, 0);
          current_session.write(table_key, pp.as_payload());
@@ -71,7 +71,7 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(parent.receiver, scope, table);
       }
 
-      context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), event_id) );
+      context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
          db_context::log_remove_table(*dm_logger, context.get_action_id(), parent.receiver, scope, table, payer);

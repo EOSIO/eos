@@ -17,6 +17,7 @@ namespace eosio { namespace chain {
       return raw_key_size - prefix_size;
    }
 
+
    static inline const char* actual_key_start(const char* key) {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
       static auto prefix_size = rocks_prefix.size() + sizeof(uint64_t);

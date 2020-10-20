@@ -568,7 +568,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       uint64_t orig_trx_ram_bytes = config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size();
       if( replace_deferred_activated ) {
-         add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "cancel", "deferred_trx_cancel") );
+         // avoiding moving event_id to make logic easier to maintain
+         add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ), storage_usage_trace(get_action_id(), std::string(event_id), "deferred_trx", "cancel", "deferred_trx_cancel") );
       } else {
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes, get_action_id(), event_id.c_str() );
       }
@@ -666,7 +667,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                subjective_block_production_exception,
                "Cannot charge RAM to other accounts during notify."
    );
-   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", operation, "deferred_trx_add") );
+   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", operation, "deferred_trx_add") );
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -696,7 +697,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
          );
       }
 
-      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "cancel", "deferred_trx_cancel") );
+      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()), storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", "cancel", "deferred_trx_cancel") );
       generated_transaction_idx.remove(*gto);
    }
    return gto;
@@ -737,7 +738,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       event_id = db_context::table_event(code, scope, table);
    }
 
-   update_db_usage(payer, config::billable_size_v<table_id_object>, db_context::add_table_trace(get_action_id(), event_id));
+   update_db_usage(payer, config::billable_size_v<table_id_object>, db_context::add_table_trace(get_action_id(), std::move(event_id)));
 
    return db.create<table_id_object>([&](table_id_object &t_id){
       t_id.code = code;
@@ -757,7 +758,7 @@ void apply_context::remove_table( const table_id_object& tid ) {
       event_id = db_context::table_event(tid.code, tid.scope, tid.table);
    }
 
-   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), event_id) );
+   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
       db_context::log_remove_table(*dm_logger, get_action_id(), tid.code, tid.scope, tid.table, tid.payer);
@@ -877,7 +878,7 @@ int apply_context::db_store_i64_chainbase( name scope, name table, const account
       event_id = db_context::table_event(tab.code, tab.scope, tab.table, name(obj.primary_key));
    }
 
-   update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), event_id) );
+   update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
       db_context::log_row_insert(*dm_logger, get_action_id(), tab.code, tab.scope, tab.table, payer, name(obj.primary_key), buffer, buffer_size);
@@ -908,12 +909,12 @@ void apply_context::db_update_i64_chainbase( int iterator, account_name payer, c
 
    if( account_name(obj.payer) != payer ) {
       // refund the existing payer
-      update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), event_id) );
+      update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), std::string(event_id)) );
       // charge the new payer
-      update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), event_id) );
+      update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), std::move(event_id)) );
    } else if(old_size != new_size) {
       // charge/refund the existing payer the difference
-      update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), event_id) );
+      update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), std::move(event_id)) );
    }
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
@@ -941,7 +942,7 @@ void apply_context::db_remove_i64_chainbase( int iterator ) {
       event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), event_id) );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
       db_context::log_row_remove(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table, obj.payer, name(obj.primary_key), obj.value.data(), obj.value.size());

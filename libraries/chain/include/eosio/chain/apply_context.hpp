@@ -60,7 +60,7 @@ class apply_context {
                   }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType>, backing_store::db_context::secondary_add_trace(context.get_action_id(), event_id) );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, backing_store::db_context::secondary_add_trace(context.get_action_id(), std::move(event_id)) );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -77,7 +77,7 @@ class apply_context {
                   event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
                }
 
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), backing_store::db_context::secondary_rem_trace(context.get_action_id(), event_id) );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), backing_store::db_context::secondary_rem_trace(context.get_action_id(), std::move(event_id)) );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -111,8 +111,8 @@ class apply_context {
                }
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), event_id) );
-                  context.update_db_usage( payer, +(billing_size), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), event_id) );
+                  context.update_db_usage( obj.payer, -(billing_size), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
+                  context.update_db_usage( payer, +(billing_size), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
                }
 
                context.db.modify( obj, [&]( auto& o ) {

@@ -130,7 +130,7 @@ namespace eosio { namespace chain { namespace backing_store {
             event_id = db_context::table_event(parent.receiver, scope, table, name(id));
          }
 
-         parent.context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_add_trace(parent.context.get_action_id(), event_id) );
+         parent.context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_add_trace(parent.context.get_action_id(), std::move(event_id)) );
 
          const unique_table t { parent.receiver, scope, table };
          const auto table_ei = iter_store.cache_table(t);
@@ -158,7 +158,7 @@ namespace eosio { namespace chain { namespace backing_store {
             event_id = db_context::table_event(table.contract, table.scope, table.table, name(key_store.primary));
          }
 
-         parent.context.update_db_usage( key_store.payer, -( helper.overhead() ), db_context::secondary_rem_trace(parent.context.get_action_id(), event_id) );
+         parent.context.update_db_usage( key_store.payer, -( helper.overhead() ), db_context::secondary_rem_trace(parent.context.get_action_id(), std::move(event_id)) );
 
          current_session.erase(secondary_key.full_secondary_key);
          current_session.erase(secondary_key.full_primary_to_sec_key);
@@ -193,8 +193,8 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          if( key_store.payer != payer ) {
-            context.update_db_usage( key_store.payer, -(helper.overhead()), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), event_id) );
-            context.update_db_usage( payer, +(helper.overhead()), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), event_id) );
+            context.update_db_usage( key_store.payer, -(helper.overhead()), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
+            context.update_db_usage( payer, +(helper.overhead()), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
          }
 
          // if the secondary value is different, remove the old key and add the new key

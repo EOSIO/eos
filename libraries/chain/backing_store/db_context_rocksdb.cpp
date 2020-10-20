@@ -191,7 +191,7 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
       }
 
-      update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), event_id) );
+      update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
          db_context::log_row_insert(*dm_logger, context.get_action_id(), receiver, scope_name, table_name, payer,
@@ -233,15 +233,15 @@ namespace eosio { namespace chain { namespace backing_store {
       const int64_t new_size = static_cast<int64_t>(value_size + db_key_value_any_lookup::overhead);
       if( old_payer != payer ) {
          // refund the existing payer
-         update_db_usage( old_payer, -(old_size), db_context::row_update_rem_trace(context.get_action_id(), event_id) );
+         update_db_usage( old_payer, -(old_size), db_context::row_update_rem_trace(context.get_action_id(), std::string(event_id)) );
          // charge the new payer
-         update_db_usage( payer,  (new_size), db_context::row_update_add_trace(context.get_action_id(), event_id) );
+         update_db_usage( payer,  (new_size), db_context::row_update_add_trace(context.get_action_id(), std::move(event_id)) );
 
          // swap the payer in the iterator store
          swap(itr, payer);
       } else if(old_size != new_size) {
          // charge/refund the existing payer the difference
-         update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), event_id) );
+         update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), std::move(event_id)) );
       }
 
       if (dm_logger != nullptr) {
@@ -269,7 +269,7 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       payer_payload pp(*old_key_value.value);
-      update_db_usage( old_payer,  -((int64_t)pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), event_id) );
+      update_db_usage( old_payer,  -((int64_t)pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
          db_context::log_row_remove(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
