@@ -40,13 +40,6 @@ target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
         PRIVATE rodeos_lib fc amqpcpp amqp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
-if(ENABLE_CPPKIN)
-  target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
-          PRIVATE -Wl,${whole_archive_flag} cppkin_plugin -Wl,${no_whole_archive_flag}
-          PRIVATE cppkin.a )
-endif()
-
-
 add_subdirectory(tests)
 
 copy_bin( ${RODEOS_EXECUTABLE_NAME} )
