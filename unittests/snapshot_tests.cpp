@@ -12,9 +12,8 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 
-using namespace eosio;
-using namespace testing;
-using namespace chain;
+using namespace eosio::testing;
+using namespace eosio::chain;
 
 chainbase::bfs::path get_parent_path(chainbase::bfs::path blocks_dir, int ordinal) {
    chainbase::bfs::path leaf_dir = blocks_dir.filename();
@@ -279,15 +278,27 @@ namespace {
    }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
-{
-   tester chain;
+template<typename SnapshotSuite>
+void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
+                         const eosio::chain::backing_store_type sub_store) {
+   fc::temp_directory temp_dir;
+   tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
 
    chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
    chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
    chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
+
+#warning add a snapshot2 account and send the action against it as well, so that we are actually walking through more than just one contract's data'
+
+   // increment the test contract
+   chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+         ( "value", 1 )
+   );
+
+   chain.produce_blocks(1);
+
    chain.control->abort_block();
 
    static const int generation_count = 8;
@@ -295,12 +306,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
 
    for (int generation = 0; generation < generation_count; generation++) {
       // create a new snapshot child
-      auto writer = SNAPSHOT_SUITE::get_writer();
+      auto writer = SnapshotSuite::get_writer();
       chain.control->write_snapshot(writer);
-      auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+      auto snapshot = SnapshotSuite::finalize(writer);
 
       // create a new child at this snapshot
-      sub_testers.emplace_back(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), generation);
+      auto new_config                  = chain.get_config();
+      new_config.backing_store = sub_store;
+      sub_testers.emplace_back(new_config, SnapshotSuite::get_reader(snapshot), generation);
 
       // increment the test contract
       chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
@@ -318,9 +331,34 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
       // push that block to all sub testers and validate the integrity of the database after it.
       for (auto& other: sub_testers) {
          other.push_block(new_block);
+         verify_integrity_hash<SnapshotSuite>(*chain.control, *other.control);
          BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
       }
    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::ROCKSDB);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::ROCKSDB);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
@@ -406,7 +444,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that chain's block_log has a genesis_state (and blocks starting at 1)
    controller::config copied_config = copy_config_and_files(chain.get_config(), ordinal++);
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
    BOOST_REQUIRE(genesis);
    tester from_block_log_chain(copied_config, *genesis);
    const auto from_block_log_head = from_block_log_chain.control->head_block_num();
@@ -490,7 +528,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    }
 
    auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
-   auto genesis = chain::block_log::extract_genesis_state(source_log_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
    bfs::create_directories(config.blog.log_dir);
    bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
    tester base_chain(config, *genesis);
