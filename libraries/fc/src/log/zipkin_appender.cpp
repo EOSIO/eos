@@ -35,7 +35,7 @@ public:
 
    void log( const log_message& message );
 
-   ~impl() = default;
+   ~impl();
 };
 
 void zipkin_appender::impl::init() {
@@ -50,6 +50,13 @@ void zipkin_appender::impl::init() {
    } );
 }
 
+zipkin_appender::impl::~impl() {
+   try {
+      work_guard.reset(); // drain the queue
+      thread.join();
+   } catch (...) {}
+}
+
 zipkin_appender::zipkin_appender( const variant& args ) :
       my( new impl( args.as<config>() ) ) {
 }
@@ -59,10 +66,7 @@ void zipkin_appender::initialize( boost::asio::io_service& io_service ) {
 }
 
 void zipkin_appender::shutdown() {
-   try {
-      my->work_guard.reset(); // drain the queue
-      my->thread.join();
-   } catch (...) {}
+   my.reset();
 }
 
 fc::variant create_zipkin_variant( const log_message& message, const std::string& service_name ) {
@@ -125,7 +129,7 @@ fc::variant create_zipkin_variant( const log_message& message, const std::string
 }
 
 void zipkin_appender::log( const log_message& message ) {
-   if( my->consecutive_errors > my->max_consecutive_errors )
+   if( !my || my->consecutive_errors > my->max_consecutive_errors )
       return;
 
    boost::asio::post(my->work_strand, [this, message]() {
