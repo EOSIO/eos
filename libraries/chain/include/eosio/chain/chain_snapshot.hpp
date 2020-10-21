@@ -16,11 +16,11 @@ struct chain_snapshot_header {
     *         - WebAuthn keys
     *         - wtmsig block siganatures: the block header state changed to include producer authorities and additional signatures
     *         - removed genesis_state and added chain ID to global_property_object
-    *   4: Updated for v2.1.0 protocol features:
+    *   4: Updated for v3.0.0 protocol features:
     *         - forwards compatible with versions 2 and 3
     *         - kv database
     *         - Configurable wasm limits
-    *   5: Updated for v2.1.0 eos features:
+    *   5: Updated for v3.0.0 eos features:
     *         - chain_config update
     */
 
