@@ -22,7 +22,7 @@ Retrieves the contents of a database table
 
 `--key-type` _TEXT_ - The key type of `--index`; primary only supports `i64`. All others support `i64`, `i128`, `i256`, `float64`, `float128`, `ripemd160`, `sha256`. Special type `name` indicates an account name
 
-`--encode-type` _TEXT_ - The encoding type of `--key_type`; `i64`, `i128`, `float64`, `float128` only support decimal encoding; `i256` supports both `'dec'` and `'hex'`,  e.g. `'dec'i256`; `ripemd160` and `sha256` allows `'hex'` only
+`--encode-type` _TEXT_ - The encoding type of `--key_type`; `dec` for decimal encoding of (`i[64|128|256]`, `float[64|128]`); `hex` for hexadecimal encoding of (`i256`, `ripemd160`, `sha256`)
 
 `-b,--binary` _UINT_ - Return the value as BINARY rather than using abi to interpret as JSON
 
