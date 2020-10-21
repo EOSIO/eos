@@ -95,7 +95,7 @@ def startNode(nodeIndex, account):
     dir = args.nodes_dir + ('%02d-' % nodeIndex) + account['name'] + '/'
     run('rm -rf ' + dir)
     run('mkdir -p ' + dir)
-    otherOpts = ''.join(list(map(lambda i: '    --p2p-peer-address localhost:' + str(19000 + i), range(nodeIndex))))
+    otherOpts = ''.join(list(map(lambda i: '    --p2p-peer-address localhost:' + str(9000 + i), range(nodeIndex))))
     if not nodeIndex: otherOpts += (
         '    --plugin eosio::history_plugin'
         '    --plugin eosio::history_api_plugin'
@@ -103,7 +103,10 @@ def startNode(nodeIndex, account):
     cmd = (
         args.nodeos +
         '    --max-irreversible-block-age -1'
-        '    --max-transaction-time=1000'
+        # max-transaction-time must be less than block time
+        # (which is defined in .../chain/include/eosio/chain/config.hpp
+        # as block_interval_ms = 500)
+        '    --max-transaction-time=200'
         '    --contracts-console'
         '    --genesis-json ' + os.path.abspath(args.genesis) +
         '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
@@ -111,7 +114,7 @@ def startNode(nodeIndex, account):
         '    --data-dir ' + os.path.abspath(dir) +
         '    --chain-state-db-size-mb 1024'
         '    --http-server-address 127.0.0.1:' + str(8000 + nodeIndex) +
-        '    --p2p-listen-endpoint 127.0.0.1:' + str(19000 + nodeIndex) +
+        '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
         '    --max-clients ' + str(maxClients) +
         '    --p2p-max-nodes-per-host ' + str(maxClients) +
         '    --enable-stale-production'
