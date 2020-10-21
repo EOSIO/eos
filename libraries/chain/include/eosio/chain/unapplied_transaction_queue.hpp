@@ -162,7 +162,6 @@ public:
    }
 
    void add_forked( const branch_type& forked_branch ) {
-      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
@@ -176,7 +175,6 @@ public:
    }
 
    void add_aborted( deque<transaction_metadata_ptr> aborted_trxs ) {
-      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          auto insert_itr = queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
