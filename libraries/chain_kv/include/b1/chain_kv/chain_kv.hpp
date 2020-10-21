@@ -134,7 +134,6 @@ namespace detail {
 
    template <typename T, std::size_t N>
    auto append_key(bytes& dest, T value) {
-
       using t_type = typename value_storage<T>::type;
       t_type t_array[N];
       const t_type* first = value_storage<T>().as_ptr(value);
@@ -149,7 +148,6 @@ namespace detail {
 
    template <typename T, std::size_t N>
    auto insert_key(eosio::session::shared_bytes& dest, size_t index, T value) {
-
       using t_type = typename value_storage<T>::type;
       t_type t_array[N];
       const t_type* first = value_storage<T>().as_ptr(value);

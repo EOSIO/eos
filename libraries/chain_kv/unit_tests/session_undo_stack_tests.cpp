@@ -84,7 +84,9 @@ BOOST_AUTO_TEST_CASE(undo_stack_test) {
    // Commit revision 3 and verify that the top session has the correct key values.
    undo.commit(3);
    BOOST_REQUIRE(undo.revision() == 4);
-   verify_equal(undo.top(), collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }), int_t{});
+   verify_equal(undo.top(),
+                collapse({ session_kvs_1, session_kvs_2, session_kvs_3, session_kvs_4, session_kvs_5, session_kvs_6 }),
+                int_t{});
 }
 
 BOOST_AUTO_TEST_SUITE_END();

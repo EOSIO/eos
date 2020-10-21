@@ -14,10 +14,10 @@ namespace eosio { namespace chain {
       return (raw_value_size - kv_payer_size);
    }
 
-   inline static account_name get_payer(const char* data) {
+   inline static account_name get_payer(eosio::session::shared_bytes& data) {
       account_name payer;
-      memcpy(&payer, data,
-             kv_payer_size); // Before this method is called, data was checked to be at least kv_payer_size long
+      // Before this method is called, data was checked to be at least kv_payer_size long
+      std::memcpy(&payer, data.data(), kv_payer_size);
       return payer;
    }
    
@@ -29,14 +29,14 @@ namespace eosio { namespace chain {
       return raw_key_size - prefix_size;
    }
 
-   static inline const char* actual_key_start(const char* key) {
+   static inline size_t actual_key_start() {
       static auto rocks_prefix = make_rocksdb_contract_kv_prefix();
       static auto prefix_size = rocks_prefix.size() + sizeof(uint64_t);
-      return key + prefix_size;
+      return prefix_size;
    }
 
-   inline static const char* actual_value_start(const char* data) {
-      return data + kv_payer_size;
+   inline static size_t actual_value_start() {
+      return kv_payer_size;
    }
 
    // Need to store payer so that this account is properly
@@ -278,7 +278,7 @@ namespace eosio { namespace chain {
          if (key) {
             actual_size = actual_key_size(key.size());
             if (offset < actual_size) {
-               memcpy(dest, actual_key_start(key.data()) + offset, std::min(size, actual_size - offset));
+               std::memcpy(dest, key.data() + actual_key_start() + offset, std::min(size, actual_size - offset));
             }
             return kv_it_stat::iterator_ok;
          } else {
@@ -304,8 +304,9 @@ namespace eosio { namespace chain {
          auto& value = kv.second;
          if (value) {
             actual_size = actual_value_size(value->size());
-            if (offset < actual_size)
-               memcpy(dest, actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
+            if (offset < actual_size) {
+               std::memcpy(dest, value->data() + actual_value_start() + offset, std::min(size, actual_size - offset));
+            }
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -366,7 +367,7 @@ namespace eosio { namespace chain {
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         account_name payer = get_payer(old_value->data());
+         account_name payer = get_payer(*old_value);
          return erase_table_usage(resource_manager, payer, key, key_size, actual_old_value_size);
       }
 
@@ -397,7 +398,7 @@ namespace eosio { namespace chain {
 
          auto resource_delta = int64_t{ 0 };
          if (old_value) {
-            account_name old_payer = get_payer(old_value->data());
+            account_name old_payer = get_payer(*old_value);
             resource_delta =
                   update_table_usage(resource_manager, old_payer, payer, key, key_size, old_value_size, value_size);
          } else {
@@ -429,14 +430,14 @@ namespace eosio { namespace chain {
       }
 
       uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) override {
-         const char* temp        = nullptr;
-         uint32_t      temp_size = 0;
+         uint32_t temp_size = 0;
          if (current_value) {
-            temp      = actual_value_start(current_value->data());
             temp_size = actual_value_size(current_value->size());
          }
-         if (offset < temp_size)
-            memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
+         if (offset < temp_size) {
+            const char* temp = current_value->data();
+            std::memcpy(data, temp + actual_value_start() + offset, std::min(data_size, temp_size - offset));
+         }
          return temp_size;
       }
 

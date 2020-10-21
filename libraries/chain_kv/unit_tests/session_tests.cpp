@@ -179,9 +179,13 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    }
 }
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::perform_session_level_test("/tmp/session22"); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) {
+   eosio::session_tests::perform_session_level_test("/tmp/session22");
+}
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test("/tmp/session23", true); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_always) {
+   eosio::session_tests::perform_session_level_test("/tmp/session23", true);
+}
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
    size_t key_count      = 10;
@@ -336,8 +340,9 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto end   = std::end(ds);
       do {
          if (it != end) {
-            auto key_value = *it;
-            BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
+            auto key = it.key();
+            auto buffer = std::vector<shared_bytes::underlying_type_t>{ std::begin(key), std::end(key) };
+            BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(buffer.data())) == std::end(keys));
          }
          ++it;
       } while (it != begin);
@@ -362,8 +367,12 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
             continue;
          }
          auto key_value = *it;
-         auto key       = *reinterpret_cast<const uint16_t*>(key_value.first.data());
-         auto value     = *reinterpret_cast<const uint16_t*>(key_value.second->data());
+         auto buffer =
+               std::vector<shared_bytes::underlying_type_t>{ std::begin(key_value.first), std::end(key_value.first) };
+         auto key   = *reinterpret_cast<const uint16_t*>(buffer.data());
+         buffer     = std::vector<shared_bytes::underlying_type_t>{ std::begin(*key_value.second),
+                                                                std::end(*key_value.second) };
+         auto value = *reinterpret_cast<const uint16_t*>(buffer.data());
 
          auto kv_it = key_values.find(key);
          if (kv_it != std::end(key_values)) {

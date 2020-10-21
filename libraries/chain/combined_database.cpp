@@ -152,12 +152,18 @@ namespace eosio { namespace chain {
             rocksdb::BlockBasedTableOptions table_options;
             table_options.format_version               = 5;
             table_options.index_block_restart_interval = 16;
+            //table_options.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
 
             // Sets the bloom filter - Given an arbitrary key, 
             // this bit array may be used to determine if the key 
             // may exist or definitely does not exist in the key set.
 	          table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
 	          table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
+
+            // Define a prefix. In this way, a fixed length prefix extractor. A recommended one to use.
+            // Prefix is [rocks prefix byte, contract]
+            //options.prefix_extractor.reset(rocksdb::NewCappedPrefixTransform(9));
+            //options.memtable_prefix_bloom_size_ratio = 0.1;
 
             // Incorporates the Table options into options
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
@@ -306,7 +312,7 @@ namespace eosio { namespace chain {
                // stored in rocksdb.
                if (db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB && kv_undo_stack) {
                   auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
-                                                                      rocksdb_contract_kv_prefix.size());
+                                                                 rocksdb_contract_kv_prefix.size());
                   auto next_prefix = prefix_key.next();
 
                   auto undo = false;
@@ -325,19 +331,18 @@ namespace eosio { namespace chain {
                      std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
                      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
 
-                     auto key_buffer = std::vector<char>{ key.data(), key.data() + key.size() };
-                     auto begin = std::begin(key_buffer) + prefix_key.size();
-                     auto end = std::begin(key_buffer) + key_prefix_size;
+                     auto begin = std::begin(key) + prefix_key.size();
+                     auto end = std::begin(key) + key_prefix_size;
                      b1::chain_kv::extract_key(begin, end, contract);
 
                      // In KV RocksDB, payer and actual data are packed together.
                      // Extract them.
                      auto           value = (*it).second;
-                     auto           payer = get_payer(value->data());
-                     auto           actual_value_data = actual_value_start(value->data());
+                     auto           payer = get_payer(*value);
+                     auto           actual_value_data = actual_value_start();
                      kv_object_view row{ name(contract),
-                                         { { key.data() + key_prefix_size, key.data() + key.size() } },
-                                         { { actual_value_data, actual_value_data + actual_value_size(value->size()) } },
+                                         { { std::begin(key) + key_prefix_size, std::end(key) } },
+                                         { { std::begin(*value) + actual_value_start(), std::end(*value) } },
                                          payer
                      };
                      section.add_row(row, db);
@@ -480,18 +485,15 @@ namespace eosio { namespace chain {
                         move_to_rocks = &row;
                      });
                      if (move_to_rocks) {
-                        auto buffer = std::vector<char>{};
-                        buffer.reserve(sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size());
-                        buffer.insert(std::end(buffer), prefix_key.data(), prefix_key.data() + prefix_key.size());
-                        b1::chain_kv::append_key(buffer, move_to_rocks->contract.to_uint64_t());
-                        buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
-                                      move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
+                        auto key = eosio::session::shared_bytes{sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size()};
+                        std::copy(std::begin(prefix_key), std::end(prefix_key), std::begin(key));
+                        b1::chain_kv::insert_key(key, prefix_key.size(), move_to_rocks->contract.to_uint64_t());
+                        std::copy(std::begin(move_to_rocks->kv_key), std::end(move_to_rocks->kv_key), std::begin(key) + prefix_key.size() + sizeof(uint64_t));
 
                         // Pack payer and actual key value
                         auto final_kv_value = build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer);
 
-                        key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
-                                                std::move(final_kv_value));                                                                                
+                        key_values.emplace_back(key, std::move(final_kv_value));                                                                                
                         db.remove(*move_to_rocks);
                      }
                   }
