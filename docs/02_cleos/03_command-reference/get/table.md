@@ -3,7 +3,7 @@
 Retrieves the contents of a database table
 
 ## Positional Parameters
-`account` _TEXT_ - The account who owns the table
+`account` _TEXT_ - The account who owns the table where the smart contract was deployed
 
 `scope` _TEXT_ - The scope within the contract in which the table is found
 
