@@ -754,11 +754,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
    chain::controller& chain = my->chain_plug->chain();
-   unapplied_transaction_queue::process_mode unapplied_mode =
-      (chain.get_read_mode() != chain::db_read_mode::SPECULATIVE) ? unapplied_transaction_queue::process_mode::non_speculative :
-         my->_producers.empty() ? unapplied_transaction_queue::process_mode::speculative_non_producer :
-            unapplied_transaction_queue::process_mode::speculative_producer;
-   my->_unapplied_transactions.set_mode( unapplied_mode );
 
    if( options.count("private-key") )
    {
