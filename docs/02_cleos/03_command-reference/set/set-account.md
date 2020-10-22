@@ -1,6 +1,9 @@
 ## Description
 set parameters dealing with account permissions
 
+[[info | JSON input]]
+| This command involves specifying JSON input which depends on underlying class definitions. Therefore, such JSON input is subject to change in future versions of the EOSIO software.
+
 ## Positionals
 - `account` _TEXT_ - The account to set/delete a permission authority for
 - `permission` _TEXT_ - The permission name to set/delete an authority for
