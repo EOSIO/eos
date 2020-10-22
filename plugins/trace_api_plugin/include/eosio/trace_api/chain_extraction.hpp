@@ -81,10 +81,9 @@ private:
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
       try {
-         using block_trace_t = block_trace_v2;
          using transaction_trace_t = transaction_trace_v2;
 
-         block_trace_t bt = create_block_trace<block_trace_t>( block_state );
+         auto bt = create_block_trace( block_state );
 
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );

@@ -44,7 +44,7 @@ namespace eosio { namespace trace_api {
      using status_type = chain::transaction_receipt_header::status_enum;
 
      chain::transaction_id_type                 id = {};
-     std::variant<std::vector<action_trace_v0>, std::vector<action_trace_v1>>  actions = {};
+     std::variant<std::vector<action_trace_v1>> actions = {};
      fc::enum_type<uint8_t,status_type>         status = {};
      uint32_t                                   cpu_usage_us = 0;
      fc::unsigned_int                           net_usage_words;

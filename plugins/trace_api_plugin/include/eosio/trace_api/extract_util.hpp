@@ -59,20 +59,16 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
    return r;
 }
 
-template<typename BlockTrace>
-inline BlockTrace create_block_trace( const chain::block_state_ptr& bsp ) {
-   BlockTrace r;
+inline block_trace_v2 create_block_trace( const chain::block_state_ptr& bsp ) {
+   block_trace_v2 r;
    r.id = bsp->id;
    r.number = bsp->block_num;
    r.previous_id = bsp->block->previous;
    r.timestamp = bsp->block->timestamp;
    r.producer = bsp->block->producer;
-   if constexpr(std::is_same_v<BlockTrace, block_trace_v1>  || std::is_same_v<BlockTrace, block_trace_v2>)
-   {
-      r.schedule_version = bsp->block->schedule_version;
-      r.transaction_mroot = bsp->block->transaction_mroot;
-      r.action_mroot = bsp->block->action_mroot;
-   }
+   r.schedule_version = bsp->block->schedule_version;
+   r.transaction_mroot = bsp->block->transaction_mroot;
+   r.action_mroot = bsp->block->action_mroot;
    return r;
 }
 

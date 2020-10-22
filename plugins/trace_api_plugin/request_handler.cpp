@@ -109,7 +109,7 @@ namespace {
                result.emplace_back(
                   fc::mutable_variant_object()
                      ("id", t.id.str())
-                     ("actions", process_actions<action_trace_v1>(std::get<1>(t.actions), data_handler, yield))
+                     ("actions", process_actions<action_trace_v1>(std::get<std::vector<action_trace_v1>>(t.actions), data_handler, yield))
                      (std::move(common_mvo)));
             }
          }
@@ -150,7 +150,7 @@ namespace eosio::trace_api::detail {
                 ("transaction_mroot", block_trace.transaction_mroot)
                 ("action_mroot", block_trace.action_mroot)
                 ("schedule_version", block_trace.schedule_version)
-                ("transactions", process_transactions<transaction_trace_v2>( std::get<std::vector<transaction_trace_v2>>(block_trace.transactions), data_handler, yield )) ;
+                ("transactions", process_transactions( std::get<std::vector<transaction_trace_v2>>(block_trace.transactions), data_handler, yield )) ;
        }else{
           return fc::mutable_variant_object();
        }
