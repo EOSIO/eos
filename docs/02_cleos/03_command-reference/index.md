@@ -4,6 +4,7 @@ Documentation for all `cleos` main commands
 - [version](version) - Retrieve version information
 - [create](create) - Create various items, on and off the blockchain
 - [convert](convert) - Pack and unpack transactions
+- [validate](validate) - Validate transactions
 - [get](get) - Retrieve various items and information from the blockchain
 - [set](set) - Set or update blockchain state
 - [transfer](transfer.md) - Transfer tokens from account to account
