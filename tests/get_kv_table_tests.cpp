@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 #include <contracts.hpp>
 
@@ -174,6 +174,7 @@ struct test_empty_kv_iterator : public kv_iterator {
    ~test_empty_kv_iterator() {}
 
    bool       is_kv_chainbase_context_iterator() const { return true; }
+   bool is_kv_rocksdb_context_iterator() const override { return false; }
    kv_it_stat kv_it_status() { return kv_it_stat::iterator_ok; }
    int32_t    kv_it_compare(const kv_iterator& rhs) { return 0; }
    int32_t    kv_it_key_compare(const char* key, uint32_t size) { return 0; }
