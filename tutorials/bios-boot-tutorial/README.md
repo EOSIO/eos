@@ -27,7 +27,7 @@ Minimal command line to launch the script below, make sure you replace `EOSIO_CO
 $ cd ~
 $ git clone https://github.com/EOSIO/eos.git
 $ cd ./eos/tutorials/bios-boot-tutorial/
-$ python3 bios-boot-tutorial.py --cleos="cleos" --nodeos=nodeos --keosd=keosd --contracts-dir="/EOSIO_CONTRACTS_DIRECTORY/" -a
+$ python3 bios-boot-tutorial.py --cleos=cleos --nodeos=nodeos --keosd=keosd --contracts-dir="EOSIO_CONTRACTS_DIRECTORY" -w -a
 
 ```
 
