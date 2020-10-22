@@ -1356,8 +1356,12 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
 }
 
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
-   bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   if( _pending_block_mode == pending_block_mode::producing ) {
+      bool last_block = ((block_timestamp_type( block_time ).slot % config::producer_repetitions) == config::producer_repetitions - 1);
+      return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   } else {
+      return block_time + fc::microseconds(_produce_time_offset_us);
+   }
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
