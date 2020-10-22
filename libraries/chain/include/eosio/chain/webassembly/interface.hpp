@@ -273,7 +273,7 @@ namespace webassembly {
           * @return Returns the size required in the buffer (if the buffer is too small, nothing is written).
           *
          */
-         uint32_t get_kv_parameters_packed(name db, span<char> packed_kv_parameters, uint32_t max_version) const;
+         uint32_t get_kv_parameters_packed(span<char> packed_kv_parameters, uint32_t max_version) const;
 
          /**
           * Sets the maximum key size, and maximum value size, and maximum iterators of a kv database.
@@ -284,7 +284,7 @@ namespace webassembly {
           * @ingroup privileged
           * @param packed_kv_parameters - the buffer containing the packed kv parameters to be set.
          */
-         void set_kv_parameters_packed(name db, span<const char> packed_kv_parameters);
+         void set_kv_parameters_packed(span<const char> packed_kv_parameters);
 
          /**
           * Check if an account is privileged.
@@ -1622,7 +1622,7 @@ namespace webassembly {
           *
           * @return change in resource usage.
           */
-         int64_t  kv_erase(uint64_t db, uint64_t contract, span<const char> key);
+         int64_t  kv_erase(uint64_t contract, span<const char> key);
 
          /**
           * Set a key-value pair.
@@ -1636,7 +1636,7 @@ namespace webassembly {
           *
           * @return change in resource usage.
           */
-         int64_t  kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value, account_name payer);
+         int64_t  kv_set(uint64_t contract, span<const char> key, span<const char> value, account_name payer);
 
          /**
           * Check the existence of a key.
@@ -1652,7 +1652,7 @@ namespace webassembly {
           *
           * @return false if the provided key doesn't exist, true otherwise.
           */
-         bool     kv_get(uint64_t db, uint64_t contract, span<const char> key, uint32_t* value_size);
+         bool     kv_get(uint64_t contract, span<const char> key, uint32_t* value_size);
 
          /**
           * Fetches data from temporary buffer starting at offset.
@@ -1664,7 +1664,7 @@ namespace webassembly {
           *
           * @return number of bytes written in data.
           */
-         uint32_t kv_get_data(uint64_t, uint32_t offset, span<char> data);
+         uint32_t kv_get_data(uint32_t offset, span<char> data);
 
          /**
           * Create a kv iterator.
@@ -1681,7 +1681,7 @@ namespace webassembly {
           *
           * @return handle of the created iterator
           */
-         uint32_t kv_it_create(uint64_t, uint64_t contract, span<const char> prefix);
+         uint32_t kv_it_create(uint64_t contract, span<const char> prefix);
 
          /**
           * Destroy a kv iterator.
