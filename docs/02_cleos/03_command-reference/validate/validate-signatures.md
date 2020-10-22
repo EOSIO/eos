@@ -1,6 +1,9 @@
 ## Description
 Validate signatures and recover public keys
 
+[[info | JSON input]]
+| This command involves specifying JSON input which depends on underlying class definitions. Therefore, such JSON input is subject to change in future versions of the EOSIO software.
+
 ## Usage
 ```sh
 cleos validate signatures [OPTIONS] transaction
