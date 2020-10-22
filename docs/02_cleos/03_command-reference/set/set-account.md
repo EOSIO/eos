@@ -33,7 +33,7 @@ set parameters dealing with account permissions
 `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 
 ## Command
-To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying. The set account permission command is subject to change so it's associated Class is not fully documented.
+To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying.
 
 The first example associates a new key to the active permissions of an account.
 
