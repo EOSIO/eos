@@ -3,7 +3,7 @@
 Retrieves the contents of a database kv_table
 
 ## Positional Parameters
-`account` _TEXT_ - The account who owns the kv_table
+`account` _TEXT_ - The account who owns the kv_table where the smart contract was deployed
 
 `table` _TEXT_ - The name of the kv_table as specified by the contract abi
 
