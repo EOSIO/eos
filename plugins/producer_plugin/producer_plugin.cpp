@@ -415,9 +415,17 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       auto make_retry_later_func() {
-         return [this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
+         return [this]( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
             _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
          };
+      }
+
+      void restart_speculative_block() {
+         chain::controller& chain = chain_plug->chain();
+         // abort the pending block
+         _unapplied_transactions.add_aborted( chain.abort_block() );
+
+         schedule_production_loop();
       }
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -444,6 +452,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      if( !self->process_incoming_transaction_async( result, persist_until_expired, next, self->make_retry_later_func() ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
+                        } else {
+                           self->restart_speculative_block();
                         }
                      }
                   } CATCH_AND_CALL(exception_handler);
@@ -2102,6 +2112,8 @@ bool producer_plugin::execute_incoming_transaction(const chain::transaction_meta
    if( exhausted ) {
       if( my->_pending_block_mode == pending_block_mode::producing ) {
          my->schedule_maybe_produce_block( true );
+      } else {
+         my->restart_speculative_block();
       }
    }
    return !exhausted;
