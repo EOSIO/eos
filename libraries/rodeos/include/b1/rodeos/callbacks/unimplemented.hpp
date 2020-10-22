@@ -78,18 +78,6 @@ struct unimplemented_callbacks {
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
 #undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
-   // crypto_api
-   void assert_recover_key(int, int, int, int, int) { return unimplemented<void>("assert_recover_key"); }
-   int  recover_key(int, int, int, int, int) { return unimplemented<int>("recover_key"); }
-   void assert_sha256(int, int, int) { return unimplemented<void>("assert_sha256"); }
-   void assert_sha1(int, int, int) { return unimplemented<void>("assert_sha1"); }
-   void assert_sha512(int, int, int) { return unimplemented<void>("assert_sha512"); }
-   void assert_ripemd160(int, int, int) { return unimplemented<void>("assert_ripemd160"); }
-   void sha1(int, int, int) { return unimplemented<void>("sha1"); }
-   void sha256(int, int, int) { return unimplemented<void>("sha256"); }
-   void sha512(int, int, int) { return unimplemented<void>("sha512"); }
-   void ripemd160(int, int, int) { return unimplemented<void>("ripemd160"); }
-
    // permission_api
    int check_transaction_authorization(int, int, int, int, int, int) {
       return unimplemented<int>("check_transaction_authorization");
@@ -185,18 +173,6 @@ struct unimplemented_callbacks {
 
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
 #undef DB_SECONDARY_INDEX_METHODS_ARRAY
-
-      // crypto_api
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, assert_recover_key);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, recover_key);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, assert_sha256);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, assert_sha1);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, assert_sha512);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, assert_ripemd160);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, sha1);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, sha256);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, sha512);
-      RODEOS_REGISTER_CALLBACK(Rft, Derived, ripemd160);
 
       // permission_api
       RODEOS_REGISTER_CALLBACK(Rft, Derived, check_transaction_authorization);
