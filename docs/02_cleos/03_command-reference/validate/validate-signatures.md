@@ -7,7 +7,7 @@ cleos validate signatures [OPTIONS] transaction
 ```
 
 ## Positional Arguments
-- `transaction` - The JSON string or filename defining the signed transaction to validate
+- `transaction` _TEXT_ - The JSON string or filename defining the signed transaction to validate
 
 ## Options
 - `-c,--chain-id` _TEXT_ - The chain id that will be used in signature verification
