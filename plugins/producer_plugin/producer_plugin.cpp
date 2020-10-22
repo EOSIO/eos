@@ -421,6 +421,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          return true;
       }
 
+      void restart_speculative_block() {
+         chain::controller& chain = chain_plug->chain();
+         // abort the pending block
+         _unapplied_transactions.add_aborted( chain.abort_block() );
+
+         schedule_production_loop();
+      }
+
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
@@ -445,6 +453,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      if( !self->process_incoming_transaction_async( result, persist_until_expired, next ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
+                        } else {
+                           self->restart_speculative_block();
                         }
                      }
                   } CATCH_AND_CALL(exception_handler);
