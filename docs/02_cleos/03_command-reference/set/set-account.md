@@ -86,3 +86,6 @@ The authority JSON object ...
   weight            : 75      /*Set the weight of a signature from this permission*/
 }
 ```
+
+## See Also
+- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.
