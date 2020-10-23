@@ -2882,8 +2882,8 @@ int main( int argc, char** argv ) {
    getKvTable->add_option( "index_name", index_name, localized("The name of the kv_table index as specified by the contract abi") )->required();
    getKvTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getKvTable->add_option("-i,--index", index_value, localized("Index value"));
-   getKvTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
-   getKvTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
+   getKvTable->add_option( "-L,--lower", lower, localized("lower bound value of index, optional with -r") );
+   getKvTable->add_option( "-U,--upper", upper, localized("upper bound value of index, optional without -r") );
    getKvTable->add_option( "--encode-type", encode_type,
                            localized("The encoding type of index_value, lower bound, upper bound"
                            " 'bytes' for hexdecimal encoded bytes"
