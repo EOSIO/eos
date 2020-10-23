@@ -1,5 +1,6 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
+#include <eosio/chain/backing_store/db_combined.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -134,6 +135,101 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
                  pack_row);
 
    return deltas;
+}
+
+using prim_store = std::vector<std::pair<int, chain::backing_store::primary_index_view>>;
+
+template<typename SecKey>
+using sec_store = std::vector<std::pair<int, chain::backing_store::secondary_index_view<SecKey>>>;
+
+using table_key = chain::backing_store::table_id_object_view;
+
+using table_store = std::vector<table_key>;
+
+struct rocksdb_receiver{
+   void add_row(const chain::backing_store::primary_index_view& row, const chainbase::database& db){
+      prim.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::secondary_index_view<uint64_t>& row, const chainbase::database& db){
+      sec_i64.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::secondary_index_view<chain::uint128_t>& row, const chainbase::database& db){
+      sec_i128.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::secondary_index_view<chain::key256_t>& row, const chainbase::database& db){
+      sec_i256.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::secondary_index_view<float64_t>& row, const chainbase::database& db){
+      sec_f64.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::secondary_index_view<float128_t>& row, const chainbase::database& db){
+      sec_f128.push_back({table_st.size()-1, row});
+   }
+
+   void add_row(const chain::backing_store::table_id_object_view& row, const chainbase::database& db){
+      table_st.emplace_back(row);
+   }
+
+   void add_row(fc::unsigned_int x, const chainbase::database& db){
+
+   }
+
+   table_store table_st;
+   prim_store prim;
+   sec_store<uint64_t> sec_i64;
+   sec_store<chain::uint128_t> sec_i128;
+   sec_store<chain::key256_t> sec_i256;
+   sec_store<float64_t> sec_f64;
+   sec_store<float128_t> sec_f128;
+};
+
+std::vector<table_delta> create_deltas_rocksdb(eosio::session::undo_stack<chain::rocks_db_type> &db, rocksdb_receiver &rec){
+   std::vector<table_delta>                          deltas;
+
+   auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
+   auto pack_contract_row = [&](auto& row) {
+      return fc::raw::pack(make_history_context_wrapper(db, rec.table_st[row.first], row.second));
+   };
+
+   auto process_table_full_snapshot = [&](auto *name, auto &indices, auto &pack_row) {
+      if (indices.empty())
+         return;
+      deltas.push_back({});
+      auto& delta = deltas.back();
+      delta.name  = name;
+      for (auto& row : indices)
+         delta.rows.obj.emplace_back(true, pack_row(row));
+   };
+
+   process_table_full_snapshot("contract_table", rec.table_st, pack_row);
+   process_table_full_snapshot("contract_row", rec.prim, pack_contract_row);
+   process_table_full_snapshot("contract_index64", rec.sec_i64, pack_contract_row);
+   process_table_full_snapshot("contract_index128", rec.sec_i128, pack_contract_row);
+   process_table_full_snapshot("contract_index256", rec.sec_i256, pack_contract_row);
+   process_table_full_snapshot("contract_index_double", rec.sec_f64, pack_contract_row);
+   process_table_full_snapshot("contract_index_long_double", rec.sec_f128, pack_contract_row);
+
+   return deltas;
+}
+
+std::vector<table_delta> create_deltas(const chain::combined_database& db, bool full_snapshot){
+   std::vector<table_delta>                          deltas_result;
+   rocksdb_receiver rec;
+
+   chain::backing_store::rocksdb_contract_db_table_writer writer(rec, db.get_db(), *db.get_kv_undo_stack());
+
+   const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
+
+   chain::backing_store::walk_rocksdb_entries_with_prefix(db.get_kv_undo_stack(), rocksdb_contract_db_prefix, writer);
+
+   deltas_result = create_deltas_rocksdb(*db.get_kv_undo_stack(), rec);
+
+   return create_deltas(db.get_db(), full_snapshot);
 }
 
 } // namespace state_history

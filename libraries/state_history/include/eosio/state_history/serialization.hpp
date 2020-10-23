@@ -13,30 +13,31 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
+#include <eosio/chain/backing_store/db_combined.hpp>
 #include <eosio/state_history/types.hpp>
 
 #include <type_traits>
 
-template <typename T>
+template <typename T, typename DB = chainbase::database>
 struct history_serial_wrapper {
-   const chainbase::database& db;
+   const DB&                  db;
    const T&                   obj;
 };
 
-template <typename T>
-history_serial_wrapper<std::decay_t<T>> make_history_serial_wrapper(const chainbase::database& db, const T& obj) {
+template <typename T, typename DB>
+history_serial_wrapper<std::decay_t<T>, std::decay_t<DB>> make_history_serial_wrapper(const DB& db, const T& obj) {
    return {db, obj};
 }
 
-template <typename P, typename T>
+template <typename P, typename T, typename DB = chainbase::database>
 struct history_context_wrapper {
-   const chainbase::database& db;
+   const DB&                  db;
    const P&                   context;
    const T&                   obj;
 };
 
-template <typename P, typename T>
-history_context_wrapper<std::decay_t<P>, std::decay_t<T>> make_history_context_wrapper(const chainbase::database& db,
+template <typename P, typename T, typename DB>
+history_context_wrapper<std::decay_t<P>, std::decay_t<T>, std::decay_t<DB>> make_history_context_wrapper(const DB& db,
                                                                                        const P& context, const T& obj) {
    return {db, context, obj};
 }
@@ -53,16 +54,16 @@ const T& as_type(const T& x) {
    return x;
 }
 
-template <typename ST, typename T>
-ST& history_serialize_container(ST& ds, const chainbase::database& db, const T& v) {
+template <typename ST, typename T, typename DB>
+ST& history_serialize_container(ST& ds, const DB& db, const T& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v)
       ds << make_history_serial_wrapper(db, x);
    return ds;
 }
 
-template <typename ST, typename T>
-ST& history_serialize_container(ST& ds, const chainbase::database& db, const std::vector<std::shared_ptr<T>>& v) {
+template <typename ST, typename T, typename DB>
+ST& history_serialize_container(ST& ds, const DB& db, const std::vector<std::shared_ptr<T>>& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v) {
       EOS_ASSERT(!!x, eosio::chain::plugin_exception, "null inside container");
@@ -71,8 +72,8 @@ ST& history_serialize_container(ST& ds, const chainbase::database& db, const std
    return ds;
 }
 
-template <typename ST, typename P, typename T>
-ST& history_context_serialize_container(ST& ds, const chainbase::database& db, const P& context,
+template <typename ST, typename P, typename T, typename DB>
+ST& history_context_serialize_container(ST& ds, const DB& db, const P& context,
                                         const std::vector<T>& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (const auto& x : v) {
@@ -114,18 +115,18 @@ void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v)
       history_pack_big_bytes(ds, *v);
 }
 
-template <typename ST, typename T>
-ST& operator<<(ST& ds, const history_serial_wrapper<std::vector<T>>& obj) {
+template <typename ST, typename T, typename DB>
+ST& operator<<(ST& ds, const history_serial_wrapper<std::vector<T>, DB>& obj) {
    return history_serialize_container(ds, obj.db, obj.obj);
 }
 
-template <typename ST, typename P, typename T>
-ST& operator<<(ST& ds, const history_context_wrapper<P, std::vector<T>>& obj) {
+template <typename ST, typename P, typename T, typename DB>
+ST& operator<<(ST& ds, const history_context_wrapper<P, std::vector<T>, DB>& obj) {
    return history_context_serialize_container(ds, obj.db, obj.context, obj.obj);
 }
 
-template <typename ST, typename First, typename Second>
-ST& operator<<(ST& ds, const history_serial_wrapper<std::pair<First, Second>>& obj) {
+template <typename ST, typename First, typename Second, typename DB>
+ST& operator<<(ST& ds, const history_serial_wrapper<std::pair<First, Second>, DB>& obj) {
    fc::raw::pack(ds, obj.obj.first);
    fc::raw::pack(ds, obj.obj.second);
    return ds;
@@ -176,6 +177,16 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::table_id_objec
    return ds;
 }
 
+template <typename ST, typename DB>
+ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::backing_store::table_id_object_view, DB>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.scope.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.table.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.to_uint64_t()));
+   return ds;
+}
+
 template <typename ST>
 ST& operator<<(ST&                                                                                           ds,
                const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::key_value_object>& obj) {
@@ -186,6 +197,19 @@ ST& operator<<(ST&                                                              
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.primary_key));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.value));
+   return ds;
+}
+
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                           ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::primary_index_view, DB>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.context.code.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.context.scope.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.context.table.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.primary_key));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.to_uint64_t()));
+   fc::raw::pack(ds, obj.obj.value);
    return ds;
 }
 
@@ -231,9 +255,27 @@ ST& serialize_secondary_index(ST& ds, const eosio::chain::table_id_object& conte
    return ds;
 }
 
+template <typename ST, typename T>
+ST& serialize_secondary_index(ST& ds, const eosio::chain::backing_store::table_id_object_view& context, const T& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint64_t>(context.code.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(context.scope.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(context.table.to_uint64_t()));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.primary_key));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.payer.to_uint64_t()));
+   serialize_secondary_index_data(ds, obj.secondary_key);
+   return ds;
+}
+
 template <typename ST>
 ST& operator<<(ST&                                                                                         ds,
                const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index64_object>& obj) {
+   return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                         ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::secondary_index_view<uint64_t>, DB>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
@@ -243,9 +285,21 @@ ST& operator<<(ST&                                                              
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                         ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::secondary_index_view<eosio::chain::uint128_t>, DB>& obj) {
+   return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
 template <typename ST>
 ST& operator<<(ST&                                                                                          ds,
                const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index256_object>& obj) {
+   return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                         ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::secondary_index_view<eosio::chain::key256_t>, DB>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
@@ -255,9 +309,21 @@ ST& operator<<(ST&                                                              
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                         ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::secondary_index_view<float64_t>, DB>& obj) {
+   return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
 template <typename ST>
 ST& operator<<(
     ST& ds, const history_context_wrapper<eosio::chain::table_id_object, eosio::chain::index_long_double_object>& obj) {
+   return serialize_secondary_index(ds, obj.context, obj.obj);
+}
+
+template <typename ST, typename DB>
+ST& operator<<(ST&                                                                                         ds,
+               const history_context_wrapper<eosio::chain::backing_store::table_id_object_view, eosio::chain::backing_store::secondary_index_view<float128_t>, DB>& obj) {
    return serialize_secondary_index(ds, obj.context, obj.obj);
 }
 

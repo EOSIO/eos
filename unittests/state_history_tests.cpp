@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    uint32_t last_accepted_block_num = 0;
 
    chain.control->accepted_block.connect([&](const block_state_ptr& block_state) {
-      log.store(chain.control->db(), block_state);
+      log.store(chain.control->kv_db(), block_state);
       last_accepted_block_num = block_state->block_num;
    });
 
@@ -193,7 +193,7 @@ struct state_history_tester : state_history_tester_logs, tester {
 
       control.accepted_block.connect([&](const block_state_ptr& bs) { 
          traces_log.store(control.db(), bs); 
-         chain_state_log.store(control.db(), bs); 
+         chain_state_log.store(control.kv_db(), bs);
       });
       control.block_start.connect([&](uint32_t block_num) { traces_log.block_start(block_num); } );
    }) {}
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
       std::vector<eosio::state_history::transaction_trace> traces;
       trace_converter::unpack(strm, traces);
       message.traces = traces;
-      message.deltas = fc::raw::pack(create_deltas(control->db(), !prev_block));
+      message.deltas = fc::raw::pack(create_deltas(control->kv_db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{message});
@@ -462,7 +462,7 @@ public:
    using deltas_vector = vector<eosio::state_history::table_delta>;
 
    pair<bool, deltas_vector::iterator> find_table_delta(const std::string &name) {
-      v = eosio::state_history::create_deltas(control->db(), false);;
+      v = eosio::state_history::create_deltas(control->kv_db(), false);;
 
       auto find_by_name = [&name](const auto& x) {
          return x.name == name;
@@ -703,8 +703,16 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
    BOOST_REQUIRE_EQUAL(digest_in_delta, *d);
 }
 
+static void set_backing_store(tester& chain, const backing_store_type backing_store) {
+   chain.close(); // clean up chain so no dirty db error
+   auto cfg = chain.get_config();
+   cfg.backing_store = backing_store;
+   chain.init(cfg); // enable new config
+}
+
 BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    table_deltas_tester chain;
+   set_backing_store(chain, backing_store_type::ROCKSDB);
    chain.produce_block();
 
    chain.create_account("tester"_n);
