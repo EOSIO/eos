@@ -38,7 +38,7 @@ class shared_bytes {
       shared_bytes_iterator()                                   = default;
       shared_bytes_iterator(const shared_bytes_iterator& other) = default;
       shared_bytes_iterator(shared_bytes_iterator&& other)      = default;
-      shared_bytes_iterator(char* buffer, size_t begin, size_t end, int64_t index);
+      shared_bytes_iterator(char* buffer, int64_t begin, int64_t end, int64_t index);
 
       shared_bytes_iterator& operator=(const shared_bytes_iterator& other) = default;
       shared_bytes_iterator& operator=(shared_bytes_iterator&& other) = default;
@@ -60,8 +60,8 @@ class shared_bytes {
 
     private:
       underlying_type_t* m_buffer{ nullptr };
-      size_t             m_end{ 0 };
-      size_t             m_begin{ 0 };
+      int64_t            m_end{ 0 };
+      int64_t            m_begin{ 0 };
       int64_t            m_index{ -1 };
    };
 
@@ -86,8 +86,6 @@ class shared_bytes {
    shared_bytes& operator=(const shared_bytes& b) = default;
    shared_bytes& operator=(shared_bytes&& b) = default;
 
-   template <typename Compare1, typename Compare2>
-   bool compare(const shared_bytes& other, const Compare1& compare1, const Compare2& compare2) const;
    bool operator==(const shared_bytes& other) const;
    bool operator!=(const shared_bytes& other) const;
    bool operator<(const shared_bytes& other) const;
@@ -116,10 +114,26 @@ class shared_bytes {
 namespace details {
    template <size_t byte_size = sizeof(uint64_t)>
    inline size_t aligned_size(size_t size) {
-      if (size % byte_size != 0) {
-         return ((size / byte_size) + 1) * byte_size;
+      return (size + (byte_size - 1)) & ~(byte_size - 1);
+   }
+
+   template <size_t byte_size = sizeof(uint64_t)>
+   inline int64_t aligned_compare(const char* left, int64_t left_size, const char* right, int64_t right_size) {
+      auto iterations = std::min(aligned_size(left_size), aligned_size(right_size)) / byte_size;
+      for (size_t i = 0; i < iterations; ++i) {
+         auto offset = i * byte_size;
+         auto left_value  = uint64_t{};
+         auto right_value = uint64_t{};
+         std::memcpy(&left_value, left + offset, byte_size);
+         std::memcpy(&right_value, right + offset, byte_size);
+         left_value = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(left_value);
+         right_value = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(right_value);
+         if (left_value == right_value) {
+           continue;
+         }
+         return left_value < right_value ? -1 : 1;
       }
-      return size;
+      return left_size - right_size;
    }
 } // namespace details
 
@@ -170,123 +184,52 @@ inline size_t            shared_bytes::aligned_size() const { return eosio::sess
 inline char*             shared_bytes::data() { return m_data.get(); }
 inline const char* const shared_bytes::data() const { return m_data.get(); }
 
-template <typename Compare1, typename Compare2>
-bool shared_bytes::compare(const shared_bytes& other, const Compare1& compare1, const Compare2& compare2) const {
-   auto aligned_left_size  = eosio::session::details::aligned_size(m_size);
-   auto aligned_right_size = eosio::session::details::aligned_size(other.m_size);
-
-   auto* left_ptr  = m_data.get();
-   auto* right_ptr = other.m_data.get();
-   auto  left      = uint64_t{};
-   auto  right     = uint64_t{};
-   auto  result    = false;
-
-   for (size_t i = 0; i < std::min(aligned_left_size, aligned_right_size) / sizeof(uint64_t); ++i) {
-      std::memcpy(&left, left_ptr + (i * sizeof(uint64_t)), sizeof(uint64_t));
-      std::memcpy(&right, right_ptr + (i * sizeof(uint64_t)), sizeof(uint64_t));
-
-      left  = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(left);
-      right = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(right);
-
-      if (compare1(left, right, result)) {
-         return result;
-      }
-   }
-
-   return compare2();
-}
-
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return true;
    }
-
    if (size() != other.size()) {
       return false;
    }
-
-   return compare(
-         other,
-         [](auto& left, auto& right, auto& result) {
-            if (left != right) {
-               result = false;
-               return true;
-            }
-            return false;
-         },
-         []() { return true; });
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) == 0;
 }
 
-inline bool shared_bytes::operator!=(const shared_bytes& other) const { return !(*this == other); }
+inline bool shared_bytes::operator!=(const shared_bytes& other) const {
+   if (m_data.get() == other.m_data.get()) {
+      return false;
+   }
+   if (size() != other.size()) {
+      return true;
+   }
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) != 0;
+}
 
 inline bool shared_bytes::operator<(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return false;
    }
-   return compare(
-         other,
-         [](auto& left, auto& right, auto& result) {
-            if (left < right) {
-               result = true;
-               return true;
-            } else if (left > right) {
-               result = false;
-               return true;
-            }
-            return false;
-         },
-         [&]() { return size() < other.size(); });
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) < 0;
 }
 
 inline bool shared_bytes::operator<=(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return true;
    }
-   return compare(
-         other,
-         [](auto& left, auto& right, auto& result) {
-            if (left > right) {
-               result = false;
-               return true;
-            }
-            return false;
-         },
-         [&]() { return size() <= other.size(); });
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) <= 0;
 }
 
 inline bool shared_bytes::operator>(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return false;
    }
-   return compare(
-         other,
-         [](auto& left, auto& right, auto& result) {
-            if (left > right) {
-               result = true;
-               return true;
-            } else if (left < right) {
-               result = false;
-               return true;
-            }
-            return false;
-         },
-         [&]() { return size() > other.size(); });
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) > 0;
 }
 
 inline bool shared_bytes::operator>=(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
       return true;
    }
-   return compare(
-         other,
-         [](auto& left, auto& right, auto& result) {
-            if (left < right) {
-               result = false;
-               return true;
-            }
-            return false;
-         },
-         [&]() { return size() >= other.size(); });
+   return details::aligned_compare(m_data.get(), m_size, other.m_data.get(), other.m_size) >= 0;
 }
 
 inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
@@ -294,18 +237,22 @@ inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
 inline shared_bytes::operator bool() const { return *this != shared_bytes{}; }
 
 inline shared_bytes::iterator shared_bytes::begin() const {
-   return iterator{ m_data.get(), 0, m_size - 1, m_size == 0 ? -1 : 0 };
+   return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
 }
 
-inline shared_bytes::iterator shared_bytes::end() const { return iterator{ m_data.get(), 0, m_size - 1, -1 }; }
+inline shared_bytes::iterator shared_bytes::end() const {
+   return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, -1 };
+}
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
-   os << fc::base64_encode({ std::begin(bytes), std::end(bytes) });
+   for (const auto c : bytes) {
+     std::cout << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (0xFF & static_cast<int>(c));
+   }
    return os;
 }
 
 template <typename Iterator_traits>
-shared_bytes::shared_bytes_iterator<Iterator_traits>::shared_bytes_iterator(char* buffer, size_t begin, size_t end,
+shared_bytes::shared_bytes_iterator<Iterator_traits>::shared_bytes_iterator(char* buffer, int64_t begin, int64_t end,
                                                                             int64_t index)
     : m_buffer{ buffer }, m_end{ end }, m_begin{ begin }, m_index{ index } {}
 
@@ -412,8 +359,8 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-(int64_t offset) 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::difference_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-(const shared_bytes_iterator& other) {
-   auto left_index  = m_index == -1 ? static_cast<int64_t>(m_end) + 1 : m_index;
-   auto right_index = other.m_index == -1 ? static_cast<int64_t>(other.m_end) + 1 : other.m_index;
+   auto left_index  = m_index == -1 ? m_end + 1 : m_index;
+   auto right_index = other.m_index == -1 ? other.m_end + 1 : other.m_index;
    return std::abs<int64_t>(left_index - right_index);
 }
 
