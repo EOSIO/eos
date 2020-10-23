@@ -60,6 +60,18 @@
                 "disable_filters": true,
                 "disable_summary_gen": true
             }
+        },
+        {
+          "name": "doxygen_to_xml",
+          "options": {
+            "INPUT": "libraries/chain/include/eosio/chain/webassembly/interface.hpp"
+          },
+          "disable_default_filters" :true,
+          "filters" : []
+        },
+        {
+          "name": "doxybook",
+          "options": {}
         }
     ]
 }
