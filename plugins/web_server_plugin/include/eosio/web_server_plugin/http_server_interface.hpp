@@ -13,6 +13,10 @@
 
 namespace eosio::web{
 
+namespace{
+   using namespace eosio;
+}
+
 enum class schema_type : uint8_t {
    NOT_SET,
    HTTP,
@@ -75,26 +79,12 @@ struct server_address{
    port_type   port;
 
    std::string as_string() const;
+
+   bool operator == (const server_address& other) const {
+      return std::tie(schema, host, port) 
+          == std::tie(other.schema, other.host, other.port);
+   }
 };
-
-template <typename DataStream>
-inline DataStream& operator << (DataStream& ds, const server_address& address){
-   fc::raw::pack(ds, address.schema);
-   fc::raw::pack(ds, (const char*)"://");
-   fc::raw::pack(ds, address.host);
-   fc::raw::pack(ds, (const char*)":");
-   fc::raw::pack(ds, address.port);
-
-   return ds;
-}
-
-std::string server_address::as_string() const{
-   std::vector<char> buffer(fc::raw::pack_size(*this));
-   fc::datastream<char*> ds(buffer.data(), buffer.size());
-   ds << *this;
-
-   return std::string(buffer.data(), ds.tellp());
-}
 
 struct http_server_interface{
    virtual ~http_server_interface(){};
@@ -123,6 +113,10 @@ struct http_server_interface{
     * @brief starts server 
     */
    virtual void run() = 0;
+   /**
+    * @brief stops server 
+    */
+   virtual void stop() = 0;
 };
 
 /**
@@ -145,12 +139,12 @@ struct https_server_interface : virtual http_server_interface{
    virtual void init_ssl(std::string_view cert, std::string_view pk, password_callback pwd_callback, std::string_view dh) = 0;
 };
 
-struct http_server_factory_interface{
+struct http_server_generic_factory_interface{
    
-   virtual ~http_server_factory_interface(){};
+   virtual ~http_server_generic_factory_interface(){};
    /**
     * @brief creates beast_server instance and initializes it.
-    * returns http_server_interface* or https_server_interface* depending on address.schema
+    * returns http_server_generic_interface* or https_server_interface* depending on address.schema
     * @param address new server address
     * @param context execution context
     */
@@ -160,10 +154,56 @@ struct http_server_factory_interface{
 }
 
 namespace fc{
+   template <typename DataStream>
+   inline DataStream& operator << (DataStream& ds, const eosio::web::server_address& address){
+      fc::raw::pack(ds, address.schema);
+      fc::raw::pack(ds, (const char*)"://");
+      fc::raw::pack(ds, address.host);
+      fc::raw::pack(ds, (const char*)":");
+      fc::raw::pack(ds, address.port);
+
+      return ds;
+   }
+
+   template <typename DataStream>
+   inline DataStream& operator << (DataStream& ds, eosio::web::method_type method){
+
+      switch(method){
+         case eosio::web::method_type::GET:
+         fc::raw::pack(ds, "GET");
+         break;
+         case eosio::web::method_type::POST:
+         fc::raw::pack(ds, "POST");
+         break;
+         default:
+         FC_EXCEPTION(eosio::chain::uri_parse_exception, "wrong method: ${m}", ("m", method));
+      }
+
+      return ds;
+   }
+
    inline void to_variant( const eosio::web::schema_type& schema, fc::variant& var ){
       var = variant(static_cast<std::underlying_type_t<eosio::web::schema_type>>(schema));
    }
    inline void from_variant( const fc::variant& var,  eosio::web::schema_type& schema ){
       schema = static_cast<eosio::web::schema_type>(var.as_uint64());
+   }
+
+   inline void to_variant( const eosio::web::method_type& schema, fc::variant& var ){
+      var = variant(static_cast<std::underlying_type_t<eosio::web::method_type>>(schema));
+   }
+   inline void from_variant( const fc::variant& var,  eosio::web::method_type& schema ){
+      schema = static_cast<eosio::web::method_type>(var.as_uint64());
+   }
+}
+
+namespace eosio::web{
+   std::string server_address::as_string() const{
+      using namespace fc;
+      std::vector<char> buffer(fc::raw::pack_size(*this));
+      fc::datastream<char*> ds(buffer.data(), buffer.size());
+      ds << *this;
+
+      return std::string(buffer.data(), ds.tellp());
    }
 }

@@ -1,0 +1,6 @@
+#include <string>
+
+namespace eosio::web::test{
+
+   const std::string keypath = "${CMAKE_BINARY_DIR}/plugins/web_server_plugin/tests/";
+}

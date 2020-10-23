@@ -1,3 +1,6 @@
+#used by IntelliSense
+set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+
 file(GLOB HEADERS "include/eosio/http_plugin/*.hpp")
 add_library( http_plugin
              http_plugin.cpp

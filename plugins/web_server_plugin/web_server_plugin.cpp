@@ -14,7 +14,7 @@ namespace eosio{
 
 class web_server_plugin_impl{
 public:
-   std::unique_ptr<http_server_factory_interface> server_factory;
+   std::unique_ptr<http_server_generic_factory_interface> server_factory;
 
    struct server_address_cmp{
       size_t operator() (const server_address& lhs, const server_address& rhs) const {
@@ -31,10 +31,10 @@ public:
    };
 
    web_server_plugin_impl() : server_factory(new beastimpl::web_server_factory{}) {}
-   web_server_plugin_impl(http_server_factory_interface* factory) : server_factory(factory) {}
+   web_server_plugin_impl(http_server_generic_factory_interface* factory) : server_factory(factory) {}
    ~web_server_plugin_impl(){}
 
-   http_server_interface_ptr get_server(server_address&& address, asio::io_context* context){
+   http_server_generic_interface_ptr get_server(server_address&& address, asio::io_context* context){
       auto it = server_list.find(address);
       if (it != server_list.end()){
          return it->second;
@@ -42,7 +42,7 @@ public:
 
       //call to server_address(address) supposed to create copy of address object
       //this is needed because of we need it two times
-      http_server_interface_ptr p_server( server_factory->create_server(server_address{address}, context) );
+      http_server_generic_interface_ptr p_server( server_factory->create_server(server_address{address}, context) );
       auto pair = make_pair(forward<server_address>(address), p_server);
       server_list.emplace( move(pair) );
       
@@ -54,15 +54,15 @@ private:
 };
 
 web_server_plugin::web_server_plugin() 
-   : impl(new web_server_plugin_impl{} ){
+   : impl(new web_server_plugin_impl{}){
 }
-web_server_plugin::web_server_plugin(http_server_factory_interface* factory)
-   : impl(new web_server_plugin_impl(factory) ){
+web_server_plugin::web_server_plugin(http_server_generic_factory_interface* factory)
+   : impl(new web_server_plugin_impl(factory)){
 }
 web_server_plugin::~web_server_plugin(){
 }
 
-void web_server_plugin::set_program_options(options_description&, options_description& cfg) {
+void web_server_plugin::set_program_options(options_description&, options_description& cfg){
    cfg.add_options()
       ("https-certificate-chain-file", bpo::value<string>(),
        "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
@@ -81,25 +81,29 @@ void web_server_plugin::set_program_options(options_description&, options_descri
 }
 
 
-void web_server_plugin::plugin_initialize(const variables_map& options) {
+void web_server_plugin::plugin_initialize(const variables_map& options){
    try {
       
    } FC_LOG_AND_RETHROW()
 }
 
-void web_server_plugin::plugin_startup() {
+void web_server_plugin::plugin_startup(){
+   handle_sighup();
+}
+
+void web_server_plugin::plugin_shutdown(){
 
 }
 
-void web_server_plugin::plugin_shutdown() {
-
+void web_server_plugin::handle_sighup(){
+   fc::logger::update( "web_server_plugin", logger );
 }
 
 void web_server_plugin::add_handler(std::string_view path, web::server_handler callback){
    //impl->add_handler(path, callback);
 }
 
-http_server_interface_ptr web_server_plugin::get_server(server_address&& name, asio::io_context* context){
+http_server_generic_interface_ptr web_server_plugin::get_server(server_address&& name, asio::io_context* context){
    return impl->get_server(forward<server_address&&>(name), context);
 }
 

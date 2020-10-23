@@ -625,6 +625,12 @@ namespace eosio { namespace chain {
                                     3200005, "http request fail" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_http_request, http_exception,
                                     3200006, "invalid http request" )
+      FC_DECLARE_DERIVED_EXCEPTION( uri_parse_exception, http_exception,
+                                    3200007, "invalid uri" )
+      FC_DECLARE_DERIVED_EXCEPTION( other_http_exception, http_exception,
+                                    3200008, "other http exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( tcp_accept_exception, http_exception,
+                                    3200009, "tcp accept exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
