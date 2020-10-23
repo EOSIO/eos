@@ -746,7 +746,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
          // Set backing_store for save snapshot
          set_backing_store(chain, origin_backing_store);
 
-         chain.create_accounts({"snapshot"_n, "manager"_n});
+         chain.create_accounts({"manager"_n});
+         auto get_ext = [](unsigned i) {
+            std::string ext;
+            do {
+               unsigned rem = i % 5;
+               i /= 5;
+               ext += std::to_string(rem + 1);
+            } while(i > 0);
+            std::reverse(ext.begin(), ext.end());
+            return ext;
+         };
+         std::vector<name> contracts;
+         for (unsigned i = 0; i < 10; ++i) {
+            name contract { std::string("snapshot") + get_ext(i) };
+            contracts.push_back(contract);
+         }
+         chain.create_accounts(contracts);
+
          chain.set_code("manager"_n, kv_snapshot_bios);
          chain.push_action("eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "manager")("is_priv", 1));
 
@@ -759,7 +776,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             chain.push_transaction(trx);
          }
          chain.produce_blocks(1);
-         chain.set_code("snapshot"_n, kv_snapshot_wast);
+
+         for (auto contract : contracts) {
+            chain.set_code(contract, kv_snapshot_wast);
+         }
          chain.produce_blocks(1);
          chain.control->abort_block();
 
@@ -779,13 +799,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
-            // Calling apply method which will increment the
-            // current value stored
-            signed_transaction trx;
-            trx.actions.push_back({{{"snapshot"_n, "active"_n}}, "snapshot"_n, "eosio.kvram"_n, {}});
-            chain.set_transaction_headers(trx);
-            trx.sign(chain.get_private_key("snapshot"_n, "active"), chain.control->get_chain_id());
-            chain.push_transaction(trx);
+            int contract_gen = 0;
+            for (auto contract : contracts) {
+               if (contract_gen++ > generation)
+                  break; // ensure that every entry in the KV tables are not just exactly the same data
+
+               // Calling apply method which will increment the
+               // current value stored
+               signed_transaction trx;
+               trx.actions.push_back({{{contract, "active"_n}}, contract, "eosio.kvram"_n, {}});
+               chain.set_transaction_headers(trx);
+               trx.sign(chain.get_private_key(contract, "active"), chain.control->get_chain_id());
+               chain.push_transaction(trx);
+            }
 
             // produce block
             auto new_block = chain.produce_block();
