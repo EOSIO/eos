@@ -100,6 +100,7 @@ class shared_bytes {
 
    shared_bytes      next();
    size_t            size() const;
+   size_t            aligned_size() const;
    char*             data();
    const char* const data() const;
 
@@ -112,15 +113,19 @@ class shared_bytes {
    std::shared_ptr<underlying_type_t> m_data;
 };
 
-namespace {
+namespace details {
+   template <size_t byte_size = sizeof(uint64_t)>
    inline size_t aligned_size(size_t size) {
-      return size == 0 ? 0 : ((size / sizeof(uint64_t)) + 1) * sizeof(uint64_t);
+      if (size % byte_size != 0) {
+         return ((size / byte_size) + 1) * byte_size;
+      }
+      return size;
    }
-} // namespace
+} // namespace details
 
 template <typename T>
 shared_bytes::shared_bytes(const T* data, size_t size)
-    : m_size{ size * sizeof(T) }, m_offset{ aligned_size(m_size) - m_size }, m_data{ [&]() {
+    : m_size{ size * sizeof(T) }, m_offset{ eosio::session::details::aligned_size(m_size) - m_size }, m_data{ [&]() {
          if (!data || size == 0) {
             return std::shared_ptr<char>{};
          }
@@ -129,13 +134,13 @@ shared_bytes::shared_bytes(const T* data, size_t size)
          auto  result      = std::shared_ptr<underlying_type_t>{ new underlying_type_t[actual_size],
                                                            std::default_delete<underlying_type_t[]>() };
          auto* buffer      = result.get();
-         std::memcpy(buffer, reinterpret_cast<const underlying_type_t*>(data), m_size);
+         std::memcpy(buffer, reinterpret_cast<const void*>(data), m_size);
          std::memset(buffer + m_size, 0, m_offset);
          return result;
       }() } {}
 
 inline shared_bytes::shared_bytes(size_t size)
-    : m_size{ size }, m_offset{ aligned_size(m_size) - m_size }, m_data{ [&]() {
+    : m_size{ size }, m_offset{ eosio::session::details::aligned_size(m_size) - m_size }, m_data{ [&]() {
          if (size == 0) {
             return std::shared_ptr<char>{};
          }
@@ -161,13 +166,14 @@ inline shared_bytes shared_bytes::next() {
 }
 
 inline size_t            shared_bytes::size() const { return m_size; }
+inline size_t            shared_bytes::aligned_size() const { return eosio::session::details::aligned_size(m_size); }
 inline char*             shared_bytes::data() { return m_data.get(); }
 inline const char* const shared_bytes::data() const { return m_data.get(); }
 
 template <typename Compare1, typename Compare2>
 bool shared_bytes::compare(const shared_bytes& other, const Compare1& compare1, const Compare2& compare2) const {
-   auto aligned_left_size  = m_size == 0 ? 0 : aligned_size(m_size);
-   auto aligned_right_size = other.m_size == 0 ? 0 : aligned_size(other.m_size);
+   auto aligned_left_size  = eosio::session::details::aligned_size(m_size);
+   auto aligned_right_size = eosio::session::details::aligned_size(other.m_size);
 
    auto* left_ptr  = m_data.get();
    auto* right_ptr = other.m_data.get();
