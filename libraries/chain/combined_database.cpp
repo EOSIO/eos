@@ -86,41 +86,79 @@ namespace eosio { namespace chain {
    }
 
    template <typename Util, typename F>
-   void walk_index(const Util& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {
+   void walk_index(const Util& utils, const chainbase::database& db, F&& function) {
       utils.walk(db, std::forward<F>(function));
    }
 
    template <typename F>
-   void walk_index(const index_utils<table_id_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
+   void walk_index(const index_utils<table_id_multi_index>& utils, const chainbase::database& db, F&& function) {}
 
    template <typename F>
-   void walk_index(const index_utils<database_header_multi_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
+   void walk_index(const index_utils<database_header_multi_index>& utils, const chainbase::database& db, F&& function) {}
 
    template <typename F>
-   void walk_index(const index_utils<kv_db_config_index>& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {}
+   void walk_index(const index_utils<kv_db_config_index>& utils, const chainbase::database& db, F&& function) {}
 
-   template <typename F>
-   void walk_index(const index_utils<kv_index>& utils, const kv_undo_stack_ptr& kv_undo_stack,
-                   const chainbase::database& db, F&& function) {
-      if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-         backing_store::walk_rocksdb_entries_with_prefix(
-               kv_undo_stack, rocksdb_contract_kv_prefix,
-               [&function](uint64_t contract, const char* key, std::size_t key_size, const char* value,
-                           std::size_t value_size) {
-                  // In KV RocksDB, payer and actual data are packed together.
-                  // Extract them.
-                  backing_store::payer_payload pp(value, value_size);
-                  kv_object_view row{name(contract),
-                                     {{key, key + key_size}},
-                                      {{pp.value, pp.value + pp.value_size}},
-                                     pp.payer};
-                  function(row);
-               });
+   void add_kv_table_to_snapshot(const snapshot_writer_ptr& snapshot, const chainbase::database& db, const kv_undo_stack_ptr& kv_undo_stack) {
+      snapshot->write_section<kv_object>([&db,&kv_undo_stack](auto& section) {
+         if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
+            backing_store::rocksdb_contract_kv_table_writer <std::decay_t<decltype(section)>> writer(section, db,
+                                                                                                     *kv_undo_stack);
+            backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix, writer);
+         } else {
+            index_utils<kv_index> utils;
+            utils.walk<by_kv_key>(db, [&db, &section](const auto& row) { section.add_row(row, db); });
+         }
+      });
+   }
 
-         utils.walk<by_kv_key>(db, std::forward<F>(function));
+   void read_kv_table_from_snapshot(const snapshot_reader_ptr& snapshot, chainbase::database& db,
+                                    const std::unique_ptr<rocks_db_type>& kv_database, uint32_t version, backing_store_type backing_store ) {
+      if (version < kv_object::minimum_snapshot_version)
+         return;
+      if (backing_store == backing_store_type::ROCKSDB) {
+         auto prefix_key = std::string_view(rocksdb_contract_kv_prefix.data(), rocksdb_contract_kv_prefix.size());
+         auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
+         constexpr std::size_t batch_size = 500;
+         key_values.reserve(batch_size);
+         snapshot->read_section<kv_object>([&key_values, &prefix_key, &db, &kv_database](auto& section) {
+            bool more = !section.empty();
+            while (more) {
+               kv_object_view move_to_rocks;
+               more = section.read_row(move_to_rocks, db);
+               b1::chain_kv::bytes contract_as_bytes;
+               b1::chain_kv::append_key(contract_as_bytes, move_to_rocks.contract.to_uint64_t());
+               auto full_key =
+                     eosio::session::make_shared_bytes<std::string_view, 3>({prefix_key,
+                                                                             std::string_view{contract_as_bytes.data(),
+                                                                                              contract_as_bytes.size()},
+                                                                             std::string_view{move_to_rocks.kv_key.data.data(),
+                                                                                              move_to_rocks.kv_key.data.size()}});
+
+               // Pack payer and actual key value
+               auto final_kv_value = backing_store::payer_payload(move_to_rocks.payer,
+                                                                  move_to_rocks.kv_value.data.data(),
+                                                                  move_to_rocks.kv_value.data.size());
+
+               key_values.emplace_back(full_key,
+                                       final_kv_value.as_payload());
+
+               if (key_values.size() >= batch_size) {
+                  kv_database->write(key_values);
+                  key_values.clear();
+               }
+            }
+         });
+         // write out any remaining key-values
+         kv_database->write(key_values);
       }
-      else  {
-         utils.walk(db, std::forward<F>(function));
+      else {
+         snapshot->read_section<kv_object>([&db](auto& section) {
+            bool more = !section.empty();
+            while (more) {
+               index_utils<kv_index>::create(db, [&db, &section, &more](auto &row) { more = section.read_row(row, db); });
+            }
+         });
       }
    }
 
@@ -330,10 +368,11 @@ namespace eosio { namespace chain {
          using value_t = typename decltype(utils)::index_t::value_type;
 
          snapshot->write_section<value_t>([utils, this](auto& section) {
-            walk_index(utils, this->kv_undo_stack, db, [this, &section](const auto& row) { section.add_row(row, db); });
+            walk_index(utils, db, [this, &section](const auto& row) { section.add_row(row, db); });
          });
       });
 
+      add_kv_table_to_snapshot(snapshot, db, kv_undo_stack);
       add_contract_tables_to_snapshot(snapshot);
 
       authorization.add_to_snapshot(snapshot);
@@ -439,44 +478,6 @@ namespace eosio { namespace chain {
             }
          }
 
-         // skip the kv index if the snapshot doesn't contain it
-         if constexpr (std::is_same_v<value_t, kv_object>) {
-            if (header.version < kv_object::minimum_snapshot_version)
-               return;
-            if (backing_store == backing_store_type::ROCKSDB) {
-               auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
-                                                                   rocksdb_contract_kv_prefix.size());
-               auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
-               snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
-                  bool more = !section.empty();
-                  while (more) {
-                     kv_object* move_to_rocks = nullptr;
-                     decltype(utils)::create(db, [this, &section, &more, &move_to_rocks](auto& row) {
-                        more = section.read_row(row, db);
-                        move_to_rocks = &row;
-                     });
-                     if (move_to_rocks) {
-                        auto buffer = std::vector<char>{};
-                        buffer.reserve(sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size());
-                        buffer.insert(std::end(buffer), prefix_key.data(), prefix_key.data() + prefix_key.size());
-                        b1::chain_kv::append_key(buffer, move_to_rocks->contract.to_uint64_t());
-                        buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
-                                      move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
-
-                        // Pack payer and actual key value
-                        auto final_kv_value = build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer);
-
-                        key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
-                                                std::move(final_kv_value));
-db.remove(*move_to_rocks);
-                     }
-                  }
-               });
-               kv_database->write(key_values);
-               return;
-            }
-         }
-
          snapshot->read_section<value_t>([this](auto& section) {
             bool more = !section.empty();
             while (more) {
@@ -485,6 +486,7 @@ db.remove(*move_to_rocks);
          });
       });
 
+      read_kv_table_from_snapshot(snapshot, db, kv_database, header.version, backing_store);
       read_contract_tables_from_snapshot(snapshot);
 
       authorization.read_from_snapshot(snapshot);

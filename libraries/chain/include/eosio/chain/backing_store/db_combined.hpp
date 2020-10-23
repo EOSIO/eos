@@ -187,6 +187,33 @@ const typename rocksdb_contract_db_table_writer<Receiver>::extract_index_member_
       &rocksdb_contract_db_table_writer<Receiver>::extract_secondary_index<float64_t>,
       &rocksdb_contract_db_table_writer<Receiver>::extract_secondary_index<float128_t>,
 };
+
+
+template<typename Receiver>
+class rocksdb_contract_kv_table_writer {
+public:
+   rocksdb_contract_kv_table_writer(Receiver& r, const chainbase::database& db,
+                                    eosio::session::undo_stack<rocks_db_type>& kus)
+         : receiver_(r), db_(db), kv_undo_stack_(kus) {}
+
+   void operator()(uint64_t contract, const char* key, std::size_t key_size,
+                   const char* value, std::size_t value_size) {
+      // In KV RocksDB, payer and actual data are packed together.
+      // Extract them.
+      backing_store::payer_payload pp(value, value_size);
+      kv_object_view row{name(contract),
+                         {{key, key + key_size}},
+                         {{pp.value, pp.value + pp.value_size}},
+                         pp.payer};
+      receiver_.add_row(row, db_);
+   }
+
+private:
+   Receiver& receiver_;
+   const chainbase::database& db_;
+   eosio::session::undo_stack<rocks_db_type>& kv_undo_stack_;
+};
+
 }}}
 
 FC_REFLECT(eosio::chain::backing_store::table_id_object_view, (code)(scope)(table)(payer)(count) )
