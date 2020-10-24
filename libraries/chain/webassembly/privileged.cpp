@@ -249,17 +249,9 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   auto kv_parameters_impl(name db) {
-      if ( db == kvram_id ) {
-         return &kv_config::kvram;
-      } else {
-         EOS_THROW(kv_bad_db_id, "Bad key-value database ID");
-      }
-   }
-
-   uint32_t interface::get_kv_parameters_packed( name db, span<char> packed_kv_parameters, uint32_t max_version ) const {
+   uint32_t interface::get_kv_parameters_packed( span<char> packed_kv_parameters, uint32_t max_version ) const {
       const auto& gpo = context.control.get_global_properties();
-      const auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+      const auto& params = gpo.kv_configuration;
       uint32_t version = std::min( max_version, uint32_t(0) );
 
       auto s = fc::raw::pack_size( version ) + fc::raw::pack_size( params );
@@ -272,7 +264,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return s;
    }
 
-   void interface::set_kv_parameters_packed( name db, span<const char> packed_kv_parameters ) {
+   void interface::set_kv_parameters_packed( span<const char> packed_kv_parameters ) {
       datastream<const char*> ds( packed_kv_parameters.data(), packed_kv_parameters.size() );
       uint32_t version;
       chain::kv_database_config cfg;
@@ -281,7 +273,7 @@ namespace eosio { namespace chain { namespace webassembly {
       fc::raw::unpack(ds, cfg);
       context.db.modify( context.control.get_global_properties(),
          [&]( auto& gprops ) {
-               gprops.kv_configuration.*kv_parameters_impl( db ) = cfg;
+               gprops.kv_configuration = cfg;
       });
    }
 
