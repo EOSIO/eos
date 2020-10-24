@@ -22,8 +22,8 @@ namespace eosio { namespace chain {
    }
 
    combined_session::combined_session(combined_session&& src) noexcept
-       : cb_session(std::move(src.cb_session)), kv_undo_stack(std::move(src.kv_undo_stack)) {
-      kv_undo_stack = nullptr;
+       : cb_session(std::move(src.cb_session)), kv_undo_stack(src.kv_undo_stack) {
+      src.kv_undo_stack = nullptr;
    }
 
    void combined_session::push() {
@@ -86,7 +86,6 @@ namespace eosio { namespace chain {
    }
 
    // chainlib reserves prefixes 0x10 - 0x2F.
-   static const std::vector<char> rocksdb_undo_prefix{ 0x10 };
    static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
    static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
 
@@ -650,7 +649,6 @@ db.remove(*move_to_rocks);
       return genesis;
    }
 
-   std::vector<char> make_rocksdb_undo_prefix() { return rocksdb_undo_prefix; }
    std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
    std::vector<char> make_rocksdb_contract_db_prefix() { return rocksdb_contract_db_prefix; }
 

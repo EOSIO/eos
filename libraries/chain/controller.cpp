@@ -775,7 +775,7 @@ struct controller_impl {
          event_id = STORAGE_EVENT_ID("${name}", ("name", name));
       }
 
-      resource_limits.add_pending_ram_usage(name, ram_delta, storage_usage_trace(0, event_id.c_str(), "account", "add", "newaccount"));
+      resource_limits.add_pending_ram_usage(name, ram_delta, storage_usage_trace(0, std::move(event_id), "account", "add", "newaccount"));
       resource_limits.verify_account_ram_usage(name);
    }
 
@@ -949,7 +949,7 @@ struct controller_impl {
       }
 
       int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
-      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "remove", "deferred_trx_removed") );
+      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, storage_usage_trace(0, std::move(event_id), "deferred_trx", "remove", "deferred_trx_removed") );
       // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
@@ -3304,7 +3304,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
          event_id = STORAGE_EVENT_ID("${id}", ("id", itr->id._id));
       }
 
-      resource_limits.add_pending_ram_usage( itr->name, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "correction", "deferred_trx_ram_correction") );
+      resource_limits.add_pending_ram_usage( itr->name, ram_delta, storage_usage_trace(0, std::move(event_id), "deferred_trx", "correction", "deferred_trx_ram_correction") );
       db.remove( *itr );
    }
 }

@@ -262,8 +262,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
    std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
 
-   // It is optimal that number of threads equals to the number of cores
-   uint16_t default_rocksdb_threads = std::thread::hardware_concurrency();
+   uint16_t default_rocksdb_threads = 1;
 
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
@@ -1988,7 +1987,7 @@ void read_only::convert_key(const string& index_type, const string& encode_type,
          string bytes_data = boost::algorithm::unhex(index_value);
          auto bytes_datasize = bytes_data.size();
          if( bin.size() < bytes_datasize ) {
-            bin.resize(index_value.size());
+            bin.resize(bytes_datasize);
          }
          memcpy(bin.data(), bytes_data.data(), bytes_datasize);
          return;
@@ -2128,7 +2127,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
 
-   // Enable the code block once rocksdb_nodeos_integratin is merged
    const chain::kv_database_config &limits = kv_config;
    auto &kv_database = const_cast<chain::controller&>(db).kv_db();
    // To do: provide kv_resource_manmager to create_kv_context
@@ -2137,7 +2135,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
-read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
+read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& pp, kv_context  &kv_context, const abi_def &abi )const {
+   read_only::get_kv_table_rows_params p(pp);
    string tbl_name = p.table.to_string();
 
    // Check valid table name
@@ -2166,46 +2165,21 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
 
    get_table_rows_result result;
+   uint32_t key_size;
    uint32_t value_size;
 
    auto cur_time = fc::time_point::now();
    auto end_time = cur_time + fc::microseconds(1000 * 10);
 
    auto wait_time = end_time - cur_time;
+   bool unbounded = false;
    ///////////////////////////////////////////////////////////
    // point query
    ///////////////////////////////////////////////////////////
    if( point_query ) {
       const string &index_value = *p.index_value;
-      vector<char> iv;
-      convert_key(index_type, p.encode_type, index_value, iv);
-      vector<char> key;
-      key.resize(prefix.size() + iv.size());
-      memcpy(key.data(), prefix.data(), prefix.size());
-      memcpy(key.data() + prefix.size(), iv.data(), iv.size());
-
-      fc::variant row_var;
-      auto success = kv_context.kv_get(p.code.to_uint64_t(), key.data(), key.size(), value_size);
-      if( success ) {
-         vector<char> value;
-         value.resize(value_size);
-         auto return_size = kv_context.kv_get_data(offset, value.data(), value_size);
-         EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception,  "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
-
-         fc::variant row_var;
-         if( p.json ) {
-            try {
-               row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( wait_time ), shorten_abi_errors );
-            } catch ( fc::exception &e ) {
-               row_var = fc::variant(value);
-            }
-         } else {
-            row_var = fc::variant(value);
-         }
-         result.rows.emplace_back( std::move(row_var) );
-      }
-
-      return result;
+      p.lower_bound = p.index_value;
+      unbounded = true;
    }
 
    ///////////////////////////////////////////////////////////
@@ -2213,30 +2187,44 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    ///////////////////////////////////////////////////////////
    bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
    bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-   EOS_ASSERT(has_lower_bound && has_upper_bound, chain::contract_table_query_exception,  "Unknown range: ${t} ${i}", ("t", p.table)("i", p.index_name));
+   unbounded = !has_lower_bound || !has_upper_bound;
+   // reverse mode has upper_bound value, non-reverse and point query has lower bound value
+   EOS_ASSERT((p.reverse && has_upper_bound) || (!p.reverse && has_lower_bound) || (has_lower_bound && point_query), chain::contract_table_query_exception, "Unknown/Invalid range: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
    vector<char> lb_key;
    const string &lower_bound = *p.lower_bound;
    vector<char> lv;
-   convert_key(index_type, p.encode_type, lower_bound, lv);
-   lb_key.resize(prefix.size() + lv.size());
-   memcpy(lb_key.data(), prefix.data(), prefix.size());
-   memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
+  
+   if( has_lower_bound ) {
+      convert_key(index_type, p.encode_type, lower_bound, lv);
+      lb_key.resize(prefix.size() + lv.size());
+      memcpy(lb_key.data(), prefix.data(), prefix.size());
+      memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
+   }
 
    vector<char> ub_key;
    const string &upper_bound = *p.upper_bound;
    vector<char> uv;
-   convert_key(index_type, p.encode_type, upper_bound, uv);
-   ub_key.resize(prefix.size() + uv.size());
-   memcpy(ub_key.data(), prefix.data(), prefix.size());
-   memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
+   if( has_upper_bound ) {
+      convert_key(index_type, p.encode_type, upper_bound, uv);
+      ub_key.resize(prefix.size() + uv.size());
+      memcpy(ub_key.data(), prefix.data(), prefix.size());
+      memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
+   }
 
    // Iterate the range
    vector<char> row_key;
    vector<char> row_value;
 
-   auto lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-   auto ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   std::unique_ptr<kv_iterator> lb_itr;
+   std::unique_ptr<kv_iterator> ub_itr;
+   
+   if( has_lower_bound ) {
+      lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
+   if( has_upper_bound ) {
+      ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
 
    uint32_t lb_key_size = 0;
    uint32_t lb_value_size = 0;
@@ -2246,39 +2234,82 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    uint32_t ub_key_actual_size = 0;
 
    // Find lower bound iterator
-   auto status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
-   EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   lb_key.resize(lb_key_size);
-   status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+   auto status_lb = chain::kv_it_stat::iterator_end;
+   if( has_lower_bound ) {
+      status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
+      EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+      if( !point_query ) {
+         lb_key.resize(lb_key_size);
+         status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+      }
+   }
 
   // Find upper bound iterator
-   auto status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
-   EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   ub_key.resize(ub_key_size);
-   status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+   auto status_ub = chain::kv_it_stat::iterator_end;
+   if( has_upper_bound ) {
+      auto exact_match = kv_context.kv_get(p.code.to_uint64_t(), ub_key.data(), ub_key.size(), value_size);
+      status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
+      if( p.reverse && !point_query && !exact_match ) {
+            status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
+      }
+
+      EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+      ub_key.resize(ub_key_size);
+      status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+   }
 
    kv_it_stat status;
-   // iterate the range
+   //=============================== iterate the range ============================
    auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
       uint32_t actual_size = 0;
-      uint32_t key_size;
-      uint32_t val_size;
+
       const vector<char> &end_key = (reverse ? lb_key : ub_key);
       if( reverse ) {
          key_size = ub_key_size;
-         val_size = ub_value_size;
+         value_size = ub_value_size;
       } else {
          key_size = lb_key_size;
-         val_size = lb_value_size;
+         value_size = lb_value_size;
       }
-      auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-      if( reverse ) cmp *= -1;
+
+      auto cur_status = itr->kv_it_status();
+      int32_t cmp = 0;
+      if( unbounded ) {
+         cmp = (cur_status == chain::kv_it_stat::iterator_ok ) ? -1 : 1;
+      } else {
+         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+         if( reverse ) {
+            cmp *= -1;
+         }
+      }
 
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
+         row_key.resize(key_size);
+         status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+         if( point_query ) {
+            if( row_key.size() != lb_key_size || row_key != lb_key) {
+               cmp = 1;
+               continue;
+            }
+         }
+
          row_value.clear();
-         row_value.resize(val_size);
-         status = itr->kv_it_value(offset, row_value.data(), val_size, actual_size);
+         row_value.resize(value_size);
+         status = itr->kv_it_value(offset, row_value.data(), key_size, value_size);
+         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid key in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+         if (!is_primary_idx) {
+            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_value.data(), row_value.size(), value_size);
+            if (success) {
+               row_value.resize(value_size);
+               actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            } else {
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            }
+         }
 
          fc::variant row_var;
          if( p.json ) {
@@ -2304,16 +2335,30 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          }
          EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-         if( reverse ) cmp *= -1;
-      }
-      if( count == p.limit && cmp < 0  ) {
-         result.more = true;
-         row_key.resize(key_size);
-         auto status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-         EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && actual_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-         result.next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
-      }
+         if (unbounded) {
+            cur_status = itr->kv_it_status();
+            cmp = (cur_status == chain::kv_it_stat::iterator_ok) ? -1 : 1;
+            if( point_query && cmp != 0) {
+               cmp = 1;
+            }
+         } else {
+            cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+            if (reverse) {
+               cmp *= -1;
+            }
+         }
+
+         if (count == p.limit && cmp < 0)
+         {
+            result.more = true;
+            row_key.resize(key_size);
+            auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+            EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+            auto next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
+
+            boost::algorithm::hex(next_key.begin(), next_key.end(), std::back_inserter(result.next_key));
+       }
+      } // end of for
    };
 
    if( p.reverse ) {
@@ -2324,6 +2369,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
    return result;
 }
+
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
    read_only::get_table_by_scope_result result;

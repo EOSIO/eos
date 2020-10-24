@@ -662,7 +662,7 @@ namespace eosio { namespace chain {
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta, storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "push", "deferred_trx_pushed") );
+      add_ram_usage( cgto.payer, ram_delta, storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", "push", "deferred_trx_pushed") );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 

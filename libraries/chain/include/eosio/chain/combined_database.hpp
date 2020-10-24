@@ -84,7 +84,7 @@ namespace eosio { namespace chain {
 
    class combined_database {
     public:
-      combined_database(chainbase::database& chain_db);
+      explicit combined_database(chainbase::database& chain_db);
 
       combined_database(chainbase::database& chain_db,
                         const controller::config& cfg);
@@ -142,7 +142,6 @@ namespace eosio { namespace chain {
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
 
-   std::vector<char> make_rocksdb_undo_prefix();
    std::vector<char> make_rocksdb_contract_kv_prefix();
    std::vector<char> make_rocksdb_contract_db_prefix();
 

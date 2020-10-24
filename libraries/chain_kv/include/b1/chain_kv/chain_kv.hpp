@@ -775,7 +775,7 @@ struct write_session {
 }; // write_session
 
 // A view of the database with a restricted range (prefix). Implements part of
-// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md,class
+// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md
 // including iterator wrap-around behavior.
 //
 // Keys have this format: prefix, contract, user-provided key.
