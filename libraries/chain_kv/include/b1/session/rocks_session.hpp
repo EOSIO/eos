@@ -155,7 +155,9 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          read_options.readahead_size   = 256 * 1024 * 1024;
          read_options.verify_checksums = false;
          read_options.fill_cache       = false;
-         // read_options.tailing = true;
+         // read_options.auto_prefix_mode                     = true;
+         // read_options.total_order_seek                     = false;
+         // read_options.prefix_same_as_start                 = true;
          read_options.background_purge_on_iterator_cleanup = true;
          read_options.pin_data                             = true;
          return read_options;
@@ -185,7 +187,7 @@ inline void session<rocksdb_t>::commit() {}
 inline bool session<rocksdb_t>::is_deleted(const shared_bytes& key) const { return false; }
 
 inline std::optional<shared_bytes> session<rocksdb_t>::read(const shared_bytes& key) const {
-   auto key_slice      = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+   auto key_slice      = rocksdb::Slice{ key.data(), key.size() };
    auto pinnable_value = rocksdb::PinnableSlice{};
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
@@ -197,19 +199,19 @@ inline std::optional<shared_bytes> session<rocksdb_t>::read(const shared_bytes& 
 }
 
 inline void session<rocksdb_t>::write(const shared_bytes& key, const shared_bytes& value) {
-   auto key_slice   = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
-   auto value_slice = rocksdb::Slice{ reinterpret_cast<const char*>(value.data()), value.size() };
+   auto key_slice   = rocksdb::Slice{ key.data(), key.size() };
+   auto value_slice = rocksdb::Slice{ value.data(), value.size() };
    auto status      = m_db->Put(m_write_options, column_family_(), key_slice, value_slice);
 }
 
 inline bool session<rocksdb_t>::contains(const shared_bytes& key) const {
-   auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+   auto key_slice = rocksdb::Slice{ key.data(), key.size() };
    auto value     = std::string{};
    return m_db->KeyMayExist(m_read_options, column_family_(), key_slice, &value);
 }
 
 inline void session<rocksdb_t>::erase(const shared_bytes& key) {
-   auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+   auto key_slice = rocksdb::Slice{ key.data(), key.size() };
    auto status    = m_db->Delete(m_write_options, column_family_(), key_slice);
 }
 
@@ -222,7 +224,7 @@ session<rocksdb_t>::read_(const Iterable& keys) const {
    auto key_slices = std::vector<rocksdb::Slice>{};
 
    for (const auto& key : keys) {
-      key_slices.emplace_back(reinterpret_cast<const char*>(key.data()), key.size());
+      key_slices.emplace_back(key.data(), key.size());
       not_found.emplace(key);
    }
 
@@ -266,8 +268,7 @@ void session<rocksdb_t>::write(const Iterable& key_values) {
    auto batch = rocksdb::WriteBatch{ 1024 * 1024 };
 
    for (const auto& kv : key_values) {
-      batch.Put(column_family_(), { reinterpret_cast<const char*>(kv.first.data()), kv.first.size() },
-                { reinterpret_cast<const char*>(kv.second.data()), kv.second.size() });
+      batch.Put(column_family_(), { kv.first.data(), kv.first.size() }, { kv.second.data(), kv.second.size() });
    }
 
    auto status = m_db->Write(m_write_options, &batch);
@@ -280,7 +281,7 @@ void session<rocksdb_t>::write(const Iterable& key_values) {
 template <typename Iterable>
 void session<rocksdb_t>::erase(const Iterable& keys) {
    for (const auto& key : keys) {
-      auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+      auto key_slice = rocksdb::Slice{ key.data(), key.size() };
       auto status    = m_db->Delete(m_write_options, column_family_(), key_slice);
    }
 }
@@ -335,7 +336,7 @@ typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const P
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shared_bytes& key) const {
    auto predicate = [&](auto& it) {
-      auto key_slice = rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() };
+      auto key_slice = rocksdb::Slice{ key.data(), key.size() };
       it.Seek(key_slice);
       if (it.Valid() && it.key().compare(key_slice) != 0) {
          // Get an invalid iterator
@@ -361,9 +362,7 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() const {
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
-   return make_iterator_([&](auto& it) {
-      it.Seek(rocksdb::Slice{ reinterpret_cast<const char*>(key.data()), key.size() });
-   });
+   return make_iterator_([&](auto& it) { it.Seek(rocksdb::Slice{ key.data(), key.size() }); });
 }
 
 inline void session<rocksdb_t>::flush() {

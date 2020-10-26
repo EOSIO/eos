@@ -1,3 +1,4 @@
+#include <b1/session/rocks_comparator.hpp>
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 #include <eosio/chain/combined_database.hpp>
@@ -120,9 +121,8 @@ namespace eosio { namespace chain {
          std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
          EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
 
-         auto key_buffer = std::vector<char>{ key.data(), key.data() + key.size() };
-         auto begin = std::begin(key_buffer) + prefix_key.size();
-         auto end = std::begin(key_buffer) + key_prefix_size;
+         auto begin = std::begin(key) + prefix_key.size();
+         auto end = std::begin(key) + key_prefix_size;
          b1::chain_kv::extract_key(begin, end, contract);
 
          auto value = (*it).second;
@@ -224,6 +224,7 @@ namespace eosio { namespace chain {
             rocksdb::BlockBasedTableOptions table_options;
             table_options.format_version               = 5;
             table_options.index_block_restart_interval = 16;
+            //table_options.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
 
             // Sets the bloom filter - Given an arbitrary key, 
             // this bit array may be used to determine if the key 
@@ -231,14 +232,33 @@ namespace eosio { namespace chain {
 	          table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
 	          table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
 
+            // Define a prefix. In this way, a fixed length prefix extractor. A recommended one to use.
+            // Prefix is [rocks prefix byte, contract]
+            //options.prefix_extractor.reset(rocksdb::NewCappedPrefixTransform(9));
+            //options.memtable_prefix_bloom_size_ratio = 0.1;
+
             // Incorporates the Table options into options
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
+            auto column_families       = std::vector<rocksdb::ColumnFamilyDescriptor>{};
+            auto column_family_handles = std::vector<rocksdb::ColumnFamilyHandle*>{};
+            auto column_family_options = rocksdb::ColumnFamilyOptions{};
+            // auto comparator            = std::make_shared<eosio::session::rocks_comparator>();
+
+            // column_family_options.comparator = comparator.get();
+            column_families.push_back(rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, std::move(column_family_options)));
+
             rocksdb::DB* p;
-            auto         status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), &p);
+            auto status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), column_families, &column_family_handles, &p);
             if (!status.ok())
                throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
-            auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
+            auto rdb = std::shared_ptr<rocksdb::DB>{ p, [column_family_handles/*, comparator*/](auto* ptr)
+            {
+              for (auto* handle : column_family_handles) {
+                ptr->DestroyColumnFamilyHandle(handle);
+              }
+              delete ptr;
+            } };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
@@ -484,7 +504,7 @@ namespace eosio { namespace chain {
             if (backing_store == backing_store_type::ROCKSDB) {
                auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                    rocksdb_contract_kv_prefix.size());
-               auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
+               auto key_values = std::deque<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
                snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
                   bool more = !section.empty();
                   while (more) {
@@ -494,19 +514,16 @@ namespace eosio { namespace chain {
                         move_to_rocks = &row;
                      });
                      if (move_to_rocks) {
-                        auto buffer = std::vector<char>{};
-                        buffer.reserve(sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size());
-                        buffer.insert(std::end(buffer), prefix_key.data(), prefix_key.data() + prefix_key.size());
-                        b1::chain_kv::append_key(buffer, move_to_rocks->contract.to_uint64_t());
-                        buffer.insert(std::end(buffer), move_to_rocks->kv_key.data(),
-                                      move_to_rocks->kv_key.data() + move_to_rocks->kv_key.size());
+                        auto key = eosio::session::shared_bytes{sizeof(uint64_t) + prefix_key.size() + move_to_rocks->kv_key.size()};
+                        std::copy(std::begin(prefix_key), std::end(prefix_key), std::begin(key));
+                        b1::chain_kv::insert_key(key, prefix_key.size(), move_to_rocks->contract.to_uint64_t());
+                        std::copy(std::begin(move_to_rocks->kv_key), std::end(move_to_rocks->kv_key), std::begin(key) + prefix_key.size() + sizeof(uint64_t));
 
                         // Pack payer and actual key value
                         auto final_kv_value = build_value(move_to_rocks->kv_value.data(), move_to_rocks->kv_value.size(), move_to_rocks->payer);
 
-                        key_values.emplace_back(eosio::session::shared_bytes(buffer.data(), buffer.size()),
-                                                std::move(final_kv_value));
-db.remove(*move_to_rocks);
+                        key_values.emplace_back(std::move(key), std::move(final_kv_value));
+                        db.remove(*move_to_rocks);
                      }
                   }
                });
