@@ -85,10 +85,6 @@ namespace eosio { namespace chain {
       }
    }
 
-   // chainlib reserves prefixes 0x10 - 0x2F.
-   static const std::vector<char> rocksdb_contract_kv_prefix{ 0x11 }; // for KV API
-   static const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
-
    template <typename Util, typename F>
    void walk_index(const Util& utils, const kv_undo_stack_ptr& kv_undo_stack, const chainbase::database& db, F&& function) {
       utils.walk(db, std::forward<F>(function));

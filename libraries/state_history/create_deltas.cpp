@@ -137,99 +137,108 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    return deltas;
 }
 
-using prim_store = std::vector<std::pair<int, chain::backing_store::primary_index_view>>;
+class rocksdb_row_receiver {
+public:
 
-template<typename SecKey>
-using sec_store = std::vector<std::pair<int, chain::backing_store::secondary_index_view<SecKey>>>;
+   rocksdb_row_receiver(std::vector<table_delta> &deltas) : deltas(deltas) {}
 
-using table_key = chain::backing_store::table_id_object_view;
-
-using table_store = std::vector<table_key>;
-
-struct rocksdb_receiver{
-   void add_row(const chain::backing_store::primary_index_view& row, const chainbase::database& db){
-      prim.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::table_id_object_view& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_table")].rows.obj.emplace_back(true, fc::raw::pack(make_history_serial_wrapper(db, row)));
+      current_table = row;
    }
 
-   void add_row(const chain::backing_store::secondary_index_view<uint64_t>& row, const chainbase::database& db){
-      sec_i64.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::primary_index_view& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_row")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(const chain::backing_store::secondary_index_view<chain::uint128_t>& row, const chainbase::database& db){
-      sec_i128.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::secondary_index_view<uint64_t>& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_index64")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(const chain::backing_store::secondary_index_view<chain::key256_t>& row, const chainbase::database& db){
-      sec_i256.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::secondary_index_view<chain::uint128_t>& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_index128")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(const chain::backing_store::secondary_index_view<float64_t>& row, const chainbase::database& db){
-      sec_f64.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::secondary_index_view<chain::key256_t>& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_index256")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(const chain::backing_store::secondary_index_view<float128_t>& row, const chainbase::database& db){
-      sec_f128.push_back({table_st.size()-1, row});
+   void add_row(const chain::backing_store::secondary_index_view<float64_t>& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_index_double")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(const chain::backing_store::table_id_object_view& row, const chainbase::database& db){
-      table_st.emplace_back(row);
+   void add_row(const chain::backing_store::secondary_index_view<float128_t>& row, const chainbase::database& db) {
+      deltas[get_delta_index("contract_index_long_double")].rows.obj.emplace_back(true, fc::raw::pack(make_history_context_wrapper(db, current_table, row)));
    }
 
-   void add_row(fc::unsigned_int x, const chainbase::database& db){
+   void add_row(fc::unsigned_int x, const chainbase::database& db) {
 
    }
 
-   table_store table_st;
-   prim_store prim;
-   sec_store<uint64_t> sec_i64;
-   sec_store<chain::uint128_t> sec_i128;
-   sec_store<chain::key256_t> sec_i256;
-   sec_store<float64_t> sec_f64;
-   sec_store<float128_t> sec_f128;
+private:
+   int get_delta_index(std::string name){
+      if(!m.count(name)){
+         deltas.push_back({});
+         deltas.back().name = name;
+         m[name] = deltas.size() - 1;
+      }
+      return m[name];
+   }
+
+   std::map<std::string, int> m;
+   std::vector<table_delta> &deltas;
+
+   chain::backing_store::table_id_object_view current_table;
 };
 
-std::vector<table_delta> create_deltas_rocksdb(eosio::session::undo_stack<chain::rocks_db_type> &db, rocksdb_receiver &rec){
+std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, const eosio::chain::kv_undo_stack_ptr &kv_undo_stack, bool full_snapshot){
    std::vector<table_delta>                          deltas;
 
-   auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
-   auto pack_contract_row = [&](auto& row) {
-      return fc::raw::pack(make_history_context_wrapper(db, rec.table_st[row.first], row.second));
-   };
-
-   auto process_table_full_snapshot = [&](auto *name, auto &indices, auto &pack_row) {
-      if (indices.empty())
-         return;
+   if(full_snapshot) {
       deltas.push_back({});
       auto& delta = deltas.back();
-      delta.name  = name;
-      for (auto& row : indices)
-         delta.rows.obj.emplace_back(true, pack_row(row));
-   };
+      delta.name  = "key_value";
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix,
+            [&](uint64_t contract, const char* key, std::size_t key_size, const char* value, std::size_t value_size) {
+               auto pack_row = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
 
-   process_table_full_snapshot("contract_table", rec.table_st, pack_row);
-   process_table_full_snapshot("contract_row", rec.prim, pack_contract_row);
-   process_table_full_snapshot("contract_index64", rec.sec_i64, pack_contract_row);
-   process_table_full_snapshot("contract_index128", rec.sec_i128, pack_contract_row);
-   process_table_full_snapshot("contract_index256", rec.sec_i256, pack_contract_row);
-   process_table_full_snapshot("contract_index_double", rec.sec_f64, pack_contract_row);
-   process_table_full_snapshot("contract_index_long_double", rec.sec_f128, pack_contract_row);
+               // In KV RocksDB, payer and actual data are packed together.
+               // Extract them.
+               chain::backing_store::payer_payload pp(value, value_size);
+               chain::kv_object_view row{chain::name(contract),
+                                         {{key, key + key_size}},
+                                         {{pp.value, pp.value + pp.value_size}},
+                                         pp.payer};
+
+               delta.rows.obj.emplace_back(true, pack_row(row));
+            });
+
+      rocksdb_row_receiver receiver(deltas);
+      chain::backing_store::rocksdb_contract_db_table_writer writer(receiver, db, *kv_undo_stack);
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_db_prefix, writer);
+   } else {
+      auto &session = kv_undo_stack->top();
+      auto updated_keys = session.updated_keys();
+      auto deleted_keys = session.deleted_keys();
+
+      // TODO: get data from updated_keys and deleted_keys
+   }
 
    return deltas;
 }
 
 std::vector<table_delta> create_deltas(const chain::combined_database& db, bool full_snapshot){
-   std::vector<table_delta>                          deltas_result;
-   rocksdb_receiver rec;
+   auto &chainbase_db = db.get_db();
+   auto &kv_undo_stack = db.get_kv_undo_stack();
 
-   chain::backing_store::rocksdb_contract_db_table_writer writer(rec, db.get_db(), *db.get_kv_undo_stack());
+   std::vector<table_delta> deltas = create_deltas(chainbase_db, full_snapshot);
 
-   const std::vector<char> rocksdb_contract_db_prefix{ 0x12 }; // for DB API
+   if(kv_undo_stack && chainbase_db.get<chain::kv_db_config_object>().backing_store == chain::backing_store_type::ROCKSDB) {
+      auto deltas_rocksdb = create_deltas_rocksdb(chainbase_db, kv_undo_stack, full_snapshot);
+      deltas.insert( deltas.end(), deltas_rocksdb.begin(), deltas_rocksdb.end() );
+   }
 
-   chain::backing_store::walk_rocksdb_entries_with_prefix(db.get_kv_undo_stack(), rocksdb_contract_db_prefix, writer);
-
-   deltas_result = create_deltas_rocksdb(*db.get_kv_undo_stack(), rec);
-
-   return create_deltas(db.get_db(), full_snapshot);
+   return deltas;
 }
 
 } // namespace state_history
