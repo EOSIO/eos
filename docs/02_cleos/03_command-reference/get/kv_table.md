@@ -26,6 +26,13 @@ Retrieves the contents of a database kv_table
 
 `--show-payer` - Show RAM payer
 
+## Remarks
+
+  * When `--reverse` option is not set, `--upper` is optional; if `--upper` is not set, the result includes the end of the matching rows.
+  * When `--reverse` option is set, `--lower` is optional; if `--lower` is not set, the result includes the start of the matching rows.
+  * When result has more = true and next_key is set, the following call to get_kv_table_rows should set --encode-type bytes and
+  * When `--index` is used as non-unique secondary index, the result can return multiple rows.
+
 ## Examples
 
 Range query to return all rows that match eosio name keys between `boba` (inclusive) and `bobj` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
