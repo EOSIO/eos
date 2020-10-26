@@ -3,7 +3,7 @@ ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
-    libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
+    libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel

@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq rabbitmq || :
+brew install git cmake python libtool libusb graphviz automake wget gmp doxygen openssl@1.1 jq rabbitmq || :
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build

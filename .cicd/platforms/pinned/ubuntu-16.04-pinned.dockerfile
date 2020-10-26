@@ -6,7 +6,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq rabbitmq-server \
+    sudo ruby libusb-1.0-0-dev apt-transport-https vim-common jq rabbitmq-server \
     libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \

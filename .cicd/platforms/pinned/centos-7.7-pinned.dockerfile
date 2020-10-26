@@ -8,7 +8,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
-    libcurl-devel patch vim-common jq \
+    patch vim-common jq \
     libuuid-devel libtasn1-devel expect socat libseccomp-devel iproute
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
