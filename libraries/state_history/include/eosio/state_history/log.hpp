@@ -37,8 +37,14 @@ namespace bfs = boost::filesystem;
  *    payload
  */
 
-inline uint64_t       ship_magic(uint32_t version) { return N(ship).to_uint64_t() | version; }
-inline bool           is_ship(uint64_t magic) { return (magic & 0xffff'ffff'0000'0000) == N(ship).to_uint64_t(); }
+inline uint64_t       ship_magic(uint32_t version) {
+   using namespace eosio::chain::literals;
+   return "ship"_n.to_uint64_t() | version;
+}
+inline bool           is_ship(uint64_t magic) {
+   using namespace eosio::chain::literals;
+   return (magic & 0xffff'ffff'0000'0000) == "ship"_n.to_uint64_t();
+}
 inline uint32_t       get_ship_version(uint64_t magic) { return magic; }
 inline bool           is_ship_supported_version(uint64_t magic) { return get_ship_version(magic) <= 1; }
 static const uint32_t ship_current_version = 1;

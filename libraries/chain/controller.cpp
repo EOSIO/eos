@@ -5,25 +5,11 @@
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/code_object.hpp>
-#include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
-#include <eosio/chain/genesis_intrinsics.hpp>
-#include <eosio/chain/whitelisted_intrinsics.hpp>
-#include <eosio/chain/database_header_object.hpp>
-#include <eosio/chain/kv_chainbase_objects.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/platform_timer.hpp>
 
@@ -32,82 +18,13 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
+#include <b1/chain_kv/chain_kv.hpp>
 
 #include <new>
 
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
-
-using controller_index_set = index_set<
-   account_index,
-   account_metadata_index,
-   account_ram_correction_index,
-   global_property_multi_index,
-   protocol_state_multi_index,
-   dynamic_global_property_multi_index,
-   block_summary_multi_index,
-   transaction_multi_index,
-   generated_transaction_multi_index,
-   table_id_multi_index,
-   code_index,
-   database_header_multi_index,
-   kv_index
->;
-
-using contract_database_index_set = index_set<
-   key_value_index,
-   index64_index,
-   index128_index,
-   index256_index,
-   index_double_index,
-   index_long_double_index
->;
-
-class maybe_session {
-   public:
-      maybe_session() = default;
-
-      maybe_session( maybe_session&& other)
-      :_session(move(other._session))
-      {
-      }
-
-      explicit maybe_session(database& db) {
-         _session.emplace(db.start_undo_session(true));      
-      }
-
-      maybe_session(const maybe_session&) = delete;
-
-      void squash() {
-         if (_session)
-            _session->squash();
-      }
-
-      void undo() {
-         if (_session)
-            _session->undo();
-      }
-
-      void push() {
-         if (_session)
-            _session->push();
-      }
-
-      maybe_session& operator = ( maybe_session&& mv ) {
-         if (mv._session) {
-            _session.emplace(move(*mv._session));
-            mv._session.reset();
-         } else {
-            _session.reset();
-         }
-
-         return *this;
-      };
-
-   private:
-      std::optional<database::session>     _session;
-};
 
 struct building_block {
    building_block( const block_header_state& prev,
@@ -146,7 +63,7 @@ struct completed_block {
 using block_stage_type = std::variant<building_block, assembled_block, completed_block>;
 
 struct pending_state {
-   pending_state( maybe_session&& s, const block_header_state& prev,
+   pending_state( combined_session&& s, const block_header_state& prev,
                   block_timestamp_type when,
                   uint16_t num_prev_blocks_to_confirm,
                   const vector<digest_type>& new_protocol_feature_activations )
@@ -154,7 +71,7 @@ struct pending_state {
    ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
-   maybe_session                      _db_session;
+   combined_session                   _db_session;
    block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
    std::optional<block_id_type>       _producer_block_id;
@@ -226,30 +143,31 @@ struct controller_impl {
       reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
    };
 
-   reset_new_handler               rnh; // placed here to allow for this to be set before constructing the other fields
-   controller&                     self;
-   std::function<void()>           shutdown;
-   chainbase::database             db;
-   chainbase::database             reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
-   block_log                       blog;
-   std::optional<pending_state>    pending;
-   block_state_ptr                 head;
-   fork_database                   fork_db;
-   wasm_interface                  wasmif;
-   resource_limits_manager         resource_limits;
-   authorization_manager           authorization;
-   protocol_feature_manager        protocol_features;
-   controller::config              conf;
-   const chain_id_type             chain_id; // read by thread_pool threads, value will not be changed
-   std::optional<fc::time_point>   replay_head_time;
-   db_read_mode                    read_mode = db_read_mode::SPECULATIVE;
-   bool                            in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
-   std::optional<fc::microseconds> subjective_cpu_leeway;
-   bool                            trusted_producer_light_validation = false;
-   uint32_t                        snapshot_head_block = 0;
-   named_thread_pool               thread_pool;
-   platform_timer                  timer;
-   fc::logger*                     deep_mind_logger = nullptr;
+   reset_new_handler                   rnh; // placed here to allow for this to be set before constructing the other fields
+   controller&                         self;
+   std::function<void()>               shutdown;
+   chainbase::database                 db;
+   chainbase::database                 reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+   combined_database                   kv_db;
+   block_log                           blog;
+   std::optional<pending_state>        pending;
+   block_state_ptr                     head;
+   fork_database                       fork_db;
+   wasm_interface                      wasmif;
+   resource_limits_manager             resource_limits;
+   authorization_manager               authorization;
+   protocol_feature_manager            protocol_features;
+   controller::config                  conf;
+   const chain_id_type                 chain_id; // read by thread_pool threads, value will not be changed
+   std::optional<fc::time_point>       replay_head_time;
+   db_read_mode                        read_mode = db_read_mode::SPECULATIVE;
+   bool                                in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
+   std::optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                                trusted_producer_light_validation = false;
+   uint32_t                            snapshot_head_block = 0;
+   named_thread_pool                   thread_pool;
+   platform_timer                      timer;
+   fc::logger*                         deep_mind_logger = nullptr;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    vm::wasm_allocator               wasm_alloc;
 #endif
@@ -277,7 +195,7 @@ struct controller_impl {
 
       head = prev;
 
-      db.undo();
+      kv_db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
    }
@@ -310,6 +228,9 @@ struct controller_impl {
     reversible_blocks( cfg.blog.log_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
+    kv_db(cfg.backing_store == backing_store_type::CHAINBASE
+          ? combined_database(db)
+          : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -340,7 +261,6 @@ struct controller_impl {
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
       });
-
 
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
@@ -432,7 +352,7 @@ struct controller_impl {
             // Do it before commit so that in case it throws, DB can be rolled back.
             blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
 
-            db.commit( (*bitr)->block_num );
+            kv_db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
             auto rbitr = rbi.begin();
@@ -447,8 +367,6 @@ struct controller_impl {
          }
          throw;
       }
-
-      //db.commit( fork_head->dpos_irreversible_blocknum ); // redundant
 
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
@@ -477,7 +395,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*head) = genheader;
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
-      db.set_revision( head->block_num );
+      kv_db.set_revision( head->block_num );
       initialize_database(genesis);
    }
 
@@ -524,7 +442,7 @@ struct controller_impl {
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
-            db.set_revision( head->block_num );
+            kv_db.set_revision( head->block_num );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -552,14 +470,25 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+# warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restar
+      // Currently kv_undo_stack returns a wrong revision after restart,
+      // failing tests/terminate-scenarios-test.py.
+      // As chain_kv is being rewritten, comment out this check for now
+      // and retest after chain_kv rewriting is finished.
+      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
          snapshot->validate();
          if( blog.head() ) {
-            read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num() );
+            kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
+                                      authorization, resource_limits,
+                                      fork_db, head, snapshot_head_block, chain_id );
          } else {
-            read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max() );
+            kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
+                                      authorization, resource_limits,
+                                      fork_db, head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
             EOS_ASSERT( lib_num > 0, snapshot_exception,
                         "Snapshot indicates controller head at block number 0, but that is not allowed. "
@@ -580,6 +509,13 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+# warning TODO: Chain_kv needs to fix kv_undo_stack's revision
+      // Currently kv_undo_stack returns a wrong revision after restart,
+      // failing tests/terminate-scenarios-test.py.
+      // As chain_kv is being rewritten, comment out this check for now
+      // and retest after chain_kv rewriting is finished.
+      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -613,6 +549,9 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
+# warning TODO: Chain_kv needs to fix kv_undo_stack's revision
+      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
+      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
@@ -675,6 +614,8 @@ struct controller_impl {
          });
       }
 
+      kv_db.check_backing_store_setting();
+
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -689,7 +630,7 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
-         db.undo();
+         kv_db.undo();
       }
 
       protocol_features.init( db );
@@ -792,243 +733,10 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.undo_all();
-      /*
-      FC_ASSERT(db.revision() == self.head_block_num(),
-                  "Chainbase revision does not match head block num",
-                  ("rev", db.revision())("head_block", self.head_block_num()));
-                  */
-   }
-
-   void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section("contract_tables", [this]( auto& section ) {
-         index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
-            // add a row for the table
-            section.add_row(table_row, db);
-
-            // followed by a size row and then N data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
-               using utils_t = decltype(utils);
-               using value_t = typename decltype(utils)::index_t::value_type;
-               using by_table_id = object_to_table_id_tag_t<value_t>;
-
-               auto tid_key = boost::make_tuple(table_row.id);
-               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
-
-               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
-               section.add_row(size, db);
-
-               utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
-                  section.add_row(row, db);
-               });
-            });
-         });
-      });
-   }
-
-   void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section("contract_tables", [this]( auto& section ) {
-         bool more = !section.empty();
-         while (more) {
-            // read the row for the table
-            table_id_object::id_type t_id;
-            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
-               section.read_row(row, db);
-               t_id = row.id;
-            });
-
-            // read the size and data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
-               using utils_t = decltype(utils);
-
-               unsigned_int size;
-               more = section.read_row(size, db);
-
-               for (size_t idx = 0; idx < size.value; idx++) {
-                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
-                     row.t_id = t_id;
-                     more = section.read_row(row, db);
-                  });
-               }
-            });
-         }
-      });
-   }
-
-   void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section<chain_snapshot_header>([this]( auto &section ){
-         section.add_row(chain_snapshot_header(), db);
-      });
-
-      snapshot->write_section<block_state>([this]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head(), db);
-      });
-
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         // skip the database_header as it is only relevant to in-memory database
-         if (std::is_same<value_t, database_header_object>::value) {
-            return;
-         }
-
-         snapshot->write_section<value_t>([this]( auto& section ){
-            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
-               section.add_row(row, db);
-            });
-         });
-      });
-
-      add_contract_tables_to_snapshot(snapshot);
-
-      authorization.add_to_snapshot(snapshot);
-      resource_limits.add_to_snapshot(snapshot);
-   }
-
-   static std::optional<genesis_state> extract_legacy_genesis_state( snapshot_reader& snapshot, uint32_t version ) {
-      std::optional<genesis_state> genesis;
-      using v2 = legacy::snapshot_global_property_object_v2;
-
-      if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
-         genesis.emplace();
-         snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
-            section.read_row(genesis);
-         });
-      }
-      return genesis;
-   }
-
-   void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end ) {
-      chain_snapshot_header header;
-      snapshot->read_section<chain_snapshot_header>([this, &header]( auto &section ){
-         section.read_row(header, db);
-         header.validate();
-      });
-
-      { /// load and upgrade the block header state
-         block_header_state head_header_state;
-         using v2 = legacy::snapshot_block_header_state_v2;
-
-         if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-            snapshot->read_section<block_state>([this, &head_header_state]( auto &section ) {
-               legacy::snapshot_block_header_state_v2 legacy_header_state;
-               section.read_row(legacy_header_state, db);
-               head_header_state = block_header_state(std::move(legacy_header_state));
-            });
-         } else {
-            snapshot->read_section<block_state>([this,&head_header_state]( auto &section ){
-               section.read_row(head_header_state, db);
-            });
-         }
-
-         snapshot_head_block = head_header_state.block_num;
-         EOS_ASSERT( blog_start <= (snapshot_head_block + 1) && snapshot_head_block <= blog_end,
-                     block_log_exception,
-                     "Block log is provided with snapshot but does not contain the head block from the snapshot nor a block right after it",
-                     ("snapshot_head_block", snapshot_head_block)
-                     ("block_log_first_num", blog_start)
-                     ("block_log_last_num", blog_end)
-         );
-
-         fork_db.reset( head_header_state );
-         head = fork_db.head();
-         snapshot_head_block = head->block_num;
-
-      }
-
-      controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         // skip the database_header as it is only relevant to in-memory database
-         if (std::is_same<value_t, database_header_object>::value) {
-            return;
-         }
-
-         // special case for in-place upgrade of global_property_object
-         if (std::is_same<value_t, global_property_object>::value) {
-            using v2 = legacy::snapshot_global_property_object_v2;
-            using v3 = legacy::snapshot_global_property_object_v3;
-
-            if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-               std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
-               EOS_ASSERT( genesis, snapshot_exception,
-                           "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
-                           "It must be corrupted.");
-               snapshot->read_section<global_property_object>([&db=this->db,gs_chain_id=genesis->compute_chain_id()]( auto &section ) {
-                  v2 legacy_global_properties;
-                  section.read_row(legacy_global_properties, db);
-
-                  db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, gs_chain_id, kv_config{},
-                                        genesis_state::default_initial_wasm_configuration);
-                  });
-               });
-               return; // early out to avoid default processing
-            }
-
-            if (std::clamp(header.version, v3::minimum_version, v3::maximum_version) == header.version ) {
-               snapshot->read_section<global_property_object>([&db=this->db]( auto &section ) {
-                  v3 legacy_global_properties;
-                  section.read_row(legacy_global_properties, db);
-
-                  db.create<global_property_object>([&legacy_global_properties](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties, kv_config{},
-                                        genesis_state::default_initial_wasm_configuration);
-                  });
-               });
-               return; // early out to avoid default processing
-            }
-         }
-
-         // skip the kv index if the snapshot doesn't contain it
-         if constexpr (std::is_same_v<value_t, kv_object>) {
-            if ( header.version < kv_object::minimum_snapshot_version )
-               return;
-         }
-
-         snapshot->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
-      });
-
-      read_contract_tables_from_snapshot(snapshot);
-
-      authorization.read_from_snapshot(snapshot);
-      resource_limits.read_from_snapshot(snapshot, header.version);
-
-      db.set_revision( head->block_num );
-      db.create<database_header_object>([](const auto& header){
-         // nothing to do
-      });
-
-      const auto& gpo = db.get<global_property_object>();
-      EOS_ASSERT( gpo.chain_id == chain_id, chain_id_type_exception,
-                  "chain ID in snapshot (${snapshot_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
-                  ("snapshot_chain_id", gpo.chain_id)("controller_chain_id", chain_id)
-      );
-   }
-
    sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
-      add_to_snapshot(hash_writer);
+      kv_db.add_to_snapshot(hash_writer, *fork_db.head(), authorization, resource_limits);
       hash_writer->finalize();
 
       return enc.result();
@@ -1067,7 +775,7 @@ struct controller_impl {
          event_id = STORAGE_EVENT_ID("${name}", ("name", name));
       }
 
-      resource_limits.add_pending_ram_usage(name, ram_delta, storage_usage_trace(0, event_id.c_str(), "account", "add", "newaccount"));
+      resource_limits.add_pending_ram_usage(name, ram_delta, storage_usage_trace(0, std::move(event_id), "account", "add", "newaccount"));
       resource_limits.verify_account_ram_usage(name);
    }
 
@@ -1089,7 +797,7 @@ struct controller_impl {
       genesis.initial_configuration.validate();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
-         gpo.kv_configuration = kv_config{};
+         gpo.kv_configuration = kv_database_config{};
          // TODO: Update this when genesis protocol features are enabled.
          gpo.wasm_configuration = genesis_state::default_initial_wasm_configuration;
          gpo.chain_id = chain_id;
@@ -1103,6 +811,7 @@ struct controller_impl {
       });
 
       db.create<dynamic_global_property_object>([](auto&){});
+      db.create<kv_db_config_object>([](auto&){});
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -1240,7 +949,7 @@ struct controller_impl {
       }
 
       int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
-      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "remove", "deferred_trx_removed") );
+      resource_limits.add_pending_ram_usage( gto.payer, ram_delta, storage_usage_trace(0, std::move(event_id), "deferred_trx", "remove", "deferred_trx_removed") );
       // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
@@ -1285,9 +994,7 @@ struct controller_impl {
       const bool validating = !self.is_producing_block();
       EOS_ASSERT( !validating || explicit_billed_cpu_time, transaction_exception, "validating requires explicit billing" );
 
-      maybe_session undo_session;
-      if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db);
+      combined_session undo_session = !self.skip_db_sessions() ? kv_db.make_session() : kv_db.make_no_op_session();
 
       auto gtrx = generated_transaction(gto);
 
@@ -1656,9 +1363,9 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( kv_db.make_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
-         pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+         pending.emplace( kv_db.make_no_op_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
 
       pending->_block_status = s;
@@ -2525,7 +2232,7 @@ struct controller_impl {
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
-      on_block_act.name = N(onblock);
+      on_block_act.name = "onblock"_n;
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(self.head_block_header());
 
@@ -2584,6 +2291,11 @@ uint32_t controller::get_max_nonprivileged_inline_action_size()const
    return my->conf.max_nonprivileged_inline_action_size;
 }
 
+const controller::config& controller::get_config()const
+{
+   return my->conf;
+}
+
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
 :my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {
@@ -2602,6 +2314,8 @@ controller::~controller() {
    //for that we need 'my' to be valid pointer pointing to valid controller_impl.
    my->fork_db.close();
    */
+
+   my->kv_db.flush();
 }
 
 void controller::add_indices() {
@@ -2625,6 +2339,7 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
+eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
@@ -3090,7 +2805,7 @@ sha256 controller::calculate_integrity_hash()const { try {
 
 void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
    EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
-   return my->add_to_snapshot(snapshot);
+   return my->kv_db.add_to_snapshot(snapshot, *my->fork_db.head(), my->authorization, my->resource_limits);
 }
 
 int64_t controller::set_proposed_producers( vector<producer_authority> producers ) {
@@ -3244,6 +2959,10 @@ db_read_mode controller::get_read_mode()const {
 
 validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
+}
+
+const flat_set<account_name>& controller::get_trusted_producers()const {
+   return my->conf.trusted_producers;
 }
 
 uint32_t controller::get_terminate_at_block()const {
@@ -3473,17 +3192,28 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    });
 
    // check if this is a legacy version of the snapshot, which has a genesis state instead of chain id
-   std::optional<genesis_state> genesis = controller_impl::extract_legacy_genesis_state(snapshot, header.version);
+   std::optional<genesis_state> genesis = extract_legacy_genesis_state(snapshot, header.version);
    if (genesis) {
       return genesis->compute_chain_id();
    }
 
    chain_id_type chain_id;
-   snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
-      snapshot_global_property_object global_properties;
-      section.read_row(global_properties);
-      chain_id = global_properties.chain_id;
-   });
+   using v4 = legacy::snapshot_global_property_object_v4;
+   if (header.version <= v4::maximum_version) {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         v4 global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      }); 
+   }
+   else {
+      snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
+         snapshot_global_property_object global_properties;
+         section.read_row(global_properties);
+         chain_id = global_properties.chain_id;
+      });      
+   }
+
    return chain_id;
 }
 
@@ -3574,7 +3304,7 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
          event_id = STORAGE_EVENT_ID("${id}", ("id", itr->id._id));
       }
 
-      resource_limits.add_pending_ram_usage( itr->name, ram_delta, storage_usage_trace(0, event_id.c_str(), "deferred_trx", "correction", "deferred_trx_ram_correction") );
+      resource_limits.add_pending_ram_usage( itr->name, ram_delta, storage_usage_trace(0, std::move(event_id), "deferred_trx", "correction", "deferred_trx_ram_correction") );
       db.remove( *itr );
    }
 }

@@ -73,7 +73,7 @@ namespace eosio { namespace chain {
       if (tt.action_traces.empty())
          return false;
       const auto& act = tt.action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+      if (act.account != eosio::chain::config::system_account_name || act.name != "onblock"_n ||
           act.authorization.size() != 1)
          return false;
       const auto& auth = act.authorization[0];
@@ -86,19 +86,19 @@ namespace eosio { namespace chain {
 
    struct storage_usage_trace {
    public:
-      storage_usage_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation)
-      :storage_usage_trace(action_id, event_id, family, operation, ".")
+      storage_usage_trace(uint32_t action_id, std::string event_id, const char* family, const char* operation)
+      :storage_usage_trace(action_id, std::move(event_id), family, operation, ".")
       {}
 
-      storage_usage_trace(uint32_t action_id, const char* event_id, const char* family, const char* operation, const char* legacy_tag)
-      :action_id(action_id),event_id(event_id),family(family),operation(operation),legacy_tag(legacy_tag)
+      storage_usage_trace(uint32_t action_id, std::string&& event_id, const char* family, const char* operation, const char* legacy_tag)
+      :action_id(action_id),event_id(std::move(event_id)),family(family),operation(operation),legacy_tag(legacy_tag)
       {}
 
-      uint32_t     action_id  = 0;
-      const char*  event_id   = "generic";
-      const char*  family     = "generic";
-      const char*  operation  = "generic";
-      const char*  legacy_tag = "generic";
+      uint32_t          action_id  = 0;
+      const std::string event_id   = "generic";
+      const char*       family     = "generic";
+      const char*       operation  = "generic";
+      const char*       legacy_tag = "generic";
 
    private:
       storage_usage_trace(uint32_t action_id)

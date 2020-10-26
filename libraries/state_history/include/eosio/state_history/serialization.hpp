@@ -264,7 +264,6 @@ ST& operator<<(
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::kv_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.database_id.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.contract.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_key));
    fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_value));
@@ -295,7 +294,7 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::shared_produce
 
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max_block_net_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.target_block_net_usage_pct));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_net_usage));
@@ -313,6 +312,7 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_inline_action_size));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.max_inline_action_depth));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.max_authority_depth));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_action_return_value_size));
    return ds;
 }
 
