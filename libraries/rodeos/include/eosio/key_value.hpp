@@ -403,6 +403,10 @@ class kv_table {
          return compare(b) >= 0;
       }
 
+      explicit operator bool() {
+         return compare(this) != 0;
+      }
+
    private:
       uint32_t itr;
       status itr_stat;
