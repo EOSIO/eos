@@ -20,7 +20,6 @@ if(TPM2TSS_STATIC)
    find_library(TSS2_TCTI_DEVICE_LIBRARY NAMES tss2-tcti-device)
    find_library(TSS2_TCTI_MSSIM_LIBRARY NAMES tss2-tcti-mssim)
    find_library(TSS2_TCTI_SWTPM_LIBRARY NAMES tss2-tcti-swtpm)
-   find_library(TSS2_TCTILDR_LIBRARY NAMES tss2-tctildr)
 endif()
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES "${PREVIOUS_CMAKE_FIND_LIBRARY_SUFFIXES}")
@@ -35,4 +34,4 @@ add_library(tpm-helpers tpm-helpers.cpp)
 target_include_directories(tpm-helpers PUBLIC include PRIVATE "${TSS2_INCLUDE_DIR}")
 target_link_libraries(tpm-helpers PUBLIC fc "${TSS2_LDR_LIBRARY}" "${TSS2_ESYS_LIBRARY}" "${TSS2_RC_LIBRARY}" "${TSS2_MU_LIBRARY}"
                                             "${TSS2_SYS_LIBRARY}" "${TSS2_TCTI_DEVICE_LIBRARY}" "${TSS2_TCTI_MSSIM_LIBRARY}"
-                                            "${TSS2_TCTI_SWTPM_LIBRARY}" "${TSS2_TCTILDR_LIBRARY}")
+                                            "${TSS2_TCTI_SWTPM_LIBRARY}")
