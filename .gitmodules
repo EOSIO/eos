@@ -1,9 +1,6 @@
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
-[submodule "libraries/yubihsm"]
-	path = libraries/yubihsm
-	url = https://github.com/Yubico/yubihsm-shell
 [submodule "libraries/eos-vm"]
 	path = libraries/eos-vm
 	url = https://github.com/eosio/eos-vm
@@ -28,3 +25,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
 	url = https://github.com/eosio/appbase
+[submodule "libraries/yubihsm/upstream"]
+	path = libraries/yubihsm/upstream
+	url = https://github.com/Yubico/yubihsm-shell/
