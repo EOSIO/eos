@@ -30,7 +30,7 @@ Retrieves the contents of a database kv_table
 
   * When `--reverse` option is not set, `--upper` is optional; if `--upper` is not set, the result includes the end of the matching rows.
   * When `--reverse` option is set, `--lower` is optional; if `--lower` is not set, the result includes the start of the matching rows.
-  * When result has more = true and next_key is set, the following call to get_kv_table_rows should set --encode-type bytes and
+  * When the result returns `"more": true`, the remaining rows can be retrieved by setting `--encode_bytes` to `bytes` and `--index`, `--lower` or `--upper` (as applicable, depending on the `--reverse` option) to the value returned in `"next_key": "XYZ"`, where `XYZ` is the next index value in hex.
   * When `--index` is used as non-unique secondary index, the result can return multiple rows.
 
 ## Examples
