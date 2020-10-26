@@ -434,6 +434,28 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
    }
 
    if (result.second) {
+      // The two keys that this new key is being inserted in between might already be in a global lexicographical order.
+      // If so, that means we already know the global order of this new key.
+      if (it != std::begin(m_cache)) {
+         auto previous = it;
+         --previous;
+         if (previous->second.next_in_cache) {
+            it->second.previous_in_cache = true;
+            it->second.next_in_cache = true;
+            return it;
+         }
+      }
+      auto end = std::end(m_cache);
+      if (it != end) {
+         auto next = it;
+         ++next;
+         if (next != end && next->second.previous_in_cache) {
+            it->second.next_in_cache = true;
+            it->second.previous_in_cache = true;
+            return it;
+         }
+      }
+
       if (!it->second.next_in_cache && !it->second.previous_in_cache) {
          std::visit(
                [&](auto* p) {

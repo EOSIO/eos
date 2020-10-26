@@ -121,15 +121,15 @@ namespace details {
    inline int64_t aligned_compare(const char* left, int64_t left_size, const char* right, int64_t right_size) {
       auto iterations = std::min(aligned_size(left_size), aligned_size(right_size)) / byte_size;
       for (size_t i = 0; i < iterations; ++i) {
-         auto offset = i * byte_size;
+         auto offset      = i * byte_size;
          auto left_value  = uint64_t{};
          auto right_value = uint64_t{};
          std::memcpy(&left_value, left + offset, byte_size);
          std::memcpy(&right_value, right + offset, byte_size);
-         left_value = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(left_value);
+         left_value  = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(left_value);
          right_value = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(right_value);
          if (left_value == right_value) {
-           continue;
+            continue;
          }
          return left_value < right_value ? -1 : 1;
       }
@@ -246,7 +246,7 @@ inline shared_bytes::iterator shared_bytes::end() const {
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
    for (const auto c : bytes) {
-     std::cout << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (0xFF & static_cast<int>(c));
+      std::cout << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (0xFF & static_cast<int>(c));
    }
    return os;
 }
