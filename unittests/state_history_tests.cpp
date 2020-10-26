@@ -736,8 +736,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
       auto result = chain.find_table_delta("key_value");
       BOOST_REQUIRE(result.first);
 
-      auto key_values_vector = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(
-            result.second);
+      auto key_values_vector = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
       BOOST_REQUIRE_EQUAL(key_values_vector.size(), 30);
 
       BOOST_REQUIRE_EQUAL(key_values_vector[0].contract.to_string(), "kvtable");
@@ -749,7 +748,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 }
 
 BOOST_AUTO_TEST_CASE(test_deltas_contract) {
-   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::CHAINBASE }) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
       chain.set_backing_store(backing_store);
 
@@ -803,8 +802,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_row = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 2);
-      auto contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(
-            it_contract_row);
+      auto contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
       BOOST_REQUIRE_EQUAL(contract_rows[0].table.to_string(), "hashobjs");
       BOOST_REQUIRE_EQUAL(contract_rows[1].table.to_string(), "numobjs");
 
@@ -813,8 +811,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_index256 = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_index256->rows.obj.size(), 2);
-      auto contract_indices = chain.deserialize_data<eosio::ship_protocol::contract_index256_v0, eosio::ship_protocol::contract_index256>(
-            it_contract_index256);
+      auto contract_indices = chain.deserialize_data<eosio::ship_protocol::contract_index256_v0, eosio::ship_protocol::contract_index256>(it_contract_index256);
       BOOST_REQUIRE_EQUAL(contract_indices[0].table.to_string(), "hashobjs");
       BOOST_REQUIRE_EQUAL(contract_indices[1].table.to_string(), "hashobjs....1");
    }

@@ -137,10 +137,10 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
    return deltas;
 }
 
-class rocksdb_row_receiver {
+class rocksdb_db_row_receiver {
 public:
 
-   rocksdb_row_receiver(std::vector<table_delta> &deltas) : deltas(deltas) {}
+   rocksdb_db_row_receiver(std::vector<table_delta> &deltas) : deltas(deltas) {}
 
    void add_row(const chain::backing_store::table_id_object_view& row, const chainbase::database& db) {
       deltas[get_delta_index("contract_table")].rows.obj.emplace_back(true, fc::raw::pack(make_history_serial_wrapper(db, row)));
@@ -198,23 +198,23 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       deltas.push_back({});
       auto& delta = deltas.back();
       delta.name  = "key_value";
-      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix,
-            [&](uint64_t contract, const char* key, std::size_t key_size, const char* value, std::size_t value_size) {
-               auto pack_row = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
+      auto rocksdb_kv_row_receiver = [&](uint64_t contract, const char* key, std::size_t key_size, const char* value, std::size_t value_size) {
+         auto pack_row = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
 
-               // In KV RocksDB, payer and actual data are packed together.
-               // Extract them.
-               chain::backing_store::payer_payload pp(value, value_size);
-               chain::kv_object_view row{chain::name(contract),
-                                         {{key, key + key_size}},
-                                         {{pp.value, pp.value + pp.value_size}},
-                                         pp.payer};
+         // In KV RocksDB, payer and actual data are packed together.
+         // Extract them.
+         chain::backing_store::payer_payload pp(value, value_size);
+         chain::kv_object_view row{chain::name(contract),
+                                   {{key, key + key_size}},
+                                   {{pp.value, pp.value + pp.value_size}},
+                                   pp.payer};
 
-               delta.rows.obj.emplace_back(true, pack_row(row));
-            });
+         delta.rows.obj.emplace_back(true, pack_row(row));
+      };
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix, rocksdb_kv_row_receiver);
 
-      rocksdb_row_receiver receiver(deltas);
-      chain::backing_store::rocksdb_contract_db_table_writer writer(receiver, db, *kv_undo_stack);
+      rocksdb_db_row_receiver db_receiver(deltas);
+      chain::backing_store::rocksdb_contract_db_table_writer writer(db_receiver, db, *kv_undo_stack);
       chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_db_prefix, writer);
    } else {
       auto &session = kv_undo_stack->top();
