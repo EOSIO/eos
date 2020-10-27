@@ -225,10 +225,10 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       rocksdb_kv_row_receiver kv_receiver(delta.rows.obj, db);
       auto begin_key = eosio::session::shared_bytes(&chain::backing_store::rocksdb_contract_kv_prefix, 1);
       auto end_key = begin_key.next();
-      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix, rocksdb_kv_row_receiver);
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, rocksdb_kv_row_receiver);
 
       rocksdb_db_row_receiver db_receiver(deltas, db);
-      using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_receiver>;
+      using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_db_row_receiver>;
       table_collector table_collector_receiver(db_receiver);
       chain::backing_store::rocksdb_contract_db_table_writer writer(table_collector_receiver);
 
