@@ -712,7 +712,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 
 BOOST_AUTO_TEST_CASE(test_deltas_kv) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-      table_deltas_tester chain;
+      table_deltas_tester chain(setup_policy::none);
       chain.set_backing_store(backing_store);
 
       chain.produce_blocks(2);
@@ -749,7 +749,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
 BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-      table_deltas_tester chain;
+      table_deltas_tester chain(setup_policy::none);
       chain.set_backing_store(backing_store);
 
       chain.produce_block();
@@ -774,15 +774,14 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       auto result = chain.find_table_delta("contract_table", true);
       BOOST_REQUIRE(result.first);
       auto &it_contract_table_full = result.second;
-      BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 7);
+      BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 6);
       auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
-      BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "abihash");
-      BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "hashobjs");
-      BOOST_REQUIRE_EQUAL(contract_tables[2].table.to_string(), "hashobjs....1");
-      BOOST_REQUIRE_EQUAL(contract_tables[3].table.to_string(), "numobjs");
-      BOOST_REQUIRE_EQUAL(contract_tables[4].table.to_string(), "numobjs.....1");
-      BOOST_REQUIRE_EQUAL(contract_tables[5].table.to_string(), "numobjs.....2");
-      BOOST_REQUIRE_EQUAL(contract_tables[6].table.to_string(), "numobjs.....3");
+      BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "hashobjs");
+      BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "hashobjs....1");
+      BOOST_REQUIRE_EQUAL(contract_tables[2].table.to_string(), "numobjs");
+      BOOST_REQUIRE_EQUAL(contract_tables[3].table.to_string(), "numobjs.....1");
+      BOOST_REQUIRE_EQUAL(contract_tables[4].table.to_string(), "numobjs.....2");
+      BOOST_REQUIRE_EQUAL(contract_tables[5].table.to_string(), "numobjs.....3");
 
       // Spot onto contract_table without full snapshot
       result = chain.find_table_delta("contract_table", false);
