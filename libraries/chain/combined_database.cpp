@@ -535,8 +535,15 @@ namespace eosio { namespace chain {
    void combined_database::add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const {
       snapshot->write_section("contract_tables", [this](auto& section) {
          if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-            backing_store::rocksdb_contract_db_table_writer<std::decay_t < decltype(section)>> writer(section, db, *kv_undo_stack);
-            backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_db_prefix, writer);
+            using add_database_section_receiver = backing_store::add_database_receiver<std::decay_t < decltype(section)>>;
+            using table_collector = backing_store::rocksdb_whole_db_table_collector<add_database_section_receiver>;
+
+            add_database_section_receiver add_db_receiver(section, db);
+            table_collector table_collector_receiver(add_db_receiver);
+            backing_store::rocksdb_contract_db_table_writer<table_collector> writer(table_collector_receiver);
+            const auto begin_key = eosio::session::shared_bytes(&backing_store::rocksdb_contract_db_prefix, 1);
+            const auto end_key = begin_key.next();
+            backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, writer);
          }
          else {
             chainbase_add_contract_tables_to_snapshot(db, section);
