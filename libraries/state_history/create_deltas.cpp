@@ -223,9 +223,10 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
 //         delta.rows.obj.emplace_back(true, pack_row(row));
 //      };
       rocksdb_kv_row_receiver kv_receiver(delta.rows.obj, db);
+      chain::backing_store::rocksdb_contract_kv_table_writer kv_writer(kv_receiver);
       auto begin_key = eosio::session::shared_bytes(&chain::backing_store::rocksdb_contract_kv_prefix, 1);
       auto end_key = begin_key.next();
-      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, kv_receiver);
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, kv_writer);
 
       rocksdb_db_row_receiver db_receiver(deltas, db);
       using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_db_row_receiver>;

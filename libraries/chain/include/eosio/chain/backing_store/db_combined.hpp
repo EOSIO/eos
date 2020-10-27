@@ -317,10 +317,10 @@ private:
 };
 
 template <typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
-void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
-                                      const eosio::session::shared_bytes& key,
-                                      Receiver& receiver,
-                                      Function keep_processing = process_all) {
+void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
+                                          const eosio::session::shared_bytes& key,
+                                          Receiver& receiver,
+                                          Function keep_processing = process_all) {
    if (!key) {
       return;
    }
