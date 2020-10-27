@@ -32,7 +32,7 @@ namespace fc {
       std::lock_guard g( lc.log_mutex );
       if( lc.next_id == 0 ) {
          std::mt19937_64 engine( std::random_device{}() );
-         std::uniform_int_distribution<uint64_t> distribution;
+         std::uniform_int_distribution<uint64_t> distribution(1);
          lc.next_id = distribution( engine );
       }
       return lc.next_id++;
