@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 #include <contracts.hpp>
 

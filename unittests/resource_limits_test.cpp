@@ -482,7 +482,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          trigger_block->transactions.back().net_usage_words.value = 2*((reqauth_net_usage_delta + 7)/8); // double the NET bill
 
          // Re-calculate the transaction merkle
-         deque<digest_type> trx_digests;
+         eosio::chain::deque<digest_type> trx_digests;
          const auto& trxs = trigger_block->transactions;
          for( const auto& a : trxs )
             trx_digests.emplace_back( a.digest() );
@@ -524,7 +524,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          trigger_block->transactions.back().net_usage_words.value = ((reqauth_net_usage_delta + 7)/8)/2; // half the original NET bill
 
          // Re-calculate the transaction merkle
-         deque<digest_type> trx_digests;
+         eosio::chain::deque<digest_type> trx_digests;
          const auto& trxs = trigger_block->transactions;
          for( const auto& a : trxs )
             trx_digests.emplace_back( a.digest() );

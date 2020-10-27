@@ -12,7 +12,7 @@
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/to_key.hpp>
 
 #include <boost/container/flat_set.hpp>
