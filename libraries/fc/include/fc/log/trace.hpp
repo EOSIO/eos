@@ -4,6 +4,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <optional>
+#include <type_traits>
 
 /// Simple wrappers for zipkin tracing, see zipkin_appender
 namespace fc {
@@ -64,9 +65,27 @@ namespace fc {
          } catch( ... ) {}
       }
 
+      void add_tag( const std::string& key, const std::string& var ) {
+         // zipkin tags are required to be strings
+         data( key, var );
+      }
+      void add_tag( const std::string& key, const char* var ) {
+         // zipkin tags are required to be strings
+         data( key, var );
+      }
+      void add_tag( const std::string& key, bool v ) {
+         // zipkin tags are required to be strings
+         data( key, v ? "true" : "false" );
+      }
       template<typename T>
-      void add_tag( const std::string& key, T&& var ) {
-         data( key, std::forward<T>( var ) );
+      typename std::enable_if_t<std::is_arithmetic_v<std::remove_reference_t<T>>, void>
+      add_tag( const std::string& key, T&& var ) {
+         data( key, std::to_string( std::forward<T>( var ) ) );
+      }
+      template<typename T>
+      typename std::enable_if_t<!std::is_arithmetic_v<std::remove_reference_t<T>>, void>
+      add_tag( const std::string& key, T&& var ) {
+         data( key, (std::string) var );
       }
 
       struct token {
@@ -94,7 +113,8 @@ namespace fc {
 
    private:
       uint64_t id;
-      // zipkin traceId and parentId are same since only allowing trace with span children, no children of spans
+      // zipkin traceId and parentId are same (when parent_id set) since only allowing trace with span children.
+      // Not currently supporting spans with children, only trace with children spans.
       const uint64_t parent_id;
       const fc::time_point start;
       std::string name;
@@ -154,10 +174,10 @@ namespace fc {
         : ::std::optional<::fc::zipkin_span>{};
 
 /// @param SPAN_VARNAME variable returned from fc_create_span
-/// @param TAG_KEY_STR const char* key
-/// @param TAG_VALUE any fc::variant type
-#define fc_add_tag( SPAN_VARNAME, TAG_KEY_STR, TAG_VALUE) \
+/// @param TAG_KEY_STR string key
+/// @param TAG_VALUE string value
+#define fc_add_tag( SPAN_VARNAME, TAG_KEY_STR, TAG_VALUE_STR) \
   FC_MULTILINE_MACRO_BEGIN \
     if( (SPAN_VARNAME) && ::fc::logger::get(::fc::zipkin_logger_name).is_enabled( ::fc::log_level::debug ) ) \
-       (SPAN_VARNAME)->add_tag( (TAG_KEY_STR), (TAG_VALUE) ); \
+       (SPAN_VARNAME)->add_tag( (TAG_KEY_STR), (TAG_VALUE_STR) ); \
   FC_MULTILINE_MACRO_END
