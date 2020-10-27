@@ -103,6 +103,8 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # the pthread dependency through fc.
 find_package(Boost 1.70 REQUIRED COMPONENTS program_options unit_test_framework)
 
+find_package(RocksDB)
+
 if( APPLE AND UNIX )
 # Apple Specific Options Here
     message( STATUS "Configuring EOSIO on macOS" )
@@ -223,10 +225,6 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.yubihsm COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/eos-vm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.eos-vm COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.Apache
-               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rocksdb COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
-               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/amqp-cpp/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.amqpcpp COPYONLY)
 

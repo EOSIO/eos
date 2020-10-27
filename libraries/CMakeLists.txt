@@ -1,18 +1,3 @@
-option(PORTABLE CACHE ON)               # rocksdb: don't use sse4.2
-option(WITH_GFLAGS CACHE OFF)           # rocksdb: don't use gflags
-option(WITH_TESTS CACHE OFF)            # rocksdb: don't build this
-option(WITH_TOOLS CACHE OFF)            # rocksdb: don't build this
-option(WITH_BENCHMARK_TOOLS CACHE OFF)  # rocksdb: don't build this
-option(FAIL_ON_WARNINGS CACHE OFF)      # rocksdb: stop the madness: warnings change over time
-
-#on Linux, rocksdb will monkey with CMAKE_INSTALL_PREFIX is this is on
-set(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OFF)
-# rocksdb disables USE_RTTI for release build, which breaks
-# exception handling on MacOS.
-if(APPLE)
-  set(USE_RTTI ON)
-endif()
-
 add_subdirectory( fc )
 add_subdirectory( builtins )
 add_subdirectory( softfloat )
@@ -24,7 +9,6 @@ add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
-add_subdirectory( rocksdb )
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
 
