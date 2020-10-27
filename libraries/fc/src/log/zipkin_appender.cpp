@@ -4,12 +4,12 @@
 #include <fc/network/http/http_client.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/variant.hpp>
-#include <fc/io/json.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/bitutil.hpp>
+#include <fc/variant.hpp>
 
 #include <boost/asio.hpp>
 
-#include <iostream>
 #include <thread>
 
 namespace fc {
@@ -87,12 +87,16 @@ fc::variant create_zipkin_variant( const log_message& message, const std::string
       uint64_t v = i->value().as_uint64();
       mvo( "traceId", fc::to_hex( reinterpret_cast<const char*>(&v), sizeof( v ) ) );
       d.erase( "zipkin.traceId" );
+   } else {
+      FC_THROW_EXCEPTION( parse_error_exception, "zipkin.traceId required" );
    }
    i = d.find( "zipkin.id" );
    if( i != d.end() && i->value().is_uint64() ) {
       uint64_t v = i->value().as_uint64();
       mvo( "id", fc::to_hex( reinterpret_cast<const char*>(&v), sizeof( v ) ) );
       d.erase( "zipkin.id" );
+   } else {
+      FC_THROW_EXCEPTION( parse_error_exception, "zipkin.id required" );
    }
    i = d.find( "zipkin.parentId" );
    if( i != d.end() && i->value().is_uint64() ) {
