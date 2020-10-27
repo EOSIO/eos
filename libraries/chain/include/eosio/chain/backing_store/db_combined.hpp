@@ -3,6 +3,9 @@
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
+// chainlib reserves prefixes 0x10 - 0x2F.
+static constexpr char rocksdb_contract_kv_prefix = 0x11; // for KV API
+static constexpr char rocksdb_contract_db_prefix = 0x12; // for DB API
 
 template <typename F>
 void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack, const std::vector<char>& prefix, F&& function) {

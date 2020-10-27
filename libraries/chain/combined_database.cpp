@@ -117,11 +117,11 @@ namespace eosio { namespace chain {
       if (version < kv_object::minimum_snapshot_version)
          return;
       if (backing_store == backing_store_type::ROCKSDB) {
-         auto prefix_key = std::string_view(rocksdb_contract_kv_prefix.data(), rocksdb_contract_kv_prefix.size());
          auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
          constexpr std::size_t batch_size = 500;
          key_values.reserve(batch_size);
-         snapshot->read_section<kv_object>([&key_values, &prefix_key, &db, &kv_database](auto& section) {
+         snapshot->read_section<kv_object>([&key_values, &db, &kv_database](auto& section) {
+            const std::string_view prefix_key {&backing_store::rocksdb_contract_kv_prefix, 1};
             bool more = !section.empty();
             while (more) {
                kv_object_view move_to_rocks;
@@ -647,8 +647,9 @@ namespace eosio { namespace chain {
       return genesis;
    }
 
-   std::vector<char> make_rocksdb_contract_kv_prefix() { return rocksdb_contract_kv_prefix; }
-   std::vector<char> make_rocksdb_contract_db_prefix() { return rocksdb_contract_db_prefix; }
+#warning need to change this method to just return a char
+   std::vector<char> make_rocksdb_contract_kv_prefix() { return std::vector<char> { backing_store::rocksdb_contract_kv_prefix }; }
+   char make_rocksdb_contract_db_prefix() { return backing_store::rocksdb_contract_db_prefix; }
 
 }} // namespace eosio::chain
 
