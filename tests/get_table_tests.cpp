@@ -474,9 +474,9 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    produce_block();
 
    // Init some data
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 2));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 5));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 7));
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 2)("nm", "a"));
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 5)("nm", "b"));
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 7)("nm", "c"));
    push_action("test"_n, "addhashobj"_n, "test"_n, mutable_variant_object()("hashinput", "firstinput"));
    push_action("test"_n, "addhashobj"_n, "test"_n, mutable_variant_object()("hashinput", "secondinput"));
    push_action("test"_n, "addhashobj"_n, "test"_n, mutable_variant_object()("hashinput", "thirdinput"));
@@ -685,6 +685,40 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    ripemd160 more2_sec160_res_value = more2_res_8.rows[0].get_object()["sec160"].as<ripemd160>();
    BOOST_TEST(more2_sec160_res_value == more2_sec160_expected_value);
    BOOST_TEST(more2_res_8.rows[0].get_object()["hash_input"].as<string>() == "secondinput");
+
+   // name secondary key type
+   params.table = "numobjs"_n;
+   params.key_type = "name";
+   params.limit = 10;
+   params.index_position = "6";
+   params.lower_bound = "a";
+   params.upper_bound = "a";
+   auto res_nm = plugin.get_table_rows(params);
+   BOOST_REQUIRE(res_nm.rows.size() == 1);
+
+   params.lower_bound = "a";
+   params.upper_bound = "b";
+   res_nm = plugin.get_table_rows(params);
+   BOOST_REQUIRE(res_nm.rows.size() == 2);
+
+   params.lower_bound = "a";
+   params.upper_bound = "b";
+   res_nm = plugin.get_table_rows(params);
+   BOOST_REQUIRE(res_nm.rows.size() == 2);
+
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 8)("nm", "1111"));
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 9)("nm", "2222"));
+   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 10)("nm", "3333"));
+
+   params.lower_bound = "1111";
+   params.upper_bound = "3333";
+   res_nm = plugin.get_table_rows(params);
+   BOOST_REQUIRE(res_nm.rows.size() == 3);
+
+   params.lower_bound = "2222";
+   params.upper_bound = "3333";
+   res_nm = plugin.get_table_rows(params);
+   BOOST_REQUIRE(res_nm.rows.size() == 2);
 
 } FC_LOG_AND_RETHROW() /// get_table_next_key_test
 

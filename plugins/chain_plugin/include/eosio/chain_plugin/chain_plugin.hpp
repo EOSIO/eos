@@ -491,7 +491,7 @@ public:
          if( p.lower_bound.size() ) {
             if( p.key_type == "name" ) {
                name s(p.lower_bound);
-               SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
+               SecKeyType lv = convert_to_type<SecKeyType>( std::to_string(s.to_uint64_t()), "lower_bound name" ); // avoids compiler error
                std::get<1>(lower_bound_lookup_tuple) = conv( lv );
             } else {
                SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
@@ -502,7 +502,7 @@ public:
          if( p.upper_bound.size() ) {
             if( p.key_type == "name" ) {
                name s(p.upper_bound);
-               SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
+               SecKeyType uv = convert_to_type<SecKeyType>(std::to_string(s.to_uint64_t()), "upper_bound name");
                std::get<1>(upper_bound_lookup_tuple) = conv( uv );
             } else {
                SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
