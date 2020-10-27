@@ -102,9 +102,12 @@ namespace eosio { namespace chain {
    void add_kv_table_to_snapshot(const snapshot_writer_ptr& snapshot, const chainbase::database& db, const kv_undo_stack_ptr& kv_undo_stack) {
       snapshot->write_section<kv_object>([&db,&kv_undo_stack](auto& section) {
          if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB) {
-            backing_store::rocksdb_contract_kv_table_writer <std::decay_t<decltype(section)>> writer(section, db,
-                                                                                                     *kv_undo_stack);
-            backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, rocksdb_contract_kv_prefix, writer);
+            using add_database_section_receiver = backing_store::add_database_receiver<std::decay_t < decltype(section)>>;
+            add_database_section_receiver add_db_receiver(section, db);
+            backing_store::rocksdb_contract_kv_table_writer<add_database_section_receiver> writer(add_db_receiver);
+            const auto begin_key = eosio::session::shared_bytes(&backing_store::rocksdb_contract_kv_prefix, 1);
+            const auto end_key = begin_key.next();
+            backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, writer);
          } else {
             index_utils<kv_index> utils;
             utils.walk<by_kv_key>(db, [&db, &section](const auto& row) { section.add_row(row, db); });

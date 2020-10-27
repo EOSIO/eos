@@ -191,16 +191,17 @@ const typename rocksdb_contract_db_table_writer<Receiver>::extract_index_member_
       &rocksdb_contract_db_table_writer<Receiver>::extract_secondary_index<float128_t>,
 };
 
-
-template<typename Receiver>
+template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
 class rocksdb_contract_kv_table_writer {
 public:
-   rocksdb_contract_kv_table_writer(Receiver& r, const chainbase::database& db,
-                                    eosio::session::undo_stack<rocks_db_type>& kus)
-         : receiver_(r), db_(db), kv_undo_stack_(kus) {}
+   rocksdb_contract_kv_table_writer(Receiver& r, const Function& keep_processing = process_all)
+         : receiver_(r), keep_processing_(keep_processing) {}
 
-   void operator()(uint64_t contract, const char* key, std::size_t key_size,
+   bool operator()(uint64_t contract, const char* key, std::size_t key_size,
                    const char* value, std::size_t value_size) {
+      if (!keep_processing_()) {
+         return false;
+      }
       // In KV RocksDB, payer and actual data are packed together.
       // Extract them.
       backing_store::payer_payload pp(value, value_size);
@@ -208,13 +209,13 @@ public:
                          {{key, key + key_size}},
                          {{pp.value, pp.value + pp.value_size}},
                          pp.payer};
-      receiver_.add_row(row, db_);
+      receiver_.add_row(row);
+      return true;
    }
 
 private:
    Receiver& receiver_;
-   const chainbase::database& db_;
-   eosio::session::undo_stack<rocks_db_type>& kv_undo_stack_;
+   const Function& keep_processing_;
 };
 
 }}}
