@@ -73,5 +73,18 @@ add_subdirectory(Source/Runtime)
 add_subdirectory(Source/WASM)
 add_subdirectory(Source/WAST)
 
+add_library(wasm-jit STATIC Source/dummy.cpp)
+target_include_directories(wasm-jit PUBLIC
+   ${CMAKE_CURRENT_SOURCE_DIR}/Include
+)
+
+target_link_libraries(wasm-jit PUBLIC
+   IR
+   Logging
+   Runtime
+   WASM
+   WAST
+)
+
 #add_subdirectory(Test/spec)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Include/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/wasm-jit)

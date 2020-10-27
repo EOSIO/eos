@@ -1,0 +1,27 @@
+macro( copy_bin file )
+   add_custom_command( TARGET ${file} POST_BUILD COMMAND mkdir -p ${CMAKE_BINARY_DIR}/bin )
+   add_custom_command( TARGET ${file} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${file}${CMAKE_EXECUTABLE_SUFFIX} ${CMAKE_BINARY_DIR}/bin/ )
+endmacro( copy_bin )
+
+function(create_mono_lib INPUT OUTPUT)
+    set(TMP ${CMAKE_BINARY_DIR}/mono_lib_tmp/${OUTPUT}.tmp)
+    set(DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/lib${OUTPUT}.a)
+    file(WRITE ${TMP} "create ${DIR}\n")
+
+    get_target_property(LINKED ${INPUT} LINK_LIBRARIES)
+    FOREACH(in_archive ${LINKED})
+        file(APPEND ${TMP} "addlib ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/lib${OUTPUT}.a\n")
+    #ENDFOREACH()
+    #file(APPEND ${mri_file} "save\n")
+    #file(APPEND ${mri_file} "end\n")
+
+    #set(output_archive_dummy_file ${TEMP_DIR}/${output_archive}.dummy.cpp)
+    #add_custom_command(OUTPUT ${output_archive_dummy_file}
+    #                   COMMAND touch ${output_archive_dummy_file}
+    #                   DEPENDS ${list_of_input_archives})
+
+    #add_library(${output_archive} STATIC ${output_archive_dummy_file})
+    #add_custom_command(TARGET ${output_archive}
+    #                   POST_BUILD
+    #                   COMMAND ar -M < ${mri_file})
+endfunction(combine_archives)

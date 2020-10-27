@@ -132,16 +132,38 @@ add_library( eosio_chain
              ${HEADERS}
              )
 
-target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins rocksdb ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS} ${CHAIN_RT_LINKAGE}
-                     )
-target_include_directories( eosio_chain
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../rocksdb/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../chain_kv/include"
-                            )
+target_link_libraries( eosio_chain PUBLIC
+   chain_kv
+   fc
+   chainbase
+   wasm-jit
+   softfloat
+   builtins
+   ${CHAIN_EOSVM_LIBRARIES}
+   ${LLVM_LIBS}
+   ${CHAIN_RT_LINKAGE}
+)
+
+if(WIN32)
+   set_target_properties( eosio_chain PROPERTIES
+      LINK_FLAGS "/WHOLEARCHIVE"
+   )
+elseif(APPLE)
+   set_target_properties( eosio_chain PROPERTIES
+      LINK_FLAGS "-Wl,all_load"
+   )
+else()
+   set_target_properties( eosio_chain PROPERTIES
+      LINK_FLAGS "-Wl,--whole-archive"
+   )
+endif()
+
+target_include_directories( eosio_chain PUBLIC
+   "${CMAKE_CURRENT_SOURCE_DIR}/include"
+   "${CMAKE_CURRENT_BINARY_DIR}/include"
+)
+
+create_mono_lib(eosio_chain eosio_chain_all)
 
 add_library(eosio_chain_wrap INTERFACE )
 target_link_libraries(eosio_chain_wrap INTERFACE eosio_chain)
@@ -173,6 +195,3 @@ install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/chain/
       FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h" EXCLUDE
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/chain)
-#if(MSVC)
-#  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
-#endif(MSVC)
