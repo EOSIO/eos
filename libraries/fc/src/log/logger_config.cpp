@@ -86,7 +86,7 @@ namespace fc {
       log_config::get().logger_map.clear();
       log_config::get().appender_map.clear();
 
-      //slog( "\n%s", fc::json::to_pretty_string(cfg).c_str() );
+      appender::ptr zipkin_appender;
       for( size_t i = 0; i < cfg.appenders.size(); ++i ) {
          // create appender
          auto fact_itr = log_config::get().appender_factory_map.find( cfg.appenders[i].type );
@@ -96,6 +96,9 @@ namespace fc {
          }
          auto ap = fact_itr->second->create( cfg.appenders[i].args );
          log_config::get().appender_map[cfg.appenders[i].name] = ap;
+         if( cfg.appenders[i].type == "zipkin" ) {
+            zipkin_appender = ap;
+         }
       }
       for( size_t i = 0; i < cfg.loggers.size(); ++i ) {
          auto lgr = log_config::get().logger_map[cfg.loggers[i].name];
@@ -111,7 +114,11 @@ namespace fc {
          for( auto a = cfg.loggers[i].appenders.begin(); a != cfg.loggers[i].appenders.end(); ++a ){
             auto ap_it = log_config::get().appender_map.find(*a);
             if( ap_it != log_config::get().appender_map.end() ) {
-               lgr.add_appender(ap_it->second);
+               if( lgr.name() == DEFAULT_LOGGER && ap_it->second == zipkin_appender ) {
+                  std::cerr << "warn: zipkin_appender not allowed for default logger" << std::endl;
+               } else {
+                  lgr.add_appender( ap_it->second );
+               }
             }
          }
       }

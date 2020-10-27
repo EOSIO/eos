@@ -145,18 +145,18 @@ void zipkin_appender::impl::log( const log_message& message ) {
       auto deadline = fc::time_point::now() + fc::microseconds( cfg.timeout_us );
       if( !endpoint ) {
          endpoint = url( cfg.endpoint + cfg.path );
-         std::cout << "Connecting to zipkin: " << (std::string) *endpoint << std::endl;
+         dlog( "Connecting to zipkin: ${e}", ("e", *endpoint) );
       }
 
       http.post_sync( *endpoint, create_zipkin_variant( message, cfg.service_name ), deadline );
 
       consecutive_errors = 0;
    } catch( const fc::exception& e ) {
-      std::cerr << "Unable to connect to zipkin: " << cfg.endpoint + cfg.path << ", error: " << e.to_detail_string() << std::endl;
+      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", e.to_detail_string()) );
    } catch( const std::exception& e ) {
-      std::cerr << "Unable to connect to zipkin: " << cfg.endpoint + cfg.path << ", error: " << e.what() << std::endl;
+      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", e.what()) );
    } catch( ... ) {
-      std::cerr << "Unknown error connecting to zipkin: " << cfg.endpoint + cfg.path << std::endl;
+      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", "unknown error") );
    }
    ++consecutive_errors;
 }
