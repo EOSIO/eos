@@ -1,4 +1,3 @@
-#include <b1/session/rocks_comparator.hpp>
 #include <eosio/chain/backing_store/kv_context_rocksdb.hpp>
 #include <eosio/chain/backing_store/kv_context_chainbase.hpp>
 #include <eosio/chain/combined_database.hpp>
@@ -240,25 +239,11 @@ namespace eosio { namespace chain {
             // Incorporates the Table options into options
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
-            auto column_families       = std::vector<rocksdb::ColumnFamilyDescriptor>{};
-            auto column_family_handles = std::vector<rocksdb::ColumnFamilyHandle*>{};
-            auto column_family_options = rocksdb::ColumnFamilyOptions{};
-            // auto comparator            = std::make_shared<eosio::session::rocks_comparator>();
-
-            // column_family_options.comparator = comparator.get();
-            column_families.push_back(rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, std::move(column_family_options)));
-
             rocksdb::DB* p;
-            auto status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), column_families, &column_family_handles, &p);
+            auto         status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), &p);
             if (!status.ok())
                throw std::runtime_error(std::string{ "database::database: rocksdb::DB::Open: " } + status.ToString());
-            auto rdb = std::shared_ptr<rocksdb::DB>{ p, [column_family_handles/*, comparator*/](auto* ptr)
-            {
-              for (auto* handle : column_family_handles) {
-                ptr->DestroyColumnFamilyHandle(handle);
-              }
-              delete ptr;
-            } };
+            auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
@@ -504,7 +489,7 @@ namespace eosio { namespace chain {
             if (backing_store == backing_store_type::ROCKSDB) {
                auto prefix_key = eosio::session::shared_bytes(rocksdb_contract_kv_prefix.data(),
                                                                    rocksdb_contract_kv_prefix.size());
-               auto key_values = std::deque<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
+               auto key_values = std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>>{};
                snapshot->read_section<value_t>([this, &key_values, &prefix_key](auto& section) {
                   bool more = !section.empty();
                   while (more) {
