@@ -15,4 +15,4 @@ endif()
 add_executable(tpm_test tpm_tests.cpp)
 target_link_libraries(tpm_test PRIVATE tpm-helpers)
 
-add_test(NAME tpm_test COMMAND tests/tpm_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME tpm_test COMMAND tests/tpm_tests/tpm_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
