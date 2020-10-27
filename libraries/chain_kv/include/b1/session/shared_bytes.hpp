@@ -54,6 +54,7 @@ class shared_bytes {
         operator bool() const;
 
    shared_bytes next() const;
+   shared_bytes next_sub_key() const;  // NEED TO CHANGE, ALONG WITH next()
 
    bool operator<(const shared_bytes& other) const;
    bool operator<=(const shared_bytes& other) const;
@@ -135,6 +136,13 @@ inline shared_bytes shared_bytes::next() const {
       }
       buffer.pop_back();
    }
+
+   return eosio::session::shared_bytes(buffer.data(), buffer.size());
+}
+
+inline shared_bytes shared_bytes::next_sub_key() const {
+   auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
+   buffer.push_back('\0');
 
    return eosio::session::shared_bytes(buffer.data(), buffer.size());
 }
