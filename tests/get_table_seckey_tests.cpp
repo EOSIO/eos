@@ -75,9 +75,9 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    BOOST_REQUIRE(res_nm.rows.size() == 2);
 
    params.lower_bound = "a";
-   params.upper_bound = "b";
+   params.upper_bound = "c";
    res_nm = plugin.get_table_rows(params);
-   BOOST_REQUIRE(res_nm.rows.size() == 2);
+   BOOST_REQUIRE(res_nm.rows.size() == 3);
 
    push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 8)("nm", "1111"));
    push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 9)("nm", "2222"));
