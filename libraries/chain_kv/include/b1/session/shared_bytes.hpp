@@ -21,8 +21,7 @@ class shared_bytes;
 template <typename StringView, std::size_t N>
 shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
 
-// \brief An immutable type to represent a pointer and a length.
-//
+/// \brief A structure that represents a pointer and its length.
 class shared_bytes {
  public:
    using underlying_type_t = char;
@@ -33,6 +32,7 @@ class shared_bytes {
    template <typename StringView, std::size_t N>
    friend shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
 
+   /// \brief Random access iterator on a shared_bytes instance.
    template <typename Iterator_traits>
    class shared_bytes_iterator {
     public:
@@ -47,6 +47,13 @@ class shared_bytes {
       shared_bytes_iterator()                                   = default;
       shared_bytes_iterator(const shared_bytes_iterator& other) = default;
       shared_bytes_iterator(shared_bytes_iterator&& other)      = default;
+
+      /// \brief Constructor.
+      /// \param buffer A pointer to the beginning of the buffer that this iterator is iterating over.
+      /// \param begin The starting point of the range within the buffer the iterator iterates over, inclusive.
+      /// \param end The ending point of the range within the buffer the iterator iterates over, inclusive.
+      /// \param index The starting index within the range to start iterating.
+      /// \remarks -1 for the index indicates the end iterator.
       shared_bytes_iterator(char* buffer, int64_t begin, int64_t end, int64_t index);
 
       shared_bytes_iterator& operator=(const shared_bytes_iterator& other) = default;
@@ -84,10 +91,22 @@ class shared_bytes {
    using iterator = shared_bytes_iterator<iterator_traits>;
 
  public:
+   /// \brief Default Constructor.
+   /// \remarks Constructs a shared_bytes with a nullptr and no size.
    shared_bytes() = default;
+
+   /// \brief Constructs a shared_bytes from an array and size.
+   /// \param data A pointer to the beginning of an array.
+   /// \param size The length of the array.
+   /// \remarks The data is copied into this instance.  Memory is aligned on uint64_t boundary.
+   /// \tparam T The data type of the items in the array.
    template <typename T>
    shared_bytes(const T* data, size_t size);
+
+   /// \brief Constructs a shared_bytes with a buffer of the given size.
+   /// \remarks Memory is aligned on uint64_t boundary.
    shared_bytes(size_t size);
+
    shared_bytes(const shared_bytes& b) = default;
    shared_bytes(shared_bytes&& b)      = default;
    ~shared_bytes()                     = default;
@@ -102,12 +121,24 @@ class shared_bytes {
    bool operator>(const shared_bytes& other) const;
    bool operator>=(const shared_bytes& other) const;
 
+   /// \brief Not operator.
+   /// \return True if the underlying pointer is null or the size is 0, false otherwise.
    bool operator!() const;
-        operator bool() const;
 
-   shared_bytes      next() const;
-   size_t            size() const;
-   size_t            aligned_size() const;
+   /// \brief bool conversion operator.
+   /// \return True if the underlying pointer is not null or the size is greater than 0, false otherwise.
+   operator bool() const;
+
+   /// \brief Returns a new shared_bytes instances that represents the next largest value in lexicographical ordering.
+   /// \remarks This is accomplished by adding one to last value in this shared_bytes instance and carrying over the
+   /// value
+   ///          to the next byte (from back to front) until no carry over is encountered.
+   shared_bytes next() const;
+   size_t       size() const;
+
+   /// \brief Returns the size of the buffer when aligned on a the size of uint64_t.
+   size_t aligned_size() const;
+   
    char*             data();
    const char* const data() const;
 
@@ -121,11 +152,25 @@ class shared_bytes {
 };
 
 namespace details {
+   /// \brief Adjusts the size to be aligned to the given byte_size value.
+   /// \tparam byte_size The number of bytes of the alignment.
    template <size_t byte_size = sizeof(uint64_t)>
    inline size_t aligned_size(size_t size) {
       return (size + (byte_size - 1)) & ~(byte_size - 1);
    }
 
+   /// \brief Compares two aligned buffers, lexicographically.
+   /// \tparam byte_size The number of bytes of the alignment.
+   /// \param left A pointer to the beginning of the buffer.
+   /// \param left_size The unaligned size of the left buffer.
+   /// \param right A pointer to the beginning of the buffer.
+   /// \param right_size The unalinged size of the right buffer.
+   /// \return
+   ///  - A value less than 0 if left is less than right.
+   ///  - A value greater than 0 if left is greater than right.
+   ///  - A value of 0 if both buffers are equal.
+   /// \remarks This comparison works by walking over the buffers, taking each 8 bytes and type punning that to a
+   /// uint64_t, swapping the bytes of those integers and then performing integer comparison.
    template <size_t byte_size = sizeof(uint64_t)>
    inline int64_t aligned_compare(const char* left, int64_t left_size, const char* right, int64_t right_size) {
       auto iterations = std::min(aligned_size(left_size), aligned_size(right_size)) / byte_size;
@@ -135,6 +180,7 @@ namespace details {
          auto right_value = uint64_t{};
          std::memcpy(&left_value, left + offset, byte_size);
          std::memcpy(&right_value, right + offset, byte_size);
+         // swizzle the bytes before performing the comparison.
          left_value  = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(left_value);
          right_value = BOOST_ENDIAN_INTRINSIC_BYTE_SWAP_8(right_value);
          if (left_value == right_value) {
@@ -146,6 +192,11 @@ namespace details {
    }
 } // namespace details
 
+/// \brief Constructs a new shared_bytes instance from an array of StringView instances.
+/// \tparam StringView A type that contains a data() and size() method.
+/// \tparam N The size of the array containing StringView instances.
+/// \param data An array of StringView instances.
+/// \returns A new shared_bytes instance which is the concatenation of all the StringView instances.
 template <typename StringView, std::size_t N>
 shared_bytes make_shared_bytes(std::array<StringView, N>&& data) {
    auto result = shared_bytes{};
@@ -184,11 +235,13 @@ shared_bytes::shared_bytes(const T* data, size_t size)
             return std::shared_ptr<char>{};
          }
 
+         // Make sure to instantiate a buffer that is aligned to the size of a uint64_t.
          auto  actual_size = m_size + m_offset;
          auto  result      = std::shared_ptr<underlying_type_t>{ new underlying_type_t[actual_size],
                                                            std::default_delete<underlying_type_t[]>() };
          auto* buffer      = result.get();
          std::memcpy(buffer, reinterpret_cast<const void*>(data), m_size);
+         // Pad with zeros at the end.
          std::memset(buffer + m_size, 0, m_offset);
          return result;
       }() } {}
@@ -199,6 +252,7 @@ inline shared_bytes::shared_bytes(size_t size)
             return std::shared_ptr<char>{};
          }
 
+         // Make sure to instantiate a buffer that is aligned to the size of a uint64_t.
          auto actual_size = m_size + m_offset;
          auto result      = std::shared_ptr<underlying_type_t>{ new underlying_type_t[actual_size],
                                                            std::default_delete<underlying_type_t[]>() };

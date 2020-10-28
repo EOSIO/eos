@@ -18,8 +18,13 @@
 
 namespace eosio::session {
 
+/// \brief A tag type used to create the RocksDB session specialization.
+/// \remarks To instantiate a RocksDB session use the following syntax <code>auto db = session<rocksdb_t>{...};</code>
 struct rocksdb_t {};
 
+/// \brief A specialization of session that interacts with a RocksDB instance instead of an in-memory cache.
+/// \remarks The interface on this session type should work just like the non specialized version of session.  For
+/// additional on undocumented methods in this header, refer to the session header file.
 template <>
 class session<rocksdb_t> {
  public:
@@ -74,6 +79,10 @@ class session<rocksdb_t> {
    session()               = default;
    session(const session&) = default;
    session(session&&)      = default;
+
+   /// \brief Constructor
+   /// \param db A pointer to the RocksDB db type instance.
+   /// \param max_iterators This type will cache up to max_iterators RocksDB iterator instances.
    session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators);
 
    session& operator=(const session&) = default;
@@ -109,15 +118,26 @@ class session<rocksdb_t> {
 
    void undo();
    void commit();
+
+   /// \brief Forces a flush on the underlying RocksDB db instance.
    void flush();
 
-   rocksdb::WriteOptions&       write_options();
+   /// \brief User specified write options that are applied when writing or erasing data from RocksDB.
+   rocksdb::WriteOptions& write_options();
+
+   /// \brief User specified write options that are applied when writing or erasing data from RocksDB.
    const rocksdb::WriteOptions& write_options() const;
 
-   rocksdb::ReadOptions&       read_options();
+   /// \brief User specified read options that are applied when reading or searching data from RocksDB.
+   rocksdb::ReadOptions& read_options();
+
+   /// \brief User specified read options that are applied when reading or searching data from RocksDB.
    const rocksdb::ReadOptions& read_options() const;
 
-   std::shared_ptr<rocksdb::ColumnFamilyHandle>&      column_family();
+   /// \brief The column family associated with this instance of the RocksDB session.
+   std::shared_ptr<rocksdb::ColumnFamilyHandle>& column_family();
+
+   /// \brief The column family associated with this instance of the RocksDB session.
    std::shared_ptr<const rocksdb::ColumnFamilyHandle> column_family() const;
 
  protected:
@@ -125,9 +145,20 @@ class session<rocksdb_t> {
    const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
    read_(const Iterable& keys) const;
 
+   /// \brief Prepares an iterator.
+   /// \tparam Predicate A functor used for positioning the RocksDB iterator.  It has the given signature
+   /// <code>void(rocksdb::Iterator&)</code>
+   /// \param setup The functor instance.
+   /// \remarks This method will first try to acquire a cached rocks db iterator.  If none are available,
+   /// then it will construct a new rocksdb iterator instance that is owned by the session iterator instance
+   /// and will be destroyed when the session iterator goes out of scope.  In the case that a cached rocks
+   /// db iterator was acquired, that rocks db iterator will be released back to the cache when the
+   /// session iterator instance goes out of scope.
    template <typename Predicate>
    iterator make_iterator_(const Predicate& setup) const;
 
+   /// \brief Returns the active column family of this session.
+   /// \remarks If there is no user defined column family, this method will return the RocksDB default column family.
    rocksdb::ColumnFamilyHandle* column_family_() const;
 
  private:
@@ -137,8 +168,11 @@ class session<rocksdb_t> {
    rocksdb::ReadOptions                         m_iterator_read_options;
    rocksdb::WriteOptions                        m_write_options;
 
+   /// \brief The cache of RocksDB iterators.
    mutable std::vector<std::unique_ptr<rocksdb::Iterator>> m_iterators;
-   mutable std::vector<size_t>                             m_free_list;
+
+   /// \brief A list of the available indices in the iterator cache that are available for use.
+   mutable std::vector<size_t> m_free_list;
 };
 
 inline session<rocksdb_t> make_session(std::shared_ptr<rocksdb::DB> db, size_t max_iterators) {
@@ -248,21 +282,12 @@ session<rocksdb_t>::read_(const Iterable& keys) const {
    return { std::move(kvs), std::move(not_found) };
 }
 
-// Reads a batch of keys from rocksdb.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
-// iterator. \param keys An Iterable instance that returns shared_bytes instances in its iterator. \returns An std::pair
-// where the first item is list of the found key/value pairs and the second item is a set of the keys not found.
 template <typename Iterable>
 const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
 session<rocksdb_t>::read(const Iterable& keys) const {
    return read_(keys);
 }
 
-// Writes a batch of key/value pairs to rocksdb.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns key/value pairs in its
-// iterator. \param key_values An Iterable instance that returns key/value pairs in its iterator.
 template <typename Iterable>
 void session<rocksdb_t>::write(const Iterable& key_values) {
    auto batch = rocksdb::WriteBatch{ 1024 * 1024 };
@@ -274,10 +299,6 @@ void session<rocksdb_t>::write(const Iterable& key_values) {
    auto status = m_db->Write(m_write_options, &batch);
 }
 
-// Erases a batch of key/value pairs from rocksdb.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
-// iterator. \param keys An Iterable instance that returns shared_bytes instances in its iterator.
 template <typename Iterable>
 void session<rocksdb_t>::erase(const Iterable& keys) {
    for (const auto& key : keys) {
@@ -286,24 +307,12 @@ void session<rocksdb_t>::erase(const Iterable& keys) {
    }
 }
 
-// Writes a batch of key/value pairs from rocksdb into the given data_store instance.
-//
-// \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that
-// concept. \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances
-// in its iterator. \param ds A data store instance. \param keys An Iterable instance that returns shared_bytes
-// instances in its iterator.
 template <typename Other_data_store, typename Iterable>
 void session<rocksdb_t>::write_to(Other_data_store& ds, const Iterable& keys) const {
    auto [found, not_found] = read_(keys);
    ds.write(found);
 }
 
-// Reads a batch of key/value pairs from the given data store into the rocksdb.
-//
-// \tparam Data_store A type that implements the "data store" concept.  cache is an example of an implementation of that
-// concept. \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances
-// in its iterator. \param ds A data store instance. \param keys An Iterable instance that returns shared_bytes
-// instances in its iterator.
 template <typename Other_data_store, typename Iterable>
 void session<rocksdb_t>::read_from(const Other_data_store& ds, const Iterable& keys) {
    auto [found, not_found] = ds.read(keys);
@@ -313,10 +322,6 @@ void session<rocksdb_t>::read_from(const Other_data_store& ds, const Iterable& k
 template <typename Iterator_traits>
 using rocks_iterator_alias = typename session<rocksdb_t>::template rocks_iterator<Iterator_traits>;
 
-// Instantiates an iterator for iterating over the rocksdb data store.
-//
-// \tparam Predicate A function used for preparing the initial iterator.  It has the signature of
-// void(std::shared_ptr<rocksdb::Iterator>&)
 template <typename Predicate>
 typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const Predicate& setup) const {
    rocksdb::Iterator* rit   = nullptr;

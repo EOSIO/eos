@@ -20,21 +20,25 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-// Defines a session for reading/write data to a cache and persistent data store.
-//
-// \tparam Parent The parent of this session
+/// \brief Defines a session for reading/write data to a cache and persistent data store.
+/// \tparam Parent The parent type of this session
+/// \remarks Specializations of this type can be created to create new parent types that
+/// modify a different data store.  For an example refer to the rocks_session type in this folder.
 template <typename Parent>
 class session {
- private:
-   struct session_impl;
-
  public:
    struct value_state {
-      bool         next_in_cache{ false };
-      bool         previous_in_cache{ false };
-      bool         deleted{ false };
-      bool         updated{ false };
-      uint64_t     version{ 0 };
+      /// Indicates if the next key, in lexicographical order, is within the cache.
+      bool next_in_cache{ false };
+      /// Indicates if the previous key, in lexicographical order, is within the cache.
+      bool previous_in_cache{ false };
+      /// Indicates if this key/value pair has been deleted.
+      bool deleted{ false };
+      /// Indictes if this key's value has been updated.
+      bool updated{ false };
+      /// The current version of the key's value.
+      uint64_t version{ 0 };
+      /// The key's value
       shared_bytes value;
    };
 
@@ -43,9 +47,8 @@ class session {
 
    friend Parent;
 
-   // Defines a key ordered, cyclical iterator for traversing a session (which includes parents and children of each
-   // session). Basically we are iterating over a list of sessions and each session has its own cache of key/value
-   // pairs, along with iterating over a persistent data store all the while maintaining key order with the iterator.
+   /// \brief Defines a key lexicographically ordered, cyclical iterator for traversing a session (which includes
+   /// parents).
    template <typename Iterator_traits>
    class session_iterator {
     public:
@@ -72,16 +75,45 @@ class session {
       bool              operator==(const session_iterator& other) const;
       bool              operator!=(const session_iterator& other) const;
 
-      bool                deleted() const;
+      /// \brief Indicates if the key this iterator refers to has been deleted in the cache or database.
+      /// \return True if the key has been deleted, false otherwise.
+      /// \remarks Keys can be deleted while there are iterator instances refering to them and the iterator
+      /// effectively becomes invalidated.
+      bool deleted() const;
+
+      /// \brief Returns the current key that this iterator is positioned on.
+      /// \remarks Prefer calling this over the dereference operator if all you want is the key value.
+      /// This method does not read any values from the session heirachary (which would incur unncessary overhead if you
+      /// don't care about the value.)
       const shared_bytes& key() const;
 
     protected:
+      /// \brief Moves this iterator to another value.
+      /// \tparam Test_predicate A functor with the following signature
+      /// <code>bool(typename Iterator_traits::cache_iterator&)</code> which tests if the key being moved to exists in
+      /// the cache. This method should return true if the desired key is in the cache, false otherwise.
+      /// \tparam Move_predicate A functor with the following signature
+      /// <code>void(typename Iterator_traits::cache_iterator&)</code> which moves the iterator to the desired key in
+      /// the cache.
+      /// \tparam Cache_update A functor with the followig signature
+      /// <code>bool(typename Iterator_traits::cache_iterator&)</code> which performs any needed updates to the cache to
+      /// prepare to move to the desired key.  This method should return true if the cache was updated, false otherwise.
+      /// \param test The Test_predicate functor instance.
+      /// \param move The Move_predicate functor instance.
+      /// \param update_cache The Cache_update functor instance.
       template <typename Test_predicate, typename Move_predicate, typename Cache_update>
       void move_(const Test_predicate& test, const Move_predicate& move, Cache_update& update_cache);
+
+      /// \brief Moves the iterator to the next key in lexicographical order.
       void move_next_();
+
+      /// \brief Moves the iterator to the previous key in lexicographical order.
       void move_previous_();
 
     private:
+      /// The version of the key's value that this iterator is concerned with.
+      /// \remarks If the version is different than the iterator's version, then this indicates the key was deleted and
+      /// this iterator is effectively invalidated.
       uint64_t                                 m_iterator_version{ 0 };
       typename Iterator_traits::cache_iterator m_active_iterator;
       session*                                 m_active_session{ nullptr };
@@ -99,73 +131,134 @@ class session {
 
  public:
    session() = default;
+
+   /// \brief Constructs a child session of the templated parent type.
    session(Parent& parent);
-   session(session& parent);
+
+   /// \brief Constructs a child session from another instance of the same session type.
+   /// \remarks This is NOT a copy constructor.  This constructor creates a new session instance
+   ///  and sets the parent of that instance to the value passed in.
+   explicit session(session& parent);
    session(const session&) = delete;
    session(session&& other);
    ~session();
 
    session& operator=(const session&) = delete;
-   session& operator                  =(session&& other);
+
+   session& operator=(session&& other);
 
    parent_type parent() const;
 
+   /// \brief Returns a map of the keys that have been added/updated/deleted through this session.
+   /// \returns Returns a map of the keys that have been added/updated/deleted through this session.
+   /// \remarks If the value in the map is true, then the key has been deleted in this session.  Otherwise the key was
+   /// an added/update in this session.
    std::unordered_map<shared_bytes, bool> deltas() const;
 
+   /// \brief Attaches a new parent to the session.
    void attach(Parent& parent);
+
+   /// \brief Attaches a new parent to the session.
    void attach(session& parent);
+
+   /// \brief Detaches from the parent.
+   /// \remarks This is very similar to an undo.
    void detach();
 
-   // undo stack operations
+   /// \brief Discards the changes in this session and detachs the session from its parent.
    void undo();
+   /// \brief Commits the changes in this session into its parent.
    void commit();
 
-   // this part also identifies a concept.  don't know what to call it yet
    std::optional<shared_bytes> read(const shared_bytes& key) const;
    void                        write(const shared_bytes& key, const shared_bytes& value);
    bool                        contains(const shared_bytes& key) const;
    void                        erase(const shared_bytes& key);
    void                        clear();
 
-   // returns a pair containing the key/value pairs found and the keys not found.
+   /// \brief Reads a batch of keys from this session.
+   /// \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the key.
    template <typename Iterable>
    const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
    read(const Iterable& keys) const;
 
+   /// \brief Writes a batch of key/value pairs into this session.
+   /// \param key_values A type that supports iteration and returns in its iterator a pair containing shared_bytes
+   /// instances that represents a key and a value.
    template <typename Iterable>
    void write(const Iterable& key_values);
 
-   // returns a list of the keys not found.
+   /// \brief Erases a batch of keys from this session.
+   /// \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the key.
    template <typename Iterable>
    void erase(const Iterable& keys);
 
+   /// \brief Writes a batch of key/values from this session into another container.
+   /// \param ds The container to write into.  The type must implement a batch write method like the one defined in this
+   /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
+   /// key.
    template <typename Other_data_store, typename Iterable>
    void write_to(Other_data_store& ds, const Iterable& keys) const;
 
+   /// \brief Reads a batch of keys from another container into this session.
+   /// \param ds The container to read from.  This type must implement a batch read method like the one defined in this
+   /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
+   /// key.
    template <typename Other_data_store, typename Iterable>
    void read_from(const Other_data_store& ds, const Iterable& keys);
 
+   /// \brief Returns an iterator to the key, or the end iterator if the key is not in the cache or session heirarchy.
+   /// \param key The key to search for.
+   /// \return An iterator to the key if found, the end iterator otherwise.
    iterator find(const shared_bytes& key) const;
    iterator begin() const;
    iterator end() const;
+
+   /// \brief Returns an iterator to the first key that is not less than, in lexicographical order, the given key.
+   /// \param key The key to search on.
+   /// \return An iterator to the first key that is not less than the given key, or the end iterator if there is no key
+   /// that matches that criteria.
    iterator lower_bound(const shared_bytes& key) const;
 
  private:
+   /// \brief Sets the lower/upper bounds of the session's cache based on the parent's cache lower/upper bound
+   /// \remarks This is only invoked when constructing a session with a parent.  This method prepares the iterator cache
+   /// by priming it with a lower/upper bound for iteration.  These bounds can be changed, though, within this session
+   /// through adding and deleting keys through this sesion.
    void prime_cache_();
+
+   /// \brief Searches the session heirarchy for the key that is next, in lexicographical order, from the given key.
+   /// \param it An iterator pointing to the current key.
+   /// \param pit An iterator pointing to the lower_bound of the key in the parent session.
+   /// \param pend An end iterator of the parent session.
+   /// \remarks This method is only called by update_iterator_cache_.
    template <typename It, typename Parent_it>
    void next_key_(It& it, Parent_it& pit, Parent_it& pend) const;
+
+   /// \brief Searches the session heirarchy for the key that is previous, in lexicographical order, from the given key.
+   /// \param it An iterator pointing to the current key.
+   /// \param pit An iterator pointing to the lower_bound of the key in the parent session.
+   /// \param pend An end iterator of the parent session.
+   /// \remarks This method is only called by update_iterator_cache_.
    template <typename It, typename Parent_it>
-   void                          previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend) const;
+   void previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend) const;
+
+   /// \brief Updates the cache with the previous and next keys, in lexicographical order, of the given key.
+   /// \param key The key to search on.
+   /// \param deleted True if the key has been deleted.
+   /// \param overwrite True if we should overwrite the current values of the value_state.
+   /// \remarks This method is invoked when reading, writing, erasing on this session and when iterating over the
+   /// session.
    typename cache_type::iterator update_iterator_cache_(const shared_bytes& key, bool deleted, bool overwrite) const;
+
+   /// \brief Increments the give cache iterator until an iterator is found that isn't pointing to a deleted key.
+   /// \param it The cache iterator to increment.
+   /// \param end An end iterator of the cache.
    template <typename It>
    It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
 
  private:
-   parent_type m_parent{ nullptr };
-
-   // Indicates if the next/previous key in lexicographical order for a given key exists in the cache.
-   // The first value in the pair indicates if the previous key in lexicographical order exists in the cache.
-   // The second value in the pair indicates if the next key lexicographical order exists in the cache.
+   parent_type        m_parent{ nullptr };
    mutable cache_type m_cache;
 };
 
@@ -176,7 +269,8 @@ typename session<Parent>::parent_type session<Parent>::parent() const {
 
 template <typename Parent>
 void session<Parent>::prime_cache_() {
-   // Get the bounds of the parent iterator cache.
+   // Get the bounds of the parent cache and use those to
+   // seed the cache of this session.
    auto lower_key   = shared_bytes{};
    auto lower_value = std::optional<shared_bytes>{};
    auto upper_key   = shared_bytes{};
@@ -434,7 +528,7 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
    }
 
    if (result.second) {
-      // The two keys that this new key is being inserted in between might already be in a global lexicographical order.
+      // The two keys that this new key is being inserted inbetween might already be in a global lexicographical order.
       // If so, that means we already know the global order of this new key.
       if (it != std::begin(m_cache)) {
          auto previous = it;
@@ -456,7 +550,10 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
          }
       }
 
+      // ...otherwise we have to search through the session heirarchy to find the previous and next keys
+      // of the given key.
       if (!it->second.next_in_cache && !it->second.previous_in_cache) {
+         // We need to find both the previous and next keys.
          std::visit(
                [&](auto* p) {
                   auto pit   = p->lower_bound(key);
@@ -467,6 +564,7 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
                },
                m_parent);
       } else if (!it->second.next_in_cache) {
+         // We only need to search for the next key.
          std::visit(
                [&](auto* p) {
                   auto pit = p->lower_bound(key);
@@ -475,6 +573,7 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
                },
                m_parent);
       } else if (!it->second.previous_in_cache) {
+         // We only need to search for the previous key.
          std::visit(
                [&](auto* p) {
                   auto pit   = p->lower_bound(key);
@@ -514,6 +613,7 @@ std::optional<shared_bytes> session<Parent>::read(const shared_bytes& key) const
          m_parent);
 
    if (value) {
+      // Update the "iterator cache".
       auto it          = update_iterator_cache_(key, false, false);
       it->second.value = *value;
    }
@@ -564,11 +664,6 @@ void session<Parent>::erase(const shared_bytes& key) {
    it->second.updated = false;
 }
 
-// Reads a batch of keys from the session.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
-// iterator. \param keys An iterable instance that returns shared_bytes instances in its iterator. \returns An std::pair
-// where the first item is list of the found key/value pairs and the second item is a set of the keys not found.
 template <typename Parent>
 template <typename Iterable>
 const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
@@ -588,10 +683,6 @@ session<Parent>::read(const Iterable& keys) const {
    return { std::move(kvs), std::move(not_found) };
 }
 
-// Writes a batch of key/value pairs to the session.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns key/value pairs in its
-// iterator. \param key_values An iterable instance that returns key/value pairs in its iterator.
 template <typename Parent>
 template <typename Iterable>
 void session<Parent>::write(const Iterable& key_values) {
@@ -599,10 +690,6 @@ void session<Parent>::write(const Iterable& key_values) {
    for (const auto& kv : key_values) { write(kv.first, kv.second); }
 }
 
-// Erases a batch of key_values from the session.
-//
-// \tparam Iterable Any type that can be used within a range based for loop and returns shared_bytes instances in its
-// iterator. \param keys An iterable instance that returns shared_bytes instances in its iterator.
 template <typename Parent>
 template <typename Iterable>
 void session<Parent>::erase(const Iterable& keys) {
@@ -643,6 +730,7 @@ typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key
    auto  end      = std::end(it_cache);
    auto  it       = it_cache.find(key);
    if (it == end) {
+      // We didn't find the key in our cache, ask the parent if he has one.
       std::visit(
             [&](auto* p) {
                auto pit = p->find(key);
@@ -674,6 +762,10 @@ typename session<Parent>::iterator session<Parent>::begin() const {
    auto  version  = uint64_t{ 0 };
 
    if (it != end && it->second.deleted && !it->second.next_in_cache) {
+      // We have a begin iterator in this session, but we don't have enough
+      // information to determine if that iterator is globally the begin iterator.
+      // We need to ask the parent for its begin iterator and compare the two
+      // to see which comes first lexicographically.
       std::visit(
             [&](auto* p) {
                auto pit  = std::begin(*p);
@@ -689,6 +781,8 @@ typename session<Parent>::iterator session<Parent>::begin() const {
             },
             m_parent);
    } else {
+      // We have a begin iterator in this session and we have enough information
+      // to know that it is the beginning globally.
       first_not_deleted_in_iterator_cache_(it, end);
    }
 
@@ -753,10 +847,6 @@ session<Parent>::session_iterator<Iterator_traits>::session_iterator(session* ac
                                                                      uint64_t                                 version)
     : m_iterator_version{ version }, m_active_iterator{ std::move(it) }, m_active_session{ active_session } {}
 
-// Moves the current iterator.
-//
-// \tparam Predicate A functor that indicates if we are incrementing or decrementing the current iterator.
-// \tparam Comparator A functor used to determine what the current iterator is.
 template <typename Parent>
 template <typename Iterator_traits>
 template <typename Test_predicate, typename Move_predicate, typename Cache_update>

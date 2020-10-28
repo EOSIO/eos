@@ -6,6 +6,7 @@
 
 namespace eosio::session {
 
+/// \brief Custom comparator for use in RocksDB.
 class rocks_comparator : public rocksdb::Comparator {
  public:
    int         Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const override;
