@@ -20,6 +20,16 @@
                 {
                     "name": "input",
                     "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "addnumobj2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "input",
+                    "type": "uint64"
                 },
                 {
                     "name": "nm",
@@ -89,6 +99,11 @@
         {
             "name": "addnumobj",
             "type": "addnumobj",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addnumobj2",
+            "type": "addnumobj2",
             "ricardian_contract": ""
         }
     ],

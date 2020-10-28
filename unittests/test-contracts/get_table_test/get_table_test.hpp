@@ -56,10 +56,11 @@ class [[eosio::contract]] get_table_test : public eosio::contract {
                             > hashobjs;
 
    [[eosio::action]]
-   void addnumobj(uint64_t input, std::string nm);
+   void addnumobj(uint64_t input);
+
+   [[eosio::action]]
+   void addnumobj2(uint64_t input, std::string nm);
 
    [[eosio::action]]
    void addhashobj(std::string hashinput);
-
-
 };
