@@ -101,14 +101,18 @@ namespace eosio::chain {
    }
 
    inline namespace literals {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+#endif
       template <typename T, T... Str>
       inline constexpr name operator""_n() {
          constexpr const char buf[] = {Str...};
          return name{std::integral_constant<uint64_t, string_to_uint64_t(std::string_view{buf, sizeof(buf)})>::value};
       }
-#pragma clang diagnostic pop
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif
    } // namespace literals
 
 } // eosio::chain
