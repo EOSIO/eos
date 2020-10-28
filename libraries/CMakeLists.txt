@@ -24,7 +24,7 @@ add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
-add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
+add_subdirectory( rocksdb )
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
 
