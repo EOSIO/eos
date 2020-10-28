@@ -3,6 +3,7 @@
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
+using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
 template<typename Object>
 const char* contract_table_type();
 
@@ -24,41 +25,59 @@ public:
 private:
    virtual void wrong_row(const char* type_received) = 0;
 };
+namespace detail {
+   class manage_stack {
+   public:
+      manage_stack(const kv_undo_stack_ptr& kv_undo_stack) : kv_undo_stack_(kv_undo_stack), undo_(kv_undo_stack->empty()) {
+         if (undo_) {
+            // Get a session to iterate over.
+            kv_undo_stack->push();
+         }
+      }
+
+      ~manage_stack(){
+         if (undo_) {
+            kv_undo_stack_->undo();
+         }
+      }
+   private:
+      const kv_undo_stack_ptr& kv_undo_stack_;
+      const bool undo_;
+   };
+}
+
+template <typename F>
+bool read_rocksdb_entry(const eosio::session::shared_bytes& actual_db_kv_key,
+                        const eosio::session::shared_bytes& value,
+                        F& function) {
+   uint64_t    contract;
+   constexpr std::size_t type_size = 1;
+   std::size_t key_prefix_size = type_size + sizeof(contract);
+   EOS_ASSERT(actual_db_kv_key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
+
+   auto key_buffer = std::vector<char>{ actual_db_kv_key.data(), actual_db_kv_key.data() + actual_db_kv_key.size() };
+   auto begin = std::begin(key_buffer) + type_size;
+   auto end = std::begin(key_buffer) + key_prefix_size;
+   b1::chain_kv::extract_key(begin, end, contract);
+
+   const char* post_contract = actual_db_kv_key.data() + key_prefix_size;
+   const std::size_t remaining = actual_db_kv_key.size() - key_prefix_size;
+   return function(contract, post_contract, remaining, value.data(), value.size());
+};
 
 template <typename F>
 void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
                                       const eosio::session::shared_bytes& begin_key,
                                       const eosio::session::shared_bytes& end_key,
-                                      F&& function) {
-   const auto undo = kv_undo_stack->empty();
-   if (undo) {
-      // Get a session to iterate over.
-      kv_undo_stack->push();
-   }
+                                      F& function) {
+   detail::manage_stack ms(kv_undo_stack);
    auto begin_it = kv_undo_stack->top().lower_bound(begin_key);
    const auto end_it = kv_undo_stack->top().lower_bound(end_key);
+//   auto move_it = (begin_key < end_key ? [](auto& itr) { return ++itr; } :  [](auto& itr) { return --itr; } );
    bool keep_processing = true;
    for (auto it = begin_it; keep_processing && it != end_it; ++it) {
-      auto key = (*it).first;
-
-      uint64_t    contract;
-      std::size_t key_prefix_size = begin_key.size() + sizeof(contract);
-      EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
-
-      auto key_buffer = std::vector<char>{ key.data(), key.data() + key.size() };
-      auto begin = std::begin(key_buffer) + begin_key.size();
-      auto end = std::begin(key_buffer) + key_prefix_size;
-      b1::chain_kv::extract_key(begin, end, contract);
-
-      auto value = (*it).second;
-
-      const char* post_contract = key.data() + key_prefix_size;
-      const std::size_t remaining = key.size() - key_prefix_size;
-      keep_processing = function(contract, post_contract, remaining, value->data(), value->size());
-   }
-
-   if (undo) {
-      kv_undo_stack->undo();
+      // iterating through the session will always return a valid value
+      keep_processing = read_rocksdb_entry((*it).first, *(*it).second, function);
    }
 };
 
@@ -190,13 +209,14 @@ private:
 
 auto process_all = []() { return true; };
 
+enum class key_context { complete, standalone };
 template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
 class rocksdb_contract_db_table_writer {
 public:
-   using key_type = eosio::chain::backing_store::db_key_value_format::key_type;
+   using key_type = db_key_value_format::key_type;
 
-   rocksdb_contract_db_table_writer(Receiver &r, Function keep_processing = process_all)
-         : receiver_(r), keep_processing_(keep_processing) {}
+   rocksdb_contract_db_table_writer(Receiver &r, key_context context = key_context::complete, Function keep_processing = process_all)
+         : receiver_(r), context_(context), keep_processing_(process_all)  {}
 
    void extract_primary_index(b1::chain_kv::bytes::const_iterator remaining,
                               b1::chain_kv::bytes::const_iterator key_end, const char *value,
@@ -249,6 +269,10 @@ public:
          add_row(fc::unsigned_int(primary_count_));
          primary_count_ = 0;
       } else if (type != key_type::primary_to_sec) {
+         if (context_ == key_context::standalone) {
+            // for individual keys, need to report the table info for reference
+            check_context(name{contract}, scope, table);
+         }
          std::invoke(extract_index_member_fun_[static_cast<int>(type)], this, remaining, composite_key.end(),
                      value, value_size);
       }
@@ -263,8 +287,19 @@ private:
       return all_secondary_indices_count_[index];
    }
 
+   void check_context(const name& code, const name& scope, const name& table) {
+      if (table_context_ && table_context_->code == code &&
+          table_context_->scope == scope && table_context_->table == table) {
+         return;
+      }
+      table_context_ = table_id_object_view{code, scope, table, name{}, 0};
+      receiver_.add_row(*table_context_);
+   }
+
    Receiver &receiver_;
+   const key_context context_;
    Function keep_processing_;
+   std::optional<table_id_object_view> table_context_;
 
    using extract_index_member_fun_t = void (rocksdb_contract_db_table_writer::*)(
          b1::chain_kv::bytes::const_iterator, b1::chain_kv::bytes::const_iterator, const char *, std::size_t);
@@ -316,6 +351,8 @@ private:
    const Function& keep_processing_;
 };
 
+// will walk through all entries with the given prefix, so if passed an exact key, it will match that key
+// and any keys with that key as a prefix
 template <typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
 void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
                                           const eosio::session::shared_bytes& key,
@@ -327,8 +364,8 @@ void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack
    const auto end_key = key.next_sub_key();
    const char prefix = key[0];
    if (prefix == rocksdb_contract_kv_prefix) {
-      rocksdb_contract_kv_table_writer kv_writer(receiver);
-      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, kv_writer, keep_processing);
+      rocksdb_contract_kv_table_writer kv_writer(receiver, keep_processing);
+      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, kv_writer);
    }
    else {
       if (prefix != rocksdb_contract_db_prefix) {
@@ -340,9 +377,43 @@ void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack
                             ("prefix", buffer));
       }
 
-      rocksdb_contract_db_table_writer db_writer(receiver);
-      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, db_writer, keep_processing);
+      rocksdb_contract_db_table_writer db_writer(receiver, keep_processing);
+      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, db_writer);
    }
+}
+
+// will walk through all entries with the given prefix, so if passed an exact key, it will match that key
+// and any keys with that key as a prefix
+template <typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
+bool process_rocksdb_entry(const session_type& session,
+                           const eosio::session::shared_bytes& key,
+                           Receiver& receiver) {
+   if (!key) {
+      return false;
+   }
+   const auto value = session.read(key);
+   if (!value) {
+      return false;
+   }
+   const char prefix = key[0];
+   if (prefix == rocksdb_contract_kv_prefix) {
+      rocksdb_contract_kv_table_writer kv_writer(receiver);
+      read_rocksdb_entry(key, *value, kv_writer);
+   }
+   else {
+      if (prefix != rocksdb_contract_db_prefix) {
+         char buffer[10];
+         const auto len = sprintf(buffer, "%20x", static_cast<uint8_t>(prefix));
+         buffer[len] = '\0';
+         FC_THROW_EXCEPTION(bad_composite_key_exception,
+                            "Passed in key is prefixed with: ${prefix} which is neither the DB or KV prefix",
+                            ("prefix", buffer));
+      }
+
+      rocksdb_contract_db_table_writer db_writer(receiver, key_context::standalone);
+      read_rocksdb_entry(key, *value, db_writer);
+   }
+   return true;
 }
 
 template<typename Object>
