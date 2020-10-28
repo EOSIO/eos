@@ -71,6 +71,12 @@ namespace fc {
       new (this) T( fc::forward<U>(u), fc::forward<V>(v) );
     }
     template<typename T,unsigned int S,typename A>
+    template<typename U,typename V,typename X>
+    fwd<T,S,A>::fwd( U&& u, V&& v, X&& x ) {
+      check_size<sizeof(T),sizeof(_store)>();
+      new (this) T( fc::forward<U>(u), fc::forward<V>(v), fc::forward<X>(x) );
+    }
+    template<typename T,unsigned int S,typename A>
     template<typename U,typename V,typename X,typename Y>
     fwd<T,S,A>::fwd( U&& u, V&& v, X&& x, Y&&  y ) {
       check_size<sizeof(T),sizeof(_store)>();

@@ -203,6 +203,8 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
       EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
                   "amqp-trx-ack-mode = in_block not supported with amqp-trx-speculative-execution" );
+
+      my->chain_plug->enable_accept_transactions();
    }
    FC_LOG_AND_RETHROW()
 }
