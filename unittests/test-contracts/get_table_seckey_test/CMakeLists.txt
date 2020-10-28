@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( get_table_seckey_test get_table_seckey_test get_table_seckey_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/get_table_seckey_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/get_table_seckey_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/get_table_seckey_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/get_table_seckey_test.abi  COPYONLY )
+endif()

@@ -1,18 +1,8 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.2",
     "types": [],
     "structs": [
-        {
-            "name": "addhashobj",
-            "base": "",
-            "fields": [
-                {
-                    "name": "hashinput",
-                    "type": "string"
-                }
-            ]
-        },
         {
             "name": "addnumobj",
             "base": "",
@@ -20,28 +10,10 @@
                 {
                     "name": "input",
                     "type": "uint64"
-                }
-            ]
-        },
-        {
-            "name": "hashobj",
-            "base": "",
-            "fields": [
-                {
-                    "name": "key",
-                    "type": "uint64"
                 },
                 {
-                    "name": "hash_input",
+                    "name": "nm",
                     "type": "string"
-                },
-                {
-                    "name": "sec256",
-                    "type": "checksum256"
-                },
-                {
-                    "name": "sec160",
-                    "type": "checksum160"
                 }
             ]
         },
@@ -68,16 +40,15 @@
                 {
                     "name": "secldouble",
                     "type": "float128"
+                },
+                {
+                    "name": "nm",
+                    "type": "name"
                 }
             ]
         }
     ],
     "actions": [
-        {
-            "name": "addhashobj",
-            "type": "addhashobj",
-            "ricardian_contract": ""
-        },
         {
             "name": "addnumobj",
             "type": "addnumobj",
@@ -86,13 +57,6 @@
     ],
     "tables": [
         {
-            "name": "hashobjs",
-            "type": "hashobj",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
             "name": "numobjs",
             "type": "numobj",
             "index_type": "i64",
@@ -100,6 +64,8 @@
             "key_types": []
         }
     ],
+    "kv_tables": {},
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "action_results": []
 }
