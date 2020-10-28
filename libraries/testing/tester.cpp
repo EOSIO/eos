@@ -150,8 +150,12 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode, std::optional<uint32_t> genesis_max_inline_action_size, std::optional<uint32_t> config_max_nonprivileged_inline_action_size) {
-      auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode,
+                          std::optional<uint32_t> genesis_max_inline_action_size,
+                          std::optional<uint32_t> config_max_nonprivileged_inline_action_size,
+                          std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, genesis_max_inline_action_size,
+                                     config_max_nonprivileged_inline_action_size, config_backing_store);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
 
@@ -1203,6 +1207,29 @@ namespace eosio { namespace testing {
                         });
 
       execute_setup_policy(policy);
+   }
+
+   validating_tester::validating_tester(const flat_set<account_name>& trusted_producers,
+                                        std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, std::optional<uint32_t>{}, std::optional<uint32_t>{}, config_backing_store);
+      init_with_trusted_producers(trusted_producers, def_conf, config_backing_store);
+   }
+
+   void validating_tester::init_with_trusted_producers(const flat_set<account_name>& trusted_producers,
+                                                       std::pair<controller::config, genesis_state> config_state,
+                                                       std::optional<backing_store_type> config_backing_store) {
+      vcfg = config_state.first;
+      if (config_backing_store) {
+         // can only have one instance of RocksDB running in the test process
+         vcfg.backing_store = *config_backing_store == backing_store_type::CHAINBASE ? backing_store_type::ROCKSDB : backing_store_type::CHAINBASE;
+      }
+      config_validator(vcfg);
+      vcfg.trusted_producers = trusted_producers;
+
+      validating_node = create_validating_node(vcfg, config_state.second, true);
+
+      init(config_state.first, config_state.second);
+      execute_setup_policy(setup_policy::full);
    }
 
    bool fc_exception_code_is::operator()( const fc::exception& ex ) {

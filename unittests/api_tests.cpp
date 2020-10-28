@@ -85,8 +85,10 @@ FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
+#define ROCKSDB_TESTER rocksdb_tester
 #else
 #define TESTER validating_tester
+#define ROCKSDB_TESTER rocksdb_validating_tester
 #endif
 
 using namespace eosio;
@@ -1927,30 +1929,32 @@ BOOST_FIXTURE_TEST_CASE(memalign_noleak_tests, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+using tester_suites = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
 
 /*************************************************************************************
  * db_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
-   produce_blocks(2);
-   create_account( "testapi"_n );
-   create_account( "testapi2"_n );
-   produce_blocks(10);
-   set_code( "testapi"_n, contracts::test_api_db_wasm() );
-   set_abi(  "testapi"_n, contracts::test_api_db_abi().data() );
-   set_code( "testapi2"_n, contracts::test_api_db_wasm() );
-   set_abi(  "testapi2"_n, contracts::test_api_db_abi().data() );
-   produce_blocks(1);
+BOOST_AUTO_TEST_CASE_TEMPLATE(db_tests, TESTER_T, tester_suites) { try {
+   TESTER_T t;
+   t.produce_blocks(2);
+   t.create_account( "testapi"_n );
+   t.create_account( "testapi2"_n );
+   t.produce_blocks(10);
+   t.set_code( "testapi"_n, contracts::test_api_db_wasm() );
+   t.set_abi(  "testapi"_n, contracts::test_api_db_abi().data() );
+   t.set_code( "testapi2"_n, contracts::test_api_db_wasm() );
+   t.set_abi(  "testapi2"_n, contracts::test_api_db_abi().data() );
+   t.produce_blocks(1);
 
-   push_action( "testapi"_n, "pg"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_general
-   push_action( "testapi"_n, "pl"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_lowerbound
-   push_action( "testapi"_n, "pu"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_upperbound
-   push_action( "testapi"_n, "s1g"_n, "testapi"_n, mutable_variant_object() ); // idx64_general
-   push_action( "testapi"_n, "s1l"_n, "testapi"_n, mutable_variant_object() ); // idx64_lowerbound
-   push_action( "testapi"_n, "s1u"_n, "testapi"_n, mutable_variant_object() ); // idx64_upperbound
+   t.push_action( "testapi"_n, "pg"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_general
+   t.push_action( "testapi"_n, "pl"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_lowerbound
+   t.push_action( "testapi"_n, "pu"_n,  "testapi"_n, mutable_variant_object() ); // primary_i64_upperbound
+   t.push_action( "testapi"_n, "s1g"_n, "testapi"_n, mutable_variant_object() ); // idx64_general
+   t.push_action( "testapi"_n, "s1l"_n, "testapi"_n, mutable_variant_object() ); // idx64_lowerbound
+   t.push_action( "testapi"_n, "s1u"_n, "testapi"_n, mutable_variant_object() ); // idx64_upperbound
 
    // Store value in primary table
-   push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object() // test_invalid_access
+   t.push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object() // test_invalid_access
       ("code", "testapi")
       ("val", 10)
       ("index", 0)
@@ -1958,7 +1962,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // Attempt to change the value stored in the primary table under the code of "testapi"_n
-   BOOST_CHECK_EXCEPTION( push_action( "testapi2"_n, "tia"_n, "testapi2"_n, mutable_variant_object()
+   BOOST_CHECK_EXCEPTION( t.push_action( "testapi2"_n, "tia"_n, "testapi2"_n, mutable_variant_object()
                               ("code", "testapi")
                               ("val", "20")
                               ("index", 0)
@@ -1968,7 +1972,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // Verify that the value has not changed.
-   push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object()
+   t.push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object()
       ("code", "testapi")
       ("val", 10)
       ("index", 0)
@@ -1976,7 +1980,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // Store value in secondary table
-   push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object() // test_invalid_access
+   t.push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object() // test_invalid_access
       ("code", "testapi")
       ("val", 10)
       ("index", 1)
@@ -1984,7 +1988,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // Attempt to change the value stored in the secondary table under the code of "testapi"_n
-   BOOST_CHECK_EXCEPTION( push_action( "testapi2"_n, "tia"_n, "testapi2"_n, mutable_variant_object()
+   BOOST_CHECK_EXCEPTION( t.push_action( "testapi2"_n, "tia"_n, "testapi2"_n, mutable_variant_object()
                               ("code", "testapi")
                               ("val", "20")
                               ("index", 1)
@@ -1994,7 +1998,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // Verify that the value has not changed.
-   push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object()
+   t.push_action( "testapi"_n, "tia"_n, "testapi"_n, mutable_variant_object()
       ("code", "testapi")
       ("val", 10)
       ("index", 1)
@@ -2002,39 +2006,39 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    );
 
    // idx_double_nan_create_fail
-   BOOST_CHECK_EXCEPTION(  push_action( "testapi"_n, "sdnancreate"_n, "testapi"_n, mutable_variant_object() ),
+   BOOST_CHECK_EXCEPTION(  t.push_action( "testapi"_n, "sdnancreate"_n, "testapi"_n, mutable_variant_object() ),
                            transaction_exception,
                            fc_exception_message_is("NaN is not an allowed value for a secondary key")
    );
 
    // idx_double_nan_modify_fail
-   BOOST_CHECK_EXCEPTION(  push_action( "testapi"_n, "sdnanmodify"_n, "testapi"_n, mutable_variant_object() ),
+   BOOST_CHECK_EXCEPTION(  t.push_action( "testapi"_n, "sdnanmodify"_n, "testapi"_n, mutable_variant_object() ),
                            transaction_exception,
                            fc_exception_message_is("NaN is not an allowed value for a secondary key")
    );
 
    // idx_double_nan_lookup_fail
-   BOOST_CHECK_EXCEPTION(  push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
-                              ("lookup_type", 0) // 0 for find
+   BOOST_CHECK_EXCEPTION(  t.push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
+                                        ("lookup_type", 0) // 0 for find
                            ), transaction_exception,
                            fc_exception_message_is("NaN is not an allowed value for a secondary key")
    );
 
-   BOOST_CHECK_EXCEPTION(  push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  t.push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
                               ("lookup_type", 1) // 1 for lower bound
                            ), transaction_exception,
                            fc_exception_message_is("NaN is not an allowed value for a secondary key")
    );
 
-   BOOST_CHECK_EXCEPTION(  push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
+   BOOST_CHECK_EXCEPTION(  t.push_action( "testapi"_n, "sdnanlookup"_n, "testapi"_n, mutable_variant_object()
                               ("lookup_type", 2) // 2 for upper bound
                            ), transaction_exception,
                            fc_exception_message_is("NaN is not an allowed value for a secondary key")
    );
 
-   push_action( "testapi"_n, "sk32align"_n, "testapi"_n, mutable_variant_object() ); // misaligned_secondary_key256_tests
+   t.push_action( "testapi"_n, "sk32align"_n, "testapi"_n, mutable_variant_object() ); // misaligned_secondary_key256_tests
 
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 // The multi_index iterator cache is preserved across notifications for the same action.

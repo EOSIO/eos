@@ -20,7 +20,7 @@ struct chain_snapshot_header {
     *         - forwards compatible with versions 2 and 3
     *         - kv database
     *         - Configurable wasm limits
-    *   5: Updated for v2.1.0 eos features:
+    *   5: Updated for v3.0.0 eos features:
     *         - chain_config update
     */
 

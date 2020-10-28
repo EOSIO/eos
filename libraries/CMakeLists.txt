@@ -7,6 +7,11 @@ option(FAIL_ON_WARNINGS CACHE OFF)      # rocksdb: stop the madness: warnings ch
 
 #on Linux, rocksdb will monkey with CMAKE_INSTALL_PREFIX is this is on
 set(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OFF)
+# rocksdb disables USE_RTTI for release build, which breaks
+# exception handling on MacOS.
+if(APPLE)
+  set(USE_RTTI ON)
+endif()
 
 add_subdirectory( fc )
 add_subdirectory( builtins )

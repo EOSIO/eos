@@ -12,7 +12,8 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/combined_database.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
@@ -23,6 +24,7 @@
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/hex.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <fc/io/json.hpp>
@@ -120,6 +122,38 @@ void validate(boost::any& v,
   }
 }
 
+std::ostream& operator<<(std::ostream& osm, eosio::chain::backing_store_type b) {
+   if ( b == eosio::chain::backing_store_type::CHAINBASE ) {
+      osm << "chainbase";
+   } else if ( b == eosio::chain::backing_store_type::ROCKSDB ) {
+      osm << "rocksdb";
+   }
+
+   return osm;
+}
+
+void validate(boost::any& v,
+              const std::vector<std::string>& values,
+              eosio::chain::backing_store_type* /* target_type */,
+              int)
+{
+  using namespace boost::program_options;
+
+  // Make sure no previous assignment to 'v' was made.
+  validators::check_first_occurrence(v);
+
+  // Extract the first string from 'values'. If there is more than
+  // one string, it's an error, and exception will be thrown.
+  std::string const& s = validators::get_single_string(values);
+
+  if ( s == "chainbase" ) {
+     v = boost::any(eosio::chain::backing_store_type::CHAINBASE);
+  } else if ( s == "rocksdb" ) {
+     v = boost::any(eosio::chain::backing_store_type::ROCKSDB);
+  } else {
+     throw validation_error(validation_error::invalid_option_value);
+  }
+}
 }
 
 using namespace eosio;
@@ -196,6 +230,7 @@ chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
+   app().register_config_type<eosio::chain::backing_store_type>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
    app().register_config_type<eosio::chain::wasm_interface::vm_type>();
 }
@@ -227,6 +262,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    wasm_runtime_opt += ")\n" + wasm_runtime_desc;
 
    std::string default_wasm_runtime_str= eosio::chain::wasm_interface::vm_type_string(eosio::chain::config::default_wasm_runtime);
+
+   uint16_t default_rocksdb_threads = 1;
 
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
@@ -267,6 +304,15 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
+         ("backing-store", boost::program_options::value<eosio::chain::backing_store_type>()->default_value(eosio::chain::backing_store_type::CHAINBASE),
+          "The storage for state, chainbase or rocksdb")
+         ("rocksdb-threads", bpo::value<uint16_t>()->default_value(default_rocksdb_threads),
+          "Number of rocksdb threads for flush and compaction")
+         ("rocksdb-files", bpo::value<int>()->default_value(config::default_rocksdb_max_open_files),
+          "Max number of rocksdb files to keep open. -1 = unlimited.")
+         ("rocksdb-write-buffer-size-mb", bpo::value<uint64_t>()->default_value(config::default_rocksdb_write_buffer_size / (1024  * 1024)),
+          "Size of a single rocksdb memtable (in MiB)")
+
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
          ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
@@ -782,6 +828,26 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
+      my->chain_config->backing_store = options.at( "backing-store" ).as<backing_store_type>();
+
+      if( options.count( "rocksdb-threads" )) {
+         my->chain_config->rocksdb_threads = options.at( "rocksdb-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->chain_config->rocksdb_threads > 0, plugin_config_exception,
+                     "rocksdb-threads ${num} must be greater than 0", ("num", my->chain_config->rocksdb_threads) );
+      }
+
+      if( options.count( "rocksdb-files" )) {
+         my->chain_config->rocksdb_max_open_files = options.at( "rocksdb-files" ).as<int>();
+         EOS_ASSERT( my->chain_config->rocksdb_max_open_files == -1 || my->chain_config->rocksdb_max_open_files > 0, plugin_config_exception,
+                     "rocksdb-files ${num} must be equal to -1 or be greater than 0", ("num", my->chain_config->rocksdb_max_open_files) );
+      }
+
+      if( options.count( "rocksdb-write-buffer-size-mb" )) {
+         my->chain_config->rocksdb_write_buffer_size = options.at( "rocksdb-write-buffer-size-mb" ).as<uint64_t>() * 1024 * 1024;
+         EOS_ASSERT( my->chain_config->rocksdb_write_buffer_size > 0, plugin_config_exception,
+                     "rocksdb-write-buffer-size-mb ${num} must be greater than 0", ("num", my->chain_config->rocksdb_write_buffer_size) );
+      }
 
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =
@@ -1912,42 +1978,166 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 #pragma GCC diagnostic pop
 }
 
+void read_only::convert_key(const string& index_type, const string& encode_type, const string& index_value, vector<char>& bin)const {
+   constexpr int hex_base = 16;
+   constexpr int dec_base = 10;
+
+   try {
+      // converts arbitrary hex strings to bytes ex) "FFFEFD" to {255, 254, 253}
+      if( encode_type == "bytes" ) {
+         string bytes_data = boost::algorithm::unhex(index_value);
+         auto bytes_datasize = bytes_data.size();
+         if( bin.size() < bytes_datasize ) {
+            bin.resize(bytes_datasize);
+         }
+         memcpy(bin.data(), bytes_data.data(), bytes_datasize);
+         return;
+      }
+
+      if( encode_type == "string" ) {
+         convert_to_key(index_value, bin);
+         return;
+      }
+
+      if ( index_type == "name" ) {
+         name nm(index_value);
+         convert_to_key(nm.to_uint64_t(), bin);
+         return;
+      }
+
+      size_t pos = 0;
+      if( encode_type == "hex" ) {
+         if( index_type == "sha256" || index_type == "i256" ) {
+            checksum256_type sha{index_value};
+            memcpy(bin.data(), sha.data(), sha.data_size());
+         } else if( index_type == "ripemd160" ) {
+            checksum160_type ripem160{index_value};
+            memcpy(bin.data(), ripem160.data(), ripem160.data_size());
+         } else if( index_type == "uint64" ) {
+            uint64_t u64 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u64, bin);
+         }  else if( index_type == "uint32" ) {
+            uint32_t u32 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u32, bin);
+         }  else if( index_type == "uint16" ) {
+            uint16_t u16 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u16, bin);
+         }  else if( index_type == "uint8" ) {
+            uint8_t u8 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u8, bin);
+         } else if( index_type == "int64" ) {
+            int64_t i64 = std::stol(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i64, bin);
+         }  else if( index_type == "int32" ) {
+            int32_t i32 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i32, bin);
+         }  else if( index_type == "int16" ) {
+            int16_t i16 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i16, bin);
+         }  else if( index_type == "int8" ) {
+            int8_t i8 = std::stoul(index_value, &pos, hex_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i8, bin);
+         } else {
+            EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
+         }
+      } else if( encode_type == "dec" ) {
+         if( index_type == "float32" ) {
+            float d = convert_to_type<float>( index_value, "index_value" );
+            convert_to_key(d, bin);
+         } else if( index_type == "float64" ) {
+            double d = convert_to_type<double>( index_value, "index_value" );
+            convert_to_key(d, bin);
+         } else if( index_type == "uint64" ) {
+            uint64_t u64 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u64, bin);
+         }  else if( index_type == "uint32" ) {
+            uint32_t u32 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u32, bin);
+         }  else if( index_type == "uint16" ) {
+            uint16_t u16 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u16, bin);
+         }  else if( index_type == "uint8" ) {
+            uint8_t u8 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(u8, bin);
+         } else if( index_type == "int64" ) {
+            int64_t i64 = std::stol(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i64, bin);
+         }  else if( index_type == "int32" ) {
+            int32_t i32 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i32, bin);
+         }  else if( index_type == "int16" ) {
+            int16_t i16 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i16, bin);
+         }  else if( index_type == "int8" ) {
+            int8_t i8 = std::stoul(index_value, &pos, dec_base);
+            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
+            convert_to_key(i8, bin);
+         } else {
+            EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
+         }
+      }
+   } catch( const std::invalid_argument& e) {
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid argument for index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+   } catch( const std::out_of_range& e ) {
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Out of range for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+   } catch( boost::bad_lexical_cast& e ) {
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Bad lexical cast for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+   } catch( boost::exception& e ) {
+      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid index type/encode_type/Index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+   }
+}
+
 // prefix 17bytes: status(1 byte) + table_name(8bytes) + index_name(8 bytes)
 void read_only::make_prefix(eosio::name table_name,  eosio::name index_name, uint8_t status, vector<char>& prefix)const {
    EOS_ASSERT(prefix.size() == 2 * sizeof(uint64_t) + 1, chain::contract_table_query_exception, "Invalid prefix");
 
    prefix[0] = static_cast<char>(status);
-   vector<char>  bin;
+   vector<char> bin;
    bin.reserve(sizeof(uint64_t));
    convert_to_key(table_name.to_uint64_t(), bin);
-   for(int i = 0; i < sizeof(uint64_t); ++i) {
+   for( int i = 0; i < sizeof(uint64_t); ++i ) {
       prefix[i + 1] = bin[i];
    }
 
    bin.clear();
    convert_to_key(index_name.to_uint64_t(), bin);
    int offset = sizeof(uint64_t) + 1;
-   for(int i = 0; i < sizeof(uint64_t); ++i) {
+   for( int i = 0; i < sizeof(uint64_t ); ++i) {
       prefix[offset + i] = bin[i];
    }
 }
 
 read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p)const {
+   auto &gp = db.get_global_properties();
+   auto &kv_config = gp.kv_configuration;
+   const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
-   auto& gp = db.get_global_properties();
-   auto& kv_config = gp.kv_configuration;
-   const chain::kv_database_config& limits = kv_config.kvram;
 
-   auto&database = db.db();
-   auto kv_context = chain::create_kv_chainbase_context(const_cast<chainbase::database&>(database), database_id, chain::name{0}, {}, limits);
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
+   const chain::kv_database_config &limits = kv_config;
+   auto &kv_database = const_cast<chain::controller&>(db).kv_db();
+   // To do: provide kv_resource_manmager to create_kv_context
+   auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
 
-   // TO DO: Once rocksdb change is available, we need to add rocksdb context support here
-
-   return get_kv_table_rows_context( p, *kv_context, abi );
+   return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
-read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
+read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& pp, kv_context  &kv_context, const abi_def &abi )const {
+   read_only::get_kv_table_rows_params p(pp);
    string tbl_name = p.table.to_string();
 
    // Check valid table name
@@ -1961,6 +2151,9 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
    EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception,  "Unknown kv index: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
+   int offset = 0;
+
+   string index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
    // Is point query of ranged query?
    bool point_query = p.index_value.has_value() && !p.index_value.value().empty();
 
@@ -1973,41 +2166,21 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
 
    get_table_rows_result result;
+   uint32_t key_size;
    uint32_t value_size;
 
    auto cur_time = fc::time_point::now();
    auto end_time = cur_time + fc::microseconds(1000 * 10);
+
    auto wait_time = end_time - cur_time;
+   bool unbounded = false;
    ///////////////////////////////////////////////////////////
    // point query
    ///////////////////////////////////////////////////////////
    if( point_query ) {
       const string &index_value = *p.index_value;
-      vector<char> key;
-      key.resize(prefix.size() + index_value.size());
-      memcpy(key.data(), prefix.data(), prefix.size());
-      memcpy(key.data() + prefix.size(), index_value.data(), index_value.size());
-
-      auto success = kv_context.kv_get(p.code.to_uint64_t(), key.data(), key.size(), value_size);
-      if( success ) {
-         vector<char> value;
-         value.resize(value_size);
-         auto return_size = kv_context.kv_get_data(0, value.data(), value_size);
-         EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception,  "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
-
-         fc::variant row_var;
-         if( p.json ) {
-            try {
-               row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( wait_time ), shorten_abi_errors );
-            } catch (fc::exception &e) {
-               row_var = fc::variant( value );
-            }
-         } else {
-            row_var = fc::variant( value );
-         }
-         result.rows.emplace_back( std::move(row_var) );
-      }
-      return result;
+      p.lower_bound = p.index_value;
+      unbounded = true;
    }
 
    ///////////////////////////////////////////////////////////
@@ -2015,26 +2188,44 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    ///////////////////////////////////////////////////////////
    bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
    bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-   EOS_ASSERT(has_lower_bound && has_upper_bound, chain::contract_table_query_exception,  "Unknown range: ${t} ${i}", ("t", p.table)("i", p.index_name));
+   unbounded = !has_lower_bound || !has_upper_bound;
+   // reverse mode has upper_bound value, non-reverse and point query has lower bound value
+   EOS_ASSERT((p.reverse && has_upper_bound) || (!p.reverse && has_lower_bound) || (has_lower_bound && point_query), chain::contract_table_query_exception, "Unknown/Invalid range: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
    vector<char> lb_key;
    const string &lower_bound = *p.lower_bound;
-   lb_key.resize(prefix.size() + lower_bound.size());
-   memcpy(lb_key.data(), prefix.data(), prefix.size());
-   memcpy(lb_key.data() + prefix.size(), lower_bound.data(), lower_bound.size());
+   vector<char> lv;
+  
+   if( has_lower_bound ) {
+      convert_key(index_type, p.encode_type, lower_bound, lv);
+      lb_key.resize(prefix.size() + lv.size());
+      memcpy(lb_key.data(), prefix.data(), prefix.size());
+      memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
+   }
 
    vector<char> ub_key;
    const string &upper_bound = *p.upper_bound;
-   ub_key.resize(prefix.size() + upper_bound.size());
-   memcpy(ub_key.data(), prefix.data(), prefix.size());
-   memcpy(ub_key.data() + prefix.size(), upper_bound.data(), upper_bound.size());
+   vector<char> uv;
+   if( has_upper_bound ) {
+      convert_key(index_type, p.encode_type, upper_bound, uv);
+      ub_key.resize(prefix.size() + uv.size());
+      memcpy(ub_key.data(), prefix.data(), prefix.size());
+      memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
+   }
 
    // Iterate the range
    vector<char> row_key;
    vector<char> row_value;
 
-   auto lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-   auto ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   std::unique_ptr<kv_iterator> lb_itr;
+   std::unique_ptr<kv_iterator> ub_itr;
+   
+   if( has_lower_bound ) {
+      lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
+   if( has_upper_bound ) {
+      ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
 
    uint32_t lb_key_size = 0;
    uint32_t lb_value_size = 0;
@@ -2044,50 +2235,97 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    uint32_t ub_key_actual_size = 0;
 
    // Find lower bound iterator
-   auto status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
-   EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   // Find upper bound iterator
-   auto status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
-   EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+   auto status_lb = chain::kv_it_stat::iterator_end;
+   if( has_lower_bound ) {
+      status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
+      EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-   lb_key.resize(lb_key_size);
-   status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
-   ub_key.resize(ub_key_size);
-   status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+      if( !point_query ) {
+         lb_key.resize(lb_key_size);
+         status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+      }
+   }
 
-   // iterate the range
+  // Find upper bound iterator
+   auto status_ub = chain::kv_it_stat::iterator_end;
+   if( has_upper_bound ) {
+      auto exact_match = kv_context.kv_get(p.code.to_uint64_t(), ub_key.data(), ub_key.size(), value_size);
+      status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
+      if( p.reverse && !point_query && !exact_match ) {
+            status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
+      }
+
+      EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+      ub_key.resize(ub_key_size);
+      status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+   }
+
+   kv_it_stat status;
+   //=============================== iterate the range ============================
    auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
       uint32_t actual_size = 0;
-      uint32_t key_size;
-      uint32_t val_size;
+
       const vector<char> &end_key = (reverse ? lb_key : ub_key);
       if( reverse ) {
          key_size = ub_key_size;
-         val_size = ub_value_size;
+         value_size = ub_value_size;
       } else {
          key_size = lb_key_size;
-         val_size = lb_value_size;
+         value_size = lb_value_size;
       }
-      auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-      if( reverse ) cmp *= -1;
+
+      auto cur_status = itr->kv_it_status();
+      int32_t cmp = 0;
+      if( unbounded ) {
+         cmp = (cur_status == chain::kv_it_stat::iterator_ok ) ? -1 : 1;
+      } else {
+         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+         if( reverse ) {
+            cmp *= -1;
+         }
+      }
 
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
+         row_key.resize(key_size);
+         status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+         if( point_query ) {
+            if( row_key.size() != lb_key_size || row_key != lb_key) {
+               cmp = 1;
+               continue;
+            }
+         }
+
          row_value.clear();
-         row_value.resize(val_size);
-         auto status = itr->kv_it_value(0, row_value.data(), val_size, actual_size);
+         row_value.resize(value_size);
+         status = itr->kv_it_value(offset, row_value.data(), key_size, value_size);
+         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid key in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+         if (!is_primary_idx) {
+            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_value.data(), row_value.size(), value_size);
+            if (success) {
+               row_value.resize(value_size);
+               actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            } else {
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+            }
+         }
 
          fc::variant row_var;
          if( p.json ) {
             auto time_left = end_time - cur_time;
             try {
                row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
-            } catch (fc::exception &e) {
+            }
+            catch ( fc::exception &e )
+            {
                row_var = fc::variant( row_value );
             }
          } else {
             row_var = fc::variant( row_value );
          }
+
          result.rows.emplace_back( std::move(row_var) );
          ++count;
 
@@ -2098,16 +2336,30 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          }
          EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-         if( reverse ) cmp *= -1;
-      }
-      if( count == p.limit && cmp < 0  ) {
-         result.more = true;
-         row_key.resize(key_size);
-         auto status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-         EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && actual_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-         result.next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
-      }
+         if (unbounded) {
+            cur_status = itr->kv_it_status();
+            cmp = (cur_status == chain::kv_it_stat::iterator_ok) ? -1 : 1;
+            if( point_query && cmp != 0) {
+               cmp = 1;
+            }
+         } else {
+            cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+            if (reverse) {
+               cmp *= -1;
+            }
+         }
+
+         if (count == p.limit && cmp < 0)
+         {
+            result.more = true;
+            row_key.resize(key_size);
+            auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+            EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+            auto next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
+
+            boost::algorithm::hex(next_key.begin(), next_key.end(), std::back_inserter(result.next_key));
+       }
+      } // end of for
    };
 
    if( p.reverse ) {
@@ -2118,6 +2370,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
    return result;
 }
+
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
    read_only::get_table_by_scope_result result;
