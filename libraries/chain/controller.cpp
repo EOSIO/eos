@@ -3184,6 +3184,16 @@ std::optional<uint64_t> controller::convert_exception_to_error_code( const fc::e
    return e_ptr->error_code;
 }
 
+chain_snapshot_header controller::extract_chain_snapshot_header(snapshot_reader& snapshot) {
+   chain_snapshot_header header;
+   snapshot.read_section<chain_snapshot_header>([&header]( auto &section ){
+      section.read_row(header);
+      header.validate();
+   });
+
+   return header;
+}
+
 chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    chain_snapshot_header header;
    snapshot.read_section<chain_snapshot_header>([&header]( auto &section ){

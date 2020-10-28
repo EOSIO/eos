@@ -29,6 +29,8 @@ struct chain_snapshot_header {
 
    uint32_t version = current_version;
 
+   std::string version_str() const { return "v" + std::to_string(version); }
+
    void validate() const {
       auto min = minimum_compatible_version;
       auto max = current_version;
