@@ -138,7 +138,7 @@ class shared_bytes {
 
    /// \brief Returns the size of the buffer when aligned on a the size of uint64_t.
    size_t aligned_size() const;
-   
+
    char*             data();
    const char* const data() const;
 

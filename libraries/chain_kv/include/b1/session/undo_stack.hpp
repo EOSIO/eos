@@ -7,11 +7,14 @@
 
 namespace eosio::session {
 
+/// \brief Represents a container of pending sessions to be committed.
 template <typename Session>
 class undo_stack {
  public:
    using session_type = session<Session>;
 
+   /// \brief Constructor.
+   /// \param head The session that the changes are merged into when commit is called.
    undo_stack(Session& head);
    undo_stack(const undo_stack&) = delete;
    undo_stack(undo_stack&&)      = default;
@@ -20,21 +23,43 @@ class undo_stack {
    undo_stack& operator=(const undo_stack&) = delete;
    undo_stack& operator=(undo_stack&&) = default;
 
+   /// \brief Adds a new session to the top of the stack.
    void push();
+
+   /// \brief Merges the changes of the top session into the session below it in the stack.
    void squash();
+
+   /// \brief Pops the top session off the stack and discards the changes in that session.
    void undo();
+
+   /// \brief Commits the sessions at the bottom of the stack up to and including the provided revision.
+   /// \param revision The revision number to commit up to.
+   /// \remarks Each time a session is push onto the stack, a revision is assigned to it.
    void commit(int64_t revision);
 
    bool   empty() const;
    size_t size() const;
 
+   /// \brief The starting revision number of the stack.
    int64_t revision() const;
-   void    revision(int64_t revision);
 
-   session_type&       top();
+   /// \brief Sets the starting revision number of the stack.
+   /// \remarks This can only be set when the stack is empty and it can't be set
+   /// to value lower than the current revision.
+   void revision(int64_t revision);
+
+   /// \brief Returns the head session (the session at the top of the stack.
+   session_type& top();
+
+   /// \brief Returns the head session (the session at the top of the stack.
    const session_type& top() const;
 
-   session_type&       bottom();
+   /// \brief Returns the session at the bottom of the stack.
+   /// \remarks This is the next session to be committed.
+   session_type& bottom();
+
+   /// \brief Returns the session at the bottom of the stack.
+   /// \remarks This is the next session to be committed.
    const session_type& bottom() const;
 
  private:
