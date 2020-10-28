@@ -2280,7 +2280,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
       bool header_printed = false;
       dfs_fn_t print_links = [&](const eosio::chain_apis::permission& p, int) -> void {
-         if (!p.linked_actions.empty()) {
+         if (p.linked_actions) {
 
             if (!header_printed) {
                std::cout << "permission links: " << std::endl;
@@ -2288,7 +2288,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             }
 
             std::cout << indent << p.perm_name.to_string() + ":" << std::endl;
-            for ( auto it = p.linked_actions.begin(); it != p.linked_actions.end(); ++it ) {
+            for ( auto it = p.linked_actions->begin(); it != p.linked_actions->end(); ++it ) {
                std::cout << indent << indent << it->account << "::" << it->action << std::endl;
             }
          }

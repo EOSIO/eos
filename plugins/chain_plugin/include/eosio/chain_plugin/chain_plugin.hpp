@@ -52,10 +52,10 @@ struct linked_action {
 };
 
 struct permission {
-   name                       perm_name;
-   name                       parent;
-   authority                  required_auth;
-   std::vector<linked_action> linked_actions;
+   name                                       perm_name;
+   name                                       parent;
+   authority                                  required_auth;
+   std::optional<std::vector<linked_action>>  linked_actions;
 };
 
 template<typename>
