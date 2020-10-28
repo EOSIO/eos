@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/kv_context.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
 
 #include <contracts.hpp>
 
@@ -33,10 +33,10 @@ using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
 
-BOOST_AUTO_TEST_SUITE(get_kv_table_cleos_tests)
+BOOST_AUTO_TEST_SUITE(get_kv_table_nodeos_tests)
 
 
-BOOST_FIXTURE_TEST_CASE( get_kv_table_cleos_test, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    produce_blocks(2);
 
    create_accounts({ "kvtable"_n });
@@ -65,102 +65,253 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_cleos_test, TESTER ) try {
    p.encode_type = "name";
    p.lower_bound = "";
    p.upper_bound = "";
-   p.json = true;
+   p.json = false;
    p.reverse = false;
    eosio::chain_apis::read_only::get_table_rows_result result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
 
    p.index_name = "primarykey"_n;
-   p.index_value = "bobd";
+   p.index_value = "bobj";
    p.encode_type = "name";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
 
-   p.index_name = "primarykey"_n;
    p.index_value = "bobx";
-   p.encode_type = "name";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
-   p.index_name = "primarykey"_n;
    p.index_value = "";
-   p.encode_type = "name";
    p.lower_bound = "bobb";
    p.upper_bound = "bobe";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
+   p.lower_bound = "aaaa";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "boba";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "bobj";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+
+   p.lower_bound = "bobz";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+
+   p.reverse = true;
+   p.lower_bound = "";
+   p.upper_bound = "bobz";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "bobc";
+   p.upper_bound = "";
+   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), chain::contract_table_query_exception);
+
+   p.reverse = false;
+   p.lower_bound = "";
+   p.upper_bound = "bobz";
+   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), chain::contract_table_query_exception);
+
+   p.reverse = true;
+   p.lower_bound = "bobj";
+   p.upper_bound = "bobz";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+
+   p.lower_bound = "bobb";
+   p.upper_bound = "bobe";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(3u, result.rows.size());
+
+   p.lower_bound = "";
+   p.upper_bound = "bobe";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(5u, result.rows.size());
+
+   p.reverse = false;
+   p.lower_bound = "boba";
+   p.upper_bound = "";
+   p.limit = 2;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 1;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 20;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(5u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, false);
+
+   p.reverse = false;
    p.index_name = "foo"_n;
-   p.index_value = "1";
+   p.index_value = "A";     // 10
    p.encode_type = "hex";
    p.lower_bound = "";
    p.upper_bound = "";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
-   p.index_name = "foo"_n;
-   p.index_value = "3";
+   p.index_value = "10";
    p.encode_type = "dec";
-   p.lower_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+
+   p.index_value = "";
+   p.encode_type = "dec";
+   p.lower_bound = "0";
+   p.upper_bound = "10";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(9u, result.rows.size());
+
+   p.lower_bound = "2";
+   p.upper_bound = "9";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(7u, result.rows.size());
+
+   p.lower_bound = "0";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "1";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "10";
    p.upper_bound = "";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
-   p.index_name = "foo"_n;
-   p.index_value = "999";
-   p.encode_type = "dec";
-   p.lower_bound = "";
+   p.lower_bound = "11";
    p.upper_bound = "";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
-   p.index_name = "foo"_n;
-   p.index_value = "";
-   p.encode_type = "dec";
-   p.lower_bound = "2";
-   p.upper_bound = "7";
+   p.reverse = false;
+   p.lower_bound = "0";
+   p.upper_bound = "";
+   p.limit = 2;
    result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(5u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 3;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(3u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 20;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(5, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, false);
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
    p.index_name = "bar"_n;
    p.index_value = "boba";
    p.encode_type = "string";
    p.lower_bound = "";
    p.upper_bound = "";
+   p.json = false;
+   p.reverse = false;
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
-   p.index_name = "bar"_n;
-   p.index_value = "x";
-   p.encode_type = "string";
-   p.lower_bound = "";
-   p.upper_bound = "";
+   p.index_value = "bobj";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+
+   p.index_value = "bobx";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
-   p.code = "kvtable"_n;
-   p.table = "kvtable"_n;
-   p.index_name = "bar"_n;
    p.index_value = "";
-   p.encode_type = "string";
    p.lower_bound = "bobb";
    p.upper_bound = "bobe";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
 
-} FC_LOG_AND_RETHROW()
+   p.lower_bound = "aaaa";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
 
+   p.lower_bound = "boba";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "bobj";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+
+   p.lower_bound = "bobz";
+   p.upper_bound = "";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+
+   p.reverse = true;
+   p.lower_bound = "";
+   p.upper_bound = "bobz";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
+   p.lower_bound = "bobj";
+   p.upper_bound = "bobz";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+
+   p.lower_bound = "bobb";
+   p.upper_bound = "bobe";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(3u, result.rows.size());
+
+   p.lower_bound = "";
+   p.upper_bound = "bobe";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(5u, result.rows.size());
+
+   p.reverse = false;
+   p.lower_bound = "boba";
+   p.upper_bound = "";
+   p.limit = 2;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 3;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(3u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   p.lower_bound = result.next_key;
+   p.encode_type = "bytes";
+   p.limit = 20;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(5u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, false);
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

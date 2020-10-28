@@ -7,13 +7,17 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 #include <eosio/chain/block_log_config.hpp>
+#include <eosio/chain/backing_store.hpp>
 
 namespace chainbase {
    class database;
+}
+namespace b1::chain_kv {
+   struct database;
+   class undo_stack;
 }
 namespace boost { namespace asio {
    class thread_pool;
@@ -26,6 +30,8 @@ namespace eosio { namespace chain {
    namespace resource_limits {
       class resource_limits_manager;
    };
+
+   class combined_database;
 
    struct controller_impl;
    using chainbase::database;
@@ -74,7 +80,12 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
-            
+            uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
+            uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
+            backing_store_type       backing_store              = backing_store_type::CHAINBASE;
+            uint16_t                 rocksdb_threads        =  0; // Will be set to number of cores dynamically or by user configuration;
+            int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
+            uint64_t                 rocksdb_write_buffer_size =  chain::config::default_rocksdb_write_buffer_size;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
@@ -82,7 +93,7 @@ namespace eosio { namespace chain {
             bool                     disable_replay_opts        = false;
             bool                     contracts_console          = false;
             bool                     allow_ram_billing_in_notify = false;
-            
+
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for developer & testing purposes, can be configured using `disable-all-subjective-mitigations` when `EOSIO_DEVELOPER` build option is provided
             uint32_t                 terminate_at_block     = 0; //< primarily for testing purposes
@@ -189,6 +200,7 @@ namespace eosio { namespace chain {
          authorization_manager&                get_mutable_authorization_manager();
          const protocol_feature_manager&       get_protocol_feature_manager()const;
          uint32_t                              get_max_nonprivileged_inline_action_size()const;
+         const config&                         get_config()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
@@ -373,6 +385,8 @@ namespace eosio { namespace chain {
 
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
+
+         eosio::chain::combined_database& kv_db();
 
       private:
          friend class apply_context;

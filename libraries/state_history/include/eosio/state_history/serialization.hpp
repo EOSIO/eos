@@ -264,7 +264,6 @@ ST& operator<<(
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::kv_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.database_id.to_uint64_t()));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.contract.to_uint64_t()));
    fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_key));
    fc::raw::pack(ds, as_type<eosio::chain::shared_blob>(obj.obj.kv_value));
