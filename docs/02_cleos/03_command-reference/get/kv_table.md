@@ -35,32 +35,370 @@ Retrieves the contents of a database kv_table
 
 ## Examples
 
-Range query to return all rows that match eosio name keys between `boba` (inclusive) and `bobj` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
-```sh
-cleos get kv_table --encode-type name -L boba -U bobj contr_acct kvtable primarykey
-```
-
 Point query to return the row that matches eosio name key `boba` from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
-cleos get kv_table --encode-type name -i boba contr_acct kvtable primarykey
+cleos get kv_table --encode-type name -i boba contr_acct kvtable primarykey -b
+```
+```json
+{
+    "rows": [
+        "000000000000600e3d010000000000000004626f6261000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
 ```
 
-Point query to return the row that matches hex key `1` from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
-```sh
-cleos get kv_table --encode-type hex -i 1 contr_acct kvtable foo
-```
-
-Point query to return the row that matches decimal key `1` from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+Point query to return the row that matches decimal key `1` from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that multiple rows could have resulted since `foo` is a non-unique secondary index):
 ```sh
 cleos get kv_table --encode-type dec -i 1 contr_acct kvtable foo
 ```
-
-Range query to return all rows that match decimal keys between `2` (inclusive) and `5` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
-```sh
-cleos get kv_table --encode-type dec -L 2 -U 5 contr_acct kvtable foo
+```json
+{
+    "rows": [
+        "000000000000600e3d010000000000000004626f6261"
+    ],
+    "more": false,
+    "next_key": ""
+}
 ```
 
-Range query to return all rows that match decimal keys between `2` (inclusive) and `5` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`; return the results in reverse order and in binary (not JSON):
+Range query to return all rows that match eosio name keys between `bobd` (inclusive) and `bobh` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
-cleos get kv_table -r -b --encode-type dec -L 2 -U 5 contr_acct kvtable foo
+cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primarykey -b
+```
+```json
+{
+    "rows": [
+        "000000000000900e3d040000000000000004626f6264000000",
+        "000000000000a00e3d050000000000000004626f6265000000",
+        "000000000000b00e3d060000000000000004626f6266000000",
+        "000000000000c00e3d070000000000000004626f6267000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) that match eosio name keys between `bobd` (exclusive) and `bobh` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primarykey -b -r
+```
+```json
+{
+    "rows": [
+        "000000000000d00e3d080000000000000004626f6268000000",
+        "000000000000c00e3d070000000000000004626f6267000000",
+        "000000000000b00e3d060000000000000004626f6266000000",
+        "000000000000a00e3d050000000000000004626f6265000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows starting from eosio name key `bobg` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b
+```
+```json
+{
+    "rows": [
+        "000000000000c00e3d070000000000000004626f6267000000",
+        "000000000000d00e3d080000000000000004626f6268000000",
+        "000000000000e00e3d090000000000000004626f6269000000",
+        "000000000000f00e3d0a0000000000000004626f626a000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) starting from eosio name key `bobg` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b -r
+```
+```json
+{
+    "rows": [
+        "000000000000f00e3d0a0000000000000004626f626a000000",
+        "000000000000e00e3d090000000000000004626f6269000000",
+        "000000000000d00e3d080000000000000004626f6268000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows until eosio name key `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b
+```
+```json
+{
+    "rows": [
+        "000000000000600e3d010000000000000004626f6261000000",
+        "000000000000700e3d020000000000000004626f6262000000",
+        "000000000000800e3d030000000000000004626f6263000000",
+        "000000000000900e3d040000000000000004626f6264000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) until eosio name key `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -r
+```
+```json
+{
+    "rows": [
+        "000000000000a00e3d050000000000000004626f6265000000",
+        "000000000000900e3d040000000000000004626f6264000000",
+        "000000000000800e3d030000000000000004626f6263000000",
+        "000000000000700e3d020000000000000004626f6262000000",
+        "000000000000600e3d010000000000000004626f6261000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order, limit results to 2 rows) until eosio name key `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -r -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000a00e3d050000000000000004626f6265000000",
+        "000000000000900e3d040000000000000004626f6264000000"
+    ],
+    "more": true,
+    "next_key": "3D0E800000000000"
+}
+```
+
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) until hex key `3D0E800000000000` (returned in `next_key` field from previous result) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type bytes -U 3D0E800000000000 contr_acct kvtable primarykey -b -r -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000800e3d030000000000000004626f6263000000",
+        "000000000000700e3d020000000000000004626f6262000000"
+    ],
+    "more": true,
+    "next_key": "3D0E600000000000"
+}
+```
+
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) until hex key `3D0E600000000000` (returned in `next_key` field from previous result) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+```sh
+cleos get kv_table --encode-type bytes -U 3D0E600000000000 contr_acct kvtable primarykey -b -r -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000600e3d010000000000000004626f6261000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows that match decimal keys `0` (inclusive) and `3` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that key `0` does not exist, so it starts from key `1`):
+```sh
+cleos get kv_table --encode-type dec -L 0 -U 3 contr_acct kvtable foo -b
+```
+```json
+{
+    "rows": [
+        "000000000000600e3d010000000000000004626f6261",
+        "000000000000700e3d020000000000000004626f6262"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows starting from decimal key `6` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+```sh
+cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b
+```
+```json
+{
+    "rows": [
+        "000000000000b00e3d060000000000000004626f6266",
+        "000000000000c00e3d070000000000000004626f6267",
+        "000000000000d00e3d080000000000000004626f6268",
+        "000000000000e00e3d090000000000000004626f6269",
+        "000000000000f00e3d0a0000000000000004626f626a"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (limit results to 2 rows) starting from decimal key `6` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+```sh
+cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000b00e3d060000000000000004626f6266",
+        "000000000000c00e3d070000000000000004626f6267"
+    ],
+    "more": true,
+    "next_key": "0000000000000008"
+}
+```
+
+Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `0000000000000008` (returned in `next_key` field from previous result, which is also hex for decimal key `8`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+```sh
+cleos get kv_table --encode-type bytes -L 0000000000000008 contr_acct kvtable foo -b -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000d00e3d080000000000000004626f6268",
+        "000000000000e00e3d090000000000000004626f6269"
+    ],
+    "more": true,
+    "next_key": "000000000000000A"
+}
+```
+
+Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `000000000000000A` (returned in `next_key` field from previous result, which is also hex for decimal key `10`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+```sh
+cleos get kv_table --encode-type bytes -L 000000000000000A contr_acct kvtable foo -b -l 2
+```
+```json
+{
+    "rows": [
+        "000000000000f00e3d0a0000000000000004626f626a"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) that match hex keys `2` (exclusive) and `4` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that hex keys are not correctly specified, or decimal type should be used instead):
+```sh
+cleos get kv_table --encode-type bytes -L 2 -U 4 contr_acct kvtable foo -b -r
+```
+```console
+Error 3060003: Contract Table Query Exception
+Most likely, the given table doesn't exist in the blockchain.
+Error Details:
+Invalid index type/encode_type/Index_value: uint64/bytes/{v}
+```
+
+Range query to return all rows (in reverse order) that match decimal keys `2` (exclusive) and `4` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`
+```sh
+cleos get kv_table --encode-type dec -L 2 -U 4 contr_acct kvtable foo -b -r
+```
+```json
+{
+    "rows": [
+        "000000000000900e3d040000000000000004626f6264",
+        "000000000000800e3d030000000000000004626f6263"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) that match hex keys `0000000000000002` (exclusive) and `0000000000000004` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`
+```sh
+cleos get kv_table --encode-type bytes -L 0000000000000002 -U 0000000000000004 contr_acct kvtable foo -b -r
+```
+```json
+{
+    "rows": [
+        "000000000000900e3d040000000000000004626f6264",
+        "000000000000800e3d030000000000000004626f6263"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows that match string keys between `boba` (inclusive) and `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that `--lower` and `--upper` values have correct `string` type, but the incorrect index `foo` was used):
+```sh
+cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable foo -b
+```
+```json
+{
+    "rows": [],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows that match string keys between `boba` (inclusive) and `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+```sh
+cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b
+```
+```json
+{
+    "rows": [
+        "0186f263c540000000addd235fd05780003d0e60000000",
+        "0186f263c540000000addd235fd05780003d0e70000000",
+        "0186f263c540000000addd235fd05780003d0e80000000",
+        "0186f263c540000000addd235fd05780003d0e90000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order) that match string keys between `boba` (exclusive) and `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+```sh
+cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b
+```
+```json
+{
+    "rows": [
+        "0186f263c540000000addd235fd05780003d0ea0000000",
+        "0186f263c540000000addd235fd05780003d0e90000000",
+        "0186f263c540000000addd235fd05780003d0e80000000",
+        "0186f263c540000000addd235fd05780003d0e70000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
+```
+
+Range query to return all rows (in reverse order, limit results to 2 rows) that match string keys between `boba` (exclusive) and `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+```sh
+cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b -r -l 2
+```
+```json
+{
+    "rows": [
+        "0186f263c540000000addd235fd05780003d0ea0000000",
+        "0186f263c540000000addd235fd05780003d0e90000000"
+    ],
+    "more": true,
+    "next_key": "626F62630000"
+}
+```
+
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) that match hex keys between `626F62610000` (hex for string `boba`) (exclusive) and `626F62630000` (returned in `next_key` field from previous result, which is also hex for string `bobc`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+```sh
+cleos get kv_table --encode-type bytes -L 626F62610000 -U 626F62630000 contr_acct kvtable bar -b -r -l 2
+```
+```json
+{
+    "rows": [
+        "0186f263c540000000addd235fd05780003d0e80000000",
+        "0186f263c540000000addd235fd05780003d0e70000000"
+    ],
+    "more": false,
+    "next_key": ""
+}
 ```
