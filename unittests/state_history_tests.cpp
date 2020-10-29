@@ -727,23 +727,36 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
                         mutable_variant_object()("k", 1024)("v", 1024)("i", 1024));
       chain.produce_block();
 
-      chain.set_code("kvtable"_n, contracts::kv_table_test_wasm());
-      chain.set_abi("kvtable"_n, contracts::kv_table_test_abi().data());
+      chain.set_code("kvtable"_n, contracts::contracts::kv_test_wasm());
+      chain.set_abi("kvtable"_n, contracts::kv_test_abi().data());
       chain.produce_blocks(1);
 
       auto arg = mutable_variant_object();
-      chain.push_action("kvtable"_n, "setup"_n, "kvtable"_n, arg);
+      auto trace = chain.push_action("kvtable"_n, "set"_n, "kvtable"_n,  mutable_variant_object()("contract", "kvtable"_n)("k", "00")("v", "7897")("payer", "kvtable"));
       auto result = chain.find_table_delta("key_value");
       BOOST_REQUIRE(result.first);
 
       auto key_values_vector = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
-      BOOST_REQUIRE_EQUAL(key_values_vector.size(), 30);
+      BOOST_REQUIRE_EQUAL(key_values_vector.size(), 1);
+      BOOST_ASSERT(result.second->rows.obj[0].first);
 
       BOOST_REQUIRE_EQUAL(key_values_vector[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values_vector[0].payer.to_string(), "kvtable");
 
-      BOOST_REQUIRE_EQUAL(key_values_vector[29].contract.to_string(), "kvtable");
-      BOOST_REQUIRE_EQUAL(key_values_vector[29].payer.to_string(), "kvtable");
+      chain.produce_block();
+      trace = chain.push_action("kvtable"_n, "erase"_n, "kvtable"_n, mutable_variant_object()("contract", "kvtable"_n)("k", "00"));
+
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      result = chain.find_table_delta("key_value");
+      BOOST_REQUIRE(result.first);
+
+      key_values_vector = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
+      BOOST_REQUIRE_EQUAL(key_values_vector.size(), 1);
+      BOOST_ASSERT(!result.second->rows.obj[0].first);
+
+      BOOST_REQUIRE_EQUAL(key_values_vector[0].contract.to_string(), "kvtable");
+      BOOST_REQUIRE_EQUAL(key_values_vector[0].payer.to_string(), "kvtable");
    }
 }
 
@@ -775,6 +788,9 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_table_full = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 6);
+      for(auto &row : it_contract_table_full->rows.obj) {
+         BOOST_REQUIRE(row.first);
+      }
       auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
       BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "hashobjs");
       BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "hashobjs....1");
@@ -817,6 +833,38 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       auto contract_indices = chain.deserialize_data<eosio::ship_protocol::contract_index256_v0, eosio::ship_protocol::contract_index256>(it_contract_index256);
       BOOST_REQUIRE_EQUAL(contract_indices[0].table.to_string(), "hashobjs");
       BOOST_REQUIRE_EQUAL(contract_indices[1].table.to_string(), "hashobjs....1");
+
+      chain.produce_block();
+      trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n,
+                                     mutable_variant_object()("id", 0));
+
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+      result = chain.find_table_delta("contract_table");
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table_full2 = result.second;
+      contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full2);
+      BOOST_REQUIRE_EQUAL(it_contract_table_full2->rows.obj.size(), 4);
+      for(auto &row : it_contract_table_full2->rows.obj) {
+         BOOST_REQUIRE(!row.first);
+      }
+      for(auto &contract_table: contract_tables) {
+         std::cout<<contract_table.table.to_string() <<std::endl;
+      }
+      std::set<std::string> expected_contract_table_names2 {"numobjs", "numobjs.....1", "numobjs.....2", "numobjs.....3"};
+      std::set<std::string> result_contract_table_names2;
+      for(auto &contract_table : contract_tables) {
+         result_contract_table_names2.insert(contract_table.table.to_string());
+      }
+
+      BOOST_REQUIRE(expected_contract_table_names2 == result_contract_table_names2);
+
+
+      result = chain.find_table_delta("contract_index128");
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_index128 = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_index128->rows.obj.size(), 1);
+      auto contract_indices128 = chain.deserialize_data<eosio::ship_protocol::contract_index128_v0, eosio::ship_protocol::contract_index128>(it_contract_index128);
+      BOOST_REQUIRE_EQUAL(contract_indices128[0].table.to_string(), "numobjs.....1");
    }
 }
 

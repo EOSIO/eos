@@ -291,6 +291,7 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
          void maybe_process_table(){
             if(table_){
                deltas[get_delta_index("contract_table")].rows.obj.emplace_back(present, fc::raw::pack(make_history_serial_wrapper(db_, *table_)));
+               table_ = {};
             }
          }
 
@@ -306,23 +307,27 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
          std::map<std::string, int> m;
          std::vector<table_delta> &deltas;
          const chainbase::database& db_;
-         bool present{true};
+         bool present{false};
 
          std::optional<chain::backing_store::table_id_object_view> table_;
          } rec_all(deltas, db);
 
+         for(auto &deleted_key: session.deleted_keys()) {
+            std::visit([&](auto* p) {
+               chain::backing_store::process_rocksdb_entry(*p, deleted_key, rec_all);
+            }, session.parent());
+            rec_all.maybe_process_table();
+         }
+
+         rec_all.present = true;
+         rec_all.table_ = {};
          for(auto &updated_key: session.updated_keys()) {
             chain::backing_store::process_rocksdb_entry(session, updated_key, rec_all);
             rec_all.maybe_process_table();
          }
 
-         rec_all.present = false;
-         for(auto &deleted_key: session.deleted_keys()) {
-            std::visit([&](auto* p) {
-                          chain::backing_store::process_rocksdb_entry(*p, deleted_key, rec_all);
-                       }, session.parent());
-            rec_all.maybe_process_table();
-         }
+
+
    }
 
    return deltas;
