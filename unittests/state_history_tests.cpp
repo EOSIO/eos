@@ -712,7 +712,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 
 BOOST_AUTO_TEST_CASE(test_deltas_kv) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-      table_deltas_tester chain(setup_policy::none);
+      table_deltas_tester chain;
       chain.set_backing_store(backing_store);
 
       chain.produce_blocks(2);
@@ -789,12 +789,12 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       auto &it_contract_table = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_table->rows.obj.size(), 6);
       contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table);
-      BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "hashobjs");
-      BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "hashobjs....1");
-      BOOST_REQUIRE_EQUAL(contract_tables[2].table.to_string(), "numobjs");
-      BOOST_REQUIRE_EQUAL(contract_tables[3].table.to_string(), "numobjs.....1");
-      BOOST_REQUIRE_EQUAL(contract_tables[4].table.to_string(), "numobjs.....2");
-      BOOST_REQUIRE_EQUAL(contract_tables[5].table.to_string(), "numobjs.....3");
+      std::set<std::string> expected_contract_table_names {"hashobjs", "hashobjs....1", "numobjs", "numobjs.....1", "numobjs.....2", "numobjs.....3"};
+      std::set<std::string> result_contract_table_names;
+      for(auto &contract_table : contract_tables) {
+         result_contract_table_names.insert(contract_table.table.to_string());
+      }
+      BOOST_REQUIRE(expected_contract_table_names == result_contract_table_names);
 
       // Spot onto contract_row
       result = chain.find_table_delta("contract_row");
@@ -802,8 +802,12 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       auto &it_contract_row = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 2);
       auto contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
-      BOOST_REQUIRE_EQUAL(contract_rows[0].table.to_string(), "hashobjs");
-      BOOST_REQUIRE_EQUAL(contract_rows[1].table.to_string(), "numobjs");
+      std::set<std::string> expected_contract_row_table_names {"hashobjs", "numobjs"};
+      std::set<std::string> result_contract_row_table_names;
+      for(auto &contract_row : contract_rows) {
+         result_contract_row_table_names.insert(contract_row.table.to_string());
+      }
+      BOOST_REQUIRE(expected_contract_row_table_names == result_contract_row_table_names);
 
       // Spot onto contract_index256
       result = chain.find_table_delta("contract_index256");
