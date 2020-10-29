@@ -3043,7 +3043,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       std::multimap<name, linked_action> result;
       while (iter != links.end() && iter->account == params.account_name ) {
-         result.emplace(std::make_pair(iter->required_permission, linked_action{iter->code, iter->message_type}));
+         auto action = iter->message_type.empty() ? std::optional<name>() : std::optional<name>(iter->message_type);
+         result.emplace(std::make_pair(iter->required_permission, linked_action{iter->code, std::move(action)}));
          ++iter;
       }
 

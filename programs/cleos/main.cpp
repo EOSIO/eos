@@ -2290,7 +2290,8 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             if (!p.linked_actions->empty()) {
                std::cout << indent << p.perm_name.to_string() + ":" << std::endl;
                for ( auto it = p.linked_actions->begin(); it != p.linked_actions->end(); ++it ) {
-                  std::cout << indent << indent << it->account << "::" << it->action << std::endl;
+                  auto action_value = it->action ? it->action->to_string() : std::string("*");
+                  std::cout << indent << indent << it->account << "::" << action_value << std::endl;
                }
             }
          }

@@ -47,8 +47,8 @@ namespace chain_apis {
 struct empty{};
 
 struct linked_action {
-   name              account;
-   name              action;
+   name                account;
+   std::optional<name> action;
 };
 
 struct permission {
