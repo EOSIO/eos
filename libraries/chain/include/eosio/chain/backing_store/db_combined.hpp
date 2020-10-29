@@ -11,20 +11,6 @@ const char* contract_table_type();
 static constexpr char rocksdb_contract_kv_prefix = 0x11; // for KV API
 static constexpr char rocksdb_contract_db_prefix = 0x12; // for DB API
 
-/*
- * This is a helper for Receivers that expect only certain outcomes
- * and want to provide error handling for the remaining expected
- * callbacks
- */
-template<typename Object>
-class error_receiver {
-public:
-   void add_row(const Object& row, const chainbase::database& db) {
-      wrong_row(contract_table_type<Object>());
-   }
-private:
-   virtual void wrong_row(const char* type_received) = 0;
-};
 namespace detail {
    class manage_stack {
    public:
@@ -136,6 +122,11 @@ private:
    const chainbase::database& db_;
 };
 
+// used to wrap a rocksdb_contract_db_table_writer to collect all primary and secondary keys and report them after the
+// table_id_object_view is reported.  This also reports contract table related data in the format expected by snapshots
+// (reporting the number of key rows (for primary and secondary key types) before reporting the rows. NOTE: using this
+// collector really only makes sense with a key_context of complete, otherwise it is just extra processing with no
+// benefit. It will produce invalid output if used with a key_context of complete_reverse
 template<typename Receiver>
 class rocksdb_whole_db_table_collector {
 public:
@@ -168,11 +159,9 @@ public:
 
    void add_row(const chain::backing_store::table_id_object_view& row){
       receiver_.add_row(row);
-   }
 
-   void add_row(fc::unsigned_int x){
       auto add = [&rec=receiver_](const auto &row) { rec.add_row(row); };
-      add(x);
+      add(fc::unsigned_int(primary_indices_.size()));
       // now that the whole table has been found, now we can report the individual keys
       std::for_each(primary_indices_.begin(), primary_indices_.end(), add);
       primary_indices_.clear();
@@ -209,23 +198,43 @@ private:
 
 auto process_all = []() { return true; };
 
-enum class key_context { complete, standalone };
+// the context in which the table writer should be reporting to receiver_.add_row(...).  NOTE: for any context indicating
+// that it reports complete/valid table_id_object_views, for it to be valid it must be passed all keys belonging to that
+// table, if not, the count portion of the table_id_object_view will not be accurate
+enum class key_context {
+   complete,           // report keys (via receiver_.add_row) as they are seen, so table will be after its keys (use rocksdb_whole_db_table_collector to reverse this)
+   complete_reverse,   // report keys (via receiver_.add_row) as they are seen, used when reverse iterating through a table space (do not use with rocksdb_whole_db_table_collector)
+   standalone,         // report an incomplete table (only code/scope/table valid) prior to reporting its keys
+   table_only,         // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
+   table_only_reverse  // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
+};
+
+// processes any keys passed to it, reporting them to its receiver as it sees them.  Use a key_context to adjust this behavior,
+// pass in a keep_processing lambda to indicate to one of the walk_*** methods that processing should stop (like for
+// limiting time querying the database for an PRC call)
 template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
 class rocksdb_contract_db_table_writer {
 public:
+   template<key_context Context>
+   friend struct writer_impl;
    using key_type = db_key_value_format::key_type;
 
-   rocksdb_contract_db_table_writer(Receiver &r, key_context context = key_context::complete, Function keep_processing = process_all)
-         : receiver_(r), context_(context), keep_processing_(process_all)  {}
+   rocksdb_contract_db_table_writer(Receiver &r, key_context context, Function keep_processing = process_all)
+         : receiver_(r), context_(context), keep_processing_(keep_processing)  {}
+
+   rocksdb_contract_db_table_writer(Receiver &r, Function keep_processing = process_all)
+         : receiver_(r), context_(key_context::complete), keep_processing_(process_all)  {}
 
    void extract_primary_index(b1::chain_kv::bytes::const_iterator remaining,
                               b1::chain_kv::bytes::const_iterator key_end, const char *value,
                               std::size_t value_size) {
-      uint64_t primary_key;
-      EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
-                 "DB intrinsic key-value store composite key is malformed");
-      backing_store::payer_payload pp(value, value_size);
-      receiver_.add_row(primary_index_view{primary_key, pp.payer, {std::string{pp.value, pp.value + pp.value_size}}});
+      if (context_ != key_context::table_only) {
+         uint64_t primary_key;
+         EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
+                    "DB intrinsic key-value store composite key is malformed");
+         backing_store::payer_payload pp(value, value_size);
+         receiver_.add_row(primary_index_view{primary_key, pp.payer, {std::string{pp.value, pp.value + pp.value_size}}});
+      }
       ++primary_count_;
    }
 
@@ -233,45 +242,52 @@ public:
    void extract_secondary_index(b1::chain_kv::bytes::const_iterator remaining,
                                 b1::chain_kv::bytes::const_iterator key_end, const char *value,
                                 std::size_t value_size) {
-      IndexType secondary_key;
-      uint64_t primary_key;
-      EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, secondary_key), bad_composite_key_exception,
-                 "DB intrinsic key-value store composite key is malformed");
-      EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
-                 "DB intrinsic key-value store composite key is malformed");
-      backing_store::payer_payload pp(value, value_size);
-      receiver_.add_row(secondary_index_view<IndexType>{primary_key, pp.payer, secondary_key});
+      if (context_ != key_context::table_only) {
+         IndexType secondary_key;
+         uint64_t primary_key;
+         EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, secondary_key), bad_composite_key_exception,
+                    "DB intrinsic key-value store composite key is malformed");
+         EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
+                    "DB intrinsic key-value store composite key is malformed");
+         backing_store::payer_payload pp(value, value_size);
+         receiver_.add_row(secondary_index_view<IndexType>{primary_key, pp.payer, secondary_key});
+      }
       ++secondary_count<IndexType>();
    }
 
    bool operator()(uint64_t contract, const char *key, std::size_t key_size,
                    const char *value, std::size_t value_size) {
-      if (!keep_processing_()) {
-         return false;
-      }
       b1::chain_kv::bytes composite_key(key, key + key_size);
       auto[scope, table, remaining, type] = backing_store::db_key_value_format::get_prefix_thru_key_type(
             composite_key);
 
+      const name code = name{contract};
+      if (!keep_processing_()) {
+         // performing the check after retrieving the prefix to provide similar results for RPC calls
+         // (indicating next scope)
+         stopped_processing_ = true;
+         table_context_ = table_id_object_view{code, scope, table, name{}, 0};
+         return false;
+      }
+
       if (type == key_type::table) {
          backing_store::payer_payload pp(value, value_size);
 
-         auto add_row = [this](const auto &row) { receiver_.add_row(row); };
 
-         uint32_t total_count = primary_count_;
-         for (auto& count : all_secondary_indices_count_) {
-            total_count += count;
-            count = 0;
+         if (is_table_reversed()) {
+            table_context_ = table_id_object_view{code, scope, table, pp.payer, 0};
+         }
+         else {
+            table_context_ = table_id_object_view{code, scope, table, pp.payer, total_count()};
+            receiver_.add_row(table_context_);
          }
 
-         add_row(table_id_object_view{account_name{contract}, scope, table, pp.payer, total_count});
-
-         add_row(fc::unsigned_int(primary_count_));
-         primary_count_ = 0;
       } else if (type != key_type::primary_to_sec) {
-         if (context_ == key_context::standalone) {
-            // for individual keys, need to report the table info for reference
-            check_context(name{contract}, scope, table);
+         // for individual keys, need to report the table info for reference
+         check_context(code, scope, table);
+         if (is_table_reversed() && !is_same_table(code, scope, table)) {
+            table_context_.count = total_count();
+            receiver_.add_row(table_context_);
          }
          std::invoke(extract_index_member_fun_[static_cast<int>(type)], this, remaining, composite_key.end(),
                      value, value_size);
@@ -279,6 +295,12 @@ public:
       return true;
    }
 
+   std::optional<table_id_object_view> stopped_at() const {
+      if (stopped_processing_) {
+         return table_context_;
+      }
+      return std::optional<table_id_object_view>();
+   }
 private:
    template<typename IndexType>
    uint32_t& secondary_count() {
@@ -288,18 +310,42 @@ private:
    }
 
    void check_context(const name& code, const name& scope, const name& table) {
-      if (table_context_ && table_context_->code == code &&
-          table_context_->scope == scope && table_context_->table == table) {
+      // this method only has to do with standalone processing
+      if (context_ != key_context::standalone ||
+          is_same_table(code, scope, table)) {
          return;
       }
-      table_context_ = table_id_object_view{code, scope, table, name{}, 0};
-      receiver_.add_row(*table_context_);
+      table_context_.code = code;
+      table_context_.scope = scope;
+      table_context_.table = table;
+      receiver_.add_row(table_context_);
    }
+
+   // calculates the total_count of keys, and zeros out the counts
+   uint32_t total_count() {
+      uint32_t total = primary_count_;
+      for (auto& count : all_secondary_indices_count_) {
+         total += count;
+         count = 0;
+      }
+      primary_count_ = 0;
+      return total;
+   }
+
+   bool is_same_table(const name& code, const name& scope, const name& table) const {
+      return table_context_.code == code &&
+             table_context_.scope == scope &&
+             table_context_.table == table;
+   }
+
+   bool is_table_reversed() {
+      return context_ == key_context::complete_reverse || context_ == key_context::table_only_reverse;
+   };
 
    Receiver &receiver_;
    const key_context context_;
    Function keep_processing_;
-   std::optional<table_id_object_view> table_context_;
+   table_id_object_view table_context_;
 
    using extract_index_member_fun_t = void (rocksdb_contract_db_table_writer::*)(
          b1::chain_kv::bytes::const_iterator, b1::chain_kv::bytes::const_iterator, const char *, std::size_t);
@@ -309,6 +355,8 @@ private:
    constexpr static unsigned secondary_indices = static_cast<char>(db_key_value_format::key_type::sec_long_double) -
                                                  static_cast<char>(db_key_value_format::key_type::sec_i64) + 1;
    uint32_t all_secondary_indices_count_[secondary_indices] = {};
+
+   bool stopped_processing_ = false;
 };
 
 // array mapping db_key_value_format::key_type values (except table) to functions to break down to component parts
