@@ -13,10 +13,12 @@ if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
     if [[ "$CI" == 'true' ]]; then
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
-    echo "cmake $CMAKE_EXTRAS .."
-    cmake $CMAKE_EXTRAS ..
-    echo "make -j$JOBS"
-    make -j$JOBS
+    CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
+    echo "$ $CMAKE_COMMAND"
+    eval $CMAKE_COMMAND
+    MAKE_COMMAND="make -j $JOBS"
+    echo "$ $MAKE_COMMAND"
+    eval $MAKE_COMMAND
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
@@ -50,6 +52,7 @@ else # Linux
     fi
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
-    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
+    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
+    echo "$ $DOCKER_RUN"
+    eval $DOCKER_RUN
 fi
