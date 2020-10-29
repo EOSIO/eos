@@ -14,6 +14,7 @@
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
+#include <eosio/chain/backing_store/db_combined.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
@@ -2386,12 +2387,45 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    return result;
 }
 
+struct table_receiver {
+   table_receiver(read_only::get_table_by_scope_result& result, const read_only::get_table_by_scope_params& params)
+   : result_(result), params_(params) {
+      check_limit();
+   }
+
+   template<typename Object>
+   void add_row(const Object& row) {
+      if constexpr (std::is_same_v<Object, backing_store::table_id_object_view>) {
+         if( params_.table && row.table != params_.table )
+            return;
+         result_.rows.push_back( {row.code, row.scope, row.table, row.payer, row.count} );
+         check_limit();
+      } else {
+         FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Invariant failure, should not receive an add_row call of type: ${type}",
+                            ("type", chain::backing_store::contract_table_type<std::decay_t < decltype(row)>>()));
+      }
+   }
+
+   auto keep_processing_entries() {
+      kp_ = keep_processing{};
+      return [&kp=*kp_,&reached_limit=reached_limit_]() {
+         return !reached_limit && kp();
+      };
+   };
+
+   void check_limit() {
+      if (result_.rows.size() >= params_.limit)
+         reached_limit_ = true;
+   }
+
+   read_only::get_table_by_scope_result& result_;
+   const read_only::get_table_by_scope_params& params_;
+   std::optional<keep_processing> kp_;
+   bool reached_limit_ = false;
+};
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
    read_only::get_table_by_scope_result result;
-   const auto& d = db.db();
-
-   const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
    auto lower_bound_lookup_tuple = std::make_tuple( p.code, name(std::numeric_limits<uint64_t>::lowest()), p.table );
    auto upper_bound_lookup_tuple = std::make_tuple( p.code, name(std::numeric_limits<uint64_t>::max()),
                                                     (p.table.empty() ? name(std::numeric_limits<uint64_t>::max()) : p.table) );
@@ -2409,27 +2443,58 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
       return result;
 
-   auto walk_table_range = [&]( auto itr, auto end_itr ) {
-      auto cur_time = fc::time_point::now();
-      auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
-         if( p.table && itr->table != p.table ) continue;
+   auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+   if (kv_database.get_backing_store() == eosio::chain::backing_store_type::CHAINBASE) {
+      auto walk_table_range = [&result,&p]( auto itr, auto end_itr ) {
+         keep_processing kp;
+         for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++itr ) {
+            if( p.table && itr->table != p.table ) continue;
 
-         result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
+            result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
 
-         ++count;
+            ++count;
+         }
+         if( itr != end_itr ) {
+            result.more = itr->scope.to_string();
+         }
+      };
+
+      const auto& d = db.db();
+      const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
+      auto lower = idx.lower_bound( lower_bound_lookup_tuple );
+      auto upper = idx.upper_bound( upper_bound_lookup_tuple );
+      if( p.reverse && *p.reverse ) {
+         walk_table_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+      } else {
+         walk_table_range( lower, upper );
       }
-      if( itr != end_itr ) {
-         result.more = itr->scope.to_string();
+   }
+   else {
+      using namespace eosio::chain;
+      EOS_ASSERT(kv_database.get_backing_store() == backing_store_type::ROCKSDB,
+                 chain::contract_table_query_exception,
+                 "Support for configured backing_store has not been added to get_table_by_scope");
+      table_receiver receiver(result, p);
+      auto kp = receiver.keep_processing_entries();
+      backing_store::rocksdb_contract_db_table_writer<table_receiver, std::decay_t < decltype(kp)>> writer(receiver, backing_store::key_context::table_only, kp);
+      auto key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(lower_bound_lookup_tuple), std::get<2>(lower_bound_lookup_tuple));
+      auto lower = backing_store::db_key_value_format::create_full_key(key, std::get<0>(lower_bound_lookup_tuple));
+      key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(upper_bound_lookup_tuple), std::get<2>(upper_bound_lookup_tuple));
+      auto upper = backing_store::db_key_value_format::create_full_key(key, std::get<0>(upper_bound_lookup_tuple));
+      if( p.reverse && *p.reverse ) {
+         // use the previous
+         lower = lower.previous();
+#warning but also need to add the crap....
+         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), upper, lower, writer);
       }
-   };
-
-   auto lower = idx.lower_bound( lower_bound_lookup_tuple );
-   auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-   if( p.reverse && *p.reverse ) {
-      walk_table_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
-   } else {
-      walk_table_range( lower, upper );
+      else {
+#warning need to change walk_rocksdb_entries_with_prefix iterating code to use upperbound for end, unless begin is greater then end, then we need to take lowerbound and decrement (as long as it isn't begin')
+         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower, upper, writer);
+      }
+      const auto stopped_at = writer.stopped_at();
+      if (stopped_at) {
+         result.more = stopped_at->scope.to_string();
+      }
    }
 
    return result;
