@@ -8,7 +8,7 @@
 
 /// Simple wrappers for zipkin tracing, see zipkin_appender
 namespace fc {
-   inline std::string zipkin_logger_name = "zipkin";
+   inline const std::string zipkin_logger_name = "zipkin";
 
    struct zipkin_span {
       explicit zipkin_span( std::string name, const fc::log_context& lc, uint64_t parent_id = 0 )
@@ -78,12 +78,12 @@ namespace fc {
          data( key, v ? "true" : "false" );
       }
       template<typename T>
-      typename std::enable_if_t<std::is_arithmetic_v<std::remove_reference_t<T>>, void>
+      std::enable_if_t<std::is_arithmetic_v<std::remove_reference_t<T>>, void>
       add_tag( const std::string& key, T&& var ) {
          data( key, std::to_string( std::forward<T>( var ) ) );
       }
       template<typename T>
-      typename std::enable_if_t<!std::is_arithmetic_v<std::remove_reference_t<T>>, void>
+      std::enable_if_t<!std::is_arithmetic_v<std::remove_reference_t<T>>, void>
       add_tag( const std::string& key, T&& var ) {
          data( key, (std::string) var );
       }
@@ -102,7 +102,8 @@ namespace fc {
       token get_token() const { return token{id}; };
 
       static uint64_t to_id( const fc::sha256& id ) {
-         return id._hash[3];
+         // avoid 0 since id of 0 is used as a flag
+         return id._hash[3] == 0 ? 1 : id._hash[3];
       }
 
       template<typename T>

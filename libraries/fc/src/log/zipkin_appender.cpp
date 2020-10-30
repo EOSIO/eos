@@ -62,10 +62,13 @@ zipkin_appender::zipkin_appender( const variant& args ) :
 }
 
 void zipkin_appender::initialize( boost::asio::io_service& io_service ) {
-   my->init();
+   // called holding the log_config log_mutex
+   if( my )
+      my->init();
 }
 
 void zipkin_appender::shutdown() {
+   // called holding the log_config log_mutex
    my.reset();
 }
 
@@ -133,6 +136,7 @@ fc::variant create_zipkin_variant( const log_message& message, const std::string
 }
 
 void zipkin_appender::log( const log_message& message ) {
+   // called holding the log_config log_mutex
    if( !my || my->consecutive_errors > my->max_consecutive_errors )
       return;
 
@@ -149,18 +153,22 @@ void zipkin_appender::impl::log( const log_message& message ) {
       auto deadline = fc::time_point::now() + fc::microseconds( cfg.timeout_us );
       if( !endpoint ) {
          endpoint = url( cfg.endpoint + cfg.path );
-         dlog( "Connecting to zipkin: ${e}", ("e", *endpoint) );
+         std::cout << "info: connecting to zipkin: " << (std::string)*endpoint << std::endl;
       }
 
       http.post_sync( *endpoint, create_zipkin_variant( message, cfg.service_name ), deadline );
 
       consecutive_errors = 0;
+      return;
    } catch( const fc::exception& e ) {
-      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", e.to_detail_string()) );
+      std::cerr << "warn: unable to connect to zipkin: " << (cfg.endpoint + cfg.path)
+                << ", error: " << e.to_detail_string() << std::endl;
    } catch( const std::exception& e ) {
-      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", e.what()) );
+      std::cerr << "warn: unable to connect to zipkin: " << (cfg.endpoint + cfg.path)
+                << ", error: " << e.what() << std::endl;
    } catch( ... ) {
-      wlog( "Unable to connect to zipkin: ${p}, error: ${e}", ("p", cfg.endpoint + cfg.path)("e", "unknown error") );
+      std::cerr << "warn: unable to connect to zipkin: " << (cfg.endpoint + cfg.path)
+                << ", error: unknown" << std::endl;
    }
    ++consecutive_errors;
 }

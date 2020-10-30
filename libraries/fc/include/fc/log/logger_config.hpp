@@ -32,7 +32,7 @@ namespace fc {
       bool                             enabled;
       /// if any appenders are sepecified, then parent's appenders are not set.
       bool                             additivity;
-      std::vector<string>               appenders;
+      std::vector<string>              appenders;
    };
 
    struct logging_config {
@@ -55,8 +55,6 @@ namespace fc {
       static void update_logger( const fc::string& name, logger& log );
 
       static void initialize_appenders( boost::asio::io_service& ios );
-
-      static void shutdown_appenders();
 
       static bool configure_logging( const logging_config& l );
 
