@@ -583,9 +583,7 @@ public:
             if( p.key_type == "name" ) {
                name s(p.lower_bound);
                std::get<1>(lower_bound_lookup_tuple) = s.to_uint64_t();
-            }
-            else
-            {
+            } else {
                auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
                std::get<1>(lower_bound_lookup_tuple) = lv;
             }
@@ -595,9 +593,7 @@ public:
             if( p.key_type == "name" ) {
                name s(p.upper_bound);
                std::get<1>(upper_bound_lookup_tuple) = s.to_uint64_t();
-            }
-            else
-            {
+            } else {
                auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
                std::get<1>(upper_bound_lookup_tuple) = uv;
             }
