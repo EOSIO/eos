@@ -32,7 +32,7 @@ namespace fc {
       bool                             enabled;
       /// if any appenders are sepecified, then parent's appenders are not set.
       bool                             additivity;
-      std::vector<string>               appenders;
+      std::vector<string>              appenders;
    };
 
    struct logging_config {
@@ -58,6 +58,8 @@ namespace fc {
 
       static bool configure_logging( const logging_config& l );
 
+      static uint64_t get_next_unique_id();
+
    private:
       static log_config& get();
 
@@ -67,6 +69,7 @@ namespace fc {
       std::unordered_map<std::string, appender_factory::ptr>   appender_factory_map;
       std::unordered_map<std::string, appender::ptr>           appender_map;
       std::unordered_map<std::string, logger>                  logger_map;
+      uint64_t                                                 next_id = 0;
    };
 
    void configure_logging( const fc::path& log_config );

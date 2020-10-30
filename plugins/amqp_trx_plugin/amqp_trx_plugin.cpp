@@ -123,15 +123,14 @@ private:
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
-      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_trace = fc_create_trace_with_id("Transaction", tid);
       auto trx_span = fc_create_span(trx_trace, "AMQP Received");
-      fc_add_str_tag(trx_span, "trx_id", tid.str());
+      fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
-            auto trx_trace = fc_create_trace("Transaction");
-            auto trx_span = fc_create_span(trx_trace, "Processed");
-            fc_add_str_tag(trx_span, "trx_id", trx->id().str());
+                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+            auto trx_span = fc_create_span_from_token(token, "Processed");
+            fc_add_tag(trx_span, "trx_id", trx->id());
 
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( result.contains<chain::exception_ptr>() ) {
@@ -139,21 +138,21 @@ private:
                if( my->trace_plug ) {
                   my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
                }
-               fc_add_str_tag(trx_span, "error", eptr->to_string());
+               fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
                if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
                   my->amqp_trx->ack( delivery_tag );
                }
             } else {
                auto& trace = result.get<chain::transaction_trace_ptr>();
-               fc_add_str_tag(trx_span, "block_num", std::to_string(trace->block_num));
-               fc_add_str_tag(trx_span, "block_time", std::string(trace->block_time.to_time_point()));
-               fc_add_str_tag(trx_span, "elapsed", std::to_string(trace->elapsed.count()));
+               fc_add_tag(trx_span, "block_num", trace->block_num);
+               fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
+               fc_add_tag(trx_span, "elapsed", trace->elapsed.count());
                if( trace->receipt ) {
-                  fc_add_str_tag(trx_span, "status", std::string(trace->receipt->status));
+                  fc_add_tag(trx_span, "status", std::string(trace->receipt->status));
                }
                if( trace->except ) {
-                  fc_add_str_tag(trx_span, "error", trace->except->to_string());
+                  fc_add_tag(trx_span, "error", trace->except->to_string());
                }
                dlog( "accept_transaction ${id}", ("id", trx->id()) );
                if( my->acked == ack_mode::executed ) {

@@ -50,6 +50,8 @@ namespace fc
          bool is_enabled( log_level e )const;
          void log( log_message m );
 
+         void shutdown();
+
       private:
          friend struct log_config;
          void add_appender( const std::shared_ptr<appender>& a );

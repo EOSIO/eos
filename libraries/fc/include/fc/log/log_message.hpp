@@ -59,7 +59,8 @@ namespace fc
         log_context( log_level ll,
                     const char* file, 
                     uint64_t line, 
-                    const char* method );
+                    const char* method,
+                    const char* task = nullptr );
         ~log_context();
         explicit log_context( const variant& v );
         variant to_variant()const;
