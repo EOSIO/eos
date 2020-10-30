@@ -63,7 +63,7 @@ cleos get kv_table --encode-type dec -i 1 contr_acct kvtable foo
 }
 ```
 
-Range query to return all rows that match eosio name keys between `bobd` (inclusive) and `bobh` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows starting from eosio name key `bobd` up to `bobh` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primarykey -b
 ```
@@ -80,7 +80,7 @@ cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primary
 }
 ```
 
-Range query to return all rows (in reverse order) that match eosio name keys between `bobd` (exclusive) and `bobh` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows (in reverse order) starting from eosio name key `bobh` down to `bobd` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primarykey -b -r
 ```
@@ -97,7 +97,7 @@ cleos get kv_table --encode-type name -L bobd -U bobh contr_acct kvtable primary
 }
 ```
 
-Range query to return all rows starting from eosio name key `bobg` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows starting from eosio name key `bobg` up to the last row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b
 ```
@@ -114,7 +114,7 @@ cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b
 }
 ```
 
-Range query to return all rows (in reverse order) starting from eosio name key `bobg` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows (in reverse order) starting from the last row key down to eosio name key `bobg` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b -r
 ```
@@ -130,7 +130,7 @@ cleos get kv_table --encode-type name -L bobg contr_acct kvtable primarykey -b -
 }
 ```
 
-Range query to return all rows until eosio name key `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows starting from the first row key up to eosio name key `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b
 ```
@@ -147,7 +147,7 @@ cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b
 }
 ```
 
-Range query to return all rows (in reverse order) until eosio name key `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows (in reverse order) starting from eosio name key `bobe` down to the first row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -r
 ```
@@ -165,7 +165,7 @@ cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -
 }
 ```
 
-Range query to return all rows (in reverse order, limit results to 2 rows) until eosio name key `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Range query to return all rows (in reverse order, limit results to 2 rows) starting from eosio name key `bobe` down to the first row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -r -l 2
 ```
@@ -180,7 +180,7 @@ cleos get kv_table --encode-type name -U bobe contr_acct kvtable primarykey -b -
 }
 ```
 
-Continue previous range query to return all rows (in reverse order, limit results to 2 rows) until hex key `3D0E800000000000` (returned in `next_key` field from previous result) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) starting from hex key `3D0E800000000000` (returned in `next_key` field from previous result) down to the first row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type bytes -U 3D0E800000000000 contr_acct kvtable primarykey -b -r -l 2
 ```
@@ -195,7 +195,7 @@ cleos get kv_table --encode-type bytes -U 3D0E800000000000 contr_acct kvtable pr
 }
 ```
 
-Continue previous range query to return all rows (in reverse order, limit results to 2 rows) until hex key `3D0E600000000000` (returned in `next_key` field from previous result) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) starting from hex key `3D0E600000000000` (returned in `next_key` field from previous result) down to the first row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `primarykey`:
 ```sh
 cleos get kv_table --encode-type bytes -U 3D0E600000000000 contr_acct kvtable primarykey -b -r -l 2
 ```
@@ -209,7 +209,7 @@ cleos get kv_table --encode-type bytes -U 3D0E600000000000 contr_acct kvtable pr
 }
 ```
 
-Range query to return all rows that match decimal keys `0` (inclusive) and `3` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that key `0` does not exist, so it starts from key `1`):
+Range query to return all rows starting from decimal key `0` up to `3` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that key `0` does not exist, so it starts from key `1`):
 ```sh
 cleos get kv_table --encode-type dec -L 0 -U 3 contr_acct kvtable foo -b
 ```
@@ -224,7 +224,7 @@ cleos get kv_table --encode-type dec -L 0 -U 3 contr_acct kvtable foo -b
 }
 ```
 
-Range query to return all rows starting from decimal key `6` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+Range query to return all rows starting from decimal key `6` up to the last row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
 ```sh
 cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b
 ```
@@ -242,7 +242,7 @@ cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b
 }
 ```
 
-Range query to return all rows (limit results to 2 rows) starting from decimal key `6` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+Range query to return all rows (limit results to 2 rows) starting from decimal key `6` up to the last row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
 ```sh
 cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b -l 2
 ```
@@ -257,7 +257,7 @@ cleos get kv_table --encode-type dec -L 6 contr_acct kvtable foo -b -l 2
 }
 ```
 
-Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `0000000000000008` (returned in `next_key` field from previous result, which is also hex for decimal key `8`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `0000000000000008` (returned in `next_key` field from previous result, which is also hex for decimal key `8`) up to the last row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
 ```sh
 cleos get kv_table --encode-type bytes -L 0000000000000008 contr_acct kvtable foo -b -l 2
 ```
@@ -272,7 +272,7 @@ cleos get kv_table --encode-type bytes -L 0000000000000008 contr_acct kvtable fo
 }
 ```
 
-Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `000000000000000A` (returned in `next_key` field from previous result, which is also hex for decimal key `10`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
+Continue previous range query to return all rows (limit results to 2 rows) starting from hex key `000000000000000A` (returned in `next_key` field from previous result, which is also hex for decimal key `10`) up to the last row key from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
 ```sh
 cleos get kv_table --encode-type bytes -L 000000000000000A contr_acct kvtable foo -b -l 2
 ```
@@ -286,7 +286,7 @@ cleos get kv_table --encode-type bytes -L 000000000000000A contr_acct kvtable fo
 }
 ```
 
-Range query to return all rows (in reverse order) that match hex keys `2` (exclusive) and `4` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that hex keys are not correctly specified, or decimal type should be used instead):
+Range query to return all rows (in reverse order) starting from hex key `4` down to `2` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that hex keys are not correctly specified, or decimal type should be used instead):
 ```sh
 cleos get kv_table --encode-type bytes -L 2 -U 4 contr_acct kvtable foo -b -r
 ```
@@ -297,7 +297,7 @@ Error Details:
 Invalid index type/encode_type/Index_value: uint64/bytes/{v}
 ```
 
-Range query to return all rows (in reverse order) that match decimal keys `2` (exclusive) and `4` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`
+Range query to return all rows (in reverse order) starting from decimal key `4` down to `2` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`:
 ```sh
 cleos get kv_table --encode-type dec -L 2 -U 4 contr_acct kvtable foo -b -r
 ```
@@ -312,7 +312,7 @@ cleos get kv_table --encode-type dec -L 2 -U 4 contr_acct kvtable foo -b -r
 }
 ```
 
-Range query to return all rows (in reverse order) that match hex keys `0000000000000002` (exclusive) and `0000000000000004` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`
+Range query to return all rows (in reverse order) starting from hex key `0000000000000004` down to `0000000000000002` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo`
 ```sh
 cleos get kv_table --encode-type bytes -L 0000000000000002 -U 0000000000000004 contr_acct kvtable foo -b -r
 ```
@@ -327,7 +327,7 @@ cleos get kv_table --encode-type bytes -L 0000000000000002 -U 0000000000000004 c
 }
 ```
 
-Range query to return all rows that match string keys between `boba` (inclusive) and `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that `--lower` and `--upper` values have correct `string` type, but the incorrect index `foo` was used):
+Range query to return all rows starting from string key `boba` up to `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `foo` (note that `--lower` and `--upper` values have correct `string` type, but the incorrect index `foo` was used):
 ```sh
 cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable foo -b
 ```
@@ -339,7 +339,7 @@ cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable foo -
 }
 ```
 
-Range query to return all rows that match string keys between `boba` (inclusive) and `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+Range query to return all rows starting from string key `boba` up to `bobe` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
 ```sh
 cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b
 ```
@@ -356,9 +356,9 @@ cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -
 }
 ```
 
-Range query to return all rows (in reverse order) that match string keys between `boba` (exclusive) and `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+Range query to return all rows (in reverse order) starting from string key `bobe` down to `boba` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
 ```sh
-cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b
+cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b -r
 ```
 ```json
 {
@@ -373,7 +373,7 @@ cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -
 }
 ```
 
-Range query to return all rows (in reverse order, limit results to 2 rows) that match string keys between `boba` (exclusive) and `bobe` (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+Range query to return all rows (in reverse order, limit results to 2 rows) starting from string key `bobe` down to `boba` (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
 ```sh
 cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -b -r -l 2
 ```
@@ -388,7 +388,7 @@ cleos get kv_table --encode-type string -L boba -U bobe contr_acct kvtable bar -
 }
 ```
 
-Continue previous range query to return all rows (in reverse order, limit results to 2 rows) that match hex keys between `626F62610000` (hex for string `boba`) (exclusive) and `626F62630000` (returned in `next_key` field from previous result, which is also hex for string `bobc`) (inclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
+Continue previous range query to return all rows (in reverse order, limit results to 2 rows) starting from hex key `626F62630000` (returned in `next_key` field from previous result, which is also hex for string `bobc`) down to hex key `626F62610000` (hex for string `boba`) (exclusive) from kv_table named `kvtable` owned by `contr_acct` account using kv_table index `bar`:
 ```sh
 cleos get kv_table --encode-type bytes -L 626F62610000 -U 626F62630000 contr_acct kvtable bar -b -r -l 2
 ```
