@@ -38,6 +38,7 @@ FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 const fc::string deep_mind_logger_name("deep-mind");
 fc::logger _deep_mind_log;
+fc::logger _zipkin_logger;
 
 namespace eosio {
 
@@ -314,16 +315,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
           "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
-          "In \"heap\" mode database is preloaded in to swappable memory.\n"
-#ifdef __linux__
-          "In \"locked\" mode database is preloaded, locked in to memory, and optionally can use huge pages.\n"
-#else
-          "In \"locked\" mode database is preloaded and locked in to memory.\n"
+#ifndef _WIN32
+          "In \"heap\" mode database is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode database is preloaded, locked in to memory, and will use huge pages if available.\n"
 #endif
          )
-#ifdef __linux__
-         ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
-#endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache")
@@ -1102,10 +1098,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config->db_map_mode = options.at("database-map-mode").as<pinnable_mapped_file::map_mode>();
-#ifdef __linux__
-      if( options.count("database-hugepage-path") )
-         my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
-#endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )
@@ -1274,10 +1266,12 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
+   _zipkin_logger.shutdown();
 }
 
 void chain_plugin::handle_sighup() {
    fc::logger::update( deep_mind_logger_name, _deep_mind_log );
+   fc::logger::update( fc::zipkin_logger_name, _zipkin_logger );
 }
 
 chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions)
@@ -2286,33 +2280,33 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
-      fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
-         auto trx_trace = fc_create_trace("Transaction");
-         auto trx_span = fc_create_span(trx_trace, "Processed");
-         fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
 
          if (result.contains<fc::exception_ptr>()) {
             auto& eptr = result.get<chain::exception_ptr>();
-            fc_add_str_tag(trx_span, "error", eptr->to_string());
+            fc_add_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
-            fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
-            fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
-            fc_add_str_tag(trx_span, "elapsed", std::to_string(trx_trace_ptr->elapsed.count()));
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
             if( trx_trace_ptr->receipt ) {
-               fc_add_str_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
             }
             if( trx_trace_ptr->except ) {
-               fc_add_str_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
             }
 
             try {
@@ -2429,32 +2423,32 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
-      fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, input_trx, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         auto trx_trace = fc_create_trace("Transaction");
-         auto trx_span = fc_create_span(trx_trace, "Processed");
-         fc_add_str_tag(trx_span, "trx_id", input_trx->id().str());
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
 
          if (result.contains<fc::exception_ptr>()) {
             auto& eptr = result.get<chain::exception_ptr>();
-            fc_add_str_tag(trx_span, "error", eptr->to_string());
+            fc_add_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
-            fc_add_str_tag(trx_span, "block_num", std::to_string(trx_trace_ptr->block_num));
-            fc_add_str_tag(trx_span, "block_time", std::string(trx_trace_ptr->block_time.to_time_point()));
-            fc_add_str_tag(trx_span, "elapsed", std::to_string(trx_trace_ptr->elapsed.count()));
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
             if( trx_trace_ptr->receipt ) {
-               fc_add_str_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
             }
             if( trx_trace_ptr->except ) {
-               fc_add_str_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
             }
 
             try {

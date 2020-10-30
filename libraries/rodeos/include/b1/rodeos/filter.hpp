@@ -4,6 +4,7 @@
 #include <b1/rodeos/callbacks/chaindb.hpp>
 #include <b1/rodeos/callbacks/compiler_builtins.hpp>
 #include <b1/rodeos/callbacks/console.hpp>
+#include <b1/rodeos/callbacks/crypto.hpp>
 #include <b1/rodeos/callbacks/filter.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
@@ -55,6 +56,7 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
                    b1::rodeos::compiler_builtins_callbacks<callbacks>,
                    b1::rodeos::console_callbacks<callbacks>,
                    b1::rodeos::context_free_system_callbacks<callbacks>,
+                   b1::rodeos::crypto_callbacks<callbacks>,
                    b1::rodeos::data_callbacks<callbacks>,
                    b1::rodeos::db_callbacks<callbacks>,
                    b1::rodeos::filter_callbacks<callbacks>,
@@ -80,6 +82,7 @@ inline void register_callbacks() {
    b1::rodeos::compiler_builtins_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::console_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::context_free_system_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::crypto_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::data_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::db_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::filter_callbacks<callbacks>::register_callbacks<rhf_t>();

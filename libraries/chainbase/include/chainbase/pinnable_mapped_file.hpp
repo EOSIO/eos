@@ -16,11 +16,9 @@ enum db_error_code {
    dirty,
    incompatible,
    incorrect_db_version,
-   locked_mode_required,
    not_found,
    bad_size,
-   no_huge_page,
-   no_locked_mode,
+   unsupported_win32_mode,
    bad_header,
    no_access,
    aborted,
@@ -49,7 +47,7 @@ class pinnable_mapped_file {
          locked
       };
 
-      pinnable_mapped_file(const bfs::path& dir, bool writable, uint64_t shared_file_size, bool allow_dirty, map_mode mode, std::vector<std::string> hugepage_paths);
+      pinnable_mapped_file(const bfs::path& dir, bool writable, uint64_t shared_file_size, bool allow_dirty, map_mode mode);
       pinnable_mapped_file(pinnable_mapped_file&& o);
       pinnable_mapped_file& operator=(pinnable_mapped_file&&);
       pinnable_mapped_file(const pinnable_mapped_file&) = delete;
@@ -63,7 +61,7 @@ class pinnable_mapped_file {
       void                                          load_database_file(boost::asio::io_service& sig_ios);
       void                                          save_database_file();
       bool                                          all_zeros(char* data, size_t sz);
-      bip::mapped_region                            get_huge_region(const std::vector<std::string>& huge_paths);
+      void                                          setup_non_file_mapping();
 
       bip::file_lock                                _mapped_file_lock;
       bfs::path                                     _data_file_path;
@@ -72,7 +70,8 @@ class pinnable_mapped_file {
 
       bip::file_mapping                             _file_mapping;
       bip::mapped_region                            _file_mapped_region;
-      bip::mapped_region                            _mapped_region;
+      void*                                         _non_file_mapped_mapping = nullptr;
+      size_t                                        _non_file_mapped_mapping_size = 0;
 
 #ifdef _WIN32
       bip::permissions                              _db_permissions;

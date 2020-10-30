@@ -364,7 +364,12 @@ public:
          eraser.cancel();
       }
 
-      auto result = json::from_string(res.body());
+      fc::variant result;
+      if( !res.body().empty() ) {
+         try {
+            result = json::from_string( res.body() );
+         } catch( ... ) {}
+      }
       if (res.result() == http::status::internal_server_error) {
          fc::exception_ptr excp;
          try {

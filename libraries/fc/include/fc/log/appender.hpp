@@ -37,6 +37,7 @@ namespace fc {
          typedef std::shared_ptr<appender> ptr;
 
          virtual void initialize( boost::asio::io_service& io_service ) = 0;
+         virtual void shutdown() {}
          virtual void log( const log_message& m ) = 0;
    };
 }

@@ -111,6 +111,7 @@ set( fc_sources
      src/compress/smaz.cpp
      src/compress/zlib.cpp
      src/log/gelf_appender.cpp
+     src/log/zipkin_appender.cpp
      )
 
 file( GLOB_RECURSE fc_headers ${CMAKE_CURRENT_SOURCE_DIR} *.hpp *.h )

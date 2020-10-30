@@ -16,7 +16,35 @@ namespace {
 
 static appbase::abstract_plugin& amqp_trx_plugin_ = appbase::app().register_plugin<eosio::amqp_trx_plugin>();
 
-constexpr auto def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
+enum class ack_mode {
+   received,
+   executed,
+   in_block
+};
+
+std::istream& operator>>(std::istream& in, ack_mode& m) {
+   std::string s;
+   in >> s;
+   if( s == "received" )
+      m = ack_mode::received;
+   else if( s == "executed" )
+      m = ack_mode::executed;
+   else if( s == "in_block" )
+      m = ack_mode::in_block;
+   else
+      in.setstate( std::ios_base::failbit );
+   return in;
+}
+
+std::ostream& operator<<(std::ostream& osm, ack_mode m) {
+   if( m == ack_mode::received )
+      osm << "received";
+   else if( m == ack_mode::executed )
+      osm << "executed";
+   else if( m == ack_mode::in_block )
+      osm << "in_block";
+   return osm;
+}
 
 } // anonymous
 
@@ -31,6 +59,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::optional<amqp> amqp_trx;
 
    std::string amqp_trx_address;
+   ack_mode acked = ack_mode::executed;
+   std::map<uint32_t, eosio::amqp::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -58,10 +88,32 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          } else {
             FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
+         if( acked == ack_mode::received ) {
+            amqp_trx->ack( delivery_tag );
+         }
          return;
       } FC_LOG_AND_DROP()
 
       amqp_trx->reject( delivery_tag );
+   }
+
+   void on_block_start( uint32_t bn ) {
+      trx_queue_ptr->on_block_start();
+   }
+
+   void on_block_abort( uint32_t bn ) {
+      trx_queue_ptr->on_block_stop();
+   }
+
+   void on_accepted_block( const chain::block_state_ptr& bsp ) {
+      if( acked == ack_mode::in_block ) {
+         const auto& entry = tracked_delivery_tags.find( bsp->block_num );
+         if( entry != tracked_delivery_tags.end() ) {
+            amqp_trx->ack( entry->second, true );
+            tracked_delivery_tags.erase( entry );
+         }
+      }
+      trx_queue_ptr->on_block_stop();
    }
 
 private:
@@ -71,18 +123,14 @@ private:
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
-      auto trx_trace = fc_create_trace("Transaction");
+      auto trx_trace = fc_create_trace_with_id("Transaction", tid);
       auto trx_span = fc_create_span(trx_trace, "AMQP Received");
-      fc_add_str_tag(trx_span, "trx_id", tid.str());
+      fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
-            my->amqp_trx->ack( delivery_tag );
-
-            auto trx_trace = fc_create_trace("Transaction");
-            auto trx_span = fc_create_span(trx_trace, "Processed");
-            fc_add_str_tag(trx_span, "trx_id", trx->id().str());
-
+                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+            auto trx_span = fc_create_span_from_token(token, "Processed");
+            fc_add_tag(trx_span, "trx_id", trx->id());
 
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( result.contains<chain::exception_ptr>() ) {
@@ -90,19 +138,27 @@ private:
                if( my->trace_plug ) {
                   my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
                }
-               fc_add_str_tag(trx_span, "error", eptr->to_string());
+               fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
+               if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
+                  my->amqp_trx->ack( delivery_tag );
+               }
             } else {
                auto& trace = result.get<chain::transaction_trace_ptr>();
-               dlog( "accept_transaction ${id}", ("id", trx->id()) );
-               fc_add_str_tag(trx_span, "block_num", std::to_string(trace->block_num));
-               fc_add_str_tag(trx_span, "block_time", std::string(trace->block_time.to_time_point()));
-               fc_add_str_tag(trx_span, "elapsed", std::to_string(trace->elapsed.count()));
+               fc_add_tag(trx_span, "block_num", trace->block_num);
+               fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
+               fc_add_tag(trx_span, "elapsed", trace->elapsed.count());
                if( trace->receipt ) {
-                  fc_add_str_tag(trx_span, "status", std::string(trace->receipt->status));
+                  fc_add_tag(trx_span, "status", std::string(trace->receipt->status));
                }
                if( trace->except ) {
-                  fc_add_str_tag(trx_span, "error", trace->except->to_string());
+                  fc_add_tag(trx_span, "error", trace->except->to_string());
+               }
+               dlog( "accept_transaction ${id}", ("id", trx->id()) );
+               if( my->acked == ack_mode::executed ) {
+                  my->amqp_trx->ack( delivery_tag );
+               } else if ( my->acked == ack_mode::in_block ) {
+                  my->tracked_delivery_tags[trace->block_num] = delivery_tag;
                }
             }
          } );
@@ -110,7 +166,9 @@ private:
 };
 
 amqp_trx_plugin::amqp_trx_plugin()
-: my(std::make_shared<amqp_trx_plugin_impl>()) {}
+: my(std::make_shared<amqp_trx_plugin_impl>()) {
+   app().register_config_type<ack_mode>();
+}
 
 amqp_trx_plugin::~amqp_trx_plugin() {}
 
@@ -123,6 +181,9 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
       "Allow non-ordered speculative execution of transactions");
+   op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
+      "AMQP ack when 'received' from AMQP, when 'executed', or when 'in_block' is produced that contains trx.\n"
+      "Options: received, executed, in_block");
 }
 
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
@@ -135,8 +196,15 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
       my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
 
+      my->acked = options.at("amqp-trx-ack-mode").as<ack_mode>();
+
       my->trx_processing_queue_size = options.at("amqp-trx-queue-size").as<uint32_t>();
       my->allow_speculative_execution = options.at("amqp-trx-speculative-execution").as<bool>();
+
+      EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
+                  "amqp-trx-ack-mode = in_block not supported with amqp-trx-speculative-execution" );
+
+      my->chain_plug->enable_accept_transactions();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -171,9 +239,9 @@ void amqp_trx_plugin::plugin_startup() {
                                                                           prod_plugin,
                                                                           my->trx_processing_queue_size );
 
-      my->block_start_connection.emplace(chain.block_start.connect( [this]( uint32_t bn ){ my->trx_queue_ptr->on_block_start(); } ));
-      my->block_abort_connection.emplace(chain.block_abort.connect( [this]( uint32_t bn ){ my->trx_queue_ptr->on_block_stop(); } ));
-      my->accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->trx_queue_ptr->on_block_stop(); } ));
+      my->block_start_connection.emplace(chain.block_start.connect( [this]( uint32_t bn ){ my->on_block_start( bn ); } ));
+      my->block_abort_connection.emplace(chain.block_abort.connect( [this]( uint32_t bn ){ my->on_block_abort( bn ); } ));
+      my->accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_accepted_block( bsp ); } ));
 
       my->trx_queue_ptr->run();
 

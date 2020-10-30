@@ -6,8 +6,7 @@
 #include <iostream>
 
 #ifdef __linux__
-#include <sys/vfs.h>
-#include <linux/magic.h>
+#include <linux/mman.h>
 #endif
 
 namespace chainbase {
@@ -21,29 +20,25 @@ std::string chainbase_error_category::message(int ev) const {
       case db_error_code::ok: 
          return "Ok";
       case db_error_code::dirty:
-	 return "Database dirty flag set";
+         return "Database dirty flag set";
       case db_error_code::incompatible:
-	 return "Database incompatible; All environment parameters must match";
+         return "Database incompatible; All environment parameters must match";
       case db_error_code::incorrect_db_version:
-	 return "Database format not compatible with this version of chainbase";
-      case db_error_code::locked_mode_required:
-	 return "Locked mode is required for hugepage usage";
+         return "Database format not compatible with this version of chainbase";
       case db_error_code::not_found:
-	 return "Database file not found";
+         return "Database file not found";
       case db_error_code::bad_size:
-	 return "Bad size";
-      case db_error_code::no_huge_page:
-	 return "Hugepage support is a linux-only feature";
-      case db_error_code::no_locked_mode:
-	 return "Locked mode not supported on win32";
+         return "Bad size";
+      case db_error_code::unsupported_win32_mode:
+         return "Heap and locked mode are not supported on win32";
       case db_error_code::bad_header:
-	 return "Failed to read DB header";
+         return "Failed to read DB header";
       case db_error_code::no_access:
-	 return "Could not gain write access to the shared memory file";
+         return "Could not gain write access to the shared memory file";
       case db_error_code::aborted:
-	 return "Database load aborted";
+         return "Database load aborted";
       case db_error_code::no_mlock:
-	 return "Failed to mlock database";
+         return "Failed to mlock database";
       default:
          return "Unrecognized error code";
    }
@@ -54,8 +49,7 @@ const std::error_category& chainbase_error_category() {
    return the_category;
 }
 
-pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, uint64_t shared_file_size, bool allow_dirty,
-                                          map_mode mode, std::vector<std::string> hugepage_paths) :
+pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, uint64_t shared_file_size, bool allow_dirty, map_mode mode) :
    _data_file_path(bfs::absolute(dir/"shared_memory.bin")),
    _database_name(dir.filename().string()),
    _writable(writable)
@@ -64,17 +58,10 @@ pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, 
       std::string what_str("Database must be mulitple of " + std::to_string(_db_size_multiple_requirement) + " bytes");
       BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::bad_size), what_str));
    }
-#ifndef __linux__
-   if(hugepage_paths.size())
-      BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::no_huge_page)));
-#endif
-   if(hugepage_paths.size() && mode != locked)
-      BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::locked_mode_required)));
 #ifdef _WIN32
-   if(mode == locked)
-      BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::no_locked_mode)));
+   if(mode != mapped)
+      BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::unsupported_win32_mode)));
 #endif
-
    if(!_writable && !bfs::exists(_data_file_path)){
       std::string what_str("database file not found at " + _data_file_path.string());
       BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::not_found), what_str));
@@ -169,22 +156,18 @@ pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, 
       });
 
       try {
-         if(mode == heap)
-            _mapped_region = bip::mapped_region(bip::anonymous_shared_memory(_file_mapped_region.get_size()));
-         else
-            _mapped_region = get_huge_region(hugepage_paths);
-
+         setup_non_file_mapping();
          load_database_file(sig_ios);
 
-         if(mode == locked) {
 #ifndef _WIN32
-            if(mlock(_mapped_region.get_address(), _mapped_region.get_size())) {
+         if(mode == locked) {
+            if(mlock(_non_file_mapped_mapping, _non_file_mapped_mapping_size)) {
                std::string what_str("Failed to mlock database \"" + _database_name + "\"");
                BOOST_THROW_EXCEPTION(std::system_error(make_error_code(db_error_code::no_mlock), what_str));
-	       }
+            }
             std::cerr << "CHAINBASE: Database \"" << _database_name << "\" has been successfully locked in memory" << std::endl;
-#endif
          }
+#endif
 
          _file_mapped_region = bip::mapped_region();
       }
@@ -194,48 +177,62 @@ pinnable_mapped_file::pinnable_mapped_file(const bfs::path& dir, bool writable, 
          throw;
       }
 
-      _segment_manager = reinterpret_cast<segment_manager*>((char*)_mapped_region.get_address()+header_size);
+      _segment_manager = reinterpret_cast<segment_manager*>((char*)_non_file_mapped_mapping+header_size);
    }
 }
 
-bip::mapped_region pinnable_mapped_file::get_huge_region(const std::vector<std::string>& huge_paths) {
-   std::map<unsigned, std::string> page_size_to_paths;
-   const auto mapped_file_size = _file_mapped_region.get_size();
+void pinnable_mapped_file::setup_non_file_mapping() {
+   int common_map_opts = MAP_PRIVATE|MAP_ANONYMOUS;
 
-#ifdef __linux__
-   for(const std::string& p : huge_paths) {
-      struct statfs fs;
-      if(statfs(p.c_str(), &fs))
-         BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Could not statfs() path ") + p));
-      if(fs.f_type != HUGETLBFS_MAGIC)
-         BOOST_THROW_EXCEPTION(std::runtime_error(p + std::string(" does not look like a hugepagefs mount")));
-      page_size_to_paths[fs.f_bsize] = p;
-   }
-   for(auto it = page_size_to_paths.rbegin(); it != page_size_to_paths.rend(); ++it) {
-      if(mapped_file_size % it->first == 0) {
-         bfs::path hugepath = bfs::unique_path(bfs::path(it->second + "/%%%%%%%%%%%%%%%%%%%%%%%%%%"));
-         int fd = creat(hugepath.string().c_str(), _db_permissions.get_permissions());
-         if(fd < 0)
-            BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Could not open hugepage file in ") + it->second + ": " + std::string(strerror(errno))));
-         if(ftruncate(fd, mapped_file_size))
-            BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Failed to grow hugepage file to specified size")));
-         close(fd);
-         bip::file_mapping filemap(hugepath.generic_string().c_str(), _writable ? bip::read_write : bip::read_only);
-         bfs::remove(hugepath);
-         std::cerr << "CHAINBASE: Database \"" << _database_name << "\" using " << it->first << " byte pages" << std::endl;
-         return bip::mapped_region(filemap, _writable ? bip::read_write : bip::read_only);
-      }
+   _non_file_mapped_mapping_size = _file_mapped_region.get_size();
+   auto round_up_mmaped_size = [this](unsigned r) {
+      _non_file_mapped_mapping_size = (_non_file_mapped_mapping_size + (r-1u))/r*r;
+   };
+
+   const unsigned _1gb = 1u<<30u;
+   const unsigned _2mb = 1u<<21u;
+
+#if defined(MAP_HUGETLB) && defined(MAP_HUGE_1GB)
+   _non_file_mapped_mapping = mmap(NULL, _non_file_mapped_mapping_size, PROT_READ|PROT_WRITE, common_map_opts|MAP_HUGETLB|MAP_HUGE_1GB, -1, 0);
+   if(_non_file_mapped_mapping != MAP_FAILED) {
+      round_up_mmaped_size(_1gb);
+      std::cerr << "CHAINBASE: Database \"" << _database_name << "\" using 1GB pages" << std::endl;
+      return;
    }
 #endif
 
-   std::cerr << "CHAINBASE: Database \"" << _database_name << "\" not using huge pages" << std::endl;
-   return bip::mapped_region(bip::anonymous_shared_memory(mapped_file_size));
+#if defined(MAP_HUGETLB) && defined(MAP_HUGE_2MB)
+   //in the future as we expand to support other platforms, consider not specifying any size here so we get the default size. However
+   // when mapping the default hugepage size, we'll need to go figure out that size so that the munmap() can be specified correctly
+   _non_file_mapped_mapping = mmap(NULL, _non_file_mapped_mapping_size, PROT_READ|PROT_WRITE, common_map_opts|MAP_HUGETLB|MAP_HUGE_2MB, -1, 0);
+   if(_non_file_mapped_mapping != MAP_FAILED) {
+      round_up_mmaped_size(_2mb);
+      std::cerr << "CHAINBASE: Database \"" << _database_name << "\" using 2MB pages" << std::endl;
+      return;
+   }
+#endif
+
+#if defined(VM_FLAGS_SUPERPAGE_SIZE_2MB)
+   round_up_mmaped_size(_2mb);
+   _non_file_mapped_mapping = mmap(NULL, _non_file_mapped_mapping_size, PROT_READ|PROT_WRITE, common_map_opts, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
+   if(_non_file_mapped_mapping != MAP_FAILED) {
+      std::cerr << "CHAINBASE: Database \"" << _database_name << "\" using 2MB pages" << std::endl;
+      return;
+   }
+   _non_file_mapped_mapping_size = _file_mapped_region.get_size();  //restore to non 2MB rounded size
+#endif
+
+#ifndef _WIN32
+   _non_file_mapped_mapping = mmap(NULL, _non_file_mapped_mapping_size, PROT_READ|PROT_WRITE, common_map_opts, -1, 0);
+   if(_non_file_mapped_mapping == MAP_FAILED)
+      BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Failed to map database ") + _database_name + ": " + strerror(errno)));
+#endif
 }
 
 void pinnable_mapped_file::load_database_file(boost::asio::io_service& sig_ios) {
    std::cerr << "CHAINBASE: Preloading \"" << _database_name << "\" database file, this could take a moment..." << std::endl;
    char* const src = (char*)_file_mapped_region.get_address();
-   char* const dst = (char*)_mapped_region.get_address();
+   char* const dst = (char*)_non_file_mapped_mapping;
    size_t offset = 0;
    time_t t = time(nullptr);
    while(offset != _file_mapped_region.get_size()) {
@@ -263,7 +260,7 @@ bool pinnable_mapped_file::all_zeros(char* data, size_t sz) {
 
 void pinnable_mapped_file::save_database_file() {
    std::cerr << "CHAINBASE: Writing \"" << _database_name << "\" database file, this could take a moment..." << std::endl;
-   char* src = (char*)_mapped_region.get_address();
+   char* src = (char*)_non_file_mapped_mapping;
    char* dst = (char*)_file_mapped_region.get_address();
    size_t offset = 0;
    time_t t = time(nullptr);
@@ -287,11 +284,12 @@ pinnable_mapped_file::pinnable_mapped_file(pinnable_mapped_file&& o) :
    _mapped_file_lock(std::move(o._mapped_file_lock)),
    _data_file_path(std::move(o._data_file_path)),
    _database_name(std::move(o._database_name)),
-   _file_mapped_region(std::move(o._file_mapped_region)),
-   _mapped_region(std::move(o._mapped_region))
+   _file_mapped_region(std::move(o._file_mapped_region))
 {
    _segment_manager = o._segment_manager;
    _writable = o._writable;
+   _non_file_mapped_mapping = o._non_file_mapped_mapping;
+   o._non_file_mapped_mapping = nullptr;
    o._writable = false; //prevent dtor from doing anything interesting
 }
 
@@ -300,7 +298,8 @@ pinnable_mapped_file& pinnable_mapped_file::operator=(pinnable_mapped_file&& o) 
    _data_file_path = std::move(o._data_file_path);
    _database_name = std::move(o._database_name);
    _file_mapped_region = std::move(o._file_mapped_region);
-   _mapped_region = std::move(o._mapped_region);
+   _non_file_mapped_mapping = o._non_file_mapped_mapping;
+   o._non_file_mapped_mapping = nullptr;
    _segment_manager = o._segment_manager;
    _writable = o._writable;
    o._writable = false; //prevent dtor from doing anything interesting
@@ -309,9 +308,13 @@ pinnable_mapped_file& pinnable_mapped_file::operator=(pinnable_mapped_file&& o) 
 
 pinnable_mapped_file::~pinnable_mapped_file() {
    if(_writable) {
-      if(_mapped_region.get_address()) { //in heap or locked mode
+      if(_non_file_mapped_mapping) { //in heap or locked mode
          _file_mapped_region = bip::mapped_region(_file_mapping, bip::read_write);
          save_database_file();
+#ifndef _WIN32
+         if(munmap(_non_file_mapped_mapping, _non_file_mapped_mapping_size))
+            std::cerr << "CHAINBASE: ERROR: unmapping failed: " << strerror(errno) << std::endl;
+#endif
       }
       else
          if(_file_mapped_region.flush(0, 0, false) == false)
