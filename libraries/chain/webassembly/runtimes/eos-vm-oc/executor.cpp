@@ -241,7 +241,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
                   void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
                   start_func();
                }
-            });
+            }, code.start);
             apply_func(receiver, account, action);
          });
          break;
