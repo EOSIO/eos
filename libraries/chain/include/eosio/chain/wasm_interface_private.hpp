@@ -58,13 +58,17 @@ namespace eosio { namespace chain {
       };
 #endif
 
-      wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
+      wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, bool profile) : db(d), wasm_runtime_time(vm) {
 #ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::eos_vm)
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
 #endif
 #ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
-         if(vm == wasm_interface::vm_type::eos_vm_jit)
+         if(vm == wasm_interface::vm_type::eos_vm_jit && profile) {
+            eosio::vm::set_profile_interval_us(200);
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_profile_runtime>();
+         }
+         if(vm == wasm_interface::vm_type::eos_vm_jit && !profile)
             runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
 #endif
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
@@ -86,7 +90,7 @@ namespace eosio { namespace chain {
          if(is_shutting_down)
             for(wasm_cache_index::iterator it = wasm_instantiation_cache.begin(); it != wasm_instantiation_cache.end(); ++it)
                wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
-                  e.module.release();
+                  e.module.release()->fast_shutdown();
                });
       }
 

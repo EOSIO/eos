@@ -40,8 +40,9 @@ struct cloner_config : ship_client::connection_config {
    uint32_t    skip_to                   = 0;
    uint32_t    stop_before               = 0;
    bool        exit_on_filter_wasm_error = false;
-   eosio::name filter_name               = {}; // todo: remove
-   std::string filter_wasm               = {}; // todo: remove
+   eosio::name filter_name = {}; // todo: remove
+   std::string filter_wasm = {}; // todo: remove
+   bool        profile = false;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
@@ -85,7 +86,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, config->profile
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                                                   ,
                                                   app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
@@ -242,6 +243,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
+   op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -274,6 +276,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
+         my->config->profile     = options["profile-filter"].as<bool>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
