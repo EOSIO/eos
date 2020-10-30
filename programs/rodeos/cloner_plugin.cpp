@@ -299,7 +299,7 @@ void cloner_plugin::plugin_shutdown() {
    if (my->session)
       my->session->connection->close(false);
    my->timer.cancel();
-   fc::log_config::shutdown_appenders();
+   _zipkin_logger.shutdown();
    ilog("cloner_plugin stopped");
 }
 

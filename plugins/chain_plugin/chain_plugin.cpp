@@ -1262,7 +1262,7 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
-   fc::log_config::shutdown_appenders();
+   _zipkin_logger.shutdown();
 }
 
 void chain_plugin::handle_sighup() {
