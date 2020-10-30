@@ -74,7 +74,7 @@ notus:
 
 static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory",
   (void*)&eos_vm_oc_grow_memory,
-  std::integral_constant<std::size_t, find_intrinsic_index("eosvmoc_internal.grow_memory")>::value
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
