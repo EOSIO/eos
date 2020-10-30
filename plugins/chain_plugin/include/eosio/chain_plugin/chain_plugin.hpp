@@ -499,9 +499,7 @@ public:
                } else {
                   EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for lower bound", ("nm", p.lower_bound));
                }
-            }
-            else
-            {
+            } else {
                SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
                std::get<1>(lower_bound_lookup_tuple) = conv( lv );
             }
@@ -516,9 +514,7 @@ public:
                } else {
                   EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for upper bound", ("nm", p.upper_bound));
                }
-            }
-            else
-            {
+            } else {
                SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
                std::get<1>(upper_bound_lookup_tuple) = conv( uv );
             }
