@@ -81,18 +81,6 @@ struct unimplemented_callbacks {
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
 #undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
-   // crypto_api
-   void assert_recover_key(int, int, int, int, int) { return unimplemented<void>("assert_recover_key"); }
-   int  recover_key(int, int, int, int, int) { return unimplemented<int>("recover_key"); }
-   void assert_sha256(int, int, int) { return unimplemented<void>("assert_sha256"); }
-   void assert_sha1(int, int, int) { return unimplemented<void>("assert_sha1"); }
-   void assert_sha512(int, int, int) { return unimplemented<void>("assert_sha512"); }
-   void assert_ripemd160(int, int, int) { return unimplemented<void>("assert_ripemd160"); }
-   void sha1(int, int, int) { return unimplemented<void>("sha1"); }
-   void sha256(int, int, int) { return unimplemented<void>("sha256"); }
-   void sha512(int, int, int) { return unimplemented<void>("sha512"); }
-   void ripemd160(int, int, int) { return unimplemented<void>("ripemd160"); }
-
    // permission_api
    int check_transaction_authorization(int, int, int, int, int, int) {
       return unimplemented<int>("check_transaction_authorization");
@@ -141,43 +129,43 @@ struct unimplemented_callbacks {
       // todo: preconditions
 
       // privileged_api
-      Rft::template add<&Derived::is_feature_active>("env", "is_feature_active");
-      Rft::template add<&Derived::activate_feature>("env", "activate_feature");
-      Rft::template add<&Derived::get_resource_limits>("env", "get_resource_limits");
-      Rft::template add<&Derived::set_resource_limits>("env", "set_resource_limits");
-      Rft::template add<&Derived::set_proposed_producers>("env", "set_proposed_producers");
-      Rft::template add<&Derived::get_blockchain_parameters_packed>("env", "get_blockchain_parameters_packed");
-      Rft::template add<&Derived::set_blockchain_parameters_packed>("env", "set_blockchain_parameters_packed");
-      Rft::template add<&Derived::is_privileged>("env", "is_privileged");
-      Rft::template add<&Derived::set_privileged>("env", "set_privileged");
-      Rft::template add<&Derived::preactivate_feature>("env", "preactivate_feature");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, is_feature_active);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, activate_feature);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_resource_limits);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, set_resource_limits);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, set_proposed_producers);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_blockchain_parameters_packed);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, set_blockchain_parameters_packed);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, is_privileged);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, set_privileged);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, preactivate_feature);
 
       // producer_api
-      Rft::template add<&Derived::get_active_producers>("env", "get_active_producers");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_active_producers);
 
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX)                                                                         \
-   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
-   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
-   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
-   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
-   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
-   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
-   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
-   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
-   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
-   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                                           \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                                                    \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                                                  \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                                             \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                                            \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_previous);
 
 #define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX)                                                                          \
-   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
-   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
-   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
-   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
-   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
-   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
-   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
-   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
-   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
-   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_store);                                                           \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_remove);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_update);                                                          \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_primary);                                                    \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_find_secondary);                                                  \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_lowerbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_upperbound);                                                      \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_end);                                                             \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_next);                                                            \
+   RODEOS_REGISTER_CALLBACK(Rft, Derived, db_##IDX##_previous);
 
       // database_api
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
@@ -189,56 +177,44 @@ struct unimplemented_callbacks {
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
 #undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
-      // crypto_api
-      Rft::template add<&Derived::assert_recover_key>("env", "assert_recover_key");
-      Rft::template add<&Derived::recover_key>("env", "recover_key");
-      Rft::template add<&Derived::assert_sha256>("env", "assert_sha256");
-      Rft::template add<&Derived::assert_sha1>("env", "assert_sha1");
-      Rft::template add<&Derived::assert_sha512>("env", "assert_sha512");
-      Rft::template add<&Derived::assert_ripemd160>("env", "assert_ripemd160");
-      Rft::template add<&Derived::sha1>("env", "sha1");
-      Rft::template add<&Derived::sha256>("env", "sha256");
-      Rft::template add<&Derived::sha512>("env", "sha512");
-      Rft::template add<&Derived::ripemd160>("env", "ripemd160");
-
       // permission_api
-      Rft::template add<&Derived::check_transaction_authorization>("env", "check_transaction_authorization");
-      Rft::template add<&Derived::check_permission_authorization>("env", "check_permission_authorization");
-      Rft::template add<&Derived::get_permission_last_used>("env", "get_permission_last_used");
-      Rft::template add<&Derived::get_account_creation_time>("env", "get_account_creation_time");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, check_transaction_authorization);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, check_permission_authorization);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_permission_last_used);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_account_creation_time);
 
       // system_api
-      Rft::template add<&Derived::publication_time>("env", "publication_time");
-      Rft::template add<&Derived::is_feature_activated>("env", "is_feature_activated");
-      Rft::template add<&Derived::get_sender>("env", "get_sender");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, publication_time);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, is_feature_activated);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_sender);
 
       // context_free_system_api
-      Rft::template add<&Derived::eosio_assert_code>("env", "eosio_assert_code");
-      Rft::template add<&Derived::eosio_exit>("env", "eosio_exit");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, eosio_assert_code);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, eosio_exit);
 
       // authorization_api
-      Rft::template add<&Derived::require_recipient>("env", "require_recipient");
-      Rft::template add<&Derived::require_auth>("env", "require_auth");
-      Rft::template add<&Derived::require_auth2>("env", "require_auth2");
-      Rft::template add<&Derived::has_auth>("env", "has_auth");
-      Rft::template add<&Derived::is_account>("env", "is_account");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, require_recipient);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, require_auth);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, require_auth2);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, has_auth);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, is_account);
 
       // context_free_transaction_api
-      Rft::template add<&Derived::read_transaction>("env", "read_transaction");
-      Rft::template add<&Derived::transaction_size>("env", "transaction_size");
-      Rft::template add<&Derived::expiration>("env", "expiration");
-      Rft::template add<&Derived::tapos_block_prefix>("env", "tapos_block_prefix");
-      Rft::template add<&Derived::tapos_block_num>("env", "tapos_block_num");
-      Rft::template add<&Derived::get_action>("env", "get_action");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, read_transaction);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, transaction_size);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, expiration);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, tapos_block_prefix);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, tapos_block_num);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_action);
 
       // transaction_api
-      Rft::template add<&Derived::send_inline>("env", "send_inline");
-      Rft::template add<&Derived::send_context_free_inline>("env", "send_context_free_inline");
-      Rft::template add<&Derived::send_deferred>("env", "send_deferred");
-      Rft::template add<&Derived::cancel_deferred>("env", "cancel_deferred");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, send_inline);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, send_context_free_inline);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, send_deferred);
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, cancel_deferred);
 
       // context_free_api
-      Rft::template add<&Derived::get_context_free_data>("env", "get_context_free_data");
+      RODEOS_REGISTER_CALLBACK(Rft, Derived, get_context_free_data);
    } // register_callbacks()
 };   // unimplemented_callbacks
 

@@ -249,7 +249,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
+      auto                           trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
       auto                                    thread_state = handler->state_cache->get_state();
       eosio::ship_protocol::transaction_trace tt;
@@ -266,7 +266,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
       *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
-      auto free_on_except = fc::make_scoped_exit([&]{
+      auto                    free_on_except = fc::make_scoped_exit([&] {
          free(*result);
          *result = nullptr;
       });

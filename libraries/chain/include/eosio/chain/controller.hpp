@@ -106,7 +106,6 @@ namespace eosio { namespace chain {
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
             pinnable_mapped_file::map_mode db_map_mode      = pinnable_mapped_file::map_mode::mapped;
-            vector<string>           db_hugepage_paths;
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
@@ -328,6 +327,7 @@ namespace eosio { namespace chain {
          static std::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
          signal<void(uint32_t)>                        block_start; // block_num
+         signal<void(uint32_t)>                        block_abort; // block_num
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;

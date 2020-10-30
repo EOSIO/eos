@@ -10,7 +10,7 @@ using namespace appbase;
 class compressed_proof_generator {
 public:
    using action_filter_func = std::function<bool(const chain::action& a)>;
-   using merkle_proof_result_func = std::function<void(std::vector<char>&&)>;
+   using merkle_proof_result_func = std::function<void(const chain::block_state_ptr&, std::vector<char>&&)>;
    using result_callback_funcs = std::pair<action_filter_func, merkle_proof_result_func>;
 
    compressed_proof_generator(chain::controller& controller, std::vector<result_callback_funcs>&& callbacks);

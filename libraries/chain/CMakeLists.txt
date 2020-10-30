@@ -32,7 +32,8 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc/stack.cpp
                              webassembly/runtimes/eos-vm-oc/switch_stack_linux.s
                              webassembly/runtimes/eos-vm-oc.cpp
-                             webassembly/runtimes/eos-vm-oc/default_real_main.cpp)
+                             webassembly/runtimes/eos-vm-oc/default_real_main.cpp
+                             webassembly/runtimes/eos-vm-oc/softfloat.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
@@ -68,7 +69,6 @@ set(CHAIN_WEBASSEMBLY_SOURCES
    webassembly/permission.cpp
    webassembly/privileged.cpp
    webassembly/producer.cpp
-   webassembly/softfloat.cpp
    webassembly/system.cpp
    webassembly/transaction.cpp
 )
@@ -136,7 +136,7 @@ target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
                        softfloat builtins rocksdb ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS} ${CHAIN_RT_LINKAGE}
                      )
 if(ENABLE_CPPKIN)
-   target_link_libraries( eosio_chain cppkin.so libCore.so )
+   target_link_libraries( eosio_chain cppkin.a )
 endif()
 
 target_include_directories( eosio_chain

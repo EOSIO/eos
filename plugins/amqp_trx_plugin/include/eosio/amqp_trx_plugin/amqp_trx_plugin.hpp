@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 #include <appbase/application.hpp>
 
 namespace eosio {
@@ -10,7 +11,7 @@ using transaction_msg = std::variant<chain::packed_transaction_v0, chain::packed
 class amqp_trx_plugin : public appbase::plugin<amqp_trx_plugin> {
 
  public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_plugin)(producer_plugin))
 
    amqp_trx_plugin();
    virtual ~amqp_trx_plugin();

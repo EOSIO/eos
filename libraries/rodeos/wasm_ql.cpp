@@ -5,6 +5,7 @@
 #include <b1/rodeos/callbacks/console.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
+#include <b1/rodeos/callbacks/unimplemented_query.hpp>
 #include <b1/rodeos/rodeos.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/multi_index/member.hpp>
@@ -70,6 +71,7 @@ struct callbacks : action_callbacks<callbacks>,
                    db_callbacks<callbacks>,
                    memory_callbacks<callbacks>,
                    query_callbacks<callbacks>,
+                   unimplemented_query_callbacks<callbacks>,
                    unimplemented_callbacks<callbacks> {
    wasm_ql::thread_state& thread_state;
    rodeos::chaindb_state& chaindb_state;
@@ -95,6 +97,7 @@ void register_callbacks() {
    db_callbacks<callbacks>::register_callbacks<rhf_t>();
    memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    query_callbacks<callbacks>::register_callbacks<rhf_t>();
+   unimplemented_query_callbacks<callbacks>::register_callbacks<rhf_t>();
    unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 

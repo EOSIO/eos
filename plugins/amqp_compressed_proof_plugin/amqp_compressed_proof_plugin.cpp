@@ -3,18 +3,11 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include <eosio/amqp/reliable_amqp_publisher.hpp>
-
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/key.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <fc/io/cfile.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 
-using namespace boost::multi_index;
 using namespace std::string_literals;
 
 namespace eosio {
@@ -117,13 +110,15 @@ struct compressed_proof_generator_impl {
    void on_applied_transaction(const chain::transaction_trace_ptr& trace) {
       if(!trace->receipt)
          return;
-      //only executed & delayed transaction traces would make it in to action_mroot
       if(trace->receipt->status != chain::transaction_receipt::status_enum::executed &&
+         trace->receipt->status != chain::transaction_receipt::status_enum::soft_fail &&
          trace->receipt->status != chain::transaction_receipt::status_enum::delayed)
          return;
 
       if(chain::is_onblock(*trace))
          onblock_trace.emplace(trace);
+      else if(trace->failed_dtrx_trace)
+         cached_traces[trace->failed_dtrx_trace->id] = trace;
       else
          cached_traces[trace->id] = trace;
    }
@@ -169,7 +164,7 @@ struct compressed_proof_generator_impl {
          }
 
          if(any_interested)
-            cb.second(cc.generate_serialized_proof(action_return_value_active_this_block));
+            cb.second(bsp, cc.generate_serialized_proof(action_return_value_active_this_block));
       }
    }
 
@@ -290,7 +285,7 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
                   }
                   return false;
                },
-               [&publisher](std::vector<char>&& serialized_proof) {
+               [&publisher](const chain::block_state_ptr& bsp, std::vector<char>&& serialized_proof) {
                   publisher.publish_message_raw(std::move(serialized_proof));
                }
             ));
