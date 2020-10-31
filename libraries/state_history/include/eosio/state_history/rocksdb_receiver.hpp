@@ -7,13 +7,13 @@ namespace eosio {
 namespace state_history {
 
 /*
- *   Receiver of rocksdb data.
+ *   Receiver of rocksdb data for SHiP delta generation.
  *
  *   It has 2 modes of operation:
  *
- *   1. When operating on the single entry mode, then this mode will be used when working with single key entries, because
+ *   1. When operating on the "single entry" mode, it will be used when working with single key entries, because
  *   some of these objects (primary and secondary indexes) require information about the table they belong to, then for
- *   these values we will receive 2 calls, the first one related to the table_id_object_view (but in this case this object
+ *   these objects we will receive 2 calls, the first one related to the table_id_object_view (but in this case this object
  *   does not contain proper values for payer so it can't be used to create its delta) associated with them and
  *   the second call for the object itself. For that reason there is logic also associated to detect when we want
  *   to store the table_id_object_view itself (which is when we receive only 1 call for this and the next call is not
