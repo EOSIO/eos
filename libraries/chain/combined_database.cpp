@@ -657,7 +657,7 @@ namespace eosio { namespace chain {
       return genesis;
    }
 
-#warning need to change this method to just return a char
+   // TODO : need to change this method to just return a char
    std::vector<char> make_rocksdb_contract_kv_prefix() { return std::vector<char> { backing_store::rocksdb_contract_kv_prefix }; }
    char make_rocksdb_contract_db_prefix() { return backing_store::rocksdb_contract_db_prefix; }
 
