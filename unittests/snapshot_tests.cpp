@@ -568,79 +568,55 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 }
 */
 
-/* TODO: need new bin/json gzipped files
-// TODO: make this insensitive to abi_def changes, which isn't part of consensus or part of the database format
+/*
+When WTMSIG changes were introduced in 1.8.x, the snapshot had to be able 
+to store more than a single producer key.
+This test intends to make sure that a snapshot from before that change could 
+be correctly loaded into a new version to facilitate upgrading from 1.8.x
+to v2.0.x without a replay.
+
+The original test simulated a snapshot from 1.8.x with an inflight schedule change, loaded it on the newer version and reconstructed the chain via 
+push_transaction. This is too fragile. 
+
+The fix is to save block.log and its corresponding snapshot with infight
+schedule changes, load the snapshot and replay the block.log on the new
+version, and verify their integrity.
+*/
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
-
-   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
-   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
-   BOOST_REQUIRE(genesis);
-   BOOST_REQUIRE_EQUAL(genesis->compute_chain_id(), chain.control->get_chain_id());
-   const auto& gpo = chain.control->get_global_properties();
-   BOOST_REQUIRE_EQUAL(gpo.chain_id, chain.control->get_chain_id());
-   auto block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 3); // ensure that test setup stays consistent with original snapshot setup
-   chain.create_account("snapshot"_n);
-   block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 4);
-
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 0);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 0);
-
-   auto res = chain.set_producers_legacy( {"snapshot"_n} );
-   block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 5);
-   chain.control->abort_block();
-   ///< End deterministic code to generate blockchain for comparison
-
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 1);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 1);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
-
    static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-   auto v2 = SNAPSHOT_SUITE::load_from_file("snap_v2_prod_sched");
-   int ordinal = 0;
 
-   ////////////////////////////////////////////////////////////////////////
-   // Verify that the controller gets its chain_id from the snapshot
-   ////////////////////////////////////////////////////////////////////////
+   // consruct a chain by replaying the saved blocks.log
+   std::string source_log_dir_str = snapshot_file<snapshot::binary>::base_path;
+   source_log_dir_str += "prod_sched";
+   const auto source_log_dir = bfs::path(source_log_dir_str.c_str());
+   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
+   auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
+   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
+   bfs::create_directories(config.blog.log_dir);
+   bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
+   tester blockslog_chain(config, *genesis);
 
-   auto reader = SNAPSHOT_SUITE::get_reader(v2);
-   snapshotted_tester v2_tester(chain.get_config(), reader, ordinal++);
-   auto chain_id = chain::controller::extract_chain_id(*reader);
-   BOOST_REQUIRE_EQUAL(chain_id, v2_tester.control->get_chain_id());
-   BOOST_REQUIRE_EQUAL(chain.control->get_chain_id(), v2_tester.control->get_chain_id());
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
+   // consruct a chain by loading the saved snapshot
+   auto ordinal = 0;
+   auto old_snapshot = SNAPSHOT_SUITE::load_from_file("snap_v2_prod_sched");
+   snapshotted_tester snapshot_chain(blockslog_chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
 
-   // create a latest version snapshot from the loaded v2 snapthos
-   auto latest_from_v2_writer = SNAPSHOT_SUITE::get_writer();
-   v2_tester.control->write_snapshot(latest_from_v2_writer);
-   auto latest_from_v2 = SNAPSHOT_SUITE::finalize(latest_from_v2_writer);
+   // make sure blockslog_chain and snapshot_chain agree to each other 
+   verify_integrity_hash<SNAPSHOT_SUITE>(*blockslog_chain.control, *snapshot_chain.control);
+   
+   // extra round of testing
+   // create a latest snapshot
+   auto latest_writer = SNAPSHOT_SUITE::get_writer();
+   snapshot_chain.control->write_snapshot(latest_writer);
+   auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+   
+   // construct a chain from the latest snapshot
+   snapshotted_tester latest_chain(blockslog_chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
 
-   // load the latest snapshot in a new tester and compare integrity
-   snapshotted_tester latest_from_v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest_from_v2), ordinal++);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_from_v2_tester.control);
-
-   const auto& v2_gpo = v2_tester.control->get_global_properties();
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.version, 1);
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers.size(), 1);
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
-
-   // produce block
-   auto new_block = chain.produce_block();
-   // undo the auto-pending from tester
-   chain.control->abort_block();
-
-   // push that block to all sub testers and validate the integrity of the database after it.
-   v2_tester.push_block(new_block);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
-
-   latest_from_v2_tester.push_block(new_block);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *latest_from_v2_tester.control);
+   // make sure both chains agree
+   verify_integrity_hash<SNAPSHOT_SUITE>(*blockslog_chain.control, *latest_chain.control);
 }
-*/
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_block_log, SNAPSHOT_SUITE, snapshot_suites)
 {
