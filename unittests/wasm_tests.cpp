@@ -588,20 +588,20 @@ BOOST_FIXTURE_TEST_CASE( entry_import, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( entry_db, TESTER ) try {
-   create_accounts( {N(entrydb)} );
+   create_accounts( {"entrydb"_n} );
    produce_block();
 
-   set_code(N(entrydb), entry_db_wast);
+   set_code("entrydb"_n, entry_db_wast);
 
    signed_transaction trx;
    action act;
-   act.account = N(entrydb);
-   act.name = N();
-   act.authorization = vector<permission_level>{{N(entrydb),config::active_name}};
+   act.account = "entrydb"_n;
+   act.name = ""_n;
+   act.authorization = vector<permission_level>{{"entrydb"_n,config::active_name}};
    trx.actions.push_back(act);
 
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(entrydb), "active" ), control->get_chain_id());
+   trx.sign(get_private_key( "entrydb"_n, "active" ), control->get_chain_id());
    push_transaction(trx);
 } FC_LOG_AND_RETHROW()
 
