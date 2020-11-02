@@ -1144,9 +1144,9 @@ BOOST_FIXTURE_TEST_CASE(checktime_start, TESTER) try {
 )
 )=====";
    produce_blocks(2);
-   create_account( N(testapi) );
+   create_account( "testapi"_n );
    produce_blocks(10);
-   set_code( N(testapi), checktime_start_wast );
+   set_code( "testapi"_n, checktime_start_wast );
    produce_blocks(1);
 
    BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
