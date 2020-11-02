@@ -338,7 +338,7 @@ namespace eosio { namespace chain { namespace backing_store {
          if (past_end(session_iter)) {
             --session_iter;
             // either way, the iterator after our known table should have a primary key in this table as the previous iterator
-            if (!past_end(session_iter) || session_iter == current_session.begin()) {
+            if (past_end(session_iter)) {
                // NOTE: matching chainbase functionality, if iterator store found, but no key in db for table
                return primary_iter_store.invalid_iterator();
             }
