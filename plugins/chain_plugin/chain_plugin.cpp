@@ -2443,6 +2443,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
       return result;
 
+   const bool reverse = p.reverse && *p.reverse;
    auto& kv_database = const_cast<chain::controller&>(db).kv_db();
    if (kv_database.get_backing_store() == eosio::chain::backing_store_type::CHAINBASE) {
       auto walk_table_range = [&result,&p]( auto itr, auto end_itr ) {
@@ -2463,7 +2464,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
       auto lower = idx.lower_bound( lower_bound_lookup_tuple );
       auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-      if( p.reverse && *p.reverse ) {
+      if( reverse ) {
          walk_table_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
       } else {
          walk_table_range( lower, upper );
@@ -2476,21 +2477,19 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
                  "Support for configured backing_store has not been added to get_table_by_scope");
       table_receiver receiver(result, p);
       auto kp = receiver.keep_processing_entries();
-      backing_store::rocksdb_contract_db_table_writer<table_receiver, std::decay_t < decltype(kp)>> writer(receiver, backing_store::key_context::table_only, kp);
       auto key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(lower_bound_lookup_tuple), std::get<2>(lower_bound_lookup_tuple));
       auto lower = backing_store::db_key_value_format::create_full_key(key, std::get<0>(lower_bound_lookup_tuple));
       key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(upper_bound_lookup_tuple), std::get<2>(upper_bound_lookup_tuple));
       auto upper = backing_store::db_key_value_format::create_full_key(key, std::get<0>(upper_bound_lookup_tuple));
-      if( p.reverse && *p.reverse ) {
-         // use the previous
+      if (reverse) {
          lower = lower.previous();
-#warning but also need to add the crap....
-         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), upper, lower, writer);
       }
-      else {
-#warning need to change walk_rocksdb_entries_with_prefix iterating code to use upperbound for end, unless begin is greater then end, then we need to take lowerbound and decrement (as long as it isn't begin')
-         eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower, upper, writer);
-      }
+      // since upper is either the end of a forward search, or the reverse iterator <= for the beginning of the end of
+      // the table, we need to move it to just before the beginning of the next table
+      upper = upper.next();
+      const auto context = (reverse) ? backing_store::key_context::table_only_reverse : backing_store::key_context::table_only;
+      backing_store::rocksdb_contract_db_table_writer<table_receiver, std::decay_t < decltype(kp)>> writer(receiver, context, kp);
+      eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower, upper, writer);
       const auto stopped_at = writer.stopped_at();
       if (stopped_at) {
          result.more = stopped_at->scope.to_string();
