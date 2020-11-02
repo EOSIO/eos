@@ -900,6 +900,103 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(test_deltas_table_and_kv) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      table_deltas_tester chain(setup_policy::none);
+      chain.set_backing_store(backing_store);
+      chain.execute_setup_policy(setup_policy::full);
+
+      chain.produce_blocks(2);
+
+      chain.create_accounts({"tester"_n, "kvtable"_n});
+
+      chain.set_code("tester"_n, contracts::get_table_test_wasm());
+      chain.set_abi("tester"_n, contracts::get_table_test_abi().data());
+
+      chain.set_code(config::system_account_name, contracts::kv_bios_wasm());
+      chain.set_abi(config::system_account_name, contracts::kv_bios_abi().data());
+
+      auto trace = chain.push_action("eosio"_n, "ramkvlimits"_n, "eosio"_n, mutable_variant_object()("k", 1024)("v", 1024)("i", 1024));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      chain.set_code("kvtable"_n, contracts::contracts::kv_test_wasm());
+      chain.set_abi("kvtable"_n, contracts::kv_test_abi().data());
+
+      chain.produce_block();
+
+      trace = chain.push_action("tester"_n, "addhashobj"_n, "tester"_n, mutable_variant_object()("hashinput", "hello"));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("tester"_n, "addnumobj"_n, "tester"_n, mutable_variant_object()("input", 2));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("tester"_n, "addnumobj"_n, "tester"_n, mutable_variant_object()("input", 3));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 1));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("kvtable"_n, "set"_n, "kvtable"_n,  mutable_variant_object()("contract", "kvtable"_n)("k", "00")("v", "7897")("payer", "kvtable"));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("kvtable"_n, "set"_n, "kvtable"_n,  mutable_variant_object()("contract", "kvtable"_n)("k", "01")("v", "7897")("payer", "kvtable"));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      trace = chain.push_action("kvtable"_n, "erase"_n, "kvtable"_n, mutable_variant_object()("contract", "kvtable"_n)("k", "00"));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      auto result = chain.find_table_delta("contract_table");
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_table->rows.obj.size(), 2);
+      auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table);
+
+      std::set<std::string> expected_contract_table_names {"hashobjs", "hashobjs....1"};
+      std::set<std::string> result_contract_table_names;
+      for(auto &contract_table : contract_tables) {
+         result_contract_table_names.insert(contract_table.table.to_string());
+      }
+      BOOST_REQUIRE(expected_contract_table_names == result_contract_table_names);
+
+      result = chain.find_table_delta("key_value");
+      BOOST_REQUIRE(result.first);
+
+      auto key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
+      BOOST_REQUIRE_EQUAL(key_values.size(), 1);
+
+      chain.produce_block();
+
+      result = chain.find_table_delta("contract_table");
+      BOOST_REQUIRE(!result.first);
+
+      result = chain.find_table_delta("key_value");
+      BOOST_REQUIRE(!result.first);
+
+      result = chain.find_table_delta("contract_table", true);
+      BOOST_REQUIRE(result.first);
+
+      auto &it_contract_table_full = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 3);
+      contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table);
+
+      std::set<std::string> expected_contract_table_names_full {"abihash", "hashobjs", "hashobjs....1"};
+      std::set<std::string> result_contract_table_names_full;
+      for(auto &contract_table : contract_tables) {
+         result_contract_table_names_full.insert(contract_table.table.to_string());
+      }
+      BOOST_REQUIRE(result_contract_table_names_full == expected_contract_table_names_full);
+
+      result = chain.find_table_delta("key_value", true);
+      BOOST_REQUIRE(result.first);
+
+      key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
+      BOOST_REQUIRE_EQUAL(key_values.size(), 1);
+   }
+}
+
 BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
