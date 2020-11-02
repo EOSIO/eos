@@ -28,11 +28,11 @@ struct act_sig {
    eosio::chain::signature_type sig;
 
    static account_name get_account() {
-      return N(hello);
+      return "hello"_n;
    }
 
    static action_name get_name() {
-      return N(act);
+      return "act"_n;
    }
 };
 FC_REFLECT(act_sig, (sig) )
@@ -2678,7 +2678,7 @@ BOOST_AUTO_TEST_CASE(abi_large_signature)
       ds.seekp(0);
       fc::raw::unpack(ds, sig);
 
-      name a = N(hello);
+      name a = "hello"_n;
       authority owner_auth =  authority( get_public_key( a, "owner" ) );
       chain::action large_act( vector<permission_level>{{config::system_account_name,config::active_name}},
                                act_sig{
@@ -2690,7 +2690,7 @@ BOOST_AUTO_TEST_CASE(abi_large_signature)
       bool check_data = true;
       try {
          abi_serializer::to_variant( large_act, var, get_resolver( fc::json::from_string( abi_str ).as<abi_def>() ),
-                                     fc::milliseconds( 1 ) );
+                                     abi_serializer::create_yield_function( fc::milliseconds( 1 ) ) );
       } catch( abi_serialization_deadline_exception& ) {
          // can be thrown if check_deadline is tripped after deadline in to_base58 is tripped
          check_data = false;
