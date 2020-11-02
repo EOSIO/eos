@@ -8,9 +8,11 @@ export DOCKER_CLI_EXPERIMENTAL='enabled'
 export ORG_REPO=$(echo $FULL_TAG | cut -d: -f1)
 export TAG=$(echo $FULL_TAG | cut -d: -f2)
 export MANIFEST_COMMAND="docker manifest inspect '$ORG_REPO:$TAG'"
+set +e # manifest query can return a non-zero exit status
 echo "$ $MANIFEST_COMMAND"
 eval $MANIFEST_COMMAND
 EXISTS="$?"
+set -eo pipefail
 # build, if neccessary
 if [[ "$EXISTS" != '0' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
     export DOCKER_BUILD_COMMAND="docker build --no-cache -t '$FULL_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
