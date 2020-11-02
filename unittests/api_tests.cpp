@@ -1049,7 +1049,7 @@ BOOST_FIXTURE_TEST_CASE(checktime_intrinsic, TESTER) { try {
 
 BOOST_FIXTURE_TEST_CASE(checktime_grow_memory, TESTER) { try {
 	produce_blocks(2);
-	create_account( N(testapi) );
+	create_account( "testapi"_n );
 	produce_blocks(10);
 
         std::stringstream ss;
@@ -1068,7 +1068,7 @@ BOOST_FIXTURE_TEST_CASE(checktime_grow_memory, TESTER) { try {
 )CONTRACT";
         }
         ss<< "))";
-	set_code( N(testapi), ss.str().c_str() );
+	set_code( "testapi"_n, ss.str().c_str() );
 	produce_blocks(1);
 
         //initialize cache
