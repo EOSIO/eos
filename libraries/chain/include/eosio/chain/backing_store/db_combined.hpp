@@ -51,22 +51,6 @@ bool read_rocksdb_entry(const eosio::session::shared_bytes& actual_db_kv_key,
    return function(contract, post_contract, remaining, value.data(), value.size());
 };
 
-template <typename F>
-void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
-                                      const eosio::session::shared_bytes& begin_key,
-                                      const eosio::session::shared_bytes& end_key,
-                                      F& function) {
-   detail::manage_stack ms(kv_undo_stack);
-   auto begin_it = kv_undo_stack->top().lower_bound(begin_key);
-   const auto end_it = kv_undo_stack->top().lower_bound(end_key);
-//   auto move_it = (begin_key < end_key ? [](auto& itr) { return ++itr; } :  [](auto& itr) { return --itr; } );
-   bool keep_processing = true;
-   for (auto it = begin_it; keep_processing && it != end_it; ++it) {
-      // iterating through the session will always return a valid value
-      keep_processing = read_rocksdb_entry((*it).first, *(*it).second, function);
-   }
-};
-
 struct table_id_object_view {
    account_name code;  //< code should not be changed within a chainbase modifier lambda
    scope_name scope; //< scope should not be changed within a chainbase modifier lambda
@@ -228,7 +212,7 @@ public:
    void extract_primary_index(b1::chain_kv::bytes::const_iterator remaining,
                               b1::chain_kv::bytes::const_iterator key_end, const char *value,
                               std::size_t value_size) {
-      if (context_ != key_context::table_only) {
+      if (!is_table_only()) {
          uint64_t primary_key;
          EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
                     "DB intrinsic key-value store composite key is malformed");
@@ -242,7 +226,7 @@ public:
    void extract_secondary_index(b1::chain_kv::bytes::const_iterator remaining,
                                 b1::chain_kv::bytes::const_iterator key_end, const char *value,
                                 std::size_t value_size) {
-      if (context_ != key_context::table_only) {
+      if (!is_table_only()) {
          IndexType secondary_key;
          uint64_t primary_key;
          EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, secondary_key), bad_composite_key_exception,
@@ -262,6 +246,11 @@ public:
             composite_key);
 
       const name code = name{contract};
+      if (table_context_ && is_reversed() && !is_same_table(code, scope, table)) {
+         table_context_->count = total_count();
+         receiver_.add_row(*table_context_);
+      }
+
       if (!keep_processing_()) {
          // performing the check after retrieving the prefix to provide similar results for RPC calls
          // (indicating next scope)
@@ -274,21 +263,17 @@ public:
          backing_store::payer_payload pp(value, value_size);
 
 
-         if (is_table_reversed()) {
+         if (is_reversed()) {
             table_context_ = table_id_object_view{code, scope, table, pp.payer, 0};
          }
          else {
             table_context_ = table_id_object_view{code, scope, table, pp.payer, total_count()};
-            receiver_.add_row(table_context_);
+            receiver_.add_row(*table_context_);
          }
 
       } else if (type != key_type::primary_to_sec) {
-         // for individual keys, need to report the table info for reference
+         // for individual keys or reversed, need to report the table info for reference
          check_context(code, scope, table);
-         if (is_table_reversed() && !is_same_table(code, scope, table)) {
-            table_context_.count = total_count();
-            receiver_.add_row(table_context_);
-         }
          std::invoke(extract_index_member_fun_[static_cast<int>(type)], this, remaining, composite_key.end(),
                      value, value_size);
       }
@@ -301,6 +286,22 @@ public:
       }
       return std::optional<table_id_object_view>();
    }
+
+   bool is_reversed() const {
+      return context_ == key_context::complete_reverse || context_ == key_context::table_only_reverse;
+   };
+
+   bool is_table_only() const {
+      return context_ == key_context::table_only || context_ == key_context::table_only_reverse;
+   };
+
+   // called to indicate processing is complete (to allow completion of reversed table processing)
+   void complete() {
+      if (is_reversed() && table_context_ && !stopped_processing_) {
+         table_context_->count = total_count();
+         receiver_.add_row(*table_context_);
+      }
+   }
 private:
    template<typename IndexType>
    uint32_t& secondary_count() {
@@ -311,14 +312,13 @@ private:
 
    void check_context(const name& code, const name& scope, const name& table) {
       // this method only has to do with standalone processing
-      if (context_ != key_context::standalone ||
-          is_same_table(code, scope, table)) {
+      if (context_ != key_context::standalone || is_same_table(code, scope, table)) {
          return;
       }
-      table_context_.code = code;
-      table_context_.scope = scope;
-      table_context_.table = table;
-      receiver_.add_row(table_context_);
+      table_context_->code = code;
+      table_context_->scope = scope;
+      table_context_->table = table;
+      receiver_.add_row(*table_context_);
    }
 
    // calculates the total_count of keys, and zeros out the counts
@@ -333,19 +333,16 @@ private:
    }
 
    bool is_same_table(const name& code, const name& scope, const name& table) const {
-      return table_context_.code == code &&
-             table_context_.scope == scope &&
-             table_context_.table == table;
+      return table_context_ &&
+             table_context_->code == code &&
+             table_context_->scope == scope &&
+             table_context_->table == table;
    }
-
-   bool is_table_reversed() {
-      return context_ == key_context::complete_reverse || context_ == key_context::table_only_reverse;
-   };
 
    Receiver &receiver_;
    const key_context context_;
    Function keep_processing_;
-   table_id_object_view table_context_;
+   std::optional<table_id_object_view> table_context_;
 
    using extract_index_member_fun_t = void (rocksdb_contract_db_table_writer::*)(
          b1::chain_kv::bytes::const_iterator, b1::chain_kv::bytes::const_iterator, const char *, std::size_t);
@@ -397,6 +394,93 @@ public:
 private:
    Receiver& receiver_;
    const Function& keep_processing_;
+};
+
+namespace detail {
+   // used to handle forward and reverse iteration and the limitations of no upper_bound
+   class iterator_pair {
+   public:
+      iterator_pair(const eosio::session::shared_bytes& begin_key,
+                    const eosio::session::shared_bytes& end_key,
+                    bool is_reverse,
+                    session_type& session) : is_reverse_(is_reverse) {
+         if (is_reverse_) {
+            current_ = session.lower_bound(end_key);
+            end_ = session.lower_bound(begin_key);
+            // since this is reverse iterating, then need to iterate backward if this is a greater-than iterator,
+            // to get a greater-than-or-equal reverse iterator
+            if ((*current_).first > end_key) {
+               --current_;
+            }
+            // since this is reverse iterating, then need to iterate backward to get a less-than iterator
+            if (end_ != session.end()) {
+               --end_;
+            }
+         }
+         else {
+            current_ = session.lower_bound(begin_key);
+            end_ = session.lower_bound(end_key);
+         }
+      }
+
+      bool valid() const {
+         return current_ != end_;
+      }
+
+      void move() {
+         if (is_reverse_)
+            --current_;
+         else
+            ++current_;
+      }
+
+      session_type::iterator::value_type get() const {
+         return *current_;
+      }
+   private:
+      const bool is_reverse_;
+      session_type::iterator current_;
+      session_type::iterator end_;
+   };
+
+   template<typename Receiver, typename Function>
+   bool is_reversed(const rocksdb_contract_db_table_writer<Receiver, Function>& writer) {
+      return writer.is_reversed();
+   }
+
+   template<typename Function>
+   bool is_reversed(const Function& ) {
+      return false;
+   }
+
+   template<typename Receiver, typename Function>
+   void complete(rocksdb_contract_db_table_writer<Receiver, Function>& writer) {
+      writer.complete();
+   }
+
+   template<typename Function>
+   void complete(Function& ) {
+   }
+
+}
+
+template <typename F>
+void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
+                                      const eosio::session::shared_bytes& begin_key,
+                                      const eosio::session::shared_bytes& end_key,
+                                      F& function) {
+   detail::manage_stack ms(kv_undo_stack);
+   auto& session = kv_undo_stack->top();
+
+   detail::iterator_pair iter_pair(begin_key, end_key, detail::is_reversed(function), session);
+   bool keep_processing = true;
+   for (; keep_processing && iter_pair.valid(); iter_pair.move()) {
+      const auto data = iter_pair.get();
+      // iterating through the session will always return a valid value
+      keep_processing = read_rocksdb_entry(data.first, *data.second, function);
+   }
+   // indicate processing is done
+   detail::complete(function);
 };
 
 // will walk through all entries with the given prefix, so if passed an exact key, it will match that key

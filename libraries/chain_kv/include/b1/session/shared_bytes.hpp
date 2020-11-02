@@ -159,16 +159,14 @@ inline shared_bytes shared_bytes::previous() const {
       auto& val = buffer[index];
       if (val) {
          --val;
-         ++index; // ensure we increment any indexes past this one
          break;
       }
+      val = std::numeric_limits<unsigned char>::max();
       if (--index < 0) {
-         buffer.pop_back();
-         index = buffer.size();
+         // this means all 0s, so all you can do is make it shorter
+         buffer = std::vector<unsigned char>(m_size - 1, (unsigned char)0);
+         break;
       }
-   }
-   while (index < buffer.size()) {
-      buffer[index] = std::numeric_limits<unsigned char>::max();
    }
 
    return eosio::session::shared_bytes(buffer.data(), buffer.size());
