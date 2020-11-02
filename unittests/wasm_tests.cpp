@@ -1828,24 +1828,24 @@ static char reset_memory_fail3_wast[] = R"======(
 
 BOOST_FIXTURE_TEST_CASE( reset_memory_fail, TESTER ) try {
    produce_block();
-   create_accounts( {N(usemem), N(resetmem), N(accessmem)} );
+   create_accounts( {"usemem"_n, "resetmem"_n, "accessmem"_n} );
    produce_block();
 
-   set_code(N(usemem), reset_memory_fail1_wast);
-   set_code(N(resetmem), reset_memory_fail2_wast);
-   set_code(N(accessmem), reset_memory_fail3_wast);
+   set_code("usemem"_n, reset_memory_fail1_wast);
+   set_code("resetmem"_n, reset_memory_fail2_wast);
+   set_code("accessmem"_n, reset_memory_fail3_wast);
    produce_block();
 
    auto pushit = [&](name acct) {
       signed_transaction trx;
-      trx.actions.push_back({ { { acct, config::active_name } }, acct, N(), bytes() });
+      trx.actions.push_back({ { { acct, config::active_name } }, acct, ""_n, bytes() });
       set_transaction_headers(trx);
       trx.sign(get_private_key( acct, "active" ), control->get_chain_id());
       push_transaction(trx);
    };
-   pushit(N(usemem));
-   BOOST_CHECK_THROW(pushit(N(resetmem)), wasm_execution_error);
-   BOOST_CHECK_THROW(pushit(N(accessmem)), wasm_execution_error);
+   pushit("usemem"_n);
+   BOOST_CHECK_THROW(pushit("resetmem"_n), wasm_execution_error);
+   BOOST_CHECK_THROW(pushit("accessmem"_n), wasm_execution_error);
    produce_block();
 } FC_LOG_AND_RETHROW()
 
