@@ -65,13 +65,13 @@ namespace eosio {
    {
       public:
         http_plugin();
-        virtual ~http_plugin();
+        ~http_plugin() override;
 
         //must be called before initialize
-        static void set_defaults(const http_plugin_defaults config);
+        static void set_defaults(const http_plugin_defaults& config);
 
         APPBASE_PLUGIN_REQUIRES()
-        virtual void set_program_options(options_description&, options_description& cfg) override;
+        void set_program_options(options_description&, options_description& cfg) override;
 
         void plugin_initialize(const variables_map& options);
         void plugin_startup();
@@ -134,7 +134,7 @@ namespace eosio {
 
          static const uint8_t details_limit = 10;
 
-         error_info() {};
+         error_info() = default;
 
          error_info(const fc::exception& exc, bool include_full_log) {
             code = exc.code();
