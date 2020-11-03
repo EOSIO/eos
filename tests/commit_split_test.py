@@ -10,9 +10,9 @@ from Node import Node
 from WalletMgr import WalletMgr
 from core_symbol import CORE_SYMBOL
 
-class TraceApiPluginTest(unittest.TestCase):
+class CommitSplitTest(unittest.TestCase):
     sleep_s = 1
-    cluster=Cluster(walletd=True, defproduceraPrvtKey=None)
+    cluster=Cluster(walletd=True)
     walletMgr=WalletMgr(True)
     accounts = []
     cluster.setWalletMgr(walletMgr)
@@ -29,9 +29,8 @@ class TraceApiPluginTest(unittest.TestCase):
     # start keosd and nodeos
     def startEnv(self) :
         account_names = ["alice", "bob", "charlie"]
-        # traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=."
-        # self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
-        self.cluster.launch(totalNodes=1)
+        traceNodeosArgs = " --plugin eosio::trace_api_plugin --trace-no-abis --trace-dir=."
+        self.cluster.launch(totalNodes=1, extraNodeosArgs=traceNodeosArgs)
         self.walletMgr.launch()
         testWalletName="testwallet"
         testWallet=self.walletMgr.create(testWalletName, [self.cluster.eosioAccount, self.cluster.defproduceraAccount])

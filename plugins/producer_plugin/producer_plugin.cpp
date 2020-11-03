@@ -7,6 +7,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -220,8 +221,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       chain_plugin* chain_plug = nullptr;
 
-      incoming::channels::block::channel_type::handle         _incoming_block_subscription;
-      incoming::channels::transaction::channel_type::handle   _incoming_transaction_subscription;
+      incoming::channels::block::channel_type::handle           _incoming_block_subscription;
+      incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
+      incoming::channels::proposed_block::channel_type::handle  _proposed_block_subscription;
 
       compat::channels::transaction_ack::channel_type&        _transaction_ack_channel;
 
@@ -234,6 +236,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection>                          _irreversible_block_connection;
+
+      blockvault_client_plugin*                                 _blockvault_client_plugin = nullptr;
 
       /*
        * HACK ALERT
@@ -717,6 +721,7 @@ if( options.count(op_name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
+   my->_blockvault_client_plugin = app().find_plugin<blockvault_client_plugin>();
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -844,6 +849,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          [this](const packed_transaction_ptr& trx) {
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
+      } LOG_AND_DROP();
+   });
+
+   my->_proposed_block_subscription = app().get_channel<incoming::channels::proposed_block>().subscribe(
+         [this](const signed_block_ptr& block) {
+      try {
+         my->_blockvault_client_plugin->my->propose_constructed_block(block, {}, {}, {});
       } LOG_AND_DROP();
    });
 
@@ -2018,7 +2030,7 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
 }
 
 void producer_plugin_impl::produce_block() {
-   //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
+   ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
@@ -2043,7 +2055,7 @@ void producer_plugin_impl::produce_block() {
    }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   chain.finalize_block( [&]( const digest_type& d ) {
+   auto block_state = chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
       sigs.reserve(relevant_providers.size());
@@ -2055,8 +2067,15 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   chain.commit_block();
 
+   // synchronous-style:  commit -> send to blockvault -> return from function means succes
+   // asynchronous-style: blockvault will say if it's a good or bad block in an asynchronous way
+
+   if (_blockvault_client_plugin != nullptr) {
+   } else {
+      chain.commit_block();
+   }
+   
    block_state_ptr new_bs = chain.head_block_state();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
