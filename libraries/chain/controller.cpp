@@ -1591,7 +1591,7 @@ struct controller_impl {
             });
          }
 
-         emit( self.accepted_block, bsp );
+         emit( self.accepted_block, bsp ); // This signals is what broadcasting relies upon.
 
          if( add_to_fork_db ) {
             log_irreversible();

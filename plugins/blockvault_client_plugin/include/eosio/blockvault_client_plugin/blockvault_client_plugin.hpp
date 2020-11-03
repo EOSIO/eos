@@ -1,47 +1,9 @@
-// CORE TODO
-// [ ] `net_plugin`: block broadcast decoupled from controller
-// [ ] `producer_plugin`: control block broadcast
-// [ ] `producer_plugin`: send committed blocks to BlockVault.
-// [ ] `producer_plugin`: send accepted blocks to BlockVault.
-// [ ] `producer_plugin`: store snapshots in BlockVault driven by RPC.
-//
-// [X] BlockVault "propose_constructed_block" interface.
-// [ ] BlockVault "propose_constructed_block" implementation.
-// [ ] BlockVault "propose_constructed_block" unit tests with mocked connection.
-//
-// [X] BlockVault "append_external_block" interface.
-// [ ] BlockVault "append_external_block" implementation.
-// [ ] BlockVault "append_external_block" unit tests with mocked connection.
-//
-// [X] BlockVault "propose_snapshot" interface.
-// [ ] BlockVault "propose_snapshot" implementation.
-// [ ] BlockVault "propose_snapshot" unit tests with mocked connection.
-//
-// [ ] `net_plugin`: disable `net_plugin` syncing when BlockVault is configured.
-// [ ] `chain_plugin`: `chain_plugin` integration.
-// [ ] BlockVault "sync_for_construction" interface.
-// [ ] BlockVault "sync_for_construction" implementation.
-// [ ] BlockVault "sync_for_construction" unit tests with mocked connection and consumer.
-// [ ] BlockVault "sync_for_construction" sync controller with BlockVault when configured implementation.
-// [ ] BlockVault "sync_for_construction" unit tests with mocked provider.
-
-// LONG-TERM TOOD
-// Rid all `using namespace` for verbosity-sake (or perhaps not).
-// After interface is implemented double-check documentation comments.
-// Make sure to delete all trailing whitespace in all touched files.
-// Merge blockvault changes into my branch.
-// Merge develop into blockvault.
-// Submit PR to blockvault branch.
-
-// SHORT-TERM TODO
-// Finish plugin init test.
-// Finish rest of impl.
-
 #pragma once
 
 #include <optional> // std::optional
 #include <utility> // std::pair
 #include <appbase/application.hpp> // appbase::plugin
+// #include <blockvault.hpp>
 // #include <eosio/chain_plugin/chain_plugin.hpp>
 // #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain/types.hpp> // eosio::block_id_type
@@ -50,7 +12,7 @@
 #include <eosio/chain/block_timestamp.hpp> // eosio::block_timestamp
 
 namespace eosio {
-
+    
 using namespace appbase;
 using namespace eosio;
 using namespace eosio::chain;
@@ -79,7 +41,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   /// \fn propose_constructed_block(signed_block sb, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
+   /// \fn propose_constructed_block(signed_block_ptr sbp, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
    ///
    /// \brief The primary method for adding constructed blocks to the Block
    /// Vault. If a proposed constructed block is accepted, the Block Vault
@@ -94,9 +56,9 @@ public:
    ///
    /// \param watermark The producer watermark implied by accepting this block.
    ///
-   void propose_constructed_block(signed_block sb, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
+   void propose_constructed_block(signed_block_ptr sbp, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark);
 
-   /// \fn append_external_block(signed_block sb, block_id_type lib_id)
+   /// \fn append_external_block(signed_block_ptr sbp, block_id_type lib_id)
    ///
    /// \brief The primary method for adding externally discovered blocks to the
    /// Block Vault. If an external block is accepted, the Block Vault cluster
@@ -111,7 +73,7 @@ public:
    ///
    /// \param lib_id The LIB ID implied by accepting this block.
    ///
-   void append_external_block(signed_block sb, block_id_type lib_id);
+   void append_external_block(signed_block_ptr sbp, block_id_type lib_id);
 
    /// \fn propose_snapshot(snapshot_reader_ptr snapshot, block_id_type lib_id, std::pair<block_num, block_timestamp_type> watermark)
    ///
@@ -148,8 +110,34 @@ public:
    ///
    void sync_for_construction(std::optional<block_num> block_height);
 
-private:
-   std::unique_ptr<class blockvault_client_plugin_impl> my;
+   enum class blockvault_entity : size_t {
+      leader,
+      follower
+   };
+
+   template<typename Signal, typename Arg>
+   void emit(const Signal& s, Arg&& a) {
+      try {
+         s(std::forward<Arg>(a));
+      }
+      } catch (...) {
+         throw;
+      }
+   }
+
+   signal<void(const signed_block_ptr&)> blockvault_block_accepted;
+
+   struct blockvault_state {
+      blockvault_entity blockvault_entity_status{};
+      block_id_type producer_lib_id{};                                 ///< The  implied LIB ID for the latest accepted constructed block.
+      std::pair<block_num, block_timestamp_type> producer_watermark{}; ///< The  watermark for the latest accepted constructed block.
+      block_id_type snapshot_lib_id{};                                 ///< The LIB ID for the latest snapshot.
+      std::pair<block_num, block_timestamp_type> snapshot_watermark{}; ///< The watermark for the latest snapshot.
+   };
+
+   // blockvault::block_vault_interface bvi;
+   blockvault_state bvs;
+   std::vector<signed_block_ptr> block_index;
 };
 
 }

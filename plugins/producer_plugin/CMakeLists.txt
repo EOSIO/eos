@@ -5,6 +5,9 @@ add_library( producer_plugin
              ${HEADERS}
            )
 
-target_link_libraries( producer_plugin chain_plugin signature_provider_plugin appbase eosio_chain )
+target_link_libraries( producer_plugin chain_plugin signature_provider_plugin blockvault_client_plugin appbase eosio_chain )
 target_include_directories( producer_plugin
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include" )
+    PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include"
+    "include/eosio/blockvault_client_plugin/*.hpp")
