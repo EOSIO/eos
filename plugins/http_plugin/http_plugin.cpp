@@ -136,7 +136,7 @@ namespace eosio {
          virtual bool verify_max_requests_in_flight() = 0;
          virtual void handle_exception() = 0;
 
-         virtual void send_response(std::string body, int code) = 0;
+         virtual void send_response(std::optional<std::string> body, int code) = 0;
       };
 
       using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
@@ -169,6 +169,21 @@ namespace eosio {
          try {
             return fc::raw::pack_size( v );
          } catch(...) {}
+         return 0;
+      }
+
+      /**
+       * Helper method to calculate the "in flight" size of a std::optional<T>
+       * When the optional doesn't contain value, it will return the size of 0
+       *
+       * @param o - the std::optional<T> where T is typename
+       * @return in flight size of o
+       */
+      template<typename T>
+      static size_t in_flight_sizeof( const std::optional<T>& o ) {
+         if( o ) {
+            return in_flight_sizeof( *o );
+         }
          return 0;
       }
    }
@@ -414,8 +429,10 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                http_plugin_impl::handle_exception<T>(_conn);
             }
 
-            void send_response(std::string body, int code) override {
-               _conn->set_body(std::move(body));
+            void send_response(std::optional<std::string> body, int code) override {
+               if( body ) {
+                  _conn->set_body( std::move( *body ) );
+               }
                _conn->set_status( websocketpp::http::status_code::value( code ) );
                _conn->send_http_response();
             }
@@ -481,15 +498,15 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              * const accessor
              * @return const reference to the contained object
              */
-            const T& operator* () const {
+            const T& get() const {
                return _object;
             }
 
             /**
-             * mutable accessor (can be moved frmo)
+             * mutable accessor (can be moved from)
              * @return mutable reference to the contained object
              */
-            T& operator* () {
+            T& get() {
                return _object;
             }
 
@@ -525,7 +542,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   return;
                }
 
-               url_response_callback wrapped_then = [tracked_b, then=std::move(then)](int code, fc::variant resp) {
+               url_response_callback wrapped_then = [tracked_b, then=std::move(then)](int code, std::optional<fc::variant> resp) {
                   then(code, std::move(resp));
                };
 
@@ -568,7 +585,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
           */
          template<typename T>
          auto make_http_response_handler( detail::abstract_conn_ptr abstract_conn_ptr) {
-            return [my=shared_from_this(), abstract_conn_ptr]( int code, fc::variant response ) {
+            return [my=shared_from_this(), abstract_conn_ptr]( int code, std::optional<fc::variant> response ) {
                auto tracked_response = make_in_flight(std::move(response), my);
                if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
                   return;
@@ -578,9 +595,13 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                boost::asio::post( my->thread_pool->get_executor(),
                                   [my, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
                   try {
-                     std::string json = fc::json::to_string( *(*tracked_response), fc::time_point::now() + my->max_response_time );
-                     auto tracked_json = make_in_flight(std::move(json), my);
-                     abstract_conn_ptr->send_response(std::move(*(*tracked_json)), code);
+                     if( tracked_response->get().has_value() ) {
+                        std::string json = fc::json::to_string( *tracked_response->get(), fc::time_point::now() + my->max_response_time );
+                        auto tracked_json = make_in_flight( std::move( json ), my );
+                        abstract_conn_ptr->send_response( std::move( tracked_json->get() ), code );
+                     } else {
+                        abstract_conn_ptr->send_response( {}, code );
+                     }
                   } catch( ... ) {
                      abstract_conn_ptr->handle_exception();
                   }

@@ -14,7 +14,7 @@ namespace eosio {
     *
     * Arguments: response_code, response_body
     */
-   using url_response_callback = std::function<void(int,fc::variant)>;
+   using url_response_callback = std::function<void(int,std::optional<fc::variant>)>;
 
    /**
     * @brief Callback type for a URL handler
