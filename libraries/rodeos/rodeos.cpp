@@ -2,6 +2,7 @@
 
 #include <b1/rodeos/callbacks/kv.hpp>
 #include <b1/rodeos/rodeos_tables.hpp>
+#include <fc/log/trace.hpp>
 
 namespace b1::rodeos {
 
@@ -160,6 +161,13 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
 
    block_info_kv table{ kv_environment{ view_state } };
    table.put(info);
+}
+
+namespace {
+   std::string to_string( const eosio::checksum256& cs ) {
+      auto bytes = cs.extract_as_byte_array();
+      return fc::to_hex((const char*)bytes.data(), bytes.size());
+   }
 }
 
 void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result_v0& result) {
