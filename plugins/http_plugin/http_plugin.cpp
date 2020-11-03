@@ -498,7 +498,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              * const accessor
              * @return const reference to the contained object
              */
-            const T& get() const {
+            const T& obj() const {
                return _object;
             }
 
@@ -506,7 +506,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              * mutable accessor (can be moved from)
              * @return mutable reference to the contained object
              */
-            T& get() {
+            T& obj() {
                return _object;
             }
 
@@ -551,7 +551,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                app().post( priority, [next_ptr, conn=std::move(conn), r=std::move(r), tracked_b, wrapped_then=std::move(wrapped_then)]() mutable {
                   try {
                      // call the `next` url_handler and wrap the response handler
-                     (*next_ptr)( std::move( r ), std::move(*(*tracked_b)), std::move(wrapped_then)) ;
+                     (*next_ptr)( std::move( r ), std::move(tracked_b->obj()), std::move(wrapped_then)) ;
                   } catch( ... ) {
                      conn->handle_exception();
                   }
@@ -595,10 +595,10 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                boost::asio::post( my->thread_pool->get_executor(),
                                   [my, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
                   try {
-                     if( tracked_response->get().has_value() ) {
-                        std::string json = fc::json::to_string( *tracked_response->get(), fc::time_point::now() + my->max_response_time );
+                     if( tracked_response->obj().has_value() ) {
+                        std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + my->max_response_time );
                         auto tracked_json = make_in_flight( std::move( json ), my );
-                        abstract_conn_ptr->send_response( std::move( tracked_json->get() ), code );
+                        abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
                      } else {
                         abstract_conn_ptr->send_response( {}, code );
                      }
