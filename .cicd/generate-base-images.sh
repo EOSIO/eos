@@ -14,13 +14,13 @@ done
 
 # build, if neccessary
 if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
-  export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'eosio/ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
+  export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
   echo "$ $DOCKER_BUILD_COMMAND"
   eval $DOCKER_BUILD_COMMAND
   if [[ $FORCE_BASE_IMAGE != true ]]; then
     for REGISTRY in "${CI_REGISTRIES[@]}"; do
       if [[ ! -z $REGISTRY ]]; then
-        DOCKER_TAG_COMMAND="docker tag eosio/ci:$HASHED_IMAGE_TAG $REGISTRY:$HASHED_IMAGE_TAG"
+        DOCKER_TAG_COMMAND="docker tag ci:$HASHED_IMAGE_TAG $REGISTRY:$HASHED_IMAGE_TAG"
         DOCKER_PUSH_COMMAND="docker push $REGISTRY:$HASHED_IMAGE_TAG"
         DOCKER_RMI_COMMAND="docker rmi $REGISTRY:$HASHED_IMAGE_TAG"
         echo "$ $DOCKER_TAG_COMMAND"
@@ -31,6 +31,9 @@ if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we can
         eval $DOCKER_RMI_COMMAND
       fi
     done
+    DOCKER_RMI_COMMAND="docker rmi ci:$HASHED_IMAGE_TAG"
+    echo "$ $DOCKER_RMI_COMMAND"
+    eval $DOCKER_RMI_COMMAND
   else
     echo "Base image creation successful. Not pushing...".
     exit 0
