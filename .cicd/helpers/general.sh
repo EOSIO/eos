@@ -4,6 +4,11 @@ export CICD_DIR=$ROOT_DIR/.cicd
 export HELPERS_DIR=$CICD_DIR/helpers
 export JOBS=${JOBS:-"$(getconf _NPROCESSORS_ONLN)"}
 export MOUNTED_DIR='/workdir'
+export DOCKER_CLI_EXPERIMENTAL='enabled'
+export DOCKERHUB_CI_REGISTRY="docker.io/eosio/ci"
+export DOCKERHUB_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
+export CI_REGISTRIES=("$DOCKERHUB_CI_REGISTRY" "$MIRROR_REGISTRY")
+export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
 
 # capitalize each word in a string
 function capitalize()
