@@ -20,9 +20,15 @@ if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we can
   if [[ $FORCE_BASE_IMAGE != true ]]; then
     for REGISTRY in "${CI_REGISTRIES[@]}"; do
       if [[ ! -z $REGISTRY ]]; then
-        docker tag eosio/ci:$HASHED_IMAGE_TAG $REGISTRY:$HASHED_IMAGE_TAG
-        docker push $REGISTRY:$HASHED_IMAGE_TAG
-        docker rmi $REGISTRY:$HASHED_IMAGE_TAG
+        DOCKER_TAG_COMMAND="docker tag eosio/ci:$HASHED_IMAGE_TAG $REGISTRY:$HASHED_IMAGE_TAG"
+        DOCKER_PUSH_COMMAND="docker push $REGISTRY:$HASHED_IMAGE_TAG"
+        DOCKER_RMI_COMMAND="docker rmi $REGISTRY:$HASHED_IMAGE_TAG"
+        echo "$ $DOCKER_TAG_COMMAND"
+        echo "$ $DOCKER_PUSH_COMMAND"
+        echo "$ $DOCKER_RMI_COMMAND"
+        eval $DOCKER_TAG_COMMAND
+        eval $DOCKER_PUSH_COMMAND
+        eval $DOCKER_RMI_COMMAND
       fi
     done
   else
