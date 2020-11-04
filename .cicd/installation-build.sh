@@ -8,13 +8,16 @@ export ARGS="--name ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUI
 $CICD_DIR/build.sh
 for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
   if [[ ! -z $REGISTRY ]]; then
-    docker commit ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER $REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT
-    docker commit ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER $REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE
-    docker commit ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER $REGISTRY-base-ubuntu-18.04-$BRANCH-$BUILDKITE_COMMIT
-    docker push $REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT
-    docker push $REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE
-    docker push $REGISTRY-base-ubuntu-18.04-$BRANCH-$BUILDKITE_COMMIT
-    docker stop ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER
-    docker rm ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER    
+    COMMITS=("$REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT" "$REGISTRY-base-ubuntu-18.04-$BUILDKITE_COMMIT-$PLATFORM_TYPE" "$REGISTRY-base-ubuntu-18.04-$BRANCH-$BUILDKITE_COMMIT")
+    for COMMIT in "${COMMITS[@]}"; do
+      COMMIT_COMMAND="docker commit ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER $COMMIT"
+      echo "$ $COMMIT_COMMAND"
+      eval $COMMIT_COMMAND
+      PUSH_COMMAND="docker push $COMMIT"
+      echo "$ $PUSH_COMMAND"
+      eval $PUSH_COMMAND
+    done
   fi
 done
+docker stop ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER
+docker rm ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER    
