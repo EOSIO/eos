@@ -865,9 +865,14 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_index256 = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_index256->rows.obj.size(), 2);
+
       auto contract_indices = chain.deserialize_data<eosio::ship_protocol::contract_index256_v0, eosio::ship_protocol::contract_index256>(it_contract_index256);
-      BOOST_REQUIRE_EQUAL(contract_indices[0].table.to_string(), "hashobjs");
-      BOOST_REQUIRE_EQUAL(contract_indices[1].table.to_string(), "hashobjs....1");
+      std::set<std::string> expected_contract_index256_table_names {"hashobjs", "hashobjs....1"};
+      std::set<std::string> result_contract_index256_table_names;
+      for(auto &contract_index : contract_indices) {
+         result_contract_index256_table_names.insert(contract_index.table.to_string());
+      }
+      BOOST_REQUIRE(expected_contract_index256_table_names == result_contract_index256_table_names);
 
       chain.produce_block();
 
