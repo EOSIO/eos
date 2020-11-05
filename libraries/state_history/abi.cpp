@@ -364,7 +364,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "name", "name": "contract" },
                 { "type": "bytes", "name": "key" },
                 { "type": "bytes", "name": "value" },
-                { "type": "name", "name": "payer" },
+                { "type": "name", "name": "payer" }
             ]
         },
         {
