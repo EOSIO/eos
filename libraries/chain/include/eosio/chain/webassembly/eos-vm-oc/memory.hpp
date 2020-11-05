@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/gs_seg_helpers.h>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -24,11 +25,13 @@ class memory {
       static constexpr uint64_t total_memory_per_slice = memory_prologue_size + UINT64_C(0x200000000) + UINT64_C(4096);
 
    public:
-      explicit memory(uint64_t max_pages);
+      explicit memory(uint64_t max_pages, const intrinsic_map_t& intrinsics);
       ~memory();
       memory(const memory&) = delete;
       memory& operator=(const memory&) = delete;
+#if 0
       void reset(uint64_t max_pages);
+#endif
 
       uint8_t* const zero_page_memory_base() const { return zeropage_base; }
       uint8_t* const full_page_memory_base() const { return fullpage_base; }

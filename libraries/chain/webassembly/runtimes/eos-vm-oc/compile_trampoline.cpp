@@ -40,8 +40,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
       result_message.start = no_offset{};
    else if(module.startFunctionIndex < module.functions.imports.size()) {
       const auto& f = module.functions.imports[module.startFunctionIndex];
-      const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
-      result_message.start = intrinsic_ordinal{ie.ordinal};
+      const std::size_t io = get_intrinsic_ordinal(f.moduleName + "." + f.exportName);
+      result_message.start = intrinsic_ordinal{io};
    }
    else
       result_message.start = code_offset{function_to_offsets.at(module.startFunctionIndex-module.functions.imports.size())};
@@ -104,8 +104,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept { 
 
          if(function_index < module.functions.imports.size()) {
             const auto& f = module.functions.imports[function_index];
-            const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
-            table_index_0[effective_table_index].func = ie.ordinal*-8;
+            const std::size_t io = get_intrinsic_ordinal(f.moduleName + "." + f.exportName);
+            table_index_0[effective_table_index].func = io*-8;
             table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.imports[function_index].type.index];
          }
          else {
