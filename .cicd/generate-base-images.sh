@@ -8,8 +8,11 @@ for REGISTRY in ${CI_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         MANIFEST_COMMAND="docker manifest inspect '$REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $MANIFEST_COMMAND"
+        set +e
         eval $MANIFEST_COMMAND
-        if [[ "$?" != '0' ]]; then
+        MANIFEST_INSPECT_EXIT_STATUS="$?"
+        set -eo pipefail
+        if [[ "$MANIFEST_INSPECT_EXIT_STATUS" != '0' ]]; then
             EXISTS='false'
         fi
     fi
