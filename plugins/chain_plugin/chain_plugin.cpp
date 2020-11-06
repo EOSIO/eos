@@ -184,7 +184,6 @@ public:
    bool                             accept_transactions = false;
    bool                             api_accept_transactions = true;
    bool                             account_queries_enabled = false;
-   bool                             blockvault_enabled = false;
 
    std::optional<fork_database>      fork_db;
    std::optional<controller::config> chain_config;
