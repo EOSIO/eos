@@ -63,6 +63,8 @@ Type convert_to_type(const string& str, const string& desc) {
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
 }
 
+uint64_t convert_to_type(const eosio::name &n, const string &desc);
+
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
 
@@ -491,9 +493,12 @@ public:
 
          if( p.lower_bound.size() ) {
             if( p.key_type == "name" ) {
-               name s(p.lower_bound);
-               SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
-               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
+               if constexpr (std::is_same_v<uint64_t, SecKeyType>) {
+                  SecKeyType lv = convert_to_type(name{p.lower_bound}, "lower_bound name");
+                  std::get<1>(lower_bound_lookup_tuple) = conv(lv);
+               } else {
+                  EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for lower bound", ("nm", p.lower_bound));
+               }
             } else {
                SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
                std::get<1>(lower_bound_lookup_tuple) = conv( lv );
@@ -502,9 +507,12 @@ public:
 
          if( p.upper_bound.size() ) {
             if( p.key_type == "name" ) {
-               name s(p.upper_bound);
-               SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
-               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
+               if constexpr (std::is_same_v<uint64_t, SecKeyType>) {
+                  SecKeyType uv = convert_to_type(name{p.upper_bound}, "upper_bound name");
+                  std::get<1>(upper_bound_lookup_tuple) = conv(uv);
+               } else {
+                  EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for upper bound", ("nm", p.upper_bound));
+               }
             } else {
                SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
                std::get<1>(upper_bound_lookup_tuple) = conv( uv );

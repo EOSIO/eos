@@ -1820,6 +1820,10 @@ uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params&
    return index;
 }
 
+uint64_t convert_to_type(const eosio::name &n, const string &desc) {
+   return n.to_uint64_t();
+}
+
 template<>
 uint64_t convert_to_type(const string& str, const string& desc) {
 
