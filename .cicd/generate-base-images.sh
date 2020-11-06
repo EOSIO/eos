@@ -16,11 +16,11 @@ for REGISTRY in ${CI_REGISTRIES[*]}; do
 done
 
 # build, if neccessary
-if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
+if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
     export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
     echo "$ $DOCKER_BUILD_COMMAND"
     eval $DOCKER_BUILD_COMMAND
-    if [[ "$FORCE_BASE_IMAGE" != 'true' ]]; then
+    if [[ "$FORCE_BASE_IMAGE" != 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then
         for REGISTRY in ${CI_REGISTRIES[*]}; do
             if [[ ! -z "$REGISTRY" ]]; then
                 # tag
