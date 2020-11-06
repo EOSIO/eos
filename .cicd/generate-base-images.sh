@@ -4,7 +4,7 @@ set -eo pipefail
 . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 
 echo "+++ :mag_right: Looking for $HASHED_IMAGE_TAG"
-for REGISTRY in "${CI_REGISTRIES[*]}"; do
+for REGISTRY in ${CI_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         MANIFEST_COMMAND="docker manifest inspect '$REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $MANIFEST_COMMAND"
@@ -21,7 +21,7 @@ if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we can
     echo "$ $DOCKER_BUILD_COMMAND"
     eval $DOCKER_BUILD_COMMAND
     if [[ "$FORCE_BASE_IMAGE" != 'true' ]]; then
-        for REGISTRY in "${CI_REGISTRIES[*]}"; do
+        for REGISTRY in ${CI_REGISTRIES[*]}; do
             if [[ ! -z "$REGISTRY" ]]; then
                 # tag
                 DOCKER_TAG_COMMAND="docker tag 'ci:$HASHED_IMAGE_TAG' '$REGISTRY:$HASHED_IMAGE_TAG'"
