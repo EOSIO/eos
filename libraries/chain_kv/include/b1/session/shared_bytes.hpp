@@ -145,6 +145,8 @@ class shared_bytes {
    iterator begin() const;
    iterator end() const;
 
+   static shared_bytes from_hex_string(const std::string& str);
+
  private:
    size_t                             m_size{ 0 };
    size_t                             m_offset{ 0 };
@@ -343,6 +345,24 @@ inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
       std::cout << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (0xFF & static_cast<int>(c));
    }
    return os;
+}
+
+inline shared_bytes shared_bytes::from_hex_string(const std::string& str) {
+   if (str.empty()) {
+      return shared_bytes{};
+   }
+
+   auto bytes = std::vector<char>{};
+   bytes.reserve(str.size() / 2);
+   for (size_t i = 0; i < str.size(); i += 2) {
+      std::string hex    = str.substr(i, 2);
+      int8_t      result = std::stoi(hex, 0, 16);
+      char        c{ 0 };
+      std::memcpy(&c, &result, 1);
+      bytes.push_back(c);
+   }
+
+   return shared_bytes{ bytes.data(), bytes.size() };
 }
 
 template <typename Iterator_traits>

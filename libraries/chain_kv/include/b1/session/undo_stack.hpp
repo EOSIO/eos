@@ -11,7 +11,10 @@ namespace eosio::session {
 template <typename Session>
 class undo_stack {
  public:
-   using session_type = session<Session>;
+   using parent_type        = Session;
+   using session_type       = session<Session>;
+   using element_type       = std::variant<Session*, session_type*>;
+   using const_element_type = std::variant<const Session*, const session_type*>;
 
    /// \brief Constructor.
    /// \param head The session that the changes are merged into when commit is called.
@@ -48,19 +51,19 @@ class undo_stack {
    /// to value lower than the current revision.
    void revision(int64_t revision);
 
-   /// \brief Returns the head session (the session at the top of the stack.
-   session_type& top();
+   /// \brief Returns the head session (the session at the top of the stack).
+   element_type top();
 
-   /// \brief Returns the head session (the session at the top of the stack.
-   const session_type& top() const;
-
-   /// \brief Returns the session at the bottom of the stack.
-   /// \remarks This is the next session to be committed.
-   session_type& bottom();
+   /// \brief Returns the head session (the session at the top of the stack).
+   const_element_type top() const;
 
    /// \brief Returns the session at the bottom of the stack.
    /// \remarks This is the next session to be committed.
-   const session_type& bottom() const;
+   element_type bottom();
+
+   /// \brief Returns the session at the bottom of the stack.
+   /// \remarks This is the next session to be committed.
+   const_element_type bottom() const;
 
  private:
    int64_t                  m_revision{ 0 };
@@ -158,27 +161,35 @@ void undo_stack<Session>::revision(int64_t revision) {
 }
 
 template <typename Session>
-typename undo_stack<Session>::session_type& undo_stack<Session>::top() {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.back();
+typename undo_stack<Session>::element_type undo_stack<Session>::top() {
+   if (!m_sessions.empty()) {
+      return &m_sessions.back();
+   }
+   return m_head;
 }
 
 template <typename Session>
-const typename undo_stack<Session>::session_type& undo_stack<Session>::top() const {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.back();
+typename undo_stack<Session>::const_element_type undo_stack<Session>::top() const {
+   if (!m_sessions.empty()) {
+      return &m_sessions.back();
+   }
+   return m_head;
 }
 
 template <typename Session>
-typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.front();
+typename undo_stack<Session>::element_type undo_stack<Session>::bottom() {
+   if (!m_sessions.empty()) {
+      return &m_sessions.front();
+   }
+   return m_head;
 }
 
 template <typename Session>
-const typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() const {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.front();
+typename undo_stack<Session>::const_element_type undo_stack<Session>::bottom() const {
+   if (!m_sessions.empty()) {
+      return &m_sessions.front();
+   }
+   return m_head;
 }
 
 } // namespace eosio::session

@@ -104,36 +104,42 @@ namespace eosio { namespace chain {
 
    template <typename F>
    void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack, const std::vector<char>& prefix, F&& function) {
-      const auto undo = kv_undo_stack->empty();
-      if (undo) {
-         // Get a session to iterate over.
-         kv_undo_stack->push();
-      }
       const auto prefix_key = eosio::session::shared_bytes(prefix.data(), prefix.size());
       const auto next_prefix = prefix_key.next();
-      auto begin_it = kv_undo_stack->top().lower_bound(prefix_key);
-      auto end_it = kv_undo_stack->top().lower_bound(next_prefix);
-      for (auto it = begin_it; it != end_it; ++it) {
-         auto key = (*it).first;
 
-         uint64_t    contract;
-         std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
-         EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
+      auto predicate = [&](auto& begin_it, const auto& end_it) {
+        while (begin_it != end_it) {
+           auto key = (*begin_it).first;
 
-         auto begin = std::begin(key) + prefix_key.size();
-         auto end = std::begin(key) + key_prefix_size;
-         b1::chain_kv::extract_key(begin, end, contract);
+           uint64_t    contract;
+           std::size_t key_prefix_size = prefix_key.size() + sizeof(contract);
+           EOS_ASSERT(key.size() >= key_prefix_size, database_exception, "Unexpected key in rocksdb");
 
-         auto value = (*it).second;
+           auto begin = std::begin(key) + prefix_key.size();
+           auto end = std::begin(key) + key_prefix_size;
+           b1::chain_kv::extract_key(begin, end, contract);
 
-         const char* post_contract = key.data() + key_prefix_size;
-         const std::size_t remaining = key.size() - key_prefix_size;
-         function(contract, post_contract, remaining, value->data(), value->size());
-      }
+           auto value = (*begin_it).second;
 
-      if (undo) {
-         kv_undo_stack->undo();
-      }
+           const char* post_contract = key.data() + key_prefix_size;
+           const std::size_t remaining = key.size() - key_prefix_size;
+           function(contract, post_contract, remaining, value->data(), value->size());
+           ++begin_it;
+         }
+      };
+
+      using undo_stack_type = kv_undo_stack_ptr::element_type;
+      std::visit(overloaded{ [&](const undo_stack_type::parent_type* top) {
+                              auto begin_it = top->lower_bound(prefix_key);
+                              auto end_it = top->lower_bound(next_prefix);
+                              predicate(begin_it, end_it);
+                            }, 
+                            [&](const undo_stack_type::session_type* top) {
+                              auto begin_it = top->lower_bound(prefix_key);
+                              auto end_it = top->lower_bound(next_prefix);
+                              predicate(begin_it, end_it);
+                            }}, 
+      kv_undo_stack->top());
    }
 
    template <typename F>
@@ -340,8 +346,14 @@ namespace eosio { namespace chain {
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack->top(), receiver,
-                                                                                resource_manager, limits);
+            using undo_stack_type = kv_undo_stack_ptr::element_type;
+            return std::visit(overloaded{ [&](undo_stack_type::parent_type* top) {
+                                           return create_kv_rocksdb_context<undo_stack_type::parent_type, kv_resource_manager>(*top, receiver, resource_manager, limits);
+                                        }, 
+                                        [&](undo_stack_type::session_type* top) {
+                                           return create_kv_rocksdb_context<undo_stack_type::session_type, kv_resource_manager>(*top, receiver, resource_manager, limits);
+                                        }}, 
+                  kv_undo_stack->top());
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context<kv_resource_manager>(db, receiver, resource_manager, limits);
       }
@@ -351,7 +363,14 @@ namespace eosio { namespace chain {
    std::unique_ptr<db_context> combined_database::create_db_context(apply_context& context, name receiver) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return backing_store::create_db_rocksdb_context(context, receiver, kv_undo_stack->top());
+            using undo_stack_type = kv_undo_stack_ptr::element_type;
+            return std::visit(overloaded{ [&](undo_stack_type::parent_type* top) {
+                                           return backing_store::create_db_rocksdb_context(context, receiver, *top);
+                                        }, 
+                                        [&](undo_stack_type::session_type* top) {
+                                           return backing_store::create_db_rocksdb_context(context, receiver, *top);
+                                        }}, 
+                  kv_undo_stack->top());
          case backing_store_type::CHAINBASE:
             return backing_store::create_db_chainbase_context(context, receiver);
          default:
