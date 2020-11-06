@@ -3,7 +3,9 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
-    bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
+    PACKAGE_COMMANDS="bash -c 'cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew'"
+    echo "$ $PACKAGE_COMMANDS"
+    eval $PACKAGE_COMMANDS
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
@@ -30,8 +32,9 @@ else # Linux
         PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh '$PACKAGE_TYPE'"
     fi
     COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
-    echo "docker run $ARGS $(buildkite-intrinsics) \"$FULL_TAG\" bash -c \"$COMMANDS\""
-    eval docker run $ARGS $(buildkite-intrinsics) "$FULL_TAG" bash -c \"$COMMANDS\"
+    DOCKER_RUN_COMMAND="docker run $ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
+    echo "$ $DOCKER_RUN_COMMAND"
+    eval $DOCKER_RUN_COMMAND
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
     buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
