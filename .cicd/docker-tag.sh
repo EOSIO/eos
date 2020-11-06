@@ -15,7 +15,7 @@ echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
 echo ${CONTRACT_REGISTRIES[*]}
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
-for REGISTRY in "${CI_REGISTRIES[*]}"; do
+for REGISTRY in ${CI_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Pulling from '$REGISTRY'."
         IMAGE="$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
@@ -26,7 +26,7 @@ for REGISTRY in "${CI_REGISTRIES[*]}"; do
 done
 # tag
 echo '+++ :label: Tagging Container(s)'
-for INDEX in "${!CI_REGISTRIES[*]}"; do
+for INDEX in ${!CI_REGISTRIES[*]}; do
     if [[ ! -z "${CI_REGISTRIES[$INDEX]}" ]]; then
         echo "Tagging for index $INDEX."
         IMAGE="${CI_REGISTRIES[$INDEX]}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
@@ -42,7 +42,7 @@ for INDEX in "${!CI_REGISTRIES[*]}"; do
 done
 # push
 echo '+++ :arrow_up: Pushing Container(s)'
-for REGISTRY in "${CONTRACT_REGISTRIES[*]}"; do
+for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Pushing to '$REGISTRY'."
         DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
@@ -57,7 +57,7 @@ for REGISTRY in "${CONTRACT_REGISTRIES[*]}"; do
 done
 # cleanup
 echo '+++ :put_litter_in_its_place: Cleaning Up'
-for INDEX in "${!CI_REGISTRIES[*]}"; do
+for INDEX in ${!CI_REGISTRIES[*]}; do
     if [[ ! -z "${CI_REGISTRIES[$INDEX]}" ]]; then
         echo "Cleaning up from index $INDEX."
         DOCKER_RMI_COMMAND="docker rmi '${CONTRACT_REGISTRIES[$INDEX]}:$PREFIX-$SANITIZED_BRANCH'"
