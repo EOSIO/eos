@@ -10,8 +10,8 @@ using watermark_t = std::pair<uint32_t, eosio::chain::block_timestamp_type>;
 
 class sync_callback {
  public:
-   virtual void on_snapshot(const char* snapshot_filename) = 0;
-   virtual void on_block(std::string_view block)           = 0;
+   virtual void on_snapshot(const char* snapshot_filename)     = 0;
+   virtual void on_block(eosio::chain::signed_block_ptr block) = 0;
 };
 
 class block_vault_interface {
@@ -39,7 +39,6 @@ class block_vault_interface {
                                                 eosio::chain::signed_block_ptr block,
                                                 std::function<void(bool)>      handler) = 0;
 
-
    ///
    /// \brief The primary method for adding externally discovered blocks to the
    /// Block Vault. If an external block is accepted, the Block Vault cluster
@@ -57,7 +56,7 @@ class block_vault_interface {
    /// \param handler The callback function to inform caller whether the block has accepted the Block Vault or not.
    ///
    virtual void async_append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block,
-                                            std::function<void(bool)> handler)             = 0;
+                                            std::function<void(bool)> handler) = 0;
 
    ///
    /// \brief The primary method for a nodeos node to offer snapshot data to
@@ -71,7 +70,7 @@ class block_vault_interface {
    ///
    /// \param watermark The producer watermark at the block height of this snapshot.
    ///
-   virtual bool propose_snapshot(watermark_t watermark, const char* snapshot_filename)     = 0;
+   virtual bool propose_snapshot(watermark_t watermark, const char* snapshot_filename) = 0;
 
    ///
    /// \brief The primary method for bringing a new nodeos node into sync with
@@ -90,9 +89,8 @@ class block_vault_interface {
    ///
    /// \param callback The callback object to receive the snapshot and blocks
    ///
-   virtual void sync(const eosio::chain::block_id_type& block_id, sync_callback& callback) = 0;
+   virtual void sync(const eosio::chain::block_id_type* block_id, sync_callback& callback) = 0;
 };
-
 
 } // namespace blockvault
 } // namespace eosio
