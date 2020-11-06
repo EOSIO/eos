@@ -6,7 +6,10 @@ set -eo pipefail
 echo "+++ :mag_right: Looking for $HASHED_IMAGE_TAG"
 for REGISTRY in "${CI_REGISTRIES[*]}"; do
     if [[ ! -z "$REGISTRY" ]]; then
-        if [[ ! $(docker manifest inspect "$REGISTRY:$HASHED_IMAGE_TAG") ]]; then
+        MANIFEST_COMMAND="docker manifest inspect '$REGISTRY:$HASHED_IMAGE_TAG'"
+        echo "$ $MANIFEST_COMMAND"
+        eval $MANIFEST_COMMAND
+        if [[ "$?" != '0' ]]; then
             EXISTS='false'
         fi
     fi
@@ -20,18 +23,21 @@ if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' ]]; then # if we can
     if [[ "$FORCE_BASE_IMAGE" != 'true' ]]; then
         for REGISTRY in "${CI_REGISTRIES[*]}"; do
             if [[ ! -z "$REGISTRY" ]]; then
-                DOCKER_TAG_COMMAND="docker tag ci:$HASHED_IMAGE_TAG $REGISTRY:$HASHED_IMAGE_TAG"
-                DOCKER_PUSH_COMMAND="docker push $REGISTRY:$HASHED_IMAGE_TAG"
-                DOCKER_RMI_COMMAND="docker rmi $REGISTRY:$HASHED_IMAGE_TAG"
+                # tag
+                DOCKER_TAG_COMMAND="docker tag 'ci:$HASHED_IMAGE_TAG' '$REGISTRY:$HASHED_IMAGE_TAG'"
                 echo "$ $DOCKER_TAG_COMMAND"
-                echo "$ $DOCKER_PUSH_COMMAND"
-                echo "$ $DOCKER_RMI_COMMAND"
                 eval $DOCKER_TAG_COMMAND
+                # push
+                DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$HASHED_IMAGE_TAG'"
+                echo "$ $DOCKER_PUSH_COMMAND"
                 eval $DOCKER_PUSH_COMMAND
+                # clean up
+                DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$HASHED_IMAGE_TAG'"
+                echo "$ $DOCKER_RMI_COMMAND"
                 eval $DOCKER_RMI_COMMAND
             fi
         done
-        DOCKER_RMI_COMMAND="docker rmi ci:$HASHED_IMAGE_TAG"
+        DOCKER_RMI_COMMAND="docker rmi 'ci:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
     else
