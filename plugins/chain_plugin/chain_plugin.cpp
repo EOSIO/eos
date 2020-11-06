@@ -2386,24 +2386,19 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    return result;
 }
 
-struct table_receiver {
+struct table_receiver
+  : chain::backing_store::single_type_error_receiver<table_receiver, backing_store::table_id_object_view, chain::contract_table_query_exception> {
    table_receiver(read_only::get_table_by_scope_result& result, const read_only::get_table_by_scope_params& params)
    : result_(result), params_(params) {
       check_limit();
    }
 
-   template<typename Object>
-   void add_row(const Object& row) {
-      if constexpr (std::is_same_v<Object, backing_store::table_id_object_view>) {
-         if( params_.table && row.table != params_.table ) {
-            return;
-         }
-         result_.rows.push_back( {row.code, row.scope, row.table, row.payer, row.count} );
-         check_limit();
-      } else {
-         FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Invariant failure, should not receive an add_row call of type: ${type}",
-                            ("type", chain::backing_store::contract_table_type<std::decay_t < decltype(row)>>()));
+   void add_only_row(const backing_store::table_id_object_view& row) {
+      if( params_.table && row.table != params_.table ) {
+         return;
       }
+      result_.rows.push_back( {row.code, row.scope, row.table, row.payer, row.count} );
+      check_limit();
    }
 
    auto keep_processing_entries() {
