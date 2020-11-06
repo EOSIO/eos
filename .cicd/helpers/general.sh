@@ -1,7 +1,7 @@
 export ROOT_DIR=$( dirname "${BASH_SOURCE[0]}" )/../..
-export BUILD_DIR=$ROOT_DIR/build
-export CICD_DIR=$ROOT_DIR/.cicd
-export HELPERS_DIR=$CICD_DIR/helpers
+export BUILD_DIR="$ROOT_DIR/build"
+export CICD_DIR="$ROOT_DIR/.cicd"
+export HELPERS_DIR="$CICD_DIR/helpers"
 export JOBS=${JOBS:-"$(getconf _NPROCESSORS_ONLN)"}
 export MOUNTED_DIR='/workdir'
 export DOCKER_CLI_EXPERIMENTAL='enabled'
@@ -13,10 +13,10 @@ export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
 # capitalize each word in a string
 function capitalize()
 {
-    if [[ ! $1 =~ 'mac' ]]; then # Don't capitalize mac
-        echo $1 | awk '{$1=toupper(substr($1,1,1))substr($1,2)}1'
+    if [[ ! "$1" =~ 'mac' ]]; then # Don't capitalize mac
+        echo "$1" | awk '{$1=toupper(substr($1,1,1))substr($1,2)}1'
     else
-        echo $1
+        echo "$1"
     fi
 }
 
@@ -24,7 +24,7 @@ function capitalize()
 function buildkite-intrinsics()
 {
     BK_ENV=''
-    if [[ -f $BUILDKITE_ENV_FILE ]]; then
+    if [[ -f "$BUILDKITE_ENV_FILE" ]]; then
         while read -r var; do
             BK_ENV="$BK_ENV --env ${var%%=*}"
         done < "$BUILDKITE_ENV_FILE"
