@@ -39,7 +39,9 @@ fi
 # multiversion
 cd "$GIT_ROOT/eos_multiversion_builder"
 echo 'Downloading other versions of nodeos...'
-python2.7 "$GIT_ROOT/.cicd/helpers/multi_eos_docker.py"
+DOWNLOAD_COMMAND="python2.7 '$GIT_ROOT/.cicd/helpers/multi_eos_docker.py'"
+echo "$ $DOWNLOAD_COMMAND"
+eval $DOWNLOAD_COMMAND
 cd "$GIT_ROOT"
 cp "$GIT_ROOT/tests/multiversion_paths.conf" "$GIT_ROOT/build/tests"
 cd "$GIT_ROOT/build"
@@ -54,8 +56,9 @@ else
 fi
 # run tests
 set +e # defer ctest error handling to end
-echo "$ ctest -L mixed_version_tests --output-on-failure -T Test"
-ctest -L mixed_version_tests --output-on-failure -T Test
+TEST_COMMAND='ctest -L mixed_version_tests --output-on-failure -T Test'
+echo "$ $TEST_COMMAND"
+eval $TEST_COMMAND
 EXIT_STATUS=$?
 echo 'Done running multiversion test.'
 exit $EXIT_STATUS

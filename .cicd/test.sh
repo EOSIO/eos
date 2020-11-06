@@ -13,9 +13,11 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
 else # Linux
     COMMANDS="rabbitmq-server -detached && sleep 10 && '$MOUNTED_DIR/$@'"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
-    echo "$ docker run --rm --init -v '$(pwd):$MOUNTED_DIR' $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c \"$COMMANDS\""
+    echo "$ docker run --rm --init -v \"$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY \"$FULL_TAG\" bash -c \"$COMMANDS\""
+    DOCKER_RUN_COMMAND="docker run --rm --init -v '$(pwd):$MOUNTED_DIR' $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
-    eval docker run --rm --init -v "$(pwd):$MOUNTED_DIR" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY "$FULL_TAG" bash -c \"$COMMANDS\"
+    echo "$ $DOCKER_RUN_COMMAND"
+    eval $DOCKER_RUN_COMMAND
     EXIT_STATUS=$?
 fi
 # buildkite
