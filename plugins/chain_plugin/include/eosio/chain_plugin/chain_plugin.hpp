@@ -11,8 +11,11 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/types.hpp>
 #include <eosio/chain/fixed_bytes.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
+#include <eosio/chain/backing_store/db_combined.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/to_key.hpp>
 
 #include <boost/container/flat_set.hpp>
@@ -452,7 +455,85 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
-   static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
+   enum class row_requirements { required, optional };
+   template<typename Function>
+   bool get_primary_key_internal(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                                 row_requirements require_primary, Function&& f) const {
+      auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+      if (kv_database.get_backing_store() == eosio::chain::backing_store_type::CHAINBASE) {
+         const auto* const table_id =
+               db.db().find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
+         if (require_table == row_requirements::optional && !table_id) {
+            return false;
+         }
+         EOS_ASSERT(table_id, chain::contract_table_query_exception,
+                    "Missing code: ${code}, scope: ${scope}, table: ${table}",
+                    ("code",code.to_string())("scope",scope.to_string())("table",table.to_string()));
+         const auto& kv_index = db.db().get_index<chain::key_value_index, chain::by_scope_primary>();
+         const auto it = kv_index.find(boost::make_tuple(table_id->id, primary_key));
+         if (require_primary == row_requirements::optional && it == kv_index.end()) {
+            return false;
+         }
+         EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception,
+                    "Missing row for primary_key: ${primary} in code: ${code}, scope: ${scope}, table: ${table}",
+                    ("primary", primary_key)("code",code.to_string())("scope",scope.to_string())
+                    ("table",table.to_string()));
+         f(*it);
+         return true;
+      }
+      else {
+         using namespace eosio::chain;
+         EOS_ASSERT(kv_database.get_backing_store() == backing_store_type::ROCKSDB,
+                    chain::contract_table_query_exception,
+                    "Support for configured backing_store has not been added to get_primary_key");
+         bytes composite_key = chain::backing_store::db_key_value_format::create_primary_key(scope, table, primary_key);
+         const auto full_key = backing_store::db_key_value_format::create_full_key(composite_key, code);
+         auto& current_session = kv_database.get_kv_undo_stack()->top();
+         const auto value = current_session.read(full_key);
+         // check if we didn't actually find the key
+         if (!value) {
+            // only need to bother to do table search if we require it, so that we can report the correct error
+            if (require_table == row_requirements::required) {
+               const auto whole_table_prefix(backing_store::db_key_value_format::create_full_key_prefix(full_key, backing_store::db_key_value_format::end_of_prefix::pre_type));
+               const auto value = current_session.read(whole_table_prefix);
+               EOS_ASSERT(value, chain::contract_table_query_exception,
+                          "Missing code: ${code}, scope: ${scope}, table: ${table}",
+                          ("code",code.to_string())("scope",scope.to_string())("table",table.to_string()));
+            }
+            EOS_ASSERT(require_primary == row_requirements::optional, chain::contract_table_query_exception,
+                       "Missing row for primary_key: ${primary} in code: ${code}, scope: ${scope}, table: ${table}",
+                       ("primary", primary_key)("code",code.to_string())("scope",scope.to_string())
+                       ("table",table.to_string()));
+            return false;
+         }
+         f(chain::backing_store::primary_index_view::create(primary_key, value->data(), value->size()));
+         return true;
+      }
+   }
+
+   template<typename T, typename Function>
+   bool get_primary_key(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                        row_requirements require_primary, Function&& f) const {
+      auto ret = get_primary_key_internal(code, scope, table, primary_key, require_table, require_primary, [&f](const auto& obj) {
+         if( obj.value.size() >= sizeof(T) ) {
+            T t;
+            fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+            fc::raw::unpack(ds, t);
+
+            f(t);
+         }
+      });
+      return ret;
+   }
+
+   fc::variant get_primary_key(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                               row_requirements require_primary, const std::string_view& type, bool as_json = true) const;
+   fc::variant get_primary_key(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                               row_requirements require_primary, const std::string_view& type, const abi_serializer& abis,
+                               bool as_json = true) const;
+
+   template<typename KeyValueObj>
+   static void copy_inline_row(const KeyValueObj& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
@@ -477,6 +558,7 @@ public:
    }
 
    static uint64_t get_table_index_name(const read_only::get_table_rows_params& p, bool& primary);
+
 
    template <typename IndexType, typename SecKeyType, typename ConvFn>
    read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {

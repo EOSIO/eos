@@ -1,9 +1,15 @@
 #pragma once
 #include <eosio/chain/backing_store/db_key_value_format.hpp>
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
+#include <b1/session/rocks_session.hpp>
+#include <b1/session/session.hpp>
+#include <b1/session/undo_stack.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
-using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
+using rocks_db_type = eosio::session::session<eosio::session::rocksdb_t>;
+using session_type = eosio::session::session<rocks_db_type>;
+using kv_undo_stack_ptr = std::unique_ptr<eosio::session::undo_stack<rocks_db_type>>;
 template<typename Object>
 const char* contract_table_type();
 
@@ -60,22 +66,28 @@ struct table_id_object_view {
 };
 
 struct blob {
-   std::string data;
+   std::string str_data;
+   std::size_t size() const { return str_data.size(); }
+   const char* data() const { return str_data.data(); }
 };
 
 template<typename DataStream>
 inline DataStream &operator<<(DataStream &ds, const blob &b) {
-   fc::raw::pack(ds, b.data);
+   fc::raw::pack(ds, b.str_data);
    return ds;
 }
 
 template<typename DataStream>
 inline DataStream &operator>>(DataStream &ds, blob &b) {
-   fc::raw::unpack(ds, b.data);
+   fc::raw::unpack(ds, b.str_data);
    return ds;
 }
 
 struct primary_index_view {
+   static primary_index_view create(uint64_t key, const char* value, std::size_t value_size) {
+      backing_store::payer_payload pp(value, value_size);
+      return primary_index_view{key, pp.payer, {std::string{pp.value, pp.value + pp.value_size}}};
+   }
    uint64_t primary_key;
    account_name payer;
    blob value;
@@ -216,8 +228,7 @@ public:
          uint64_t primary_key;
          EOS_ASSERT(b1::chain_kv::extract_key(remaining, key_end, primary_key), bad_composite_key_exception,
                     "DB intrinsic key-value store composite key is malformed");
-         backing_store::payer_payload pp(value, value_size);
-         receiver_.add_row(primary_index_view{primary_key, pp.payer, {std::string{pp.value, pp.value + pp.value_size}}});
+         receiver_.add_row(primary_index_view::create(primary_key, value, value_size));
       }
       ++primary_count_;
    }
@@ -590,11 +601,11 @@ REFLECT_SECONDARY(eosio::chain::backing_store::secondary_index_view<float128_t>)
 namespace fc {
    inline
    void to_variant( const eosio::chain::backing_store::blob& b, variant& v ) {
-      v = variant(base64_encode(b.data.data(), b.data.size()));
+      v = variant(base64_encode(b.str_data.data(), b.str_data.size()));
    }
 
    inline
    void from_variant( const variant& v, eosio::chain::backing_store::blob& b ) {
-      b.data = base64_decode(v.as_string());
+      b.str_data = base64_decode(v.as_string());
    }
 }

@@ -14,7 +14,6 @@
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
-#include <eosio/chain/backing_store/db_combined.hpp>
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
@@ -2396,8 +2395,9 @@ struct table_receiver {
    template<typename Object>
    void add_row(const Object& row) {
       if constexpr (std::is_same_v<Object, backing_store::table_id_object_view>) {
-         if( params_.table && row.table != params_.table )
+         if( params_.table && row.table != params_.table ) {
             return;
+         }
          result_.rows.push_back( {row.code, row.scope, row.table, row.payer, row.count} );
          check_limit();
       } else {
@@ -2550,22 +2550,6 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
-fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_us, bool shorten_abi_errors ) {
-   const auto table_type = get_table_type(abi, "global"_n);
-   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
-
-   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, "global"_n));
-   EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
-
-   const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
-   const auto it = kv_index.find(boost::make_tuple(table_id->id, "global"_n.to_uint64_t()));
-   EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
-
-   vector<char> data;
-   read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type("global"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time_us ), shorten_abi_errors );
-}
-
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, "producers"_n);
@@ -2613,7 +2597,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          result.rows.emplace_back(fc::variant(data));
    }
 
-   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
+   const name global("global");
+   const auto global_table_type = get_table_type(abi, global);
+   EOS_ASSERT(global_table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",global_table_type));
+   auto var = get_primary_key(config::system_account_name, config::system_account_name, global, global.to_uint64_t(), row_requirements::required, row_requirements::required, abis.get_table_type(global));
+   result.total_producer_vote_weight = var["total_producer_vote_weight"].as_double();
    return result;
 } catch (...) {
    read_only::get_producers_result result;
@@ -3191,75 +3179,27 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       if (params.expected_core_symbol)
          core_symbol = *(params.expected_core_symbol);
 
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, "accounts"_n ));
-      if( t_id != nullptr ) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
-         if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
-            asset bal;
-            fc::datastream<const char *> ds(it->value.data(), it->value.size());
-            fc::raw::unpack(ds, bal);
-
-            if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
-               result.core_liquid_balance = bal;
-            }
+      get_primary_key<asset>(token_code, params.account_name, "accounts"_n, core_symbol.to_symbol_code(),
+		      row_requirements::optional, row_requirements::optional, [&core_symbol,&result](const asset& bal) {
+         if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
+            result.core_liquid_balance = bal;
          }
-      }
+      });
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "userres"_n ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
+      get_primary_key(config::system_account_name, params.account_name, "userres"_n, params.account_name.to_uint64_t(),
+		      row_requirements::optional, row_requirements::optional, "user_resources", abis); 
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "delband"_n ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
+      get_primary_key(config::system_account_name, params.account_name, "delband"_n, params.account_name.to_uint64_t(),
+		      row_requirements::optional, row_requirements::optional, "delegated_bandwidth", abis); 
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, "refunds"_n ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
+      get_primary_key(config::system_account_name, params.account_name, "refunds"_n, params.account_name.to_uint64_t(),
+		      row_requirements::optional, row_requirements::optional, "refund_request", abis); 
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "voters"_n ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
+      get_primary_key(config::system_account_name, config::system_account_name, "voters"_n, params.account_name.to_uint64_t(),
+		      row_requirements::optional, row_requirements::optional, "voter_info", abis); 
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, "rexbal"_n ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
-         if( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.rex_info = abis.binary_to_variant( "rex_balance", data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-         }
-      }
+      get_primary_key(config::system_account_name, config::system_account_name, "rexbal"_n, params.account_name.to_uint64_t(),
+		      row_requirements::optional, row_requirements::optional, "rex_balance", abis); 
    }
    return result;
 }
@@ -3344,29 +3284,39 @@ chain::symbol read_only::extract_core_symbol()const {
    symbol core_symbol(0);
 
    // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
-   const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( "eosio"_n, "eosio"_n, "rammarket"_n ));
-   if( t_id != nullptr ) {
-      const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-      auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
-      if( it != idx.end() ) {
-         detail::ram_market_exchange_state_t ram_market_exchange_state;
-
-         fc::datastream<const char *> ds( it->value.data(), it->value.size() );
-
-         try {
-            fc::raw::unpack(ds, ram_market_exchange_state);
-         } catch( ... ) {
-            return core_symbol;
-         }
-
+   get_primary_key<detail::ram_market_exchange_state_t>("eosio"_n, "eosio"_n, "rammarket"_n, eosio::chain::string_to_symbol_c(4,"RAMCORE"),
+		      row_requirements::optional, row_requirements::optional, [&core_symbol](const detail::ram_market_exchange_state_t& ram_market_exchange_state) {
          if( ram_market_exchange_state.core_symbol.get_symbol().valid() ) {
             core_symbol = ram_market_exchange_state.core_symbol.get_symbol();
          }
-      }
-   }
+   });
 
    return core_symbol;
+}
+
+fc::variant read_only::get_primary_key(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                                       row_requirements require_primary, const std::string_view& type, bool as_json) const {
+   const abi_def abi = eosio::chain_apis::get_abi(db, code);
+   abi_serializer abis;
+   abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
+   return get_primary_key(code, scope, table, primary_key, require_table, require_primary, type, abis, as_json);
+}
+
+fc::variant read_only::get_primary_key(name code, name scope, name table, uint64_t primary_key, row_requirements require_table,
+                                       row_requirements require_primary, const std::string_view& type, const abi_serializer& abis,
+                                       bool as_json) const {
+   fc::variant val;
+   const auto valid = get_primary_key_internal(code, scope, table, primary_key, require_table, require_primary, [&,this](const auto& obj) {
+      vector<char> data;
+      read_only::copy_inline_row(obj, data);
+      if (as_json) {
+         val = abis.binary_to_variant(type, data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+      }
+      else {
+         val = fc::variant(data);
+      }
+   });
+   return val;
 }
 
 } // namespace chain_apis

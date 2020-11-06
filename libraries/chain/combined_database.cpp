@@ -603,7 +603,7 @@ namespace eosio { namespace chain {
          for (size_t i = 0; i < size.value; ++i) {
             backing_store::primary_index_view row;
             read_row(row);
-            backing_store::payer_payload pp{row.payer, row.value.data.data(), row.value.data.size()};
+            backing_store::payer_payload pp{row.payer, row.value.data(), row.value.size()};
             put(pp.as_payload(), backing_store::db_key_value_format::create_primary_key, row.primary_key);
          }
 
