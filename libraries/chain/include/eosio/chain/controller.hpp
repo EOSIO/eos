@@ -380,8 +380,6 @@ namespace eosio { namespace chain {
             return fc::variant(obj);
          }
 
-      static chain_snapshot_header extract_chain_snapshot_header(snapshot_reader& snapshot);
-
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);
 
       static std::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );

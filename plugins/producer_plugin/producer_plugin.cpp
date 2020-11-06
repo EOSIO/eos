@@ -1,4 +1,5 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/producer_plugin/pending_snapshot.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -85,18 +86,6 @@ namespace {
              (code == block_net_usage_exceeded::code_value) ||
              (code == deadline_exception::code_value && deadline_is_subjective);
    }
-
-   std::string snapshot_version(const std::string& snapshot_path)
-   {
-      // extract version
-      auto infile = std::ifstream(snapshot_path, (std::ios::in | std::ios::binary));
-      istream_snapshot_reader reader(infile);
-      reader.validate();
-      auto version = controller::extract_chain_snapshot_header(reader).version_str();
-      infile.close();
-
-      return version;
-   }
 }
 
 struct transaction_id_with_expiry {
@@ -116,60 +105,6 @@ using transaction_id_with_expiry_index = multi_index_container<
 >;
 
 struct by_height;
-
-class pending_snapshot {
-public:
-   using next_t = producer_plugin::next_function<producer_plugin::snapshot_information>;
-
-   pending_snapshot(const block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path)
-   : block_id(block_id)
-   , next(next)
-   , pending_path(pending_path)
-   , final_path(final_path)
-   {}
-
-   uint32_t get_height() const {
-      return block_header::num_from_id(block_id);
-   }
-
-   static bfs::path get_final_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   static bfs::path get_pending_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string(".pending-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   static bfs::path get_temp_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string(".incomplete-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   producer_plugin::snapshot_information finalize( const chain::controller& chain ) const {
-      auto in_chain = (bool)chain.fetch_block_by_id( block_id );
-      boost::system::error_code ec;
-
-      if (!in_chain) {
-         bfs::remove(bfs::path(pending_path), ec);
-         EOS_THROW(snapshot_finalization_exception,
-                   "Snapshotted block was forked out of the chain.  ID: ${block_id}",
-                   ("block_id", block_id));
-      }
-
-      bfs::rename(bfs::path(pending_path), bfs::path(final_path), ec);
-      EOS_ASSERT(!ec, snapshot_finalization_exception,
-                 "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
-                 ("bn", get_height())
-                 ("ec", ec.value())
-                 ("message", ec.message()));
-
-      return {block_id, chain.head_block_num(), chain.head_block_time(), snapshot_version(final_path), final_path};
-   }
-
-   block_id_type     block_id;
-   next_t            next;
-   std::string       pending_path;
-   std::string       final_path;
-};
 
 using pending_snapshot_index = multi_index_container<
    pending_snapshot,
@@ -1158,7 +1093,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("ec", ec.value())
                ("message", ec.message()));
 
-         next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, snapshot_version(snapshot_path.generic_string()), snapshot_path.generic_string()} );
+         next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
       } CATCH_AND_CALL (next);
       return;
    }
