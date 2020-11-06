@@ -38,7 +38,6 @@ FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 const fc::string deep_mind_logger_name("deep-mind");
 fc::logger _deep_mind_log;
-fc::logger _zipkin_logger;
 
 namespace eosio {
 
@@ -277,6 +276,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print contract's output to console")
          ("deep-mind", bpo::bool_switch()->default_value(false),
           "print deeper information about chain operations")
+         ("telemetry-url", bpo::value<std::string>(),
+          "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" )
+         ("telemetry-service-name", bpo::value<std::string>()->default_value("nodeos"),
+          "Zipkin localEndpoint.serviceName sent with each span" )
+         ("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+          "Timeout for sending Zipkin span." )
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -1138,6 +1143,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          my->chain->enable_deep_mind( &_deep_mind_log );
       }
+
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
+
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
