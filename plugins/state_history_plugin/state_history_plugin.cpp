@@ -242,7 +242,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          std::visit( []( auto&& ptr ) {
             if( ptr ) {
-               if (fc::logger::get(fc::zipkin_logger_name).is_enabled( ::fc::log_level::debug )) {
+               if (fc::zipkin_config::is_enabled()) {
                   auto id = ptr->calculate_id();
                   auto blk_trace = fc_create_trace_with_id( "Block", id );
                   auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
