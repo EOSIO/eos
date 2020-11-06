@@ -68,7 +68,7 @@ namespace eosio {
                 fc::datastream<const char *> ds(block.cbegin(), block.size());
                 fc::raw::unpack(ds, b);
 
-                // _blockchain_provider.accept_block(b, b->calculate_id());
+                _blockchain_provider.incoming_block_sync_method(b, b->calculate_id());
             }
 
         private:
