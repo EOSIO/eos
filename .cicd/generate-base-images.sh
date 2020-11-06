@@ -42,9 +42,11 @@ if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_
                 echo "$ $DOCKER_PUSH_COMMAND"
                 eval $DOCKER_PUSH_COMMAND
                 # clean up
-                DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$HASHED_IMAGE_TAG'"
-                echo "$ $DOCKER_RMI_COMMAND"
-                eval $DOCKER_RMI_COMMAND
+                if  [[ "$FULL_TAG" != "$REGISTRY:$HASHED_IMAGE_TAG" ]]; then
+                    DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$HASHED_IMAGE_TAG'"
+                    echo "$ $DOCKER_RMI_COMMAND"
+                    eval $DOCKER_RMI_COMMAND
+                fi
             fi
         done
         DOCKER_RMI_COMMAND="docker rmi 'ci:$HASHED_IMAGE_TAG'"
