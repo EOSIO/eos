@@ -1,35 +1,30 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-mkdir -p $BUILD_DIR
+mkdir -p "$BUILD_DIR"
 CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DAMQP_CONN_STR='amqp://guest:guest@localhost:5672'"
-if [[ "$(uname)" == 'Darwin' && $FORCE_LINUX != true ]]; then
+if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED=false
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
-    cd $BUILD_DIR
-    if [[ $TRAVIS == true ]]; then
-        ccache -s
-        brew link --overwrite python
-        # Support ship_test
-        export NVM_DIR="$HOME/.nvm"
-        . "/usr/local/opt/nvm/nvm.sh"
-        nvm install --lts=dubnium
-    else
+    cd "$BUILD_DIR"
+    if [[ "$CI" == 'true' ]]; then
         source ~/.bash_profile # Make sure node is available for ship_test
     fi
-    echo "cmake $CMAKE_EXTRAS .."
-    cmake $CMAKE_EXTRAS ..
-    echo "make -j$JOBS"
-    make -j$JOBS
+    CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
+    echo "$ $CMAKE_COMMAND"
+    eval $CMAKE_COMMAND
+    MAKE_COMMAND="make -j '$JOBS'"
+    echo "$ $MAKE_COMMAND"
+    eval $MAKE_COMMAND
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-    PRE_COMMANDS="cd $MOUNTED_DIR/build"
+    PRE_COMMANDS="cd '$MOUNTED_DIR/build'"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
-    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=On -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/.cicd/helpers/clang.make"
+    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=On -DCMAKE_TOOLCHAIN_FILE='$MOUNTED_DIR/.cicd/helpers/clang.make'"
     if [[ "$IMAGE_TAG" == 'amazon_linux-2-unpinned' ]]; then
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
     elif [[ "$IMAGE_TAG" == 'centos-7.7-unpinned' ]]; then
@@ -41,11 +36,11 @@ else # Linux
     if [[ "$IMAGE_TAG" == centos* ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j '$JOBS'"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
-        $CICD_DIR/generate-base-images.sh
+        "$CICD_DIR/generate-base-images.sh"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
@@ -55,8 +50,9 @@ else # Linux
     else
         COMMANDS="$BUILD_COMMANDS"
     fi
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
+    . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
-    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
+    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
+    echo "$ $DOCKER_RUN"
+    eval $DOCKER_RUN
 fi
