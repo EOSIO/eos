@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
-
+# search for base image in docker registries
 echo "+++ :mag_right: Looking for $HASHED_IMAGE_TAG"
 for REGISTRY in ${CI_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
@@ -14,7 +14,14 @@ for REGISTRY in ${CI_REGISTRIES[*]}; do
         fi
     fi
 done
-
+# esplain yerself
+if [[ "$EXISTS" == 'false' ]]; then
+    echo 'Base image does not exist in any docker registry, building from scratch.'
+elif [[ "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then
+    echo "OVERWRITE_BASE_IMAGE is set to 'true', building from scratch and pushing to docker registries."
+elif [[ "$FORCE_BASE_IMAGE" == 'true' ]]; then
+    echo "FORCE_BASE_IMAGE is set to 'true', building from scratch and NOT pushing to docker registries."
+fi
 # build, if neccessary
 if [[ "$EXISTS" == 'false' || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
     export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
