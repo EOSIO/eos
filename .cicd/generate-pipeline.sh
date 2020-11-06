@@ -20,7 +20,7 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
+for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
@@ -29,7 +29,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
-    export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
+    export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     # macos-10.14
     # ubuntu-16.04
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
@@ -56,7 +56,7 @@ for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$FILE # returns HASHED_IMAGE_TAG, etc
+    . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
