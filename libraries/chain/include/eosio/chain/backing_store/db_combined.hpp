@@ -588,6 +588,19 @@ const char* contract_table_type() {
    }
 }
 
+template<typename SingleTypeReceiver, typename SingleObject, typename Exception>
+struct single_type_error_receiver {
+   template<typename Object>
+   void add_row(const Object& row) {
+      if constexpr (std::is_same_v<Object, SingleObject>) {
+         static_cast<SingleTypeReceiver*>(this)->add_only_row(row);
+      } else {
+         FC_THROW_EXCEPTION(Exception, "Invariant failure, should not receive an add_row call of type: ${type}",
+                            ("type", contract_table_type<std::decay_t < decltype(row)>>()));
+      }
+   }
+};
+
 }}}
 
 FC_REFLECT(eosio::chain::backing_store::table_id_object_view, (code)(scope)(table)(payer)(count) )
