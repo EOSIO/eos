@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-. $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
+. "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 
 echo "+++ :mag_right: Looking for $HASHED_IMAGE_TAG"
 for REGISTRY in "${CI_REGISTRIES[*]}"; do
