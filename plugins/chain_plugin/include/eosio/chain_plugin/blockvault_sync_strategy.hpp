@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <string_view>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
+
 namespace eosio {
     namespace blockvault {
         using watermark_t = std::pair<uint32_t, eosio::chain::block_timestamp_type>;
