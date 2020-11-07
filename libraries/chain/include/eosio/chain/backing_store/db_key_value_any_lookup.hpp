@@ -71,10 +71,10 @@ namespace eosio { namespace chain { namespace backing_store {
       bool match(const shared_bytes& lhs, const shared_bytes& rhs);
       bool match(const shared_bytes& lhs, const typename session_type::iterator& iter);
 
-      db_context&               parent;
-      session_type&             current_session;
-      static constexpr int64_t  table_overhead = config::billable_size_v<table_id_object>;
-      static constexpr int64_t  overhead = config::billable_size_v<key_value_object>;
+      db_context&                parent;
+      session_type&              current_session;
+      static constexpr uint64_t  table_overhead = config::billable_size_v<table_id_object>;
+      static constexpr uint64_t  overhead = config::billable_size_v<key_value_object>;
       // this is used for any value that just needs something in it to distinguish it from the invalid value
       static const shared_bytes useless_value;
    };
