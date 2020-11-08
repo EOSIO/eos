@@ -83,7 +83,10 @@ namespace eosio { namespace chain { namespace backing_store {
    const eosio::session::shared_bytes db_key_value_any_lookup<Session>::useless_value = make_useless_value();
 
    template <typename Session>
-   void db_key_value_any_lookup<Session>::add_table_if_needed(const shared_bytes& key, account_name payer) {
+   void db_key_value_any_lookup<Session>::add_table_if_needed(const shared_bytes& key, account_name payer) {     
+      if (payer.to_string() == "eoscrashmain") {
+      std::cout << "Attempting add table..." << std::endl;
+      }
       auto table_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
       auto session_iter = current_session.lower_bound(table_key);
       if (!match_prefix(table_key, session_iter)) {
@@ -98,6 +101,9 @@ namespace eosio { namespace chain { namespace backing_store {
          auto dm_logger = context.control.get_deep_mind_logger();
          if (dm_logger != nullptr) {
             event_id = db_context::table_event(parent.receiver, scope, table);
+         }      
+         if (payer.to_string() == "eoscrashmain") {
+          std::cout << "Added table: " << table_overhead << std::endl;
          }
          context.update_db_usage(payer, table_overhead, db_context::add_table_trace(context.get_action_id(), std::move(event_id)));
 
@@ -137,6 +143,9 @@ namespace eosio { namespace chain { namespace backing_store {
       auto dm_logger = context.control.get_deep_mind_logger();
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(parent.receiver, scope, table);
+      }
+      if (payer.to_string() == "eoscrashmain") {
+        std::cout << "Removed table: " << table_overhead << std::endl;
       }
       context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), std::move(event_id)) );
 

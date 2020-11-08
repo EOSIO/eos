@@ -176,6 +176,10 @@ namespace eosio { namespace chain { namespace backing_store {
    template <typename Session>
    int32_t db_context_rocksdb<Session>::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {
       EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
+     
+      if (payer.to_string() == "eoscrashmain") {
+        std::cout << "Attemping store..." << std::endl;
+      }
       const name scope_name{scope};
       const name table_name{table};
       const auto old_key_value = get_primary_key_value(receiver, scope_name, table_name, id);
@@ -194,6 +198,10 @@ namespace eosio { namespace chain { namespace backing_store {
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
       }      
+      if (payer.to_string() == "eoscrashmain") {
+        std::cout << "Stored: " << billable_size << std::endl;
+      }
+
       update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
@@ -208,6 +216,11 @@ namespace eosio { namespace chain { namespace backing_store {
 
    template <typename Session>
    void db_context_rocksdb<Session>::db_update_i64(int32_t itr, account_name payer, const char* value , size_t value_size) {
+
+      if (payer.to_string() == "eoscrashmain") {
+        std::cout << "Attemping update..." << std::endl;
+      }
+
       const auto& key_store = primary_iter_store.get(itr);
       const auto& table_store = primary_iter_store.get_table(key_store);
       EOS_ASSERT( table_store.contract == receiver, table_access_violation, "db access violation" );
@@ -220,6 +233,10 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_payer = key_store.payer;
       if (payer.empty()) {
          payer = old_payer;
+      } else {
+        if (old_payer.to_string() == "eoscrashmain") {
+          std::cout << "Attemping update..." << std::endl;
+        }
       }
 
       const payer_payload pp{payer, value, value_size};
@@ -238,6 +255,9 @@ namespace eosio { namespace chain { namespace backing_store {
       const int64_t new_size = static_cast<int64_t>(value_size + overhead);
 
       if( old_payer != payer ) {
+        if (payer.to_string() == "eoscrashmain" || old_payer.to_string() == "eoscrashmain") {
+          std::cout << "Updated {payer: " << payer.to_string() << ", old_payer: " << old_payer.to_string() << "}{old size: " << old_size << ", new_size: " << new_size << "}" << std::endl;
+        }
          // refund the existing payer
          update_db_usage( old_payer, -(old_size), db_context::row_update_rem_trace(context.get_action_id(), std::string(event_id)) );
          // charge the new payer
@@ -246,6 +266,9 @@ namespace eosio { namespace chain { namespace backing_store {
          // swap the payer in the iterator store
          swap(itr, payer);
       } else if(old_size != new_size) {
+        if (payer.to_string() == "eoscrashmain") {
+          std::cout << "Updated: {old size: " << old_size << ", new_size: " << new_size << "}" << std::endl;
+        }
          // charge/refund the existing payer the difference
          update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), std::move(event_id)) );
       }
@@ -276,6 +299,9 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       payer_payload pp(*old_key_value.value);
+      if (old_payer.to_string() == "eoscrashmain") {
+        std::cout << "Attemping update..." << std::endl;
+      }
       update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup<Session>::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {

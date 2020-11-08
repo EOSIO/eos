@@ -117,6 +117,10 @@ namespace eosio { namespace chain { namespace backing_store {
 
          EOS_ASSERT( !old_value, db_rocksdb_invalid_operation_exception, "db_${d}_store called with pre-existing key", ("d", helper.desc()));
 
+         if (payer.to_string() == "eoscrashmain") {
+            std::cout << "Attempting store..." << std::endl;
+         }
+
          // identify if this primary key already has a secondary key of this type
          auto session_iter = this->current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( !this->match_prefix(secondary_key.prefix_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -130,6 +134,11 @@ namespace eosio { namespace chain { namespace backing_store {
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(this->parent.receiver, scope, table, name(id));
          }
+
+         if (payer.to_string() == "eoscrashmain") {
+            std::cout << "Stored: " << helper.overhead() << std::endl;
+         }
+
          this->parent.context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_add_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
          const unique_table t { this->parent.receiver, scope, table };
@@ -149,6 +158,10 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
 
+        if (key_store.payer.to_string() == "eoscrashmain") {
+            std::cout << "Attempting remove..." << std::endl;
+         }
+
          auto session_iter = this->current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( this->match_prefix(secondary_key.full_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
                      "db_${d}_remove called, but primary key: ${primary} didn't have a primary to secondary key",
@@ -157,6 +170,9 @@ namespace eosio { namespace chain { namespace backing_store {
          std::string event_id;
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(table.contract, table.scope, table.table, name(key_store.primary));
+         }
+         if (key_store.payer.to_string() == "eoscrashmain") {
+            std::cout << "Removed: " << helper.overhead() << std::endl;
          }
          this->parent.context.update_db_usage( key_store.payer, -( helper.overhead() ), db_context::secondary_rem_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
@@ -178,6 +194,10 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
 
+         if (payer.to_string() == "eoscrashmain" || key_store.payer.to_string() == "eoscrashmain") {
+            std::cout << "Attempting update {payer: " << payer.to_string() << ", key_store: " << key_store.payer.to_string() << "}..." << std::endl;
+         }
+
          // identify if this primary key already has a secondary key of this type
          auto primary_sec_uesless_value = this->current_session.read(secondary_key.full_primary_to_sec_key);
          EOS_ASSERT( primary_sec_uesless_value, db_rocksdb_invalid_operation_exception,
@@ -193,6 +213,9 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          if( key_store.payer != payer ) {
+            if (payer.to_string() == "eoscrashmain" || key_store.payer.to_string() == "eoscrashmain") {
+                std::cout << "Updated: " << helper.overhead() << std::endl;
+            }
             context.update_db_usage( key_store.payer, -(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
             context.update_db_usage( payer, +(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
          }
