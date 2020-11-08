@@ -251,7 +251,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
               "Ram usage delta would overflow UINT64_MAX");
    EOS_ASSERT(ram_delta >= 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
-              "Ram usage delta would underflow UINT64_MAX");
+              "Ram usage delta would underflow UINT64_MAX [usage: ${u}, delta: ${d}]", ("u", usage.ram_usage)("d", ram_delta));
 
    _db.modify( usage, [&]( auto& u ) {
       u.ram_usage += ram_delta;
