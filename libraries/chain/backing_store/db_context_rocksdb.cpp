@@ -216,11 +216,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
    template <typename Session>
    void db_context_rocksdb<Session>::db_update_i64(int32_t itr, account_name payer, const char* value , size_t value_size) {
-
-      if (payer.to_string() == "eoscrashmain") {
-        std::cout << "Attemping update..." << std::endl;
-      }
-
       const auto& key_store = primary_iter_store.get(itr);
       const auto& table_store = primary_iter_store.get_table(key_store);
       EOS_ASSERT( table_store.contract == receiver, table_access_violation, "db access violation" );
@@ -233,10 +228,9 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_payer = key_store.payer;
       if (payer.empty()) {
          payer = old_payer;
-      } else {
-        if (old_payer.to_string() == "eoscrashmain") {
-          std::cout << "Attemping update..." << std::endl;
-        }
+      } 
+      if (payer.to_string() == "eoscrashmain" || old_payer.to_string() == "eoscrashmain") {
+        std::cout << "Attemping update..." << std::endl;
       }
 
       const payer_payload pp{payer, value, value_size};
