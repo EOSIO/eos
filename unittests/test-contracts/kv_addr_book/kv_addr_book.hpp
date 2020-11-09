@@ -140,6 +140,10 @@ class [[eosio::contract]] kv_addr_book : public eosio::contract {
          std::string state, 
          std::string country);
 
+
+      [[eosio::action]]
+      void test();
+
       // creates if not exists, or updates if already exists, a person
       [[eosio::action]]
       void upsert(eosio::name account_name,
