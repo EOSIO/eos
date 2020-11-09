@@ -85,7 +85,7 @@ namespace eosio { namespace chain { namespace backing_store {
    template <typename Session>
    void db_key_value_any_lookup<Session>::add_table_if_needed(const shared_bytes& key, account_name payer) {     
       if (payer.to_string() == "eoscrashmain") {
-      std::cout << "Attempting add table..." << std::endl;
+        ilog("Attempting add table...");
       }
       auto table_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
       auto session_iter = current_session.lower_bound(table_key);
@@ -103,7 +103,7 @@ namespace eosio { namespace chain { namespace backing_store {
             event_id = db_context::table_event(parent.receiver, scope, table);
          }      
          if (payer.to_string() == "eoscrashmain") {
-          std::cout << "Added table: " << table_overhead << std::endl;
+           ilog("Added table: ${size}", ("size", table_overhead));
          }
          context.update_db_usage(payer, table_overhead, db_context::add_table_trace(context.get_action_id(), std::move(event_id)));
 
@@ -145,7 +145,7 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(parent.receiver, scope, table);
       }
       if (payer.to_string() == "eoscrashmain") {
-        std::cout << "Removed table: " << table_overhead << std::endl;
+        ilog("Removed table: ${size}", ("size", table_overhead));
       }
       context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), std::move(event_id)) );
 
