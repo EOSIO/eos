@@ -1266,12 +1266,11 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
-   _zipkin_logger.shutdown();
+   zipkin_config::shutdown();
 }
 
 void chain_plugin::handle_sighup() {
    fc::logger::update( deep_mind_logger_name, _deep_mind_log );
-   fc::logger::update( fc::zipkin_logger_name, _zipkin_logger );
 }
 
 chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions)
