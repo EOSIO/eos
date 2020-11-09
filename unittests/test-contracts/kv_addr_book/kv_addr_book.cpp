@@ -86,6 +86,22 @@ std::vector<person> kv_addr_book::getbyaddress(
    return list_of_persons;
 }
 
+[[eosio::action]]
+void kv_addr_book::test() {
+   address_table addresses{"kvaddrbook"_n};
+
+   person p1 = person_factory::get_person("john"_n, "John", "Smith", "123 MyStreet", "MyCity", "MyState", "United States", "jsmith");
+   person p2 = person_factory::get_person("jane"_n, "Jane", "Doe", "1234 MyStreet", "MyCity", "MyState", "United States", "jdoe");
+   person p3 = person_factory::get_person("steve"_n, "Steve", "Jones", "321 MyStreet", "MyCity", "MyState", "United States", "sjones");
+   person p4 = person_factory::get_person("lois"_n, "Lois", "Lane", "5432 MyStreet", "MyCity", "MyState", "United States", "llane");
+
+   addresses.put(p1, get_self());
+   addresses.put(p2, get_self());
+   addresses.put(p3, get_self());
+   addresses.put(p4, get_self());
+}
+
+
 // creates if not exists, or updates if already exists, a person
 [[eosio::action]]
 void kv_addr_book::upsert(
