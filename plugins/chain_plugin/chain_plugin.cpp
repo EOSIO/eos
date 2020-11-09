@@ -2238,6 +2238,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       if( !point_query ) {
          lb_key.resize(lb_key_size);
          status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+         EOS_ASSERT(lb_key_size == lb_key_actual_size, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
       }
    }
 
@@ -2253,6 +2254,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
       ub_key.resize(ub_key_size);
       status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+      EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
    }
 
    kv_it_stat status;
@@ -2283,7 +2285,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
          row_key.resize(key_size);
-         status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
+         status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
+         EOS_ASSERT(key_size == actual_size, chain::contract_table_query_exception, "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
          if( point_query ) {
             if( row_key.size() != lb_key_size || row_key != lb_key) {
                cmp = 1;
@@ -2293,17 +2296,19 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
          row_value.clear();
          row_value.resize(value_size);
-         status = itr->kv_it_value(offset, row_value.data(), key_size, value_size);
-         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid key in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         status = itr->kv_it_value(offset, row_value.data(), value_size, actual_size);
+         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
          if (!is_primary_idx) {
+            value_size = row_value.size();
             auto success = kv_context.kv_get(p.code.to_uint64_t(), row_value.data(), row_value.size(), value_size);
             if (success) {
                row_value.resize(value_size);
                actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
-               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
             } else {
-               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+               EOS_ASSERT(false, chain::contract_table_query_exception, "invalid secondary index in ${t} ${i}", ("t", p.table)("i", p.index_name));
             }
          }
 
