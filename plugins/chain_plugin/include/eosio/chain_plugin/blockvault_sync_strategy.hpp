@@ -26,7 +26,7 @@ namespace eosio {
                     &_previous_block_id : nullptr, *this);
             }
 
-            void on_snapshot(const char* snapshot_filename) override {
+            void on_snapshot(const char* snapshot_filename) override final {
                 auto infile = std::ifstream(snapshot_filename, (std::ios::in | std::ios::binary));
                 auto reader = std::make_shared<chain::istream_snapshot_reader>(infile);
                 _blockchain_provider.chain->startup(_shutdown, _check_shutdown, reader);
@@ -35,7 +35,7 @@ namespace eosio {
                 _got_snapshot = true;
             }
 
-            void on_block(eosio::chain::signed_block_ptr block) override {
+            void on_block(eosio::chain::signed_block_ptr block) override final {
                 if (!_got_snapshot) {
                     _blockchain_provider.chain->startup(_shutdown, _check_shutdown);
                 }
