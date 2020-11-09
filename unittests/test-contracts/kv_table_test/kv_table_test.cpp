@@ -51,9 +51,29 @@ public:
       eosio::check(val->foo == 1, "Got the wrong foo value");
       eosio::check(val->bar == "boba", "Got the wrong bar value");
 
-      auto val2 = t.primary_key.get("bobj"_n);
-      eosio::check(val2->primary_key == "bobj"_n, "Got the wrong primary value");
-      eosio::check(val2->foo == 10, "Got the wrong foo value");
-      eosio::check(val2->bar == "bobj", "Got the wrong bar value");
+      val = t.primary_key.get("bobj"_n);
+      eosio::check(val->primary_key == "bobj"_n, "Got the wrong primary value");
+      eosio::check(val->foo == 10, "Got the wrong foo value");
+      eosio::check(val->bar == "bobj", "Got the wrong bar value");
+
+      val = t.bar.get("boba");
+      eosio::check(val->primary_key == "boba"_n, "Got the wrong primary value");
+      eosio::check(val->foo == 1, "Got the wrong foo value");
+      eosio::check(val->bar == "boba", "Got the wrong bar value");
+
+      val = t.bar.get("bobj");
+      eosio::check(val->primary_key == "bobj"_n, "Got the wrong primary value");
+      eosio::check(val->foo == 10, "Got the wrong foo value");
+      eosio::check(val->bar == "bobj", "Got the wrong bar value");
+     
+      val = t.foo.get(1);
+      eosio::check(val->primary_key == "boba"_n, "Got the wrong primary value");
+      eosio::check(val->foo == 1, "Got the wrong foo value");
+      eosio::check(val->bar == "boba", "Got the wrong bar value");
+
+      val = t.foo.get(10);
+      eosio::check(val->primary_key == "bobj"_n, "Got the wrong primary value");
+      eosio::check(val->foo == 10, "Got the wrong foo value");
+      eosio::check(val->bar == "bobj", "Got the wrong bar value");
    }
 };
