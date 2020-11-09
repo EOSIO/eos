@@ -176,10 +176,6 @@ namespace eosio { namespace chain { namespace backing_store {
    template <typename Session>
    int32_t db_context_rocksdb<Session>::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {
       EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
-     
-      if (payer.to_string() == "eoscrashmain") {
-        ilog("Attemping store...");
-      }
       const name scope_name{scope};
       const name table_name{table};
       const auto old_key_value = get_primary_key_value(receiver, scope_name, table_name, id);
@@ -229,9 +225,6 @@ namespace eosio { namespace chain { namespace backing_store {
       if (payer.empty()) {
          payer = old_payer;
       } 
-      if (payer.to_string() == "eoscrashmain" || old_payer.to_string() == "eoscrashmain") {
-        ilog("Attemping update...");
-      }
 
       const payer_payload pp{payer, value, value_size};
       set_value(old_key_value.full_key, pp);

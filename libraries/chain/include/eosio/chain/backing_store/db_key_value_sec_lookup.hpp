@@ -117,10 +117,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
          EOS_ASSERT( !old_value, db_rocksdb_invalid_operation_exception, "db_${d}_store called with pre-existing key", ("d", helper.desc()));
 
-         if (payer.to_string() == "eoscrashmain") {
-            ilog("Attempting store...");
-         }
-
          // identify if this primary key already has a secondary key of this type
          auto session_iter = this->current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( !this->match_prefix(secondary_key.prefix_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -157,11 +153,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
-
-        if (key_store.payer.to_string() == "eoscrashmain") {
-          ilog("Attempting remove...");
-         }
-
+                     
          auto session_iter = this->current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( this->match_prefix(secondary_key.full_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
                      "db_${d}_remove called, but primary key: ${primary} didn't have a primary to secondary key",

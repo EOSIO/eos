@@ -84,9 +84,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
    template <typename Session>
    void db_key_value_any_lookup<Session>::add_table_if_needed(const shared_bytes& key, account_name payer) {     
-      if (payer.to_string() == "eoscrashmain") {
-        ilog("Attempting add table...");
-      }
       auto table_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
       auto session_iter = current_session.lower_bound(table_key);
       if (!match_prefix(table_key, session_iter)) {
