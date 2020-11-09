@@ -82,22 +82,6 @@ namespace fc {
        }
     }
 
-    void logger::shutdown() {
-       std::unique_lock g( log_config::get().log_mutex );
-
-       for( auto& a : my->_appenders ) {
-          try {
-             a->shutdown();
-          } catch( fc::exception& er ) {
-             std::cerr << "ERROR: logger::shutdown fc::exception: " << er.to_detail_string() << std::endl;
-          } catch( const std::exception& e ) {
-             std::cerr << "ERROR: logger::shutdown std::exception: " << e.what() << std::endl;
-          } catch( ... ) {
-             std::cerr << "ERROR: logger::shutdown unknown exception: " << std::endl;
-          }
-       }
-    }
-
     void logger::set_name( const fc::string& n ) { my->_name = n; }
     const fc::string& logger::name()const { return my->_name; }
 
