@@ -263,7 +263,6 @@ namespace eosio { namespace chain { namespace backing_store {
       } else if(old_size != new_size) {
         if (payer.to_string() == "eoscrashmain") {
           ilog("Updated [old size: ${old_size}, new_size: ${new_size}]", ("old_size", old_size)("new_size", new_size));
-          std::cout << "Updated: {old size: " << old_size << ", new_size: " << new_size << "}" << std::endl;
         }
          // charge/refund the existing payer the difference
          update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), std::move(event_id)) );
@@ -296,7 +295,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       payer_payload pp(*old_key_value.value);
       if (old_payer.to_string() == "eoscrashmain") {
-        ilog("Attempting update...");
+        ilog("Removing: ${size}", ("size", pp.value_size + db_key_value_any_lookup<Session>::overhead));
       }
       update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup<Session>::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
