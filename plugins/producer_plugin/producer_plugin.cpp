@@ -382,11 +382,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
 
          try {
-            chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
+             chain.push_block( bsf, [this]( const branch_type& forked_branch ) { // as soon as accepted this emits a signal // will not overload push_block
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
+             // check if bvault is activated
+             // may be able to just overload push_block to _verify_ the block if blockvault (bool) is true; pass noop lambda
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
             return false;
@@ -2043,7 +2045,7 @@ void producer_plugin_impl::produce_block() {
    }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   chain.finalize_block( [&]( const digest_type& d ) {
+   bsp = chain.finalize_block( [&]( const digest_type& d ) { // get dpos irr block num
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
       sigs.reserve(relevant_providers.size());
@@ -2055,7 +2057,33 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   chain.commit_block();
+   // append can't fail
+   // propose can fail
+
+   if (blocksvault) {
+     // possibly use a future
+        // caller that gets the future can decide thread issues
+           // thread pooling
+       
+     // to get the watermark call get_watermark
+     // to get the producer
+     // const auto& scheduled_producer = hbs->get_scheduled_producer(block_time); // possible
+     // chain.head_block_state(); // clue
+     // account_name controller::pending_block_producer()const { // clue
+     // to get the LIBid LIBnumber
+     // can get both from controller
+        // NOT chain.getlastirriverse, it's the LIB number from the block state
+        // get dpos irr block num
+        // block header state also has the producer
+        // has the signed block as well
+     async_propose_constructed_block(watermark,
+                                     lib,
+                                     []() { if (true) {chain.commit_block(); //log } else {throw;}); // _unapplied_transactions.add_aborted( chain.abort_block() );
+   } else {
+       chain.commit_block();
+   }
+
+   chain.commit_block(); // may just be able to call the custom controller function and pass this in
 
    block_state_ptr new_bs = chain.head_block_state();
 
