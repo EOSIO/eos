@@ -708,8 +708,10 @@ chain_plugin::do_hard_replay(const variables_map& options) {
                } else {
                   ilog("do_hard_replay: 3rd checking NOT exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
                }
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+               if (!fc::exists( shared_memory_bin_file ) ) {
+                  fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                           my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+               }
                if (fc::exists( shared_memory_bin_file ) ) {
                   ilog("do_hard_replay: 4th checking exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
                } else {
