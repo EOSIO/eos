@@ -1,25 +1,13 @@
 #pragma once
 
-#include <boost/signals2/signal.hpp>
-#include <appbase/application.hpp> // appbase::plugin
-// #include <blockvault.hpp>
-// #include <eosio/chain_plugin/chain_plugin.hpp>
-// #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/chain/types.hpp> // eosio::block_id_type
-#include <eosio/chain/block.hpp> // eosio::signed_block
-#include <eosio/chain/snapshot.hpp> // eosio::snapshot_reader_ptr
-#include <eosio/chain/block_timestamp.hpp> // eosio::block_timestamp
-#include <eosio/chain/plugin_interface.hpp>
+#include <appbase/application.hpp>
 #include "blockvault.hpp"
 
 namespace eosio {
-    
+
 using namespace appbase;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::plugin_interface;
-
-using block_num = uint32_t;
 
 class blockvault_client_plugin_impl;
 
@@ -45,22 +33,12 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   void propose_constructed_block(signed_block_ptr sbp);
-   void append_external_block(signed_block_ptr sbp);
-   // void propose_snapshot();
-   // void sync_for_construction();
-   // blockvault_interface* get();
+   void propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler);
+   void append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler);
+   void propose_snapshot();
+   void sync_for_construction();
 
-   enum class blockvault_entity : size_t {
-      leader,
-      follower
-   };
-
-   compat::channels::accepted_blockvault_block::channel_type& _accepted_blockvault_block_channel;
-
-   blockvault_entity entity;
-   std::vector<signed_block_ptr> block_index;
-   static eosio::blockvault::block_vault_interface* get() {return nullptr;} // TODO: implement me
+   static eosio::blockvault::block_vault_interface* get() { return nullptr; } // TODO: implement me
 
  private:
    std::unique_ptr<class blockvault_client_plugin_impl> my;
