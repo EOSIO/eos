@@ -830,7 +830,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
-      my->chain_config->backing_store = options.at( "backing-store" ).as<backing_store_type>();
+      //my->chain_config->backing_store = options.at( "backing-store" ).as<backing_store_type>();
+      my->chain_config->backing_store = eosio::chain::backing_store_type::ROCKSDB;
 
       if( options.count( "rocksdb-threads" )) {
          my->chain_config->rocksdb_threads = options.at( "rocksdb-threads" ).as<uint16_t>();
