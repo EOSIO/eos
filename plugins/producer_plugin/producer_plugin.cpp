@@ -373,8 +373,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
             schedule_production_loop();
-         });
-         
+         });         
          // push the new block
          auto handle_error = [&](const auto& e)
          {
@@ -2032,7 +2031,7 @@ static auto maybe_make_debug_time_logger() -> std::optional<decltype(make_debug_
 }
 
 void producer_plugin_impl::produce_block() {
-   // ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
+   //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
@@ -2056,9 +2055,8 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   //idump( (fc::time_point::now() - chain.pending_block_time()) );
-       
-   auto bsp = chain.finalize_block( [&]( const digest_type& d ) { // get dpos irr block num
+   //idump( (fc::time_point::now() - chain.pending_block_time()) );    
+   chain.finalize_block( [&]( const digest_type& d ) { // get dpos irr block num
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
       sigs.reserve(relevant_providers.size());

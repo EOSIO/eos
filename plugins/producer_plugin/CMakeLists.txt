@@ -10,4 +10,4 @@ target_include_directories( producer_plugin
     PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include"
-    "include/eosio/blockvault_client_plugin/*.hpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../blockvault_client_plugin/include")

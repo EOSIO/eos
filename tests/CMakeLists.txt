@@ -58,7 +58,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/commit_split_test.py ${CMAKE_CURRENT_BINARY_DIR}/commit_split_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/producer_plugin_blockvault_test.py ${CMAKE_CURRENT_BINARY_DIR}/producer_plugin_blockvault_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
