@@ -5,7 +5,7 @@ set -eo pipefail
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
-    source ~/.bash_profile
+    [[ "$CI" == 'true' ]] && source ~/.bash_profile
     "./$1" ${@: 2}
     EXIT_STATUS=$?
 else # Linux
