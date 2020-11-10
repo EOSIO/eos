@@ -10,9 +10,7 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd "$BUILD_DIR"
-    if [[ "$CI" == 'true' ]]; then
-        source ~/.bash_profile # Make sure node is available for ship_test
-    fi
+    [[ "$CI" == 'true' ]] && source ~/.bash_profile # Make sure node is available for ship_test
     CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
     echo "$ $CMAKE_COMMAND"
     eval $CMAKE_COMMAND
