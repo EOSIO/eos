@@ -52,6 +52,7 @@ find_package(Boost @Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@ EXACT REQUIRED CO
    iostreams
    unit_test_framework)
 
+find_library(librocksdb rocksdb @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
 find_library(libtester eosio_testing @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libchain eosio_chain @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
@@ -117,6 +118,7 @@ macro(add_eosio_test_executable test_name)
 
        ${WRAP_MAIN}
        Threads::Threads
+       ${librocksdb}
       )
    
    #adds -ltr. Ubuntu eosio.contracts build breaks without this

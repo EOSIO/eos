@@ -1,0 +1,71 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "addnumobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "input",
+                    "type": "uint64"
+                },
+                {
+                    "name": "nm",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "numobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sec64",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sec128",
+                    "type": "uint128"
+                },
+                {
+                    "name": "secdouble",
+                    "type": "float64"
+                },
+                {
+                    "name": "secldouble",
+                    "type": "float128"
+                },
+                {
+                    "name": "nm",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "addnumobj",
+            "type": "addnumobj",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "numobjs",
+            "type": "numobj",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}

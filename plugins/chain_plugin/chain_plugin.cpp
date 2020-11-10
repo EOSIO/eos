@@ -29,6 +29,7 @@
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
+#include <fc/log/trace.hpp>
 #include <signal.h>
 #include <cstdlib>
 
@@ -322,6 +323,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print contract's output to console")
          ("deep-mind", bpo::bool_switch()->default_value(false),
           "print deeper information about chain operations")
+         ("telemetry-url", bpo::value<std::string>(),
+          "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" )
+         ("telemetry-service-name", bpo::value<std::string>()->default_value("nodeos"),
+          "Zipkin localEndpoint.serviceName sent with each span" )
+         ("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+          "Timeout for sending Zipkin span." )
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -360,16 +367,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
           "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
-          "In \"heap\" mode database is preloaded in to swappable memory.\n"
-#ifdef __linux__
-          "In \"locked\" mode database is preloaded, locked in to memory, and optionally can use huge pages.\n"
-#else
-          "In \"locked\" mode database is preloaded and locked in to memory.\n"
+#ifndef _WIN32
+          "In \"heap\" mode database is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode database is preloaded, locked in to memory, and will use huge pages if available.\n"
 #endif
          )
-#ifdef __linux__
-         ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
-#endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache")
@@ -1167,10 +1169,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config->db_map_mode = options.at("database-map-mode").as<pinnable_mapped_file::map_mode>();
-#ifdef __linux__
-      if( options.count("database-hugepage-path") )
-         my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
-#endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )
@@ -1213,6 +1211,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          my->chain->enable_deep_mind( &_deep_mind_log );
       }
+
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
+
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
@@ -1360,6 +1365,7 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
+   zipkin_config::shutdown();
 }
 
 void chain_plugin::handle_sighup() {
@@ -1696,7 +1702,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       app().version_string(),
       db.fork_db_pending_head_block_num(),
       db.fork_db_pending_head_block_id(),
-      app().full_version_string()
+      app().full_version_string(),
+      db.last_irreversible_block_time()
    };
 }
 
@@ -1811,6 +1818,10 @@ uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params&
    }
    index |= (pos & 0x000000000000000FULL);
    return index;
+}
+
+uint64_t convert_to_type(const eosio::name &n, const string &desc) {
+   return n.to_uint64_t();
 }
 
 template<>
@@ -1987,7 +1998,7 @@ void read_only::convert_key(const string& index_type, const string& encode_type,
          string bytes_data = boost::algorithm::unhex(index_value);
          auto bytes_datasize = bytes_data.size();
          if( bin.size() < bytes_datasize ) {
-            bin.resize(index_value.size());
+            bin.resize(bytes_datasize);
          }
          memcpy(bin.data(), bytes_data.data(), bytes_datasize);
          return;
@@ -2127,7 +2138,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
    name database_id = chain::kvram_id;
 
-   // Enable the code block once rocksdb_nodeos_integratin is merged
    const chain::kv_database_config &limits = kv_config;
    auto &kv_database = const_cast<chain::controller&>(db).kv_db();
    // To do: provide kv_resource_manmager to create_kv_context
@@ -2136,7 +2146,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    return get_kv_table_rows_context(p, *kv_context, abi);
 }
 
-read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, kv_context  &kv_context, const abi_def &abi )const {
+read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& pp, kv_context  &kv_context, const abi_def &abi )const {
+   read_only::get_kv_table_rows_params p(pp);
    string tbl_name = p.table.to_string();
 
    // Check valid table name
@@ -2172,49 +2183,14 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    auto end_time = cur_time + fc::microseconds(1000 * 10);
 
    auto wait_time = end_time - cur_time;
+   bool unbounded = false;
    ///////////////////////////////////////////////////////////
    // point query
    ///////////////////////////////////////////////////////////
    if( point_query ) {
       const string &index_value = *p.index_value;
-      vector<char> iv;
-      convert_key(index_type, p.encode_type, index_value, iv);
-      vector<char> key;
-      key.resize(prefix.size() + iv.size());
-      memcpy(key.data(), prefix.data(), prefix.size());
-      memcpy(key.data() + prefix.size(), iv.data(), iv.size());
-
-      fc::variant row_var;
-      auto success = kv_context.kv_get(p.code.to_uint64_t(), key.data(), key.size(), value_size);
-      if( success ) {
-         vector<char> value;
-         value.resize(value_size);
-         auto return_size = kv_context.kv_get_data(offset, value.data(), value_size);
-         EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception,  "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
-
-         if( !is_primary_idx) {
-            success = kv_context.kv_get(p.code.to_uint64_t(), value.data(), value.size(), value_size);
-            if (success) {
-               value.resize(value_size);
-               return_size = kv_context.kv_get_data(offset, value.data(), value_size);
-               EOS_ASSERT(return_size == value_size, chain::contract_table_query_exception, "point query value size mismatch: ${s1} ${s2}", ("s1", return_size)("s2", value_size));
-            }
-         }
-
-         fc::variant row_var;
-         if( p.json ) {
-            try {
-               row_var = abis.binary_to_variant( p.table.to_string(), value, abi_serializer::create_yield_function( wait_time ), shorten_abi_errors );
-            } catch ( fc::exception &e ) {
-               row_var = fc::variant(value);
-            }
-         } else {
-            row_var = fc::variant(value);
-         }
-         result.rows.emplace_back( std::move(row_var) );
-      }
-
-      return result;
+      p.lower_bound = p.index_value;
+      unbounded = true;
    }
 
    ///////////////////////////////////////////////////////////
@@ -2222,30 +2198,44 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    ///////////////////////////////////////////////////////////
    bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
    bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-   EOS_ASSERT(has_lower_bound && has_upper_bound, chain::contract_table_query_exception,  "Unknown range: ${t} ${i}", ("t", p.table)("i", p.index_name));
+   unbounded = !has_lower_bound || !has_upper_bound;
+   // reverse mode has upper_bound value, non-reverse and point query has lower bound value
+   EOS_ASSERT((p.reverse && has_upper_bound) || (!p.reverse && has_lower_bound) || (has_lower_bound && point_query), chain::contract_table_query_exception, "Unknown/Invalid range: ${t} ${i}", ("t", p.table)("i", p.index_name));
 
    vector<char> lb_key;
    const string &lower_bound = *p.lower_bound;
    vector<char> lv;
-   convert_key(index_type, p.encode_type, lower_bound, lv);
-   lb_key.resize(prefix.size() + lv.size());
-   memcpy(lb_key.data(), prefix.data(), prefix.size());
-   memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
+  
+   if( has_lower_bound ) {
+      convert_key(index_type, p.encode_type, lower_bound, lv);
+      lb_key.resize(prefix.size() + lv.size());
+      memcpy(lb_key.data(), prefix.data(), prefix.size());
+      memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
+   }
 
    vector<char> ub_key;
    const string &upper_bound = *p.upper_bound;
    vector<char> uv;
-   convert_key(index_type, p.encode_type, upper_bound, uv);
-   ub_key.resize(prefix.size() + uv.size());
-   memcpy(ub_key.data(), prefix.data(), prefix.size());
-   memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
+   if( has_upper_bound ) {
+      convert_key(index_type, p.encode_type, upper_bound, uv);
+      ub_key.resize(prefix.size() + uv.size());
+      memcpy(ub_key.data(), prefix.data(), prefix.size());
+      memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
+   }
 
    // Iterate the range
    vector<char> row_key;
    vector<char> row_value;
 
-   auto lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-   auto ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   std::unique_ptr<kv_iterator> lb_itr;
+   std::unique_ptr<kv_iterator> ub_itr;
+   
+   if( has_lower_bound ) {
+      lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
+   if( has_upper_bound ) {
+      ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+   }
 
    uint32_t lb_key_size = 0;
    uint32_t lb_value_size = 0;
@@ -2255,19 +2245,35 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    uint32_t ub_key_actual_size = 0;
 
    // Find lower bound iterator
-   auto status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
-   EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   lb_key.resize(lb_key_size);
-   status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+   auto status_lb = chain::kv_it_stat::iterator_end;
+   if( has_lower_bound ) {
+      status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
+      EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+
+      if( !point_query ) {
+         lb_key.resize(lb_key_size);
+         status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+         EOS_ASSERT(lb_key_size == lb_key_actual_size, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+      }
+   }
 
   // Find upper bound iterator
-   auto status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
-   EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   ub_key.resize(ub_key_size);
-   status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+   auto status_ub = chain::kv_it_stat::iterator_end;
+   if( has_upper_bound ) {
+      auto exact_match = kv_context.kv_get(p.code.to_uint64_t(), ub_key.data(), ub_key.size(), value_size);
+      status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
+      if( p.reverse && !point_query && !exact_match ) {
+            status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
+      }
+
+      EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+      ub_key.resize(ub_key_size);
+      status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
+      EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+   }
 
    kv_it_stat status;
-   // iterate the range
+   //=============================== iterate the range ============================
    auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
       uint32_t actual_size = 0;
 
@@ -2279,25 +2285,45 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          key_size = lb_key_size;
          value_size = lb_value_size;
       }
-      auto cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-      if( reverse ) cmp *= -1;
+
+      auto cur_status = itr->kv_it_status();
+      int32_t cmp = 0;
+      if( unbounded ) {
+         cmp = (cur_status == chain::kv_it_stat::iterator_ok ) ? -1 : 1;
+      } else {
+         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+         if( reverse ) {
+            cmp *= -1;
+         }
+      }
 
       unsigned int count = 0;
       for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
+         row_key.resize(key_size);
+         status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
+         EOS_ASSERT(key_size == actual_size, chain::contract_table_query_exception, "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         if( point_query ) {
+            if( row_key.size() != lb_key_size || row_key != lb_key) {
+               cmp = 1;
+               continue;
+            }
+         }
+
          row_value.clear();
          row_value.resize(value_size);
          status = itr->kv_it_value(offset, row_value.data(), value_size, actual_size);
-         EOS_ASSERT(status_lb == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid key in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
          if (!is_primary_idx) {
-            std::swap(row_key, row_value);
-            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_key.data(), row_key.size(), value_size);
+            value_size = row_value.size();
+            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_value.data(), row_value.size(), value_size);
             if (success) {
                row_value.resize(value_size);
                actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
-               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "range query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
+               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
             } else {
-               EOS_ASSERT(false, chain::contract_table_query_exception, "range query failed to get data: ${t} ${i}", ("t", p.table)("i", p.index_name));
+               EOS_ASSERT(false, chain::contract_table_query_exception, "invalid secondary index in ${t} ${i}", ("t", p.table)("i", p.index_name));
             }
          }
 
@@ -2325,16 +2351,29 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          }
          EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
-         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-         if( reverse ) cmp *= -1;
+         if (unbounded) {
+            cur_status = itr->kv_it_status();
+            cmp = (cur_status == chain::kv_it_stat::iterator_ok) ? -1 : 1;
+            if( point_query && cmp != 0) {
+               cmp = 1;
+            }
+         } else {
+            cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
+            if (reverse) {
+               cmp *= -1;
+            }
+         }
 
-         if( count == p.limit && cmp < 0  ) {
+         if (count == p.limit && cmp < 0)
+         {
             result.more = true;
             row_key.resize(key_size);
             auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
             EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-            result.next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
-         }
+            auto next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
+
+            boost::algorithm::hex(next_key.begin(), next_key.end(), std::back_inserter(result.next_key));
+       }
       } // end of for
    };
 
@@ -2753,12 +2792,34 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "push_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
@@ -2874,12 +2935,33 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "send_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;

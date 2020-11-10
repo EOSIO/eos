@@ -32,6 +32,20 @@ using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
 
+namespace std{
+   std::ostream& operator << (std::ostream& s, fc::time_point tp){
+      return s << (string)tp;
+   }
+}
+
+std::string version_to_fixed_str(uint32_t ver){
+   std::stringstream ss;
+   ss << std::setfill('0') << std::setw(sizeof(uint32_t)<<1) << ver;
+   return ss.str();
+}
+
+
+
 BOOST_AUTO_TEST_SUITE(chain_plugin_tests)
 
 BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
@@ -118,5 +132,53 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    BOOST_TEST(block_str2.find("011253686f756c64204e6f742041737365727421") != std::string::npos); //action data
 
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
+
+BOOST_FIXTURE_TEST_CASE( get_info, TESTER ) try {
+   produce_blocks(1);
+
+   chain_apis::read_only::get_info_params p;
+   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+
+   auto info = plugin.get_info({});
+   BOOST_TEST(info.server_version == version_to_fixed_str(app().version()));
+   BOOST_TEST(info.chain_id == control->get_chain_id());
+   BOOST_TEST(info.head_block_num == control->head_block_num());
+   BOOST_TEST(info.last_irreversible_block_num == control->last_irreversible_block_num());
+   BOOST_TEST(info.last_irreversible_block_id == control->last_irreversible_block_id());
+   BOOST_TEST(info.head_block_id == control->head_block_id());
+   BOOST_TEST(info.head_block_time == control->head_block_time());
+   BOOST_TEST(info.head_block_producer == control->head_block_producer());
+   BOOST_TEST(info.virtual_block_cpu_limit == control->get_resource_limits_manager().get_virtual_block_cpu_limit());
+   BOOST_TEST(info.virtual_block_net_limit == control->get_resource_limits_manager().get_virtual_block_net_limit());
+   BOOST_TEST(info.block_cpu_limit == control->get_resource_limits_manager().get_block_cpu_limit());
+   BOOST_TEST(info.block_net_limit == control->get_resource_limits_manager().get_block_net_limit());
+   BOOST_TEST(*info.server_version_string == app().version_string());
+   BOOST_TEST(*info.fork_db_head_block_num == control->fork_db_pending_head_block_num());
+   BOOST_TEST(*info.fork_db_head_block_id == control->fork_db_pending_head_block_id());
+   BOOST_TEST(*info.server_full_version_string == app().full_version_string());
+   BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
+
+   produce_blocks(1);
+
+   //make sure it works after producing new block
+   info = plugin.get_info({});
+   BOOST_TEST(info.server_version == version_to_fixed_str(app().version()));
+   BOOST_TEST(info.chain_id == control->get_chain_id());
+   BOOST_TEST(info.head_block_num == control->head_block_num());
+   BOOST_TEST(info.last_irreversible_block_num == control->last_irreversible_block_num());
+   BOOST_TEST(info.last_irreversible_block_id == control->last_irreversible_block_id());
+   BOOST_TEST(info.head_block_id == control->head_block_id());
+   BOOST_TEST(info.head_block_time == control->head_block_time());
+   BOOST_TEST(info.head_block_producer == control->head_block_producer());
+   BOOST_TEST(info.virtual_block_cpu_limit == control->get_resource_limits_manager().get_virtual_block_cpu_limit());
+   BOOST_TEST(info.virtual_block_net_limit == control->get_resource_limits_manager().get_virtual_block_net_limit());
+   BOOST_TEST(info.block_cpu_limit == control->get_resource_limits_manager().get_block_cpu_limit());
+   BOOST_TEST(info.block_net_limit == control->get_resource_limits_manager().get_block_net_limit());
+   BOOST_TEST(*info.server_version_string == app().version_string());
+   BOOST_TEST(*info.fork_db_head_block_num == control->fork_db_pending_head_block_num());
+   BOOST_TEST(*info.fork_db_head_block_id == control->fork_db_pending_head_block_id());
+   BOOST_TEST(*info.server_full_version_string == app().full_version_string());
+   BOOST_TEST(*info.last_irreversible_block_time == control->last_irreversible_block_time());
+} FC_LOG_AND_RETHROW() //get_info
 
 BOOST_AUTO_TEST_SUITE_END()
