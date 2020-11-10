@@ -219,13 +219,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
-      chain_plugin* chain_plug = nullptr;
+      chain_plugin*             chain_plug = nullptr;
+      blockvault_client_plugin* blockvault_plug = nullptr;
+    
+      incoming::channels::block::channel_type::handle                   _incoming_block_subscription;
+      incoming::channels::transaction::channel_type::handle             _incoming_transaction_subscription;
+      compat::channels::accepted_blockvault_block::channel_type::handle _accepted_blockvault_block_subscription;
 
-      incoming::channels::block::channel_type::handle           _incoming_block_subscription;
-      incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
-      incoming::channels::proposed_block::channel_type::handle  _proposed_block_subscription;
-
-      compat::channels::transaction_ack::channel_type&        _transaction_ack_channel;
+      compat::channels::transaction_ack::channel_type&           _transaction_ack_channel;
 
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
@@ -236,8 +237,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
       std::optional<scoped_connection>                          _irreversible_block_connection;
-
-      blockvault_client_plugin*                                 _blockvault_client_plugin = nullptr;
 
       /*
        * HACK ALERT
@@ -376,7 +375,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto ensure = fc::make_scoped_exit([this](){
             schedule_production_loop();
          });
-
+         
          // push the new block
          auto handle_error = [&](const auto& e)
          {
@@ -721,7 +720,7 @@ if( options.count(op_name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   my->_blockvault_client_plugin = app().find_plugin<blockvault_client_plugin>();
+   my->blockvault_plug = app().find_plugin<blockvault_client_plugin>();
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -852,10 +851,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       } LOG_AND_DROP();
    });
 
-   my->_proposed_block_subscription = app().get_channel<incoming::channels::proposed_block>().subscribe(
+   my->_accepted_blockvault_block_subscription = app().get_channel<compat::channels::accepted_blockvault_block>().subscribe(
          [this](const signed_block_ptr& block) {
       try {
-         my->_blockvault_client_plugin->my->propose_constructed_block(block, {}, {}, {});
+         chain.commit_block();
       } LOG_AND_DROP();
    });
 
@@ -2068,13 +2067,11 @@ void producer_plugin_impl::produce_block() {
    } );
 
 
-   // synchronous-style:  commit -> send to blockvault -> return from function means succes
-   // asynchronous-style: blockvault will say if it's a good or bad block in an asynchronous way
-
-   if (_blockvault_client_plugin != nullptr) {
+   if (blockvault_plug == nullptr) {
+       chain.commit_block();
    } else {
-      chain.commit_block();
-   }
+       blockvault_plug->propose_block(chain.fetch_block_by_number());
+   } 
    
    block_state_ptr new_bs = chain.head_block_state();
 
