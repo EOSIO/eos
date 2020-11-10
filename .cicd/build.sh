@@ -20,7 +20,7 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     echo "$ $MAKE_COMMAND"
     eval $MAKE_COMMAND
 else # Linux
-    ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
+    ARGS=${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}
     PRE_COMMANDS="cd '$MOUNTED_DIR/build'"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
