@@ -272,11 +272,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
+         fc_dlog(_log, "on_block ${n}", ("n", bsp->block_num));
          auto before = _unapplied_transactions.size();
          _unapplied_transactions.clear_applied( bsp );
          fc_dlog( _log, "Removed applied transactions before: ${before}, after: ${after}",
                   ("before", before)("after", _unapplied_transactions.size()) );
-
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
@@ -382,6 +382,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
 
          try {
+            fc_dlog(_log, "push_block ${n}", ("n", blk_num));
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {

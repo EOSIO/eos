@@ -1671,6 +1671,7 @@ struct controller_impl {
    void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
+         ilog( "apply_block ${n}", ("n", bsp->block_num) );
          const signed_block_ptr& b = bsp->block;
          const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
 
@@ -1680,6 +1681,7 @@ struct controller_impl {
          // validated in create_block_state_future()
          std::get<building_block>(pending->_block_stage)._trx_mroot_or_receipt_digests = b->transaction_mroot;
 
+         ilog( "prepare trxs ${n}", ("n", bsp->block_num) );
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
@@ -1714,6 +1716,7 @@ struct controller_impl {
 
          bool explicit_net = self.skip_trx_checks();
 
+         ilog( "execute trxs ${n}", ("n", bsp->block_num) );
          size_t packed_idx = 0;
          const auto& trx_receipts = std::get<building_block>(pending->_block_stage)._pending_trx_receipts;
          for( const auto& receipt : b->transactions ) {
@@ -1756,6 +1759,7 @@ struct controller_impl {
                         ("producer_receipt", static_cast<const transaction_receipt_header&>(receipt))("validator_receipt", r) );
          }
 
+         ilog( "finalize ${n}", ("n", bsp->block_num) );
          finalize_block();
 
          auto& ab = std::get<assembled_block>(pending->_block_stage);
@@ -1770,7 +1774,10 @@ struct controller_impl {
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
 
+         ilog( "commit ${n}", ("n", bsp->block_num) );
          commit_block(false);
+
+         ilog( "done apply_block ${n}", ("n", bsp->block_num) );
          return;
       } catch ( const std::bad_alloc& ) {
          throw;
