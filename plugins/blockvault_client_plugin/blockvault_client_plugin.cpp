@@ -7,6 +7,19 @@
 namespace eosio {
 static appbase::abstract_plugin& _blockvault_client_plugin = app().register_plugin<blockvault_client_plugin>();
 
+class blockvault_client_plugin_impl {
+public:
+   blockvault_client_plugin_impl() {
+     FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin_impl::blockvault_client_plugin_impl()`"});
+     FC_LOG_MESSAGE(debug, std::string{"`\blockvault_client_plugin_impl::blockvault_client_plugin_impl()`"});
+   }
+
+   ~blockvault_client_plugin_impl() {
+     FC_LOG_MESSAGE(debug, std::string{"`blockvault_client_plugin_impl::~blockvault_client_plugin_impl()`"});
+     FC_LOG_MESSAGE(debug, std::string{"`\blockvault_client_plugin_impl::~blockvault_client_plugin_impl()`"});
+   }
+};
+
 blockvault_client_plugin::blockvault_client_plugin()
 :_accepted_blockvault_block_channel(app().get_channel<compat::channels::accepted_blockvault_block>())
 {
@@ -74,4 +87,3 @@ void blockvault_client_plugin::append_external_block(signed_block_ptr sbp) {
 }
 
 // We need to get rid of the signal that is in chain.commit of which net_plugin
-// Correct direction for what's John working on

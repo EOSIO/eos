@@ -19,6 +19,7 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 #include <chainbase/environment.hpp>
 
@@ -1307,7 +1308,7 @@ void chain_plugin::plugin_startup()
    try {
       auto shutdown = [](){ return app().quit(); };
       auto check_shutdown = [](){ return app().is_quiting(); };
-      auto blockvault_instance = eosio::blockvault::block_vault_interface::get();
+      auto blockvault_instance = eosio::blockvault_client_plugin::get();
       if (nullptr != blockvault_instance) {
           auto head_block_num = my->chain->head_block_id();
           eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance,

@@ -10,6 +10,7 @@
 #include <eosio/chain/snapshot.hpp> // eosio::snapshot_reader_ptr
 #include <eosio/chain/block_timestamp.hpp> // eosio::block_timestamp
 #include <eosio/chain/plugin_interface.hpp>
+#include "blockvault.hpp"
 
 namespace eosio {
     
@@ -20,6 +21,18 @@ using namespace eosio::chain::plugin_interface;
 
 using block_num = uint32_t;
 
+class blockvault_client_plugin_impl;
+
+/// Documentation for blockvault_client_plugin.
+///
+/// blockvault_client_plugin is a proposed clustered component in an EOSIO
+/// network architecture which provides a replicated durable storage with strong
+/// consistency guarantees for all the input required by a redundant cluster of
+/// nodeos nodes to achieve the guarantees:
+///
+/// Guarantee against double-production of blocks
+/// Guarantee against finality violation
+/// Guarantee of liveness (ability to make progress as a blockchain)
 class blockvault_client_plugin : public appbase::plugin<blockvault_client_plugin> {
 public:
    blockvault_client_plugin();
@@ -47,6 +60,10 @@ public:
 
    blockvault_entity entity;
    std::vector<signed_block_ptr> block_index;
+   static eosio::blockvault::block_vault_interface* get() {return nullptr;} // TODO: implement me
+
+ private:
+   std::unique_ptr<class blockvault_client_plugin_impl> my;
 };
 
 }
