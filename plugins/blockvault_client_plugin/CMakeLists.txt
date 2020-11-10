@@ -1,6 +1,6 @@
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(pqxx REQUIRED IMPORTED_TARGET libpqxx>=6.0 libpq>=10.0)
+pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0 libpq>=10.0)
 
 if (pqxx_FOUND)
 
