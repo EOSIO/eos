@@ -1509,6 +1509,21 @@ struct controller_impl {
 
       auto& pbhs = pending->get_pending_block_header_state();
 
+      auto& bb = std::get<building_block>(pending->_block_stage);
+
+      auto action_merkle_fut = async_thread_pool( thread_pool.get_executor(),
+                                                  [ids{std::move( bb._action_receipt_digests )}]() mutable {
+                                                     return merkle( std::move( ids ) );
+                                                  } );
+      const bool calc_trx_merkle = !std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests);
+      std::future<checksum256_type> trx_merkle_fut;
+      if( calc_trx_merkle ) {
+         trx_merkle_fut = async_thread_pool( thread_pool.get_executor(),
+                                             [ids{std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) )}]() mutable {
+                                                return merkle( std::move( ids ) );
+                                             } );
+      }
+
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
@@ -1519,14 +1534,10 @@ struct controller_impl {
       );
       resource_limits.process_block_usage(pbhs.block_num);
 
-      auto& bb = std::get<building_block>(pending->_block_stage);
-
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests) ?
-               std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests) :
-               merkle( std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
-         merkle( std::move( std::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
+         calc_trx_merkle ? trx_merkle_fut.get() : std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests),
+         action_merkle_fut.get(),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
