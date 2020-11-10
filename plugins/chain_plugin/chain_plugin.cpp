@@ -674,51 +674,29 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
 
 void
 chain_plugin::do_hard_replay(const variables_map& options) {
-         ilog( "Hard replay requested: deleting state database" );
-         clear_directory_contents( my->chain_config->state_dir );
-         ilog("do_hard_replay: clearning/data dir ${dir}", ("dir", my->chain_config->state_dir));   // data dir
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
-         ilog("do_hard_replay: backup_dir ${dir}", ("dir", backup_dir));   
-         ilog("do_hard_replay: reversible_blocks_dir_name ${dir}", ("dir", backup_dir / config::reversible_blocks_dir_name ));   
+   ilog( "Hard replay requested: deleting state database" );
+   clear_directory_contents( my->chain_config->state_dir );
+   auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),
+                                            config::reversible_blocks_dir_name);
+   const auto source_reversible_blocks_dir = backup_dir / config::reversible_blocks_dir_name;
+   const auto target_reversible_blocks_dir = my->chain_config->blog.log_dir / config::reversible_blocks_dir_name;
+   if( fc::exists( source_reversible_blocks_dir ) ||
+         options.at( "fix-reversible-blocks" ).as<bool>()) {
+      // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+      if( !recover_reversible_blocks( source_reversible_blocks_dir,
+                                      my->chain_config->reversible_cache_size,
+                                      target_reversible_blocks_dir,
+                                      options.at( "truncate-at-block" ).as<uint32_t>())) {
+         ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
+         fc::copy( source_reversible_blocks_dir, target_reversible_blocks_dir);
 
-         auto shared_memory_bin_file = my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin";
-         if (fc::exists( shared_memory_bin_file ) ) {
-            ilog("do_hard_replay: 1st checking exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-         } else {
-            ilog("do_hard_replay: 1st checking NOT exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
+         const auto shared_memory_bin_file = "shared_memory.bin";
+         if (!fc::exists( target_reversible_blocks_dir / shared_memory_bin_file) ) {
+            fc::copy( source_reversible_blocks_dir / shared_memory_bin_file, 
+                        target_reversible_blocks_dir / shared_memory_bin_file );
          }
-
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               if (fc::exists( shared_memory_bin_file ) ) {
-                  ilog("do_hard_replay: 2nd checking exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               } else {
-                  ilog("do_hard_replay: 2nd checking NOT exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               }
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name );
-               if (fc::exists( shared_memory_bin_file ) ) {
-                  ilog("do_hard_replay: 3rd checking exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               } else {
-                  ilog("do_hard_replay: 3rd checking NOT exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               }
-               if (!fc::exists( shared_memory_bin_file ) ) {
-                  fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                           my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-               }
-               if (fc::exists( shared_memory_bin_file ) ) {
-                  ilog("do_hard_replay: 4th checking exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               } else {
-                  ilog("do_hard_replay: 4th checking NOT exist: ${file}", ("file", shared_memory_bin_file.c_str()));   
-               }
-            }
-         }
+      }
+   }
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
