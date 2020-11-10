@@ -827,7 +827,6 @@ typename session<Parent>::iterator session<Parent>::lower_bound(const shared_byt
    auto& it_cache = const_cast<cache_type&>(m_cache);
    auto  version  = uint64_t{ 0 };
    auto  end      = std::end(it_cache);
-   auto  begin    = std::begin(it_cache);
    auto  it       = it_cache.lower_bound(key);
 
    auto previous_in_cache = true;

@@ -121,6 +121,9 @@ class shared_bytes {
    bool operator>(const shared_bytes& other) const;
    bool operator>=(const shared_bytes& other) const;
 
+   underlying_type_t& operator[](size_t index);
+   underlying_type_t  operator[](size_t index) const;
+
    /// \brief Not operator.
    /// \return True if the underlying pointer is null or the size is 0, false otherwise.
    bool operator!() const;
@@ -331,6 +334,14 @@ inline bool shared_bytes::operator>=(const shared_bytes& other) const {
 inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
 
 inline shared_bytes::operator bool() const { return *this != shared_bytes{}; }
+
+inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) {
+  return m_data.get()[index];
+}
+
+inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const {
+  return m_data.get()[index];
+}
 
 inline shared_bytes::iterator shared_bytes::begin() const {
    return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
