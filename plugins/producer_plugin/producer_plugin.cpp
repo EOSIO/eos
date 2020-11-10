@@ -393,7 +393,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-            if ( blockvault_plug ) {
+            if ( blockvault_plug->get() != nullptr ) {
                uint32_t lib{chain.head_block_state()->dpos_irreversible_blocknum};
                eosio::chain::signed_block_ptr block{chain.head_block_state()->block};
                std::function<void(bool)> handler{[](bool){}};
@@ -729,10 +729,10 @@ if( options.count(op_name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   my->chain_plug = app().find_plugin<chain_plugin>();
    my->blockvault_plug = app().find_plugin<blockvault_client_plugin>();
+   EOS_ASSERT( my->blockvault_plug->get(), plugin_config_exception, "blockvault_client_plugin not found" );
+   my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
-   EOS_ASSERT( my->blockvault_plug, plugin_config_exception, "blockvault_client_plugin not found" );
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
@@ -2090,7 +2090,7 @@ void producer_plugin_impl::produce_block() {
    // - not sure why I wrote this function down but I'm keeping it around: `chain.fetch_block_by_number()`.
    // - also keeping this note around `bsp = chain.finalize_block( [&]( const digest_type& d )` // get dpos irreversible block number
 
-   if ( blockvault_plug ) {
+   if ( blockvault_plug->get() != nullptr ) {
       blockvault::watermark_t watermark{get_watermark(chain.head_block_state()->get_scheduled_producer(calculate_pending_block_time()).producer_name).value()};
       uint32_t lib{chain.head_block_state()->dpos_irreversible_blocknum};
       signed_block_ptr block{chain.head_block_state()->block};
