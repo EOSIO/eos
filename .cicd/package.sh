@@ -19,7 +19,7 @@ if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
         fi
     done
 else # Linux
-    ARGS="${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}"
+    ARGS="${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     PRE_COMMANDS="cd '$MOUNTED_DIR/build/packages' && chmod 755 ./*.sh"
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
