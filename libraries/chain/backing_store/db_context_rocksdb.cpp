@@ -194,10 +194,6 @@ namespace eosio { namespace chain { namespace backing_store {
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
       }      
-      if (payer.to_string() == "eoscrashmain") {
-        ilog("Stored: ${usage}", ("usage", billable_size));
-      }
-
       update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
@@ -242,10 +238,6 @@ namespace eosio { namespace chain { namespace backing_store {
       const int64_t new_size = static_cast<int64_t>(value_size + overhead);
 
       if( old_payer != payer ) {
-        if (payer.to_string() == "eoscrashmain" || old_payer.to_string() == "eoscrashmain") {
-          ilog("Updated [payer: ${payer}, old_payer: ${old_payer}] [old size: ${old_size}, new_size: ${new_size}]", 
-              ("payer", payer.to_string())("old_payer", old_payer.to_string())("old_size", old_size)("new_size", new_size));
-        }
          // refund the existing payer
          update_db_usage( old_payer, -(old_size), db_context::row_update_rem_trace(context.get_action_id(), std::string(event_id)) );
          // charge the new payer
@@ -254,9 +246,6 @@ namespace eosio { namespace chain { namespace backing_store {
          // swap the payer in the iterator store
          swap(itr, payer);
       } else if(old_size != new_size) {
-        if (payer.to_string() == "eoscrashmain") {
-          ilog("Updated [old size: ${old_size}, new_size: ${new_size}]", ("old_size", old_size)("new_size", new_size));
-        }
          // charge/refund the existing payer the difference
          update_db_usage( old_payer, new_size - old_size, db_context::row_update_trace(context.get_action_id(), std::move(event_id)) );
       }
@@ -287,9 +276,6 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       payer_payload pp(*old_key_value.value);
-      if (old_payer.to_string() == "eoscrashmain") {
-        ilog("Removing: ${size}", ("size", pp.value_size + db_key_value_any_lookup<Session>::overhead));
-      }
       update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup<Session>::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
@@ -353,7 +339,12 @@ namespace eosio { namespace chain { namespace backing_store {
          const auto primary_bounded_key =
                get_primary_slice_in_primaries(table_store->contract, table_store->scope, table_store->table,
                                               std::numeric_limits<uint64_t>::max());
+
          auto session_iter = current_session.lower_bound(primary_bounded_key.full_key);
+         auto test_iter = current_session.find(primary_bounded_key.full_key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
 
          auto past_end = [&](const auto& iter) {
             return !primary_lookup.match_prefix(primary_bounded_key.prefix_key, iter);
@@ -773,7 +764,14 @@ namespace eosio { namespace chain { namespace backing_store {
    typename db_context_rocksdb<Session>::exact_iterator db_context_rocksdb<Session>::get_exact_iterator(
          name code, name scope, name table, uint64_t primary) {
       auto slice_primary_key = get_primary_slice_in_primaries(code, scope, table, primary);
+
+      // Why do we need to do a lower_bound here if we want an exact match?  Call find instead.
       auto session_iter = current_session.lower_bound(slice_primary_key.full_key);
+      auto test_iter = current_session.find(slice_primary_key.full_key);
+      if (session_iter.key() != test_iter.key()) {
+        ilog("WARNING lower_bound and find mismatch");
+      }
+
       const bool valid = primary_lookup.match(slice_primary_key.full_key, session_iter);
       return { .valid = valid, .itr = std::move(session_iter), .type_prefix = std::move(slice_primary_key.prefix_key) };
    }
@@ -785,7 +783,13 @@ namespace eosio { namespace chain { namespace backing_store {
       // or if an invalid iterator needs to be returned
       prefix_bundle primary_and_prefix_keys { db_key_value_format::create_primary_key(scope, table, id),
                                               end_of_prefix::pre_type, code };
+
       auto session_iter = current_session.lower_bound(primary_and_prefix_keys.full_key);
+      auto test_iter = current_session.find(primary_and_prefix_keys.full_key);                                              
+      if (session_iter.key() != test_iter.key()) {
+        ilog("WARNING lower_bound and find mismatch");
+      }
+
       auto is_in_table = [&prefix_key=primary_and_prefix_keys.prefix_key,
                           &primary_lookup=this->primary_lookup](const typename Session::iterator& iter) {
          return primary_lookup.match_prefix(prefix_key, iter);

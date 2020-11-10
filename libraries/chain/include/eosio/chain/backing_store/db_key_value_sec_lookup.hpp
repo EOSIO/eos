@@ -130,11 +130,6 @@ namespace eosio { namespace chain { namespace backing_store {
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(this->parent.receiver, scope, table, name(id));
          }
-
-         if (payer.to_string() == "eoscrashmain") {
-           ilog("Stored: ${size}", ("size", helper.overhead()));
-         }
-
          this->parent.context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_add_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
          const unique_table t { this->parent.receiver, scope, table };
@@ -153,7 +148,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
-                     
+
          auto session_iter = this->current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( this->match_prefix(secondary_key.full_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
                      "db_${d}_remove called, but primary key: ${primary} didn't have a primary to secondary key",
@@ -162,9 +157,6 @@ namespace eosio { namespace chain { namespace backing_store {
          std::string event_id;
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(table.contract, table.scope, table.table, name(key_store.primary));
-         }
-         if (key_store.payer.to_string() == "eoscrashmain") {
-           ilog("removed table: ${size}", ("size", helper.overhead()));
          }
          this->parent.context.update_db_usage( key_store.payer, -( helper.overhead() ), db_context::secondary_rem_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
@@ -186,10 +178,6 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
 
-         if (payer.to_string() == "eoscrashmain" || key_store.payer.to_string() == "eoscrashmain") {
-            ilog("Attempting update [old payer: ${old_payer}, new payer: ${new_payer}]", ("old_payer", key_store.payer.to_string())("new_payer", payer.to_string()));
-         }
-
          // identify if this primary key already has a secondary key of this type
          auto primary_sec_uesless_value = this->current_session.read(secondary_key.full_primary_to_sec_key);
          EOS_ASSERT( primary_sec_uesless_value, db_rocksdb_invalid_operation_exception,
@@ -205,9 +193,6 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          if( key_store.payer != payer ) {
-            if (payer.to_string() == "eoscrashmain" || key_store.payer.to_string() == "eoscrashmain") {
-                ilog("Updated: ${size}", ("size", helper.overhead()));
-            }
             context.update_db_usage( key_store.payer, -(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
             context.update_db_usage( payer, +(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
          }
@@ -236,6 +221,11 @@ namespace eosio { namespace chain { namespace backing_store {
       int find_secondary( name code, name scope, name table, const SecondaryKey& secondary, uint64_t& primary ) {
          prefix_bundle secondary_key = get_secondary_slice_in_table(code, scope, table, secondary);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
+
+         auto test_iter = this->current_session.find(secondary_key.full_key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
 
          // if we don't get any match for this table, then return the invalid iterator
          if (!this->match_prefix(secondary_key.prefix_key, session_iter)) {
@@ -281,6 +271,12 @@ namespace eosio { namespace chain { namespace backing_store {
 
          prefix_bundle secondary_key = get_secondary_slice_in_secondaries(table.contract, table.scope, table.table, key_store.secondary, key_store.primary);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
+
+         auto test_iter = this->current_session.find(secondary_key.full_key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
+
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_next_secondary, found iterator in iter store but didn't find "
                      "any entry in the database (no secondary keys of this specific type)", ("d", helper.desc()));
@@ -329,6 +325,12 @@ namespace eosio { namespace chain { namespace backing_store {
 
          prefix_bundle secondary_key = get_secondary_slice_in_secondaries(table.contract, table.scope, table.table, key_store.secondary, key_store.primary);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
+
+         auto test_iter = this->current_session.find(secondary_key.full_key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
+
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_next_secondary, found iterator in iter store but didn't find its "
                      "matching entry in the database", ("d", helper.desc()));
@@ -352,6 +354,12 @@ namespace eosio { namespace chain { namespace backing_store {
          const auto key = db_key_value_format::create_full_key(legacy_prim_to_sec_key, code);
          const auto prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
          auto session_iter = this->current_session.lower_bound(key);
+
+         auto test_iter = this->current_session.find(key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
+
          // check if nothing remains in the primary table space
          if (!this->match_prefix(prefix, session_iter)) {
             return iter_store.invalid_iterator();
@@ -574,6 +582,10 @@ namespace eosio { namespace chain { namespace backing_store {
       int bound_secondary( name code, name scope, name table, bound_type bt, SecondaryKey& secondary, uint64_t& primary ) {
          prefix_bundle secondary_key = get_secondary_slice_in_table(code, scope, table, secondary);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
+         auto test_iter = this->current_session.find(secondary_key.full_key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
          // setting the "key space" to be the whole table, so that we either get a match or another key for this table
          if (!this->match_prefix(secondary_key.prefix_key, session_iter)) {
             // no keys for this entire table
@@ -621,6 +633,10 @@ namespace eosio { namespace chain { namespace backing_store {
          // use the primary to secondary key type to only retrieve secondary keys of SecondaryKey type
          const auto sec_type_prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::at_prim_to_sec_type);
          auto session_iter = this->current_session.lower_bound(key);
+         auto test_iter = this->current_session.find(key);
+         if (session_iter.key() != test_iter.key()) {
+           ilog("WARNING lower_bound and find mismatch");
+         }
          // check if nothing remains in the table database
          if (!match_prefix(sec_type_prefix, session_iter)) {
             return iter_store.invalid_iterator();
