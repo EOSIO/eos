@@ -1,6 +1,4 @@
 #pragma once
-#include <stdint.h>
-#include <string_view>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/blockvault_client_plugin/blockvault.hpp>
 
@@ -11,13 +9,14 @@ namespace eosio {
         struct blockvault_sync_strategy : public sync_callback {
             blockvault_sync_strategy(block_vault_interface* blockvault, BP& blockchain_provider, std::function<void()> shutdown,
                                      std::function<bool()> check_shutdown) :
-                _previous_block_id_specified(false), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown) {
+                _previous_block_id_specified(false), _got_snapshot(false), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown) {
+
 
             }
 
             blockvault_sync_strategy(block_vault_interface* blockvault, BP& blockchain_provider, std::function<void()> shutdown,
                                      std::function<bool()> check_shutdown, chain::block_id_type block_id) :
-                _previous_block_id_specified(true), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown),
+                _previous_block_id_specified(true), _got_snapshot(false), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown),
                 _previous_block_id(block_id) {
             }
 
