@@ -221,7 +221,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       chain_plugin*             chain_plug = nullptr;
       blockvault_client_plugin* blockvault_plug = nullptr;
-    
+
       incoming::channels::block::channel_type::handle           _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
 
@@ -373,7 +373,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
             schedule_production_loop();
-         });         
+         });
+
          // push the new block
          auto handle_error = [&](const auto& e)
          {
@@ -2055,7 +2056,7 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   //idump( (fc::time_point::now() - chain.pending_block_time()) );    
+   //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) { // get dpos irr block num
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
@@ -2088,7 +2089,7 @@ void producer_plugin_impl::produce_block() {
    // - it was talked about how another function could be added to controller for dealing with precursor cases prior to calling `commit_block`.
    // - not sure why I wrote this function down but I'm keeping it around: `chain.fetch_block_by_number()`.
    // - also keeping this note around `bsp = chain.finalize_block( [&]( const digest_type& d )` // get dpos irreversible block number
-   
+
    if ( blockvault_plug ) {
       blockvault::watermark_t watermark{get_watermark(chain.head_block_state()->get_scheduled_producer(calculate_pending_block_time()).producer_name).value()};
       uint32_t lib{chain.head_block_state()->dpos_irreversible_blocknum};
@@ -2109,7 +2110,7 @@ void producer_plugin_impl::produce_block() {
    } else {
       chain.commit_block();
    }
-   
+
    block_state_ptr new_bs = chain.head_block_state();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
