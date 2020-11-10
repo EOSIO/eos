@@ -814,11 +814,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
 using next_t = eosio::producer_plugin::next_function<eosio::producer_plugin::snapshot_information>;
 
-void next_func(eosio::producer_plugin::snapshot_information& snap_info)
-{
-    test_snap_info = snap_info;
-}
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_snapshot_information, SNAPSHOT_SUITE, snapshot_suites) {
    tester chain;
    const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
