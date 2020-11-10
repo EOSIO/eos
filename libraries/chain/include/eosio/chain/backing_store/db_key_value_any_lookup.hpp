@@ -85,7 +85,6 @@ namespace eosio { namespace chain { namespace backing_store {
    template <typename Session>
    void db_key_value_any_lookup<Session>::add_table_if_needed(const shared_bytes& key, account_name payer) {     
       auto table_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
-      auto test_iter = current_session.find(key);
       auto session_iter = current_session.lower_bound(table_key);
       if (!match_prefix(table_key, session_iter)) {
          // need to add the key_type::table to the end
@@ -116,7 +115,6 @@ namespace eosio { namespace chain { namespace backing_store {
       // look for any other entries in the table
       auto entire_table_prefix_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
       // since this prefix key is just scope and table, it will include all primary, secondary, and table keys
-      auto test_iter = current_session.find(key);
       auto session_itr = current_session.lower_bound(entire_table_prefix_key);
       EOS_ASSERT( session_itr != current_session.end(), db_rocksdb_invalid_operation_exception,
                   "invariant failure in remove_table_if_empty, iter store found and removed, but no table entry was found");

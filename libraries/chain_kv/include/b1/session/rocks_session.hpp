@@ -186,15 +186,15 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          return std::move(db);
       }() },
       m_iterator_read_options{ [&]() {
-         auto read_options             = rocksdb::ReadOptions{};
-         //read_options.readahead_size   = 256 * 1024 * 1024;
+         auto read_options = rocksdb::ReadOptions{};
+         // read_options.readahead_size   = 256 * 1024 * 1024;
          read_options.verify_checksums = false;
          read_options.fill_cache       = false;
          // read_options.auto_prefix_mode                     = true;
          // read_options.total_order_seek                     = false;
          // read_options.prefix_same_as_start                 = true;
          read_options.background_purge_on_iterator_cleanup = true;
-         //read_options.pin_data                             = true;
+         // read_options.pin_data                             = true;
          return read_options;
       }() },
       m_iterators{ [&]() {

@@ -340,7 +340,6 @@ namespace eosio { namespace chain { namespace backing_store {
                get_primary_slice_in_primaries(table_store->contract, table_store->scope, table_store->table,
                                               std::numeric_limits<uint64_t>::max());
 
-         auto test_iter = current_session.find(primary_bounded_key.full_key);
          auto session_iter = current_session.lower_bound(primary_bounded_key.full_key);
 
          auto past_end = [&](const auto& iter) {
@@ -763,7 +762,6 @@ namespace eosio { namespace chain { namespace backing_store {
       auto slice_primary_key = get_primary_slice_in_primaries(code, scope, table, primary);
 
       // Why do we need to do a lower_bound here if we want an exact match?  Call find instead.
-      auto test_iter = current_session.find(slice_primary_key.full_key);
       auto session_iter = current_session.lower_bound(slice_primary_key.full_key);
 
       const bool valid = primary_lookup.match(slice_primary_key.full_key, session_iter);
@@ -778,7 +776,6 @@ namespace eosio { namespace chain { namespace backing_store {
       prefix_bundle primary_and_prefix_keys { db_key_value_format::create_primary_key(scope, table, id),
                                               end_of_prefix::pre_type, code };
 
-      auto test_iter = current_session.find(primary_and_prefix_keys.full_key);      
       auto session_iter = current_session.lower_bound(primary_and_prefix_keys.full_key);    
 
       auto is_in_table = [&prefix_key=primary_and_prefix_keys.prefix_key,

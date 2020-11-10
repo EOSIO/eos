@@ -220,7 +220,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
       int find_secondary( name code, name scope, name table, const SecondaryKey& secondary, uint64_t& primary ) {
          prefix_bundle secondary_key = get_secondary_slice_in_table(code, scope, table, secondary);
-         auto test_iter = this->current_session.find(secondary_key.full_key);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
 
          // if we don't get any match for this table, then return the invalid iterator
@@ -266,7 +265,6 @@ namespace eosio { namespace chain { namespace backing_store {
          const unique_table& table = iter_store.get_table(key_store);
 
          prefix_bundle secondary_key = get_secondary_slice_in_secondaries(table.contract, table.scope, table.table, key_store.secondary, key_store.primary);
-         auto test_iter = this->current_session.find(secondary_key.full_key);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
 
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -316,7 +314,6 @@ namespace eosio { namespace chain { namespace backing_store {
          const unique_table& table = iter_store.get_table(key_store);
 
          prefix_bundle secondary_key = get_secondary_slice_in_secondaries(table.contract, table.scope, table.table, key_store.secondary, key_store.primary);
-         auto test_iter = this->current_session.find(secondary_key.full_key);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
 
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -341,7 +338,6 @@ namespace eosio { namespace chain { namespace backing_store {
          const bytes legacy_prim_to_sec_key = db_key_value_format::create_prefix_primary_to_secondary_key<SecondaryKey>(scope, table, primary);
          const auto key = db_key_value_format::create_full_key(legacy_prim_to_sec_key, code);
          const auto prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
-         auto test_iter = this->current_session.find(key);
          auto session_iter = this->current_session.lower_bound(key);
 
          // check if nothing remains in the primary table space
@@ -392,7 +388,6 @@ namespace eosio { namespace chain { namespace backing_store {
                db_key_value_format::create_primary_to_secondary_key<SecondaryKey>(table.scope, table.table, key_store.primary, key_store.secondary);
          const auto key = db_key_value_format::create_full_key(prim_to_sec_key, table.contract);
          const auto sec_type_prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::at_prim_to_sec_type);
-         auto test_iter = this->current_session.find(key);
          auto session_iter = this->current_session.lower_bound(key);
          // This key has to exist, since it is cached in our iterator store
          EOS_ASSERT( match(key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -445,7 +440,6 @@ namespace eosio { namespace chain { namespace backing_store {
                db_key_value_format::create_primary_to_secondary_key<SecondaryKey>(table.scope, table.table, key_store.primary, key_store.secondary);
          const auto key = db_key_value_format::create_full_key(prim_to_sec_key, table.contract);
          const auto sec_type_prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::at_prim_to_sec_type);
-         auto test_iter = this->current_session.find(key);
          auto session_iter = this->current_session.lower_bound(key);
          EOS_ASSERT( match(key, session_iter), db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_previous_primary, found iterator in iter store but didn't find its "
@@ -567,7 +561,6 @@ namespace eosio { namespace chain { namespace backing_store {
       const char* as_string(bound_type bt) { return (bt == bound_type::upper) ? "upper" : "lower"; }
       int bound_secondary( name code, name scope, name table, bound_type bt, SecondaryKey& secondary, uint64_t& primary ) {
          prefix_bundle secondary_key = get_secondary_slice_in_table(code, scope, table, secondary);
-         auto test_iter = this->current_session.find(secondary_key.full_key);
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
 
          // setting the "key space" to be the whole table, so that we either get a match or another key for this table
@@ -616,7 +609,6 @@ namespace eosio { namespace chain { namespace backing_store {
          const auto key = db_key_value_format::create_full_key(prim_to_sec_key, code);
          // use the primary to secondary key type to only retrieve secondary keys of SecondaryKey type
          const auto sec_type_prefix = db_key_value_format::create_full_key_prefix(key, end_of_prefix::at_prim_to_sec_type);
-         auto test_iter = this->current_session.find(key);
          auto session_iter = this->current_session.lower_bound(key);
          // check if nothing remains in the table database
          if (!match_prefix(sec_type_prefix, session_iter)) {
