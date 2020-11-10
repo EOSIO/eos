@@ -54,7 +54,7 @@ class shared_bytes {
         operator bool() const;
 
    shared_bytes next() const;
-   shared_bytes next_sub_key() const;  // NEED TO CHANGE, ALONG WITH next()
+   shared_bytes next_sub_key() const;
    shared_bytes previous() const;
 
    bool operator<(const shared_bytes& other) const;

@@ -34,16 +34,16 @@ protected:
    }
 
 private:
-   std::map<std::string, int> name_to_index;
+   std::map<std::string, int> name_to_index_;
 
    int get_delta_index(std::string name) {
-      if(!name_to_index.count(name)) {
+      if(!name_to_index_.count(name)) {
          deltas_.push_back({});
          deltas_.back().name = name;
-         name_to_index[name] = deltas_.size() - 1;
+         name_to_index_[name] = deltas_.size() - 1;
       }
 
-      return name_to_index[name];
+      return name_to_index_[name];
    }
 
    std::vector<table_delta> &deltas_;

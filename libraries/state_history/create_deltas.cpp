@@ -161,9 +161,6 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, writer);
    } else {
       auto &session = kv_undo_stack->top();
-      auto updated_keys = session.updated_keys();
-      auto deleted_keys = session.deleted_keys();
-
       rocksdb_receiver_single_entry receiver(deltas, db);
 
       for(auto &updated_key: session.updated_keys()) {
