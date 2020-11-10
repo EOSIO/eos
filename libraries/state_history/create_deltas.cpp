@@ -143,7 +143,7 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
 
    if(full_snapshot) {
       //process key_value section
-      rocksdb_receiver kv_receiver(deltas, db);
+      rocksdb_receiver_whole_db kv_receiver(deltas, db);
       chain::backing_store::rocksdb_contract_kv_table_writer kv_writer(kv_receiver);
 
       auto begin_key = eosio::session::shared_bytes(&chain::backing_store::rocksdb_contract_kv_prefix, 1);
@@ -151,8 +151,8 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, kv_writer);
 
       //process contract section
-      rocksdb_receiver db_receiver(deltas, db);
-      using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_receiver>;
+      rocksdb_receiver_whole_db db_receiver(deltas, db);
+      using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_receiver_whole_db>;
       table_collector table_collector_receiver(db_receiver);
       chain::backing_store::rocksdb_contract_db_table_writer writer(table_collector_receiver);
 
@@ -164,7 +164,7 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       auto updated_keys = session.updated_keys();
       auto deleted_keys = session.deleted_keys();
 
-      rocksdb_receiver receiver(deltas, db, true);
+      rocksdb_receiver_single_entry receiver(deltas, db);
 
       for(auto &updated_key: session.updated_keys()) {
          chain::backing_store::process_rocksdb_entry(session, updated_key, receiver);
