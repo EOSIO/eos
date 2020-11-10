@@ -224,7 +224,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          auto test_iter = this->current_session.find(secondary_key.full_key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [find_secondary] lower_bound and find mismatch");
          }
 
          // if we don't get any match for this table, then return the invalid iterator
@@ -274,7 +274,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          auto test_iter = this->current_session.find(secondary_key.full_key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [next_secondary] lower_bound and find mismatch");
          }
 
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -328,7 +328,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          auto test_iter = this->current_session.find(secondary_key.full_key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [previous_secondary] lower_bound and find mismatch");
          }
 
          EOS_ASSERT( this->match(secondary_key.full_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -357,7 +357,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          auto test_iter = this->current_session.find(key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [find_primary] lower_bound and find mismatch");
          }
 
          // check if nothing remains in the primary table space
@@ -584,7 +584,7 @@ namespace eosio { namespace chain { namespace backing_store {
          auto session_iter = this->current_session.lower_bound(secondary_key.full_key);
          auto test_iter = this->current_session.find(secondary_key.full_key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [bound_secondary] lower_bound and find mismatch");
          }
          // setting the "key space" to be the whole table, so that we either get a match or another key for this table
          if (!this->match_prefix(secondary_key.prefix_key, session_iter)) {
@@ -635,7 +635,7 @@ namespace eosio { namespace chain { namespace backing_store {
          auto session_iter = this->current_session.lower_bound(key);
          auto test_iter = this->current_session.find(key);
          if (session_iter.key() != test_iter.key()) {
-           ilog("WARNING lower_bound and find mismatch");
+           ilog("WARNING [bound_primary] lower_bound and find mismatch");
          }
          // check if nothing remains in the table database
          if (!match_prefix(sec_type_prefix, session_iter)) {
