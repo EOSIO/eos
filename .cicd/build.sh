@@ -29,7 +29,9 @@ else # Linux
     elif [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++\" -DCMAKE_C_COMPILER=\"clang\""
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j \"$JOBS\""
+    CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
+    MAKE_COMMAND="make -j \"$JOBS\""
+    BUILD_COMMANDS="echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
@@ -45,7 +47,7 @@ else # Linux
     fi
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
+    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
     echo "$ $DOCKER_RUN"
     eval $DOCKER_RUN
 fi
