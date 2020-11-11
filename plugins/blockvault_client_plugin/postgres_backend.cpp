@@ -134,7 +134,7 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
    }
 }
 
-void retrive_blocks(backend::sync_callback& callback, pqxx::work& trx, pqxx::result r) {
+void retrieve_blocks(backend::sync_callback& callback, pqxx::work& trx, pqxx::result r) {
    std::vector<char> block_data;
 
    for (const auto& x : r) {
@@ -157,7 +157,7 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
       auto               r = trx.exec_prepared("get_sync_watermark", blob);
 
       if (!r.empty()) {
-         retrive_blocks(
+         retrieve_blocks(
              callback, trx,
              trx.exec_prepared("get_blocks_since_watermark", r[0][0].as<uint32_t>(), r[0][1].as<uint32_t>()));
          return;
@@ -182,7 +182,7 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
       callback.on_snapshot(tmp_name);
    }
 
-   retrive_blocks(callback, trx, trx.exec_prepared("get_all_blocks"));
+   retrieve_blocks(callback, trx, trx.exec_prepared("get_all_blocks"));
 }
 
 } // namespace blockvault

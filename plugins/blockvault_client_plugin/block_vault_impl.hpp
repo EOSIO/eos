@@ -1,7 +1,7 @@
 #pragma once
 
 #include "postgres_backend.hpp"
-#include "scope_exit.hpp"
+#include <fc/scoped_exit.hpp>
 #include <boost/asio.hpp>
 #include <fc/io/datastream.hpp>
 #include <memory>
@@ -20,7 +20,7 @@ struct transform_callback : backend::sync_callback {
        , target(t) {}
 
    void on_snapshot(const char* filename) override {
-      auto on_exit = make_scope_exit([&filename]() { std::filesystem::remove(filename); });
+      auto on_exit           = fc::make_scoped_exit([&filename]() { std::filesystem::remove(filename); });
       auto uncompressed_file = compressor.decompress(filename);
 
       if (uncompressed_file.size())
@@ -42,18 +42,24 @@ class block_vault_impl : public block_vault_interface {
    Compressor                           compressor;
    std::unique_ptr<blockvault::backend> backend;
 
+   boost::asio::io_context                                                  ioc;
+   std::thread                                                              thr;
+   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work;
  public:
-   boost::asio::io_context ioc;
-   std::thread             thr;
 
    block_vault_impl(std::unique_ptr<blockvault::backend>&& be)
-       : backend(std::move(be)) {}
+       : backend(std::move(be))
+       , work(boost::asio::make_work_guard(ioc)) {}
 
-   ~block_vault_impl() {}
+   ~block_vault_impl() {
+      if (thr.joinable()) {
+         thr.join();
+      }
+   }
 
    void async_propose_constructed_block(watermark_t watermark, uint32_t lib, chain::signed_block_ptr block,
                                         std::function<void(bool)> handler) override {
-      boost::asio::post(ioc, [this, &handler, watermark, lib, block]() {
+      boost::asio::post(ioc, [this, handler, watermark, lib, block]() {
          try {
             fc::datastream<std::vector<char>> stream;
             fc::raw::pack(stream, *block);
@@ -70,7 +76,7 @@ class block_vault_impl : public block_vault_interface {
    }
    void async_append_external_block(uint32_t lib, chain::signed_block_ptr block,
                                     std::function<void(bool)> handler) override {
-      boost::asio::post(ioc, [this, &handler, lib, block]() {
+      boost::asio::post(ioc, [this, handler, lib, block]() {
          try {
             fc::datastream<std::vector<char>> stream;
             fc::raw::pack(stream, *block);
@@ -88,7 +94,7 @@ class block_vault_impl : public block_vault_interface {
    bool propose_snapshot(watermark_t watermark, const char* snapshot_filename) override {
       std::string compressed_file = compressor.compress(snapshot_filename);
       if (compressed_file.size()) {
-         auto on_exit = make_scope_exit([&compressed_file]() { std::filesystem::remove(compressed_file); });
+         auto on_exit = fc::make_scoped_exit([&compressed_file]() { std::filesystem::remove(compressed_file); });
          return backend->propose_snapshot({watermark.first, watermark.second.slot}, compressed_file.c_str());
       } else {
          elog("snapshot compress failed");
@@ -97,8 +103,20 @@ class block_vault_impl : public block_vault_interface {
    }
    void sync(const eosio::chain::block_id_type* ptr_block_id, sync_callback& callback) override {
       transform_callback<Compressor> cb{compressor, callback};
-      std::string_view bid = ptr_block_id ? std::string_view{ptr_block_id->data(), ptr_block_id->data_size()} : std::string_view{nullptr, 0};
+      std::string_view bid = ptr_block_id ? std::string_view{ptr_block_id->data(), ptr_block_id->data_size()}
+                                          : std::string_view{nullptr, 0};
       backend->sync(bid, cb);
+   }
+
+   void start() {
+      thr = std::thread([& ioc = ioc]() {
+         ilog("block vault thread started");
+         ioc.run();
+      });
+   }
+
+   void stop() {
+      work.reset();
    }
 };
 } // namespace blockvault

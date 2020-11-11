@@ -120,7 +120,7 @@ int main(int argc, char** argv)
          .default_unix_socket_path = "",
          .default_http_port = 8888
       });
-      if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin, blockvault_client_plugin>(argc, argv)) {
+      if(!app().initialize<blockvault_client_plugin, chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(argc, argv)) {
          const auto& opts = app().get_options();
          if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
             return SUCCESS;
