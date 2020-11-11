@@ -38,7 +38,9 @@ else # Linux
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
-        "$CICD_DIR/generate-base-images.sh"
+        BASE_IMAGE_COMMAND="\"$CICD_DIR/generate-base-images.sh\""
+        echo "$ $BASE_IMAGE_COMMAND"
+        eval $BASE_IMAGE_COMMAND
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
