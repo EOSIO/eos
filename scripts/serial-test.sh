@@ -40,18 +40,16 @@ else # run specific serial test
         echo "$TEST found."
         # run tests
         set +e # defer ctest error handling to end
-        CTEST_COMMAND="ctest -R '^$TEST$' -V -T 'Test' > ctest-output.log 2>&1"
+        CTEST_COMMAND="ctest -R '^$TEST$' -V -T 'Test' 2>&1 | tee 'ctest-output.log'"
         echo "$ $CTEST_COMMAND"
         eval $CTEST_COMMAND
         EXIT_STATUS=$?
-        if  [[ $EXIT_STATUS -ne 0 ]]; then
-            cat ctest-output.log
-            echo "$TEST FAILED - see ctest-output.log in archive"
-        else
-            echo "$TEST PASSED"
-        fi
-        grep "produced the following blocks late" ctest-output.log
         echo "Done running $TEST."
+        [[ "$EXIT_STATUS" == '0' ]] && echo "$TEST PASSED" || echo "$TEST FAILED - see ctest-output.log in the artifacts tab"
+        echo 'Late blocks:'
+        LATE_BLOCKS="grep -n 'produced the following blocks late' 'ctest-output.log'"
+        echo "$ $LATE_BLOCKS"
+        eval $LATE_BLOCKS
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."
         EXIT_STATUS='1'
