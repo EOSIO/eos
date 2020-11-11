@@ -1,4 +1,5 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_plugin/blockvault_sync_strategy.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -17,8 +18,8 @@
 #include <eosio/to_key.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
-
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
+#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 #include <chainbase/environment.hpp>
 
@@ -1307,7 +1308,13 @@ void chain_plugin::plugin_startup()
    try {
       auto shutdown = [](){ return app().quit(); };
       auto check_shutdown = [](){ return app().is_quiting(); };
-      if (my->snapshot_path) {
+      auto blockvault_instance = eosio::blockvault_client_plugin::get();
+      if (nullptr != blockvault_instance) {
+          auto head_block_id = my->chain->head_block_id();
+          eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance,
+                                                                             *my, shutdown, check_shutdown, head_block_id);
+          bss.do_sync();
+      } else if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          my->chain->startup(shutdown, check_shutdown, reader);
