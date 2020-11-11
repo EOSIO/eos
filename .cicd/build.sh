@@ -34,7 +34,9 @@ else # Linux
     if [[ "$IMAGE_TAG" == centos* ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j \"$JOBS\""
+    CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
+    MAKE_COMMAND="make -j \"$JOBS\""
+    BUILD_COMMANDS="echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
@@ -52,7 +54,7 @@ else # Linux
     fi
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
+    DOCKER_RUN="docker run $ARGS $(buildkite-intrinsics) --env CMAKE_EXTRAS='$CMAKE_EXTRAS' '$FULL_TAG' bash -c '$COMMANDS'"
     echo "$ $DOCKER_RUN"
     eval $DOCKER_RUN
 fi
