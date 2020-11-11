@@ -2,13 +2,13 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DBUILD_MONGO_DB_PLUGIN=true"
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"Release\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DBUILD_MONGO_DB_PLUGIN=\"true\""
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED='false'
     fi
-    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=\"$HELPERS_DIR/clang.make\""
     cd "$BUILD_DIR"
     CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
     echo "$ $CMAKE_COMMAND"
