@@ -739,6 +739,10 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       event_id = db_context::table_event(code, scope, table);
    }
 
+   if (payer.to_string() == "eoscrashmain") {
+     std::cout << "find_or_create_table: " << config::billable_size_v<table_id_object> << std::endl;
+   }
+
    update_db_usage(payer, config::billable_size_v<table_id_object>, db_context::add_table_trace(get_action_id(), std::move(event_id)));
 
    return db.create<table_id_object>([&](table_id_object &t_id){
@@ -757,6 +761,10 @@ void apply_context::remove_table( const table_id_object& tid ) {
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = db_context::table_event(tid.code, tid.scope, tid.table);
+   }
+
+   if (tid.payer.to_string() == "eoscrashmain") {
+     std::cout << "remove_table: " << config::billable_size_v<table_id_object> << std::endl;
    }
 
    update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), std::move(event_id)) );
@@ -879,6 +887,10 @@ int apply_context::db_store_i64_chainbase( name scope, name table, const account
       event_id = db_context::table_event(tab.code, tab.scope, tab.table, name(obj.primary_key));
    }
 
+   if (payer.to_string() == "eoscrashmain") {
+     std::cout << "db_store_i64_chainbase: " << billable_size << std::endl;
+   }
+
    update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
@@ -909,11 +921,19 @@ void apply_context::db_update_i64_chainbase( int iterator, account_name payer, c
    }
 
    if( account_name(obj.payer) != payer ) {
+
+   if (payer.to_string() == "eoscrashmain" || obj.payer.to_string() == "eoscrashmain") {
+     std::cout << "db_update_i64_chainbase: " << old_size << ", " << new_size << std::endl;
+   }
       // refund the existing payer
       update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), std::string(event_id)) );
       // charge the new payer
       update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), std::move(event_id)) );
    } else if(old_size != new_size) {
+
+   if (obj.payer.to_string() == "eoscrashmain") {
+     std::cout << "db_update_i64_chainbase: " << old_size << ", " << new_size << std::endl;
+   }
       // charge/refund the existing payer the difference
       update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), std::move(event_id)) );
    }
@@ -941,6 +961,10 @@ void apply_context::db_remove_i64_chainbase( int iterator ) {
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
       event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
+   }
+
+   if (obj.payer.to_string() == "eoscrashmain") {
+     std::cout << "db_remove_i64_chainbase: " << obj.value.size() + config::billable_size_v<key_value_object> << std::endl;
    }
 
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), std::move(event_id)) );

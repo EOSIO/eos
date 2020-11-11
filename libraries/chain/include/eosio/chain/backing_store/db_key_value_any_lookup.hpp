@@ -99,6 +99,9 @@ namespace eosio { namespace chain { namespace backing_store {
          if (dm_logger != nullptr) {
             event_id = db_context::table_event(parent.receiver, scope, table);
          }      
+   if (payer.to_string() == "eoscrashmain") {
+     std::cout << "add_table: " << table_overhead << std::endl;
+   }
          context.update_db_usage(payer, table_overhead, db_context::add_table_trace(context.get_action_id(), std::move(event_id)));
 
          payer_payload pp(payer, nullptr, 0);
@@ -138,6 +141,9 @@ namespace eosio { namespace chain { namespace backing_store {
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(parent.receiver, scope, table);
       }
+   if (payer.to_string() == "eoscrashmain") {
+     std::cout << "remove_table: " << table_overhead << std::endl;
+   }
       context.update_db_usage(payer, - table_overhead, db_context::rem_table_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
