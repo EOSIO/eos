@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y epel-release  && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 && \
-    yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel  && \
+    yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel libpqxx-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
     yum install -y python3
