@@ -22,8 +22,9 @@ else
 fi
 # run tests
 set +e # defer ctest error handling to end
-echo "$ ctest -j $JOBS -LE _tests --output-on-failure -T Test"
-ctest -j $JOBS -LE _tests --output-on-failure -T Test
+CTEST_COMMAND="ctest -j '$JOBS' -LE '_tests' --output-on-failure -T 'Test'"
+echo "$ $CTEST_COMMAND"
+eval $CTEST_COMMAND
 EXIT_STATUS=$?
 echo 'Done running parallelizable tests.'
 exit $EXIT_STATUS
