@@ -1,11 +1,11 @@
 #pragma once
 
-#include "postgres_backend.hpp"
 #include <fc/scoped_exit.hpp>
 #include <boost/asio.hpp>
 #include <fc/io/datastream.hpp>
 #include <memory>
 #include <thread>
+#include "backend.hpp"
 
 namespace eosio {
 namespace blockvault {
@@ -32,7 +32,7 @@ struct transform_callback : backend::sync_callback {
    void on_block(std::string_view block) override {
       chain::signed_block_ptr     b = std::make_shared<chain::signed_block>();
       fc::datastream<const char*> ds(block.cbegin(), block.size());
-      fc::raw::unpack(ds, b);
+      fc::raw::unpack(ds, *b);
       target.on_block(b);
    }
 };

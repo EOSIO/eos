@@ -4,6 +4,9 @@
 #include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp> // eosio::blockvault_client_plugin
 #include <fc/log/log_message.hpp>                                      // FC_LOG_MESSAGE
 #include <vector>                                                      // std::vector
+#if HAS_PQXX
+#include "postgres_backend.hpp"
+#endif
 
 namespace eosio {
 static appbase::abstract_plugin& _blockvault_client_plugin = app().register_plugin<blockvault_client_plugin>();

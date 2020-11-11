@@ -1,14 +1,12 @@
 #include "../postgres_backend.hpp"
-#include <arpa/inet.h>
 #include <boost/test/unit_test.hpp>
+#include <fc/filesystem.hpp>
 #include <fc/log/appender.hpp>
-#include "temporary_file.hpp"
-
 
 std::vector<char> mock_snapshot_content = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'};
 
-// create a test block_id where the first 4 bytes is block_num and the 5th
-// byte is uid, the purpose of uid is to differentiate block ids with
+// create a test block_id where the first 4 bytes is block_num and the 5th byte
+// is discriminator, the purpose of discriminator is to differentiate block ids with
 // the same block_num
 struct mock_block_id {
    char buf[32];
@@ -38,12 +36,16 @@ struct backend_reset<eosio::blockvault::postgres_backend> {
 template <typename Backend>
 struct backend_test_fixture : backend_reset<Backend> {
 
-   Backend        backend;
-   temporary_file tmp_file;
+   Backend       backend;
+   fc::temp_file tmp_file;
 
    backend_test_fixture()
-       : backend("")
-       , tmp_file(mock_snapshot_content) {}
+       : backend("") {
+
+      std::filebuf fbuf;
+      fbuf.open(tmp_file.path().string().c_str(), std::ios::out | std::ios::binary);
+      fbuf.sputn(mock_snapshot_content.data(), mock_snapshot_content.size());
+   }
 
    bool propose_constructed_block(uint32_t watermark_bn, uint32_t watermark_ts, uint32_t lib,
                                   char block_discriminator = 'a', char previous_block_discriminator = 'b') {
@@ -64,7 +66,7 @@ struct backend_test_fixture : backend_reset<Backend> {
    }
 
    bool propose_snapshot(uint32_t watermark_bn, uint32_t watermark_ts) {
-      return backend.propose_snapshot({watermark_bn, watermark_ts}, tmp_file.name.c_str());
+      return backend.propose_snapshot({watermark_bn, watermark_ts}, tmp_file.path().string().c_str());
    }
 
    void sync(std::optional<mock_block_id> previous_block_id, eosio::blockvault::backend::sync_callback& callback) {

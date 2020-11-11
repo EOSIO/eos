@@ -1,8 +1,6 @@
 #pragma once
 #include <eosio/blockvault_client_plugin/blockvault.hpp>
 #include <eosio/chain/block_timestamp.hpp>
-#include <fc/log/logger.hpp>
-#include <filesystem>
 #include <stdint.h>
 #include <string_view>
 
