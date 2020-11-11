@@ -51,7 +51,7 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo 'Done uploading artifacts.'
 fi
 # re-throw
-if [[ "$EXIT_STATUS" != 0 ]]; then
+if [[ "$EXIT_STATUS" != '0' ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi

@@ -6,7 +6,7 @@ CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_P
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
-        export PINNED=false
+        export PINNED='false'
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd "$BUILD_DIR"
@@ -19,29 +19,29 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     eval $MAKE_COMMAND
 else # Linux
     ARGS=${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}
-    PRE_COMMANDS="cd '$MOUNTED_DIR/build'"
+    PRE_COMMANDS="cd \"$MOUNTED_DIR/build\""
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
-    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=On -DCMAKE_TOOLCHAIN_FILE='$MOUNTED_DIR/.cicd/helpers/clang.make'"
+    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=On -DCMAKE_TOOLCHAIN_FILE=\"$MOUNTED_DIR/.cicd/helpers/clang.make\""
     if [[ "$IMAGE_TAG" == 'amazon_linux-2-unpinned' ]]; then
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++\" -DCMAKE_C_COMPILER=\"clang\""
     elif [[ "$IMAGE_TAG" == 'centos-7.7-unpinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-8/enable"
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DLLVM_DIR=\"/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm\""
     elif [[ "$IMAGE_TAG" == 'ubuntu-18.04-unpinned' ]]; then
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++-7\" -DCMAKE_C_COMPILER=\"clang-7\" -DLLVM_DIR=\"/usr/lib/llvm-7/lib/cmake/llvm\""
     fi
     if [[ "$IMAGE_TAG" == centos* ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j '$JOBS'"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j \"$JOBS\""
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         BASE_IMAGE_COMMAND="\"$CICD_DIR/generate-base-images.sh\""
         echo "$ $BASE_IMAGE_COMMAND"
         eval $BASE_IMAGE_COMMAND
-        [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
+        [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r \"$MOUNTED_DIR\" \"/root/eosio\" && cd \"/root/eosio/build\" &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
     elif [[ "$GITHUB_ACTIONS" == 'true' ]]; then
