@@ -920,20 +920,17 @@ void apply_context::db_update_i64_chainbase( int iterator, account_name payer, c
       event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
-   if( account_name(obj.payer) != payer ) {
 
    if (payer.to_string() == "eoscrashmain" || obj.payer.to_string() == "eoscrashmain") {
      std::cout << "db_update_i64_chainbase: " << old_size << ", " << new_size << std::endl;
    }
+
+   if( account_name(obj.payer) != payer ) {
       // refund the existing payer
       update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), std::string(event_id)) );
       // charge the new payer
       update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), std::move(event_id)) );
    } else if(old_size != new_size) {
-
-   if (obj.payer.to_string() == "eoscrashmain") {
-     std::cout << "db_update_i64_chainbase: " << old_size << ", " << new_size << std::endl;
-   }
       // charge/refund the existing payer the difference
       update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), std::move(event_id)) );
    }
