@@ -201,6 +201,7 @@ enum class key_context {
    complete,           // report keys (via receiver_.add_row) as they are seen, so table will be after its keys (use rocksdb_whole_db_table_collector to reverse this)
    complete_reverse,   // report keys (via receiver_.add_row) as they are seen, used when reverse iterating through a table space (do not use with rocksdb_whole_db_table_collector)
    standalone,         // report an incomplete table (only code/scope/table valid) prior to reporting its keys
+   standalone_reverse, // report an incomplete table (only code/scope/table valid) prior to reporting its keys
    table_only,         // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
    table_only_reverse  // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
 };
@@ -299,7 +300,11 @@ public:
    }
 
    bool is_reversed() const {
-      return context_ == key_context::complete_reverse || context_ == key_context::table_only_reverse;
+      return context_ == key_context::complete_reverse || context_ == key_context::table_only_reverse || context_ == key_context::standalone_reverse;
+   };
+
+   bool is_standalone() const {
+      return context_ == key_context::standalone || context_ == key_context::standalone_reverse;
    };
 
    bool is_table_only() const {
@@ -323,7 +328,7 @@ private:
 
    void check_context(const name& code, const name& scope, const name& table) {
       // this method only has to do with standalone processing
-      if (context_ != key_context::standalone || is_same_table(code, scope, table)) {
+      if (!is_standalone() || is_same_table(code, scope, table)) {
          return;
       }
       table_context_->code = code;
@@ -592,8 +597,23 @@ template<typename SingleTypeReceiver, typename SingleObject, typename Exception>
 struct single_type_error_receiver {
    template<typename Object>
    void add_row(const Object& row) {
-      if constexpr (std::is_same_v<Object, SingleObject>) {
+      if constexpr (std::is_same_v<Object, table_id_object_view>) {
+         static_cast<SingleTypeReceiver*>(this)->add_table_row(row);
+      } else if constexpr (std::is_same_v<Object, SingleObject>) {
          static_cast<SingleTypeReceiver*>(this)->add_only_row(row);
+      } else {
+         FC_THROW_EXCEPTION(Exception, "Invariant failure, should not receive an add_row call of type: ${type}",
+                            ("type", contract_table_type<std::decay_t < decltype(row)>>()));
+      }
+   }
+};
+
+template<typename TableReceiver, typename Exception>
+struct table_only_error_receiver {
+   template<typename Object>
+   void add_row(const Object& row) {
+      if constexpr (std::is_same_v<Object, table_id_object_view>) {
+         static_cast<TableReceiver*>(this)->add_table_row(row);
       } else {
          FC_THROW_EXCEPTION(Exception, "Invariant failure, should not receive an add_row call of type: ${type}",
                             ("type", contract_table_type<std::decay_t < decltype(row)>>()));

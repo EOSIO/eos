@@ -507,6 +507,13 @@ namespace eosio { namespace testing {
       tester(const std::function<void(controller&)>& control_setup, setup_policy policy = setup_policy::full,
              db_read_mode read_mode = db_read_mode::SPECULATIVE);
 
+      void restart_with_backing_store(chain::backing_store_type backing_store) {
+         auto cfg = get_config();
+         close(); // clean up chain so no dirty db error
+         cfg.backing_store = backing_store;
+         init(cfg); // enable new config
+      }
+
       using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
