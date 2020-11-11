@@ -5,6 +5,7 @@
 #include <fc/io/datastream.hpp>
 #include <memory>
 #include <thread>
+#include <filesystem>
 #include "backend.hpp"
 
 namespace eosio {

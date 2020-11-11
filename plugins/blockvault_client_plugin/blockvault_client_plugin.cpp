@@ -34,11 +34,11 @@ void blockvault_client_plugin::set_program_options(options_description&, options
 void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
 #ifdef HAS_PQXX
    if (options.count("block-vault-backend")) {
-      std::string url = options["block-vualt-backend"].as<std::string>();
+      std::string url = options["block-vault-backend"].as<std::string>();
       if (boost::starts_with(url, "postgresql://")) {
          my.reset(new blockvault_client_plugin_impl(std::make_unique<blockvault::postgres_backend>(url)));
       } else if (url.size()) {
-         elog("unknown block-vault-backend option '$url', skipping it", ("url", url));
+         elog("unknown block-vault-backend option, skipping it");
       }
    }
 #endif
