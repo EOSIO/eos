@@ -28,7 +28,7 @@ struct transform_callback : backend::sync_callback {
       else 
          elog("snapshot uncompress failed");
    }
-   
+
    void on_block(std::string_view block) override {
       chain::signed_block_ptr     b = std::make_shared<chain::signed_block>();
       fc::datastream<const char*> ds(block.cbegin(), block.size());
@@ -94,7 +94,7 @@ class block_vault_impl : public block_vault_interface {
    bool propose_snapshot(watermark_t watermark, const char* snapshot_filename) override {
       std::string compressed_file = compressor.compress(snapshot_filename);
       if (compressed_file.size()) {
-         auto on_exit = fc::make_scoped_exit([&compressed_file]() { std::filesystem::remove(compressed_file); });
+         auto on_exit = fc::make_scoped_exit([&compressed_file]() { boost::filesystem::remove(compressed_file); });
          return backend->propose_snapshot({watermark.first, watermark.second.slot}, compressed_file.c_str());
       } else {
          elog("snapshot compress failed");
