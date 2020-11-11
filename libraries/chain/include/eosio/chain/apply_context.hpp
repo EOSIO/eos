@@ -60,10 +60,6 @@ class apply_context {
                   }
                });
 
-   if (payer.to_string() == "eoscrashmain") {
-     std::cout << "store: " << config::billable_size_v<ObjectType> << std::endl;
-   }
-
                context.update_db_usage( payer, config::billable_size_v<ObjectType>, backing_store::db_context::secondary_add_trace(context.get_action_id(), std::move(event_id)) );
 
                itr_cache.cache_table( tab );
@@ -80,10 +76,6 @@ class apply_context {
                if (context.control.get_deep_mind_logger() != nullptr) {
                   event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
                }
-
-   if (obj.payer.to_string() == "eoscrashmain") {
-     std::cout << "remove: " << config::billable_size_v<ObjectType> << std::endl;
-   }
 
                context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), backing_store::db_context::secondary_rem_trace(context.get_action_id(), std::move(event_id)) );
 
@@ -119,10 +111,6 @@ class apply_context {
                }
 
                if( obj.payer != payer ) {
-
-   if (payer.to_string() == "eoscrashmain" || obj.payer.to_string() == "eoscrashmain" ) {
-     std::cout << "update: " << billing_size << std::endl;
-   }
                   context.update_db_usage( obj.payer, -(billing_size), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
                   context.update_db_usage( payer, +(billing_size), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
                }

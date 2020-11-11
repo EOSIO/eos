@@ -194,9 +194,6 @@ namespace eosio { namespace chain { namespace backing_store {
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
       }      
-   if (payer.to_string() == "eoscrashmain") {
-     std::cout << "db_store_i64_chainbase: " << billable_size << std::endl;
-   }
       update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
@@ -224,11 +221,12 @@ namespace eosio { namespace chain { namespace backing_store {
       if (payer.empty()) {
          payer = old_payer;
       } 
+      
+      const payer_payload old_pp{*old_key_value.value};
+      const auto old_value_actual_size = old_pp.value_size;
 
       const payer_payload pp{payer, value, value_size};
       set_value(old_key_value.full_key, pp);
-
-      const auto old_value_actual_size = pp.value_size;
 
       std::string event_id;
       auto dm_logger = context.control.get_deep_mind_logger();
@@ -239,10 +237,6 @@ namespace eosio { namespace chain { namespace backing_store {
       const int64_t overhead = db_key_value_any_lookup<Session>::overhead;
       const int64_t old_size = static_cast<int64_t>(old_value_actual_size + overhead);
       const int64_t new_size = static_cast<int64_t>(value_size + overhead);
-
-   if (payer.to_string() == "eoscrashmain" || old_payer.to_string() == "eoscrashmain") {
-     std::cout << "db_update_i64: " << old_size << ", " << new_size << std::endl;
-   }
 
       if( old_payer != payer ) {
          // refund the existing payer
@@ -283,9 +277,6 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       payer_payload pp(*old_key_value.value);
-   if (old_payer.to_string() == "eoscrashmain") {
-     std::cout << "db_remove_i64: " << pp.value_size + db_key_value_any_lookup<Session>::overhead << std::endl;
-   }
       update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup<Session>::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {

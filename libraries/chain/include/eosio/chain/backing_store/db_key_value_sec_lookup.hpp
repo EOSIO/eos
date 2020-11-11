@@ -130,9 +130,6 @@ namespace eosio { namespace chain { namespace backing_store {
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(this->parent.receiver, scope, table, name(id));
          }
-   if (payer.to_string() == "eoscrashmain") {
-     std::cout << "store: " << helper.overhead() << std::endl;
-   }
          this->parent.context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_add_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
          const unique_table t { this->parent.receiver, scope, table };
@@ -161,9 +158,6 @@ namespace eosio { namespace chain { namespace backing_store {
          if (this->parent.context.control.get_deep_mind_logger() != nullptr) {
             event_id = db_context::table_event(table.contract, table.scope, table.table, name(key_store.primary));
          }
-   if (key_store.payer.to_string() == "eoscrashmain") {
-     std::cout << "remove: " << helper.overhead() << std::endl;
-   }
          this->parent.context.update_db_usage( key_store.payer, -( helper.overhead() ), db_context::secondary_rem_trace(this->parent.context.get_action_id(), std::move(event_id)) );
 
          this->current_session.erase(secondary_key.full_secondary_key);
@@ -199,10 +193,6 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          if( key_store.payer != payer ) {
-
-   if (payer.to_string() == "eoscrashmain" || key_store.payer.to_string() == "eoscrashmain") {
-     std::cout << "update: " << helper.overhead() << std::endl;
-   }
             context.update_db_usage( key_store.payer, -(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
             context.update_db_usage( payer, +(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
          }
