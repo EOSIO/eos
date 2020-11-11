@@ -248,6 +248,7 @@ namespace eosio { namespace chain {
          block_id_type last_irreversible_block_id() const;
          time_point last_irreversible_block_time() const;
 
+         std::shared_ptr<std::vector<char>> fetch_block_stream_by_number(uint32_t block_num)const;
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
 

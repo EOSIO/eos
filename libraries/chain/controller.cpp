@@ -2738,6 +2738,13 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    return signed_block_ptr();
 }
 
+std::shared_ptr<std::vector<char>> controller::fetch_block_stream_by_number(uint32_t block_num)const { try {
+
+    //... to do
+
+    return my->blog.read_signed_block_stream_by_num(block_num);
+}FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = fetch_block_state_by_number( block_num );
    if( blk_state ) {

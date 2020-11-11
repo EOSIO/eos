@@ -546,9 +546,11 @@ namespace eosio { namespace chain {
          void split_log();
          bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
 
-         block_id_type                 read_block_id_by_num(uint32_t block_num);
-         std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
-         void                          read_head();
+         block_id_type                          read_block_id_by_num(uint32_t block_num);
+         std::unique_ptr<signed_block>          read_block_by_num(uint32_t block_num);
+         std::shared_ptr<std::vector<char>>     read_block_stream_by_num(uint32_t block_num); //EPE-437
+         void                                   read_head();
+
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -746,6 +748,25 @@ namespace eosio { namespace chain {
       my->head.reset();
    }
 
+   std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_stream_by_num(uint32_t block_num) {
+       shared_ptr<std::vector<char>> send_buff;
+
+
+       auto blocks_dir      = fc::canonical(block_file.get_file_path().parent_path());
+       const auto block_log_path  = blocks_dir / "blocks.log";
+       fc::cfile block_file;
+       block_file.set_file_path(block_log_path);
+       block_file.open(fc::cfile::update_rw_mode);
+
+       //read block log
+       {
+           // to do...
+       }
+
+
+       return send_buff;
+   }
+
    std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
       uint64_t pos = get_block_pos(block_num);
       if (pos != block_log::npos) {
@@ -770,6 +791,10 @@ namespace eosio { namespace chain {
             return read_block_id(ds, version, block_num);
       }
       return {};
+   }
+
+   std::shared_ptr<std::vector<char>> block_log::read_signed_block_stream_by_num(uint32_t block_num) const {
+       return my->read_block_stream_by_num(block_num);
    }
 
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {
