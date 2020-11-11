@@ -1,5 +1,5 @@
 #include "postgres_backend.hpp"
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <limits.h>
@@ -169,17 +169,11 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
    if (!r.empty()) {
       pqxx::largeobject snapshot_obj(r[0][0].as<pqxx::oid>());
 
-      char tmp_name[PATH_MAX];
-      snprintf(tmp_name, PATH_MAX, "/tmp/eos-snapshot-XXXXXX");
-      int fd = mkstemp(tmp_name);
-      if (fd == -1) {
-         throw std::filesystem::filesystem_error("mkstemp error", tmp_name,
-                                                 std::make_error_code(static_cast<std::errc>(errno)));
-      }
+      fc::temp_file temp_file;
+      std::string   fname = temp_file.path().string();
 
-      snapshot_obj.to_file(trx, tmp_name);
-      close(fd);
-      callback.on_snapshot(tmp_name);
+      snapshot_obj.to_file(trx, fname.c_str());
+      callback.on_snapshot(fname.c_str());
    }
 
    retrieve_blocks(callback, trx, trx.exec_prepared("get_all_blocks"));

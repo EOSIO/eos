@@ -5,7 +5,7 @@
 #include <fc/io/datastream.hpp>
 #include <memory>
 #include <thread>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include "backend.hpp"
 
 namespace eosio {
@@ -21,15 +21,14 @@ struct transform_callback : backend::sync_callback {
        , target(t) {}
 
    void on_snapshot(const char* filename) override {
-      auto on_exit           = fc::make_scoped_exit([&filename]() { std::filesystem::remove(filename); });
       auto uncompressed_file = compressor.decompress(filename);
 
       if (uncompressed_file.size())
          target.on_snapshot(uncompressed_file.c_str());
-      else {
+      else 
          elog("snapshot uncompress failed");
-      }
    }
+   
    void on_block(std::string_view block) override {
       chain::signed_block_ptr     b = std::make_shared<chain::signed_block>();
       fc::datastream<const char*> ds(block.cbegin(), block.size());

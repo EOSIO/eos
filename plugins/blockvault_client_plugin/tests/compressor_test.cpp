@@ -1,6 +1,7 @@
 #include "../zlib_compressor.hpp"
 #include <boost/test/unit_test.hpp>
 #include <fc/filesystem.hpp>
+#include <boost/filesystem.hpp>
 #include <fc/scoped_exit.hpp>
 
 BOOST_AUTO_TEST_CASE(zlib_compressor_test) {
@@ -16,10 +17,10 @@ BOOST_AUTO_TEST_CASE(zlib_compressor_test) {
 
    eosio::blockvault::zlib_compressor compressor;
    std::string                        compressed_file = compressor.compress(file.path().string().c_str());
-   auto x = fc::make_scoped_exit([&compressed_file]() { std::filesystem::remove(compressed_file); });
+   auto x = fc::make_scoped_exit([&compressed_file]() { boost::filesystem::remove(compressed_file); });
 
    std::string decompressed_file = compressor.decompress(compressed_file.c_str());
-   auto        y = fc::make_scoped_exit([&decompressed_file]() { std::filesystem::remove(decompressed_file); });
+   auto        y = fc::make_scoped_exit([&decompressed_file]() { boost::filesystem::remove(decompressed_file); });
 
    std::ifstream strm(decompressed_file.c_str(), std::ios_base::in | std::ios_base::binary);
 
