@@ -2,13 +2,13 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
-CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE='Release' -DENABLE_MULTIVERSION_PROTOCOL_TEST=true -DAMQP_CONN_STR='amqp://guest:guest@localhost:5672'"
+CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_BUILD_TYPE=\"Release\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DAMQP_CONN_STR=\"amqp://guest:guest@localhost:5672\""
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
         export PINNED='false'
     fi
-    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
+    [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=\"$HELPERS_DIR/clang.make\""
     cd "$BUILD_DIR"
     [[ "$CI" == 'true' ]] && source ~/.bash_profile # Make sure node is available for ship_test
     CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
@@ -22,7 +22,7 @@ else # Linux
     PRE_COMMANDS="cd \"$MOUNTED_DIR/build\""
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
-    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=On -DCMAKE_TOOLCHAIN_FILE=\"$MOUNTED_DIR/.cicd/helpers/clang.make\""
+    [[ ! "$IMAGE_TAG" =~ 'unpinned' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DTPM2TSS_STATIC=\"On\" -DCMAKE_TOOLCHAIN_FILE=\"$MOUNTED_DIR/.cicd/helpers/clang.make\""
     if [[ "$IMAGE_TAG" == 'amazon_linux-2-unpinned' ]]; then
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER=\"clang++\" -DCMAKE_C_COMPILER=\"clang\""
     elif [[ "$IMAGE_TAG" == 'centos-7.7-unpinned' ]]; then
