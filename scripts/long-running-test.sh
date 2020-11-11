@@ -20,8 +20,9 @@ if [[ -z "$TEST" ]]; then # run all serial tests
         echo "$TEST_COUNT tests found."
         # run tests
         set +e # defer ctest error handling to end
-        echo '$ ctest -L long_running_tests --output-on-failure -T Test'
-        ctest -L long_running_tests --output-on-failure -T Test
+        CTEST_COMMAND="ctest -L 'long_running_tests' --output-on-failure -T 'Test'"
+        echo "$ $CTEST_COMMAND"
+        eval $CTEST_COMMAND
         EXIT_STATUS=$?
         echo 'Done running long-running tests.'
     else
@@ -36,8 +37,9 @@ else # run specific serial test
         echo "$TEST found."
         # run tests
         set +e # defer ctest error handling to end
-        echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
-        ctest -R ^$TEST$ --output-on-failure -T Test
+        CTEST_COMMAND="ctest -R '^$TEST$' --output-on-failure -T 'Test'"
+        echo "$ $CTEST_COMMAND"
+        eval $CTEST_COMMAND
         EXIT_STATUS=$?
         echo "Done running $TEST."
     else

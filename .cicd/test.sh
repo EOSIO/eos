@@ -2,16 +2,21 @@
 set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
+RABBITMQ_SERVER_DETACHED='rabbitmq-server -detached'
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
     [[ "$CI" == 'true' ]] && source ~/.bash_profile
-    rabbitmq-server -detached
+    echo "$ $RABBITMQ_SERVER_DETACHED"
+    eval $RABBITMQ_SERVER_DETACHED
     sleep 10
-    "./$1" ${@: 2}
+    TEST_COMMAND="\"./$1\" ${@: 2}"
+    echo "$ $TEST_COMMAND"
+    eval $TEST_COMMAND
     EXIT_STATUS=$?
 else # Linux
-    COMMANDS="rabbitmq-server -detached && sleep 10 && \"$MOUNTED_DIR/$1\" ${@: 2}"
+    TEST_COMMAND="\"$MOUNTED_DIR/$1\" ${@: 2}"
+    COMMANDS="echo \"$ $RABBITMQ_SERVER_DETACHED\" && $RABBITMQ_SERVER_DETACHED && sleep 10 && echo \"$ $TEST_COMMAND\" && $TEST_COMMAND"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     DOCKER_RUN_COMMAND="docker run --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
