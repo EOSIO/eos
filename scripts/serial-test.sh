@@ -9,10 +9,10 @@ if [[ "$(uname)" == 'Linux' ]]; then
     if [[ "$ID" == 'centos' ]]; then
         [[ -f /opt/rh/rh-python36/enable ]] && source /opt/rh/rh-python36/enable
     fi
-    cd "$GIT_ROOT" && npm install
-else
-    npm install
+    cd "$GIT_ROOT"
 fi
+echo "$ npm install"
+npm install
 cd "$GIT_ROOT/build"
 # tests
 if [[ -z "$TEST" ]]; then # run all serial tests
