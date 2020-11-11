@@ -2387,13 +2387,13 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 }
 
 struct table_receiver
-  : chain::backing_store::single_type_error_receiver<table_receiver, backing_store::table_id_object_view, chain::contract_table_query_exception> {
+  : chain::backing_store::table_only_error_receiver<table_receiver, chain::contract_table_query_exception> {
    table_receiver(read_only::get_table_by_scope_result& result, const read_only::get_table_by_scope_params& params)
    : result_(result), params_(params) {
       check_limit();
    }
 
-   void add_only_row(const backing_store::table_id_object_view& row) {
+   void add_table_row(const backing_store::table_id_object_view& row) {
       if( params_.table && row.table != params_.table ) {
          return;
       }
@@ -2439,8 +2439,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       return result;
 
    const bool reverse = p.reverse && *p.reverse;
-   auto& kv_database = const_cast<chain::controller&>(db).kv_db();
-   if (kv_database.get_backing_store() == eosio::chain::backing_store_type::CHAINBASE) {
+   const auto db_backing_store = get_backing_store();
+   if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
+      ilog("REM get_table_by_scope CHAINBASE");
       auto walk_table_range = [&result,&p]( auto itr, auto end_itr ) {
          keep_processing kp;
          for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++itr ) {
@@ -2466,20 +2467,24 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       }
    }
    else {
+      ilog("REM get_table_by_scope ROCKSDB");
       using namespace eosio::chain;
-      EOS_ASSERT(kv_database.get_backing_store() == backing_store_type::ROCKSDB,
+      EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
                  chain::contract_table_query_exception,
                  "Support for configured backing_store has not been added to get_table_by_scope");
+      auto& kv_database = const_cast<chain::controller&>(db).kv_db();
       table_receiver receiver(result, p);
       auto kp = receiver.keep_processing_entries();
-      auto key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(lower_bound_lookup_tuple), std::get<2>(lower_bound_lookup_tuple));
-      auto lower = backing_store::db_key_value_format::create_full_key(key, std::get<0>(lower_bound_lookup_tuple));
-      key = backing_store::db_key_value_format::create_prefix_key(std::get<1>(upper_bound_lookup_tuple), std::get<2>(upper_bound_lookup_tuple));
-      auto upper = backing_store::db_key_value_format::create_full_key(key, std::get<0>(upper_bound_lookup_tuple));
+      auto lower = chain::backing_store::db_key_value_format::create_full_prefix_key(std::get<0>(lower_bound_lookup_tuple),
+                                                                                     std::get<1>(lower_bound_lookup_tuple),
+                                                                                     std::get<2>(lower_bound_lookup_tuple));
+      auto upper = chain::backing_store::db_key_value_format::create_full_prefix_key(std::get<0>(upper_bound_lookup_tuple),
+                                                                                     std::get<1>(upper_bound_lookup_tuple),
+                                                                                     std::get<2>(upper_bound_lookup_tuple));
       if (reverse) {
          lower = lower.previous();
       }
-      // since upper is either the end of a forward search, or the reverse iterator <= for the beginning of the end of
+      // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
       // the table, we need to move it to just before the beginning of the next table
       upper = upper.next();
       const auto context = (reverse) ? backing_store::key_context::table_only_reverse : backing_store::key_context::table_only;
@@ -2500,7 +2505,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
    (void)get_table_type( abi, name("accounts") );
 
    vector<asset> results;
-   walk_key_value_table(p.code, p.account, "accounts"_n, [&](const key_value_object& obj){
+   walk_key_value_table(p.code, p.account, "accounts"_n, [&](const auto& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
@@ -2528,7 +2533,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_key_value_table(p.code, name(scope), "stat"_n, [&](const key_value_object& obj){
+   walk_key_value_table(p.code, name(scope), "stat"_n, [&](const auto& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -2585,11 +2590,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          result.more = name{it->primary_key}.to_string();
          break;
       }
-      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
-      if (p.json)
-         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type("producers"_n), data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors ) );
-      else
-         result.rows.emplace_back(fc::variant(data));
+      auto itr = kv_index.find(boost::make_tuple(table_id->id, it->primary_key));
+      fc::variant data_var;
+      auto get_val = get_primary_key_value(data_var, abis.get_table_type("producers"_n), abis, p.json);
+      get_val(*itr);
+      result.rows.emplace_back(std::move(data_var));
    }
 
    const name global("global");
@@ -3301,17 +3306,13 @@ fc::variant read_only::get_primary_key(name code, name scope, name table, uint64
                                        row_requirements require_primary, const std::string_view& type, const abi_serializer& abis,
                                        bool as_json) const {
    fc::variant val;
-   const auto valid = get_primary_key_internal(code, scope, table, primary_key, require_table, require_primary, [&,this](const auto& obj) {
-      vector<char> data;
-      read_only::copy_inline_row(obj, data);
-      if (as_json) {
-         val = abis.binary_to_variant(type, data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
-      }
-      else {
-         val = fc::variant(data);
-      }
-   });
+   const auto valid = get_primary_key_internal(code, scope, table, primary_key, require_table, require_primary, get_primary_key_value(val, type, abis, as_json));
    return val;
+}
+
+eosio::chain::backing_store_type read_only::get_backing_store() const {
+   auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+   return kv_database.get_backing_store();
 }
 
 } // namespace chain_apis

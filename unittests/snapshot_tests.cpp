@@ -619,7 +619,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
          tester chain;
 
          // Set backing_store for save snapshot
-         set_backing_store(chain, origin_backing_store);
+         chain.restart_with_backing_store(origin_backing_store);
 
          chain.create_accounts({"manager"_n});
          auto get_ext = [](unsigned i) {
