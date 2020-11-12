@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 # variables
-echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
+echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 RABBITMQ_SERVER_DETACHED='rabbitmq-server -detached'
 [[ -z "$TEST" ]] && export TEST="$1"
