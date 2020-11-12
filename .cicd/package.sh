@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-echo '+++ :evergreen_tree: Configuring Environment'
+echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
@@ -10,7 +10,7 @@ if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
     eval $PACKAGE_COMMANDS
     ARTIFACT='*.rb;*.tar.gz'
 else # Linux
-    echo '+++ :docker: Selecting Container'
+    echo '--- :docker: Selecting Container'
     ARGS="${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
     PRE_COMMANDS="cd \"$MOUNTED_DIR/build/packages\" && chmod 755 ./*.sh"
@@ -31,7 +31,7 @@ fi
 cd build/packages
 [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
 if [[ "$BUILDKITE" == 'true' ]]; then
-    echo '+++ :arrow_up: Uploading Artifacts'
+    echo '--- :arrow_up: Uploading Artifacts'
     buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
 fi
 for A in $(echo $ARTIFACT | tr ';' ' '); do
@@ -42,4 +42,4 @@ for A in $(echo $ARTIFACT | tr ';' ' '); do
         exit 1
     fi
 done
-echo '+++ :white_check_mark: Done!'
+echo '--- :white_check_mark: Done!'

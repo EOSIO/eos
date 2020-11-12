@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-[[ "$ENABLE_INSTALL" == 'true' ]] || echo '+++ :evergreen_tree: Configuring Environment'
+[[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"Release\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DBUILD_MONGO_DB_PLUGIN=\"true\""
@@ -54,11 +54,11 @@ else # Linux
     eval $DOCKER_RUN
 fi
 if [[ "$BUILDKITE" == 'true' ]]; then
-    echo '+++ :arrow_up: Uploading Artifacts'
+    echo '--- :arrow_up: Uploading Artifacts'
     echo 'Compressing build directory.'
     tar -pczf 'build.tar.gz' build
     echo 'Uploading build directory.'
     buildkite-agent artifact upload 'build.tar.gz'
     echo 'Done uploading artifacts.'
 fi
-[[ "$ENABLE_INSTALL" == 'true' ]] || echo '+++ :white_check_mark: Done!'
+[[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :white_check_mark: Done!'
