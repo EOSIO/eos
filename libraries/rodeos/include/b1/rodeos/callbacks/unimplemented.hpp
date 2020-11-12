@@ -49,37 +49,10 @@ struct unimplemented_callbacks {
    int db_##IDX##_next(int, int) { return unimplemented<int>("db_" #IDX "_next"); }                                    \
    int db_##IDX##_previous(int, int) { return unimplemented<int>("db_" #IDX "_previous"); }
 
-#define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX)                                                                          \
-   int db_##IDX##_store(int64_t, int64_t, int64_t, int64_t, int, int) {                                                \
-      return unimplemented<int>("db_" #IDX "_store");                                                                  \
-   }                                                                                                                   \
-   void db_##IDX##_remove(int) { return unimplemented<void>("db_" #IDX "_remove"); }                                   \
-   void db_##IDX##_update(int, int64_t, int, int) { return unimplemented<void>("db_" #IDX "_update"); }                \
-   int  db_##IDX##_find_primary(int64_t, int64_t, int64_t, int, int, int64_t) {                                        \
-      return unimplemented<int>("db_" #IDX "_find_primary");                                                          \
-   }                                                                                                                   \
-   int db_##IDX##_find_secondary(int64_t, int64_t, int64_t, int, int, int) {                                           \
-      return unimplemented<int>("db_" #IDX "_find_secondary");                                                         \
-   }                                                                                                                   \
-   int db_##IDX##_lowerbound(int64_t, int64_t, int64_t, int, int, int) {                                               \
-      return unimplemented<int>("db_" #IDX "_lowerbound");                                                             \
-   }                                                                                                                   \
-   int db_##IDX##_upperbound(int64_t, int64_t, int64_t, int, int, int) {                                               \
-      return unimplemented<int>("db_" #IDX "_upperbound");                                                             \
-   }                                                                                                                   \
-   int db_##IDX##_end(int64_t, int64_t, int64_t) { return unimplemented<int>("db_" #IDX "_end"); }                     \
-   int db_##IDX##_next(int, int) { return unimplemented<int>("db_" #IDX "_next"); }                                    \
-   int db_##IDX##_previous(int, int) { return unimplemented<int>("db_" #IDX "_previous"); }
-
    // database_api
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
-   DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
-#undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
    // crypto_api
    void assert_recover_key(int, int, int, int, int) { return unimplemented<void>("assert_recover_key"); }
@@ -138,8 +111,6 @@ struct unimplemented_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
-
       // privileged_api
       Rft::template add<&Derived::is_feature_active>("env", "is_feature_active");
       Rft::template add<&Derived::activate_feature>("env", "activate_feature");
@@ -167,27 +138,10 @@ struct unimplemented_callbacks {
    Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
    Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
 
-#define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX)                                                                          \
-   Rft::template add<&Derived::db_##IDX##_store>("env", "db_" #IDX "_store");                                          \
-   Rft::template add<&Derived::db_##IDX##_remove>("env", "db_" #IDX "_remove");                                        \
-   Rft::template add<&Derived::db_##IDX##_update>("env", "db_" #IDX "_update");                                        \
-   Rft::template add<&Derived::db_##IDX##_find_primary>("env", "db_" #IDX "_find_primary");                            \
-   Rft::template add<&Derived::db_##IDX##_find_secondary>("env", "db_" #IDX "_find_secondary");                        \
-   Rft::template add<&Derived::db_##IDX##_lowerbound>("env", "db_" #IDX "_lowerbound");                                \
-   Rft::template add<&Derived::db_##IDX##_upperbound>("env", "db_" #IDX "_upperbound");                                \
-   Rft::template add<&Derived::db_##IDX##_end>("env", "db_" #IDX "_end");                                              \
-   Rft::template add<&Derived::db_##IDX##_next>("env", "db_" #IDX "_next");                                            \
-   Rft::template add<&Derived::db_##IDX##_previous>("env", "db_" #IDX "_previous");
-
       // database_api
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
-      DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
-      DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
       DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 
 #undef DB_SECONDARY_INDEX_METHODS_SIMPLE
-#undef DB_SECONDARY_INDEX_METHODS_ARRAY
 
       // crypto_api
       Rft::template add<&Derived::assert_recover_key>("env", "assert_recover_key");

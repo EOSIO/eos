@@ -271,7 +271,6 @@ struct compiler_builtins_callbacks {
 
    template <typename Rft>
    static void register_callbacks() {
-      // todo: preconditions
       Rft::template add<&Derived::__ashlti3>("env", "__ashlti3");
       Rft::template add<&Derived::__ashrti3>("env", "__ashrti3");
       Rft::template add<&Derived::__lshlti3>("env", "__lshlti3");

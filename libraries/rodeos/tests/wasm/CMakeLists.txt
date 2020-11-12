@@ -1,0 +1,23 @@
+cmake_minimum_required( VERSION 3.8 )
+
+if( EOSIO_COMPILE_RODEOS_TESTS )
+    project(rodeos-wasm-tests)
+    include(CTest)
+    enable_testing()
+    find_package(eosio.cdt)
+    function(add_tester NAME SRC)
+        add_executable(${NAME} ${SRC})
+        target_link_libraries(${NAME} -ftester -stack-size=65536)
+        target_compile_options(${NAME} PUBLIC -ftester -Os -no-missing-ricardian-clause)
+    endfunction()
+
+    add_contract(legacydb legacydb legacydb-test-contract.cpp)
+    add_tester(legacydb-tester legacydb-tester.cpp)
+else()
+    include(CTest)
+    enable_testing()
+    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/legacydb.wasm ${CMAKE_CURRENT_BINARY_DIR}/legacydb.wasm COPYONLY )
+    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/legacydb-tester.wasm ${CMAKE_CURRENT_BINARY_DIR}/legacydb-tester.wasm COPYONLY )
+endif()
+
+add_test(NAME rodeos-legacydb COMMAND ${EOSIO_TESTER_EXE} -v legacydb-tester.wasm WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
