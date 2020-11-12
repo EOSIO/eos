@@ -718,7 +718,22 @@ struct controller_impl {
       }
    }
 
+   void update_reversible_blocks() {
+      auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
+      for ( auto i = rbi.begin(); i != rbi.end(); ++i ) {
+         if( !i->is_block() ) {
+            auto bsp = fork_db.get_block( i->get_block_id() );
+            if( bsp ) {
+               reversible_blocks.modify<reversible_block_object>( *i, [&]( auto& ubo ) {
+                  ubo.set_block( bsp->block );
+               } );
+            }
+         }
+      }
+   }
+
    ~controller_impl() {
+      update_reversible_blocks();
       thread_pool.stop();
       pending.reset();
    }
@@ -1598,7 +1613,7 @@ struct controller_impl {
          if( !replay_head_time && read_mode != db_read_mode::IRREVERSIBLE ) {
             reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
                ubo.blocknum = bsp->block_num;
-               ubo.set_block( bsp->block );
+               ubo.set_block_id( bsp->id );
             });
          }
 

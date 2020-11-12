@@ -22,7 +22,18 @@ namespace eosio { namespace chain {
          });
       }
 
+      void set_block_id( const block_id_type& id ) {
+         packedblock.resize_and_fill( id.data_size(), [&id](char* data, std::size_t size) {
+            memcpy( data, id.data(), size );
+         });
+      }
+
+      bool is_block()const {
+         return packedblock.size() != 32;
+      }
+
       signed_block_ptr get_block()const {
+         if( !is_block() ) return {};
          fc::datastream<const char*> ds( packedblock.data(), packedblock.size() );
          auto result = std::make_shared<signed_block>();
          fc::raw::unpack( ds, *result );
@@ -30,6 +41,11 @@ namespace eosio { namespace chain {
       }
 
       block_id_type get_block_id()const {
+         if( !is_block() ) {
+            block_id_type bid;
+            memcpy( bid.data(), packedblock.data(), packedblock.size() );
+            return bid;
+         }
          fc::datastream<const char*> ds( packedblock.data(), packedblock.size() );
          block_header h;
          fc::raw::unpack( ds, h );
