@@ -19,6 +19,7 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     MAKE_COMMAND="make -j '$JOBS'"
     echo "$ $MAKE_COMMAND"
     eval $MAKE_COMMAND
+    cd ..
 else # Linux
     ARGS=${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}
     PRE_COMMANDS="cd \"$MOUNTED_DIR/build\""
