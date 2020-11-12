@@ -8,8 +8,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
-    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static && \
-    scl enable devtoolset-8 bash
+    libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static 
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
@@ -37,6 +36,7 @@ ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
+    source /opt/rh/devtoolset-8/enable && \
     cmake -DSKIP_BUILD_TEST=ON  -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
