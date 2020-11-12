@@ -7,7 +7,7 @@ RUN apt-get update && \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq libpq
+    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
@@ -31,7 +31,7 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/a
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
 # install nvm
