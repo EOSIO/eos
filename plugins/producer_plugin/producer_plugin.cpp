@@ -383,21 +383,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             throw;
          };
 
-         // Notes:
-         // - as soon as block is accepted via `push_block` a signal is emitted.
-         // - may be able to just overload `push_block` to _verify_ the block if blockvault is currently active; will have to just pass noop lambda:
-         //   - this is no longer planned.
          try {
+            block_state_ptr head_blk_state = bsf.get();
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
             if ( blockvault_plug->get() != nullptr ) {
-               uint32_t lib{chain.head_block_state()->dpos_irreversible_blocknum};
-               eosio::chain::signed_block_ptr block{chain.head_block_state()->block};
-               std::function<void(bool)> handler{[](bool){}};
-               blockvault_plug->append_external_block(lib, block, handler);
+               blockvault_plug->async_append_external_block(head_blk_state->dpos_irreversible_blocknum, head_blk_state->block, [](bool){});
             }
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
@@ -730,7 +724,6 @@ if( options.count(op_name) ) { \
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->blockvault_plug = app().find_plugin<blockvault_client_plugin>();
-   EOS_ASSERT( my->blockvault_plug->get(), plugin_config_exception, "blockvault_client_plugin not found" );
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -2057,7 +2050,7 @@ void producer_plugin_impl::produce_block() {
    }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   chain.finalize_block( [&]( const digest_type& d ) { // get dpos irr block num
+   block_state_ptr pending_blk_state = chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
       sigs.reserve(relevant_providers.size());
@@ -2069,31 +2062,9 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   // Notes:
-   // - possibly use `std::future` in the future:
-   //   - caller that gets the future can decide thread details.
-   //   - look into thread pooling.
-   // - `propose_constructed_block` can fail in it's current implementation.
-   // - `append_external_block` cannot fail in it's current implementation.
-   // - to get the watermark:
-   //   - call `get_watermark`.
-   // - to get the producer:
-   //   - call `hbs->get_scheduled_producer(block_time)`.
-   //   - or call `chain.head_block_state()` of which you might call `account_name controller::pending_block_producer() const`.
-   // - to get LIBid or LIBnumber:
-   //   - both can be found in controller.
-   //   - for this case do not get the chain last irreversible block number but get the LIB number from the head block state.
-   //   - get dpos irreversible block number
-   //   - block header state also has the producer.
-   //   - block header state also has the signed block as well.
-   // - it was talked about how another function could be added to controller for dealing with precursor cases prior to calling `commit_block`.
-   // - not sure why I wrote this function down but I'm keeping it around: `chain.fetch_block_by_number()`.
-   // - also keeping this note around `bsp = chain.finalize_block( [&]( const digest_type& d )` // get dpos irreversible block number
-
    if ( blockvault_plug->get() != nullptr ) {
-      blockvault::watermark_t watermark{get_watermark(chain.head_block_state()->get_scheduled_producer(calculate_pending_block_time()).producer_name).value()};
-      uint32_t lib{chain.head_block_state()->dpos_irreversible_blocknum};
-      signed_block_ptr block{chain.head_block_state()->block};
+      std::optional<producer_watermark> watermark{get_watermark(pending_blk_state->header.producer)};
+      EOS_ASSERT(watermark.has_value(), empty_watermark, "Attempting to use a watermark that does not exist");
       std::function<void(bool)> handler{[this, &chain](bool b){
          if ( b ) {
            chain.commit_block();
@@ -2106,18 +2077,15 @@ void producer_plugin_impl::produce_block() {
             _unapplied_transactions.add_aborted( chain.abort_block() );
          }
       }};
-      blockvault_plug->propose_constructed_block(watermark, lib, block, handler);
+      blockvault_plug->async_propose_constructed_block(watermark.value(), pending_blk_state->dpos_irreversible_blocknum, pending_blk_state->block, handler);
    } else {
       chain.commit_block();
+      block_state_ptr new_bs = chain.head_block_state();
+      ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+            ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
+            ("n",new_bs->block_num)("t",new_bs->header.timestamp)
+            ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
    }
-
-   block_state_ptr new_bs = chain.head_block_state();
-
-   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
-        ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-        ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
-
 }
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {

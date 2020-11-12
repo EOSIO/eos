@@ -1,6 +1,8 @@
 #include <vector>
 #include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
+#include "blockvault_impl.hpp" // Needed for `producer_plugin` changes; this won't get merged in.
+
 namespace eosio {
     
 static appbase::abstract_plugin& _blockvault_client_plugin = app().register_plugin<blockvault_client_plugin>();
@@ -59,11 +61,19 @@ void blockvault_client_plugin::plugin_shutdown()
 {
 }
 
-void blockvault_client_plugin::propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler) {
+void blockvault_client_plugin::propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block)
+{
+}
+
+void blockvault_client_plugin::append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block)
+{
+}
+
+void blockvault_client_plugin::async_propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler) {
    get()->async_propose_constructed_block(watermark, lib, block, handler);
 }
 
-void blockvault_client_plugin::append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler) {
+void blockvault_client_plugin::async_append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler) {
    get()->async_append_external_block(lib, block, handler);
 }
 

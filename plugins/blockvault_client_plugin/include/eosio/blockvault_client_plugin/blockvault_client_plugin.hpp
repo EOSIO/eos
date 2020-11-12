@@ -33,8 +33,10 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   void propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler);
-   void append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler);
+   void propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block);
+   void append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block);
+   void async_propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler);
+   void async_append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler);
    void propose_snapshot();
    void sync_for_construction();
 

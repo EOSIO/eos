@@ -4,7 +4,7 @@ add_library( blockvault_client_plugin
              blockvault_client_plugin.cpp
              ${HEADERS} )
 
-target_link_libraries( blockvault_client_plugin appbase fc http_plugin chain_plugin signature_provider_plugin eosio_chain eosio_testing )
+target_link_libraries( blockvault_client_plugin appbase fc eosio_chain )
          
 target_include_directories( blockvault_client_plugin
     PUBLIC
