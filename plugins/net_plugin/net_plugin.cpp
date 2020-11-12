@@ -1191,34 +1191,42 @@ namespace eosio {
          fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
       connection_wptr weak = shared_from_this();
+
       connection_ptr c = weak.lock();
       if (!c){
           return true;
       }
       controller &cc = my_impl->chain_plug->chain();
 
-      block_state_ptr blk_state;
       send_buffer_type send_buffer;
-      try {
-          blk_state = cc.fetch_block_state_by_number(num);
-          if (!blk_state) {
+      bool found_block = cc.check_block_existence(num);
+      if (found_block){
+          try{
               send_buffer = cc.fetch_block_stream_by_number(num);
-          }
-      } FC_LOG_AND_DROP();
-
-      if (blk_state) {
-          signed_block_ptr sb = blk_state->block;
-          c->strand.post([c, sb{std::move(sb)}]() {
-              c->enqueue_block(sb, true);
-          });
-      } else if (send_buffer) {
-          c->strand.post([c, send_buffer{std::move(send_buffer)}]() {
-              c->enqueue_buffer(send_buffer, no_reason, true);
-          });
-      } else {
-          c->strand.post([c, num]() {
-              peer_ilog(c, "enqueue sync, unable to fetch block ${num}", ("num", num));
-              c->send_handshake();
+              if (send_buffer)
+                  c->enqueue_buffer(send_buffer, no_reason, true);
+          }FC_LOG_AND_DROP();
+      }else{
+          app().post( priority::medium, [num, weak{std::move(weak)}]() {
+              connection_ptr c = weak.lock();
+              if( !c ) return;
+              controller& cc = my_impl->chain_plug->chain();
+              signed_block_ptr sb;
+              block_state_ptr blk_state;
+              try {
+                  blk_state = cc.fetch_block_state_by_number( num );
+              } FC_LOG_AND_DROP();
+              if( blk_state ) {
+                  sb = blk_state->block;
+                  c->strand.post( [c, sb{std::move(sb)}]() {
+                      c->enqueue_block( sb, true );
+                  });
+              } else {
+                  c->strand.post( [c, num]() {
+                      peer_ilog( c, "enqueue sync, unable to fetch block ${num}", ("num", num) );
+                      c->send_handshake();
+                  });
+              }
           });
       }
 

@@ -548,9 +548,10 @@ namespace eosio { namespace chain {
 
          block_id_type                          read_block_id_by_num(uint32_t block_num);
          std::unique_ptr<signed_block>          read_block_by_num(uint32_t block_num);
-         std::shared_ptr<std::vector<char>>     read_block_stream_by_num(uint32_t block_num); //EPE-437
          void                                   read_head();
 
+         // thread safe
+         std::shared_ptr<std::vector<char>>     read_block_stream_by_num(uint32_t block_num);
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -748,21 +749,29 @@ namespace eosio { namespace chain {
       my->head.reset();
    }
 
+   bool block_log::is_block_exists(uint32_t block_num){
+       uint64_t pos = my->get_block_pos(block_num);
+       return  (pos != block_log::npos? true : false);
+   }
    std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_stream_by_num(uint32_t block_num) {
        shared_ptr<std::vector<char>> send_buff;
 
-
-       auto blocks_dir      = fc::canonical(block_file.get_file_path().parent_path());
+       auto blocks_dir            = fc::canonical(block_file.get_file_path().parent_path());
        const auto block_log_path  = blocks_dir / "blocks.log";
-       fc::cfile block_file;
-       block_file.set_file_path(block_log_path);
-       block_file.open(fc::cfile::update_rw_mode);
+       fc::cfile bl_file;
+       bl_file.set_file_path(block_log_path);
+       bl_file.open(fc::cfile::update_rw_mode);
+       uint64_t pos = get_block_pos(block_num);
+       if (pos != block_log::npos) {
+           bl_file.seek(pos);
 
-       //read block log
-       {
-           // to do...
+           //to do ... read block unpacked from block log
+
        }
 
+       bl_file.close();
+
+       // to do ...
 
        return send_buff;
    }
