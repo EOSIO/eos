@@ -7,17 +7,6 @@ if [[ $(uname) == 'Darwin' && $FORCE_LINUX != true ]]; then
     echo "$ $PACKAGE_COMMANDS"
     eval $PACKAGE_COMMANDS
     ARTIFACT='*.rb;*.tar.gz'
-    cd build/packages
-    [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
-    buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
-    for A in $(echo $ARTIFACT | tr ';' ' '); do
-        if [[ $(ls $A | grep -c '') == 0 ]]; then
-            echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
-            pwd
-            ls -la
-            exit 1
-        fi
-    done
 else # Linux
     ARGS="${ARGS:-"--rm --init -v \"\$(pwd):$MOUNTED_DIR\""}"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
@@ -35,15 +24,17 @@ else # Linux
     DOCKER_RUN_COMMAND="docker run $ARGS $(buildkite-intrinsics) '$FULL_TAG' bash -c '$COMMANDS'"
     echo "$ $DOCKER_RUN_COMMAND"
     eval $DOCKER_RUN_COMMAND
-    cd build/packages
-    [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
-    buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
-    for A in $(echo $ARTIFACT | tr ';' ' '); do
-        if [[ $(ls "$A" | grep -c '') == 0 ]]; then
-            echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
-            pwd
-            ls -la
-            exit 1
-        fi
-    done
 fi
+cd build/packages
+[[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
+if [[ "$BUILDKITE" == 'true' ]]; then
+    buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
+fi
+for A in $(echo $ARTIFACT | tr ';' ' '); do
+    if [[ $(ls "$A" | grep -c '') == 0 ]]; then
+        echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
+        pwd
+        ls -la
+        exit 1
+    fi
+done
