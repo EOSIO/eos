@@ -11,7 +11,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     eval $TEST_COMMAND
     EXIT_STATUS=$?
 else # Linux
-    echo '+++ :docker: Selecting Container'
+    echo '--- :docker: Selecting Container'
     TEST_COMMAND="\"$MOUNTED_DIR/$1\" ${@: 2}"
     COMMANDS="echo \"$ $TEST_COMMAND\" && $TEST_COMMAND"
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
@@ -25,7 +25,7 @@ fi
 if [[ "$BUILDKITE" == 'true' ]]; then
     cd build
     # upload artifacts
-    echo '+++ :arrow_up: Uploading Artifacts'
+    echo '--- :arrow_up: Uploading Artifacts'
     echo 'Compressing configuration'
     [[ -d etc ]] && tar czf etc.tar.gz etc
     echo 'Compressing logs'
@@ -52,4 +52,4 @@ if [[ "$EXIT_STATUS" != '0' ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
-echo '+++ :white_check_mark: Done!'
+echo '--- :white_check_mark: Done!'
