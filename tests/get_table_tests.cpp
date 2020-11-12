@@ -21,13 +21,7 @@
 #include <array>
 #include <utility>
 
-#ifdef NON_VALIDATING_TEST
-#define TESTER tester
-#define ROCKSDB_TESTER rocksdb_tester
-#else
-#define TESTER validating_tester
-#define ROCKSDB_TESTER rocksdb_validating_tester
-#endif
+#include <eosio/testing/backing_store_tester_macros.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -36,7 +30,7 @@ using namespace fc;
 
 BOOST_AUTO_TEST_SUITE(get_table_tests)
 
-using tester_suites = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
+using backing_store_ts = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
 
 transaction_trace_ptr
 issue_tokens( TESTER& t, account_name issuer, account_name to, const asset& amount,
@@ -66,7 +60,7 @@ issue_tokens( TESTER& t, account_name issuer, account_name to, const asset& amou
    return t.push_transaction( trx );
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( get_scope_test, TESTER_T, tester_suites) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE( get_scope_test, TESTER_T, backing_store_ts) { try {
    TESTER_T t;
    t.produce_blocks(2);
 
@@ -139,7 +133,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_scope_test, TESTER_T, tester_suites) { try {
 
 } FC_LOG_AND_RETHROW() } /// get_scope_test
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_test, TESTER_T, tester_suites) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_test, TESTER_T, backing_store_ts) { try {
    TESTER_T t;
    t.produce_blocks(2);
 
@@ -319,7 +313,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_test, TESTER_T, tester_suites) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_by_seckey_test, TESTER_T, tester_suites) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_by_seckey_test, TESTER_T, backing_store_ts) { try {
    TESTER_T t;
    t.produce_blocks(2);
 
@@ -472,7 +466,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_by_seckey_test, TESTER_T, tester_suites
 } FC_LOG_AND_RETHROW() }
 
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_next_key_test, TESTER_T, tester_suites) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_next_key_test, TESTER_T, backing_store_ts) { try {
    TESTER_T t;
    t.create_account("test"_n);
 
