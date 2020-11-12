@@ -370,7 +370,7 @@ void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack
    else {
       if (prefix != rocksdb_contract_db_prefix) {
          char buffer[10];
-         const auto len = sprintf(buffer, "%20x", static_cast<uint8_t>(prefix));
+         const auto len = sprintf(buffer, "%02x", static_cast<uint8_t>(prefix));
          buffer[len] = '\0';
          FC_THROW_EXCEPTION(bad_composite_key_exception,
                             "Passed in key is prefixed with: ${prefix} which is neither the DB or KV prefix",
@@ -403,7 +403,7 @@ bool process_rocksdb_entry(const Session& session,
    else {
       if (prefix != rocksdb_contract_db_prefix) {
          char buffer[10];
-         const auto len = sprintf(buffer, "%20x", static_cast<uint8_t>(prefix));
+         const auto len = sprintf(buffer, "%02x", static_cast<uint8_t>(prefix));
          buffer[len] = '\0';
          FC_THROW_EXCEPTION(bad_composite_key_exception,
                             "Passed in key is prefixed with: ${prefix} which is neither the DB or KV prefix",
