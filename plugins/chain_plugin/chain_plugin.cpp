@@ -29,6 +29,7 @@
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
+#include <fc/log/trace.hpp>
 #include <signal.h>
 #include <cstdlib>
 
@@ -322,6 +323,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print contract's output to console")
          ("deep-mind", bpo::bool_switch()->default_value(false),
           "print deeper information about chain operations")
+         ("telemetry-url", bpo::value<std::string>(),
+          "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" )
+         ("telemetry-service-name", bpo::value<std::string>()->default_value("nodeos"),
+          "Zipkin localEndpoint.serviceName sent with each span" )
+         ("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+          "Timeout for sending Zipkin span." )
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -1211,6 +1218,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain->enable_deep_mind( &_deep_mind_log );
       }
 
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
+
+
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
             [this]( uint32_t block_num ) -> signed_block_ptr {
@@ -1357,6 +1371,7 @@ void chain_plugin::plugin_shutdown() {
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
+   zipkin_config::shutdown();
 }
 
 void chain_plugin::handle_sighup() {
@@ -2783,12 +2798,34 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "push_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
@@ -2904,12 +2941,33 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "send_transaction");
+
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            next(std::get<fc::exception_ptr>(result));
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
          } else {
-            auto trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             try {
                fc::variant output;
