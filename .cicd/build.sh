@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eo pipefail
+[[ "$ENABLE_INSTALL" == 'true' ]] || echo '+++ :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"Release\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\" -DBUILD_MONGO_DB_PLUGIN=\"true\""
@@ -10,6 +11,7 @@ if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     fi
     [[ ! "$PINNED" == 'false' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=\"$HELPERS_DIR/clang.make\""
     cd "$BUILD_DIR"
+    echo '+++ :hammer_and_wrench: Building EOSIO'
     CMAKE_COMMAND="cmake $CMAKE_EXTRAS .."
     echo "$ $CMAKE_COMMAND"
     eval $CMAKE_COMMAND
@@ -32,7 +34,7 @@ else # Linux
     fi
     CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
     MAKE_COMMAND="make -j \"$JOBS\""
-    BUILD_COMMANDS="echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
+    BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
@@ -55,6 +57,11 @@ else # Linux
     eval $DOCKER_RUN
 fi
 if [[ "$BUILDKITE" == 'true' ]]; then
+    echo '+++ :arrow_up: Uploading Artifacts'
+    echo 'Compressing build directory.'
     tar -pczf 'build.tar.gz' build
+    echo 'Uploading build directory.'
     buildkite-agent artifact upload 'build.tar.gz'
+    echo 'Done uploading artifacts.'
 fi
+[[ "$ENABLE_INSTALL" == 'true' ]] || echo '+++ :white_check_mark: Done!'
