@@ -257,6 +257,7 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::close() {
+      control->shutdown();
       control.reset();
       chain_transactions.clear();
    }
