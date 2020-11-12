@@ -3,7 +3,8 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
 # search for base image in docker registries
-echo "+++ :mag_right: Looking for $HASHED_IMAGE_TAG"
+echo '--- :docker: Build or Pull Base Image :minidisc:'
+echo "Looking for '$HASHED_IMAGE_TAG' container in our registries."
 EXISTS_ALL='true'
 EXISTS_DOCKER_HUB='false'
 EXISTS_ECR='false'
