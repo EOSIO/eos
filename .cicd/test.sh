@@ -2,14 +2,10 @@
 set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
-RABBITMQ_SERVER_DETACHED='rabbitmq-server -detached'
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
     [[ "$CI" == 'true' ]] && source ~/.bash_profile
-    echo "$ $RABBITMQ_SERVER_DETACHED"
-    eval $RABBITMQ_SERVER_DETACHED
-    sleep 10
     TEST_COMMAND="\"./$1\" ${@: 2}"
     echo "$ $TEST_COMMAND"
     eval $TEST_COMMAND
