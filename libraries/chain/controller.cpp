@@ -733,7 +733,6 @@ struct controller_impl {
    }
 
    ~controller_impl() {
-      update_reversible_blocks();
       thread_pool.stop();
       pending.reset();
    }
@@ -2365,6 +2364,10 @@ void controller::startup( std::function<void()> shutdown, std::function<bool()> 
 
 void controller::startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
    my->startup(shutdown, check_shutdown);
+}
+
+void controller::shutdown() {
+   my->update_reversible_blocks();
 }
 
 const chainbase::database& controller::db()const { return my->db; }

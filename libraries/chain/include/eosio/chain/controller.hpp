@@ -129,6 +129,8 @@ namespace eosio { namespace chain {
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis);
          void startup( std::function<void()> shutdown, std::function<bool()> check_shutdown);
 
+         void shutdown();
+
          void preactivate_feature( uint32_t action_id, const digest_type& feature_digest );
 
          vector<digest_type> get_preactivated_protocol_features()const;

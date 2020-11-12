@@ -1364,6 +1364,14 @@ void chain_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    if(app().is_quiting())
       my->chain->get_wasm_interface().indicate_shutting_down();
+   try {
+      my->chain->shutdown();
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
+   }
+
    my->chain.reset();
    zipkin_config::shutdown();
 }
@@ -1483,6 +1491,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
                      "gap in reversible block database between ${end} and ${blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
+         EOS_ASSERT( itr->is_block(), gap_in_reversible_blocks_db, "block ${bn} not available", ("bn", itr->blocknum) );
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = itr->blocknum;
