@@ -61,7 +61,7 @@ else # Linux
     echo "$ $DOCKER_RUN"
     eval $DOCKER_RUN
 fi
-if [[ "$BUILDKITE" == 'true' ]]; then
+if [[ "$BUILDKITE" == 'true' && "$ENABLE_INSTALL" != 'true' ]]; then
     echo '--- :arrow_up: Uploading Artifacts'
     echo 'Compressing build directory.'
     tar -pczf 'build.tar.gz' build
