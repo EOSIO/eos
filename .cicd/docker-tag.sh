@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-echo '+++ :evergreen_tree: Configuring Environment'
+echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 PREFIX='base-ubuntu-18.04'
 SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
@@ -52,7 +52,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     fi
 done
 # cleanup
-echo '+++ :put_litter_in_its_place: Cleaning Up'
+echo '--- :put_litter_in_its_place: Cleaning Up'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Cleaning up from $REGISTRY."

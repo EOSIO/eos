@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-echo '+++ :evergreen_tree: Configuring Environment'
+echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL='true'
 export BRANCH=$(echo $BUILDKITE_BRANCH | sed 's.^/..' | sed 's/[:/]/_/g')
@@ -23,11 +23,11 @@ for REGISTRY in "${CONTRACT_REGISTRIES[@]}"; do
         done
     fi
 done
-echo '+++ :put_litter_in_its_place: Cleaning Up'
+echo '--- :put_litter_in_its_place: Cleaning Up'
 DOCKER_STOP_COMMAND="docker stop 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER'"
 echo "$ $DOCKER_STOP_COMMAND"
 eval $DOCKER_STOP_COMMAND
 DOCKER_RM_COMMAND="docker rm 'ci-contracts-builder-$BUILDKITE_PIPELINE_SLUG-$BUILDKITE_BUILD_NUMBER'"
 echo "$ $DOCKER_RM_COMMAND"
 eval $DOCKER_RM_COMMAND
-echo '+++ :white_check_mark: Done!'
+echo '--- :white_check_mark: Done!'
