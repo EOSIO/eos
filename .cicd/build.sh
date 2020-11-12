@@ -54,3 +54,7 @@ else # Linux
     echo "$ $DOCKER_RUN"
     eval $DOCKER_RUN
 fi
+if [[ "$BUILDKITE" == 'true' ]]; then
+    tar -pczf 'build.tar.gz' build
+    buildkite-agent artifact upload 'build.tar.gz'
+fi
