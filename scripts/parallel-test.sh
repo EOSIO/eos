@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 # variables
-echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
+echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ -z "$JOBS" ]] && export JOBS="$(getconf _NPROCESSORS_ONLN)"
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 if [[ "$(uname)" == 'Linux' ]]; then
