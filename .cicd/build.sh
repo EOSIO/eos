@@ -35,7 +35,7 @@ else # Linux
     fi
     CMAKE_COMMAND="cmake \$CMAKE_EXTRAS .."
     MAKE_COMMAND="make -j \"$JOBS\""
-    BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \"$ $MAKE_COMMAND\" && eval $MAKE_COMMAND"
+    BUILD_COMMANDS="echo \"+++ :hammer_and_wrench: Building EOSIO\" && echo \"$ $CMAKE_COMMAND\" && eval $CMAKE_COMMAND && echo \\\"$ $MAKE_COMMAND\\\" && eval $MAKE_COMMAND"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
