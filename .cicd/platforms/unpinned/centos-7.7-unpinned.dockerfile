@@ -28,6 +28,17 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
+#install libpq
+RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+    yum install -y postgresql13-devel 
+ENV PostgreSQL_ROOT=/usr/pgsql-13   
+ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
+#build libpqxx
+RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+    cd  libpqxx-7.2.1  && \
+    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake --build build && cmake --install build && \
+    cd .. && rm -rf libpqxx-7.2.1
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells

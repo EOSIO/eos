@@ -4,7 +4,7 @@ ENV VERSION 1
 RUN yum update -y && \
     yum install -y epel-release  && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 && \
-    yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel libpqxx-devel && \
+    yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
     yum install -y python3
@@ -44,6 +44,18 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
+#install libpq
+RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+    dnf -qy module disable postgresql && \
+    dnf install -y postgresql13-devel  
+ENV PostgreSQL_ROOT=/usr/pgsql-13  
+#build libpqxx
+RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+    cd  libpqxx-7.2.1  && \
+    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake --build build && cmake --install build && \
+    cd .. && rm -rf libpqxx-7.2.1
+
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
