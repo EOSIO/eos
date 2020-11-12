@@ -49,10 +49,11 @@ RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x
     dnf -qy module disable postgresql && \
     dnf install -y postgresql13-devel  
 ENV PostgreSQL_ROOT=/usr/pgsql-13  
+ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
 
