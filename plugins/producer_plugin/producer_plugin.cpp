@@ -537,11 +537,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      fc_dlog(_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT ${e}, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
                               ("prod", get_pending_block_producer())
-                              ("e", trace->except->to_string())
+                              ("e", trace->except->top_message())
                               ("txid", trx->id()));
                   } else {
                      fc_dlog(_log, "[TRX_TRACE] Speculative execution COULD NOT FIT ${e}, tx: ${txid} RETRYING",
-                              ("e", trace->except->to_string())
+                              ("e", trace->except->top_message())
                               ("txid", trx->id()));
                   }
                   if( !exhausted )
