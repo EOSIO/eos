@@ -2551,51 +2551,132 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
+   const auto producers_table = "producers"_n;
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
-   const auto table_type = get_table_type(abi, "producers"_n);
+   const auto table_type = get_table_type(abi, producers_table);
    const abi_serializer abis{ abi, abi_serializer::create_yield_function( abi_serializer_max_time ) };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
    const auto lower = name{p.lower_bound};
 
-   static const uint8_t secondary_index_num = 0;
-   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, "producers"_n));
-   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, name("producers"_n.to_uint64_t() | secondary_index_num)));
-   EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
-
-   const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-   const auto& secondary_index = d.get_index<index_double_index>().indices();
-   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
-   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
-
+   keep_processing kp;
    read_only::get_producers_result result;
-   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
-   vector<char> data;
-
-   auto it = [&]{
-      if(lower.to_uint64_t() == 0)
-         return secondary_index_by_secondary.lower_bound(
-            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
-      else
-         return secondary_index.project<by_secondary>(
-            secondary_index_by_primary.lower_bound(
-               boost::make_tuple(secondary_table_id->id, lower.to_uint64_t())));
-   }();
-
-   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
-         result.more = name{it->primary_key}.to_string();
-         break;
+   auto done = [&kp,&result,&limit=p.limit](const auto& row) {
+      if (result.rows.size() >= limit || kp()) {
+         result.more = name{row.primary_key}.to_string();
+         return true;
       }
-      auto itr = kv_index.find(boost::make_tuple(table_id->id, it->primary_key));
+      return false;
+   };
+   auto get_val = get_primary_key_value(abis.get_table_type(producers_table), abis, p.json);
+   auto add_val = [&result,get_val{std::move(get_val)}](const auto& row) {
       fc::variant data_var;
-      auto get_val = get_primary_key_value(data_var, abis.get_table_type("producers"_n), abis, p.json);
-      get_val(*itr);
+      get_val(data_var, row);
       result.rows.emplace_back(std::move(data_var));
+   };
+
+   const auto code = config::system_account_name;
+   const auto scope = config::system_account_name;
+   static const uint8_t secondary_index_num = 0;
+   const name sec_producers_table {producers_table.to_uint64_t() | secondary_index_num};
+
+   const auto db_backing_store = get_backing_store();
+   if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
+      const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
+            boost::make_tuple(code, scope, producers_table));
+      const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
+            boost::make_tuple(code, scope, sec_producers_table));
+      EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
+
+      const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+      const auto& secondary_index = d.get_index<index_double_index>().indices();
+      const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
+      const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+
+      vector<char> data;
+
+      auto it = lower.to_uint64_t() == 0
+         ? secondary_index_by_secondary.lower_bound(
+               boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0))
+         : secondary_index.project<by_secondary>(
+               secondary_index_by_primary.lower_bound(
+                  boost::make_tuple(secondary_table_id->id, lower.to_uint64_t())));
+      for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
+         if (done(*it)) {
+            break;
+         }
+         auto itr = kv_index.find(boost::make_tuple(table_id->id, it->primary_key));
+         add_val(*itr);
+      }
    }
+   else {
+      using namespace eosio::chain;
+      EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
+                 contract_table_query_exception,
+                 "Support for configured backing_store has not been added to get_table_by_scope");
+      auto& kv_database = const_cast<controller&>(db).kv_db();
+      using key_type = backing_store::db_key_value_format::key_type;
+
+      // derive the "root" of the float64 secondary key space to determine where it ends (upper), then may need to recalculate
+      auto lower_key = backing_store::db_key_value_format::create_full_prefix_key(code, scope, sec_producers_table, key_type::sec_double);
+      auto upper_key = lower_key.next();
+      if (lower.to_uint64_t() == 0) {
+         lower_key = backing_store::db_key_value_format::create_full_prefix_secondary_key(code, scope, sec_producers_table, float64_t{lower.to_uint64_t()});
+      }
+
+      auto& session = kv_database.get_kv_undo_stack()->top();
+      auto retrieve_primary_key = [&code,&scope,&producers_table,&session](uint64_t primary_key) {
+         auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(code, scope, producers_table, primary_key);
+         auto value = session.read(full_primary_key);
+         return *value;
+      };
+
+      using done_func = decltype(done);
+      using add_val_func = decltype(add_val);
+      using retrieve_prim_func = decltype(retrieve_primary_key);
+
+      struct f64_secondary_key_receiver
+      : backing_store::single_type_error_receiver<f64_secondary_key_receiver,
+                                                  backing_store::secondary_index_view<float64_t>,
+                                                  contract_table_query_exception> {
+         f64_secondary_key_receiver(read_only::get_producers_result& result, done_func&& done,
+                                    add_val_func&& add_val, retrieve_prim_func&& retrieve_prim)
+         : result_(result), done_(done), add_val_(add_val), retrieve_primary_key_(retrieve_prim) {}
+
+         void add_only_row(const backing_store::secondary_index_view<float64_t>& row) {
+            // needs to allow a second pass after limit is reached or time has passed, to allow "more" processing
+            if (done_(row)) {
+               finished_ = true;
+            }
+            else {
+               auto value = retrieve_primary_key_(row.primary_key);
+               add_val_(backing_store::primary_index_view::create(row.primary_key, value.data(), value.size()));
+            }
+         }
+
+         void add_table_row(const backing_store::table_id_object_view& ) {
+            // used for only one table, so we already know the context of the table
+         }
+
+         auto keep_processing_entries() {
+            return [&finished=finished_]() {
+               return !finished;
+            };
+         };
+
+         read_only::get_producers_result& result_;
+         done_func done_;
+         add_val_func add_val_;
+         retrieve_prim_func retrieve_primary_key_;
+         bool finished_ = false;
+      };
+      f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(retrieve_primary_key));
+      auto kp = receiver.keep_processing_entries();
+      backing_store::rocksdb_contract_db_table_writer<f64_secondary_key_receiver, std::decay_t < decltype(kp)>>
+         writer(receiver, backing_store::key_context::standalone, kp);
+      eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower_key, upper_key, writer);
+   };
 
    const name global("global");
    const auto global_table_type = get_table_type(abi, global);
