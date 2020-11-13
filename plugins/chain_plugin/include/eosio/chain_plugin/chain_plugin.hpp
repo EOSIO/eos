@@ -21,6 +21,7 @@
 #include <eosio/chain_plugin/account_query_db.hpp>
 
 #include <fc/static_variant.hpp>
+#include <eosio/blockvault_client_plugin/blockvault_client_plugin.hpp>
 
 namespace fc { class variant; }
 
@@ -742,7 +743,7 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES()
+   APPBASE_PLUGIN_REQUIRES((blockvault_client_plugin))
 
    chain_plugin();
    virtual ~chain_plugin();

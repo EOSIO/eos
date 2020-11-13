@@ -75,8 +75,7 @@ public:
    void plugin_initialize(const variables_map& options);
    void plugin_startup();
    void plugin_shutdown();
-
-   static eosio::blockvault::block_vault_interface* get() {return nullptr;} // TODO: implement me
+   eosio::blockvault::block_vault_interface* get();
 
  private:
    std::unique_ptr<class blockvault_client_plugin_impl> my;
