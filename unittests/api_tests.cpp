@@ -2179,7 +2179,7 @@ BOOST_FIXTURE_TEST_CASE(db_notify_tests, TESTER) {
    BOOST_TEST_REQUIRE(push_action( action({}, "notifier"_n, name(), {}), "notifier"_n.to_uint64_t() ) == "");
 }
 
-#warning only testing chainbase till replay fix branch is merged, then remove "using backing_store_ts_only_cb..." and replace its use below with backing_store_ts
+#warning only testing chainbase till replay fix branch is merged, then remove "using backing_store_ts_only_cb..." and replace its use below with backing_store_ts (EPE-497)
 using backing_store_ts_only_cb = boost::mpl::list<TESTER>;
 /*************************************************************************************
  * multi_index_tests test case
