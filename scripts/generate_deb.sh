@@ -29,7 +29,7 @@ elif [ ${DISTRIB_RELEASE} = "18.04" ]; then
     RELEASE_SPECIFIC_DEPS="libssl1.1"
 else
     echo "Unrecognized Ubuntu version.  Update generate_deb.sh.  Not generating .deb file."
-    exit 1
+    exit 2
 fi
 
 mkdir -p ${PROJECT}/DEBIAN
