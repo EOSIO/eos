@@ -5,7 +5,7 @@
 
 
 ## Change Type
-**Select ONE**
+**Select *ONE*:**
 - [ ] Documentation
 <!-- checked [x] = Documentation; unchecked [ ] = no changes, ignore this section -->
 - [ ] Stability bug fix
@@ -14,7 +14,22 @@
 <!-- checked [x] = Other; unchecked [ ] = no changes, ignore this section -->
 - [ ] Other - special case
 <!-- checked [x] = Other - special case; unchecked [ ] = no changes, ignore this section -->
-<!-- Other - special case is for when a change warrants additional explanation or description in the release notes. Please include a description of the change for inclusion in the release notes.-->
+<!-- Other - special case is for when a change warrants additional explanation or description in the release notes. Please include a description of the change for inclusion in the release notes. -->
+
+
+## Testing Changes
+**Select *ANY* that apply:**
+- [ ] New Tests
+<!-- checked [x] = new test cases were added; unchecked [ ] = no new test cases -->
+- [ ] Existing Tests
+<!-- checked [x] = existing test cases were edited; unchecked [ ] = no existing tests were modified -->
+- [ ] Test Framework
+<!-- checked [x] = this modifies the test framework; unchecked [ ] = no test framework changes -->
+- [ ] CI System
+<!-- checked [x] = this changes the CI system; unchecked [ ] = no CI changes -->
+- [ ] Other
+<!-- checked [x] = this integrates an external test system; unchecked [ ] = no miscellaneous test-related changes -->
+<!-- Please describe your test changes, or list each new test and its purpose, under each respective checkbox -->
 
 
 ## Consensus Changes
