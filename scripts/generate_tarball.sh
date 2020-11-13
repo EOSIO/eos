@@ -17,6 +17,6 @@ for f in $(ls "${BUILD_DIR}/bin/"); do
     bn=$(basename "$f")
     ln -sf ../"${SUBPREFIX}/bin/$bn" "${PREFIX}/bin/$bn"
 done
-echo "Generating Tarball $NAME.tar.gz..."
+echo "Compressing '$NAME.tar.gz'..."
 tar -cvzf "$NAME.tar.gz" ./"${PREFIX}"/*
 rm -r "${PREFIX}"

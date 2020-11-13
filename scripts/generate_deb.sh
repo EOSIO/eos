@@ -33,8 +33,10 @@ else
     exit 2
 fi
 
+echo "Creating './${PROJECT}/DEBIAN/'."
 mkdir -p "${PROJECT}/DEBIAN"
 chmod 0755 "${PROJECT}/DEBIAN"
+echo "Writing control file to '${PROJECT}/DEBIAN/control'."
 echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
@@ -43,12 +45,17 @@ Depends: libc6, libgcc1, ${RELEASE_SPECIFIC_DEPS}, libstdc++6, libtinfo5, zlib1g
 Architecture: amd64
 Homepage: ${URL}
 Maintainer: ${EMAIL}
-Description: ${DESC}" &> "${PROJECT}/DEBIAN/control"
-cat "${PROJECT}/DEBIAN/control"
+Description: ${DESC}" | tee &> "${PROJECT}/DEBIAN/control"
 
-. ./generate_tarball.sh "${NAME}"
-echo "Unpacking tarball: ${NAME}.tar.gz..."
+GENERATE_TARBALL=". ./generate_tarball.sh '${NAME}'"
+echo "$ $GENERATE_TARBALL"
+eval $GENERATE_TARBALL
+echo "Unpacking '${NAME}.tar.gz'..."
 tar -xzvf "${NAME}.tar.gz" -C "${PROJECT}"
-$(type -P fakeroot) dpkg-deb --build "${PROJECT}"
+DPKG_BUILD="\$(type -P fakeroot) dpkg-deb --build '${PROJECT}'"
+echo "$ $DPKG_BUILD"
+eval $DPKG_BUILD
+echo "Deleting './${PROJECT}/DEBIAN/'."
 mv "${PROJECT}.deb" "${NAME}.deb"
 rm -r "${PROJECT}"
+echo "Done, package is '${NAME}.deb'."
