@@ -19,7 +19,7 @@ if [[ -f '/etc/upstream-release/lsb-release' ]]; then
 elif [[ -f '/etc/lsb-release' ]]; then
     source '/etc/lsb-release'
 else
-    echo 'Unrecognized Debian derivative. Not generating .deb file.'
+    echo 'Operating system not recognized, exiting...'
     exit 1
 fi
 
