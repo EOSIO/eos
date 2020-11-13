@@ -8,7 +8,7 @@
 #include "postgres_backend.hpp"
 #endif
 
-namespace eosio {    
+namespace eosio {
 static appbase::abstract_plugin& _blockvault_client_plugin = app().register_plugin<blockvault_client_plugin>();
 
 using vault_impl = eosio::blockvault::block_vault_impl<eosio::blockvault::zlib_compressor>;

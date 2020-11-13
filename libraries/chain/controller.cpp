@@ -81,7 +81,7 @@ struct pending_state {
       if( std::holds_alternative<building_block>(_block_stage) )
          return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
@@ -230,7 +230,7 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
           ? combined_database(db)
-          : combined_database(db, cfg)), 
+          : combined_database(db, cfg)),
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
@@ -1817,7 +1817,7 @@ struct controller_impl {
          );
 
          EOS_ASSERT( id == bsp->id, block_validate_exception,
-                     "provided id ${id} does not match block id ${bid}", ("id", id)("bid", bsp->id) );         
+                     "provided id ${id} does not match block id ${bid}", ("id", id)("bid", bsp->id) );
          return bsp;
       } );
    }
@@ -3204,14 +3204,14 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
          v4 global_properties;
          section.read_row(global_properties);
          chain_id = global_properties.chain_id;
-      }); 
+      });
    }
    else {
       snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
          snapshot_global_property_object global_properties;
          section.read_row(global_properties);
          chain_id = global_properties.chain_id;
-      });      
+      });
    }
 
    return chain_id;
