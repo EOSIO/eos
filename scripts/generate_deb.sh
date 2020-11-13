@@ -33,7 +33,7 @@ else
 fi
 
 mkdir -p ${PROJECT}/DEBIAN
-chmod 0755 ${PROJECT}/DEBIAN || exit 1
+chmod 0755 ${PROJECT}/DEBIAN
 echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
@@ -52,7 +52,7 @@ export SSUBPREFIX
 
 . ./generate_tarball.sh ${NAME}
 echo "Unpacking tarball: ${NAME}.tar.gz..."
-tar -xzvf ${NAME}.tar.gz -C ${PROJECT} || exit 1
-$(type -P fakeroot) dpkg-deb --build ${PROJECT} || exit 1
-mv ${PROJECT}.deb ${NAME}.deb || exit 1
-rm -r ${PROJECT} || exit 1
+tar -xzvf ${NAME}.tar.gz -C ${PROJECT}
+$(type -P fakeroot) dpkg-deb --build ${PROJECT}
+mv ${PROJECT}.deb ${NAME}.deb
+rm -r ${PROJECT}

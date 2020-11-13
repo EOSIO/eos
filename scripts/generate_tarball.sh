@@ -13,10 +13,10 @@ mkdir -p ${EOS_PREFIX}/licenses/eosio
 #mkdir -p ${EOS_PREFIX}/scripts
 
 # install binaries 
-cp -R ${BUILD_DIR}/bin/* ${EOS_PREFIX}/bin  || exit 1
+cp -R ${BUILD_DIR}/bin/* ${EOS_PREFIX}/bin
 
 # install licenses
-cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses || exit 1
+cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses
 
 # install libraries
 #cp -R ${BUILD_DIR}/lib/* ${EOS_PREFIX}/lib
@@ -36,8 +36,8 @@ cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses || exit 1
 
 for f in $(ls "${BUILD_DIR}/bin/"); do
     bn=$(basename $f)
-    ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
+    ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn
 done
 echo "Generating Tarball $NAME.tar.gz..."
-tar -cvzf $NAME.tar.gz ./${PREFIX}/* || exit 1
-rm -r ${PREFIX} || exit 1
+tar -cvzf $NAME.tar.gz ./${PREFIX}/*
+rm -r ${PREFIX}
