@@ -77,7 +77,7 @@ void blockvault_client_plugin::async_append_external_block(uint32_t lib, eosio::
    get()->async_append_external_block(lib, block, handler);
 }
 
-void blockvault_client_plugin::propose_snapshot()
+void blockvault_client_plugin::propose_snapshot(std::pair<uint32_t, uint32_t> watermark, const char* snapshot_filename)
 {
 }
 

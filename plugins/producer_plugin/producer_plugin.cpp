@@ -384,14 +384,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
 
          try {
-            block_state_ptr head_blk_state = bsf.get();
-            chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
+            block_state_ptr blk_state = chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-            if ( blockvault_plug->get() != nullptr ) {
-               blockvault_plug->async_append_external_block(head_blk_state->dpos_irreversible_blocknum, head_blk_state->block, [](bool){});
+            if ( blockvault_plug && blockvault_plug->get() != nullptr ) {
+               blockvault_plug->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){}); // TODO change to use get() for async
             }
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
@@ -1152,6 +1151,10 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("message", ec.message()));
 
          next( producer_plugin::snapshot_information{head_id, snapshot_path.generic_string()} );
+
+         if ( my->blockvault_plug && my->blockvault_plug->get() != nullptr ) { // TODO follow this pattern for the other checks // call async/etc. using get() // use python tests
+            my->blockvault_plug->propose_snapshot( {chain.head_block_num(), chain.head_block_time().sec_since_epoch()}, snapshot_path.generic_string().c_str() ); // TODO use get()
+         }
       } CATCH_AND_CALL (next);
       return;
    }
@@ -1184,6 +1187,10 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("message", ec.message()));
 
          my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string());
+
+         if ( my->blockvault_plug && my->blockvault_plug->get() != nullptr ) { // TODO follow this pattern for the other checks // call async/etc. using get() // use python tests
+            my->blockvault_plug->propose_snapshot( {chain.head_block_num(), chain.head_block_time().sec_since_epoch()}, pending_path.generic_string().c_str() ); // TODO use get()
+         }
       } CATCH_AND_CALL (next);
    }
 }
@@ -2062,30 +2069,22 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   if ( blockvault_plug->get() != nullptr ) {
+   if ( blockvault_plug && blockvault_plug->get() != nullptr ) { // TODO follow this pattern for the other checks // call async/etc. using get() // use python tests
+      std::promise<bool> p;
+      std::future<bool> f = p.get_future();
       std::optional<producer_watermark> watermark{get_watermark(pending_blk_state->header.producer)};
       EOS_ASSERT(watermark.has_value(), empty_watermark, "Attempting to use a watermark that does not exist");
-      std::function<void(bool)> handler{[this, &chain](bool b){
-         if ( b ) {
-           chain.commit_block();
-           block_state_ptr new_bs = chain.head_block_state();
-           ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-                 ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
-                 ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-                 ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
-         } else {
-            _unapplied_transactions.add_aborted( chain.abort_block() );
-         }
-      }};
-      blockvault_plug->async_propose_constructed_block(watermark.value(), pending_blk_state->dpos_irreversible_blocknum, pending_blk_state->block, handler);
-   } else {
-      chain.commit_block();
-      block_state_ptr new_bs = chain.head_block_state();
-      ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-            ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
-            ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-            ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+      blockvault_plug->async_propose_constructed_block(watermark.value(), pending_blk_state->dpos_irreversible_blocknum, pending_blk_state->block, [&p](bool b) {
+         p.set_value( b ); });
+      EOS_ASSERT( f.get(), empty_watermark, "Blockvault failure" ); // TODO implement new exception
    }
+
+   chain.commit_block();
+   block_state_ptr new_bs = chain.head_block_state();
+   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(8,16))
+         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
+         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 }
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
