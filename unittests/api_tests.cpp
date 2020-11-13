@@ -2179,10 +2179,12 @@ BOOST_FIXTURE_TEST_CASE(db_notify_tests, TESTER) {
    BOOST_TEST_REQUIRE(push_action( action({}, "notifier"_n, name(), {}), "notifier"_n.to_uint64_t() ) == "");
 }
 
+#warning only testing chainbase till replay fix branch is merged, then remove "using backing_store_ts_only_cb..." and replace its use below with backing_store_ts
+using backing_store_ts_only_cb = boost::mpl::list<TESTER>;
 /*************************************************************************************
  * multi_index_tests test case
  *************************************************************************************/
-BOOST_AUTO_TEST_CASE_TEMPLATE(multi_index_tests, TESTER_T, backing_store_ts) { try {
+BOOST_AUTO_TEST_CASE_TEMPLATE(multi_index_tests, TESTER_T, backing_store_ts_only_cb) { try {
    TESTER_T t;
    t.produce_blocks(1);
    t.create_account( "testapi"_n );
