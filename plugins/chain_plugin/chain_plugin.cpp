@@ -2563,7 +2563,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    keep_processing kp;
    read_only::get_producers_result result;
    auto done = [&kp,&result,&limit=p.limit](const auto& row) {
-      if (result.rows.size() >= limit || kp()) {
+      if (result.rows.size() >= limit || !kp()) {
          result.more = name{row.primary_key}.to_string();
          return true;
       }
