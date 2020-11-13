@@ -1,4 +1,6 @@
 #!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 pg_ctlcluster 13 main start
 su -c "psql  --command \"ALTER USER postgres WITH PASSWORD 'password';\"" - postgres
 

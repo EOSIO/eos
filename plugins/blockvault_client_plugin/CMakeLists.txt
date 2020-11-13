@@ -9,7 +9,7 @@ target_include_directories( blockvault_client_plugin PUBLIC "${CMAKE_CURRENT_SOU
 if (APPLE AND NOT DEFINED ENV{PKG_CONFIG_PATH})
    # to find libpq installed by homebrew, it is required to set the environment variable PKG_CONFIG_PATH
    set(ENV{PKG_CONFIG_PATH} /usr/local/opt/libpq/lib/pkgconfig)
-endif(APPLE)
+endif(APPLE AND NOT DEFINED ENV{PKG_CONFIG_PATH})
 
 pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0 libpq>=10.0)
 
