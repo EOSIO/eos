@@ -535,8 +535,8 @@ public:
                                row_requirements require_primary, const std::string_view& type, const abi_serializer& abis,
                                bool as_json = true) const;
 
-   auto get_primary_key_value(fc::variant& result_var, const std::string_view& type, const abi_serializer& abis, bool as_json = true) const {
-      return [&result_var,&type,&abis,as_json,this](const auto& obj) {
+   auto get_primary_key_value(const std::string_view& type, const abi_serializer& abis, bool as_json = true) const {
+      return [&type,&abis,as_json,this](fc::variant& result_var, const auto& obj) {
          vector<char> data;
          read_only::copy_inline_row(obj, data);
          if (as_json) {
@@ -545,6 +545,13 @@ public:
          else {
             result_var = fc::variant(data);
          }
+      };
+   }
+
+   auto get_primary_key_value(fc::variant& result_var, const std::string_view& type, const abi_serializer& abis, bool as_json = true) const {
+      auto get_primary = get_primary_key_value(type, abis, as_json);
+      return [&result_var,get_primary{std::move(get_primary)}](const auto& obj) {
+         return get_primary(result_var, obj);
       };
    }
 
