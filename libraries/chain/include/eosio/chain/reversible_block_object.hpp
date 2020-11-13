@@ -29,6 +29,7 @@ namespace eosio { namespace chain {
       }
 
       bool is_block()const {
+         static_assert( sizeof( block_id_type ) == 32, "Hardcoded block_id_type size" );
          return packedblock.size() != 32;
       }
 
