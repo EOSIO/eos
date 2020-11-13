@@ -6,7 +6,7 @@
 
 
 ## Change Type
-**Select ONE**
+**Select *ONE***
 - [ ] Documentation
 <!-- checked [x] = Documentation; unchecked [ ] = no changes, ignore this section -->
 - [ ] Stability bug fix
@@ -19,7 +19,7 @@
 
 
 ## Testing Changes
-**Select ANY that apply**
+**Select *ANY* that apply**
 - [ ] New Tests
 <!-- checked [x] = new test cases were added; unchecked [ ] = no new test cases -->
 - [ ] Existing Tests
