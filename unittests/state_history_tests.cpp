@@ -552,7 +552,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
       for (int i = 0; i < accounts_permissions.size(); i++) {
-         BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
+         BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, 2);
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].owner.to_string(), "newacc");
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].name.to_string(), expected_permission_names[i]);
       }
@@ -583,7 +583,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
       BOOST_REQUIRE(result.first);
       auto &it_permission = result.second;
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 3);
-      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, true);
+      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
       BOOST_REQUIRE_EQUAL(accounts_permissions[2].owner.to_string(), "newacc");
       BOOST_REQUIRE_EQUAL(accounts_permissions[2].name.to_string(), "mypermission");
@@ -598,7 +598,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
       BOOST_REQUIRE(result.first);
       auto &it_permission_del = result.second;
       BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj.size(), 1);
-      BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj[0].first, false);
+      BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj[0].first, 0);
       accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission_del);
       BOOST_REQUIRE_EQUAL(accounts_permissions[0].owner.to_string(), "newacc");
       BOOST_REQUIRE_EQUAL(accounts_permissions[0].name.to_string(), "mypermission");
