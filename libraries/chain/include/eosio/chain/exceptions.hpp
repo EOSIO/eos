@@ -600,6 +600,8 @@ namespace eosio { namespace chain {
                                     3170012, "The signer returned multiple signatures but that is not supported" )
       FC_DECLARE_DERIVED_EXCEPTION( empty_watermark,  producer_exception,
                                     3170013, "The watermark must not be empty" )
+      FC_DECLARE_DERIVED_EXCEPTION( blockvault_failure,  producer_exception,
+                                    3170014, "Blockvault server-side failure" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
