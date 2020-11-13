@@ -35,8 +35,8 @@ cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses || exit 1
 #popd &> /dev/null
 
 for f in $(ls "${BUILD_DIR}/bin/"); do
-   bn=$(basename $f)
-   ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
+    bn=$(basename $f)
+    ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
 done
 echo "Generating Tarball $NAME.tar.gz..."
 tar -cvzf $NAME.tar.gz ./${PREFIX}/* || exit 1
