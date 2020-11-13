@@ -26,6 +26,9 @@ class block_vault_interface {
    /// violations. If the Block Vault cannot make that guarantee for any reason,
    /// it must reject the proposal.
    ///
+   /// Notice that handler would be called from a thread different from the invoker
+   /// of this member function.
+   ///
    ///
    /// \param watermark The producer watermark implied by accepting this block.
    ///
@@ -48,6 +51,9 @@ class block_vault_interface {
    /// conflicts with the Block Vault state, then it will be rejected. If the
    /// block is older than the currently available snapshot, it is still
    /// accepted but will not affect the Block Vault cluster state.
+   ///
+   /// Notice that handler would be called from a thread different from the invoker
+   /// of this member function.
    ///
    /// \param lib The LIB implied by accepting this block.
    ///

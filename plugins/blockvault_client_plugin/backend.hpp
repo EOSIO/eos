@@ -1,5 +1,3 @@
-// Needed for `producer_plugin` changes; this won't get merged in.
-
 #pragma once
 #include <eosio/blockvault_client_plugin/blockvault.hpp>
 #include <eosio/chain/block_timestamp.hpp>

@@ -33,15 +33,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   // TODO remove all of these once branch merged; use `get()` instead
-   void propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block);
-   void append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block);
-   void async_propose_constructed_block(blockvault::watermark_t watermark, uint32_t lib, signed_block_ptr block, std::function<void(bool)> handler);
-   void async_append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block, std::function<void(bool)> handler);
-   void propose_snapshot(std::pair<uint32_t, uint32_t> watermark, const char* snapshot_filename);
-   void sync_for_construction();
-
-   static eosio::blockvault::block_vault_interface* get() { return nullptr; } // TODO: implement me
+   eosio::blockvault::block_vault_interface* get();
 
  private:
    std::unique_ptr<class blockvault_client_plugin_impl> my;
