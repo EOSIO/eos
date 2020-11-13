@@ -23,12 +23,13 @@ else
     exit 1
 fi
 
-if [[ "${DISTRIB_RELEASE}" == '16.04' ]]; then
-    RELEASE_SPECIFIC_DEPS='libssl1.0.0'
-elif [[ "${DISTRIB_RELEASE}" == '18.04' ]]; then
+DISTRIB_MAJOR_VERSION="$(echo "$DISTRIB_RELEASE" | cut -d '.' -f '1')"
+if (( "$DISTRIB_MAJOR_VERSION" >= 18 )); then
     RELEASE_SPECIFIC_DEPS='libssl1.1'
+elif (( "$DISTRIB_MAJOR_VERSION" >= 16 )); then
+    RELEASE_SPECIFIC_DEPS='libssl1.0.0'
 else
-    echo 'Unrecognized Ubuntu version. Update generate_deb.sh. Not generating .deb file.'
+    echo "Found Ubuntu $DISTRIB_MAJOR_VERSION, but not sure which version of libssl to use. Exiting..."
     exit 2
 fi
 
