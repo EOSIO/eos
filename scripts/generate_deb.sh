@@ -1,10 +1,10 @@
 #!/bin/bash
 set -eo pipefail
 
-PREFIX='usr'
-SPREFIX="${PREFIX}"
-SUBPREFIX="opt/${PROJECT}/${VERSION}"
-SSUBPREFIX="opt\/${PROJECT}\/${VERSION}"
+export PREFIX='usr'
+export SPREFIX="${PREFIX}"
+export SUBPREFIX="opt/${PROJECT}/${VERSION}"
+export SSUBPREFIX="opt\/${PROJECT}\/${VERSION}"
 RELEASE="${VERSION_SUFFIX}"
 
 # default release to "1" if there is no suffix
@@ -44,11 +44,6 @@ Homepage: ${URL}
 Maintainer: ${EMAIL}
 Description: ${DESC}" &> "${PROJECT}/DEBIAN/control"
 cat "${PROJECT}/DEBIAN/control"
-
-export PREFIX
-export SUBPREFIX
-export SPREFIX
-export SSUBPREFIX
 
 . ./generate_tarball.sh "${NAME}"
 echo "Unpacking tarball: ${NAME}.tar.gz..."
