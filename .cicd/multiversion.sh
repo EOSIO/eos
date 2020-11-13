@@ -3,7 +3,7 @@ set -eo pipefail # exit on failure of any "simple" command (excludes &&, ||, or 
 # variables
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 cd "$GIT_ROOT"
-echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
+echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ "$PIPELINE_CONFIG" == '' ]] && export PIPELINE_CONFIG='pipeline.json'
 [[ "$RAW_PIPELINE_CONFIG" == '' ]] && export RAW_PIPELINE_CONFIG='pipeline.jsonc'
 [[ ! -d "$GIT_ROOT/eos_multiversion_builder" ]] && mkdir "$GIT_ROOT/eos_multiversion_builder"
