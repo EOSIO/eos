@@ -339,6 +339,7 @@ struct controller_impl {
       try {
          const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
 
+         ilog( "before futures" );
          std::vector<std::future<std::tuple<signed_block_ptr, std::vector<char>>>> v;
          v.reserve( branch.size() );
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
@@ -348,6 +349,7 @@ struct controller_impl {
          auto it = v.begin();
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
+            ilog( "block ${b}", ("b", (*bitr)->block_num) );
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
                apply_block( *bitr, controller::block_status::complete, trx_meta_cache_lookup{} );
                head = (*bitr);
@@ -358,9 +360,11 @@ struct controller_impl {
 
             // blog.append could fail due to failures like running out of space.
             // Do it before commit so that in case it throws, DB can be rolled back.
+            ilog( "append block ${b}", ("b", (*bitr)->block_num) );
             blog.append( std::move( *it ) );
             ++it;
-
+            
+            ilog( "commit block ${b}", ("b", (*bitr)->block_num) );
             kv_db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
