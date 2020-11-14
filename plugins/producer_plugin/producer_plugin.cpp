@@ -389,7 +389,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-            if ( blockvault_plug && blockvault_plug->get() != nullptr ) {
+            if ( blockvault_plug->get() != nullptr ) {
                blockvault_plug->get()->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
             }
          } catch ( const guard_exception& e ) {
@@ -723,6 +723,7 @@ if( options.count(op_name) ) { \
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->blockvault_plug = app().find_plugin<blockvault_client_plugin>();
+   EOS_ASSERT( my->blockvault_plug, plugin_config_exception, "blockvault_client_plugin not found" );
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -1152,7 +1153,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
          next( producer_plugin::snapshot_information{head_id, snapshot_path.generic_string()} );
 
-         if ( my->blockvault_plug && my->blockvault_plug->get() != nullptr ) {
+         if ( my->blockvault_plug->get() != nullptr ) {
             my->blockvault_plug->get()->propose_snapshot( blockvault::watermark_t{chain.head_block_num(), chain.head_block_time().sec_since_epoch()}, snapshot_path.generic_string().c_str() );
          }
       } CATCH_AND_CALL (next);
@@ -1188,7 +1189,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
          my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string());
 
-         if ( my->blockvault_plug && my->blockvault_plug->get() != nullptr ) {
+         if ( my->blockvault_plug->get() != nullptr ) {
             my->blockvault_plug->get()->propose_snapshot( blockvault::watermark_t{chain.head_block_num(), chain.head_block_time().sec_since_epoch()}, pending_path.generic_string().c_str() );
          }
       } CATCH_AND_CALL (next);
@@ -2069,7 +2070,7 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   if ( blockvault_plug && blockvault_plug->get() != nullptr ) {
+   if ( blockvault_plug->get() != nullptr ) {
       std::promise<bool> p;
       std::future<bool> f = p.get_future();
       std::optional<producer_watermark> watermark{get_watermark(pending_blk_state->header.producer)};
