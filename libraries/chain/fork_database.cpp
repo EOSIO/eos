@@ -258,18 +258,20 @@ namespace eosio { namespace chain {
       EOS_ASSERT( new_root->is_valid(), fork_database_exception,
                   "cannot advance root to a block that has not yet been validated" );
 
-
-      vector<block_id_type> blocks_to_remove;
+      ilog( "get blocks to remove" );
+      deque<block_id_type> blocks_to_remove;
       for( auto b = new_root; b; ) {
-         blocks_to_remove.push_back( b->header.previous );
+         blocks_to_remove.emplace_back( b->header.previous );
          b = get_block( blocks_to_remove.back() );
          EOS_ASSERT( b || blocks_to_remove.back() == my->root->id, fork_database_exception, "invariant violation: orphaned branch was present in forked database" );
       }
 
+      ilog( "erase id" );
       // The new root block should be erased from the fork database index individually rather than with the remove method,
       // because we do not want the blocks branching off of it to be removed from the fork database.
       my->index.erase( my->index.find( id ) );
 
+      ilog( "remove blocks: ${s}", ("s", blocks_to_remove.size()) );
       // The other blocks to be removed are removed using the remove method so that orphaned branches do not remain in the fork database.
       for( const auto& block_id : blocks_to_remove ) {
          remove( block_id );
@@ -442,21 +444,23 @@ namespace eosio { namespace chain {
 
    /// remove all of the invalid forks built off of this id including this id
    void fork_database::remove( const block_id_type& id ) {
-      vector<block_id_type> remove_queue{id};
+      deque<block_id_type> remove_queue{id};
       const auto& previdx = my->index.get<by_prev>();
-      const auto head_id = my->head->id;
+      const auto& head_id = my->head->id;
 
+      ilog( "get blocks to remove" );
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          EOS_ASSERT( remove_queue[i] != head_id, fork_database_exception,
                      "removing the block and its descendants would remove the current head block" );
 
          auto previtr = previdx.lower_bound( remove_queue[i] );
          while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
-            remove_queue.push_back( (*previtr)->id );
+            remove_queue.emplace_back( (*previtr)->id );
             ++previtr;
          }
       }
 
+      ilog( "erase blocks" );
       for( const auto& block_id : remove_queue ) {
          auto itr = my->index.find( block_id );
          if( itr != my->index.end() )
