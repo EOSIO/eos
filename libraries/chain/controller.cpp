@@ -363,7 +363,7 @@ struct controller_impl {
             ilog( "append block ${b}", ("b", (*bitr)->block_num) );
             blog.append( std::move( *it ) );
             ++it;
-            
+
             ilog( "commit block ${b}", ("b", (*bitr)->block_num) );
             kv_db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
@@ -1642,7 +1642,9 @@ struct controller_impl {
       }
 
       // push the state for pending.
+      ilog( "pending push" );
       pending->push();
+      ilog( "done pending push" );
    }
 
    /**
