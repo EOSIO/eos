@@ -2070,6 +2070,7 @@ void producer_plugin_impl::produce_block() {
 
    fc_dlog(_log, "commit_block" );
    chain.commit_block();
+   fc_dlog(_log, "done commit_block" );
 
    block_state_ptr new_bs = chain.head_block_state();
 

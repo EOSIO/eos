@@ -281,6 +281,7 @@ namespace eosio { namespace chain {
       // avoid mutating the block state at all, for example clearing the block shared pointer, because other
       // parts of the code which run asynchronously may later expect it remain unmodified.
 
+      ilog( "new root" );
       my->root = new_root;
    }
 
@@ -460,12 +461,13 @@ namespace eosio { namespace chain {
          }
       }
 
-      ilog( "erase blocks" );
+      ilog( "erase blocks ${s}", ("s", remove_queue.size()) );
       for( const auto& block_id : remove_queue ) {
          auto itr = my->index.find( block_id );
          if( itr != my->index.end() )
             my->index.erase(itr);
       }
+      ilog( "done remove" );
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {

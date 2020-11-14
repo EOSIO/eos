@@ -384,6 +384,7 @@ struct controller_impl {
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
       }
+      ilog( "done log_irreversible" );
    }
 
    /**
