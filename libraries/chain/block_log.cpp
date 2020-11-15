@@ -747,10 +747,7 @@ namespace eosio { namespace chain {
       std::promise<std::tuple<signed_block_ptr, std::vector<char>>> p;
       std::future<std::tuple<signed_block_ptr, std::vector<char>>> f = p.get_future();
       return async_thread_pool( thread_pool, [b, version=future_version, segment_compression]() {
-         ilog("create buffer");
-         auto buf = create_block_buffer(*b, version, segment_compression);
-         ilog("done buffer");
-         return std::make_tuple(b, std::move(buf));
+         return std::make_tuple(b, create_block_buffer(*b, version, segment_compression));
       } );
    }
 

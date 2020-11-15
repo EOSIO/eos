@@ -335,7 +335,7 @@ struct controller_impl {
       if( fork_head->dpos_irreversible_blocknum <= lib_num )
          return;
 
-      const auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
+      auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
       try {
          const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
 
@@ -384,6 +384,10 @@ struct controller_impl {
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
       }
+
+      // delete branch in thread pool
+      boost::asio::post( thread_pool.get_executor(), [branch{std::move(branch)}]() {} );
+
       ilog( "done log_irreversible" );
    }
 
