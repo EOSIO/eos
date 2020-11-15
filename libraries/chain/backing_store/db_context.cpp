@@ -4,6 +4,8 @@
 
 namespace eosio { namespace chain { namespace backing_store {
 
+bool process_all () { return true; };
+
 std::string db_context::table_event(name code, name scope, name table) {
    return STORAGE_EVENT_ID("${code}:${scope}:${table}",
                            ("code", code)
