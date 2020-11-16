@@ -81,7 +81,7 @@ struct pending_state {
       if( std::holds_alternative<building_block>(_block_stage) )
          return std::get<building_block>(_block_stage)._pending_block_header_state;
 
-      return std::get<assembled_block>(_block_stage)._pending_block_header_state;
+      return std::get<assembled_block>(_block_stage)._pending_block_header_state;     
    }
 
    const deque<transaction_receipt>& get_trx_receipts()const {
