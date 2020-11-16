@@ -349,7 +349,6 @@ struct controller_impl {
          auto it = v.begin();
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
-            ilog( "block ${b}", ("b", (*bitr)->block_num) );
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
                apply_block( *bitr, controller::block_status::complete, trx_meta_cache_lookup{} );
                head = (*bitr);
@@ -382,8 +381,11 @@ struct controller_impl {
       }
 
       if( root_id != fork_db.root()->id ) {
+         branch.emplace_back(fork_db.root());
          fork_db.advance_root( root_id );
       }
+
+      ilog( "post branch" );
 
       // delete branch in thread pool
       boost::asio::post( thread_pool.get_executor(), [branch{std::move(branch)}]() {} );
