@@ -65,9 +65,11 @@ class block_vault_impl : public block_vault_interface {
             fc::raw::pack(stream, *block);
             eosio::chain::block_id_type block_id = block->calculate_id();
 
-            handler(backend->propose_constructed_block({watermark.first, watermark.second.slot}, lib, stream.storage(),
+            bool r = backend->propose_constructed_block({watermark.first, watermark.second.slot}, lib, stream.storage(),
                                                        {block_id.data(), block_id.data_size()},
-                                                       {block->previous.data(), block->previous.data_size()}));
+                                                       {block->previous.data(), block->previous.data_size()});
+            ilog("propose_constructed_block({${bn}, ${ts}}, ${lib}) returns ${r}", ("bn", watermark.first)("ts", watermark.second.slot)("lib", lib)("r", r));
+            handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());
             handler(false);
@@ -81,9 +83,12 @@ class block_vault_impl : public block_vault_interface {
             fc::datastream<std::vector<char>> stream;
             fc::raw::pack(stream, *block);
             eosio::chain::block_id_type block_id = block->calculate_id();
-            handler(backend->append_external_block(block->block_num(), lib, stream.storage(),
+            
+            bool r = backend->append_external_block(block->block_num(), lib, stream.storage(),
                                                    {block_id.data(), block_id.data_size()},
-                                                   {block->previous.data(), block->previous.data_size()}));
+                                                   {block->previous.data(), block->previous.data_size()});
+            ilog("append_external_block(${bn}, ${lib}) returns ${r}", ("bn", block->block_num())("lib", lib)("r", r));
+            handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());
             handler(false);
