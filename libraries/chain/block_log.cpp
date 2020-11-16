@@ -751,10 +751,6 @@ namespace eosio { namespace chain {
       my->head.reset();
    }
 
-   bool block_log::is_block_exists(uint32_t block_num){
-       uint64_t pos = my->get_block_pos(block_num);
-       return  (pos != block_log::npos? true : false);
-   }
    template <typename Stream>
    std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version) {
        std::shared_ptr<std::vector<char>> buff;

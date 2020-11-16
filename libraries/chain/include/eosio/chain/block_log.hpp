@@ -53,9 +53,8 @@ namespace eosio { namespace chain {
 
          std::unique_ptr<signed_block>   read_signed_block_by_num(uint32_t block_num) const;
 
-         //read a packed block out of the block log file
+         //read a packed block
          std::shared_ptr<std::vector<char>>     read_signed_block_stream_by_num(uint32_t block_num) const;
-         bool is_block_exists(uint32_t block_num);
 
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
