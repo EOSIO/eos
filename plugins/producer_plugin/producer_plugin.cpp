@@ -272,7 +272,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
-         fc_dlog(_log, "on_block ${n}", ("n", bsp->block_num));
          auto before = _unapplied_transactions.size();
          _unapplied_transactions.clear_applied( bsp );
          fc_dlog( _log, "Removed applied transactions before: ${before}, after: ${after}",
@@ -382,7 +381,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
 
          try {
-            fc_dlog(_log, "push_block ${n}", ("n", blk_num));
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {
@@ -2054,7 +2052,6 @@ void producer_plugin_impl::produce_block() {
       _protocol_features_signaled = false;
    }
 
-   fc_dlog(_log, "finalize_block" );
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
@@ -2068,9 +2065,7 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   fc_dlog(_log, "commit_block" );
    chain.commit_block();
-   fc_dlog(_log, "done commit_block" );
 
    block_state_ptr new_bs = chain.head_block_state();
 

@@ -258,7 +258,6 @@ namespace eosio { namespace chain {
       EOS_ASSERT( new_root->is_valid(), fork_database_exception,
                   "cannot advance root to a block that has not yet been validated" );
 
-      ilog( "get blocks to remove" );
       deque<block_id_type> blocks_to_remove;
       for( auto b = new_root; b; ) {
          blocks_to_remove.emplace_back( b->header.previous );
@@ -266,12 +265,10 @@ namespace eosio { namespace chain {
          EOS_ASSERT( b || blocks_to_remove.back() == my->root->id, fork_database_exception, "invariant violation: orphaned branch was present in forked database" );
       }
 
-      ilog( "erase id" );
       // The new root block should be erased from the fork database index individually rather than with the remove method,
       // because we do not want the blocks branching off of it to be removed from the fork database.
       my->index.erase( my->index.find( id ) );
 
-      ilog( "remove blocks: ${s}", ("s", blocks_to_remove.size()) );
       // The other blocks to be removed are removed using the remove method so that orphaned branches do not remain in the fork database.
       for( const auto& block_id : blocks_to_remove ) {
          remove( block_id );
@@ -281,7 +278,6 @@ namespace eosio { namespace chain {
       // avoid mutating the block state at all, for example clearing the block shared pointer, because other
       // parts of the code which run asynchronously may later expect it remain unmodified.
 
-      ilog( "new root" );
       my->root = new_root;
    }
 
@@ -449,7 +445,6 @@ namespace eosio { namespace chain {
       const auto& previdx = my->index.get<by_prev>();
       const auto& head_id = my->head->id;
 
-      ilog( "get blocks to remove" );
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          EOS_ASSERT( remove_queue[i] != head_id, fork_database_exception,
                      "removing the block and its descendants would remove the current head block" );
@@ -461,13 +456,11 @@ namespace eosio { namespace chain {
          }
       }
 
-      ilog( "erase blocks ${s}", ("s", remove_queue.size()) );
       for( const auto& block_id : remove_queue ) {
          auto itr = my->index.find( block_id );
          if( itr != my->index.end() )
             my->index.erase(itr);
       }
-      ilog( "done remove" );
    }
 
    void fork_database::mark_valid( const block_state_ptr& h ) {
