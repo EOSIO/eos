@@ -42,7 +42,7 @@ add_custom_command(
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS} protocol_feature_digest_tests.cpp) # build unit tests as one executable
 
-target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history producer_plugin abieos ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( unit_test eosio_chain_wrap chainbase eosio_testing fc appbase state_history abieos ${PLATFORM_SPECIFIC_LIBS} )
 
 
 target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
@@ -53,12 +53,7 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_SOURCE_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/include
-                            ${CMAKE_SOURCE_DIR}/plugins/http_plugin/include
-                            ${CMAKE_SOURCE_DIR}/plugins/http_client_plugin/include
-                            ${CMAKE_SOURCE_DIR}/plugins/producer_plugin/include
-                            ${CMAKE_SOURCE_DIR}/plugins/chain_plugin/include
-                            ${CMAKE_SOURCE_DIR}/plugins/chain_interface/include
-                            ${CMAKE_SOURCE_DIR}/plugins/signature_provider_plugin/include )
+                            ${CMAKE_SOURCE_DIR}/plugins/http_plugin/include )
 
 ### MARK TEST SUITES FOR EXECUTION ###
 add_test(NAME protocol_feature_digest_unit_test COMMAND unit_test --run_test=protocol_feature_digest_tests --report_level=detailed --color_output --catch_system_errors=no)
