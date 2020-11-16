@@ -7,6 +7,7 @@
 #include <fc/bitutil.hpp>
 #include <fc/io/raw.hpp>
 #include <regex>
+#include <shared_mutex>
 
 namespace eosio { namespace chain {
 
@@ -523,6 +524,7 @@ namespace eosio { namespace chain {
          block_log_preamble        preamble;
          size_t                    stride = std::numeric_limits<size_t>::max();
          static uint32_t           default_version;
+         mutable std::shared_mutex blog_mutex;
 
          block_log_impl(const block_log::config_type& config);
 
@@ -551,7 +553,7 @@ namespace eosio { namespace chain {
          void                                   read_head();
 
          // thread safe
-         std::shared_ptr<std::vector<char>>     read_block_stream_by_num(uint32_t block_num);
+         std::shared_ptr<std::vector<char>> read_block_stream_by_num(uint32_t block_num);
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -753,27 +755,35 @@ namespace eosio { namespace chain {
        uint64_t pos = my->get_block_pos(block_num);
        return  (pos != block_log::npos? true : false);
    }
+   template <typename Stream>
+   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version) {
+       std::shared_ptr<std::vector<char>> buff;
+       if (version >= pruned_transaction_version) {
+           // block size - 4 bytes
+           uint32_t sz;
+           fc::raw::unpack(ds, sz);
+           // compression status - 1 byte
+           ds.skip(1);
+           // block data
+           buff = std::make_shared<std::vector<char>>(sz);
+           ds.read(buff->data(), sz);
+       }
+       return buff;
+   }
    std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_stream_by_num(uint32_t block_num) {
-       shared_ptr<std::vector<char>> send_buff;
 
-       auto blocks_dir            = fc::canonical(block_file.get_file_path().parent_path());
-       const auto block_log_path  = blocks_dir / "blocks.log";
-       fc::cfile bl_file;
-       bl_file.set_file_path(block_log_path);
-       bl_file.open(fc::cfile::update_rw_mode);
+       std::shared_lock<std::shared_mutex> g(blog_mutex);
+
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
-           bl_file.seek(pos);
-
-           //to do ... read block unpacked from block log
-
+           block_file.seek(pos);
+           return read_packed_block(block_file, preamble.version);
+       }else {
+           auto [ds, version] = catalog.ro_stream_for_block(block_num);
+           if (ds.remaining())
+               return read_packed_block(ds, version);
        }
-
-       bl_file.close();
-
-       // to do ...
-
-       return send_buff;
+       return {}; // archived or deleted
    }
 
    std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
@@ -805,7 +815,6 @@ namespace eosio { namespace chain {
    std::shared_ptr<std::vector<char>> block_log::read_signed_block_stream_by_num(uint32_t block_num) const {
        return my->read_block_stream_by_num(block_num);
    }
-
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {
       return my->read_block_by_num(block_num);
    }

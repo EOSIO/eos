@@ -2743,9 +2743,6 @@ bool controller::check_block_existence(uint32_t block_num)const{ try {
 }FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 std::shared_ptr<std::vector<char>> controller::fetch_block_stream_by_number(uint32_t block_num)const { try {
-
-    //... to do
-
     return my->blog.read_signed_block_stream_by_num(block_num);
 }FC_CAPTURE_AND_RETHROW( (block_num) ) }
 

@@ -1199,13 +1199,11 @@ namespace eosio {
       controller &cc = my_impl->chain_plug->chain();
 
       send_buffer_type send_buffer;
-      bool found_block = cc.check_block_existence(num);
-      if (found_block){
-          try{
-              send_buffer = cc.fetch_block_stream_by_number(num);
-              if (send_buffer)
-                  c->enqueue_buffer(send_buffer, no_reason, true);
-          }FC_LOG_AND_DROP();
+      try{
+          send_buffer = cc.fetch_block_stream_by_number(num);
+      } FC_LOG_AND_DROP();
+      if (send_buffer){
+          c->enqueue_buffer(send_buffer, no_reason, true);
       }else{
           app().post( priority::medium, [num, weak{std::move(weak)}]() {
               connection_ptr c = weak.lock();
