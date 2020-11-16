@@ -8,7 +8,8 @@
 namespace eosio {
 namespace blockvault {
 
-postgres_backend::postgres_backend(const std::string& options) {
+postgres_backend::postgres_backend(const std::string& options)
+    : conn(options) {
    pqxx::work w(conn);
    w.exec("CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, "
           "block_id bytea, previous_block_id bytea, block oid, block_size bigint);"
@@ -65,12 +66,12 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       pqxx::work w(conn);
 
       pqxx::largeobjectaccess obj(w);
-      obj.write(block_content.data(), block_content.size());
-      pqxx::binarystring block_id_blob(block_id.data(), block_id.size());
-      pqxx::binarystring previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
+      pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
+      pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_constructed_block", watermark.first, watermark.second, lib, block_id_blob,
                        previous_block_id_blob, obj.id(), block_content.size());
       auto r = w.exec_prepared1("get_block_insertion_result", obj.id());
+      obj.write(block_content.data(), block_content.size());
       w.commit();
       return true;
    } catch (pqxx::unexpected_rows&) {
@@ -84,12 +85,12 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       pqxx::work w(conn);
 
       pqxx::largeobjectaccess obj(w);
-      obj.write(block_content.data(), block_content.size());
-      pqxx::binarystring block_id_blob(block_id.data(), block_id.size());
-      pqxx::binarystring previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
+      pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
+      pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_external_block", block_num, lib, block_id_blob, previous_block_id_blob, obj.id(),
                        block_content.size());
       auto r = w.exec_prepared1("get_block_insertion_result", obj.id());
+      obj.write(block_content.data(), block_content.size());
       w.commit();
       return true;
 
@@ -104,22 +105,24 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       std::filebuf infile;
 
       infile.open(snapshot_filename, std::ios::in);
-      const int chunk_size = 4096;
-      char      chunk[chunk_size];
 
       pqxx::work              w(conn);
       pqxx::largeobjectaccess obj(w);
-
-      auto sz = chunk_size;
-      while (sz == chunk_size) {
-         sz = infile.sgetn(chunk, chunk_size);
-         obj.write(chunk, sz);
-      };
 
       w.exec_prepared0("insert_snapshot", watermark.first, watermark.second, obj.id());
       auto r = w.exec_prepared("get_snapshot_insertion_result", obj.id());
 
       if (!r.empty()) {
+
+         const int chunk_size = 4096;
+         char      chunk[chunk_size];
+
+         auto sz = chunk_size;
+         while (sz == chunk_size) {
+            sz = infile.sgetn(chunk, chunk_size);
+            obj.write(chunk, sz);
+         };
+
          w.exec_prepared("delete_outdated_block_lo", watermark.first, watermark.second);
          w.exec_prepared("delete_outdated_block_data", watermark.first, watermark.second);
          w.exec_prepared("delete_outdated_snapshot_lo", watermark.first, watermark.second);
