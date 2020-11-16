@@ -207,9 +207,6 @@ private:
          all_secondary_indices_;
 };
 
-// This used to be "auto process_all = []() { return true; };"
-// g++10 correctly reports a link error of multiple definitions
-// as db_combined.hpp is included by mutiple source files. 
 constexpr auto process_all = []() { return true; };
 
 enum class key_context { complete, standalone };
