@@ -207,7 +207,7 @@ private:
          all_secondary_indices_;
 };
 
-auto process_all = []() { return true; };
+constexpr auto process_all = []() { return true; };
 
 enum class key_context { complete, standalone };
 template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
