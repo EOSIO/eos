@@ -45,9 +45,7 @@ void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
          }
       }
    }
-   catch (std::exception& ex) {
-      elog("blockvault_client_plugin initialization error: $msg, skipping it.", ("msg", ex.what()));
-   }
+   FC_RETHROW_EXCEPTIONS ( error, "blockvault_client plugin initialization error")
 #endif
 }
 
