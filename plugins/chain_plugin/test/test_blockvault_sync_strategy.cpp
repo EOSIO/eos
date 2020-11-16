@@ -31,6 +31,19 @@ struct mock_chain_t {
         _startup_no_reader_called = true;
     }
 
+    struct mock_fork_db_t {
+        struct mock_fork_db_head_t {
+           block_id_type id;
+        } _head;
+
+       mock_fork_db_head_t* head() {return &_head; }
+
+    } _fork_db;
+
+    mock_fork_db_t& fork_db() {
+       return _fork_db;
+    }
+
     std::function<void()> _shutdown;
     std::function<bool()> _check_shutdown;
     std::shared_ptr<istream_snapshot_reader> _reader;
@@ -89,13 +102,13 @@ BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
     mock_chain_plugin_t chain;
     mock_blockvault_t bv;
     chain.chain = std::make_unique<mock_chain_t>();
-
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
     std::string bid_hex("deadbabe000000000000000000000000000000000000000000000000deadbeef");
     chain::block_id_type bid(bid_hex);
+    chain.chain->_fork_db._head.id = bid;
 
-    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown, bid);
+    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
     uut.do_sync();
 
     BOOST_TEST(*bv._previous_block_id == bid);
@@ -113,18 +126,12 @@ BOOST_FIXTURE_TEST_CASE(on_block_no_snapshot, TESTER) { try {
     blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
     auto b = produce_empty_block();
 
-    // std::stringstream ss;
-    // fc::raw::pack(ss, b) ;
-    //std::string block_string = ss.str();
-
     uut.on_block(b);
     BOOST_TEST(chain.chain->_reader == nullptr);
     BOOST_TEST(chain.chain->_startup_no_reader_called);
     BOOST_TEST(!chain.chain->_startup_reader_called);
     BOOST_TEST(chain._block->calculate_id() == b->calculate_id());
     BOOST_TEST(chain._block->calculate_id() == chain._id);
-
-//BOOST_TEST(bv._previous_block_id == bid_hex);
 
 } FC_LOG_AND_RETHROW() }
 BOOST_AUTO_TEST_SUITE_END()
