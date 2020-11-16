@@ -208,10 +208,9 @@ private:
 };
 
 // This used to be "auto process_all = []() { return true; };"
-// g++10 correctly reports a link error of  multiple definitions
+// g++10 correctly reports a link error of multiple definitions
 // as db_combined.hpp is included by mutiple source files. 
-// The definition is in db_context.cpp.
-bool process_all();
+constexpr auto process_all = []() { return true; };
 
 enum class key_context { complete, standalone };
 template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
