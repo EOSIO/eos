@@ -274,9 +274,9 @@ namespace eosio { namespace chain {
          db.set_revision(revision);
          break;
       case backing_store_type::ROCKSDB:
+         db.set_revision(revision);
          try {
             try {
-                db.set_revision(revision);
                 kv_undo_stack->revision(revision);
             }
             FC_LOG_AND_RETHROW()
@@ -291,9 +291,9 @@ namespace eosio { namespace chain {
          db.undo();
          break;
       case backing_store_type::ROCKSDB:
+         db.undo();
          try {
             try {
-              db.undo();
               kv_undo_stack->undo();
             }
             FC_LOG_AND_RETHROW()
@@ -308,9 +308,9 @@ namespace eosio { namespace chain {
          db.commit(revision);
          break;
       case backing_store_type::ROCKSDB:
+         db.commit(revision);
          try {
             try {
-               db.commit(revision);
                kv_undo_stack->commit(revision);
             }
             FC_LOG_AND_RETHROW()
