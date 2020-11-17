@@ -20,7 +20,7 @@ postgres_backend::postgres_backend(const std::string& options)
        "insert_constructed_block",
        "INSERT INTO BlockData (watermark_bn, watermark_ts, lib, block_id, previous_block_id, block, block_size) "
        "SELECT $1, $2, $3, $4, $5, $6, $7  WHERE NOT "
-       "EXISTS (SELECT * FROM BlockData WHERE (watermark_bn >= $1) OR (watermark_ts > $2) OR (lib >= $3) OR (block_id "
+       "EXISTS (SELECT * FROM BlockData WHERE (watermark_bn >= $1) OR (watermark_ts > $2) OR (lib > $3) OR (block_id "
        "= $4))");
 
    conn.prepare(
