@@ -257,12 +257,9 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::set_revision(uint64_t revision) {
-      switch (backing_store) {
-      case backing_store_type::CHAINBASE:
-         db.set_revision(revision);
-         break;
-      case backing_store_type::ROCKSDB:
-         db.set_revision(revision);
+      db.set_revision(revision);
+
+      if (backing_store == backing_store_type::ROCKSDB) {
          try {
             try {
                 kv_undo_stack->revision(revision);
@@ -274,12 +271,9 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::undo() {
-      switch (backing_store) {
-      case backing_store_type::CHAINBASE:
-         db.undo();
-         break;
-      case backing_store_type::ROCKSDB:
-         db.undo();
+      db.undo();
+
+      if (backing_store == backing_store_type::ROCKSDB) {
          try {
             try {
               kv_undo_stack->undo();
@@ -291,12 +285,9 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::commit(int64_t revision) {
-      switch (backing_store) {
-      case backing_store_type::CHAINBASE:
-         db.commit(revision);
-         break;
-      case backing_store_type::ROCKSDB:
-         db.commit(revision);
+      db.commit(revision);
+
+      if (backing_store == backing_store_type::ROCKSDB) {
          try {
             try {
                kv_undo_stack->commit(revision);
@@ -308,10 +299,7 @@ namespace eosio { namespace chain {
    }
 
    void combined_database::flush() {
-      switch (backing_store) {
-      case backing_store_type::CHAINBASE:
-         break;
-      case backing_store_type::ROCKSDB:
+      if (backing_store == backing_store_type::ROCKSDB) {
          try {
             try {
                kv_database->flush();
