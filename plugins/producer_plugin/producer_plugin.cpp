@@ -222,16 +222,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       chain_plugin*             chain_plug = nullptr;
       blockvault_client_plugin* blockvault_plug = nullptr;
 
-      incoming::channels::block::channel_type::handle           _incoming_block_subscription;
-      incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
+      incoming::channels::block::channel_type::handle         _incoming_block_subscription;
+      incoming::channels::transaction::channel_type::handle   _incoming_transaction_subscription;
 
-      compat::channels::transaction_ack::channel_type&          _transaction_ack_channel;
+      compat::channels::transaction_ack::channel_type&        _transaction_ack_channel;
 
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
-      transaction_id_with_expiry_index                          _blacklisted_transactions;
-      pending_snapshot_index                                    _pending_snapshot_index;
+      transaction_id_with_expiry_index                         _blacklisted_transactions;
+      pending_snapshot_index                                   _pending_snapshot_index;
 
       std::optional<scoped_connection>                          _accepted_block_connection;
       std::optional<scoped_connection>                          _accepted_block_header_connection;
@@ -266,7 +266,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       std::optional<producer_watermark> get_watermark( account_name producer ) const {
-          std::cerr << "IN get_watermark( account_name producer )" 
          auto itr = _producer_watermarks.find( producer );
 
          if( itr == _producer_watermarks.end() ) return {};

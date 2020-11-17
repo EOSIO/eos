@@ -229,7 +229,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db)
+          ? combined_database(db) 
           : combined_database(db, cfg)),
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
@@ -3204,14 +3204,14 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
          v4 global_properties;
          section.read_row(global_properties);
          chain_id = global_properties.chain_id;
-      });
+      }); 
    }
    else {
       snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
          snapshot_global_property_object global_properties;
          section.read_row(global_properties);
          chain_id = global_properties.chain_id;
-      });
+      });      
    }
 
    return chain_id;
