@@ -189,6 +189,7 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          auto read_options = rocksdb::ReadOptions{};
          // read_options.readahead_size   = 256 * 1024 * 1024;
          read_options.verify_checksums = false;
+         // read_options.read_tier = rocksdb::ReadTier::kMemtableTier;
          read_options.fill_cache       = false;
          // read_options.auto_prefix_mode                     = true;
          // read_options.total_order_seek                     = false;
@@ -346,10 +347,7 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::find(const shar
       it.Seek(key_slice);
       if (it.Valid() && it.key().compare(key_slice) != 0) {
          // Get an invalid iterator
-         it.SeekToLast();
-         if (it.Valid()) {
-            it.Next();
-         }
+         it.Refresh();
       }
    };
    return make_iterator_(predicate);
@@ -360,11 +358,7 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() const {
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() const {
-   return make_iterator_([](auto& it) {
-      it.SeekToLast();
-      if (it.Valid())
-         it.Next();
-   });
+   return make_iterator_([](auto& it){});
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {
@@ -506,11 +500,6 @@ rocks_iterator_alias<Iterator_traits>& session<rocksdb_t>::rocks_iterator<Iterat
       m_iterator->SeekToLast();
    } else {
       m_iterator->Prev();
-
-      if (!m_iterator->Valid()) {
-         // We move backwards past the begin iterator.  We need to clamp it there.
-         m_iterator->SeekToLast();
-      }
    }
    return *this;
 }
