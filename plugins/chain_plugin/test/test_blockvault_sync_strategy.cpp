@@ -17,6 +17,10 @@ using namespace eosio::testing;
 using namespace eosio::chain_apis;
 using namespace eosio::blockvault;
 
+struct mock_genesis_t {
+
+};
+
 struct mock_chain_t {
     void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, std::shared_ptr<istream_snapshot_reader> reader) {
        _shutdown = shutdown;
@@ -26,6 +30,12 @@ struct mock_chain_t {
     }
 
     void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+        _shutdown = shutdown;
+        _check_shutdown = check_shutdown;
+        _startup_no_reader_called = true;
+    }
+
+    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, mock_genesis_t& genesis) {
         _shutdown = shutdown;
         _check_shutdown = check_shutdown;
         _startup_no_reader_called = true;
@@ -67,6 +77,7 @@ struct mock_blockvault_t : public block_vault_interface {
     const eosio::chain::block_id_type* _previous_block_id;
 };
 
+
 struct mock_chain_plugin_t {
     bool incoming_block_sync_method( const chain::signed_block_ptr& block, const chain::block_id_type& id ){
         _block = block;
@@ -78,6 +89,8 @@ struct mock_chain_plugin_t {
     signed_block_ptr _block;
     block_id_type _id;
     std::unique_ptr<mock_chain_t> chain;
+
+    mock_genesis_t* genesis;
 };
 
 BOOST_AUTO_TEST_SUITE(blockvault_sync_strategy_tests)

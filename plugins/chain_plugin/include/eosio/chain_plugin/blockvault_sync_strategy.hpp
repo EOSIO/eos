@@ -9,7 +9,17 @@ namespace eosio {
         struct blockvault_sync_strategy : public sync_callback {
             blockvault_sync_strategy(block_vault_interface* blockvault, BP& blockchain_provider, std::function<void()> shutdown,
                                      std::function<bool()> check_shutdown) :
-                _got_snapshot(false), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown) {
+                _startup_run(false), _blockvault(blockvault), _blockchain_provider(blockchain_provider), _shutdown(shutdown), _check_shutdown(check_shutdown) {
+            }
+
+            void run_startup() {
+                if (_blockchain_provider.genesis) {
+                    _blockchain_provider.chain->startup(_shutdown, _check_shutdown, *_blockchain_provider.genesis);
+                }else {
+                    _blockchain_provider.chain->startup(_shutdown, _check_shutdown);
+                }
+                _startup_run = true;
+
             }
 
             void do_sync() {
@@ -19,20 +29,24 @@ namespace eosio {
                 } else {
                     _blockvault->sync(nullptr, *this);
                 }
+
+                if (!_startup_run) {
+                    run_startup();
+                }
             }
 
             void on_snapshot(const char* snapshot_filename) override final {
                 auto infile = std::ifstream(snapshot_filename, (std::ios::in | std::ios::binary));
                 auto reader = std::make_shared<chain::istream_snapshot_reader>(infile);
                 _blockchain_provider.chain->startup(_shutdown, _check_shutdown, reader);
+                _startup_run = true;
                 infile.close();
 
-                _got_snapshot = true;
             }
 
             void on_block(eosio::chain::signed_block_ptr block) override final {
-                if (!_got_snapshot) {
-                    _blockchain_provider.chain->startup(_shutdown, _check_shutdown);
+                if (!_startup_run) {
+                    run_startup();
                 }
 
                 _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
@@ -43,7 +57,7 @@ namespace eosio {
             BP& _blockchain_provider;
             std::function<void()> _shutdown;
             std::function<bool()> _check_shutdown;
-            bool _got_snapshot;
+            bool _startup_run;
         };
 
     } // namespace blockvault
