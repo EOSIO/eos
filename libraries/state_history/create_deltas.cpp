@@ -167,7 +167,7 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
          chain::backing_store::process_rocksdb_entry(session, updated_key, receiver);
       }
 
-      receiver.set_delta_present_flag(false);
+      receiver.set_delta_present_flag(0);
       for(auto &deleted_key: session.deleted_keys()) {
          std::visit([&](auto* p) {
             chain::backing_store::process_rocksdb_entry(*p, deleted_key, receiver);
