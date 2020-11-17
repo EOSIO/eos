@@ -1822,7 +1822,7 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future,
+   block_state_ptr push_block( std::future<block_state_ptr>& block_state_future,
                     const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
    {
       controller::block_status s = controller::block_status::complete;
@@ -1838,7 +1838,7 @@ struct controller_impl {
          if( conf.terminate_at_block > 0 && conf.terminate_at_block < b->block_num() ) {
             ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
             shutdown();
-            return;
+            return bsp;
          }
 
          emit( self.pre_accepted_block, b );
@@ -1856,8 +1856,9 @@ struct controller_impl {
          } else {
             log_irreversible();
          }
-
-      } FC_LOG_AND_RETHROW( )
+         return bsp;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
@@ -2554,12 +2555,12 @@ std::future<block_state_ptr> controller::create_block_state_future( const block_
    return my->create_block_state_future( id, b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future,
+block_state_ptr controller::push_block( std::future<block_state_ptr>& block_state_future,
                              const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
 {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future, forked_branch_cb, trx_lookup );
+   return my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
