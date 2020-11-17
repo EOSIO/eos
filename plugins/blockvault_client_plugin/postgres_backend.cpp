@@ -66,6 +66,7 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       pqxx::work w(conn);
 
       pqxx::largeobjectaccess obj(w);
+      obj.write(nullptr, 0);
       pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
       pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_constructed_block", watermark.first, watermark.second, lib, block_id_blob,
@@ -85,6 +86,7 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       pqxx::work w(conn);
 
       pqxx::largeobjectaccess obj(w);
+      obj.write(nullptr, 0);
       pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
       pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_external_block", block_num, lib, block_id_blob, previous_block_id_blob, obj.id(),
@@ -108,6 +110,7 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
 
       pqxx::work              w(conn);
       pqxx::largeobjectaccess obj(w);
+      obj.write(nullptr, 0);
 
       w.exec_prepared0("insert_snapshot", watermark.first, watermark.second, obj.id());
       auto r = w.exec_prepared("get_snapshot_insertion_result", obj.id());
