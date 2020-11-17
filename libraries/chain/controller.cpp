@@ -229,8 +229,8 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db) 
-          : combined_database(db, cfg)),
+          ? combined_database(db)
+          : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
