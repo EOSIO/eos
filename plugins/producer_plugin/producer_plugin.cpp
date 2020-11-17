@@ -266,6 +266,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       std::optional<producer_watermark> get_watermark( account_name producer ) const {
+          std::cerr << "IN get_watermark( account_name producer )" 
          auto itr = _producer_watermarks.find( producer );
 
          if( itr == _producer_watermarks.end() ) return {};
@@ -2072,12 +2073,13 @@ void producer_plugin_impl::produce_block() {
    if ( blockvault_plug && blockvault_plug->get() != nullptr ) {
       std::promise<bool> p;
       std::future<bool> f = p.get_future();
+      consider_new_watermark( pending_blk_state->header.producer, pending_blk_state->block_num, pending_blk_state->block->timestamp );
       std::optional<producer_watermark> watermark{get_watermark(pending_blk_state->header.producer)};
       EOS_ASSERT(watermark.has_value(), empty_watermark, "Attempting to use a watermark that does not exist");
       blockvault_plug->get()->async_propose_constructed_block(watermark.value(), pending_blk_state->dpos_irreversible_blocknum, pending_blk_state->block, [&p](bool b) {
          p.set_value( b );
       });
-      EOS_ASSERT( f.get(), blockvault_failure, "Blockvault failure" );
+      EOS_ASSERT( f.get(), blockvault_failure, "Blockvault failure" ); // TODO implement blockvault server-side error code with more concrete description of the failure.
    }
 
    chain.commit_block();
