@@ -1312,9 +1312,7 @@ void chain_plugin::plugin_startup()
       EOS_ASSERT( bvc_plug, plugin_config_exception, "blockvault_client_plugin not found" );
       auto blockvault_instance = bvc_plug->get();
       if (nullptr != blockvault_instance) {
-          auto head_block_id = my->chain->head_block_id();
-          eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance,
-                                                                             *my, shutdown, check_shutdown, head_block_id);
+          eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance, *my, shutdown, check_shutdown);
           bss.do_sync();
       } else if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
