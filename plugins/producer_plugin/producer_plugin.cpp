@@ -2073,6 +2073,7 @@ void producer_plugin_impl::produce_block() {
    if ( blockvault_plug->get() != nullptr ) {
       std::promise<bool> p;
       std::future<bool> f = p.get_future();
+      consider_new_watermark( pending_blk_state->header.producer, pending_blk_state->block_num, pending_blk_state->block->timestamp );
       std::optional<producer_watermark> watermark{get_watermark(pending_blk_state->header.producer)};
       EOS_ASSERT(watermark.has_value(), empty_watermark, "Attempting to use a watermark that does not exist");
       blockvault_plug->get()->async_propose_constructed_block(watermark.value(), pending_blk_state->dpos_irreversible_blocknum, pending_blk_state->block, [&p](bool b) {
