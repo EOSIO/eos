@@ -82,8 +82,8 @@ typedef boost::mpl::list<eosio::blockvault::postgres_backend> test_types;
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_propose_constructed_block, T, test_types) {
    backend_test_fixture<T> fixture;
 
-   // watermark_bn and lib should be monotonically increasing,
-   // watermark_ts should be non-decreasing
+   // watermark_bn should be increasing,
+   // watermark_ts and lib should be non-decreasing
 
    BOOST_REQUIRE(fixture.propose_constructed_block(10, 1, 1, 'a'));
    BOOST_REQUIRE(fixture.propose_constructed_block(11, 1, 2, 'b'));
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_propose_constructed_block, T, test_types) {
    BOOST_REQUIRE(!fixture.propose_constructed_block(12, 1, 4, 'd'));
 
    // lib is not increasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(13, 1, 3, 'd'));
+   BOOST_REQUIRE(fixture.propose_constructed_block(13, 1, 3, 'd'));
 
    // watermark_bn, watermark_ts and lib are all increasing
    BOOST_REQUIRE(fixture.propose_constructed_block(14, 2, 4, 'e'));
@@ -130,11 +130,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_append_external_block, T, test_types) {
    // block.block_num < max_lib
    BOOST_REQUIRE(!fixture.append_external_block(2, 4));
 
-   // block lib > max_lib (should the max_lib = std::max(lib, max_lib)? )
+   // block lib > max_lib
    BOOST_REQUIRE(fixture.append_external_block(6, 5));
 
-   // ???
-   BOOST_REQUIRE(!fixture.propose_constructed_block(13, 2, 5));
+   BOOST_REQUIRE(fixture.propose_constructed_block(13, 2, 5));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_propose_snapshot, T, test_types) {
