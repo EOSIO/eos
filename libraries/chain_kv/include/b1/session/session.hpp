@@ -136,9 +136,7 @@ class session {
    session(Parent& parent);
 
    /// \brief Constructs a child session from another instance of the same session type.
-   /// \remarks This is NOT a copy constructor.  This constructor creates a new session instance
-   ///  and sets the parent of that instance to the value passed in.
-   explicit session(session& parent);
+   explicit session(session& parent, std::nullptr_t);
    session(const session&) = delete;
    session(session&& other);
    ~session();
@@ -329,7 +327,7 @@ session<Parent>::session(Parent& parent) : m_parent{ &parent } {
 }
 
 template <typename Parent>
-session<Parent>::session(session& parent) : m_parent{ &parent } {
+session<Parent>::session(session& parent, std::nullptr_t) : m_parent{ &parent } {
    attach(parent);
 }
 

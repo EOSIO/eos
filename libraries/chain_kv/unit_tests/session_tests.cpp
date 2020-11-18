@@ -28,7 +28,7 @@ void perform_session_level_test(const std::string& dbpath, bool always_undo = fa
       verify_session_key_order(block_session);
 
       for (size_t j = 0; j < 3; ++j) {
-         auto transaction = session_type(block_session);
+         auto transaction = session_type(block_session, nullptr);
          kvs_list.emplace_back(generate_kvs(50));
          ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
          write(transaction, kvs_list.back());
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
       auto& kvs = block_session_kvs[i];
 
       for (size_t j = 0; j < 3; ++j) {
-         transaction_sessions.emplace_back(session_type(block_session));
+         transaction_sessions.emplace_back(session_type(block_session, nullptr));
          transaction_session_kvs.emplace_back(generate_kvs(key_count));
          write(transaction_sessions.back(), transaction_session_kvs.back());
          verify_equal(transaction_sessions.back(), collapse({ root_session_kvs, kvs, transaction_session_kvs.back() }),
@@ -307,7 +307,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
    verify_key_value(block_session, 3, 1003);
    verify_key_value(block_session, 4, 1004);
 
-   auto transaction_session = session_type(block_session);
+   auto transaction_session = session_type(block_session, nullptr);
    auto transaction_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 2000 }, { 1, 2001 }, { 2, 2002 }, { 3, 2003 },
                                                  { 4, 2004 }, { 9, 2005 }, { 10, 2006 } };
@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    verify_keys_deleted(block_session, std::unordered_set<uint16_t>{ 2, 4, 6 });
    // verify_equal(root_session, root_session_kvs, int_t{});
 
-   auto transaction_session     = session_type(block_session);
+   auto transaction_session     = session_type(block_session, nullptr);
    auto transaction_session_kvs = std::unordered_map<uint16_t, uint16_t>{ { 2, 2003 }, { 4, 2004 } };
    write(transaction_session, transaction_session_kvs);
    verify_keys_deleted(transaction_session, std::unordered_set<uint16_t>{ 6 });

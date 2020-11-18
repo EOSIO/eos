@@ -82,7 +82,7 @@ void undo_stack<Session>::push() {
    if (m_sessions.empty()) {
       m_sessions.emplace_back(*m_head);
    } else {
-      m_sessions.emplace_back(m_sessions.back());
+      m_sessions.emplace_back(m_sessions.back(), nullptr);
    }
    ++m_revision;
 }
