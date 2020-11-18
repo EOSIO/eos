@@ -74,7 +74,8 @@ namespace {
       :store(store)
       {}
 
-      void append( const block_trace_v1& trace ) {
+      template <typename BlockTrace>
+      void append( const BlockTrace& trace ) {
          store->append(trace);
       }
 

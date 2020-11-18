@@ -1,4 +1,5 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/producer_plugin/pending_snapshot.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -104,60 +105,6 @@ using transaction_id_with_expiry_index = multi_index_container<
 >;
 
 struct by_height;
-
-class pending_snapshot {
-public:
-   using next_t = producer_plugin::next_function<producer_plugin::snapshot_information>;
-
-   pending_snapshot(const block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path)
-   : block_id(block_id)
-   , next(next)
-   , pending_path(pending_path)
-   , final_path(final_path)
-   {}
-
-   uint32_t get_height() const {
-      return block_header::num_from_id(block_id);
-   }
-
-   static bfs::path get_final_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   static bfs::path get_pending_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string(".pending-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   static bfs::path get_temp_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
-      return snapshots_dir / fc::format_string(".incomplete-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
-   }
-
-   producer_plugin::snapshot_information finalize( const chain::controller& chain ) const {
-      auto in_chain = (bool)chain.fetch_block_by_id( block_id );
-      boost::system::error_code ec;
-
-      if (!in_chain) {
-         bfs::remove(bfs::path(pending_path), ec);
-         EOS_THROW(snapshot_finalization_exception,
-                   "Snapshotted block was forked out of the chain.  ID: ${block_id}",
-                   ("block_id", block_id));
-      }
-
-      bfs::rename(bfs::path(pending_path), bfs::path(final_path), ec);
-      EOS_ASSERT(!ec, snapshot_finalization_exception,
-                 "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
-                 ("bn", get_height())
-                 ("ec", ec.value())
-                 ("message", ec.message()));
-
-      return {block_id, final_path};
-   }
-
-   block_id_type     block_id;
-   next_t            next;
-   std::string       pending_path;
-   std::string       final_path;
-};
 
 using pending_snapshot_index = multi_index_container<
    pending_snapshot,
@@ -421,6 +368,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          return true;
       }
 
+      void restart_speculative_block() {
+         chain::controller& chain = chain_plug->chain();
+         // abort the pending block
+         _unapplied_transactions.add_aborted( chain.abort_block() );
+
+         schedule_production_loop();
+      }
+
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
@@ -445,6 +400,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      if( !self->process_incoming_transaction_async( result, persist_until_expired, next ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
+                        } else {
+                           self->restart_speculative_block();
                         }
                      }
                   } CATCH_AND_CALL(exception_handler);
@@ -723,11 +680,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
    chain::controller& chain = my->chain_plug->chain();
-   unapplied_transaction_queue::process_mode unapplied_mode =
-      (chain.get_read_mode() != chain::db_read_mode::SPECULATIVE) ? unapplied_transaction_queue::process_mode::non_speculative :
-         my->_producers.empty() ? unapplied_transaction_queue::process_mode::speculative_non_producer :
-            unapplied_transaction_queue::process_mode::speculative_producer;
-   my->_unapplied_transactions.set_mode( unapplied_mode );
 
    if( options.count("private-key") )
    {
@@ -1098,6 +1050,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
    chain::controller& chain = my->chain_plug->chain();
 
    auto head_id = chain.head_block_id();
+   const auto head_block_num = chain.head_block_num();
+   const auto head_block_time = chain.head_block_time();
    const auto& snapshot_path = pending_snapshot::get_final_path(head_id, my->_snapshots_dir);
    const auto& temp_path     = pending_snapshot::get_temp_path(head_id, my->_snapshots_dir);
 
@@ -1140,11 +1094,11 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          bfs::rename(temp_path, snapshot_path, ec);
          EOS_ASSERT(!ec, snapshot_finalization_exception,
                "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
-               ("bn", chain.head_block_num())
+               ("bn", head_block_num)
                ("ec", ec.value())
                ("message", ec.message()));
 
-         next( producer_plugin::snapshot_information{head_id, snapshot_path.generic_string()} );
+         next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
       } CATCH_AND_CALL (next);
       return;
    }
@@ -1172,7 +1126,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          bfs::rename(temp_path, pending_path, ec);
          EOS_ASSERT(!ec, snapshot_finalization_exception,
                "Unable to promote temp snapshot to pending for block number ${bn}: [code: ${ec}] ${message}",
-               ("bn", chain.head_block_num())
+               ("bn", head_block_num)
                ("ec", ec.value())
                ("message", ec.message()));
 
@@ -1356,8 +1310,12 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
 }
 
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
-   bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   if( _pending_block_mode == pending_block_mode::producing ) {
+      bool last_block = ((block_timestamp_type( block_time ).slot % config::producer_repetitions) == config::producer_repetitions - 1);
+      return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   } else {
+      return block_time + fc::microseconds(_produce_time_offset_us);
+   }
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
@@ -2068,7 +2026,7 @@ void producer_plugin_impl::produce_block() {
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
-           ("trxid", trx_id)("reason", reason));
+           ("txid", trx_id)("why", reason));
 }
 
 } // namespace eosio

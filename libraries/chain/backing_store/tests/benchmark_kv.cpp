@@ -577,7 +577,7 @@ int main(int argc, char* argv[]) {
             return 1;
          }
       }
-   } catch (boost::wrapexcept<boost::program_options::required_option>& ex) {
+   } catch (boost::program_options::required_option& ex) {
       // This exception is thrown whenever required options are not supplied.
       // Need to catch it or we will get a crash.
       if (vmap.count("help") == 0) {

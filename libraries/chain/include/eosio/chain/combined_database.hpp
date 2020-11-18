@@ -46,7 +46,7 @@ namespace eosio { namespace chain {
          index_set<account_index, account_metadata_index, account_ram_correction_index, global_property_multi_index,
                    protocol_state_multi_index, dynamic_global_property_multi_index, block_summary_multi_index,
                    transaction_multi_index, generated_transaction_multi_index, table_id_multi_index, code_index,
-                   database_header_multi_index, kv_db_config_index, kv_index>;
+                   database_header_multi_index, kv_db_config_index>;
 
    using contract_database_index_set = index_set<key_value_index, index64_index, index128_index, index256_index,
                                                  index_double_index, index_long_double_index>;
@@ -126,6 +126,9 @@ namespace eosio { namespace chain {
                               eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
                               uint32_t& snapshot_head_block, const eosio::chain::chain_id_type& chain_id);
 
+      auto &get_db(void) const { return db; }
+      auto &get_kv_undo_stack(void) const { return kv_undo_stack; }
+
     private:
       void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;
       void read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot);
@@ -139,6 +142,6 @@ namespace eosio { namespace chain {
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
 
    std::vector<char> make_rocksdb_contract_kv_prefix();
-   std::vector<char> make_rocksdb_contract_db_prefix();
+   char make_rocksdb_contract_db_prefix();
 
 }} // namespace eosio::chain

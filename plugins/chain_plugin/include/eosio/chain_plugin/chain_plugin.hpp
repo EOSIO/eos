@@ -63,6 +63,8 @@ Type convert_to_type(const string& str, const string& desc) {
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
 }
 
+uint64_t convert_to_type(const eosio::name &n, const string &desc);
+
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
 
@@ -118,6 +120,7 @@ public:
       std::optional<uint32_t>              fork_db_head_block_num;
       std::optional<chain::block_id_type>  fork_db_head_block_id;
       std::optional<string>                server_full_version_string;
+      std::optional<fc::time_point>        last_irreversible_block_time;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -490,9 +493,12 @@ public:
 
          if( p.lower_bound.size() ) {
             if( p.key_type == "name" ) {
-               name s(p.lower_bound);
-               SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
-               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
+               if constexpr (std::is_same_v<uint64_t, SecKeyType>) {
+                  SecKeyType lv = convert_to_type(name{p.lower_bound}, "lower_bound name");
+                  std::get<1>(lower_bound_lookup_tuple) = conv(lv);
+               } else {
+                  EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for lower bound", ("nm", p.lower_bound));
+               }
             } else {
                SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
                std::get<1>(lower_bound_lookup_tuple) = conv( lv );
@@ -501,9 +507,12 @@ public:
 
          if( p.upper_bound.size() ) {
             if( p.key_type == "name" ) {
-               name s(p.upper_bound);
-               SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
-               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
+               if constexpr (std::is_same_v<uint64_t, SecKeyType>) {
+                  SecKeyType uv = convert_to_type(name{p.upper_bound}, "upper_bound name");
+                  std::get<1>(upper_bound_lookup_tuple) = conv(uv);
+               } else {
+                  EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid key type of eosio::name ${nm} for upper bound", ("nm", p.upper_bound));
+               }
             } else {
                SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
                std::get<1>(upper_bound_lookup_tuple) = conv( uv );
@@ -808,7 +817,8 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
            (head_block_id)(head_block_time)(head_block_producer)
            (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
-           (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string) )
+           (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
+           (last_irreversible_block_time) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
