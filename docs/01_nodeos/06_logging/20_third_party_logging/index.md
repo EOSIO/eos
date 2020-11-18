@@ -1,6 +1,6 @@
 ---
-content_title: Third Party Logging And Tracing Integration
-link_text: Third Party Logging And Tracing Integration
+content_title: Third-Party Logging And Tracing Integration
+link_text: Third-Party Logging And Tracing Integration
 ---
 
 ## Overview
