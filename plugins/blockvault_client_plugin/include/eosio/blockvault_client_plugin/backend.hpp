@@ -2,8 +2,6 @@
 
 #include <eosio/blockvault_client_plugin/blockvault.hpp>
 #include <eosio/chain/block_timestamp.hpp>
-// #include <stdint.h>
-// #include <string_view>
 
 namespace eosio {
 namespace blockvault {
