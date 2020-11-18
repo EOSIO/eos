@@ -25,17 +25,22 @@ namespace eosio {
             void do_sync() {
                 auto head_block = _blockchain_provider.chain->fork_db().head();
                 if (nullptr != head_block) {
-                    _blockvault->sync(&head_block->id, *this);
+                    ilog("Requesting blockvault sync from previous block id ${id}, head block_num ${num}",
+                         ("id", (const string) head_block->header.previous)("num", head_block->block_num));
+                    _blockvault->sync(&head_block->header.previous, *this);
                 } else {
+                    ilog("Requesting complete blockvault sync.");
                     _blockvault->sync(nullptr, *this);
                 }
 
                 if (!_startup_run) {
+                    ilog("Received no data from blockvault.");
                     run_startup();
                 }
             }
 
             void on_snapshot(const char* snapshot_filename) override final {
+                ilog("Received snapshot from blockvault ${fn}", ("fn", snapshot_filename));
                 auto infile = std::ifstream(snapshot_filename, (std::ios::in | std::ios::binary));
                 auto reader = std::make_shared<chain::istream_snapshot_reader>(infile);
                 _blockchain_provider.chain->startup(_shutdown, _check_shutdown, reader);

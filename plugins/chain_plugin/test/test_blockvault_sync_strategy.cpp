@@ -44,6 +44,11 @@ struct mock_chain_t {
     struct mock_fork_db_t {
         struct mock_fork_db_head_t {
            block_id_type id;
+           uint32_t block_num;
+
+           struct mock_fork_db_header_t {
+              block_id_type previous;
+           } header ;
         } _head;
 
        mock_fork_db_head_t* head() {return &_head; }
