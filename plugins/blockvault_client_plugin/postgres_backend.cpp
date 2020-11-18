@@ -57,6 +57,8 @@ postgres_backend::postgres_backend(const std::string& options)
                 "SELECT lo_unlink(r.snapshot) FROM SnapshotData r WHERE watermark_bn < $1 OR watermark_ts < $2;");
    conn.prepare("delete_outdated_snapshot_data",
                 "DELETE FROM SnapshotData WHERE watermark_bn < $1 OR watermark_ts < $2;");
+
+   conn.prepare("has_block", "SELECT COUNT(*) FROM BlockData WHERE block_id = $1");
 } // namespace blockvault
 
 bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> watermark, uint32_t lib,
@@ -168,6 +170,11 @@ void postgres_backend::sync(std::string_view previous_block_id, backend::sync_ca
              trx.exec_prepared("get_blocks_since_watermark", r[0][0].as<uint32_t>(), r[0][1].as<uint32_t>()));
          return;
       }
+
+      auto row = trx.exec_prepared1("has_block", blob);
+      if (row[0].as<int>() != 0)
+         // in this case, the client is up-to-date, nothing to sync.  
+         return;
    }
 
    auto r = trx.exec_prepared("get_latest_snapshot");
