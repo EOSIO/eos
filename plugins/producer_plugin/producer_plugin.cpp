@@ -1105,8 +1105,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("ec", ec.value())
                ("message", ec.message()));
 
-         next( producer_plugin::snapshot_information{head_id, snapshot_path.generic_string()} );
-
+         next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
+         
          if ( my->blockvault_plug->get() != nullptr ) {
             my->blockvault_plug->get()->propose_snapshot( blockvault::watermark_t{chain.head_block_num(), chain.head_block_time().sec_since_epoch()}, snapshot_path.generic_string().c_str() );
          }
