@@ -930,7 +930,7 @@ void session<Parent>::session_iterator<Iterator_traits>::move_next_() {
       // 1. The next key in order in this sessions cache.
       // 2. The next key in lexicographical order retrieved from the sessions parent.
       // Choose which one it is.
-      if (pending_key && pending_key < key) {
+      if (!key || (pending_key && pending_key < key)) {
          key = pending_key;
       }
 
@@ -991,7 +991,7 @@ void session<Parent>::session_iterator<Iterator_traits>::move_previous_() {
       // 1. The key returned by decrementing the iterator on this session's cache.
       // 2. The key returned by calling lower_bound on the parent of this session.
       // We want the larger of the two.
-      if (pending_key && pending_key > key) {
+      if (!key || (pending_key && pending_key > key)) {
          key = pending_key;
       }
 

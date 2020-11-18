@@ -762,7 +762,6 @@ namespace eosio { namespace chain { namespace backing_store {
          name code, name scope, name table, uint64_t primary) {
       auto slice_primary_key = get_primary_slice_in_primaries(code, scope, table, primary);
 
-      // Why do we need to do a lower_bound here if we want an exact match?  Call find instead.
       auto session_iter = current_session.lower_bound(slice_primary_key.full_key);
 
       const bool valid = primary_lookup.match(slice_primary_key.full_key, session_iter);
