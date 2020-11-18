@@ -494,6 +494,19 @@ private:
    deltas_vector v;
 };
 
+BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE/* TODO: uncomment this , backing_store_type::ROCKSDB*/ } ) {
+      table_deltas_tester chain;
+      chain.set_backing_store(backing_store);
+
+      auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
+
+      for(const auto &delta: deltas) {
+         BOOST_REQUIRE(!delta.rows.obj.empty());
+      }
+   }
+}
+
 BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
