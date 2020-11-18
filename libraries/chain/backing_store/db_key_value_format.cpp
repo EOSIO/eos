@@ -83,16 +83,6 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
          return { std::get<0>(intermittent), std::get<1>(intermittent), key_loc, kt };
       }
 
-      char get_rocksdb_contract_db_prefix_as_char() {
-         const auto prefix = make_rocksdb_contract_db_prefix();
-         // current design for rocksdb key format doesn't account for writing a variable width db prefix, so no
-         // point in designing code to write out a 1 char field as a varied length field.
-         EOS_ASSERT(prefix.size() == 1, bad_composite_key_exception,
-                    "DB intrinsic key-value has been writing out the db_prefix as a defined 1 byte wide, it cannot be "
-                    "changed to a new size without design changes");
-         return prefix[0];
-      }
-
       // NOTE: very limited use till redesign
       constexpr uint64_t db_type_and_code_size = detail::prefix_size<eosio::session::shared_bytes>() - detail::prefix_size<b1::chain_kv::bytes>(); // 1 (db type) + 8 (contract)
       static_assert(db_type_and_code_size == sizeof(char) + sizeof(name), "Some assumptions on formatting have been broken");
@@ -215,7 +205,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    }
 
    eosio::session::shared_bytes create_full_key(const b1::chain_kv::bytes& composite_key, name code) {
-      static const char db_type_prefix = detail::get_rocksdb_contract_db_prefix_as_char();
+      static const char db_type_prefix = make_rocksdb_contract_db_prefix();
       b1::chain_kv::bytes code_as_bytes;
       b1::chain_kv::append_key(code_as_bytes, code.to_uint64_t());
       auto ret = eosio::session::make_shared_bytes<std::string_view, 3>({std::string_view{&db_type_prefix, 1},
@@ -244,7 +234,7 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
    }
 
    full_key_data parse_full_key(const eosio::session::shared_bytes& full_key) {
-      static const char db_type_prefix = detail::get_rocksdb_contract_db_prefix_as_char();
+      static const char db_type_prefix = make_rocksdb_contract_db_prefix();
       EOS_ASSERT( full_key.size() >= 1, db_rocksdb_invalid_operation_exception,
                   "parse_full_key was passed an empty key.");
       full_key_data data;

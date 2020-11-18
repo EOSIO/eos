@@ -225,11 +225,14 @@ void store_delta_kv(eosio::kv_environment environment, table_delta_v0& delta, F 
       f();
       auto  obj  = eosio::from_bin<key_value>(row.data);
       auto& obj0 = std::get<key_value_v0>(obj);
+#warning uncomment this when we remove the database logic on rodeos
+      /*
       if (row.present)
          environment.kv_set(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining(),
                             obj0.value.pos, obj0.value.remaining());
       else
          environment.kv_erase(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining());
+      */
    }
 }
 

@@ -727,6 +727,7 @@ struct controller_impl {
       reversible_blocks.add_index<reversible_block_index>();
 
       controller_index_set::add_indices(db);
+      db.add_index<kv_index>();
       contract_database_index_set::add_indices(db);
 
       authorization.add_indices();

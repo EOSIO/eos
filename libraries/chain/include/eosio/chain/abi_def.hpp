@@ -275,14 +275,14 @@ void from_variant(const fc::variant& v, eosio::chain::kv_tables_as_object<T>& o)
     auto &kv_tables = o.value;
     const auto& tables = v.get_object();
 
-    for( const auto table_it : tables ) {
+    for( const auto& table_it : tables ) {
         const auto &table_obj = table_it.value().get_object();
         eosio::chain::kv_table_def kv_tbl_def;
         from_variant(table_obj["type"], kv_tbl_def.type);
         from_variant(table_obj["primary_index"], kv_tbl_def.primary_index);
         if( const auto st_it = table_obj.find("secondary_indices"); st_it != table_obj.end() ) {
             const auto &sec_indices_obj = st_it->value().get_object();
-            for( const auto sidx_it : sec_indices_obj ) {
+            for( const auto& sidx_it : sec_indices_obj ) {
                 eosio::chain::secondary_index_def idx_def;
                 from_variant(sidx_it.value(), idx_def);
                 kv_tbl_def.secondary_indices[eosio::chain::index_name(sidx_it.key())] = idx_def;
