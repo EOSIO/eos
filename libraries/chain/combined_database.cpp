@@ -326,14 +326,8 @@ namespace eosio { namespace chain {
                                                                     const kv_database_config& limits) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            using undo_stack_type = kv_undo_stack_ptr::element_type;
-            return std::visit(overloaded{ [&](undo_stack_type::parent_type* top) {
-                                           return create_kv_rocksdb_context<undo_stack_type::parent_type, kv_resource_manager>(*top, receiver, resource_manager, limits);
-                                        }, 
-                                        [&](undo_stack_type::session_type* top) {
-                                           return create_kv_rocksdb_context<undo_stack_type::session_type, kv_resource_manager>(*top, receiver, resource_manager, limits);
-                                        }}, 
-                  kv_undo_stack->top());
+            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack->top(), receiver,
+                                                                                resource_manager, limits);
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context<kv_resource_manager>(db, receiver, resource_manager, limits);
       }
@@ -343,14 +337,7 @@ namespace eosio { namespace chain {
    std::unique_ptr<db_context> combined_database::create_db_context(apply_context& context, name receiver) {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            using undo_stack_type = kv_undo_stack_ptr::element_type;
-            return std::visit(overloaded{ [&](undo_stack_type::parent_type* top) {
-                                           return backing_store::create_db_rocksdb_context(context, receiver, *top);
-                                        }, 
-                                        [&](undo_stack_type::session_type* top) {
-                                           return backing_store::create_db_rocksdb_context(context, receiver, *top);
-                                        }}, 
-                  kv_undo_stack->top());
+            return backing_store::create_db_rocksdb_context(context, receiver, kv_undo_stack->top());
          case backing_store_type::CHAINBASE:
             return backing_store::create_db_chainbase_context(context, receiver);
          default:

@@ -135,6 +135,32 @@ struct pending_state {
    }
 };
 
+class manage_stack {
+public:
+   using kv_undo_stack = eosio::session::undo_stack<rocks_db_type>;
+   manage_stack(kv_undo_stack* undo_stack) : kv_undo_stack_(undo_stack) {
+      // Get a session to iterate over.
+      if (kv_undo_stack_) {
+         kv_undo_stack_->push();
+      }
+   }
+   void squash() {
+      if (kv_undo_stack_) {
+         kv_undo_stack_->squash();
+         kv_undo_stack_ = nullptr;
+      }
+   }
+
+   ~manage_stack(){
+      if (kv_undo_stack_) {
+         kv_undo_stack_->undo();
+      }
+   }
+private:
+   kv_undo_stack* kv_undo_stack_;
+   bool undo_;
+};
+
 struct controller_impl {
 
    // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
@@ -412,9 +438,15 @@ struct controller_impl {
          ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
                ("s", start_block_num)("n", blog_head->block_num()) );
          try {
+            manage_stack::kv_undo_stack* undo_stack = kv_db.get_kv_undo_stack().get();
+            if (!undo_stack || !self.skip_db_sessions( controller::block_status::irreversible ) || !undo_stack->empty()) {
+               undo_stack = nullptr;
+            }
             while( std::unique_ptr<signed_block> next = blog.read_signed_block_by_num( head->block_num + 1 ) ) {
+               manage_stack ms(undo_stack);
                auto block_num = next->block_num();
                replay_push_block( std::move(next), controller::block_status::irreversible );
+               ms.squash();
                if( check_shutdown() ) break;
                if( block_num % 500 == 0 ) {
                   ilog( "${n} of ${head}", ("n", block_num)("head", blog_head->block_num()) );

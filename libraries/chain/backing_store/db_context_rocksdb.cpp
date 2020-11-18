@@ -12,14 +12,13 @@
 
 namespace eosio { namespace chain { namespace backing_store {
 
-   template <typename Session>
    class db_context_rocksdb : public db_context {
    public:
       using prim_key_iter_type = secondary_key<uint64_t>;
-      using session_type = Session;
+      using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
       using shared_bytes = eosio::session::shared_bytes;
 
-      db_context_rocksdb(apply_context& context, const name& receiver, session_type& session);
+      db_context_rocksdb(apply_context& context, name receiver, session_type& session);
 
       ~db_context_rocksdb() override;
 
@@ -137,13 +136,13 @@ namespace eosio { namespace chain { namespace backing_store {
       static prefix_bundle get_primary_slice_in_primaries(name code, name scope, name table, uint64_t id);
       pv_bundle get_primary_key_value(name code, name scope, name table, uint64_t id) const;
       void set_value(const shared_bytes& primary_key, const payer_payload& pp);
-      int32_t find_and_store_primary_key(const typename Session::iterator& session_iter, int32_t table_ei,
+      int32_t find_and_store_primary_key(const session_type::iterator& session_iter, int32_t table_ei,
                                          const shared_bytes& type_prefix, int32_t not_found_return,
                                          const char* calling_func, uint64_t& found_key);
       struct exact_iterator {
-         bool                       valid = false;
-         typename Session::iterator itr;
-         shared_bytes               type_prefix;
+         bool                   valid = false;
+         session_type::iterator itr;
+         shared_bytes           type_prefix;
       };
       exact_iterator get_exact_iterator(name code, name scope, name table, uint64_t primary);
 
@@ -152,29 +151,26 @@ namespace eosio { namespace chain { namespace backing_store {
 
       using uint128_t = eosio::chain::uint128_t;
       using key256_t = eosio::chain::key256_t;
-      session_type&                                current_session;
-      db_key_value_iter_store<uint64_t>            primary_iter_store;
-      db_key_value_any_lookup<Session>             primary_lookup;
-      db_key_value_sec_lookup<uint64_t, Session>   sec_lookup_i64;
-      db_key_value_sec_lookup<uint128_t, Session>  sec_lookup_i128;
-      db_key_value_sec_lookup<key256_t, Session>   sec_lookup_i256;
-      db_key_value_sec_lookup<float64_t, Session>  sec_lookup_double;
-      db_key_value_sec_lookup<float128_t, Session> sec_lookup_long_double;
-      static constexpr uint64_t                    noop_secondary = 0x0;
+      session_type&                        current_session;
+      db_key_value_iter_store<uint64_t>    primary_iter_store;
+      db_key_value_any_lookup              primary_lookup;
+      db_key_value_sec_lookup<uint64_t>    sec_lookup_i64;
+      db_key_value_sec_lookup<uint128_t>   sec_lookup_i128;
+      db_key_value_sec_lookup<key256_t>    sec_lookup_i256;
+      db_key_value_sec_lookup<float64_t>   sec_lookup_double;
+      db_key_value_sec_lookup<float128_t>  sec_lookup_long_double;
+      static constexpr uint64_t            noop_secondary = 0x0;
    }; // db_context_rocksdb
 
-   template <typename Session>
-   db_context_rocksdb<Session>::db_context_rocksdb(apply_context& context, const name& receiver, session_type& session)
+   db_context_rocksdb::db_context_rocksdb(apply_context& context, name receiver, session_type& session)
    : db_context( context, receiver ), current_session{ session }, primary_lookup(*this, session),
      sec_lookup_i64(*this, session), sec_lookup_i128(*this, session), sec_lookup_i256(*this, session),
      sec_lookup_double(*this, session), sec_lookup_long_double(*this, session) {}
 
-   template <typename Session>
-   db_context_rocksdb<Session>::~db_context_rocksdb() {
+   db_context_rocksdb::~db_context_rocksdb() {
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {
+   int32_t db_context_rocksdb::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {
       EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
       const name scope_name{scope};
       const name table_name{table};
@@ -187,13 +183,14 @@ namespace eosio { namespace chain { namespace backing_store {
       const payer_payload pp{payer, value, value_size};
       set_value(old_key_value.full_key, pp);
 
-      const int64_t billable_size = static_cast<int64_t>(value_size + db_key_value_any_lookup<Session>::overhead);
+      const int64_t billable_size = static_cast<int64_t>(value_size + db_key_value_any_lookup::overhead);
 
       std::string event_id;
       auto dm_logger = context.control.get_deep_mind_logger();
       if (dm_logger != nullptr) {
          event_id = db_context::table_event(receiver, scope_name, table_name, name(id));
-      }      
+      }
+
       update_db_usage( payer, billable_size, db_context::row_add_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
@@ -206,8 +203,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return primary_iter_store.add(primary_key_iter(table_ei, id, payer));
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_update_i64(int32_t itr, account_name payer, const char* value , size_t value_size) {
+   void db_context_rocksdb::db_update_i64(int32_t itr, account_name payer, const char* value , size_t value_size) {
       const auto& key_store = primary_iter_store.get(itr);
       const auto& table_store = primary_iter_store.get_table(key_store);
       EOS_ASSERT( table_store.contract == receiver, table_access_violation, "db access violation" );
@@ -220,8 +216,8 @@ namespace eosio { namespace chain { namespace backing_store {
       const auto old_payer = key_store.payer;
       if (payer.empty()) {
          payer = old_payer;
-      } 
-      
+      }
+
       const payer_payload old_pp{*old_key_value.value};
       const auto old_value_actual_size = old_pp.value_size;
 
@@ -234,7 +230,7 @@ namespace eosio { namespace chain { namespace backing_store {
          event_id = db_context::table_event(table_store.contract, table_store.scope, table_store.table, name(key_store.primary));
       }
 
-      const int64_t overhead = db_key_value_any_lookup<Session>::overhead;
+      const int64_t overhead = db_key_value_any_lookup::overhead;
       const int64_t old_size = static_cast<int64_t>(old_value_actual_size + overhead);
       const int64_t new_size = static_cast<int64_t>(value_size + overhead);
 
@@ -258,8 +254,7 @@ namespace eosio { namespace chain { namespace backing_store {
       }
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_remove_i64(int32_t itr) {
+   void db_context_rocksdb::db_remove_i64(int32_t itr) {
       const auto& key_store = primary_iter_store.get(itr);
       const auto& table_store = primary_iter_store.get_table(key_store);
       EOS_ASSERT( table_store.contract == receiver, table_access_violation, "db access violation" );
@@ -277,7 +272,7 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       payer_payload pp(*old_key_value.value);
-      update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup<Session>::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
+      update_db_usage( old_payer,  -(pp.value_size + db_key_value_any_lookup::overhead), db_context::row_rem_trace(context.get_action_id(), std::move(event_id)) );
 
       if (dm_logger != nullptr) {
          db_context::log_row_remove(*dm_logger, context.get_action_id(), table_store.contract, table_store.scope,
@@ -291,8 +286,7 @@ namespace eosio { namespace chain { namespace backing_store {
       primary_iter_store.remove(itr); // don't use key_store anymore
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_get_i64(int32_t itr, char* value , size_t value_size) {
+   int32_t db_context_rocksdb::db_get_i64(int32_t itr, char* value , size_t value_size) {
       const auto& key_store = primary_iter_store.get(itr);
       const auto& table_store = primary_iter_store.get_table(key_store);
       const auto old_key_value = get_primary_key_value(table_store.contract, table_store.scope, table_store.table, key_store.primary);
@@ -310,8 +304,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return copy_size;
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_next_i64(int32_t itr, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_next_i64(int32_t itr, uint64_t& primary) {
       if (itr < primary_iter_store.invalid_iterator()) return primary_iter_store.invalid_iterator(); // cannot increment past end iterator of table
 
       const auto& key_store = primary_iter_store.get(itr);
@@ -327,8 +320,7 @@ namespace eosio { namespace chain { namespace backing_store {
                                         key_store.table_ei, __func__, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_previous_i64(int32_t itr, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_previous_i64(int32_t itr, uint64_t& primary) {
       if( itr < primary_iter_store.invalid_iterator() ) { // is end iterator
          const backing_store::unique_table* table_store = primary_iter_store.find_table_by_end_iterator(itr);
          EOS_ASSERT( table_store, invalid_table_iterator, "not a valid end iterator" );
@@ -340,7 +332,6 @@ namespace eosio { namespace chain { namespace backing_store {
          const auto primary_bounded_key =
                get_primary_slice_in_primaries(table_store->contract, table_store->scope, table_store->table,
                                               std::numeric_limits<uint64_t>::max());
-
          auto session_iter = current_session.lower_bound(primary_bounded_key.full_key);
 
          auto past_end = [&](const auto& iter) {
@@ -377,139 +368,115 @@ namespace eosio { namespace chain { namespace backing_store {
                                         primary_iter_store.invalid_iterator(), __func__, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
+   int32_t db_context_rocksdb::db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
       return find_i64(name{code}, name{scope}, name{table}, id, comp::equals);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
+   int32_t db_context_rocksdb::db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
       return find_i64(name{code}, name{scope}, name{table}, id, comp::gte);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
+   int32_t db_context_rocksdb::db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
       return find_i64(name{code}, name{scope}, name{table}, id, comp::gt);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_end_i64(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_end_i64(uint64_t code, uint64_t scope, uint64_t table) {
       return primary_lookup.get_end_iter(name{code}, name{scope}, name{table}, primary_iter_store);
    }
 
    /**
     * interface for uint64_t secondary
     */
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
+   int32_t db_context_rocksdb::db_idx64_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                                               const uint64_t& secondary) {
       return sec_lookup_i64.store(name{scope}, name{table}, payer, id, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx64_update(int32_t iterator, account_name payer, const uint64_t& secondary) {
+   void db_context_rocksdb::db_idx64_update(int32_t iterator, account_name payer, const uint64_t& secondary) {
       sec_lookup_i64.update(iterator, payer, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx64_remove(int32_t iterator) {
+   void db_context_rocksdb::db_idx64_remove(int32_t iterator) {
       sec_lookup_i64.remove(iterator);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary,
+   int32_t db_context_rocksdb::db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary,
                                    uint64_t& primary) {
       return sec_lookup_i64.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
+   int32_t db_context_rocksdb::db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
                                  uint64_t primary) {
       return sec_lookup_i64.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
+   int32_t db_context_rocksdb::db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
                                uint64_t& primary) {
       return sec_lookup_i64.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
+   int32_t db_context_rocksdb::db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary,
                                uint64_t& primary) {
       return sec_lookup_i64.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_end(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_idx64_end(uint64_t code, uint64_t scope, uint64_t table) {
       return sec_lookup_i64.end_secondary(name{code}, name{scope}, name{table});
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_next(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx64_next(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i64.next_secondary(iterator, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx64_previous(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx64_previous(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i64.previous_secondary(iterator, primary);
    }
 
    /**
     * interface for uint128_t secondary
     */
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
+   int32_t db_context_rocksdb::db_idx128_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                            const uint128_t& secondary) {
       return sec_lookup_i128.store(name{scope}, name{table}, payer, id, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx128_update(int32_t iterator, account_name payer, const uint128_t& secondary) {
+   void db_context_rocksdb::db_idx128_update(int32_t iterator, account_name payer, const uint128_t& secondary) {
       sec_lookup_i128.update(iterator, payer, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx128_remove(int32_t iterator) {
+   void db_context_rocksdb::db_idx128_remove(int32_t iterator) {
       sec_lookup_i128.remove(iterator);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary,
+   int32_t db_context_rocksdb::db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary,
                                     uint64_t& primary) {
       return sec_lookup_i128.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
+   int32_t db_context_rocksdb::db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
                                   uint64_t primary) {
       return sec_lookup_i128.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
+   int32_t db_context_rocksdb::db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
                                 uint64_t& primary) {
       return sec_lookup_i128.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
+   int32_t db_context_rocksdb::db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary,
                                 uint64_t& primary) {
       return sec_lookup_i128.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_end(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_idx128_end(uint64_t code, uint64_t scope, uint64_t table) {
       return sec_lookup_i128.end_secondary(name{code}, name{scope}, name{table});
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_next(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx128_next(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i128.next_secondary(iterator, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx128_previous(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx128_previous(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i128.previous_secondary(iterator, primary);
    }
 
@@ -526,33 +493,28 @@ namespace eosio { namespace chain { namespace backing_store {
    /**
     * interface for 256-bit interger secondary
     */
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
+   int32_t db_context_rocksdb::db_idx256_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                            const uint128_t* data) {
       const auto secondary = convert(data);
       return sec_lookup_i256.store(name{scope}, name{table}, payer, id, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data) {
+   void db_context_rocksdb::db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data) {
       const auto secondary = convert(data);
       sec_lookup_i256.update(iterator, payer, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx256_remove(int32_t iterator) {
+   void db_context_rocksdb::db_idx256_remove(int32_t iterator) {
       sec_lookup_i256.remove(iterator);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
+   int32_t db_context_rocksdb::db_idx256_find_secondary(uint64_t code, uint64_t scope, uint64_t table, const uint128_t* data,
                                     uint64_t& primary) {
       const auto secondary = convert(data);
       return sec_lookup_i256.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
+   int32_t db_context_rocksdb::db_idx256_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                   uint64_t primary) {
       auto secondary = convert(data);
       auto ret = sec_lookup_i256.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
@@ -560,8 +522,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return ret;
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
+   int32_t db_context_rocksdb::db_idx256_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                 uint64_t& primary) {
       auto secondary = convert(data);
       auto ret = sec_lookup_i256.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
@@ -569,8 +530,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return ret;
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
+   int32_t db_context_rocksdb::db_idx256_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* data,
                                 uint64_t& primary) {
       auto secondary = convert(data);
       auto ret = sec_lookup_i256.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
@@ -578,171 +538,142 @@ namespace eosio { namespace chain { namespace backing_store {
       return ret;
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_idx256_end(uint64_t code, uint64_t scope, uint64_t table) {
       return sec_lookup_i256.end_secondary(name{code}, name{scope}, name{table});
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_next(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx256_next(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i256.next_secondary(iterator, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx256_previous(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx256_previous(int32_t iterator, uint64_t& primary) {
       return sec_lookup_i256.previous_secondary(iterator, primary);
    }
 
    /**
     * interface for double secondary
     */
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
+   int32_t db_context_rocksdb::db_idx_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                                const float64_t& secondary) {
       return sec_lookup_double.store(name{scope}, name{table}, payer, id, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx_double_update(int32_t iterator, account_name payer, const float64_t& secondary) {
+   void db_context_rocksdb::db_idx_double_update(int32_t iterator, account_name payer, const float64_t& secondary) {
       sec_lookup_double.update(iterator, payer, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx_double_remove(int32_t iterator) {
+   void db_context_rocksdb::db_idx_double_remove(int32_t iterator) {
       sec_lookup_double.remove(iterator);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
+   int32_t db_context_rocksdb::db_idx_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
                                         const float64_t& secondary, uint64_t& primary) {
       return sec_lookup_double.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+   int32_t db_context_rocksdb::db_idx_double_find_primary(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
                                       uint64_t primary) {
       return sec_lookup_double.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+   int32_t db_context_rocksdb::db_idx_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
                                     uint64_t& primary) {
       return sec_lookup_double.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
+   int32_t db_context_rocksdb::db_idx_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float64_t& secondary,
                                     uint64_t& primary) {
       return sec_lookup_double.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_end(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_idx_double_end(uint64_t code, uint64_t scope, uint64_t table) {
       return sec_lookup_double.end_secondary(name{code}, name{scope}, name{table});
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_next(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx_double_next(int32_t iterator, uint64_t& primary) {
       return sec_lookup_double.next_secondary(iterator, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_double_previous(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx_double_previous(int32_t iterator, uint64_t& primary) {
       return sec_lookup_double.previous_secondary(iterator, primary);
    }
 
    /**
     * interface for long double secondary
     */
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
+   int32_t db_context_rocksdb::db_idx_long_double_store(uint64_t scope, uint64_t table, account_name payer, uint64_t id,
                                                         const float128_t& secondary) {
       return sec_lookup_long_double.store(name{scope}, name{table}, payer, id, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx_long_double_update(int32_t iterator, account_name payer, const float128_t& secondary) {
+   void db_context_rocksdb::db_idx_long_double_update(int32_t iterator, account_name payer, const float128_t& secondary) {
       sec_lookup_long_double.update(iterator, payer, secondary);
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::db_idx_long_double_remove(int32_t iterator) {
+   void db_context_rocksdb::db_idx_long_double_remove(int32_t iterator) {
       sec_lookup_long_double.remove(iterator);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
+   int32_t db_context_rocksdb::db_idx_long_double_find_secondary(uint64_t code, uint64_t scope, uint64_t table,
                                                                  const float128_t& secondary, uint64_t& primary) {
       return sec_lookup_long_double.find_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_find_primary(uint64_t code, uint64_t scope, uint64_t table,
+   int32_t db_context_rocksdb::db_idx_long_double_find_primary(uint64_t code, uint64_t scope, uint64_t table,
                                                                float128_t& secondary, uint64_t primary) {
       return sec_lookup_long_double.find_primary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
+   int32_t db_context_rocksdb::db_idx_long_double_lowerbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
                                                              uint64_t& primary) {
       return sec_lookup_long_double.lowerbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
+   int32_t db_context_rocksdb::db_idx_long_double_upperbound(uint64_t code, uint64_t scope, uint64_t table, float128_t& secondary,
                                                              uint64_t& primary) {
       return sec_lookup_long_double.upperbound_secondary(name{code}, name{scope}, name{table}, secondary, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_end(uint64_t code, uint64_t scope, uint64_t table) {
+   int32_t db_context_rocksdb::db_idx_long_double_end(uint64_t code, uint64_t scope, uint64_t table) {
       return sec_lookup_long_double.end_secondary(name{code}, name{scope}, name{table});
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_next(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx_long_double_next(int32_t iterator, uint64_t& primary) {
       return sec_lookup_long_double.next_secondary(iterator, primary);
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::db_idx_long_double_previous(int32_t iterator, uint64_t& primary) {
+   int32_t db_context_rocksdb::db_idx_long_double_previous(int32_t iterator, uint64_t& primary) {
       return sec_lookup_long_double.previous_secondary(iterator, primary);
    }
 
    // for primary keys in the iterator store, we don't care about secondary key
-   template <typename Session>
-   typename db_context_rocksdb<Session>::prim_key_iter_type db_context_rocksdb<Session>::primary_key_iter(int table_ei, uint64_t key, account_name payer) {
+   db_context_rocksdb::prim_key_iter_type db_context_rocksdb::primary_key_iter(int table_ei, uint64_t key, account_name payer) {
       return prim_key_iter_type { .table_ei = table_ei, .secondary = noop_secondary, .primary = key, .payer = payer};
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::swap(int iterator, account_name payer) {
+   void db_context_rocksdb::swap(int iterator, account_name payer) {
       primary_iter_store.swap(iterator, noop_secondary, payer);
    }
 
    // gets a prefix that allows for only primary key iterators
-   template <typename Session>
-   prefix_bundle db_context_rocksdb<Session>::get_primary_slice_in_primaries(name code, name scope, name table, uint64_t id) {
+   prefix_bundle db_context_rocksdb::get_primary_slice_in_primaries(name code, name scope, name table, uint64_t id) {
       bytes primary_key = db_key_value_format::create_primary_key(scope, table, id);
       return { primary_key, end_of_prefix::at_type, code };
    }
 
-   template <typename Session>
-   pv_bundle db_context_rocksdb<Session>::get_primary_key_value(name code, name scope, name table, uint64_t id) const {
+   pv_bundle db_context_rocksdb::get_primary_key_value(name code, name scope, name table, uint64_t id) const {
       prefix_bundle primary_key = get_primary_slice_in_primaries(code, scope, table, id);
       return { primary_key, current_session.read(primary_key.full_key) };
    }
 
-   template <typename Session>
-   void db_context_rocksdb<Session>::set_value(const shared_bytes& primary_key, const payer_payload& pp) {
+   void db_context_rocksdb::set_value(const shared_bytes& primary_key, const payer_payload& pp) {
       current_session.write(primary_key, pp.as_payload());
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::find_and_store_primary_key(const typename Session::iterator& session_iter,
-                                                                   int32_t table_ei, const shared_bytes& type_prefix,
-                                                                   int32_t not_found_return, const char* calling_func,
-                                                                   uint64_t& found_key) {
+   int32_t db_context_rocksdb::find_and_store_primary_key(const session_type::iterator& session_iter,
+                                                          int32_t table_ei, const shared_bytes& type_prefix,
+                                                          int32_t not_found_return, const char* calling_func,
+                                                          uint64_t& found_key) {
       // if nothing remains in the database, return the passed in value
       if (session_iter == current_session.end() || !primary_lookup.match_prefix(type_prefix, (*session_iter).first)) {
          return not_found_return;
@@ -757,29 +688,23 @@ namespace eosio { namespace chain { namespace backing_store {
    }
 
    // returns the exact iterator and the bounding key (type)
-   template <typename Session>
-   typename db_context_rocksdb<Session>::exact_iterator db_context_rocksdb<Session>::get_exact_iterator(
+   db_context_rocksdb::exact_iterator db_context_rocksdb::get_exact_iterator(
          name code, name scope, name table, uint64_t primary) {
       auto slice_primary_key = get_primary_slice_in_primaries(code, scope, table, primary);
-
       auto session_iter = current_session.lower_bound(slice_primary_key.full_key);
-
       const bool valid = primary_lookup.match(slice_primary_key.full_key, session_iter);
       return { .valid = valid, .itr = std::move(session_iter), .type_prefix = std::move(slice_primary_key.prefix_key) };
    }
 
-   template <typename Session>
-   int32_t db_context_rocksdb<Session>::find_i64(name code, name scope, name table, uint64_t id, comp comparison) {
+   int32_t db_context_rocksdb::find_i64(name code, name scope, name table, uint64_t id, comp comparison) {
       // expanding the "in-play" iterator space to include every key type for that table, to ensure we know if
       // the key is not found, that there is anything in the table at all (and thus can return an end iterator
       // or if an invalid iterator needs to be returned
       prefix_bundle primary_and_prefix_keys { db_key_value_format::create_primary_key(scope, table, id),
                                               end_of_prefix::pre_type, code };
-
-      auto session_iter = current_session.lower_bound(primary_and_prefix_keys.full_key);    
-
+      auto session_iter = current_session.lower_bound(primary_and_prefix_keys.full_key);
       auto is_in_table = [&prefix_key=primary_and_prefix_keys.prefix_key,
-                          &primary_lookup=this->primary_lookup](const typename Session::iterator& iter) {
+                          &primary_lookup=this->primary_lookup](const session_type::iterator& iter) {
          return primary_lookup.match_prefix(prefix_key, iter);
       };
       if (!is_in_table(session_iter)) {
@@ -828,22 +753,12 @@ namespace eosio { namespace chain { namespace backing_store {
       return primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
    }
 
-   std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, const name& receiver,
-                                                         eosio::session::session<eosio::session::rocksdb_t>& session)
+   std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
+                                                         db_context_rocksdb::session_type& session)
    {
-      using session_type = eosio::session::session<eosio::session::rocksdb_t>;
-      static_assert(std::is_convertible<db_context_rocksdb<session_type> *, db_context *>::value, "cannot convert");
-      static_assert(std::is_convertible<std::default_delete<db_context_rocksdb<session_type>>, std::default_delete<db_context> >::value, "cannot convert delete");
-      return std::make_unique<db_context_rocksdb<session_type>>(context, receiver, session);
-   }
-
-   std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, const name& receiver,
-                                                         eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>& session)
-   {
-      using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
-      static_assert(std::is_convertible<db_context_rocksdb<session_type> *, db_context *>::value, "cannot convert");
-      static_assert(std::is_convertible<std::default_delete<db_context_rocksdb<session_type>>, std::default_delete<db_context> >::value, "cannot convert delete");
-      return std::make_unique<db_context_rocksdb<session_type>>(context, receiver, session);
+      static_assert(std::is_convertible<db_context_rocksdb *, db_context *>::value, "cannot convert");
+      static_assert(std::is_convertible<std::default_delete<db_context_rocksdb>, std::default_delete<db_context> >::value, "cannot convert delete");
+      return std::make_unique<db_context_rocksdb>(context, receiver, session);
    }
 
 }}} // namespace eosio::chain::backing_store

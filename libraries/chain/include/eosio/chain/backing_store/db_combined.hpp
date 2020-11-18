@@ -70,27 +70,15 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
                                       const eosio::session::shared_bytes& begin_key,
                                       const eosio::session::shared_bytes& end_key,
                                       F& function) {
-   auto predicate = [&](auto& begin_it, auto& end_it) {
-     auto keep_processing = true;
-     while (keep_processing && begin_it != end_it) {
+   detail::manage_stack ms(kv_undo_stack);
+   auto begin_it = kv_undo_stack->top().lower_bound(begin_key);
+   const auto end_it = kv_undo_stack->top().lower_bound(end_key);
+//   auto move_it = (begin_key < end_key ? [](auto& itr) { return ++itr; } :  [](auto& itr) { return --itr; } );
+   bool keep_processing = true;
+   for (auto it = begin_it; keep_processing && it != end_it; ++it) {
       // iterating through the session will always return a valid value
-       keep_processing = read_rocksdb_entry((*begin_it).first, *(*begin_it).second, function);
-       ++begin_it;
-     }
-   };
-
-   using undo_stack_type = kv_undo_stack_ptr::element_type;
-   std::visit(overloaded{ [&](const undo_stack_type::parent_type* top) {
-                           auto begin_it = top->lower_bound(begin_key);
-                           auto end_it = top->lower_bound(end_key);
-                           predicate(begin_it, end_it);
-                         }, 
-                         [&](const undo_stack_type::session_type* top) {
-                           auto begin_it = top->lower_bound(begin_key);
-                           auto end_it = top->lower_bound(end_key);
-                           predicate(begin_it, end_it);
-                         }}, 
-   kv_undo_stack->top());
+      keep_processing = read_rocksdb_entry((*it).first, *(*it).second, function);
+   }
 };
 
 struct table_id_object_view {
