@@ -231,20 +231,8 @@ namespace eosio { namespace chain {
       std::exception_ptr inner;
    };
 
-    /*
-    *  1: pass in "request version" - signed_block or signed_block_v0, then compare with read version,
-    *     if not match,  convert to requested version (ref read_block())
-    *     then  read packed block
-    *       i)  v4:    the code below
-    *       ii) v1-v3: size of block i = (start position of block (i+1) - start position of block i)- 8 (if not head );
-    *            (ref: reverse_block_position_iterator structure)
-    *  2: consider compression status, only read without compression (done)
-    *
-    *  3: add mutex for public methods in class block_log
-    *
-    */
-    template <typename Stream>
-    std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t block_num) {
+   template <typename Stream>
+   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t block_num) {
        std::shared_ptr<std::vector<char>> buff;
        if (version >= pruned_transaction_version) {
            // block size - 4 bytes
@@ -268,7 +256,7 @@ namespace eosio { namespace chain {
 
        }
        return buff;
-    }
+   }
 
    template <typename Stream>
    std::unique_ptr<signed_block> read_block(Stream&& ds, uint32_t version, uint32_t expect_block_num = 0) {
