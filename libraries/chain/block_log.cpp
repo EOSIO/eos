@@ -232,7 +232,7 @@ namespace eosio { namespace chain {
    };
 
    template <typename Stream>
-   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t block_num) {
+   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t sb_v0_size = 0) {
        std::shared_ptr<std::vector<char>> buff;
        if (version >= pruned_transaction_version) {
            // block size - 4 bytes
@@ -248,12 +248,9 @@ namespace eosio { namespace chain {
            ds.read(buff->data(), sz);
        }else{
            // read a packed block from old version block log file that doesn't have block size saved.
-           // block size = diff(two consecutive block entries' start position) - sizeof(uint64_t)
-           // corner cases: head block or first block
-           // ... how to get head block number or the fist block number ???...
-
-
-
+           EOS_ASSERT(sb_v0_size > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
+           buff = std::make_shared<std::vector<char>>(sb_v0_size);
+           ds.read(buff->data(), sb_v0_size);
        }
        return buff;
    }
@@ -414,6 +411,10 @@ namespace eosio { namespace chain {
       }
 
       void construct_index(const fc::path& index_file_name);
+
+      uint64_t get_blog_file_size()const{
+          return file.size();
+      }
    };
 
    using block_log_index = eosio::chain::log_index<block_log_exception>;
@@ -787,11 +788,47 @@ namespace eosio { namespace chain {
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
            block_file.seek(pos);
-           return read_packed_block(block_file, preamble.version, block_num);
-       }else {
-           auto [ds, version] = catalog.ro_stream_for_block(block_num);
-           if (ds.remaining())
-               return read_packed_block(ds, version, block_num);
+           if (preamble.version  >= pruned_transaction_version){
+               return read_packed_block(block_file, preamble.version);
+           }else{//pass in block size
+               //block size needed when reading a packed block from a block log file with version < pruned_transaction_version
+               uint32_t block_size;
+               uint64_t next_pos = get_block_pos(block_num + 1);
+               if (next_pos != block_log::npos){
+                   block_size = (next_pos - pos) - sizeof(uint64_t);
+                   return read_packed_block(block_file, preamble.version, block_size);
+               }else if (head && block_num == head->block_num()){ //head block
+                   block_file.seek_end(0);
+                   block_size = (block_file.tellp() - pos) - sizeof(uint64_t);
+                   block_file.seek(pos); // restore position of the block needed
+                   return read_packed_block(block_file, preamble.version, block_size);
+               }
+           }
+       }else {//search in catalog files
+           auto[ds, version] = catalog.ro_stream_for_block(block_num);
+
+           if (ds.remaining()){
+               if (version  >= pruned_transaction_version){
+                   return read_packed_block(ds, version);
+               }else {//pass in block size
+                   auto c_pos = catalog.get_block_position(block_num, boost::iostreams::mapped_file::mapmode::readonly);
+                   auto c_next_pos = catalog.get_block_position(block_num + 1,
+                                                                boost::iostreams::mapped_file::mapmode::readonly);
+                   uint32_t last_num = catalog.log_data.last_block_num();
+                   auto c_last_pos = catalog.get_block_position(last_num,
+                                                                boost::iostreams::mapped_file::mapmode::readonly);
+                   uint64_t block_size;
+                   if (c_pos && c_last_pos && c_pos != c_last_pos){
+                       if (c_next_pos){
+                           block_size = (c_next_pos.value() - c_pos.value()) - sizeof(uint64_t);
+                           return read_packed_block(ds, version, block_size);
+                       }
+                   }else if (c_pos && c_last_pos && c_pos == c_last_pos){
+                       block_size =catalog.log_data.get_blog_file_size() - c_pos.value() - sizeof(uint64_t);
+                       return read_packed_block(ds, version, block_size);
+                   }
+               }
+           }
        }
        return {}; // archived or deleted
    }
