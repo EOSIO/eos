@@ -5,7 +5,6 @@ add_library( blockvault_client_plugin
 target_link_libraries( blockvault_client_plugin appbase eosio_chain)
 target_include_directories( blockvault_client_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
-
 if (APPLE AND NOT DEFINED ENV{PKG_CONFIG_PATH})
    # to find libpq installed by homebrew, it is required to set the environment variable PKG_CONFIG_PATH
    set(ENV{PKG_CONFIG_PATH} /usr/local/opt/libpq/lib/pkgconfig)

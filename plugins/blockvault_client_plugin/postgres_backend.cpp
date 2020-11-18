@@ -1,9 +1,9 @@
-#include "postgres_backend.hpp"
-#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <limits.h>
 #include <unistd.h>
+#include <boost/filesystem.hpp>
+#include <eosio/blockvault_client_plugin/detail/postgres_backend.hpp>
 
 namespace eosio {
 namespace blockvault {

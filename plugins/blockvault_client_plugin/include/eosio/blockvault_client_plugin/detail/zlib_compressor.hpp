@@ -1,9 +1,10 @@
 #pragma once
+
+#include <fstream>
+#include <iostream>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
-#include <fstream>
-#include <iostream>
 
 namespace eosio {
 namespace blockvault {

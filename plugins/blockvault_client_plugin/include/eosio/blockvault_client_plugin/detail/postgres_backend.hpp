@@ -1,5 +1,6 @@
 #pragma once
-#include "backend.hpp"
+
+#include <eosio/blockvault_client_plugin/backend.hpp>
 #include <pqxx/pqxx>
 
 namespace eosio {

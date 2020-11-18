@@ -1,5 +1,6 @@
-#include "../postgres_backend.hpp"
 #include <boost/test/unit_test.hpp>
+#include <eosio/blockvault_client_plugin/backend.hpp>
+#include <eosio/blockvault_client_plugin/detail/postgres_backend.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/log/appender.hpp>
 

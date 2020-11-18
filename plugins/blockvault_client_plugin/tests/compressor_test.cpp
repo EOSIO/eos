@@ -1,7 +1,7 @@
-#include "../zlib_compressor.hpp"
-#include <boost/test/unit_test.hpp>
-#include <fc/filesystem.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
+#include <eosio/blockvault_client_plugin/detail/zlib_compressor.hpp>
+#include <fc/filesystem.hpp>
 #include <fc/scoped_exit.hpp>
 
 BOOST_AUTO_TEST_CASE(zlib_compressor_test) {
