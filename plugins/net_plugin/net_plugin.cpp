@@ -1200,7 +1200,7 @@ namespace eosio {
 
       send_buffer_type send_buffer;
       try{
-          send_buffer = cc.fetch_block_stream_by_number(num);
+          send_buffer = cc.fetch_block_stream_by_number(num, (c->protocol_version >= proto_pruned_types ? true:false));
       } FC_LOG_AND_DROP();
       if (send_buffer){
           c->enqueue_buffer(send_buffer, no_reason, true);

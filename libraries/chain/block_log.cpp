@@ -231,6 +231,45 @@ namespace eosio { namespace chain {
       std::exception_ptr inner;
    };
 
+    /*
+    *  1: pass in "request version" - signed_block or signed_block_v0, then compare with read version,
+    *     if not match,  convert to requested version (ref read_block())
+    *     then  read packed block
+    *       i)  v4:    the code below
+    *       ii) v1-v3: size of block i = (start position of block (i+1) - start position of block i)- 8 (if not head );
+    *            (ref: reverse_block_position_iterator structure)
+    *  2: consider compression status, only read without compression (done)
+    *
+    *  3: add mutex for public methods in class block_log
+    *
+    */
+    template <typename Stream>
+    std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t block_num) {
+       std::shared_ptr<std::vector<char>> buff;
+       if (version >= pruned_transaction_version) {
+           // block size - 4 bytes
+           uint32_t sz;
+           fc::raw::unpack(ds, sz);
+           // compression status - 1 byte
+           uint8_t  compression;
+           fc::raw::unpack(ds, compression);
+           EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
+                      block_log_exception, "Only \"none\" compression type is supported.");
+           // block data
+           buff = std::make_shared<std::vector<char>>(sz);
+           ds.read(buff->data(), sz);
+       }else{
+           // read a packed block from old version block log file that doesn't have block size saved.
+           // block size = diff(two consecutive block entries' start position) - sizeof(uint64_t)
+           // corner cases: head block or first block
+           // ... how to get head block number or the fist block number ???...
+
+
+
+       }
+       return buff;
+    }
+
    template <typename Stream>
    std::unique_ptr<signed_block> read_block(Stream&& ds, uint32_t version, uint32_t expect_block_num = 0) {
       std::unique_ptr<signed_block> block;
@@ -567,6 +606,7 @@ namespace eosio { namespace chain {
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
    uint32_t block_log::version() const { return my->preamble.version; }
 
+
    detail::block_log_impl::block_log_impl(const block_log::config_type& config) {
 
       if (!fc::is_directory(config.log_dir))
@@ -751,21 +791,7 @@ namespace eosio { namespace chain {
       my->head.reset();
    }
 
-   template <typename Stream>
-   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version) {
-       std::shared_ptr<std::vector<char>> buff;
-       if (version >= pruned_transaction_version) {
-           // block size - 4 bytes
-           uint32_t sz;
-           fc::raw::unpack(ds, sz);
-           // compression status - 1 byte
-           ds.skip(1);
-           // block data
-           buff = std::make_shared<std::vector<char>>(sz);
-           ds.read(buff->data(), sz);
-       }
-       return buff;
-   }
+
    std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_stream_by_num(uint32_t block_num) {
 
        std::shared_lock<std::shared_mutex> g(blog_mutex);
@@ -773,11 +799,11 @@ namespace eosio { namespace chain {
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
            block_file.seek(pos);
-           return read_packed_block(block_file, preamble.version);
+           return read_packed_block(block_file, preamble.version, block_num);
        }else {
            auto [ds, version] = catalog.ro_stream_for_block(block_num);
            if (ds.remaining())
-               return read_packed_block(ds, version);
+               return read_packed_block(ds, version, block_num);
        }
        return {}; // archived or deleted
    }
@@ -1062,6 +1088,8 @@ namespace eosio { namespace chain {
    bool block_log::is_supported_version(uint32_t version) {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
+
+   bool block_log::is_new_version(uint32_t version) { return (version >= pruned_transaction_version ? true:false);}
 
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
