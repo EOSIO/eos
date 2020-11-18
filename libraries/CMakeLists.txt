@@ -51,8 +51,3 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   "change_authkey import_ed decrypt_ec decrypt_rsa ssh logs generate_rsa import_ec echo\
   yubico_otp wrap_data wrap info import_rsa import_authkey generate_hmac generate_ec\
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
-
-find_package(OpenSSL REQUIRED)
-option(AMQP-CPP_LINUX_TCP CACHE ON)
-add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
-target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
