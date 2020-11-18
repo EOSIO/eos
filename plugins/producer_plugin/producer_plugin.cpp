@@ -2000,24 +2000,24 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    }
 }
 
-struct rejected_by_blockvault {};
-
 bool producer_plugin_impl::maybe_produce_block() {
    auto reschedule = fc::make_scoped_exit([this]{
       schedule_production_loop();
    });
 
-   const char* abort_reason = "due to produce_block error";
+   const char* reason = "produce_block error";
 
    try {
       produce_block();
       return true;
-   } catch(rejected_by_blockvault&) {
-      abort_reason = "because it is rejected by block vault";
+   } 
+   catch(block_validation_error&) {
+      reschedule.cancel();
+      reason = "block vault rejected block, waiting on external block to continue";
    }
    LOG_AND_DROP();
 
-   fc_dlog(_log, "Aborting block ${reason}", ("reason", abort_reason));
+   fc_wlog(_log, "Aborting block due to ${reason}", ("reason", reason));
    chain::controller& chain = chain_plug->chain();
    _unapplied_transactions.add_aborted( chain.abort_block() );
    return false;
@@ -2084,8 +2084,7 @@ void producer_plugin_impl::produce_block() {
                                                                pending_blk_state->block, [&p](bool b) {
          p.set_value( b );
       });
-      if (!f.get())
-         throw rejected_by_blockvault{};
+      EOS_ASSERT(f.get(), block_validation_error, "Block rejected by block vault" );
    }
 
    chain.commit_block();
