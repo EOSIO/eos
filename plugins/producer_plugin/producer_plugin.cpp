@@ -2013,7 +2013,7 @@ bool producer_plugin_impl::maybe_produce_block() {
    } 
    catch(block_validation_error&) {
       reschedule.cancel();
-      reason = "block vault validation problem";
+      reason = "block vault rejected block, waiting on external block to continue";
    }
    LOG_AND_DROP();
 
