@@ -1,5 +1,5 @@
 ## Building And Testing The `blockvault_client_plugin`
-*this guide assumes the user is using macOS and has the appropriate dependencies installed for building `EOSIO/eos`
+*this guide assumes the user is using macOS and has the appropriate dependencies installed for building `EOSIO/eos`<br>
 *to build and test the `blockvault_client_plugin` as it stands a user needs to have the dependencies libpq, libpqxx, and docker:
 
 <hr>
