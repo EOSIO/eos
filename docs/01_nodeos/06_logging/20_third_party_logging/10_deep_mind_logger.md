@@ -11,7 +11,7 @@ The `Deep-mind logger` is part of the `dfuse` [platform]([https://dfuse.io/](htt
 
 EOSIO 3.0 integrates the `nodeos` core service daemon with `deep-mind logger`. To benefit from full `deep-mind` logging functionality you must start your `nodeos` instance with the flag `--deep-mind`. After the start you can observe in the `nodeos` console output the informative details outputs created by the `deep-mind` logger. They distinguish themselves from the default `nodeos` output lines because they start with the `DMLOG` keyword. \
  \
-Example of `deep-mind` log lines:
+Examples of `deep-mind` log lines as you would see them in the `nodeos` output console:
 
 ```sh
 DMLOG START_BLOCK 30515

@@ -1,6 +1,6 @@
 ---
-content_title: Nodeos Native Logging
-link_text: Nodeos Native Logging
+content_title: Native Logging
+link_text: Native Logging
 ---
 
 Logging for `nodeos` is controlled by the `logging.json` file. CLI options can be passed to `nodeos` to [setup `logging.json`](10_setup-logging.json.md). The logging configuration file can be used to define [appenders](#appenders) and tie them to [loggers](#loggers) and [logging levels](20_logging-levels.md).
