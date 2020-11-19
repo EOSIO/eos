@@ -219,22 +219,23 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
-      auto&  delta_v1      = std::get<1>(delta);
       size_t num_processed = 0;
-      store_delta({ view_state }, delta_v1, head == 0, [&]() {
-         if (delta_v1.rows.size() > 10000 && !(num_processed % 10000)) {
-            if (shutdown())
-               throw std::runtime_error("shutting down");
-            ilog("block ${b} ${t} ${n} of ${r}",
-                 ("b", block_num)("t", delta_v1.name)("n", num_processed)("r", delta_v1.rows.size()));
-            if (head == 0) {
-               end_write(false);
-               view_state.reset();
+      std::visit(
+         [&](auto& delta_any_v) {
+         store_delta({ view_state }, delta_any_v, head == 0, [&]() {
+            if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
+               if (shutdown())
+                  throw std::runtime_error("shutting down");
+               ilog("block ${b} ${t} ${n} of ${r}",
+                    ("b", block_num)("t", delta_any_v.name)("n", num_processed)("r", delta_any_v.rows.size()));
+               if (head == 0) {
+                  end_write(false);
+                  view_state.reset();
+               }
             }
-         }
-         ++num_processed;
-      });
-   }
+            ++num_processed;
+         });
+      }, delta);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,

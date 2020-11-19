@@ -206,8 +206,8 @@ struct contract_index128_kv : eosio::kv_table<contract_index128> {
    }
 };
 
-template <typename Table, typename F>
-void store_delta_typed(eosio::kv_environment environment, table_delta_v1& delta, bool bypass_preexist_check, F f) {
+template <typename Table, typename D, typename F>
+void store_delta_typed(eosio::kv_environment environment, D& delta, bool bypass_preexist_check, F f) {
    Table table{ environment };
    for (auto& row : delta.rows) {
       f();
@@ -219,8 +219,8 @@ void store_delta_typed(eosio::kv_environment environment, table_delta_v1& delta,
    }
 }
 
-template <typename F>
-void store_delta_kv(eosio::kv_environment environment, table_delta_v1& delta, F f) {
+template <typename D, typename F>
+void store_delta_kv(eosio::kv_environment environment, D& delta, F f) {
    for (auto& row : delta.rows) {
       f();
       auto  obj  = eosio::from_bin<key_value>(row.data);
@@ -236,8 +236,8 @@ void store_delta_kv(eosio::kv_environment environment, table_delta_v1& delta, F 
    }
 }
 
-template <typename F>
-inline void store_delta(eosio::kv_environment environment, table_delta_v1& delta, bool bypass_preexist_check, F f) {
+template <typename D, typename F>
+inline void store_delta(eosio::kv_environment environment, D& delta, bool bypass_preexist_check, F f) {
    if (delta.name == "global_property")
       store_delta_typed<global_property_kv>(environment, delta, bypass_preexist_check, f);
    if (delta.name == "account")
@@ -261,7 +261,7 @@ inline void store_delta(eosio::kv_environment environment, table_delta_v1& delta
 inline void store_deltas(eosio::kv_environment environment, std::vector<table_delta>& deltas,
                          bool bypass_preexist_check) {
    for (auto& delta : deltas) //
-      store_delta(environment, std::get<table_delta_v1>(delta), bypass_preexist_check, [] {});
+      std::visit([&](auto& delta_any_v) { store_delta(environment, delta_any_v, bypass_preexist_check, [] {}); }, delta);
 }
 
 } // namespace b1::rodeos

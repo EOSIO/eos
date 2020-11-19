@@ -65,7 +65,7 @@ struct augmented_transaction_trace {
 };
 
 struct table_delta {
-   fc::unsigned_int                                                          struct_version = 0;
+   fc::unsigned_int                                                          struct_version = 1;
    std::string                                                               name{};
    state_history::big_vector_wrapper<std::vector<std::pair<uint8_t, bytes>>> rows{};
 };
