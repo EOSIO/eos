@@ -224,10 +224,18 @@ public:
    std::optional<scoped_connection>                                   applied_transaction_connection;
 
    std::optional<chain_apis::account_query_db>                        _account_query_db;
+
+   void do_non_snapshot_startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+       if (genesis) {
+           chain->startup(shutdown, check_shutdown, *genesis);
+       }else {
+           chain->startup(shutdown, check_shutdown);
+       }
+   }
 };
 
-chain_plugin::chain_plugin()
-:my(new chain_plugin_impl()) {
+    chain_plugin::chain_plugin()
+            :my(new chain_plugin_impl()) {
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<eosio::chain::backing_store_type>();
@@ -1319,10 +1327,8 @@ void chain_plugin::plugin_startup()
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          my->chain->startup(shutdown, check_shutdown, reader);
          infile.close();
-      } else if( my->genesis ) {
-         my->chain->startup(shutdown, check_shutdown, *my->genesis);
       } else {
-         my->chain->startup(shutdown, check_shutdown);
+         my->do_non_snapshot_startup(shutdown, check_shutdown);
       }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
