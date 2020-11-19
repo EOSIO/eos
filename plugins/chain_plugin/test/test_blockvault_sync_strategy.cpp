@@ -21,6 +21,14 @@ struct mock_genesis_t {
 
 };
 
+struct mock_signed_block_t {
+    block_id_type _id;
+    uint32_t _block_num;
+    block_id_type calculate_id() {return _id;}
+    uint32_t block_num() {return _block_num;}
+
+};
+
 struct mock_chain_t {
     void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, std::shared_ptr<istream_snapshot_reader> reader) {
        _shutdown = shutdown;
@@ -41,24 +49,8 @@ struct mock_chain_t {
         _startup_no_reader_called = true;
     }
 
-    struct mock_fork_db_t {
-        struct mock_fork_db_head_t {
-           block_id_type id;
-           uint32_t block_num;
-
-           struct mock_fork_db_header_t {
-              block_id_type previous;
-           } header ;
-        } _head;
-
-       mock_fork_db_head_t* _head_to_return = &_head;
-       mock_fork_db_head_t* head() {return _head_to_return; }
-
-    } _fork_db;
-
-    mock_fork_db_t& fork_db() {
-       return _fork_db;
-    }
+    mock_signed_block_t* _last_irreversible_block  = nullptr;
+    mock_signed_block_t* last_irreversible_block() {return _last_irreversible_block;}
 
     std::function<void()> _shutdown;
     std::function<bool()> _check_shutdown;
@@ -111,7 +103,6 @@ BOOST_FIXTURE_TEST_CASE(empty_previous_block_id_test, TESTER) { try {
 
     mock_chain_plugin_t chain;
     mock_blockvault_t bv;
-    chain.chain->_fork_db._head_to_return = nullptr;
 
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
@@ -131,7 +122,8 @@ BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
     auto check_shutdown = [](){ return false; };
     std::string bid_hex("deadbabe000000000000000000000000000000000000000000000000deadbeef");
     chain::block_id_type bid(bid_hex);
-    chain.chain->_fork_db._head.header.previous = bid;
+    mock_signed_block_t lib {bid, 100};
+    chain.chain->_last_irreversible_block = &lib;
 
     blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
     uut.do_sync();
