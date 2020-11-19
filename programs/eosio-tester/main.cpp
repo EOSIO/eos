@@ -683,7 +683,7 @@ struct callbacks {
    }
 
    file& assert_file(int32_t file_index) {
-      if (file_index < 0 || file_index >= state.files.size() || !state.files[file_index].f)
+      if (file_index < 0 || static_cast<uint32_t>(file_index) >= state.files.size() || !state.files[file_index].f)
          throw std::runtime_error("file is not opened");
       return state.files[file_index];
    }
