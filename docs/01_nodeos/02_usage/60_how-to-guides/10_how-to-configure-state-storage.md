@@ -15,14 +15,14 @@ Config Options for eosio::chain_plugin:
                                         compaction. Defaults to the number of available cores. 
   --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
-  --rocksdb-write-buffer-size-mb arg (=134217728)
-                                        Size of a single rocksdb memtable
+  --rocksdb-write-buffer-size-mb arg (=128MB)
+                                        Size of a single rocksdb memtable (in MiB)
  
 # Procedure
 To use `rocksdb` for state storage:
 
 ```shell
-nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’rocksdb’ --rocksdb-threads=’2’ --rocksdb-files=’2’ --rocksdb-write-buffer-size-mb=’134217728’  --plugin eosio::http_plugin 
+nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’rocksdb’ --rocksdb-threads=’2’ --rocksdb-files=’2’ --rocksdb-write-buffer-size-mb=’128’  --plugin eosio::http_plugin 
 ```
 
 To use `chainbase` for state storage:

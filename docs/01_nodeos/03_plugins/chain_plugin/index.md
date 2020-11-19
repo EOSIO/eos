@@ -120,8 +120,8 @@ Config Options for eosio::chain_plugin:
 										available cores.  
   --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
-  --rocksdb-write-buffer-size-mb arg (=134217728)
-                                        Size of a single rocksdb memtable
+  --rocksdb-write-buffer-size-mb arg (=128MB)
+                                        Size of a single rocksdb memtable (in MiB)
   --reversible-blocks-db-size-mb arg (=340)
                                         Maximum size (in MiB) of the reversible
                                         blocks database
