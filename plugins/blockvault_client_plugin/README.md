@@ -38,8 +38,9 @@ make -j10
 ~/blockvault/build $ docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
 ~/blockvault/build $ ./tests/nodeos_run_test.py --keep-logs --clean-run -v
 
-# Afterwhich you can now tail the stderr log of the `nodeos` node `node_00` (note: that file is given a unique ID on each subsequent run):
 # Note: you may need to restart docker upon each subsequent run to clear the POSTGRES databse
 # Also Note: you can delete the docker container by running `docker ps` and delete the corresponding docker CONTAINER ID like so: `docker rm -f <CONTAINER ID>`
+
+# Afterwhich you can now tail the stderr log of the `nodeos` node `node_00` (note: that file is given a unique ID on each subsequent run):
 ~/blockvault/build tail -f ./var/lib/node_00/stderr.2020_11_17_00_58_06.txt | grep blockvault
 ```
