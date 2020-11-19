@@ -2723,6 +2723,9 @@ time_point controller::last_irreversible_block_time() const {
    return my->fork_db.root()->header.timestamp.to_time_point();
 }
 
+const signed_block_ptr controller::last_irreversible_block() const {
+  return my->blog.head();
+}
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();
