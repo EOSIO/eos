@@ -246,4 +246,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_sync, T, test_types) {
       // sync from existant block id
       BOOST_REQUIRE_NO_THROW(fixture.sync(mock_block_id{12, 'c'}, callback));
    }
+
+   {
+      mock_sync_callback callback;
+      // sync from the most recent block id
+      BOOST_REQUIRE_NO_THROW(fixture.sync(mock_block_id{14, 'g'}, callback));
+   }
 }
