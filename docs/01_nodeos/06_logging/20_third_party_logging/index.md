@@ -12,4 +12,4 @@ To stay informed about the overall and detailed performance of your EOSIO-based 
 
 ## Performance Considerations
 
-Many wise people already said it, everything comes with a price. The telemetry tools, when activated, will have a certain impact on your `nodeos` performance which depends on various factors, but nevertheless the performance will be impacted. Therefore it is recommended you use them wisely in those situations when you really need the extra detailed information they provide, and then you turn them off.
+Many wise people already said it, everything comes with a price. The telemetry tools, when activated, will have a certain impact on your `nodeos` performance which depends on various factors, but nevertheless the performance will be impacted; therefore, it is recommended you use them wisely in those situations when you really need the extra detailed information they provide, and then you turn them off.
