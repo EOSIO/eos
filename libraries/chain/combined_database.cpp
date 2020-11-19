@@ -165,9 +165,7 @@ namespace eosio { namespace chain {
             options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
 
-            // By default, RocksDB uses only one background thread
-            // for flush and compaction.
-            // Good value for `total_threads` is the number of cores
+            // Number of threads used for flush and compaction.
             options.IncreaseParallelism(cfg.persistent_storage_num_threads);
 
             options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
@@ -178,7 +176,7 @@ namespace eosio { namespace chain {
 
             // Use this option to increase the number of threads
             // used to open the files.
-            options.max_file_opening_threads = cfg.persistent_storage_num_threads; // Default should be the # of Cores
+            options.max_file_opening_threads = cfg.persistent_storage_num_threads;
 
             // Write Buffer Size - Sets the size of a single
             // memtable. Once memtable exceeds this size, it is
@@ -204,7 +202,7 @@ namespace eosio { namespace chain {
             // that will concurrently perform a compaction job by
             // breaking it into multiple,
             // smaller ones that are run simultaneously.
-            options.max_subcompactions = cfg.persistent_storage_num_threads;	// Default should be the # of CPUs
+            options.max_subcompactions = cfg.persistent_storage_num_threads;
 
             // Full and partitioned filters in the block-based table
             // use an improved Bloom filter implementation, enabled
