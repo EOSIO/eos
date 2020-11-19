@@ -161,30 +161,28 @@ namespace eosio { namespace chain {
        : backing_store(backing_store_type::ROCKSDB), db(chain_db), kv_database{ [&]() {
             rocksdb::Options options;
 
-            options.create_if_missing = !cfg.read_only; // Creates a database if it is missing
+            options.create_if_missing = true; // Creates a database if it is missing
             options.level_compaction_dynamic_level_bytes = true;
-            options.bytes_per_sync = 1048576; // used to control the write rate of flushes and compactions.
+            options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
 
-            // By default, RocksDB uses only one background thread
-            // for flush and compaction.
-            // Good value for `total_threads` is the number of cores
-            options.IncreaseParallelism(cfg.rocksdb_threads);
+            // Number of threads used for flush and compaction.
+            options.IncreaseParallelism(cfg.persistent_storage_num_threads);
 
             options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
 
             // Number of open files that can be used by the DB.  
             // Setting it to -1 means files opened are always kept open.
-            options.max_open_files = cfg.rocksdb_max_open_files;
+            options.max_open_files = cfg.persistent_storage_max_num_files;
 
             // Use this option to increase the number of threads
             // used to open the files.
-            options.max_file_opening_threads = cfg.rocksdb_threads; // Default should be the # of Cores
+            options.max_file_opening_threads = cfg.persistent_storage_num_threads;
 
             // Write Buffer Size - Sets the size of a single
             // memtable. Once memtable exceeds this size, it is
             // marked immutable and a new one is created.
             // Default should be 128MB
-            options.write_buffer_size = cfg.rocksdb_write_buffer_size;
+            options.write_buffer_size = cfg.persistent_storage_write_buffer_size;
             options.max_write_buffer_number = 10; // maximum number of memtables, both active and immutable
             options.min_write_buffer_number_to_merge = 2; // minimum number of memtables to be merged before flushing to storage
 
@@ -193,7 +191,7 @@ namespace eosio { namespace chain {
 
             // Size of L0 = write_buffer_size * min_write_buffer_number_to_merge * level0_file_num_compaction_trigger
             // For optimal performance make this equal to L0
-            options.max_bytes_for_level_base = cfg.rocksdb_write_buffer_size * options.min_write_buffer_number_to_merge * options.level0_file_num_compaction_trigger; 
+            options.max_bytes_for_level_base = cfg.persistent_storage_write_buffer_size * options.min_write_buffer_number_to_merge * options.level0_file_num_compaction_trigger;
 
             // Files in level 1 will have target_file_size_base
             // bytes. It’s recommended setting target_file_size_base
@@ -204,7 +202,7 @@ namespace eosio { namespace chain {
             // that will concurrently perform a compaction job by
             // breaking it into multiple,
             // smaller ones that are run simultaneously.
-            options.max_subcompactions = cfg.rocksdb_threads;	// Default should be the # of CPUs
+            options.max_subcompactions = cfg.persistent_storage_num_threads;
 
             // Full and partitioned filters in the block-based table
             // use an improved Bloom filter implementation, enabled
@@ -588,7 +586,7 @@ namespace eosio { namespace chain {
             static const eosio::session::shared_bytes  empty_payload;
             unsigned_int       size;
             read_row(size);
-            for (int i = 0; i < size.value; ++i) {
+            for (uint32_t i = 0; i < size.value; ++i) {
                backing_store::secondary_index_view<index_t> row;
                read_row(row);
                backing_store::payer_payload pp{row.payer, nullptr, 0};

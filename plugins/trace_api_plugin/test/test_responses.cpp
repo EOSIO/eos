@@ -130,11 +130,11 @@ BOOST_AUTO_TEST_SUITE(trace_responses)
          { 0x00, 0x01, 0x02, 0x03 }
       };
 
-      auto transaction_trace = transaction_trace_v1 {
+      auto transaction_trace = transaction_trace_v1 { {
          "0000000000000000000000000000000000000000000000000000000000000001"_h,
          {
             action_trace
-         },
+         }},
          fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
          10,
          5,

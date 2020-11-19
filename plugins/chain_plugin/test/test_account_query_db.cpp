@@ -21,7 +21,7 @@ using params  = account_query_db::get_accounts_by_authorizers_params;
 using results = account_query_db::get_accounts_by_authorizers_result;
 
 bool find_account_name(results rst, account_name name){
-    for (const auto acc : rst.accounts){
+    for (const auto& acc : rst.accounts){
         if (acc.account_name == name){
             return true;
         }
@@ -29,7 +29,7 @@ bool find_account_name(results rst, account_name name){
     return false;
 }
 bool find_account_auth(results rst, account_name name, permission_name perm){
-    for (const auto acc : rst.accounts){
+    for (const auto& acc : rst.accounts){
         if (acc.account_name == name && acc.permission_name == perm)
             return true;
     }
