@@ -5,11 +5,11 @@ link_text: Zipkin Tracer Integration
 
 ## Overview
 
-The `Zipkin service` is a [distributed tracing system](https://zipkin.io/). It helps gather timing data needed to troubleshoot latency problems in service architectures. Its features include both the collection and lookup of this data. `Zipkin tracer` is the EOSIO 3.0 component that sends traces to the `Zipkin service`. The `Zipkin` service can be installed in the local environment or it can be remote.
+The `Zipkin service` is a [distributed tracing system](https://zipkin.io/). It helps gather timing data needed to troubleshoot latency problems in service architectures. Its features include both the collection and lookup of this data. `Zipkin tracer` is the EOSIO component that sends traces to the `Zipkin service`. The `Zipkin` service can be installed in the local environment or it can be remote.
 
 ### How To Enable Zipkin Tracer
 
-EOSIO 3.0 makes available `Zipkin tracer` through the [core `chain_plugin`](https://developers.eos.io/manuals/eos/v2.0/nodeos/plugins/chain_plugin/index/?query=chain%20plugin&page=1#gatsby-focus-wrapper). To enable the `Zipkin tracer` you must set the `telemetry-url` parameter for the `chain_plugin`. There are two additional parameters you can set: `telemetry-service-name` and `telemetry-timeout-us`. All three available parameters are detailed below:
+EOSIO makes available `Zipkin tracer` through the [core `chain_plugin`](https://developers.eos.io/manuals/eos/v2.0/nodeos/plugins/chain_plugin/index/?query=chain%20plugin&page=1#gatsby-focus-wrapper). To enable the `Zipkin tracer` you must set the `telemetry-url` parameter for the `chain_plugin`. There are two additional parameters you can set: `telemetry-service-name` and `telemetry-timeout-us`. All three available parameters are detailed below:
 
 * `telemetry-url` specifies the url of the Zipkin service, e.g. [http://127.0.0.1:9411/api/v2/spans](http://127.0.0.1:9411/api/v2/spans) if it is installed in the local environment.
 * `telemetry-service-name` specifies the Zipkin `localEndpoint.serviceName` sent with each span.
