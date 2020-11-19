@@ -37,11 +37,6 @@ struct mock_chain_t {
        _startup_reader_called = true;
     }
 
-    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
-        _shutdown = shutdown;
-        _check_shutdown = check_shutdown;
-        _startup_no_reader_called = true;
-    }
 
     void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, mock_genesis_t& genesis) {
         _shutdown = shutdown;
@@ -80,7 +75,6 @@ struct mock_chain_plugin_t {
     mock_chain_plugin_t() {
         _accept_block_rc = true;
         chain = std::make_unique<mock_chain_t>();
-        genesis = nullptr;
     }
 
     bool incoming_block_sync_method( const chain::signed_block_ptr& block, const chain::block_id_type& id ){
@@ -94,7 +88,9 @@ struct mock_chain_plugin_t {
     block_id_type _id;
     std::unique_ptr<mock_chain_t> chain;
 
-    mock_genesis_t* genesis;
+    void do_non_snapshot_startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+
+    }
 };
 
 BOOST_AUTO_TEST_SUITE(blockvault_sync_strategy_tests)

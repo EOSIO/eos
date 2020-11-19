@@ -14,13 +14,8 @@ namespace eosio {
                 _startup_run(false), _received_snapshot(false){ }
 
             void run_startup() {
-                if (_blockchain_provider.genesis) {
-                    _blockchain_provider.chain->startup(_shutdown, _check_shutdown, *_blockchain_provider.genesis);
-                }else {
-                    _blockchain_provider.chain->startup(_shutdown, _check_shutdown);
-                }
+                _blockchain_provider.do_non_snapshot_startup(_shutdown, _check_shutdown);
                 _startup_run = true;
-
             }
 
             void do_sync() {
@@ -43,10 +38,13 @@ namespace eosio {
 
             void on_snapshot(const char* snapshot_filename) override final {
                 ilog("Received snapshot from blockvault ${fn}", ("fn", snapshot_filename));
-
                 EOS_ASSERT(!_received_snapshot, plugin_exception,
                            "Received multiple snapshots from blockvault.", );
                 _received_snapshot = true;
+
+                if (_check_shutdown()) {
+                   _shutdown();
+                }
 
                 auto infile = std::ifstream(snapshot_filename, (std::ios::in | std::ios::binary));
                 auto reader = std::make_shared<chain::istream_snapshot_reader>(infile);
@@ -59,6 +57,10 @@ namespace eosio {
             }
 
             void on_block(eosio::chain::signed_block_ptr block) override final {
+                if (_check_shutdown()) {
+                    _shutdown();
+                }
+                
                 if (!_startup_run) {
                     run_startup();
                 }
