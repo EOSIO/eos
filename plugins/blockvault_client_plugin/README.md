@@ -32,7 +32,7 @@ make -j10
 
 <hr>
 
-### Running the `nodeos_run_test.py` as follows to see the `blockvault_client_plugin` in action:
+### Running the `nodeos_run_test.py` to see the `blockvault_client_plugin` in action:
 ```bash
 ~/blockvault $ cd build
 ~/blockvault/build $ docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
