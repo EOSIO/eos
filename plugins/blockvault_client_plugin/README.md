@@ -1,19 +1,22 @@
-# Building And Testing The `blockvault_client_plugin`
+## Building And Testing The `blockvault_client_plugin`
 *this guide assumes the user is using macOS and has the appropriate dependencies installed for building `EOSIO/eos`
+*to build and test the `blockvault_client_plugin` as it stands a user needs to have the dependencies libpq, libpqxx, and docker:
 
-To build and test the `blockvault_client_plugin` as it stands a user needs to have the dependencies libpq, libpqxx, and docker:
+<hr>
 
-To install dependencies libpq and libpqxx:
+### Building the `blockvault` branch:
+
+Install dependencies libpq and libpqxx:
 ```bash
 brew install libpq libpqxx
 ```
 
-To install docker:
+Install docker:
 ```bash
 brew cask install docker
 ```
 
-Follow the workflow for building the `blockvault` branch:
+Build the `blockvault` branch:
 ```bash
 ~ $ git clone --recursive --branch blockvault git@github.com:EOSIO/eos.git blockvault
 ~ $ cd blockvault
@@ -27,7 +30,9 @@ cmake ..
 make -j10
 ```
 
-Follow the workflow for running the `nodeos_run_test.py` as follows to see the `blockvault_client_plugin` in action:
+<hr>
+
+### Running the `nodeos_run_test.py` as follows to see the `blockvault_client_plugin` in action:
 ```bash
 ~/blockvault $ cd build
 ~/blockvault/build $ docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
