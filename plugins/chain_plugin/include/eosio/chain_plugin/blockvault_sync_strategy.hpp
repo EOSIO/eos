@@ -8,10 +8,12 @@ namespace eosio {
         template<typename BP>
         struct blockvault_sync_strategy : public sync_callback {
             blockvault_sync_strategy(block_vault_interface* blockvault, BP& blockchain_provider,
-                                     std::function<void()> shutdown, std::function<bool()> check_shutdown) :
+                std::function<void()> shutdown, std::function<bool()> check_shutdown) :
                 _blockvault(blockvault), _blockchain_provider(blockchain_provider),
                 _shutdown(shutdown), _check_shutdown(check_shutdown),
-                _startup_run(false), _received_snapshot(false){ }
+                _startup_run(false), _received_snapshot(false) {
+                EOS_ASSERT(nullptr != blockvault, plugin_exception, "block_vault_interface cannot be null");
+            }
 
             void run_startup() {
                 _blockchain_provider.do_non_snapshot_startup(_shutdown, _check_shutdown);
@@ -60,7 +62,7 @@ namespace eosio {
                 if (_check_shutdown()) {
                     _shutdown();
                 }
-                
+
                 if (!_startup_run) {
                     run_startup();
                 }

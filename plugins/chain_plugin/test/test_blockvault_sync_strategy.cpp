@@ -37,13 +37,6 @@ struct mock_chain_t {
        _startup_reader_called = true;
     }
 
-
-    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, mock_genesis_t& genesis) {
-        _shutdown = shutdown;
-        _check_shutdown = check_shutdown;
-        _startup_no_reader_called = true;
-    }
-
     mock_signed_block_t* _last_irreversible_block  = nullptr;
     mock_signed_block_t* last_irreversible_block() {return _last_irreversible_block;}
 
@@ -51,7 +44,6 @@ struct mock_chain_t {
     std::function<bool()> _check_shutdown;
     std::shared_ptr<istream_snapshot_reader> _reader;
 
-    bool _startup_no_reader_called;
     bool _startup_reader_called;
 };
 
@@ -88,8 +80,10 @@ struct mock_chain_plugin_t {
     block_id_type _id;
     std::unique_ptr<mock_chain_t> chain;
 
-    void do_non_snapshot_startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+    bool _startup_non_snapshot_called = false;
 
+    void do_non_snapshot_startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
+        _startup_non_snapshot_called = true;
     }
 };
 
@@ -97,13 +91,13 @@ BOOST_AUTO_TEST_SUITE(blockvault_sync_strategy_tests)
 
 BOOST_FIXTURE_TEST_CASE(empty_previous_block_id_test, TESTER) { try {
 
-    mock_chain_plugin_t chain;
+    mock_chain_plugin_t plugin;
     mock_blockvault_t bv;
 
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
 
-    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
+    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, plugin, shutdown, check_shutdown);
     uut.do_sync();
 
 	BOOST_TEST(nullptr == bv._previous_block_id);
@@ -112,16 +106,16 @@ BOOST_FIXTURE_TEST_CASE(empty_previous_block_id_test, TESTER) { try {
 
 BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
 
-    mock_chain_plugin_t chain;
+    mock_chain_plugin_t plugin;
     mock_blockvault_t bv;
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
     std::string bid_hex("deadbabe000000000000000000000000000000000000000000000000deadbeef");
     chain::block_id_type bid(bid_hex);
     mock_signed_block_t lib {bid, 100};
-    chain.chain->_last_irreversible_block = &lib;
+    plugin.chain->_last_irreversible_block = &lib;
 
-    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
+    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, plugin, shutdown, check_shutdown);
     uut.do_sync();
 
     BOOST_TEST(*bv._previous_block_id == bid);
@@ -130,21 +124,21 @@ BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
 
 BOOST_FIXTURE_TEST_CASE(on_block_no_snapshot, TESTER) { try {
 
-    mock_chain_plugin_t chain;
+    mock_chain_plugin_t plugin;
     mock_blockvault_t bv;
-    chain.chain = std::make_unique<mock_chain_t>();
+    plugin.chain = std::make_unique<mock_chain_t>();
 
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
-    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
+    blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, plugin, shutdown, check_shutdown);
     auto b = produce_empty_block();
 
     uut.on_block(b);
-    BOOST_TEST(chain.chain->_reader == nullptr);
-    BOOST_TEST(chain.chain->_startup_no_reader_called);
-    BOOST_TEST(!chain.chain->_startup_reader_called);
-    BOOST_TEST(chain._block->calculate_id() == b->calculate_id());
-    BOOST_TEST(chain._block->calculate_id() == chain._id);
+    BOOST_TEST(plugin.chain->_reader == nullptr);
+    BOOST_TEST(plugin._startup_non_snapshot_called);
+    BOOST_TEST(!plugin.chain->_startup_reader_called);
+    BOOST_TEST(plugin._block->calculate_id() == b->calculate_id());
+    BOOST_TEST(plugin._block->calculate_id() == plugin._id);
 
 } FC_LOG_AND_RETHROW() }
 BOOST_AUTO_TEST_SUITE_END()
