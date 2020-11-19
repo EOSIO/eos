@@ -206,18 +206,6 @@ enum class key_context {
    table_only_reverse  // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
 };
 
-// the context in which the table writer should be reporting to receiver_.add_row(...).  NOTE: for any context indicating
-// that it reports complete/valid table_id_object_views, for it to be valid it must be passed all keys belonging to that
-// table, if not, the count portion of the table_id_object_view will not be accurate
-enum class key_context {
-   complete,           // report keys (via receiver_.add_row) as they are seen, so table will be after its keys (use rocksdb_whole_db_table_collector to reverse this)
-   complete_reverse,   // report keys (via receiver_.add_row) as they are seen, used when reverse iterating through a table space (do not use with rocksdb_whole_db_table_collector)
-   standalone,         // report an incomplete table (only code/scope/table valid) prior to reporting its keys
-   standalone_reverse, // report an incomplete table (only code/scope/table valid) prior to reporting its keys
-   table_only,         // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
-   table_only_reverse  // report only the table, primary and secondary keys are only processed enough to report a complete/valid table_id_object_view
-};
-
 // processes any keys passed to it, reporting them to its receiver as it sees them.  Use a key_context to adjust this behavior,
 // pass in a keep_processing lambda to indicate to one of the walk_*** methods that processing should stop (like for
 // limiting time querying the database for an PRC call)
