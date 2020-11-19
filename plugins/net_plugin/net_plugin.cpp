@@ -3576,7 +3576,7 @@ namespace eosio {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
-         ( "keepalive-interval", bpo::value<int>()->default_value(def_keepalive_interval), "heartbeat keepalive message interval in miliseconds")
+         ( "p2p-keepalive-interval", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in miliseconds")
 
         ;
    }
@@ -3602,10 +3602,12 @@ namespace eosio {
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
-         my->keepalive_interval = std::chrono::milliseconds( options.at( "keepalive-interval" ).as<int>() );
+         my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval" ).as<int>() );
+         EOS_ASSERT( my->keepalive_interval.count() > 0, chain::plugin_config_exception,
+                     "p2p-keepalive_interval must be greater than 0" );
 
-         if( options.count( "keepalive-interval" )) {
-            my->heartbeat_timeout = std::chrono::milliseconds( options.at( "keepalive-interval" ).as<int>() * 2 );
+         if( options.count( "p2p-keepalive-interval" )) {
+            my->heartbeat_timeout = std::chrono::milliseconds( options.at( "p2p-keepalive-interval" ).as<int>() * 2 );
          }
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
