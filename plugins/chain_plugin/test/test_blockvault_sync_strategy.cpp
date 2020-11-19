@@ -17,6 +17,10 @@ using namespace eosio::testing;
 using namespace eosio::chain_apis;
 using namespace eosio::blockvault;
 
+struct mock_genesis_t {
+
+};
+
 struct mock_chain_t {
     void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, std::shared_ptr<istream_snapshot_reader> reader) {
        _shutdown = shutdown;
@@ -31,12 +35,24 @@ struct mock_chain_t {
         _startup_no_reader_called = true;
     }
 
+    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, mock_genesis_t& genesis) {
+        _shutdown = shutdown;
+        _check_shutdown = check_shutdown;
+        _startup_no_reader_called = true;
+    }
+
     struct mock_fork_db_t {
         struct mock_fork_db_head_t {
            block_id_type id;
+           uint32_t block_num;
+
+           struct mock_fork_db_header_t {
+              block_id_type previous;
+           } header ;
         } _head;
 
-       mock_fork_db_head_t* head() {return &_head; }
+       mock_fork_db_head_t* _head_to_return = &_head;
+       mock_fork_db_head_t* head() {return _head_to_return; }
 
     } _fork_db;
 
@@ -67,7 +83,14 @@ struct mock_blockvault_t : public block_vault_interface {
     const eosio::chain::block_id_type* _previous_block_id;
 };
 
+
 struct mock_chain_plugin_t {
+    mock_chain_plugin_t() {
+        _accept_block_rc = true;
+        chain = std::make_unique<mock_chain_t>();
+        genesis = nullptr;
+    }
+
     bool incoming_block_sync_method( const chain::signed_block_ptr& block, const chain::block_id_type& id ){
         _block = block;
         _id = id;
@@ -78,6 +101,8 @@ struct mock_chain_plugin_t {
     signed_block_ptr _block;
     block_id_type _id;
     std::unique_ptr<mock_chain_t> chain;
+
+    mock_genesis_t* genesis;
 };
 
 BOOST_AUTO_TEST_SUITE(blockvault_sync_strategy_tests)
@@ -86,6 +111,7 @@ BOOST_FIXTURE_TEST_CASE(empty_previous_block_id_test, TESTER) { try {
 
     mock_chain_plugin_t chain;
     mock_blockvault_t bv;
+    chain.chain->_fork_db._head_to_return = nullptr;
 
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
@@ -101,12 +127,11 @@ BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
 
     mock_chain_plugin_t chain;
     mock_blockvault_t bv;
-    chain.chain = std::make_unique<mock_chain_t>();
     auto shutdown = [](){ return false; };
     auto check_shutdown = [](){ return false; };
     std::string bid_hex("deadbabe000000000000000000000000000000000000000000000000deadbeef");
     chain::block_id_type bid(bid_hex);
-    chain.chain->_fork_db._head.id = bid;
+    chain.chain->_fork_db._head.header.previous = bid;
 
     blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, chain, shutdown, check_shutdown);
     uut.do_sync();

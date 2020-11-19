@@ -3,9 +3,9 @@ target_link_libraries(blockvault_unittests blockvault Boost::unit_test_framework
 
 find_program(DOCKER docker)
 if (DOCKER)
-   configure_file(test.sh ${CMAKE_CURRENT_BINARY_DIR}/test.sh COPYONLY)
+  configure_file(test.sh ${CMAKE_CURRENT_BINARY_DIR}/test.sh COPYONLY)
    add_test(NAME blockvault_unittests COMMAND test.sh)
-elseif ($ENV{CI} STREQUAL "true")
+elseif ("$ENV{CI}" STREQUAL "true")
    find_program(POSTGRESQL pg_ctlcluster)
    if (POSTGRESQL)
       configure_file(ci_test.sh ${CMAKE_CURRENT_BINARY_DIR}/ci_test.sh COPYONLY)
