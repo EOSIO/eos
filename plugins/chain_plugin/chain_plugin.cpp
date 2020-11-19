@@ -2569,7 +2569,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       return false;
    };
-   auto get_val = get_primary_key_value(abis.get_table_type(producers_table), abis, p.json);
+   auto type = abis.get_table_type(producers_table);
+   auto get_val = get_primary_key_value(type, abis, p.json);
    auto add_val = [&result,get_val{std::move(get_val)}](const auto& row) {
       fc::variant data_var;
       get_val(data_var, row);
