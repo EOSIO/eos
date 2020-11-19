@@ -117,7 +117,8 @@ class block_vault_interface {
    /// \param watermark The producer watermark at the block height of this
    /// snapshot.
    ///
-   virtual bool propose_snapshot(watermark_t watermark, const char* snapshot_filename) = 0;
+   virtual bool propose_snapshot(watermark_t watermark,
+                                 const char* snapshot_filename) = 0;
 
    ///
    /// \brief The primary method for bringing a new `nodeos` node into sync with
@@ -135,7 +136,8 @@ class block_vault_interface {
    ///
    /// \param callback The callback object to receive the snapshot and blocks.
    ///
-   virtual void sync(const eosio::chain::block_id_type* block_id, sync_callback& callback) = 0;
+   virtual void sync(const eosio::chain::block_id_type* block_id,
+                     sync_callback& callback) = 0;
 };
 
 } // namespace blockvault
