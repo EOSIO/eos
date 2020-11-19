@@ -536,11 +536,12 @@ public:
                                bool as_json = true) const;
 
    auto get_primary_key_value(const std::string_view& type, const abi_serializer& abis, bool as_json = true) const {
-      return [&type,&abis,as_json,this](fc::variant& result_var, const auto& obj) {
+      std::string table_type {type}; // capture by value so it can outlive the caller
+      return [table_type,abis,as_json,this](fc::variant& result_var, const auto& obj) {
          vector<char> data;
          read_only::copy_inline_row(obj, data);
          if (as_json) {
-            result_var = abis.binary_to_variant(type, data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
+            result_var = abis.binary_to_variant(table_type, data, abi_serializer::create_yield_function( abi_serializer_max_time ), shorten_abi_errors );
          }
          else {
             result_var = fc::variant(data);
