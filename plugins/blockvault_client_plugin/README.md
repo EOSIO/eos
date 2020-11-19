@@ -11,9 +11,9 @@ Install dependencies `libpq` and `libpqxx`:
 brew install libpq libpqxx
 ```
 
-Install docker:
+Install `docker`:
 ```bash
-brew cask install `docker`
+brew cask install docker
 ```
 
 Build the `blockvault` branch:
