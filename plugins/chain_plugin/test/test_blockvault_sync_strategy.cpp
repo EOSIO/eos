@@ -48,6 +48,9 @@ struct mock_chain_t {
 };
 
 struct mock_blockvault_t : public block_vault_interface {
+    eosio::chain::block_id_type _previous_block_id{} ;
+    bool _previous_block_id_sent = false;
+
     virtual void async_propose_constructed_block(watermark_t watermark, uint32_t lib,
                                                  eosio::chain::signed_block_ptr block,
                                                  std::function<void(bool)>      handler) override {}
@@ -56,10 +59,12 @@ struct mock_blockvault_t : public block_vault_interface {
 
     virtual bool propose_snapshot(watermark_t watermark, const char* snapshot_filename) override {return true;}
     virtual void sync(const eosio::chain::block_id_type* previous_block_id, sync_callback& callback) override {
-       _previous_block_id = previous_block_id;
+        if (nullptr != previous_block_id) {
+            _previous_block_id = *previous_block_id;
+            _previous_block_id_sent = true;
+        }
     }
 
-    const eosio::chain::block_id_type* _previous_block_id;
 };
 
 
@@ -100,7 +105,7 @@ BOOST_FIXTURE_TEST_CASE(empty_previous_block_id_test, TESTER) { try {
     blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, plugin, shutdown, check_shutdown);
     uut.do_sync();
 
-	BOOST_TEST(nullptr == bv._previous_block_id);
+	BOOST_TEST(!bv._previous_block_id_sent);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -112,13 +117,16 @@ BOOST_FIXTURE_TEST_CASE(nonempty_previous_block_id_test, TESTER) { try {
     auto check_shutdown = [](){ return false; };
     std::string bid_hex("deadbabe000000000000000000000000000000000000000000000000deadbeef");
     chain::block_id_type bid(bid_hex);
-    mock_signed_block_t lib {bid, 100};
+    mock_signed_block_t lib;
+    lib._block_num = 100;
+    lib._id = bid;
+
     plugin.chain->_last_irreversible_block = &lib;
 
     blockvault_sync_strategy<mock_chain_plugin_t> uut(&bv, plugin, shutdown, check_shutdown);
     uut.do_sync();
 
-    BOOST_TEST(*bv._previous_block_id == bid);
+    BOOST_TEST(bv._previous_block_id == bid);
 
 } FC_LOG_AND_RETHROW() }
 
