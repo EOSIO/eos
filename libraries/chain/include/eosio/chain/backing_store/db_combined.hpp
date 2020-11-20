@@ -212,14 +212,12 @@ enum class key_context {
 template<typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
 class rocksdb_contract_db_table_writer {
 public:
-   template<key_context Context>
-   friend struct writer_impl;
    using key_type = db_key_value_format::key_type;
 
    rocksdb_contract_db_table_writer(Receiver &r, key_context context, Function keep_processing = process_all)
          : receiver_(r), context_(context), keep_processing_(keep_processing)  {}
 
-   rocksdb_contract_db_table_writer(Receiver &r, Function keep_processing = process_all)
+   rocksdb_contract_db_table_writer(Receiver &r)
          : receiver_(r), context_(key_context::complete), keep_processing_(process_all)  {}
 
    void extract_primary_index(b1::chain_kv::bytes::const_iterator remaining,
@@ -420,8 +418,10 @@ namespace detail {
                     const eosio::session::shared_bytes& end_key,
                     bool is_reverse,
                     session_type& session) : is_reverse_(is_reverse) {
+         EOS_ASSERT(begin_key < end_key, database_exception, "Invalid iterator_pair request: begin_key was greater than or equal to end_key.");
          if (is_reverse_) {
             current_ = session.lower_bound(end_key);
+            EOS_ASSERT(current_ != session.end(), database_exception, "iterator_pair: failed to find lower bound of end_key");
             end_ = session.lower_bound(begin_key);
             // since this is reverse iterating, then need to iterate backward if this is a greater-than iterator,
             // to get a greater-than-or-equal reverse iterator
@@ -443,7 +443,7 @@ namespace detail {
          return current_ != end_;
       }
 
-      void move() {
+      void next() {
          if (is_reverse_)
             --current_;
          else
@@ -490,7 +490,7 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
 
    detail::iterator_pair iter_pair(begin_key, end_key, detail::is_reversed(function), session);
    bool keep_processing = true;
-   for (; keep_processing && iter_pair.valid(); iter_pair.move()) {
+   for (; keep_processing && iter_pair.valid(); iter_pair.next()) {
       const auto data = iter_pair.get();
       // iterating through the session will always return a valid value
       keep_processing = read_rocksdb_entry(data.first, *data.second, function);
@@ -498,37 +498,6 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
    // indicate processing is done
    detail::complete(function);
 };
-
-// will walk through all entries with the given prefix, so if passed an exact key, it will match that key
-// and any keys with that key as a prefix
-template <typename Receiver, typename Function = std::decay_t < decltype(process_all)>>
-void walk_any_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
-                                          const eosio::session::shared_bytes& key,
-                                          Receiver& receiver,
-                                          Function keep_processing = process_all) {
-   if (!key) {
-      return;
-   }
-   const auto end_key = key.next_sub_key();
-   const char prefix = key[0];
-   if (prefix == rocksdb_contract_kv_prefix) {
-      rocksdb_contract_kv_table_writer kv_writer(receiver, keep_processing);
-      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, kv_writer);
-   }
-   else {
-      if (prefix != rocksdb_contract_db_prefix) {
-         char buffer[10];
-         const auto len = sprintf(buffer, "%02x", static_cast<uint8_t>(prefix));
-         buffer[len] = '\0';
-         FC_THROW_EXCEPTION(bad_composite_key_exception,
-                            "Passed in key is prefixed with: ${prefix} which is neither the DB or KV prefix",
-                            ("prefix", buffer));
-      }
-
-      rocksdb_contract_db_table_writer db_writer(receiver, keep_processing);
-      walk_rocksdb_entries_with_prefix(kv_undo_stack, key, end_key, db_writer);
-   }
-}
 
 // will walk through all entries with the given prefix, so if passed an exact key, it will match that key
 // and any keys with that key as a prefix
