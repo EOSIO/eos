@@ -476,7 +476,7 @@ public:
    template <typename A, typename B>
    vector<A> deserialize_data(deltas_vector::iterator &it) {
       vector<A> result;
-      for(int i=0; i < it->rows.obj.size(); i++) {
+      for(std::size_t i=0; i < it->rows.obj.size(); i++) {
          eosio::input_stream stream{it->rows.obj[i].second.data(), it->rows.obj[i].second.size()};
          result.push_back(std::get<A>(eosio::from_bin<B>(stream)));
       }
@@ -738,7 +738,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 
       auto digest_byte_array = protocol_feature.feature_digest.extract_as_byte_array();
       char digest_array[digest_byte_array.size()];
-      for (int i = 0; i < digest_byte_array.size(); i++) digest_array[i] = digest_byte_array[i];
+      for (std::size_t i = 0; i < digest_byte_array.size(); i++) digest_array[i] = digest_byte_array[i];
       eosio::chain::digest_type digest_in_delta(digest_array, digest_byte_array.size());
 
       BOOST_REQUIRE_EQUAL(digest_in_delta, *d);
