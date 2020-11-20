@@ -217,7 +217,7 @@ public:
    rocksdb_contract_db_table_writer(Receiver &r, key_context context, Function keep_processing = process_all)
          : receiver_(r), context_(context), keep_processing_(keep_processing)  {}
 
-   rocksdb_contract_db_table_writer(Receiver &r)
+   explicit rocksdb_contract_db_table_writer(Receiver &r)
          : receiver_(r), context_(key_context::complete), keep_processing_(process_all)  {}
 
    void extract_primary_index(b1::chain_kv::bytes::const_iterator remaining,
