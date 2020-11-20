@@ -483,6 +483,13 @@ public:
       return result;
    }
 
+   void set_backing_store(const backing_store_type backing_store) {
+      close(); // clean up chain so no dirty db error
+      auto cfg = get_config();
+      cfg.backing_store = backing_store;
+      init(cfg); // enable new config
+   }
+
 private:
    deltas_vector v;
 };
