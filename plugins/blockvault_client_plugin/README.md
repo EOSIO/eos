@@ -32,19 +32,19 @@ docker run  -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
 
 ## Running PostgresQL for Production 
 
-We recommend to deploy PostgresQL with HA (high avialability) mode and synchronous replication strategy. 
+We recommend to deploy PostgresQL with HA (high availability) mode and synchronous replication strategy. 
 
 ## Plugin configuration
 
 To use this plugin, `nodeos` has to be configured as a producer with `--block-vault-backend` option.  For example
 
 ```
-nodeos --producer-name myproducera --block-vault-backend postgresql://user:password@mycompany.com
+nodeos --plugin eosio::producer_plugin --producer-name myproducera --block-vault-backend postgresql://user:password@mycompany.com
 ```
 
 For production environment, we recommend to use `PGPASSWORD` environment variable to configure the password instead of embedding the password in the URI.
 
 ```
 export PGPASSWORD=password
-nodeos --producer-name myproducera --block-vault-backend postgresql://user@mycompany.com
+nodeos --plugin eosio::producer_plugin --producer-name myproducera --block-vault-backend postgresql://user@mycompany.com
 ```
