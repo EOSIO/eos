@@ -42,8 +42,10 @@ class session {
       shared_bytes value;
    };
 
-   using parent_type = std::variant<session*, Parent*>;
-   using cache_type  = std::map<shared_bytes, value_state>;
+   using type                = session;
+   using parent_type         = Parent;
+   using cache_type          = std::map<shared_bytes, value_state>;
+   using parent_variant_type = std::variant<type*, parent_type*>;
 
    friend Parent;
 
@@ -145,7 +147,7 @@ class session {
 
    session& operator=(session&& other);
 
-   parent_type parent() const;
+   parent_variant_type parent() const;
 
    /// \brief Returns the set of keys that have been updated in this session.
    std::unordered_set<shared_bytes> updated_keys() const;
@@ -259,12 +261,12 @@ class session {
    It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
 
  private:
-   parent_type        m_parent{ nullptr };
-   mutable cache_type m_cache;
+   parent_variant_type m_parent{ nullptr };
+   mutable cache_type  m_cache;
 };
 
 template <typename Parent>
-typename session<Parent>::parent_type session<Parent>::parent() const {
+typename session<Parent>::parent_variant_type session<Parent>::parent() const {
    return m_parent;
 }
 
@@ -390,9 +392,9 @@ void session<Parent>::previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, P
 
       auto previous_it = it;
       if (previous_it != std::begin(m_cache)) {
-        --previous_it;
-        previous_it->second.next_in_cache = true;
-        it->second.previous_in_cache   = true;
+         --previous_it;
+         previous_it->second.next_in_cache = true;
+         it->second.previous_in_cache      = true;
       }
    }
 }
@@ -419,8 +421,8 @@ void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) const {
       auto next_it = it;
       ++next_it;
       if (next_it != std::end(m_cache)) {
-        next_it->second.previous_in_cache = true;
-        it->second.next_in_cache           = true;
+         next_it->second.previous_in_cache = true;
+         it->second.next_in_cache          = true;
       }
    }
 }
@@ -450,16 +452,16 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
             return it;
          }
       } else {
-        auto end = std::end(m_cache);
-        if (it != end) {
-          auto next = it;
-          ++next;
-          if (next != end && next->second.previous_in_cache) {
-              it->second.next_in_cache     = true;
-              it->second.previous_in_cache = true;
-              return it;
-          }
-        }
+         auto end = std::end(m_cache);
+         if (it != end) {
+            auto next = it;
+            ++next;
+            if (next != end && next->second.previous_in_cache) {
+               it->second.next_in_cache     = true;
+               it->second.previous_in_cache = true;
+               return it;
+            }
+         }
       }
 
       // ...otherwise we have to search through the session heirarchy to find the previous and next keys

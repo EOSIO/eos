@@ -132,10 +132,11 @@ void make_data_store(T& ds, const std::unordered_map<Key, Value>& kvs, int_t) {
 template <typename T, typename Key, typename Value>
 void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string_t) {
    auto verify_key_value = [&](auto kv) {
-      auto key = std::string{std::begin(kv.first), std::end(kv.first)};
+      auto key = std::string{ std::begin(kv.first), std::end(kv.first) };
       auto it  = container.find(key);
       BOOST_REQUIRE(it != std::end(container));
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*kv.second), std::end(*kv.second)};
+      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*kv.second),
+                                                                                  std::end(*kv.second) };
       BOOST_REQUIRE(std::memcmp(it->second.c_str(), buffer.data(), it->second.size()) == 0);
    };
 
@@ -161,7 +162,8 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, string
       auto value = ds.read(key);
       BOOST_REQUIRE(ds.contains(key) == true);
       BOOST_REQUIRE(value.has_value());
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*value), std::end(*value)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*value), std::end(*value) };
       BOOST_REQUIRE(std::memcmp(it.second.c_str(), buffer.data(), it.second.size()) == 0);
    }
 }
@@ -172,7 +174,8 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
       auto key = std::string{ std::begin(kv.first), std::end(kv.first) };
       auto it  = container.find(key);
       BOOST_REQUIRE(it != std::end(container));
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*kv.second), std::end(*kv.second)};
+      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*kv.second),
+                                                                                  std::end(*kv.second) };
       BOOST_REQUIRE(std::memcmp(it->second.c_str(), buffer.data(), it->second.size()) == 0);
    };
 
@@ -207,7 +210,8 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
       auto value = ds.read(key);
       BOOST_REQUIRE(ds.contains(key) == true);
       BOOST_REQUIRE(value.has_value());
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*value), std::end(*value)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*value), std::end(*value) };
       BOOST_REQUIRE(std::memcmp(it.second.c_str(), buffer.data(), it.second.size()) == 0);
    }
 }
@@ -215,10 +219,12 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
 template <typename T, typename Key, typename Value>
 void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t) {
    auto verify_key_value = [&](auto kv) {
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(kv.first), std::end(kv.first)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(kv.first), std::end(kv.first) };
       auto it = container.find(*reinterpret_cast<const Key*>(buffer.data()));
       BOOST_REQUIRE(it != std::end(container));
-      buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*kv.second), std::end(*kv.second)};
+      buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*kv.second),
+                                                                             std::end(*kv.second) };
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), buffer.data(), sizeof(Value)) == 0);
    };
 
@@ -244,7 +250,8 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
       auto value = ds.read(key);
       BOOST_REQUIRE(value.has_value());
       BOOST_REQUIRE(ds.contains(key) == true);
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*value), std::end(*value)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*value), std::end(*value) };
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), buffer.data(), sizeof(Value)) == 0);
    }
 }
@@ -252,10 +259,12 @@ void verify_equal(T& ds, const std::unordered_map<Key, Value>& container, int_t)
 template <typename Data_store, typename Key, typename Value>
 void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_map<Key, Value>& container, int_t) {
    auto verify_key_value = [&](auto kv) {
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(kv.first), std::end(kv.first)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(kv.first), std::end(kv.first) };
       auto it = container.find(*reinterpret_cast<const Key*>(buffer.data()));
       BOOST_REQUIRE(it != std::end(container));
-      buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*kv.second), std::end(*kv.second)};
+      buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*kv.second),
+                                                                             std::end(*kv.second) };
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it->second), buffer.data(), sizeof(Value)) == 0);
    };
 
@@ -290,7 +299,8 @@ void verify_equal(eosio::session::session<Data_store>& ds, const std::unordered_
       auto value = ds.read(key);
       BOOST_REQUIRE(value.has_value());
       BOOST_REQUIRE(ds.contains(key) == true);
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*value), std::end(*value)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*value), std::end(*value) };
       BOOST_REQUIRE(std::memcmp(reinterpret_cast<const void*>(&it.second), buffer.data(), sizeof(Value)) == 0);
    }
 }
@@ -576,9 +586,11 @@ inline eosio::session::session<eosio::session::rocksdb_t> make_session(const std
 template <typename Data_store, typename Container>
 void verify(const Data_store& ds, const Container& kvs) {
    for (auto kv : ds) {
-      auto buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(kv.first), std::end(kv.first)};
+      auto buffer =
+            std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(kv.first), std::end(kv.first) };
       auto current_key   = *reinterpret_cast<const uint16_t*>(buffer.data());
-      buffer = std::vector<eosio::session::shared_bytes::underlying_type_t>{std::begin(*kv.second), std::end(*kv.second)};
+      buffer             = std::vector<eosio::session::shared_bytes::underlying_type_t>{ std::begin(*kv.second),
+                                                                             std::end(*kv.second) };
       auto current_value = *reinterpret_cast<const uint16_t*>(buffer.data());
 
       auto it = kvs.find(current_key);

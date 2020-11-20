@@ -102,7 +102,7 @@ namespace eosio { namespace chain { namespace backing_store {
    class db_key_value_sec_lookup : public db_key_value_any_lookup
    {
    public:
-      db_key_value_sec_lookup( db_context& p, session_type& s ) : db_key_value_any_lookup(p, s) {}
+      db_key_value_sec_lookup( db_context& p, session_variant_type& s ) : db_key_value_any_lookup(p, s) {}
 
       int store( name scope, name table, const account_name& payer,
                  uint64_t id, const SecondaryKey& secondary ) {

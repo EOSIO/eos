@@ -13,6 +13,9 @@ namespace eosio {
       struct rocksdb_t;
       template<typename Parent>
       class session;
+
+      template <typename... T>
+      class session_variant;
    }
 namespace chain {
 
@@ -213,6 +216,6 @@ namespace backing_store {
 
       std::unique_ptr<db_context> create_db_chainbase_context(apply_context& context, name receiver);
       std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
-                                                            eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>& session);
+                                                            eosio::session::session_variant<eosio::session::session<eosio::session::rocksdb_t>, eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>> session);
 
 }}} // ns eosio::chain::backing_store

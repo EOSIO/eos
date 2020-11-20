@@ -8,7 +8,6 @@
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
 #include <eosio/chain/combined_database.hpp>
-#include <b1/session/rocks_session.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
 
@@ -16,9 +15,10 @@ namespace eosio { namespace chain { namespace backing_store {
    public:
       using prim_key_iter_type = secondary_key<uint64_t>;
       using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
+      using session_variant_type = eosio::session::session_variant<session_type::parent_type, session_type>;
       using shared_bytes = eosio::session::shared_bytes;
 
-      db_context_rocksdb(apply_context& context, name receiver, session_type& session);
+      db_context_rocksdb(apply_context& context, name receiver, session_variant_type session);
 
       ~db_context_rocksdb() override;
 
@@ -136,12 +136,12 @@ namespace eosio { namespace chain { namespace backing_store {
       static prefix_bundle get_primary_slice_in_primaries(name code, name scope, name table, uint64_t id);
       pv_bundle get_primary_key_value(name code, name scope, name table, uint64_t id) const;
       void set_value(const shared_bytes& primary_key, const payer_payload& pp);
-      int32_t find_and_store_primary_key(const session_type::iterator& session_iter, int32_t table_ei,
+      int32_t find_and_store_primary_key(const session_variant_type::iterator& session_iter, int32_t table_ei,
                                          const shared_bytes& type_prefix, int32_t not_found_return,
                                          const char* calling_func, uint64_t& found_key);
       struct exact_iterator {
          bool                   valid = false;
-         session_type::iterator itr;
+         session_variant_type::iterator itr;
          shared_bytes           type_prefix;
       };
       exact_iterator get_exact_iterator(name code, name scope, name table, uint64_t primary);
@@ -151,7 +151,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       using uint128_t = eosio::chain::uint128_t;
       using key256_t = eosio::chain::key256_t;
-      session_type&                        current_session;
+      session_variant_type                 current_session;
       db_key_value_iter_store<uint64_t>    primary_iter_store;
       db_key_value_any_lookup              primary_lookup;
       db_key_value_sec_lookup<uint64_t>    sec_lookup_i64;
@@ -162,7 +162,7 @@ namespace eosio { namespace chain { namespace backing_store {
       static constexpr uint64_t            noop_secondary = 0x0;
    }; // db_context_rocksdb
 
-   db_context_rocksdb::db_context_rocksdb(apply_context& context, name receiver, session_type& session)
+   db_context_rocksdb::db_context_rocksdb(apply_context& context, name receiver, session_variant_type session)
    : db_context( context, receiver ), current_session{ session }, primary_lookup(*this, session),
      sec_lookup_i64(*this, session), sec_lookup_i128(*this, session), sec_lookup_i256(*this, session),
      sec_lookup_double(*this, session), sec_lookup_long_double(*this, session) {}
@@ -670,7 +670,7 @@ namespace eosio { namespace chain { namespace backing_store {
       current_session.write(primary_key, pp.as_payload());
    }
 
-   int32_t db_context_rocksdb::find_and_store_primary_key(const session_type::iterator& session_iter,
+   int32_t db_context_rocksdb::find_and_store_primary_key(const session_variant_type::iterator& session_iter,
                                                           int32_t table_ei, const shared_bytes& type_prefix,
                                                           int32_t not_found_return, const char* calling_func,
                                                           uint64_t& found_key) {
@@ -704,7 +704,7 @@ namespace eosio { namespace chain { namespace backing_store {
                                               end_of_prefix::pre_type, code };
       auto session_iter = current_session.lower_bound(primary_and_prefix_keys.full_key);
       auto is_in_table = [&prefix_key=primary_and_prefix_keys.prefix_key,
-                          &primary_lookup=this->primary_lookup](const session_type::iterator& iter) {
+                          &primary_lookup=this->primary_lookup](const session_variant_type::iterator& iter) {
          return primary_lookup.match_prefix(prefix_key, iter);
       };
       if (!is_in_table(session_iter)) {
@@ -754,11 +754,11 @@ namespace eosio { namespace chain { namespace backing_store {
    }
 
    std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
-                                                         db_context_rocksdb::session_type& session)
+                                                         db_context_rocksdb::session_variant_type session)
    {
       static_assert(std::is_convertible<db_context_rocksdb *, db_context *>::value, "cannot convert");
       static_assert(std::is_convertible<std::default_delete<db_context_rocksdb>, std::default_delete<db_context> >::value, "cannot convert delete");
-      return std::make_unique<db_context_rocksdb>(context, receiver, session);
+      return std::make_unique<db_context_rocksdb>(context, receiver, std::move(session));
    }
 
 }}} // namespace eosio::chain::backing_store

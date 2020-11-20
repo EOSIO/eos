@@ -160,18 +160,25 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       end_key = begin_key.next();
       chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, writer);
    } else {
-      auto &session = kv_undo_stack->top();
+      auto* session = std::visit(eosio::session::overloaded{
+        [](eosio::chain::kv_undo_stack_ptr::element_type::session_type* session){
+          return session;
+        }, [](auto*){
+          EOS_ASSERT(false, eosio::chain::chain_exception, "undo_stack is empty");
+          static eosio::chain::kv_undo_stack_ptr::element_type::session_type* invalid = nullptr;
+          return invalid;
+        }}, kv_undo_stack->top().holder());
       rocksdb_receiver_single_entry receiver(deltas, db);
 
-      for(auto &updated_key: session.updated_keys()) {
-         chain::backing_store::process_rocksdb_entry(session, updated_key, receiver);
+      for(auto &updated_key: session->updated_keys()) {
+        chain::backing_store::process_rocksdb_entry(*session, updated_key, receiver);
       }
 
       receiver.set_delta_present_flag(false);
-      for(auto &deleted_key: session.deleted_keys()) {
-         std::visit([&](auto* p) {
+      for(auto &deleted_key: session->deleted_keys()) {
+        std::visit([&](auto* p) {
             chain::backing_store::process_rocksdb_entry(*p, deleted_key, receiver);
-         }, session.parent());
+        }, session->parent());
       }
    }
 

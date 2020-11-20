@@ -63,38 +63,37 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
 }
 
 BOOST_AUTO_TEST_CASE(iterator_test) {
-  auto s = std::string{"Hello world foobar"};
-  auto bytes = eosio::session::shared_bytes{s.data(), s.size()};
-  auto result = std::string{std::begin(bytes), std::end(bytes)};
-  BOOST_REQUIRE(s == result);
+   auto s      = std::string{ "Hello world foobar" };
+   auto bytes  = eosio::session::shared_bytes{ s.data(), s.size() };
+   auto result = std::string{ std::begin(bytes), std::end(bytes) };
+   BOOST_REQUIRE(s == result);
 }
 
 BOOST_AUTO_TEST_CASE(std_copy) {
-  auto bytes = eosio::session::shared_bytes{18};
-  auto parts = std::vector<std::string>{"Hello ", "world ", "foobar"};
-  auto offset = size_t{0};
-  for (const auto& part : parts) {
-    std::copy(std::begin(part), std::end(part), std::begin(bytes) + offset);
-    offset += part.size();
-  }
-  auto expected_result = std::string{"Hello world foobar"};
-  auto result = std::string{std::begin(bytes), std::end(bytes)};
-  BOOST_REQUIRE(expected_result == result);
+   auto bytes  = eosio::session::shared_bytes{ 18 };
+   auto parts  = std::vector<std::string>{ "Hello ", "world ", "foobar" };
+   auto offset = size_t{ 0 };
+   for (const auto& part : parts) {
+      std::copy(std::begin(part), std::end(part), std::begin(bytes) + offset);
+      offset += part.size();
+   }
+   auto expected_result = std::string{ "Hello world foobar" };
+   auto result          = std::string{ std::begin(bytes), std::end(bytes) };
+   BOOST_REQUIRE(expected_result == result);
 
-  result = "";
-  for (const auto& ch : bytes) {
-    result.push_back(ch);
-  }
-  BOOST_REQUIRE(expected_result == result);
+   result = "";
+   for (const auto& ch : bytes) { result.push_back(ch); }
+   BOOST_REQUIRE(expected_result == result);
 
-  auto extracted_parts = std::vector<std::string>{};
-  offset = size_t{0};
-  for (const auto& part : parts) {
-    extracted_parts.emplace_back(part.size(), '\0');
-    std::copy(std::begin(bytes) + offset, std::begin(bytes) + offset + part.size(), std::begin(extracted_parts.back()));
-    offset += part.size();
-  }
-  BOOST_REQUIRE(parts == extracted_parts);
+   auto extracted_parts = std::vector<std::string>{};
+   offset               = size_t{ 0 };
+   for (const auto& part : parts) {
+      extracted_parts.emplace_back(part.size(), '\0');
+      std::copy(std::begin(bytes) + offset, std::begin(bytes) + offset + part.size(),
+                std::begin(extracted_parts.back()));
+      offset += part.size();
+   }
+   BOOST_REQUIRE(parts == extracted_parts);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

@@ -306,9 +306,7 @@ inline shared_bytes shared_bytes::previous() const {
          index = buffer.size();
       }
    }
-   while (index < buffer.size()) {
-      buffer[index] = std::numeric_limits<unsigned char>::max();
-   }
+   while (index < buffer.size()) { buffer[index] = std::numeric_limits<unsigned char>::max(); }
 
    return eosio::session::shared_bytes(buffer.data(), buffer.size());
 }
@@ -370,13 +368,9 @@ inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
 
 inline shared_bytes::operator bool() const { return *this != shared_bytes{}; }
 
-inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) {
-  return m_data.get()[index];
-}
+inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) { return m_data.get()[index]; }
 
-inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const {
-  return m_data.get()[index];
-}
+inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const { return m_data.get()[index]; }
 
 inline shared_bytes::iterator shared_bytes::begin() const {
    return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };

@@ -3,6 +3,7 @@
 #include <queue>
 
 #include <b1/session/session.hpp>
+#include <b1/session/session_variant.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
@@ -11,7 +12,10 @@ namespace eosio::session {
 template <typename Session>
 class undo_stack {
  public:
-   using session_type = session<Session>;
+   using root_type          = Session;
+   using session_type       = session<Session>;
+   using variant_type       = session_variant<root_type, session_type>;
+   using const_variant_type = session_variant<const root_type, const session_type>;
 
    /// \brief Constructor.
    /// \param head The session that the changes are merged into when commit is called.
@@ -49,18 +53,18 @@ class undo_stack {
    void revision(int64_t revision);
 
    /// \brief Returns the head session (the session at the top of the stack.
-   session_type& top();
+   variant_type top();
 
    /// \brief Returns the head session (the session at the top of the stack.
-   const session_type& top() const;
+   const_variant_type top() const;
 
    /// \brief Returns the session at the bottom of the stack.
    /// \remarks This is the next session to be committed.
-   session_type& bottom();
+   variant_type bottom();
 
    /// \brief Returns the session at the bottom of the stack.
    /// \remarks This is the next session to be committed.
-   const session_type& bottom() const;
+   const_variant_type bottom() const;
 
  private:
    int64_t                  m_revision{ 0 };
@@ -158,30 +162,39 @@ void undo_stack<Session>::revision(int64_t revision) {
 }
 
 template <typename Session>
-typename undo_stack<Session>::session_type& undo_stack<Session>::top() {
-   if (m_sessions.empty()) {
-     volatile int i = 0;
+typename undo_stack<Session>::variant_type undo_stack<Session>::top() {
+   if (!m_sessions.empty()) {
+      auto& back = m_sessions.back();
+      return { back, nullptr };
    }
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.back();
+   return { *m_head, nullptr };
 }
 
 template <typename Session>
-const typename undo_stack<Session>::session_type& undo_stack<Session>::top() const {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.back();
+typename undo_stack<Session>::const_variant_type undo_stack<Session>::top() const {
+   if (!m_sessions.empty()) {
+      auto& back = m_sessions.back();
+      return { back, nullptr };
+   }
+   return { *m_head, nullptr };
 }
 
 template <typename Session>
-typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.front();
+typename undo_stack<Session>::variant_type undo_stack<Session>::bottom() {
+   if (!m_sessions.empty()) {
+      auto& front = m_sessions.front();
+      return { front, nullptr };
+   }
+   return { *m_head, nullptr };
 }
 
 template <typename Session>
-const typename undo_stack<Session>::session_type& undo_stack<Session>::bottom() const {
-   EOS_ASSERT(!m_sessions.empty(), eosio::chain::chain_exception, "undo_stack is empty");
-   return m_sessions.front();
+typename undo_stack<Session>::const_variant_type undo_stack<Session>::bottom() const {
+   if (!m_sessions.empty()) {
+      auto& front = m_sessions.front();
+      return { front, nullptr };
+   }
+   return { *m_head, nullptr };
 }
 
 } // namespace eosio::session

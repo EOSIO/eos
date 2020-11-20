@@ -70,7 +70,7 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
                                       const eosio::session::shared_bytes& begin_key,
                                       const eosio::session::shared_bytes& end_key,
                                       F& function) {
-   detail::manage_stack ms(kv_undo_stack);
+  //  detail::manage_stack ms(kv_undo_stack);
    auto begin_it = kv_undo_stack->top().lower_bound(begin_key);
    const auto end_it = kv_undo_stack->top().lower_bound(end_key);
 //   auto move_it = (begin_key < end_key ? [](auto& itr) { return ++itr; } :  [](auto& itr) { return --itr; } );

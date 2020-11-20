@@ -89,6 +89,9 @@ class session<rocksdb_t> {
    session& operator=(const session&) = default;
    session& operator=(session&&) = default;
 
+   std::unordered_set<shared_bytes> updated_keys() const;
+   std::unordered_set<shared_bytes> deleted_keys() const;
+
    std::optional<shared_bytes> read(const shared_bytes& key) const;
    void                        write(const shared_bytes& key, const shared_bytes& value);
    bool                        contains(const shared_bytes& key) const;
@@ -190,7 +193,7 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          // read_options.readahead_size   = 256 * 1024 * 1024;
          read_options.verify_checksums = false;
          // read_options.read_tier = rocksdb::ReadTier::kMemtableTier;
-         read_options.fill_cache       = false;
+         read_options.fill_cache = false;
          // read_options.auto_prefix_mode                     = true;
          // read_options.total_order_seek                     = false;
          // read_options.prefix_same_as_start                 = true;
@@ -215,6 +218,10 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
       }() } {
    m_write_options.disableWAL = true;
 }
+
+inline std::unordered_set<shared_bytes> session<rocksdb_t>::updated_keys() const { return {}; }
+
+inline std::unordered_set<shared_bytes> session<rocksdb_t>::deleted_keys() const { return {}; }
 
 inline void session<rocksdb_t>::undo() {}
 
@@ -358,7 +365,7 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::begin() const {
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::end() const {
-   return make_iterator_([](auto& it){});
+   return make_iterator_([](auto& it) {});
 }
 
 inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(const shared_bytes& key) const {

@@ -340,7 +340,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto end   = std::end(ds);
       do {
          if (it != end) {
-            auto key = it.key();
+            auto key    = it.key();
             auto buffer = std::vector<shared_bytes::underlying_type_t>{ std::begin(key), std::end(key) };
             BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(buffer.data())) == std::end(keys));
          }
