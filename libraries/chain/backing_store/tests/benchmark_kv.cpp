@@ -471,18 +471,12 @@ inline std::shared_ptr<rocksdb::DB> make_rocks_db(const std::string& name) {
     rocksdb::BlockBasedTableOptions table_options;
     table_options.format_version               = 5;
     table_options.index_block_restart_interval = 16;
-    //table_options.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
 
     // Sets the bloom filter - Given an arbitrary key, 
     // this bit array may be used to determine if the key 
     // may exist or definitely does not exist in the key set.
     table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
     table_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
-
-    // Define a prefix. In this way, a fixed length prefix extractor. A recommended one to use.
-    // Prefix is [rocks prefix byte, contract]
-    //options.prefix_extractor.reset(rocksdb::NewCappedPrefixTransform(9));
-    //options.memtable_prefix_bloom_size_ratio = 0.1;
 
     // Incorporates the Table options into options
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
