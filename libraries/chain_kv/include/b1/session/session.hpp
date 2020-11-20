@@ -388,12 +388,11 @@ void session<Parent>::previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, P
          for (size_t i = 0; i < decrement_count; ++i) { ++pit; }
       }
 
-      auto& it_cache = const_cast<cache_type&>(m_cache);
-      auto  lower_it = it_cache.lower_bound(it->first);
-      if (lower_it != std::begin(m_cache)) {
-         --lower_it;
-         lower_it->second.next_in_cache = true;
-         it->second.previous_in_cache   = true;
+      auto previous_it = it;
+      if (previous_it != std::begin(m_cache)) {
+        --previous_it;
+        previous_it->second.next_in_cache = true;
+        it->second.previous_in_cache   = true;
       }
    }
 }
@@ -417,17 +416,11 @@ void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) const {
          --pit;
       }
 
-      auto& it_cache = const_cast<cache_type&>(m_cache);
-      auto  lower_it = it_cache.lower_bound(it->first);
-      auto  end      = std::end(it_cache);
-      if (lower_it != end) {
-         if ((*lower_it).first == it->first) {
-            ++lower_it;
-         }
-         if (lower_it != end) {
-            lower_it->second.previous_in_cache = true;
-            it->second.next_in_cache           = true;
-         }
+      auto next_it = it;
+      ++next_it;
+      if (next_it != std::end(m_cache)) {
+        next_it->second.previous_in_cache = true;
+        it->second.next_in_cache           = true;
       }
    }
 }
@@ -456,16 +449,17 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key, bool deleted, b
             it->second.next_in_cache     = true;
             return it;
          }
-      }
-      auto end = std::end(m_cache);
-      if (it != end) {
-         auto next = it;
-         ++next;
-         if (next != end && next->second.previous_in_cache) {
-            it->second.next_in_cache     = true;
-            it->second.previous_in_cache = true;
-            return it;
-         }
+      } else {
+        auto end = std::end(m_cache);
+        if (it != end) {
+          auto next = it;
+          ++next;
+          if (next != end && next->second.previous_in_cache) {
+              it->second.next_in_cache     = true;
+              it->second.previous_in_cache = true;
+              return it;
+          }
+        }
       }
 
       // ...otherwise we have to search through the session heirarchy to find the previous and next keys
