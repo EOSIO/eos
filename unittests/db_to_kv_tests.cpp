@@ -304,7 +304,7 @@ void verify_secondary_key_pair_order(const eosio::chain::backing_store::db_key_v
 
    bool type_seen = false; // keep track so we know if the type we are currently checking is after or before the incoming type
    unsigned int other_types_processed = 0;
-   unsigned int expected_type_comp = 0;
+   int expected_type_comp = 0;
    key_type current_kt = key_type::primary;
    // lambda to correctly identify comparisons for each type
    auto type_check = [&type_seen, &other_types_processed, &current_kt, &expected_type_comp, kt](key_type curr_kt) {

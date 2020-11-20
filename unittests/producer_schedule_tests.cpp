@@ -630,7 +630,7 @@ BOOST_AUTO_TEST_CASE( large_authority_overflow_test ) try {
       const size_t pre_overflow_count = 65'537UL; // enough for weights of 0xFFFF to add up to 0xFFFFFFFF
       auth.keys.reserve(pre_overflow_count + 1);
 
-      for (int i = 0; i < pre_overflow_count; i++) {
+      for (std::size_t i = 0; i < pre_overflow_count; i++) {
          auto key_str = std::to_string(i) + "_bsk";
          auth.keys.emplace_back(key_weight{get_public_key("alice"_n, key_str), 0xFFFFU});
       }

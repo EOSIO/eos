@@ -476,7 +476,7 @@ public:
    template <typename A, typename B>
    vector<A> deserialize_data(deltas_vector::iterator &it) {
       vector<A> result;
-      for(int i=0; i < it->rows.obj.size(); i++) {
+      for(std::size_t i=0; i < it->rows.obj.size(); i++) {
          eosio::input_stream stream{it->rows.obj[i].second.data(), it->rows.obj[i].second.size()};
          result.push_back(std::get<A>(eosio::from_bin<B>(stream)));
       }
@@ -493,6 +493,19 @@ public:
 private:
    deltas_vector v;
 };
+
+BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE/* TODO: uncomment this , backing_store_type::ROCKSDB*/ } ) {
+      table_deltas_tester chain;
+      chain.set_backing_store(backing_store);
+
+      auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
+
+      for(const auto &delta: deltas) {
+         BOOST_REQUIRE(!delta.rows.obj.empty());
+      }
+   }
+}
 
 BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
@@ -552,7 +565,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
       for (int i = 0; i < accounts_permissions.size(); i++) {
-         BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, true);
+         BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, 2);
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].owner.to_string(), "newacc");
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].name.to_string(), expected_permission_names[i]);
       }
@@ -583,7 +596,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
       BOOST_REQUIRE(result.first);
       auto &it_permission = result.second;
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 3);
-      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, true);
+      BOOST_REQUIRE_EQUAL(it_permission->rows.obj[2].first, 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
       BOOST_REQUIRE_EQUAL(accounts_permissions[2].owner.to_string(), "newacc");
       BOOST_REQUIRE_EQUAL(accounts_permissions[2].name.to_string(), "mypermission");
@@ -598,7 +611,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
       BOOST_REQUIRE(result.first);
       auto &it_permission_del = result.second;
       BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj.size(), 1);
-      BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj[0].first, false);
+      BOOST_REQUIRE_EQUAL(it_permission_del->rows.obj[0].first, 0);
       accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission_del);
       BOOST_REQUIRE_EQUAL(accounts_permissions[0].owner.to_string(), "newacc");
       BOOST_REQUIRE_EQUAL(accounts_permissions[0].name.to_string(), "mypermission");
@@ -725,7 +738,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 
       auto digest_byte_array = protocol_feature.feature_digest.extract_as_byte_array();
       char digest_array[digest_byte_array.size()];
-      for (int i = 0; i < digest_byte_array.size(); i++) digest_array[i] = digest_byte_array[i];
+      for (std::size_t i = 0; i < digest_byte_array.size(); i++) digest_array[i] = digest_byte_array[i];
       eosio::chain::digest_type digest_in_delta(digest_array, digest_byte_array.size());
 
       BOOST_REQUIRE_EQUAL(digest_in_delta, *d);
@@ -760,7 +773,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       auto key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
       BOOST_REQUIRE_EQUAL(key_values.size(), 1);
-      BOOST_ASSERT(result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -772,7 +785,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       result = chain.find_table_delta("key_value", true);
       BOOST_REQUIRE(result.first);
-      BOOST_ASSERT(result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -787,7 +800,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
       BOOST_REQUIRE_EQUAL(key_values.size(), 1);
-      BOOST_ASSERT(!result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 0);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -821,7 +834,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 6);
 
       for(auto &row : it_contract_table_full->rows.obj) {
-         BOOST_REQUIRE(row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 2);
       }
 
       auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
@@ -839,7 +852,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(it_contract_row_full->rows.obj.size(), 2);
 
       for(auto &row : it_contract_row_full->rows.obj) {
-         BOOST_REQUIRE(row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 2);
       }
 
       auto contract_rows_full = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row_full);
@@ -865,6 +878,10 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_row = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 2);
+
+      for(auto &row : it_contract_row->rows.obj) {
+         BOOST_REQUIRE_EQUAL(row.first, 2);
+      }
 
       auto contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
       std::set<std::string> expected_contract_row_table_names {"hashobjs", "numobjs"};
@@ -900,7 +917,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(deleted_contract_tables.size(), 4);
 
       for(auto &row : it_contract_table_deleted->rows.obj) {
-         BOOST_REQUIRE(!row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 0);
       }
 
       std::set<std::string> expected_deleted_contract_table_names {"numobjs", "numobjs.....1", "numobjs.....2", "numobjs.....3"};
@@ -987,7 +1004,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
 
       for(int i=0; i < contract_rows.size(); i++) {
-         BOOST_REQUIRE(!it_contract_row->rows.obj[i].first);
+         BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_rows[i].table.to_string(), "numobjs");
       }
 
@@ -998,7 +1015,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       auto contract_index_double_elems = chain.deserialize_data<eosio::ship_protocol::contract_index_double_v0, eosio::ship_protocol::contract_index_double>(it_contract_index_double);
 
       for(int i=0; i < contract_index_double_elems.size(); i++) {
-         BOOST_REQUIRE(!it_contract_index_double->rows.obj[i].first);
+         BOOST_REQUIRE_EQUAL(it_contract_index_double->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_index_double_elems[i].table.to_string(), "numobjs.....2");
       }
       */

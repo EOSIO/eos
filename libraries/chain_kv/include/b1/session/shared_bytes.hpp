@@ -306,7 +306,10 @@ inline shared_bytes shared_bytes::previous() const {
          index = buffer.size();
       }
    }
-   while (index < buffer.size()) { buffer[index] = std::numeric_limits<unsigned char>::max(); }
+   
+   while (static_cast<std::size_t>(index) < buffer.size()) {
+      buffer[index] = std::numeric_limits<unsigned char>::max();
+   }
 
    return eosio::session::shared_bytes(buffer.data(), buffer.size());
 }
