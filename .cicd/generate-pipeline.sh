@@ -554,6 +554,20 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
+  - label: ":ubuntu: Ubuntu 20.04 - Package Builder"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 20.04 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/package.sh"
+    env:
+      IMAGE_TAG: "ubuntu-20.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
+      OS: "ubuntu-20.04" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "deb"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
   - label: ":darwin: macOS 10.14 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"

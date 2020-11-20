@@ -24,6 +24,20 @@
 using namespace eosio;
 using namespace chain;
 
+struct act_sig {
+   eosio::chain::signature_type sig;
+
+   static account_name get_account() {
+      return "hello"_n;
+   }
+
+   static action_name get_name() {
+      return "act"_n;
+   }
+};
+FC_REFLECT(act_sig, (sig) )
+
+
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
 fc::microseconds max_serialization_time = fc::seconds(1); // some test machines are very slow
@@ -2616,6 +2630,79 @@ BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
       BOOST_CHECK_THROW(
             abi_serializer abis( fc::json::from_string( deep_nested_abi ).as<abi_def>(), abi_serializer::create_yield_function( max_serialization_time ) ),
             fc::exception );
+   } FC_LOG_AND_RETHROW()
+}
+
+// Large signature
+BOOST_AUTO_TEST_CASE(abi_large_signature)
+{
+   try {
+      const char* abi_str = R"=====(
+    {
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "act",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sig",
+                    "type": "signature"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "act",
+            "type": "act",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+    }
+    )=====";
+
+      std::string big_json(1 << 18, 'a');
+      signature_type::storage_type webauth_sig = fc::crypto::webauthn::signature(fc::crypto::r1::compact_signature(), {}, big_json);
+      signature_type sig;
+
+      // signature( storage_type&& other_storage ) is private, pack/unpack as a way to convert from webauthn sig
+      auto size = big_json.size() + 1024;
+      std::vector<char> buff( size );
+      datastream<char*> ds(&buff[0], size);
+      fc::raw::pack(ds, webauth_sig);
+      ds.seekp(0);
+      fc::raw::unpack(ds, sig);
+
+      name a = "hello"_n;
+      authority owner_auth =  authority( get_public_key( a, "owner" ) );
+      chain::action large_act( vector<permission_level>{{config::system_account_name,config::active_name}},
+                               act_sig{
+                                  .sig = sig
+                               });
+
+      fc::variant var;
+      auto start = fc::time_point::now();
+      bool check_data = true;
+      try {
+         abi_serializer::to_variant( large_act, var, get_resolver( fc::json::from_string( abi_str ).as<abi_def>() ),
+                                     abi_serializer::create_yield_function( fc::milliseconds( 1 ) ) );
+      } catch( abi_serialization_deadline_exception& ) {
+         // can be thrown if check_deadline is tripped after deadline in to_base58 is tripped
+         check_data = false;
+      }
+      auto stop = fc::time_point::now();
+      // Give it a leaway of 50ms
+      BOOST_CHECK_LE( (stop - start).count(), 51*1000 );
+      // only contains hex_data if it didn't hit the deadline
+      if( check_data ) {
+         BOOST_CHECK( var.get_object().contains( "data" ) );
+         BOOST_CHECK( !var.get_object().contains( "hex_data" ) );
+      }
    } FC_LOG_AND_RETHROW()
 }
 

@@ -45,6 +45,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis")
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
@@ -98,10 +99,11 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
+set(Boost_USE_MULTITHREADED      ON)
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
-find_package(Boost 1.70 REQUIRED COMPONENTS program_options unit_test_framework)
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
