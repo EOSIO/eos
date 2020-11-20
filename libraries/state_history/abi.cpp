@@ -361,10 +361,10 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "key_value_v0", "fields": [
-                { "type": "name", "name": "database" },
                 { "type": "name", "name": "contract" },
                 { "type": "bytes", "name": "key" },
-                { "type": "bytes", "name": "value" }
+                { "type": "bytes", "name": "value" },
+                { "type": "name", "name": "payer" }
             ]
         },
         {
@@ -662,7 +662,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "cntrctidx3", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx4", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx5", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "keyvalue", "type": "key_value", "key_names": ["database", "contract", "key"] },
+        { "name": "keyvalue", "type": "key_value", "key_names": ["contract", "key"] },
         { "name": "global.pty", "type": "global_property", "key_names": [] },
         { "name": "generatedtrx", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "protocolst", "type": "protocol_state", "key_names": [] },

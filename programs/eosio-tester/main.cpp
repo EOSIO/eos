@@ -266,7 +266,7 @@ struct test_chain {
       std::vector<state_history::transaction_trace> traces;
       state_history::trace_converter::unpack(strm, traces);
       message.traces = traces;
-      message.deltas = fc::raw::pack(create_deltas(control->db(), !prev_block));
+      message.deltas = fc::raw::pack(create_deltas(control->kv_db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{ message });
@@ -683,7 +683,7 @@ struct callbacks {
    }
 
    file& assert_file(int32_t file_index) {
-      if (file_index < 0 || file_index >= state.files.size() || !state.files[file_index].f)
+      if (file_index < 0 || static_cast<uint32_t>(file_index) >= state.files.size() || !state.files[file_index].f)
          throw std::runtime_error("file is not opened");
       return state.files[file_index];
    }

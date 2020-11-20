@@ -72,7 +72,7 @@ struct threshold_fixture {
       set_threshold(80, warning_threshold);
       set_shutdown_on_exceeded(true);
 
-      for (auto i = 0; i < available.size(); i++) {
+      for (auto i = 0U; i < available.size(); i++) {
         add_file_system("/test" + std::to_string(i));
       }
 

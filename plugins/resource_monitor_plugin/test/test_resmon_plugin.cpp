@@ -28,7 +28,7 @@ struct resmon_fixture {
       EOS_ASSERT(args.size() < 10, chain::plugin_exception, "number of arguments  (${size}) must be less than 10", ("size", args.size()));
 
       // argv[0] is program name, no need to fill in
-      for (auto i=0; i<args.size(); ++i) {
+      for (auto i=0U; i<args.size(); ++i) {
          argv[i+1] = args[i].c_str();
       }
 

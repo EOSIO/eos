@@ -577,8 +577,10 @@ void test_api_db::idx_double_nan_lookup_fail( uint32_t lookup_type ) {
    }
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-align"
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wcast-align"
+#endif
 
 void test_api_db::misaligned_secondary_key256_tests() {
    uint64_t receiver = get_self().value;
@@ -591,4 +593,6 @@ void test_api_db::misaligned_secondary_key256_tests() {
    db_idx256_find_primary( "testapi"_n.value, "testtable"_n.value, "testapi"_n.value, (uint128_t*)(ptr), 2,0 );
 }
 
-#pragma clang diagnostic pop
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif

@@ -630,7 +630,7 @@ BOOST_AUTO_TEST_CASE( large_authority_overflow_test ) try {
       const size_t pre_overflow_count = 65'537UL; // enough for weights of 0xFFFF to add up to 0xFFFFFFFF
       auth.keys.reserve(pre_overflow_count + 1);
 
-      for (int i = 0; i < pre_overflow_count; i++) {
+      for (std::size_t i = 0; i < pre_overflow_count; i++) {
          auto key_str = std::to_string(i) + "_bsk";
          auth.keys.emplace_back(key_weight{get_public_key("alice"_n, key_str), 0xFFFFU});
       }
@@ -663,6 +663,74 @@ BOOST_AUTO_TEST_CASE( large_authority_overflow_test ) try {
 
    BOOST_REQUIRE_EQUAL(res.first, true);
    BOOST_REQUIRE_EQUAL(res.second, provided_keys.size());
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( extra_signatures_test ) try {
+   tester main;
+
+   main.create_accounts( {"alice"_n} );
+   main.produce_block();
+
+   vector<producer_authority> sch1 = {
+      producer_authority{"alice"_n, block_signing_authority_v0{1,  {
+                                                                     {get_public_key("alice"_n, "bs1"), 1},
+                                                                     {get_public_key("alice"_n, "bs2"), 1},
+                                                                     {get_public_key("alice"_n, "bs3"), 1},
+                                                                  }
+                                                             }
+                        }
+   };
+
+   main.set_producer_schedule( sch1 );
+   BOOST_REQUIRE_EQUAL( true, main.control->proposed_producers().has_value() );
+
+   main.block_signing_private_keys.emplace(get_public_key("alice"_n, "bs1"), get_private_key("alice"_n, "bs1"));
+   main.block_signing_private_keys.emplace(get_public_key("alice"_n, "bs2"), get_private_key("alice"_n, "bs2"));
+
+   BOOST_REQUIRE( main.control->pending_block_producer() == "eosio"_n );
+   main.produce_blocks(3);
+   BOOST_REQUIRE( main.control->pending_block_producer() == "alice"_n );
+
+   std::shared_ptr<signed_block> b;
+
+   // Generate a valid block and then corrupt it by adding an extra signature.
+   {
+      tester remote(setup_policy::none);
+      push_blocks(main, remote);
+
+      remote.block_signing_private_keys.emplace(get_public_key("alice"_n, "bs1"), get_private_key("alice"_n, "bs1"));
+      remote.block_signing_private_keys.emplace(get_public_key("alice"_n, "bs2"), get_private_key("alice"_n, "bs2"));
+
+      // Generate the block that will be corrupted.
+      auto valid_block = remote.produce_block();
+
+      BOOST_REQUIRE( valid_block->producer == "alice"_n );
+
+      // Make a copy of pointer to the valid block.
+      b = valid_block;
+      BOOST_REQUIRE_EQUAL( b->block_extensions.size(), 1 );
+
+      // Extract the existing signatures.
+      constexpr auto additional_sigs_eid = additional_block_signatures_extension::extension_id();
+      auto exts = b->validate_and_extract_extensions();
+      BOOST_REQUIRE_EQUAL( exts.count( additional_sigs_eid ), 1 );
+      auto additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound( additional_sigs_eid )->second).signatures;
+      BOOST_REQUIRE_EQUAL( additional_sigs.size(), 1 );
+
+      // Generate the extra signature and add to additonal_sigs.
+      auto header_bmroot = digest_type::hash( std::make_pair( b->digest(), remote.control->head_block_state()->blockroot_merkle.get_root() ) );
+      auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
+      additional_sigs.emplace_back( remote.get_private_key("alice"_n, "bs3").sign(sig_digest) );
+      additional_sigs.emplace_back( remote.get_private_key("alice"_n, "bs4").sign(sig_digest) );
+
+      // Serialize the augmented additional signatures back into the block extensions.
+      b->block_extensions.clear();
+      emplace_extension(b->block_extensions, additional_sigs_eid, fc::raw::pack( additional_sigs ));
+   }
+
+   // Push block with extra signature to the main chain.
+   BOOST_REQUIRE_EXCEPTION( main.push_block(b), wrong_signing_key, fc_exception_message_starts_with("number of block signatures") );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
