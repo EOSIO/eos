@@ -247,7 +247,7 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    }
 
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
-   
+
    EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
               "Ram usage delta would overflow UINT64_MAX");
    EOS_ASSERT(ram_delta >= 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
