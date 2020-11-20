@@ -2,6 +2,7 @@
 #include <eosio/state_history/rocksdb_receiver.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/chain/backing_store/db_combined.hpp>
+#include <b1/session/rocks_session.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -168,10 +169,14 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       rocksdb_receiver_single_entry receiver(deltas, db);
 
       for(auto &updated_key: session.updated_keys()) {
+         std::visit([&](auto* p) {
+            p->read(updated_key) ? receiver.set_delta_present(1) : receiver.set_delta_present(2);
+         }, session.parent());
+
          chain::backing_store::process_rocksdb_entry(session, updated_key, receiver);
       }
 
-      receiver.set_delta_present_flag(0);
+      receiver.set_delta_present(0);
       for(auto &deleted_key: session.deleted_keys()) {
          std::visit([&](auto* p) {
             chain::backing_store::process_rocksdb_entry(*p, deleted_key, receiver);

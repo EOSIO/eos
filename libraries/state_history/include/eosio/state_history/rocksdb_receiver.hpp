@@ -162,7 +162,7 @@ public:
       table_ = {};
    }
 
-   void set_delta_present_flag(uint8_t value) {
+   void set_delta_present(uint8_t value) {
       maybe_process_table();
 
       present_ = value;

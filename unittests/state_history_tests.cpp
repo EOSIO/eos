@@ -773,7 +773,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       auto key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
       BOOST_REQUIRE_EQUAL(key_values.size(), 1);
-      BOOST_ASSERT(result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -785,7 +785,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       result = chain.find_table_delta("key_value", true);
       BOOST_REQUIRE(result.first);
-      BOOST_ASSERT(result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -800,7 +800,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
       BOOST_REQUIRE_EQUAL(key_values.size(), 1);
-      BOOST_ASSERT(!result.second->rows.obj[0].first);
+      BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 0);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
@@ -834,7 +834,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 6);
 
       for(auto &row : it_contract_table_full->rows.obj) {
-         BOOST_REQUIRE(row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 2);
       }
 
       auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
@@ -852,7 +852,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(it_contract_row_full->rows.obj.size(), 2);
 
       for(auto &row : it_contract_row_full->rows.obj) {
-         BOOST_REQUIRE(row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 2);
       }
 
       auto contract_rows_full = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row_full);
@@ -878,6 +878,10 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE(result.first);
       auto &it_contract_row = result.second;
       BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 2);
+
+      for(auto &row : it_contract_row->rows.obj) {
+         BOOST_REQUIRE_EQUAL(row.first, 2);
+      }
 
       auto contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
       std::set<std::string> expected_contract_row_table_names {"hashobjs", "numobjs"};
@@ -913,7 +917,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       BOOST_REQUIRE_EQUAL(deleted_contract_tables.size(), 4);
 
       for(auto &row : it_contract_table_deleted->rows.obj) {
-         BOOST_REQUIRE(!row.first);
+         BOOST_REQUIRE_EQUAL(row.first, 0);
       }
 
       std::set<std::string> expected_deleted_contract_table_names {"numobjs", "numobjs.....1", "numobjs.....2", "numobjs.....3"};
@@ -1000,7 +1004,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
 
       for(int i=0; i < contract_rows.size(); i++) {
-         BOOST_REQUIRE(!it_contract_row->rows.obj[i].first);
+         BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_rows[i].table.to_string(), "numobjs");
       }
 
@@ -1011,7 +1015,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       auto contract_index_double_elems = chain.deserialize_data<eosio::ship_protocol::contract_index_double_v0, eosio::ship_protocol::contract_index_double>(it_contract_index_double);
 
       for(int i=0; i < contract_index_double_elems.size(); i++) {
-         BOOST_REQUIRE(!it_contract_index_double->rows.obj[i].first);
+         BOOST_REQUIRE_EQUAL(it_contract_index_double->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_index_double_elems[i].table.to_string(), "numobjs.....2");
       }
       */
