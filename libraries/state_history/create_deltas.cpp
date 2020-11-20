@@ -2,6 +2,7 @@
 #include <eosio/state_history/rocksdb_receiver.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/chain/backing_store/db_combined.hpp>
+#include <b1/session/rocks_session.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -86,7 +87,7 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
          auto& delta = deltas.back();
          delta.name  = name;
          for (auto& row : index.indices())
-            delta.rows.obj.emplace_back(true, pack_row(row));
+            delta.rows.obj.emplace_back(2, pack_row(row));
       } else {
          auto undo = index.last_undo_session();
          if (undo.old_values.empty() && undo.new_values.empty() && undo.removed_values.empty())
@@ -97,12 +98,12 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
          for (auto& old : undo.old_values) {
             auto& row = index.get(old.id);
             if (include_delta(old, row))
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               delta.rows.obj.emplace_back(1, pack_row(row));
          }
          for (auto& old : undo.removed_values)
-            delta.rows.obj.emplace_back(false, pack_row(old));
+            delta.rows.obj.emplace_back(0, pack_row(old));
          for (auto& row : undo.new_values) {
-            delta.rows.obj.emplace_back(true, pack_row(row));
+            delta.rows.obj.emplace_back(2, pack_row(row));
          }
 
          if(delta.rows.obj.empty()) {
@@ -168,10 +169,14 @@ std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, co
       rocksdb_receiver_single_entry receiver(deltas, db);
 
       for(auto &updated_key: session.updated_keys()) {
+         std::visit([&](auto* p) {
+            p->read(updated_key) ? receiver.set_delta_present(1) : receiver.set_delta_present(2);
+         }, session.parent());
+
          chain::backing_store::process_rocksdb_entry(session, updated_key, receiver);
       }
 
-      receiver.set_delta_present_flag(false);
+      receiver.set_delta_present(0);
       for(auto &deleted_key: session.deleted_keys()) {
          std::visit([&](auto* p) {
             chain::backing_store::process_rocksdb_entry(*p, deleted_key, receiver);
