@@ -235,8 +235,8 @@ public:
    }
 };
 
-    chain_plugin::chain_plugin()
-            :my(new chain_plugin_impl()) {
+chain_plugin::chain_plugin()
+   : my(new chain_plugin_impl()) {
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<eosio::chain::backing_store_type>();
@@ -1328,8 +1328,7 @@ void chain_plugin::plugin_startup()
       auto shutdown = [](){ return app().quit(); };
       auto check_shutdown = [](){ return app().is_quiting(); };
       auto bvc_plug = app().find_plugin<blockvault_client_plugin>();
-      EOS_ASSERT( bvc_plug, plugin_config_exception, "blockvault_client_plugin not found" );
-      auto blockvault_instance = bvc_plug->get();
+      auto blockvault_instance = bvc_plug ? bvc_plug->get() : nullptr;
       if (nullptr != blockvault_instance) {
           eosio::blockvault::blockvault_sync_strategy<chain_plugin_impl> bss(blockvault_instance, *my, shutdown, check_shutdown);
           bss.do_sync();

@@ -13,7 +13,7 @@ if (APPLE AND EXISTS "/usr/local/opt/libpq/lib/pkgconfig")
    else()
       set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/libpq/lib/pkgconfig")
    endif()
-endif(APPLE AND NOT DEFINED ENV{PKG_CONFIG_PATH})
+endif()
 
 pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0 libpq>=10.0)
 
@@ -26,4 +26,4 @@ if (pqxx_FOUND)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
 
    add_subdirectory(tests)
-endif(pqxx_FOUND)
+endif()

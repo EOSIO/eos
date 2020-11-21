@@ -166,8 +166,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
-      chain_plugin*             chain_plug = nullptr;
-      blockvault_client_plugin* blockvault_plug = nullptr;
+      chain_plugin*                                             chain_plug = nullptr;
+      eosio::blockvault::block_vault_interface*                 blockvault = nullptr;
 
       incoming::channels::block::channel_type::handle           _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
@@ -336,8 +336,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-            if ( blockvault_plug->get() != nullptr ) {
-               blockvault_plug->get()->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
+            if ( blockvault != nullptr ) {
+               blockvault->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
             }
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
@@ -679,8 +679,9 @@ if( options.count(op_name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   my->blockvault_plug = app().find_plugin<blockvault_client_plugin>();
-   EOS_ASSERT( my->blockvault_plug, plugin_config_exception, "blockvault_client_plugin not found" );
+   auto blockvault_plug = app().find_plugin<blockvault_client_plugin>();
+   my->blockvault = blockvault_plug ? blockvault_plug->get() : nullptr;
+
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
@@ -1106,8 +1107,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("message", ec.message()));
 
          next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
-         if ( my->blockvault_plug->get() != nullptr ) {
-            my->blockvault_plug->get()->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, snapshot_path.generic_string().c_str() );
+         if ( my->blockvault != nullptr ) {
+            my->blockvault->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, snapshot_path.generic_string().c_str() );
          }
       } CATCH_AND_CALL (next);
       return;
@@ -1142,8 +1143,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
          my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string());
 
-         if ( my->blockvault_plug->get() != nullptr ) {
-            my->blockvault_plug->get()->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, pending_path.generic_string().c_str() );
+         if ( my->blockvault != nullptr ) {
+            my->blockvault->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, pending_path.generic_string().c_str() );
          }
       } CATCH_AND_CALL (next);
    }
@@ -2033,10 +2034,10 @@ void producer_plugin_impl::produce_block() {
       return sigs;
    } );
 
-   if ( blockvault_plug->get() != nullptr ) {
+   if ( blockvault != nullptr ) {
       std::promise<bool> p;
       std::future<bool> f = p.get_future();
-      blockvault_plug->get()->async_propose_constructed_block({pending_blk_state->block->block_num(), pending_blk_state->block->timestamp},
+      blockvault->async_propose_constructed_block({pending_blk_state->block->block_num(), pending_blk_state->block->timestamp},
                                                                pending_blk_state->dpos_irreversible_blocknum,
                                                                pending_blk_state->block, [&p](bool b) {
          p.set_value( b );

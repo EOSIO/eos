@@ -26,7 +26,7 @@ blockvault_client_plugin::~blockvault_client_plugin() {}
 void blockvault_client_plugin::set_program_options(options_description&, options_description& cfg) {
 #ifdef HAS_PQXX
    cfg.add_options()("block-vault-backend", bpo::value<std::string>(),
-                     "the uri for block vault backend. Currently, only PostgresQL is supported, the format is "
+                     "the uri for block vault backend. Currently, only PostgreSQL is supported, the format is "
                      "'postgresql://username:password@localhost/company'");
 #endif
 }

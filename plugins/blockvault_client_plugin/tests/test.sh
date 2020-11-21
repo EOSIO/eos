@@ -1,7 +1,7 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-CONTAINER_ID=`docker run  -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres`
+CONTAINER_ID=`docker run  -p 127.0.0.1:5432:5432 -e POSTGRES_PASSWORD=password -d postgres`
 
 finish() {
    docker rm -f $CONTAINER_ID
