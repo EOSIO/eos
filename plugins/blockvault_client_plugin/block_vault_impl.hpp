@@ -57,18 +57,18 @@ class block_vault_impl : public block_vault_interface {
       }
    }
 
-   void async_propose_constructed_block(watermark_t watermark, uint32_t lib, chain::signed_block_ptr block,
+   void async_propose_constructed_block(uint32_t lib, chain::signed_block_ptr block,
                                         std::function<void(bool)> handler) override {
-      boost::asio::post(ioc, [this, handler, watermark, lib, block]() {
+      boost::asio::post(ioc, [this, handler, lib, block]() {
          try {
             fc::datastream<std::vector<char>> stream;
             fc::raw::pack(stream, *block);
             eosio::chain::block_id_type block_id = block->calculate_id();
 
-            bool r = backend->propose_constructed_block({watermark.first, watermark.second.slot}, lib, stream.storage(),
+            bool r = backend->propose_constructed_block({block->block_num(), block->timestamp.slot}, lib, stream.storage(),
                                                        {block_id.data(), block_id.data_size()},
                                                        {block->previous.data(), block->previous.data_size()});
-            ilog("propose_constructed_block({${bn}, ${ts}}, ${lib}) returns ${r}", ("bn", watermark.first)("ts", watermark.second.slot)("lib", lib)("r", r));
+            ilog("propose_constructed_block(watermark={${bn}, ${ts}}, lib=${lib}) returns ${r}", ("bn", block->block_num())("ts", block->timestamp.slot)("lib", lib)("r", r));
             handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());
@@ -87,7 +87,7 @@ class block_vault_impl : public block_vault_interface {
             bool r = backend->append_external_block(block->block_num(), lib, stream.storage(),
                                                    {block_id.data(), block_id.data_size()},
                                                    {block->previous.data(), block->previous.data_size()});
-            ilog("append_external_block(${bn}, ${lib}) returns ${r}", ("bn", block->block_num())("lib", lib)("r", r));
+            ilog("append_external_block(block_num=${bn}, lib=${lib}) returns ${r}", ("bn", block->block_num())("lib", lib)("r", r));
             handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());
