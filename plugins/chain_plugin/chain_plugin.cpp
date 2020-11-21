@@ -2447,7 +2447,6 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    const bool reverse = p.reverse && *p.reverse;
    const auto db_backing_store = get_backing_store();
    if (db_backing_store == eosio::chain::backing_store_type::CHAINBASE) {
-      ilog("REM get_table_by_scope CHAINBASE");
       auto walk_table_range = [&result,&p]( auto itr, auto end_itr ) {
          keep_processing kp;
          for( unsigned int count = 0; kp() && count < p.limit && itr != end_itr; ++itr ) {
@@ -2473,7 +2472,6 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       }
    }
    else {
-      ilog("REM get_table_by_scope ROCKSDB");
       using namespace eosio::chain;
       EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
                  chain::contract_table_query_exception,
@@ -2679,13 +2677,13 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          bool finished_ = false;
       };
       f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(retrieve_primary_key));
-      auto kp = receiver.keep_processing_entries();
-      backing_store::rocksdb_contract_db_table_writer<f64_secondary_key_receiver, std::decay_t < decltype(kp)>>
-         writer(receiver, backing_store::key_context::standalone, kp);
+      auto kpe = receiver.keep_processing_entries();
+      backing_store::rocksdb_contract_db_table_writer<f64_secondary_key_receiver, std::decay_t < decltype(kpe)>>
+         writer(receiver, backing_store::key_context::standalone, kpe);
       eosio::chain::backing_store::walk_rocksdb_entries_with_prefix(kv_database.get_kv_undo_stack(), lower_key, upper_key, writer);
    };
 
-   const name global("global");
+   constexpr name global = "global"_n;
    const auto global_table_type = get_table_type(abi, global);
    EOS_ASSERT(global_table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",global_table_type));
    auto var = get_primary_key(config::system_account_name, config::system_account_name, global, global.to_uint64_t(), row_requirements::required, row_requirements::required, abis.get_table_type(global));
