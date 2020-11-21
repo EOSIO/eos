@@ -389,7 +389,7 @@ namespace eosio { namespace chain {
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
 
-         eosio::chain::combined_database& kv_db();
+         eosio::chain::combined_database& kv_db()const;
 
       private:
          friend class apply_context;

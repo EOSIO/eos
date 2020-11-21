@@ -489,7 +489,7 @@ public:
          EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
                     chain::contract_table_query_exception,
                     "Support for configured backing_store has not been added to get_primary_key");
-         auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+         const auto& kv_database = db.kv_db();
          const auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, primary_key);
          auto& current_session = kv_database.get_kv_undo_stack()->top();
          const auto value = current_session.read(full_key);
@@ -628,7 +628,7 @@ public:
             primary_key_receiver<Function> receiver(f);
          auto kp = receiver.keep_processing_entries();
          backing_store::rocksdb_contract_db_table_writer<primary_key_receiver<Function>, std::decay_t < decltype(kp)>> writer(receiver, backing_store::key_context::standalone, kp);
-         auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+         const auto& kv_database = db.kv_db();
          using key_type = chain::backing_store::db_key_value_format::key_type;
          auto start = chain::backing_store::db_key_value_format::create_full_prefix_key(code, scope, table, key_type::primary);
          auto end = start.next();
@@ -780,7 +780,7 @@ public:
          // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
          // this secondary type, we need to move it to just before the beginning of the next type
          upper = upper.next();
-         auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+         const auto& kv_database = db.kv_db();
          auto& session = kv_database.get_kv_undo_stack()->top();
          auto get_primary = [code=p.code,scope,table=p.table,&session,&get_prim_key_val](const chain::backing_store::secondary_index_view<secondary_key_type>& row, vector<fc::variant>& rows) {
             auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, row.primary_key);
@@ -884,7 +884,7 @@ public:
          // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
          // this secondary type, we need to move it to just before the beginning of the next type
          upper = upper.next();
-         auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+         const auto& kv_database = db.kv_db();
 
          keep_processing kp;
          auto filter_primary_key = [&kp,&result,&p,&get_prim_key,&handle_more](const backing_store::primary_index_view& row) {

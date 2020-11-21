@@ -309,7 +309,7 @@ namespace eosio { namespace chain {
    }
 
    std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
-                                                                    const kv_database_config& limits) {
+                                                                    const kv_database_config& limits)const {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
             return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack->top(), receiver,

@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
       void flush();
 
       std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
-                                                    const kv_database_config& limits);
+                                                    const kv_database_config& limits)const;
 
       std::unique_ptr<db_context> create_db_context(apply_context& context, name receiver);
 

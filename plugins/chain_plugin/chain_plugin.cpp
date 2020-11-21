@@ -2145,7 +2145,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
    name database_id = chain::kvram_id;
 
    const chain::kv_database_config &limits = kv_config;
-   auto &kv_database = const_cast<chain::controller&>(db).kv_db();
+   const auto &kv_database = db.kv_db();
    // To do: provide kv_resource_manmager to create_kv_context
    auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
 
@@ -2476,7 +2476,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
                  chain::contract_table_query_exception,
                  "Support for configured backing_store has not been added to get_table_by_scope");
-      auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+      const auto& kv_database = db.kv_db();
       table_receiver receiver(result, p);
       auto kp = receiver.keep_processing_entries();
       auto lower = chain::backing_store::db_key_value_format::create_full_prefix_key(std::get<0>(lower_bound_lookup_tuple),
@@ -2620,7 +2620,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       EOS_ASSERT(db_backing_store == backing_store_type::ROCKSDB,
                  contract_table_query_exception,
                  "Support for configured backing_store has not been added to get_table_by_scope");
-      auto& kv_database = const_cast<controller&>(db).kv_db();
+      const auto& kv_database = db.kv_db();
       using key_type = backing_store::db_key_value_format::key_type;
 
       // derive the "root" of the float64 secondary key space to determine where it ends (upper), then may need to recalculate
@@ -3397,7 +3397,7 @@ fc::variant read_only::get_primary_key(name code, name scope, name table, uint64
 }
 
 eosio::chain::backing_store_type read_only::get_backing_store() const {
-   auto& kv_database = const_cast<chain::controller&>(db).kv_db();
+   const auto& kv_database = db.kv_db();
    return kv_database.get_backing_store();
 }
 
