@@ -557,7 +557,7 @@ public:
    }
 
    auto get_primary_key_value(name table, const abi_serializer& abis, bool as_json, const std::optional<bool>& show_payer) const {
-      return [&abis,table,&show_payer,as_json,this](const auto& obj) -> fc::variant {
+      return [abis,table,show_payer,as_json,this](const auto& obj) -> fc::variant {
          fc::variant data_var;
          auto get_prim = get_primary_key_value(data_var, abis.get_table_type(table), abis, as_json);
          get_prim(obj);
