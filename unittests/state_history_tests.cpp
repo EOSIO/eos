@@ -483,13 +483,6 @@ public:
       return result;
    }
 
-   void set_backing_store(const backing_store_type backing_store) {
-      close(); // clean up chain so no dirty db error
-      auto cfg = get_config();
-      cfg.backing_store = backing_store;
-      init(cfg); // enable new config
-   }
-
 private:
    deltas_vector v;
 };
@@ -497,7 +490,7 @@ private:
 BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE/* TODO: uncomment this , backing_store_type::ROCKSDB*/ } ) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
 
