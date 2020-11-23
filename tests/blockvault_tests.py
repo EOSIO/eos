@@ -18,11 +18,36 @@ import subprocess
 import os
 import os.path
 import atexit
-###############################################################
-# nodeos_producer_watermark_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
-###############################################################
+
+############################################################################################################################################
+# blockvault_test.py
+#
+# This script requires a PostgreSQL server to work. There are 3 ways to control how to start or use PostgreSQL
+#
+# 1. The program 'psql' can be executed in current environment and the environment variables PGHOST, PGPORT, PGPASSWORD, PGUSER are properly
+#    defined to access an existing PostgreSQL server. Notice that in the mode, the existing database tables would be dropped. DO NOT use this
+#    mode to connect to a production PostgreSQL server. 
+# 2. The program 'docker' can be executed in current environment and can be executed without sudo: the script would create PostgreSQL implicitly.
+# 3. The program 'pg_ctlcluster' can be executed in current environment and the 'CI' environment variable is 'true': the script would use 
+#    'pg_ctlcluster 13 main start' to start the PostgreSQL server. It is intended to be used by CI docker container only.
+#
+# Overview:
+#   The script creates a cluster with a bios and 3 additional node.
+#    
+#   node 0 : a nodeos with 21 producers 'defproducera', 'defproducerb', ...., 'defproduceru'
+#   node 1 : a nodeos with one producer 'vltproducera' and configured to connect to a block vault.
+#   node 2 : initially without any producer configured. After it is killed in scenario 3, it is relaunched with
+#            one producer 'vltproducera' and uses the same producer key in node 1. 
+#
+#############################################################################################################################################
+
+
+class PostgresExisting:
+    def __init__(self):
+        self.execute("DROP TABLE IF EXISTS BlockData; DROP TABLE IF EXISTS SnapshotData; SELECT lo_unlink(l.oid) FROM pg_largeobject_metadata l;")
+
+    def execute(self, stmt):
+        return subprocess.check_output(['psql', '--command', stmt])
 
 class PostgresDocker:
     def __init__(self, args):
@@ -37,9 +62,6 @@ class PostgresDocker:
     def execute(self, stmt):
         return subprocess.check_output(['docker', 'run', '--rm', '-e', 'PGPASSWORD=password', '--link', 'test_postgresql:pq', 'postgres', 'psql', '-U', 'postgres', '-h', 'pq', '-q', '-c', stmt]).splitlines()
         
-    def num_rows_in_table(self, tableName):
-        return int(self.execute('SELECT COUNT(*) FROM {};'.format(tableName))[2])
-
 class PostgressCI:
     def __init__(self):
         subprocess.check_all(['pg_ctlcluster', '13', 'main', 'start'])
@@ -49,20 +71,22 @@ class PostgressCI:
     def execute(self, stmt):
         return subprocess.check_output(['su', '-c', "psql  --command \"{};\"".format(stmt), '-', 'postgres']).splitlines()
 
-    def num_rows_in_table(self, tableName):
-        return int(self.execute('SELECT COUNT(*) FROM {};'.format(tableName))[2])
+def num_rows_in_table(postgress, tableName):
+    return int(postgress.execute('SELECT COUNT(*) FROM {};'.format(tableName))[2])
 
-def testFailOver(cluster):
-    node0=cluster.getNode(0)
-    node1=cluster.getNode(1)
+def testFailOver(cluster, nodeToKill, addSwapFlags={}):
+    node0 = cluster.getNode(0)
+    
     Print("Kill node 1 and then remove the state and blocks")
-    node1.kill(signal.SIGTERM)
-    shutil.rmtree("var/lib/node_01/state")
-    shutil.rmtree("var/lib/node_01/blocks")
+    nodeId = nodeToKill.nodeId
+
+    nodeToKill.kill(signal.SIGTERM)
+    shutil.rmtree(Utils.getNodeDataDir(nodeId,"state"))
+    shutil.rmtree(Utils.getNodeDataDir(nodeId,"blocks"))
 
     blockNumAfterNode1Killed = node0.getHeadBlockNum()
 
-    assert node1.relaunch(timeout=30, newChain=True, cachePopen=True), "Fail to relaunch"
+    assert nodeToKill.relaunch(timeout=30, skipGenesis=False, cachePopen=True, addSwapFlags=addSwapFlags), "Fail to relaunch"
     assert node0.waitForIrreversibleBlockProducedBy("vltproducera", blockNumAfterNode1Killed, retry=30), "failed to see blocks produced by vltproducera"
 
 
@@ -72,7 +96,7 @@ errorExit=Utils.errorExit
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
                               "--wallet-port"})
 Utils.Debug=args.v
-totalNodes=2
+totalNodes=3
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
@@ -92,7 +116,9 @@ try:
     
     Print("start postgres")
     postgres = None
-    if shutil.which('docker'):
+    if shutil.which('psql') and 'PGHOST' in os.environ:
+        postgres = PostgresExisting()
+    elif shutil.which('docker'):
         postgres = PostgresDocker(args)
     elif shutil.which('pg_ctlcluster') and os.environ['CI'] == "true":
         postgres = PostgresCI()
@@ -129,15 +155,32 @@ try:
     while os.path.exists('var/lib/node_00/archive/blocks-1-20.log'):
         time.sleep(2)
 
-    Print("Testing recovering without snapshot...")
-    testFailOver(cluster)
+    Print("#################################################################################")
+    Print("# Scenario 1: Test node 1 failover without snapshot in the block vault         #")
+    Print("#################################################################################")
+    testFailOver(cluster, nodeToKill=node1)
     
-    Print("Testing recovering from snapshot...")
+    Print("#################################################################################")
+    Print("# Scenario 2: Test node 1 failover from the snapshot in the block vault         #")
+    Print("#################################################################################")
     Print("Create a snapshot")
     node1.createSnapshot()
     Print("Wait until the snapshot appears in the database")
-    Utils.waitForTruth(lambda: postgres.num_rows_in_table('SnapshotData') != 0)  
-    testFailOver(cluster)
+    Utils.waitForTruth(lambda: num_rows_in_table(postgres, 'SnapshotData') != 0)  
+    testFailOver(cluster, nodeToKill=node1)
+
+    Print("#################################################################################")
+    Print("# Scenario 3: Test two identical producer nodes conneting to the block vault    #")
+    Print("#################################################################################")
+    node2 = cluster.getNode(2)
+    testFailOver(cluster, nodeToKill=node2, addSwapFlags={
+        "--plugin": "eosio::blockvault_client_plugin",
+        "--block-vault-backend": "postgresql://postgres:password@localhost",
+        "--producer-name": "vltproducera",
+        "--signature-provider": "{}=KEY:{}".format(vltproducerAccount.ownerPublicKey, vltproducerAccount.ownerPrivateKey)
+    })
+
+    assert node2.waitForLibToAdvance()
 
     testSuccessful=True
 finally:
