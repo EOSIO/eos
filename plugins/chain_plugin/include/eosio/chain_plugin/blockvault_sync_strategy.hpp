@@ -18,6 +18,11 @@ struct blockvault_sync_strategy : public sync_callback {
       EOS_ASSERT(nullptr != blockvault, plugin_exception, "block_vault_interface cannot be null");
    }
 
+   ~blockvault_sync_strategy() {
+      if (_num_unlinkable_blocks)
+         wlog("Received ${num} unlinkable blocks during sync", ("num", _num_unlinkable_blocks));
+   }
+
    void run_startup() {
       _blockchain_provider.do_non_snapshot_startup(_shutdown, _check_shutdown);
       _startup_run = true;
@@ -68,7 +73,12 @@ struct blockvault_sync_strategy : public sync_callback {
          run_startup();
       }
 
-      _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
+      try {
+         _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
+      }
+      catch (unlinkable_block_exception&) {
+         ++_num_unlinkable_blocks;
+      }
    }
 
  private:
@@ -78,6 +88,7 @@ struct blockvault_sync_strategy : public sync_callback {
    std::function<bool()>  _check_shutdown;
    bool                   _startup_run;
    bool                   _received_snapshot;
+   unsigned               _num_unlinkable_blocks=0;
 };
 
 } // namespace blockvault
