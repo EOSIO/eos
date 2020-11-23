@@ -205,7 +205,7 @@ public:
 
    struct get_code_params {
       name account_name;
-      bool code_as_wasm = true;
+      bool code_as_wasm = false;
    };
 
    struct get_code_hash_results {
