@@ -2408,8 +2408,8 @@ struct table_receiver
    }
 
    auto keep_processing_entries() {
-      kp_ = keep_processing{};
-      return [&kp=*kp_,&reached_limit=reached_limit_]() {
+      keep_processing kp {};
+      return [kp{std::move(kp)},&reached_limit=reached_limit_]() {
          return !reached_limit && kp();
       };
    };
@@ -2421,7 +2421,6 @@ struct table_receiver
 
    read_only::get_table_by_scope_result& result_;
    const read_only::get_table_by_scope_params& params_;
-   std::optional<keep_processing> kp_;
    bool reached_limit_ = false;
 };
 

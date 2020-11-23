@@ -90,7 +90,7 @@ public:
    keep_processing(fc::microseconds&& duration = fc::milliseconds(10)) : end_time_(fc::time_point::now() + duration) {}
 
    fc::microseconds time_remaining() const { return end_time_ - fc::time_point::now(); }
-   bool operator()() {
+   bool operator()() const {
       return time_remaining().count() >= 0;
    }
 private:
