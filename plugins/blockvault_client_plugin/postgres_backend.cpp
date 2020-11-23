@@ -51,8 +51,8 @@ postgres_backend::postgres_backend(const std::string& options)
    conn.prepare("get_all_blocks", "SELECT block, block_size FROM BlockData");
 
    conn.prepare("delete_outdated_block_lo",
-                "SELECT lo_unlink(r.block) FROM BlockData r WHERE watermark_bn < $1 OR watermark_ts < $2;");
-   conn.prepare("delete_outdated_block_data", "DELETE FROM BlockData WHERE watermark_bn < $1 OR watermark_ts < $2;");
+                "SELECT lo_unlink(r.block) FROM BlockData r WHERE watermark_bn <= $1 OR watermark_ts <= $2;");
+   conn.prepare("delete_outdated_block_data", "DELETE FROM BlockData WHERE watermark_bn <= $1 OR watermark_ts <= $2;");
    conn.prepare("delete_outdated_snapshot_lo",
                 "SELECT lo_unlink(r.snapshot) FROM SnapshotData r WHERE watermark_bn < $1 OR watermark_ts < $2;");
    conn.prepare("delete_outdated_snapshot_data",
