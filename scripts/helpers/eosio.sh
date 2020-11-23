@@ -299,3 +299,47 @@ function build-clang() {
         export CC=$CC_COMP
     fi
 }
+
+function ensure-libpq-and-libpqxx() {
+    if [[ $ARCH == "Darwin" ]]; then
+        brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq boost libpq libpqxx
+    fi
+        
+    if [[ $ARCH == "Linux" ]]; then
+        if [[ $NAME == "Amazon Linux" ]]; then
+            #install libpq
+            amazon-linux-extras enable postgresql11 && \
+                yum install -y libpq-devel 
+            #build libpqxx
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+                cd  libpqxx-7.2.1  && \
+                ${CMAKE} -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+                ${CMAKE} --build build && ${CMAKE} --install build && \
+                cd .. && rm -rf libpqxx-7.2.1
+        elif [[ $NAME == "CentOS Linux" ]]; then
+            #install libpq
+            yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+                yum install -y postgresql13-devel 
+            PostgreSQL_ROOT=/usr/pgsql-13   
+            PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
+            #build libpqxx
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+                cd  libpqxx-7.2.1  && \
+                source /opt/rh/devtoolset-8/enable && \
+                ${CMAKE} -DSKIP_BUILD_TEST=ON  -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+                ${CMAKE} --build build && ${CMAKE} --install build && \
+                cd .. && rm -rf libpqxx-7.2.1
+        elif [[ $NAME == "Ubuntu" ]]; then
+            # install libpq
+            echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+                curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+                apt-get update && apt-get -y install libpq-dev 
+            #build libpqxx
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+                cd  libpqxx-7.2.1  && \
+                ${CMAKE} -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+                ${CMAKE} --build build && ${CMAKE} --install build && \
+                cd .. && rm -rf libpqxx-7.2.1
+        fi
+    fi
+}

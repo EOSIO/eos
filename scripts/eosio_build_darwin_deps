@@ -8,6 +8,3 @@ pkgconfig,/usr/local/bin/pkg-config
 python,/usr/local/opt/python3
 doxygen,/usr/local/bin/doxygen
 libusb,/usr/local/lib/libusb-1.0.0.dylib
-openssl@1.1,/usr/local/opt/openssl@1.1/lib/libssl.a
-libpq,/usr/local/opt/libpq/lib/pkgconfig/libpq.pc
-libpqxx,/usr/local/lib/libpqxx.a
