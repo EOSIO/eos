@@ -54,4 +54,37 @@ BOOST_AUTO_TEST_CASE(make_shared_bytes_test) {
    BOOST_REQUIRE(b8.size() == char_length);
 }
 
+BOOST_AUTO_TEST_CASE(next_test) {
+   static constexpr auto* a_value  = "a";
+   static constexpr auto* a_next_expected = "b";
+   auto a = shared_bytes(a_value, 1);
+   BOOST_REQUIRE(memcmp(a.next().data(), reinterpret_cast<const int8_t*>(a_next_expected), 1) == 0);
+   BOOST_REQUIRE(a.next().size() == 1);
+
+   static constexpr auto* aa_value  = "aa";
+   static constexpr auto* aa_next_expected = "ab";
+   auto aa = shared_bytes(aa_value, 2);
+   BOOST_REQUIRE(memcmp(aa.next().data(), reinterpret_cast<const int8_t*>(aa_next_expected), 2) == 0);
+   BOOST_REQUIRE(aa.next().size() == 2);
+
+   static constexpr auto* empty_value  = "";
+   auto empty = shared_bytes(empty_value, 0);
+   BOOST_REQUIRE(empty.next().size() == 0);
+
+   // next of a sequence of 0xFFs is empty
+   char single_last_value[1] = {static_cast<char>(0xFF)};
+   auto single_last = shared_bytes(single_last_value, 1);
+   BOOST_REQUIRE(single_last.next().size() == 0);
+
+   char double_last_value[2] = {static_cast<char>(0xFF), static_cast<char>(0xFF)};
+   auto double_last = shared_bytes(double_last_value, 2);
+   BOOST_REQUIRE(double_last.next().size() == 0);
+
+   char mixed_last_value[2] = {static_cast<char>(0xFE), static_cast<char>(0xFF)};
+   char mixed_last_next_expected[1] = {static_cast<char>(0xFF)};
+   auto mixed_last = shared_bytes(mixed_last_value, 2);
+   BOOST_REQUIRE(memcmp(mixed_last.next().data(), reinterpret_cast<const int8_t*>(mixed_last_next_expected), 1) == 0);
+   BOOST_REQUIRE(mixed_last.next().size() == 1);
+}
+
 BOOST_AUTO_TEST_SUITE_END();
