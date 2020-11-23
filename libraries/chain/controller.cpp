@@ -2738,9 +2738,9 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    return signed_block_ptr();
 }
 
-std::shared_ptr<std::vector<char>> controller::fetch_block_stream_by_number(uint32_t block_num, bool new_protocol_version)const { try {
+std::shared_ptr<std::vector<char>> controller::fetch_block_buffer_by_number(uint32_t block_num, bool new_protocol_version)const { try {
 
-    std::shared_ptr<std::vector<char>> v = my->blog.read_signed_block_stream_by_num(block_num);
+    std::shared_ptr<std::vector<char>> v = my->blog.read_signed_block_buffer_by_num(block_num);
 
     uint32_t version = my->blog.version(); // it's preamble.version, maybe not always right?
     bool new_blog_version = my->blog.is_new_version(version);
@@ -2757,7 +2757,7 @@ std::shared_ptr<std::vector<char>> controller::fetch_block_stream_by_number(uint
             //convert to signed_block
             signed_block sb(std::move(block_v0), true);
             //pack
-            auto send_buf=std::make_shared<std::vector<char>>(sizeof(sb));
+            auto send_buf=std::make_shared<std::vector<char>>(fc::raw::pack_size(sb));
             fc::datastream<char*> pack_ds(send_buf->data(), send_buf->size());
             fc::raw::pack(pack_ds, sb);
             return send_buf;
@@ -2765,11 +2765,11 @@ std::shared_ptr<std::vector<char>> controller::fetch_block_stream_by_number(uint
             fc::datastream<const char*> ds((*v).data(), (*v).size());
             //unpack
             signed_block sb;
-            fc::raw::unpack(ds, sb);
+            sb.unpack(ds, packed_transaction::cf_compression_type::none);
             //convert to signed_block_v0
             auto block_ptr = sb.to_signed_block_v0();
             //pack
-            auto send_buf=std::make_shared<std::vector<char>>(sizeof(*block_ptr));
+            auto send_buf=std::make_shared<std::vector<char>>(fc::raw::pack_size(*block_ptr));
             fc::datastream<char*> pack_ds(send_buf->data(), send_buf->size());
             fc::raw::pack(pack_ds, *block_ptr);
             return send_buf;

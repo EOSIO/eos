@@ -552,7 +552,7 @@ namespace eosio { namespace chain {
          block_log_preamble        preamble;
          size_t                    stride = std::numeric_limits<size_t>::max();
          static uint32_t           default_version;
-         mutable std::shared_mutex blog_mutex;
+         mutable std::mutex        blog_mutex;
 
          block_log_impl(const block_log::config_type& config);
 
@@ -581,7 +581,7 @@ namespace eosio { namespace chain {
          void                                   read_head();
 
          // thread safe
-         std::shared_ptr<std::vector<char>> read_block_stream_by_num(uint32_t block_num);
+         std::shared_ptr<std::vector<char>> read_block_buffer_by_num(uint32_t block_num);
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -781,9 +781,9 @@ namespace eosio { namespace chain {
    }
 
 
-   std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_stream_by_num(uint32_t block_num) {
+   std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_buffer_by_num(uint32_t block_num) {
 
-       std::shared_lock<std::shared_mutex> g(blog_mutex);
+       std::unique_lock<std::mutex> g(blog_mutex);
 
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
@@ -859,8 +859,8 @@ namespace eosio { namespace chain {
       return {};
    }
 
-   std::shared_ptr<std::vector<char>> block_log::read_signed_block_stream_by_num(uint32_t block_num) const {
-       return my->read_block_stream_by_num(block_num);
+   std::shared_ptr<std::vector<char>> block_log::read_signed_block_buffer_by_num(uint32_t block_num) const {
+       return my->read_block_buffer_by_num(block_num);
    }
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {
       return my->read_block_by_num(block_num);
