@@ -249,6 +249,36 @@ public:
       ++secondary_count<IndexType>();
    }
 
+   // DB Intrinsic Keys
+   // PREFIX:
+   // db intrinsic keys are all prefaced with the following information:
+   // | contract | scope | table | type of key |
+   // so when iterating through the database, all keys for a given contract/scope/table will be processed together
+   //
+   // TYPE OF KEY:
+   // the "type of key" is an enum which ends up creating the following order for the type of keys:
+   // primary key
+   // primary to secondary key (not present in chainbase structure since it can have more than one index on the same structure -- these are ignored for this class's processing)
+   // uint64_t secondary key
+   // uint128_t secondary key
+   // key256_t secondary key
+   // float64_t secondary key
+   // float128_t secondary key
+   // table key (indicates end of table and payer)
+   //
+   // KEY PROCESSING (key_context):
+   // keys may be processed as:
+   // individual key (standalone)
+   // -- this can be any key - primary, secondary, or table
+   // table only (table_only, table_only_reversed)
+   // -- all keys for a table are passed in and processed only to report a valid table_id_object_view, if the table is
+   // passed in table_only, the table is determined to be complete when the table key is received, for
+   // table_only_reversed all of the table_id_object_view data, other than the count, is determined when the
+   // table key is received and the count is determined when the table is determined to be complete (either by a
+   // new key being received that is for a different table, or the complete() method is called externally).
+   // -- only the the table_id_object_view is reported, none of the other key's objects are reported
+   // complete (complete, complete_reverse)
+   // -- similar to table only, except all of the objects for the keys in the table are also reported
    bool operator()(uint64_t contract, const char *key, std::size_t key_size,
                    const char *value, std::size_t value_size) {
       b1::chain_kv::bytes composite_key(key, key + key_size);
@@ -257,6 +287,9 @@ public:
 
       const name code = name{contract};
       if (table_context_ && is_reversed() && !is_same_table(code, scope, table)) {
+         // since the table is being traversed in reverse order and
+         // we have identified a key for a new table, need to add
+         // the key count for the completed table and report it
          table_context_->count = total_count();
          receiver_.add_row(*table_context_);
       }
@@ -274,6 +307,12 @@ public:
 
 
          if (is_reversed()) {
+            // since table is reversed, we see the table key first,
+            // so we have the whole table context, except for the
+            // count of keys contained in the table, that will need
+            // to be added later once the next table is identified
+            // (so that we know that this table is 
+            // complete - see complete())
             table_context_ = table_id_object_view{code, scope, table, pp.payer, 0};
          }
          else {
