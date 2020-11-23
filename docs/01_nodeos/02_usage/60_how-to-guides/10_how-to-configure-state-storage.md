@@ -15,7 +15,7 @@ Config Options for eosio::chain_plugin:
                                         compaction. Defaults to the number of available cores. 
   --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
-  --rocksdb-write-buffer-size-mb arg (=128MB)
+  --rocksdb-write-buffer-size-mb arg (=128)
                                         Size of a single rocksdb memtable (in MiB)
  
 # Procedure
