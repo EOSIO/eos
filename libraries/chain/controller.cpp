@@ -1911,7 +1911,7 @@ struct controller_impl {
             emit( self.irreversible_block, bsp );
 
             if (!self.skip_db_sessions(s)) {
-               db.commit(bsp->block_num);
+               kv_db.commit(bsp->block_num);
             }
 
          } else {
