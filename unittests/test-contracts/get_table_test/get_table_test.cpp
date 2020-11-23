@@ -17,8 +17,8 @@ void get_table_test::addnumobj(uint64_t input) {
 
 void get_table_test::modifynumobj(uint64_t id) {
    numobjs numobjs_table( _self, _self.value );
-   numobjs_table.modify(numobjs_table.get(id), _self, [&](auto& message) {
-      message.sec64++;
+   numobjs_table.modify(numobjs_table.get(id), _self, [&](auto& obj) {
+      obj.sec64++;
    });
 }
 
