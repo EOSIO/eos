@@ -564,7 +564,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
       auto &it_permission = result.second;
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
-      for (int i = 0; i < accounts_permissions.size(); i++) {
+      for (std::size_t i = 0; i < accounts_permissions.size(); i++) {
          BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, 2);
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].owner.to_string(), "newacc");
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].name.to_string(), expected_permission_names[i]);
@@ -905,6 +905,23 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       }
       BOOST_REQUIRE(expected_contract_index256_table_names == result_contract_index256_table_names);
 
+      // test modify
+      chain.produce_block();
+
+      trace = chain.push_action("tester"_n, "modifynumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      result = chain.find_table_delta("contract_row");
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table_modified = result.second;
+      auto modified_contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_modified);
+      BOOST_REQUIRE_EQUAL(modified_contract_tables.size(), 1);
+
+      for(auto &row : it_contract_table_modified->rows.obj) {
+         BOOST_REQUIRE_EQUAL(row.first, 1);
+      }
+
+      // test erase
       chain.produce_block();
 
       trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
