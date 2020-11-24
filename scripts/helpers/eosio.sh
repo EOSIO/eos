@@ -130,7 +130,7 @@ function print_supported_linux_distros_and_exit() {
 
 function ensure-compiler() {
     # Support build-essentials on ubuntu
-    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
@@ -153,9 +153,9 @@ function ensure-compiler() {
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 if [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) -lt 6 ]] && export NO_CPP17=true
                 elif [[ $(clang --version | cut -d ' ' -f 4 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 6 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 6 ]] && export NO_CPP17=true
                 fi
             fi
         else

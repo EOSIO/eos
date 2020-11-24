@@ -3,6 +3,7 @@
 #include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 #include <vector>
 #include <set>
@@ -41,15 +42,6 @@ namespace eosio { namespace chain { namespace webassembly {
       (void)legacy_ptr<int64_t>(std::move(cpu_weight));
    }
 
-   /**
-    * update a single resource limit associated with an account.
-    *
-    * @param account - the account whose limits are being modified
-    * @param resource - the resource to update, which should be either ram, disk, cpu, or net.
-    * @param limit - the new limit.  A value of -1 means unlimited.
-    *
-    * @pre limit >= -1
-    */
    void interface::set_resource_limit( account_name account, name resource, int64_t limit ) {
       EOS_ASSERT(limit >= -1, wasm_execution_error, "invalid value for ${resource} resource limit expected [-1,INT64_MAX]", ("resource", resource));
       auto& manager = context.control.get_mutable_resource_limits_manager();
@@ -67,10 +59,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits(account, ram, net, cpu);
          manager.set_account_limits( account, ram, net, limit );
-      } else if( resource == string_to_name("disk") ) {
-         if( manager.set_account_disk_limit( account, limit ) ) {
-            context.trx_context.validate_disk_usage.insert( account );
-         }
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -90,8 +78,6 @@ namespace eosio { namespace chain { namespace webassembly {
          int64_t ram, net, cpu;
          manager.get_account_limits( account, ram, net, cpu );
          return cpu;
-      } else if( resource == string_to_name("disk") ) {
-         return manager.get_account_disk_limit( account );
       } else {
          EOS_THROW(wasm_execution_error, "unknown resource ${resource}", ("resource", resource));
       }
@@ -111,8 +97,7 @@ namespace eosio { namespace chain { namespace webassembly {
       std::set<account_name> unique_producers;
       for (const auto& p: producers) {
          EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
-
-         p.authority.visit([&p, num_supported_key_types, validate_keys](const auto& a) {
+         std::visit([&p, num_supported_key_types, validate_keys](const auto& a) {
             uint32_t sum_weights = 0;
             std::set<public_key_type> unique_keys;
             for (const auto& kw: a.keys ) {
@@ -135,8 +120,7 @@ namespace eosio { namespace chain { namespace webassembly {
             EOS_ASSERT( a.keys.size() == unique_keys.size(), wasm_execution_error, "producer schedule includes a duplicated key for ${account}", ("account", p.producer_name));
             EOS_ASSERT( a.threshold > 0, wasm_execution_error, "producer schedule includes an authority with a threshold of 0 for ${account}", ("account", p.producer_name));
             EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority for ${account}", ("account", p.producer_name));
-         });
-
+         }, p.authority);
 
          unique_producers.insert(p.producer_name);
       }
@@ -208,12 +192,12 @@ namespace eosio { namespace chain { namespace webassembly {
    uint32_t interface::get_blockchain_parameters_packed( legacy_span<char> packed_blockchain_parameters ) const {
       auto& gpo = context.control.get_global_properties();
 
-      auto s = fc::raw::pack_size( gpo.configuration );
+      auto s = fc::raw::pack_size( gpo.configuration.v0() );
       if( packed_blockchain_parameters.size() == 0 ) return s;
 
       if ( s <= packed_blockchain_parameters.size() ) {
          datastream<char*> ds( packed_blockchain_parameters.data(), s );
-         fc::raw::pack(ds, gpo.configuration);
+         fc::raw::pack(ds, gpo.configuration.v0());
          return s;
       }
       return 0;
@@ -221,7 +205,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    void interface::set_blockchain_parameters_packed( legacy_span<const char> packed_blockchain_parameters ) {
       datastream<const char*> ds( packed_blockchain_parameters.data(), packed_blockchain_parameters.size() );
-      chain::chain_config cfg;
+      chain::chain_config_v0 cfg;
       fc::raw::unpack(ds, cfg);
       cfg.validate();
       context.db.modify( context.control.get_global_properties(),
@@ -229,20 +213,45 @@ namespace eosio { namespace chain { namespace webassembly {
               gprops.configuration = cfg;
       });
    }
+   
+   uint32_t interface::get_parameters_packed( span<const char> packed_parameter_ids, span<char> packed_parameters) const{
+      datastream<const char*> ds_ids( packed_parameter_ids.data(), packed_parameter_ids.size() );
 
-   auto kv_parameters_impl(name db) {
-      if ( db == kvram_id ) {
-         return &kv_config::kvram;
-      } else if ( db == kvdisk_id ) {
-         return &kv_config::kvdisk;
-      } else {
-         EOS_THROW(kv_bad_db_id, "Bad key-value database ID");
-      }
+      chain::chain_config cfg = context.control.get_global_properties().configuration;
+      std::vector<fc::unsigned_int> ids;
+      fc::raw::unpack(ds_ids, ids);
+      const config_range config_range(cfg, std::move(ids), {context.control});
+      
+      auto size = fc::raw::pack_size( config_range );
+      if( packed_parameters.size() == 0 ) return size;
+
+      EOS_ASSERT(size <= packed_parameters.size(),
+                 chain::config_parse_error,
+                 "get_parameters_packed: buffer size is smaller than ${size}", ("size", size));
+      
+      datastream<char*> ds( packed_parameters.data(), size );
+      fc::raw::pack( ds, config_range );
+      return size;
    }
 
-   uint32_t interface::get_kv_parameters_packed( name db, span<char> packed_kv_parameters, uint32_t max_version ) const {
+   void interface::set_parameters_packed( span<const char> packed_parameters ){
+      datastream<const char*> ds( packed_parameters.data(), packed_parameters.size() );
+
+      chain::chain_config cfg = context.control.get_global_properties().configuration;
+      config_range config_range(cfg, {context.control});
+
+      fc::raw::unpack(ds, config_range);
+      
+      config_range.config.validate();
+      context.db.modify( context.control.get_global_properties(),
+         [&]( auto& gprops ) {
+              gprops.configuration = config_range.config;
+      });
+   }
+
+   uint32_t interface::get_kv_parameters_packed( span<char> packed_kv_parameters, uint32_t max_version ) const {
       const auto& gpo = context.control.get_global_properties();
-      const auto& params = gpo.kv_configuration.*kv_parameters_impl( db );
+      const auto& params = gpo.kv_configuration;
       uint32_t version = std::min( max_version, uint32_t(0) );
 
       auto s = fc::raw::pack_size( version ) + fc::raw::pack_size( params );
@@ -255,7 +264,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return s;
    }
 
-   void interface::set_kv_parameters_packed( name db, span<const char> packed_kv_parameters ) {
+   void interface::set_kv_parameters_packed( span<const char> packed_kv_parameters ) {
       datastream<const char*> ds( packed_kv_parameters.data(), packed_kv_parameters.size() );
       uint32_t version;
       chain::kv_database_config cfg;
@@ -264,7 +273,7 @@ namespace eosio { namespace chain { namespace webassembly {
       fc::raw::unpack(ds, cfg);
       context.db.modify( context.control.get_global_properties(),
          [&]( auto& gprops ) {
-               gprops.kv_configuration.*kv_parameters_impl( db ) = cfg;
+               gprops.kv_configuration = cfg;
       });
    }
 

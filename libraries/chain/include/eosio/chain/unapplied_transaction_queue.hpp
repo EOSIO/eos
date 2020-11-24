@@ -28,7 +28,7 @@ enum class trx_enum_type {
    incoming = 5 // incoming_end() needs to be updated if this changes
 };
 
-using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
+using next_func_t = std::function<void(const std::variant<fc::exception_ptr, transaction_trace_ptr>&)>;
 
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
@@ -49,13 +49,6 @@ struct unapplied_transaction {
  * Persisted are first so that they can be applied in each block until expired.
  */
 class unapplied_transaction_queue {
-public:
-   enum class process_mode {
-      non_speculative,           // HEAD, READ_ONLY, IRREVERSIBLE
-      speculative_non_producer,  // will never produce
-      speculative_producer       // can produce
-   };
-
 private:
    struct by_trx_id;
    struct by_type;
@@ -72,7 +65,6 @@ private:
    > unapplied_trx_queue_type;
 
    unapplied_trx_queue_type queue;
-   process_mode mode = process_mode::speculative_producer;
    uint64_t max_transaction_queue_size = 1024*1024*1024; // enforced for incoming
    uint64_t size_in_bytes = 0;
    size_t incoming_count = 0;
@@ -80,13 +72,6 @@ private:
 public:
 
    void set_max_transaction_queue_size( uint64_t v ) { max_transaction_queue_size = v; }
-
-   void set_mode( process_mode new_mode ) {
-      if( new_mode != mode ) {
-         FC_ASSERT( empty(), "set_mode, queue required to be empty" );
-      }
-      mode = new_mode;
-   }
 
    bool empty() const {
       return queue.empty();
@@ -139,18 +124,22 @@ public:
       if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
       for( const auto& receipt : bs->block->transactions ) {
-         if( receipt.trx.contains<packed_transaction>() ) {
-            const auto& pt = receipt.trx.get<packed_transaction>();
-            auto itr = queue.get<by_trx_id>().find( pt.id() );
-            if( itr != queue.get<by_trx_id>().end() ) {
+         if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+            const auto& pt = std::get<packed_transaction>(receipt.trx);
+            auto itr = idx.find( pt.id() );
+            if( itr != idx.end() ) {
+               if( itr->next ) {
+                  itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
+                                FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
+               }
                if( itr->trx_type != trx_enum_type::persisted &&
                    itr->trx_type != trx_enum_type::incoming_persisted ) {
-                  if( itr->next ) {
-                     itr->next( std::static_pointer_cast<fc::exception>( std::make_shared<tx_duplicate>(
-                                   FC_LOG_MESSAGE( info, "duplicate transaction ${id}", ("id", itr->trx_meta->id())))));
-                  }
                   removed( itr );
                   idx.erase( itr );
+               } else if( itr->next ) {
+                  idx.modify( itr, [](auto& un){
+                     un.next = nullptr;
+                  } );
                }
             }
          }
@@ -158,7 +147,6 @@ public:
    }
 
    void add_forked( const branch_type& forked_branch ) {
-      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
@@ -172,7 +160,6 @@ public:
    }
 
    void add_aborted( deque<transaction_metadata_ptr> aborted_trxs ) {
-      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          auto insert_itr = queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
@@ -181,13 +168,14 @@ public:
    }
 
    void add_persisted( const transaction_metadata_ptr& trx ) {
-      if( mode == process_mode::non_speculative ) return;
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          auto insert_itr = queue.insert( { trx, expiry, trx_enum_type::persisted } );
          if( insert_itr.second ) added( insert_itr.first );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
+         if (itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted)
+            --incoming_count;
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
          } );
@@ -202,6 +190,9 @@ public:
                { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
       } else {
+         if (itr->trx_type != trx_enum_type::incoming && itr->trx_type != trx_enum_type::incoming_persisted)
+            ++incoming_count;
+
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
             un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
             un.next = std::move( next );
@@ -254,8 +245,7 @@ private:
    }
 
    static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
-      // packed_trx caches unpacked transaction so double
-      return (trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size()) * 2 + sizeof( *trx );
+      return sizeof(unapplied_transaction) + trx->get_estimated_size();
    }
 
 };

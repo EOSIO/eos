@@ -152,27 +152,28 @@ class TestHelper(object):
             Utils.Print("Test succeeded.")
         else:
             Utils.Print("Test failed.")
+
+        def reportProductionAnalysis(thresholdMs):
+            Utils.Print(Utils.FileDivider)
+            for node in cluster.getAllNodes():
+                missedBlocks=node.analyzeProduction(thresholdMs=thresholdMs)
+                if len(missedBlocks) > 0:
+                    Utils.Print("NodeId: %s produced the following blocks late: %s" % (node.nodeId, missedBlocks))
+
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
             Utils.Print(Utils.FileDivider)
-            psOut=Cluster.pgrepEosServers(timeout=60)
+            psOut = Cluster.pgrepEosServers(timeout=60)
             Utils.Print("pgrep output:\n%s" % (psOut))
-            cluster.dumpErrorDetails()
-            if walletMgr:
-                walletMgr.dumpErrorDetails()
-            cluster.printBlockLogIfNeeded()
+            reportProductionAnalysis(thresholdMs=0)
             Utils.Print("== Errors see above ==")
-            if len(Utils.CheckOutputDeque)>0:
-                Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))
-                for out, err, cmd in reversed(Utils.CheckOutputDeque):
-                    Utils.Print("cmd={%s}" % (" ".join(cmd)))
-                    Utils.Print("cout={%s}" % (out))
-                    Utils.Print("cerr={%s}\n" % (err))
-                Utils.Print("== cmd/cout/cerr pairs done. ==")
+        elif dumpErrorDetails:
+            # for now report these to know how many blocks we are missing production windows for
+            reportProductionAnalysis(thresholdMs=200)
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")
-            cluster.killall(allInstances=cleanRun)
+            cluster.killall(allInstances=cleanRun, kill=testSuccessful)
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup cluster data.")
                 cluster.cleanup()

@@ -5,6 +5,10 @@
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
 #include <stdexcept>
+#include <softfloat.hpp>
+#include <algorithm>
+
+#include <b1/session/shared_bytes.hpp>
 
 namespace b1::chain_kv {
 
@@ -110,12 +114,178 @@ inline bytes get_next_prefix(const bytes& prefix) {
    return next_prefix;
 }
 
+namespace detail {
+   using uint128_t = __uint128_t;
+
+   template<typename T>
+   struct value_storage;
+
+   template<typename T>
+   struct value_storage<T*> {
+      using type = T;
+      constexpr T* as_ptr(T* value) const { return (value); }
+   };
+
+   template<typename T>
+   struct value_storage {
+      using type = T;
+      constexpr T* as_ptr(T& value) const { return &value; }
+   };
+
+   template <typename T, std::size_t N>
+   auto append_key(bytes& dest, T value) {
+
+      using t_type = typename value_storage<T>::type;
+      t_type t_array[N];
+      const t_type* first = value_storage<T>().as_ptr(value);
+      const t_type* last = first + N;
+      std::reverse_copy(first, last, std::begin(t_array));
+
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
+      dest.insert(dest.end(), t_array_as_char_begin, t_array_as_char_end);
+   }
+
+   template <typename T, std::size_t N>
+   auto insert_key(eosio::session::shared_bytes& dest, size_t index, T value) {
+
+      using t_type = typename value_storage<T>::type;
+      t_type t_array[N];
+      const t_type* first = value_storage<T>().as_ptr(value);
+      const t_type* last = first + N;
+      std::reverse_copy(first, last, std::begin(t_array));
+
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
+      std::memcpy(dest.data() + index, t_array_as_char_begin, t_array_as_char_end - t_array_as_char_begin);
+   }
+
+   template <typename UInt, typename T>
+   UInt float_to_key(T value) {
+      static_assert(sizeof(T) == sizeof(UInt), "Expected unsigned int of the same size");
+      UInt result;
+      std::memcpy(&result, &value, sizeof(T));
+      const UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      UInt mask    = 0;
+      if (result == signbit)
+         result = 0;
+      if (result & signbit)
+         mask = ~mask;
+      return result ^ (mask | signbit);
+   }
+
+   template <typename T, typename UInt>
+   T key_to_float(UInt value) {
+      static_assert(sizeof(T) == sizeof(UInt), "Expected unsigned int of the same size");
+      // encoded signbit indicates positive value
+      const UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      UInt mask    = 0;
+      if ((value & signbit) == 0)
+         mask = ~mask;
+      value = {value ^ (mask | signbit)};
+      T float_result;
+      std::memcpy(&float_result, &value, sizeof(UInt));
+      return float_result;
+   }
+
+   template<typename It, typename Key, std::size_t N>
+   bool extract_key(It& key_loc, It key_end, Key& key) {
+      const std::size_t distance = std::distance(key_loc, key_end);
+      using t_type = typename value_storage<Key>::type;
+      constexpr static auto key_size = sizeof(t_type) * N;
+      if (distance < key_size)
+         return false;
+
+      key_end = key_loc + key_size;
+      t_type t_array[N];
+      char* t_array_as_char_begin = reinterpret_cast<char*>(t_array);
+      std::copy(key_loc, key_loc + key_size, t_array_as_char_begin);
+      key_loc = key_end;
+      char* t_array_as_char_end = reinterpret_cast<char*>(t_array + N);
+      std::reverse(t_array_as_char_begin, t_array_as_char_end);
+
+      t_type* key_ptr = value_storage<Key>().as_ptr(key);
+      std::reverse_copy(std::begin(t_array), std::end(t_array), key_ptr);
+
+      return true;
+   }
+}
+
 template <typename T>
 auto append_key(bytes& dest, T value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
-   char buf[sizeof(value)];
-   memcpy(buf, &value, sizeof(value));
-   std::reverse(std::begin(buf), std::end(buf));
-   dest.insert(dest.end(), std::begin(buf), std::end(buf));
+   detail::append_key<T, 1>(dest, value);
+}
+
+template <typename T, std::size_t N>
+auto append_key(bytes& dest, std::array<T, N> value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   detail::append_key<T*, N>(dest, value.data());
+}
+
+inline void append_key(bytes& dest, float64_t value) {
+   auto float_key = detail::float_to_key<uint64_t>(value);
+   detail::append_key<uint64_t, 1>(dest, float_key);
+}
+
+inline void append_key(bytes& dest, float128_t value) {
+   auto float_key = detail::float_to_key<detail::uint128_t>(value);
+   // underlying storage is implemented as uint64_t[2], but it is laid out like it is uint128_t
+   detail::append_key<detail::uint128_t, 1>(dest, float_key);
+}
+
+template <typename T>
+auto insert_key(eosio::session::shared_bytes& dest, size_t index, T value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   detail::insert_key<T, 1>(dest, index, value);
+}
+
+template <typename T, std::size_t N>
+auto insert_key(eosio::session::shared_bytes& dest, size_t index, std::array<T, N> value) -> std::enable_if_t<std::is_unsigned_v<T>, void> {
+   detail::insert_key<T*, N>(dest, index, value.data());
+}
+
+inline void insert_key(eosio::session::shared_bytes& dest, size_t index, float64_t value) {
+   auto float_key = detail::float_to_key<uint64_t>(value);
+   detail::insert_key<uint64_t, 1>(dest, index, float_key);
+}
+
+inline void insert_key(eosio::session::shared_bytes& dest, size_t index, float128_t value) {
+   auto float_key = detail::float_to_key<detail::uint128_t>(value);
+   // underlying storage is implemented as uint64_t[2], but it is laid out like it is uint128_t
+   detail::insert_key<detail::uint128_t, 1>(dest, index, float_key);
+}
+
+template<typename It, typename T>
+auto extract_key(It& key_loc, It key_end, T& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+   return detail::extract_key<It, T, 1>(key_loc, key_end, key);
+}
+
+template <typename It, typename T, std::size_t N>
+auto extract_key(It& key_loc, It key_end, std::array<T, N>& key) -> std::enable_if_t<std::is_unsigned_v<T>, bool> {
+   T* key_ptr = key.data();
+   return detail::extract_key<It, T*, N>(key_loc, key_end, key_ptr);
+}
+
+template <typename It>
+bool extract_key(It& key_loc, It key_end, float64_t& key) {
+   uint64_t int_key;
+   const bool extract = detail::extract_key<It, uint64_t, 1>(key_loc, key_end, int_key);
+   if (!extract)
+      return false;
+
+   key = detail::key_to_float<float64_t>(int_key);
+   return true;
+}
+
+template <typename It>
+bool extract_key(It& key_loc, It key_end, float128_t& key) {
+   detail::uint128_t int_key;
+   const bool extract = detail::extract_key<It, detail::uint128_t, 1>(key_loc, key_end, int_key);
+   if (!extract)
+      return false;
+
+   key = detail::key_to_float<float128_t>(int_key);
+   return true;
 }
 
 template <typename T>
@@ -298,7 +468,7 @@ class undo_stack {
          throw exception("cannot set revision while there is an existing undo stack");
       if (revision > std::numeric_limits<int64_t>::max())
          throw exception("revision to set is too high");
-      if (revision < state.revision)
+      if (static_cast<int64_t>(revision) < state.revision)
          throw exception("revision cannot decrease");
       state.revision = revision;
       if (write_now)
@@ -382,7 +552,7 @@ class undo_stack {
    // Discard all undo history prior to revision
    void commit(int64_t revision) {
       revision            = std::min(revision, state.revision);
-      auto first_revision = state.revision - state.undo_stack.size();
+      int64_t first_revision = state.revision - state.undo_stack.size();
       if (first_revision < revision) {
          rocksdb::WriteBatch batch;
          state.undo_stack.erase(state.undo_stack.begin(), state.undo_stack.begin() + (revision - first_revision));
@@ -605,7 +775,7 @@ struct write_session {
 }; // write_session
 
 // A view of the database with a restricted range (prefix). Implements part of
-// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md,
+// https://github.com/EOSIO/spec-repo/blob/master/esr_key_value_database_intrinsics.md
 // including iterator wrap-around behavior.
 //
 // Keys have this format: prefix, contract, user-provided key.

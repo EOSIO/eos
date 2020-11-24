@@ -51,7 +51,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ship_test.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ship_client.js ${CMAKE_CURRENT_BINARY_DIR}/ship_client.js COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_high_transaction_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_high_transaction_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/light_validation_sync_test.py ${CMAKE_CURRENT_BINARY_DIR}/light_validation_sync_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio_blocklog_prune_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosio_blocklog_prune_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cli_test.py ${CMAKE_CURRENT_BINARY_DIR}/cli_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/plugin_http_api_test.py ${CMAKE_CURRENT_BINARY_DIR}/plugin_http_api_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/resource_monitor_plugin_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -102,6 +108,10 @@ set_tests_properties(db_modes_test PROPERTIES COST 6000)
 add_test(NAME release-build-test COMMAND tests/release-build.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME validate-reflection-test COMMAND build/tests/validate-reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/..)
 add_test(NAME version-label-test COMMAND tests/version-label.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME light_validation_sync_test COMMAND tests/light_validation_sync_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST light_validation_sync_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -117,6 +127,9 @@ set_property(TEST nodeos_remote_lr_test PROPERTY LABELS long_running_tests)
 add_test(NAME nodeos_forked_chain_lr_test COMMAND tests/nodeos_forked_chain_test.py -v --wallet-port 9901 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_forked_chain_lr_test PROPERTY LABELS long_running_tests)
 
+add_test(NAME nodeos_contrl_c_lr_test COMMAND tests/nodeos_contrl_c_test.py -v --wallet-port 9901 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_contrl_c_lr_test PROPERTY LABELS long_running_tests)
+
 add_test(NAME nodeos_voting_lr_test COMMAND tests/nodeos_voting_test.py -v --wallet-port 9902 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_voting_lr_test PROPERTY LABELS long_running_tests)
 
@@ -127,9 +140,8 @@ set_property(TEST nodeos_under_min_avail_ram_lr_test PROPERTY LABELS long_runnin
 add_test(NAME nodeos_irreversible_mode_lr_test COMMAND tests/nodeos_irreversible_mode_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_irreversible_mode_lr_test PROPERTY LABELS long_running_tests)
 
-# TODO: uncomment once snapshot generation is enabled.
-#add_test(NAME nodeos_chainbase_allocation_lr_test COMMAND tests/nodeos_chainbase_allocation_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-#set_property(TEST nodeos_chainbase_allocation_lr_test PROPERTY LABELS long_running_tests)
+add_test(NAME nodeos_chainbase_allocation_lr_test COMMAND tests/nodeos_chainbase_allocation_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_chainbase_allocation_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME nodeos_startup_catchup_lr_test COMMAND tests/nodeos_startup_catchup.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(nodeos_startup_catchup_lr_test PROPERTIES TIMEOUT 3000)
@@ -155,10 +167,20 @@ set_property(TEST nodeos_high_transaction_lr_test PROPERTY LABELS long_running_t
 add_test(NAME nodeos_repeat_transaction_lr_test COMMAND tests/nodeos_high_transaction_test.py -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 1000 --max-transactions-per-second 500 --send-duplicates WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running_tests)
 
-add_test(NAME light_validation_sync_test COMMAND tests/light_validation_sync_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST light_validation_sync_test PROPERTY LABELS long_running_tests)
-
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
+set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
+
+add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
+set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
+
+add_subdirectory(se_tests)
+
+add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
 
 if(ENABLE_COVERAGE_TESTING)
 

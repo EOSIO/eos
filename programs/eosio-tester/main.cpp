@@ -4,6 +4,7 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <eosio/state_history/transaction_trace_cache.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -12,10 +13,9 @@
 
 #undef N
 
-#include "chain_types.hpp"
 #include <b1/rodeos/embedded_rodeos.hpp>
 #include <eosio/fixed_bytes.hpp>
-#include <eosio/ship_protocol.hpp>
+#include <eosio/chain_types.hpp>
 #include <eosio/to_bin.hpp>
 #include <eosio/vm/backend.hpp>
 
@@ -36,15 +36,15 @@ using eosio::chain::digest_type;
 using eosio::chain::kv_bad_db_id;
 using eosio::chain::kv_bad_iter;
 using eosio::chain::kv_context;
-using eosio::chain::kvdisk_id;
 using eosio::chain::kvram_id;
 using eosio::chain::protocol_feature_exception;
 using eosio::chain::protocol_feature_set;
 using eosio::chain::signed_transaction;
 using eosio::chain::transaction_trace_ptr;
+using eosio::chain::packed_transaction_ptr;
 using eosio::state_history::block_position;
 using eosio::state_history::create_deltas;
-using eosio::state_history::get_blocks_result_v0;
+using eosio::state_history::get_blocks_result_v1;
 using eosio::state_history::state_result;
 using eosio::vm::span;
 
@@ -112,17 +112,19 @@ struct transaction_checktime_factory {
 
 struct intrinsic_context {
    eosio::chain::controller&                          control;
-   eosio::chain::signed_transaction                   trx;
+   eosio::chain::packed_transaction                   trx;
    std::unique_ptr<eosio::chain::transaction_context> trx_ctx;
    std::unique_ptr<eosio::chain::apply_context>       apply_context;
 
    intrinsic_context(eosio::chain::controller& control) : control{ control } {
       static transaction_checktime_factory xxx_timer;
 
-      trx.actions.emplace_back();
-      trx.actions.back().account = eosio::chain::name{ "eosio.null" };
-      trx.actions.back().authorization.push_back({ eosio::chain::name{ "eosio" }, eosio::chain::name{ "active" } });
-      trx_ctx = std::make_unique<eosio::chain::transaction_context>(control, trx, trx.id(), xxx_timer.get(),
+      eosio::chain::signed_transaction strx;
+      strx.actions.emplace_back();
+      strx.actions.back().account = eosio::chain::name{ "eosio.null" };
+      strx.actions.back().authorization.push_back({ eosio::chain::name{ "eosio" }, eosio::chain::name{ "active" } });
+      trx = eosio::chain::packed_transaction( std::move(strx), true );
+      trx_ctx = std::make_unique<eosio::chain::transaction_context>(control, trx, xxx_timer.get(),
                                                                     fc::time_point::now());
       trx_ctx->init_for_implicit_trx(0);
       trx_ctx->exec();
@@ -133,11 +135,11 @@ struct intrinsic_context {
 
 protocol_feature_set make_protocol_feature_set() {
    protocol_feature_set                                        pfs;
-   std::map<builtin_protocol_feature_t, optional<digest_type>> visited_builtins;
+   std::map<builtin_protocol_feature_t, std::optional<digest_type>> visited_builtins;
 
    std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
          [&pfs, &visited_builtins, &add_builtins](builtin_protocol_feature_t codename) -> digest_type {
-      auto res = visited_builtins.emplace(codename, optional<digest_type>());
+      auto res = visited_builtins.emplace(codename, std::optional<digest_type>());
       if (!res.second) {
          EOS_ASSERT(res.first->second, protocol_feature_exception,
                     "invariant failure: cycle found in builtin protocol feature dependencies");
@@ -180,10 +182,10 @@ struct test_chain {
    fc::temp_directory                                dir;
    std::unique_ptr<eosio::chain::controller::config> cfg;
    std::unique_ptr<eosio::chain::controller>         control;
-   fc::optional<scoped_connection>                   applied_transaction_connection;
-   fc::optional<scoped_connection>                   accepted_block_connection;
-   eosio::state_history::trace_converter             trace_converter;
-   fc::optional<block_position>                      prev_block;
+   std::optional<scoped_connection>                  applied_transaction_connection;
+   std::optional<scoped_connection>                  accepted_block_connection;
+   eosio::state_history::transaction_trace_cache     trace_cache;
+   std::optional<block_position>                     prev_block;
    std::map<uint32_t, std::vector<char>>             history;
    std::unique_ptr<intrinsic_context>                intr_ctx;
    std::set<test_chain_ref*>                         refs;
@@ -192,7 +194,7 @@ struct test_chain {
       eosio::chain::genesis_state genesis;
       genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg                       = std::make_unique<eosio::chain::controller::config>();
-      cfg->blocks_dir           = dir.path() / "blocks";
+      cfg->blog.log_dir         = dir.path() / "blocks";
       cfg->state_dir            = dir.path() / "state";
       cfg->contracts_console    = true;
       cfg->wasm_runtime         = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
@@ -220,7 +222,7 @@ struct test_chain {
       control->add_indices();
 
       applied_transaction_connection.emplace(control->applied_transaction.connect(
-            [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+            [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
                on_applied_transaction(std::get<0>(t), std::get<1>(t));
             }));
       accepted_block_connection.emplace(
@@ -244,24 +246,27 @@ struct test_chain {
       for (auto* ref : refs) ref->chain = nullptr;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
-      trace_converter.add_transaction(p, t);
+   void on_applied_transaction(const transaction_trace_ptr& p, const packed_transaction_ptr& t) {
+      trace_cache.add_transaction(p, t);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto block_bin  = fc::raw::pack(*block_state->block);
-      auto traces_bin = trace_converter.pack(control->db(), false, block_state);
-      auto deltas_bin = fc::raw::pack(create_deltas(control->db(), !prev_block));
+      using namespace eosio;
+      fc::datastream<std::vector<char>> strm;
+      state_history::trace_converter::pack(strm, control->db(), false, trace_cache.prepare_traces(block_state), state_history::compression_type::none);
+      strm.seekp(0);
 
-      get_blocks_result_v0 message;
+      get_blocks_result_v1 message;
       message.head = block_position{ control->head_block_num(), control->head_block_id() };
       message.last_irreversible =
             block_position{ control->last_irreversible_block_num(), control->last_irreversible_block_id() };
-      message.this_block = block_position{ block_state->block->block_num(), block_state->block->id() };
+      message.this_block = block_position{ block_state->block->block_num(), block_state->id };
       message.prev_block = prev_block;
-      message.block      = std::move(block_bin);
-      message.traces     = std::move(traces_bin);
-      message.deltas     = std::move(deltas_bin);
+      message.block      = block_state->block;
+      std::vector<state_history::transaction_trace> traces;
+      state_history::trace_converter::unpack(strm, traces);
+      message.traces = traces;
+      message.deltas = fc::raw::pack(create_deltas(control->kv_db(), !prev_block));
 
       prev_block                         = message.this_block;
       history[control->head_block_num()] = fc::raw::pack(state_result{ message });
@@ -678,7 +683,7 @@ struct callbacks {
    }
 
    file& assert_file(int32_t file_index) {
-      if (file_index < 0 || file_index >= state.files.size() || !state.files[file_index].f)
+      if (file_index < 0 || static_cast<uint32_t>(file_index) >= state.files.size() || !state.files[file_index].f)
          throw std::runtime_error("file is not opened");
       return state.files[file_index];
    }
@@ -790,7 +795,7 @@ struct callbacks {
       chain.start_if_needed();
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
       auto ptrx = std::make_shared<eosio::chain::packed_transaction>(
-            signed_trx, eosio::chain::packed_transaction::compression_type::none);
+            std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none);
       auto fut = eosio::chain::transaction_metadata::start_recover_keys(
             ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum());
       auto start_time = std::chrono::steady_clock::now();
@@ -919,7 +924,7 @@ struct callbacks {
       eosio::chain::signed_transaction signed_trx{ std::move(transaction), std::move(args.signatures),
                                                    std::move(args.context_free_data) };
       for (auto& key : args.keys) signed_trx.sign(key, chain.control->get_chain_id());
-      eosio::chain::packed_transaction ptrx{ signed_trx, eosio::chain::packed_transaction::compression_type::none };
+      eosio::chain::packed_transaction ptrx{ std::move(signed_trx), true, eosio::chain::packed_transaction::compression_type::none };
       auto                             data       = fc::raw::pack(ptrx);
       auto                             start_time = std::chrono::steady_clock::now();
       auto result = r.query_handler->query_transaction(*r.write_snapshot, data.data(), data.size());
@@ -938,7 +943,7 @@ struct callbacks {
 
    uint32_t rodeos_get_num_pushed_data(uint32_t rodeos) {
       auto& r = assert_rodeos(rodeos);
-      return r.pushed_data.size();
+      return r.pushed_data.size(); 
    }
 
    uint32_t rodeos_get_pushed_data(uint32_t rodeos, uint32_t index, span<char> dest) {
@@ -950,39 +955,88 @@ struct callbacks {
    }
 
    // clang-format off
-   int32_t db_get_i64(int32_t iterator, span<char> buffer)                                {return selected().db_get_i64(iterator, buffer.data(), buffer.size());}
-   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      {return selected().db_next_i64(iterator, *primary);}
-   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  {return selected().db_previous_i64(iterator, *primary);}
-   int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)        {return selected().db_find_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
-   int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_lowerbound_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
-   int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_upperbound_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table}, id);}
-   int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table)                      {return selected().db_end_i64(eosio::chain::name{code}, eosio::chain::name{scope}, eosio::chain::name{table});}
+   int32_t db_get_i64(int32_t iterator, span<char> buffer)                                {return selected().db_get_context().db_get_i64(iterator, buffer.data(), buffer.size());}
+   int32_t db_next_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                      {return selected().db_get_context().db_next_i64(iterator, *primary);}
+   int32_t db_previous_i64(int32_t iterator, wasm_ptr<uint64_t> primary)                  {return selected().db_get_context().db_previous_i64(iterator, *primary);}
+   int32_t db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)        {return selected().db_get_context().db_find_i64(code, scope, table, id);}
+   int32_t db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_get_context().db_lowerbound_i64(code, scope, table, id);}
+   int32_t db_upperbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id)  {return selected().db_get_context().db_upperbound_i64(code, scope, table, id);}
+   int32_t db_end_i64(uint64_t code, uint64_t scope, uint64_t table)                      {return selected().db_get_context().db_end_i64(code, scope, table);}
 
-   DB_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
-   DB_WRAPPERS_SIMPLE_SECONDARY(idx128, unsigned __int128)
+   int32_t db_idx64_find_secondary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<const uint64_t> secondary,
+                                     wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx64_find_secondary(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx64_find_primary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
+                                   uint64_t primary) {
+      return selected().db_get_context().db_idx64_find_primary(code, scope, table, *secondary, primary);
+   }
+   int32_t db_idx64_lowerbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
+                                 wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx64_lowerbound(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx64_upperbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<uint64_t> secondary,
+                                 wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx64_upperbound(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx64_end(uint64_t code, uint64_t scope, uint64_t table) {
+      return selected().db_get_context().db_idx64_end(code, scope, table);
+   }
+   int32_t db_idx64_next(int32_t iterator, wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx64_next(iterator, *primary);
+   }
+   int32_t db_idx64_previous(int32_t iterator, wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx64_previous(iterator, *primary);
+   }
+
+   int32_t db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<const unsigned __int128> secondary,
+                                   wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx128_find_secondary(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
+                                 uint64_t primary) {
+      return selected().db_get_context().db_idx128_find_primary(code, scope, table, *secondary, primary);
+   }
+   int32_t db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
+                               wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx128_lowerbound(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, wasm_ptr<unsigned __int128> secondary,
+                               wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx128_upperbound(code, scope, table, *secondary, *primary);
+   }
+   int32_t db_idx128_end(uint64_t code, uint64_t scope, uint64_t table) {
+      return selected().db_get_context().db_idx128_end(code, scope, table);
+   }
+   int32_t db_idx128_next(int32_t iterator, wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx128_next(iterator, *primary);
+   }
+   int32_t db_idx128_previous(int32_t iterator, wasm_ptr<uint64_t> primary) {
+      return selected().db_get_context().db_idx128_previous(iterator, *primary);
+   }
    // DB_WRAPPERS_ARRAY_SECONDARY(idx256, 2, unsigned __int128)
    // DB_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
    // DB_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
    // clang-format on
 
-   int64_t kv_erase(uint64_t db, uint64_t contract, span<const char> key) {
+   int64_t kv_erase(uint64_t contract, span<const char> key) {
       throw std::runtime_error("kv_erase not implemented in tester");
    }
 
-   int64_t kv_set(uint64_t db, uint64_t contract, span<const char> key, span<const char> value) {
+   int64_t kv_set(uint64_t contract, span<const char> key, span<const char> value) {
       throw std::runtime_error("kv_set not implemented in tester");
    }
 
-   bool kv_get(uint64_t db, uint64_t contract, span<const char> key, wasm_ptr<uint32_t> value_size) {
-      return kv_get_db(db).kv_get(contract, key.data(), key.size(), *value_size);
+   bool kv_get(uint64_t contract, span<const char> key, wasm_ptr<uint32_t> value_size) {
+      return kv_get_db().kv_get(contract, key.data(), key.size(), *value_size);
    }
 
-   uint32_t kv_get_data(uint64_t db, uint32_t offset, span<char> data) {
-      return kv_get_db(db).kv_get_data(offset, data.data(), data.size());
+   uint32_t kv_get_data(uint32_t offset, span<char> data) {
+      return kv_get_db().kv_get_data(offset, data.data(), data.size());
    }
 
-   uint32_t kv_it_create(uint64_t db, uint64_t contract, span<const char> prefix) {
-      auto&    kdb = kv_get_db(db);
+   uint32_t kv_it_create(uint64_t contract, span<const char> prefix) {
+      auto&    kdb = kv_get_db();
       uint32_t itr;
       if (!selected().kv_destroyed_iterators.empty()) {
          itr = selected().kv_destroyed_iterators.back();
@@ -1053,17 +1107,23 @@ struct callbacks {
             selected().kv_iterators[itr]->kv_it_value(offset, dest.data(), dest.size(), *actual_size));
    }
 
-   kv_context& kv_get_db(uint64_t db) {
-      if (db == kvram_id.to_uint64_t())
-         return *selected().kv_ram;
-      else if (db == kvdisk_id.to_uint64_t())
-         return *selected().kv_disk;
-      EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
+   kv_context& kv_get_db() {
+      return selected().kv_get_backing_store();
    }
 
    void kv_check_iterator(uint32_t itr) {
       EOS_ASSERT(itr < selected().kv_iterators.size() && selected().kv_iterators[itr], kv_bad_iter,
                  "Bad key-value iterator");
+   }
+
+   uint32_t sign(span<const char> private_key, const void* hash_val, span<char> signature) {
+      auto k = unpack<fc::crypto::private_key>(private_key);
+      fc::sha256 hash;
+      std::memcpy(hash.data(), hash_val, hash.data_size());
+      auto sig = k.sign(hash);
+      auto data = fc::raw::pack(sig);
+      std::memcpy(signature.data(), data.data(), std::min(signature.size(), data.size()));
+      return data.size();
    }
 
    void sha1(span<const char> data, void* hash_val) {
@@ -1164,6 +1224,7 @@ void register_callbacks() {
    rhf_t::add<&callbacks::kv_it_lower_bound>("env", "kv_it_lower_bound");
    rhf_t::add<&callbacks::kv_it_key>("env", "kv_it_key");
    rhf_t::add<&callbacks::kv_it_value>("env", "kv_it_value");
+   rhf_t::add<&callbacks::sign>("env", "sign");
    rhf_t::add<&callbacks::sha1>("env", "sha1");
    rhf_t::add<&callbacks::sha256>("env", "sha256");
    rhf_t::add<&callbacks::sha512>("env", "sha512");
@@ -1220,8 +1281,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "tester wasm asserted: " << e.what() << "\n";
    } catch (eosio::vm::exception& e) {
       std::cerr << "vm::exception: " << e.detail() << "\n";
-   } catch (std::exception& e) { std::cerr << "std::exception: " << e.what() << "\n"; } catch (fc::exception& e) {
+   } catch (fc::exception& e) {
       std::cerr << "fc::exception: " << e.to_string() << "\n";
+   } catch (std::exception& e) { 
+     std::cerr << "std::exception: " << e.what() << "\n"; 
    }
    return 1;
 }

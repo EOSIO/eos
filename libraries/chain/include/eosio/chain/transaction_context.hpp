@@ -1,4 +1,5 @@
 #pragma once
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/platform_timer.hpp>
@@ -54,8 +55,7 @@ namespace eosio { namespace chain {
       public:
 
          transaction_context( controller& c,
-                              const signed_transaction& t,
-                              const transaction_id_type& trx_id,
+                              const packed_transaction& t,
                               transaction_checktime_timer&& timer,
                               fc::time_point start = fc::time_point::now() );
 
@@ -122,7 +122,6 @@ namespace eosio { namespace chain {
          friend class apply_context;
 
          void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
-         void add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace );
 
          action_trace& get_action_trace( uint32_t action_ordinal );
          const action_trace& get_action_trace( uint32_t action_ordinal )const;
@@ -153,9 +152,8 @@ namespace eosio { namespace chain {
       public:
 
          controller&                   control;
-         const signed_transaction&     trx;
-         transaction_id_type           id;
-         optional<chainbase::database::session>  undo_session;
+         const packed_transaction&     packed_trx;
+         combined_session              undo_session;
          transaction_trace_ptr         trace;
          fc::time_point                start;
 

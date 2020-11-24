@@ -11,10 +11,13 @@
 #include <eosio/chain/code_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
+
+using db_context = backing_store::db_context;
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
@@ -48,6 +51,33 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
    act = &trace.act;
    receiver = trace.receiver;
    context_free = trace.context_free;
+   _db_context = control.kv_db().create_db_context(*this, receiver);
+}
+
+template <typename Exception>
+void apply_context::check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas) {
+   const size_t checktime_interval    = 10;
+   const bool   not_in_notify_context = (receiver == act->account);
+   size_t counter = 0;
+   for (const auto& entry : deltas) {
+      if (counter == checktime_interval) {
+         trx_context.checktime();
+         counter = 0;
+      }
+      if (entry.delta > 0 && entry.account != receiver) {
+         EOS_ASSERT(not_in_notify_context, Exception,
+                     "unprivileged contract cannot increase ${resource} usage of another account within a notify context: "
+                     "${account}",
+                     ("resource", resource)
+                     ("account", entry.account));
+         EOS_ASSERT(has_authorization(entry.account), Exception,
+                     "unprivileged contract cannot increase ${resource} usage of another account that has not authorized the "
+                     "action: ${account}",
+                     ("resource", resource)
+                     ("account", entry.account));
+      }
+      ++counter;
+   }
 }
 
 void apply_context::exec_one()
@@ -58,15 +88,24 @@ void apply_context::exec_one()
 
    const auto& cfg = control.get_global_properties().configuration;
    const account_metadata_object* receiver_account = nullptr;
+
+   auto handle_exception = [&](const auto& e)
+   {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   };
+
    try {
       try {
          action_return_value.clear();
          kv_iterators.resize(1);
          kv_destroyed_iterators.clear();
          if (!context_free) {
-            kv_ram = create_kv_chainbase_context(db, kvram_id, receiver, create_kv_resource_manager_ram(*this), control.get_global_properties().kv_configuration.kvram);
-            kv_disk = create_kv_chainbase_context(db, kvdisk_id, receiver, create_kv_resource_manager_disk(*this), control.get_global_properties().kv_configuration.kvdisk);
-         }
+            kv_backing_store = control.kv_db().create_kv_context(receiver, create_kv_resource_manager(*this), control.get_global_properties().kv_configuration);
+        }
          receiver_account = &db.get<account_metadata_object,by_name>( receiver );
          if( !(context_free && control.skip_trx_checks()) ) {
             privileged = receiver_account->is_privileged();
@@ -81,7 +120,7 @@ void apply_context::exec_one()
 
             if( ( receiver_account->code_hash != digest_type() ) &&
                   (  !( act->account == config::system_account_name
-                        && act->name == N( setcode )
+                        && act->name == "setcode"_n
                         && receiver == config::system_account_name )
                      || control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
                   )
@@ -95,26 +134,9 @@ void apply_context::exec_one()
                } catch( const wasm_exit& ) {}
             }
 
-            if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
-               const size_t checktime_interval = 10;
-               size_t counter = 0;
-               bool not_in_notify_context = (receiver == act->account);
-               const auto end = _account_ram_deltas.end();
-               for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
-                  if( counter == checktime_interval ) {
-                     trx_context.checktime();
-                     counter = 0;
-                  }
-                  if( itr->delta > 0 && itr->account != receiver ) {
-                     EOS_ASSERT( not_in_notify_context, unauthorized_ram_usage_increase,
-                                 "unprivileged contract cannot increase RAM usage of another account within a notify context: ${account}",
-                                 ("account", itr->account)
-                     );
-                     EOS_ASSERT( has_authorization( itr->account ), unauthorized_ram_usage_increase,
-                                 "unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${account}",
-                                 ("account", itr->account)
-                     );
-                  }
+            if (!privileged) {
+               if (control.is_builtin_activated(builtin_protocol_feature_t::ram_restrictions)) {
+                  check_unprivileged_resource_usage<unauthorized_ram_usage_increase>("RAM", _account_ram_deltas);
                }
             }
          }
@@ -131,12 +153,15 @@ void apply_context::exec_one()
       } else {
          act_digest = digest_type::hash(*act);
       }
-   } catch( const fc::exception& e ) {
-      action_trace& trace = trx_context.get_action_trace( action_ordinal );
-      trace.error_code = controller::convert_exception_to_error_code( e );
-      trace.except = e;
-      finalize_trace( trace, start );
+   } catch ( const std::bad_alloc& ) {
       throw;
+   } catch ( const boost::interprocess::bad_alloc& ) {
+      throw;
+   } catch( const fc::exception& e ) {
+      handle_exception(e);
+   } catch ( const std::exception& e ) {
+      auto wrapper = fc::std_exception_wrapper::from_current_exception(e);
+      handle_exception(wrapper);
    }
 
    // Note: It should not be possible for receiver_account to be invalidated because:
@@ -183,9 +208,6 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
-
-   trace.account_disk_deltas = std::move( _account_disk_deltas );
-   _account_disk_deltas.clear();
 
    trace.console = std::move( _pending_console_output );
    _pending_console_output.clear();
@@ -279,12 +301,12 @@ void apply_context::require_recipient( account_name recipient ) {
  *  implicitly authorized by the current receiver (running code). This method has significant
  *  security considerations and several options have been considered:
  *
- *  1. priviledged accounts (those marked as such by block producers) can authorize any action
+ *  1. privileged accounts (those marked as such by block producers) can authorize any action
  *  2. all other actions are only authorized by 'receiver' which means the following:
  *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
  *
- *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
- *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
+ *  Discarded Implementation: at one point we allowed any account that authorized the current transaction
+ *   to implicitly authorize an inline transaction. This approach would allow privilege escalation and
  *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
  *   ask the user for permission to take certain actions rather than making it implicit. This way users
  *   can better understand the security risk.
@@ -325,6 +347,12 @@ void apply_context::execute_inline( action&& a ) {
       control.check_actor_list( actors );
    }
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
    // No need to check authorization if replaying irreversible blocks or contract is privileged
    if( !control.skip_auth_check() && !privileged ) {
       try {
@@ -380,6 +408,12 @@ void apply_context::execute_context_free_inline( action&& a ) {
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
+   if( !privileged && control.is_producing_block() ) {
+      const auto& chain_config = control.get_global_properties().configuration;
+      EOS_ASSERT( a.data.size() < std::min(chain_config.max_inline_action_size, control.get_max_nonprivileged_inline_action_size()),
+                  inline_action_too_big_nonprivileged,
+                  "inline action too big for nonprivileged account ${account}", ("account", a.account));
+   }
 
    auto inline_receiver = a.account;
    _cfa_inline_actions.emplace_back(
@@ -410,7 +444,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
 
-         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+         const auto& context = std::get<deferred_transaction_generation_context>(itr->second);
 
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
@@ -420,15 +454,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      "deferred transaction generaction context contains mismatching sender_id",
                      ("expected", sender_id)("actual", context.sender_id)
          );
-         EOS_ASSERT( context.sender_trx_id == trx_context.id, ill_formed_deferred_transaction_generation_context,
+         EOS_ASSERT( context.sender_trx_id == trx_context.packed_trx.id(), ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender_trx_id",
-                     ("expected", trx_context.id)("actual", context.sender_trx_id)
+                     ("expected", trx_context.packed_trx.id())("actual", context.sender_trx_id)
          );
       } else {
          emplace_extension(
             trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),
-            fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
+            fc::raw::pack( deferred_transaction_generation_context( trx_context.packed_trx.id(), sender_id, receiver ) )
          );
       }
       trx.expiration = time_point_sec();
@@ -517,7 +551,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    uint32_t trx_size = 0;
    std::string event_id;
-   std::string operation;
+   const char* operation = "";
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
@@ -534,7 +568,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       uint64_t orig_trx_ram_bytes = config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size();
       if( replace_deferred_activated ) {
-         add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "cancel", "deferred_trx_cancel") );
+         // avoiding moving event_id to make logic easier to maintain
+         add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ), storage_usage_trace(get_action_id(), std::string(event_id), "deferred_trx", "cancel", "deferred_trx_cancel") );
       } else {
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes, get_action_id(), event_id.c_str() );
       }
@@ -628,7 +663,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                subjective_block_production_exception,
                "Cannot charge RAM to other accounts during notify."
    );
-   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", operation.c_str(), "deferred_trx_add") );
+   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size), storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", operation, "deferred_trx_add") );
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -654,7 +689,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
          );
       }
 
-      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()), storage_usage_trace(get_action_id(), event_id.c_str(), "deferred_trx", "cancel", "deferred_trx_cancel") );
+      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()), storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", "cancel", "deferred_trx_cancel") );
       generated_transaction_idx.remove(*gto);
    }
    return gto;
@@ -692,14 +727,10 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}",
-         ("code", code)
-         ("scope", scope)
-         ("table", table)
-      );
+      event_id = db_context::table_event(code, scope, table);
    }
 
-   update_db_usage(payer, config::billable_size_v<table_id_object>, storage_usage_trace(get_action_id(), event_id.c_str(), "table", "add", "create_table"));
+   update_db_usage(payer, config::billable_size_v<table_id_object>, db_context::add_table_trace(get_action_id(), std::move(event_id)));
 
    return db.create<table_id_object>([&](table_id_object &t_id){
       t_id.code = code;
@@ -708,13 +739,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
       t_id.payer = payer;
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         fc_dlog(*dm_logger, "TBL_OP INS ${action_id} ${code} ${scope} ${table} ${payer}",
-            ("action_id", get_action_id())
-            ("code", code)
-            ("scope", scope)
-            ("table", table)
-            ("payer", payer)
-         );
+         db_context::log_insert_table(*dm_logger, get_action_id(), code, scope, table, payer);
       }
    });
 }
@@ -722,23 +747,13 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 void apply_context::remove_table( const table_id_object& tid ) {
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${code}:${scope}:${table}",
-         ("code", tid.code)
-         ("scope", tid.scope)
-         ("table", tid.table)
-      );
+      event_id = db_context::table_event(tid.code, tid.scope, tid.table);
    }
 
-   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, storage_usage_trace(get_action_id(), event_id.c_str(), "table", "remove", "remove_table") );
+   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>, db_context::rem_table_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "TBL_OP REM ${action_id} ${code} ${scope} ${table} ${payer}",
-         ("action_id", get_action_id())
-         ("code", tid.code)
-         ("scope", tid.scope)
-         ("table", tid.table)
-         ("payer", tid.payer)
-      );
+      db_context::log_remove_table(*dm_logger, get_action_id(), tid.code, tid.scope, tid.table, tid.payer);
    }
 
    db.remove(tid);
@@ -752,11 +767,6 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
-}
-
-bytes apply_context::get_packed_transaction() {
-   auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   return r;
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace ) {
@@ -775,7 +785,7 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta, c
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const auto& trx = trx_context.trx;
+   const auto& trx = trx_context.packed_trx.get_transaction();
    const action* act_ptr = nullptr;
 
    if( type == 0 ) {
@@ -801,26 +811,43 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const auto& trx = trx_context.trx;
+   const packed_transaction::prunable_data_type::prunable_data_t& data = trx_context.packed_trx.get_prunable_data().prunable_data;
+   const bytes* cfd = nullptr;
+   if( std::holds_alternative<packed_transaction::prunable_data_type::none>(data) ) {
+   } else if( std::holds_alternative<packed_transaction::prunable_data_type::partial>(data) ) {
+      if( index >= std::get<packed_transaction::prunable_data_type::partial>(data).context_free_segments.size() ) return -1;
 
-   if( index >= trx.context_free_data.size() ) return -1;
+      cfd = trx_context.packed_trx.get_context_free_data(index);
+   } else {
+      const std::vector<bytes>& context_free_data =
+            std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(data) ?
+               std::get<packed_transaction::prunable_data_type::full_legacy>(data).context_free_segments :
+               std::get<packed_transaction::prunable_data_type::full>(data).context_free_segments;
+      if( index >= context_free_data.size() ) return -1;
 
-   auto s = trx.context_free_data[index].size();
+      cfd = &context_free_data[index];
+   }
+
+   if( !cfd ) {
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, "pruned context free data not available" );
+      } else {
+         EOS_THROW( pruned_context_free_data_bad_block_exception, "pruned context free data not available" );
+      }
+   }
+
+   auto s = cfd->size();
    if( buffer_size == 0 ) return s;
 
    auto copy_size = std::min( buffer_size, s );
-   memcpy( buffer, trx.context_free_data[index].data(), copy_size );
+   memcpy( buffer, cfd->data(), copy_size );
 
    return copy_size;
 }
 
-int apply_context::db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
-   return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
-}
-
-int apply_context::db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+int apply_context::db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
-   const auto& tab = find_or_create_table( code, scope, table, payer );
+   const auto& tab = find_or_create_table( receiver, scope, table, payer );
    auto tableid = tab.id;
 
    EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
@@ -840,36 +867,23 @@ int apply_context::db_store_i64( name code, name scope, name table, const accoun
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", tab.code)
-         ("scope", tab.scope)
-         ("table_name", tab.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(tab.code, tab.scope, tab.table, name(obj.primary_key));
    }
 
-   update_db_usage( payer, billable_size, storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "add", "primary_index_add") );
+   update_db_usage( payer, billable_size, db_context::row_add_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP INS ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${ndata}",
-         ("action_id", get_action_id())
-         ("payer", payer)
-         ("table_code", tab.code)
-         ("scope", tab.scope)
-         ("table_name", tab.table)
-         ("primkey", name(obj.primary_key))
-         ("ndata", to_hex(buffer, buffer_size))
-      );
+      db_context::log_row_insert(*dm_logger, get_action_id(), tab.code, tab.scope, tab.table, payer, name(obj.primary_key), buffer, buffer_size);
    }
 
-   keyval_cache.cache_table( tab );
-   return keyval_cache.add( obj );
+   db_iter_store.cache_table( tab );
+   return db_iter_store.add( obj );
 }
 
-void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+void apply_context::db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
@@ -882,36 +896,23 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
    if( account_name(obj.payer) != payer ) {
       // refund the existing payer
-      update_db_usage( obj.payer, -(old_size), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "remove", "primary_index_update_remove_old_payer") );
+      update_db_usage( obj.payer, -(old_size), db_context::row_update_rem_trace(get_action_id(), std::string(event_id)) );
       // charge the new payer
-      update_db_usage( payer,  (new_size), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "add", "primary_index_update_add_new_payer") );
+      update_db_usage( payer,  (new_size), db_context::row_update_add_trace(get_action_id(), std::move(event_id)) );
    } else if(old_size != new_size) {
       // charge/refund the existing payer the difference
-      update_db_usage( obj.payer, new_size - old_size, storage_usage_trace(get_action_id(), event_id.c_str() , "table_row", "update", "primary_index_update") );
+      update_db_usage( obj.payer, new_size - old_size, db_context::row_update_trace(get_action_id(), std::move(event_id)) );
    }
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP UPD ${action_id} ${opayer}:${npayer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}:${ndata}",
-         ("action_id", get_action_id())
-         ("opayer", obj.payer)
-         ("npayer", payer)
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-         ("odata", to_hex(obj.value.data(),obj.value.size()))
-         ("ndata", to_hex(buffer, buffer_size))
-      );
+      db_context::log_row_update(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table,
+                                   obj.payer, payer, name(obj.primary_key), obj.value.data(), obj.value.size(),
+                                   buffer, buffer_size);
    }
 
    db.modify( obj, [&]( auto& o ) {
@@ -920,36 +921,23 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    });
 }
 
-void apply_context::db_remove_i64( int iterator ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+void apply_context::db_remove_i64_chainbase( int iterator ) {
+   const key_value_object& obj = db_iter_store.get( iterator );
 
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   const auto& table_obj = db_iter_store.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
 
    std::string event_id;
    if (control.get_deep_mind_logger() != nullptr) {
-      event_id = STORAGE_EVENT_ID("${table_code}:${scope}:${table_name}:${primkey}",
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-      );
+      event_id = db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
    }
 
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), storage_usage_trace(get_action_id(), event_id.c_str(), "table_row", "remove", "primary_index_remove") );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>), db_context::row_rem_trace(get_action_id(), std::move(event_id)) );
 
    if (auto dm_logger = control.get_deep_mind_logger()) {
-      fc_dlog(*dm_logger, "DB_OP REM ${action_id} ${payer} ${table_code} ${scope} ${table_name} ${primkey} ${odata}",
-         ("action_id", get_action_id())
-         ("payer", obj.payer)
-         ("table_code", table_obj.code)
-         ("scope", table_obj.scope)
-         ("table_name", table_obj.table)
-         ("primkey", name(obj.primary_key))
-         ("odata", to_hex(obj.value.data(), obj.value.size()))
-      );
+      db_context::log_row_remove(*dm_logger, get_action_id(), table_obj.code, table_obj.scope, table_obj.table, obj.payer, name(obj.primary_key), obj.value.data(), obj.value.size());
    }
 
    db.modify( table_obj, [&]( auto& t ) {
@@ -961,11 +949,11 @@ void apply_context::db_remove_i64( int iterator ) {
       remove_table(table_obj);
    }
 
-   keyval_cache.remove( iterator );
+   db_iter_store.remove( iterator );
 }
 
-int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
+int apply_context::db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size ) {
+   const key_value_object& obj = db_iter_store.get( iterator );
 
    auto s = obj.value.size();
    if( buffer_size == 0 ) return s;
@@ -976,27 +964,27 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
    return copy_size;
 }
 
-int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
+int apply_context::db_next_i64_chainbase( int iterator, uint64_t& primary ) {
    if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get( iterator ); // Check for iterator != -1 happens in this call
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
    ++itr;
 
-   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr == idx.end() || itr->t_id != obj.t_id ) return db_iter_store.get_end_iterator_by_table_id(obj.t_id);
 
    primary = itr->primary_key;
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
-int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
+int apply_context::db_previous_i64_chainbase( int iterator, uint64_t& primary ) {
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
    if( iterator < -1 ) // is end iterator
    {
-      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
+      auto tab = db_iter_store.find_table_by_end_iterator(iterator);
       EOS_ASSERT( tab, invalid_table_iterator, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
@@ -1007,10 +995,10 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       if( itr->t_id != tab->id ) return -1; // Empty table
 
       primary = itr->primary_key;
-      return keyval_cache.add(*itr);
+      return db_iter_store.add(*itr);
    }
 
-   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
+   const auto& obj = db_iter_store.get(iterator); // Check for iterator != -1 happens in this call
 
    auto itr = idx.iterator_to(obj);
    if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
@@ -1020,82 +1008,81 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
 
    primary = itr->primary_key;
-   return keyval_cache.add(*itr);
+   return db_iter_store.add(*itr);
 }
 
-int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_find_i64_chainbase( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const key_value_object* obj = db.find<key_value_object, by_scope_primary>( boost::make_tuple( tab->id, id ) );
    if( !obj ) return table_end_itr;
 
-   return keyval_cache.add( *obj );
+   return db_iter_store.add( *obj );
 }
 
-int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
-int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
+int apply_context::db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   auto table_end_itr = keyval_cache.cache_table( *tab );
+   auto table_end_itr = db_iter_store.cache_table( *tab );
 
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
    auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
    if( itr == idx.end() ) return table_end_itr;
    if( itr->t_id != tab->id ) return table_end_itr;
 
-   return keyval_cache.add( *itr );
+   return db_iter_store.add( *itr );
 }
 
-int apply_context::db_end_i64( name code, name scope, name table ) {
+int apply_context::db_end_i64_chainbase( name code, name scope, name table ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
 
-   return keyval_cache.cache_table( *tab );
+   return db_iter_store.cache_table( *tab );
 }
 
-int64_t apply_context::kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
-   return kv_get_db(db).kv_erase(contract, key, key_size);
+int64_t apply_context::kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
+   return kv_get_backing_store().kv_erase(contract, key, key_size);
 }
 
-int64_t apply_context::kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
-   return kv_get_db(db).kv_set(contract, key, key_size, value, value_size);
+int64_t apply_context::kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer) {
+   return kv_get_backing_store().kv_set(contract, key, key_size, value, value_size, payer);
 }
 
-bool apply_context::kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-   return kv_get_db(db).kv_get(contract, key, key_size, value_size);
+bool apply_context::kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+   return kv_get_backing_store().kv_get(contract, key, key_size, value_size);
 }
 
-uint32_t apply_context::kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
-   return kv_get_db(db).kv_get_data(offset, data, data_size);
+uint32_t apply_context::kv_get_data(uint32_t offset, char* data, uint32_t data_size) {
+   return kv_get_backing_store().kv_get_data(offset, data, data_size);
 }
 
-uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size) {
-   auto& kdb = kv_get_db(db);
+uint32_t apply_context::kv_it_create(uint64_t contract, const char* prefix, uint32_t size) {
    uint32_t itr;
    if (!kv_destroyed_iterators.empty()) {
       itr = kv_destroyed_iterators.back();
@@ -1106,7 +1093,7 @@ uint32_t apply_context::kv_it_create(uint64_t db, uint64_t contract, const char*
       itr = kv_iterators.size();
       kv_iterators.emplace_back();
    }
-   kv_iterators[itr] = kdb.kv_it_create(contract, prefix, size);
+   kv_iterators[itr] = kv_get_backing_store().kv_it_create(contract, prefix, size);
    return itr;
 }
 
@@ -1162,14 +1149,6 @@ int32_t apply_context::kv_it_value(uint32_t itr, uint32_t offset, char* dest, ui
    return static_cast<int32_t>(kv_iterators[itr]->kv_it_value(offset, dest, size, actual_size));
 }
 
-kv_context& apply_context::kv_get_db(uint64_t db) {
-   if (db == kvram_id.to_uint64_t())
-      return *kv_ram;
-   else if (db == kvdisk_id.to_uint64_t())
-      return *kv_disk;
-   EOS_ASSERT(false, kv_bad_db_id, "Bad key-value database ID");
-}
-
 void apply_context::kv_check_iterator(uint32_t itr) {
    EOS_ASSERT(itr < kv_iterators.size() && kv_iterators[itr], kv_bad_iter, "Bad key-value iterator");
 }
@@ -1205,15 +1184,6 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta, cons
    }
 }
 
-void apply_context::add_disk_usage( account_name account, int64_t disk_delta, const storage_usage_trace& trace ) {
-   trx_context.add_disk_usage( account, disk_delta, trace );
-
-   auto p = _account_disk_deltas.emplace( account, disk_delta );
-   if( !p.second ) {
-      p.first->delta += disk_delta;
-   }
-}
-
 action_name apply_context::get_sender() const {
    const action_trace& trace = trx_context.get_action_trace( action_ordinal );
    if (trace.creator_action_ordinal > 0) {
@@ -1231,4 +1201,9 @@ void apply_context::increment_action_id() {
    trx_context.action_id.increment();
 }
 
+db_context& apply_context::db_get_context() {
+   EOS_ASSERT( _db_context, action_validate_exception,
+               "context-free actions cannot access state" );
+   return *_db_context;
+}
 } } /// eosio::chain

@@ -74,7 +74,7 @@ notus:
 
 static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
   (void*)&eos_vm_oc_grow_memory,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
+  std::integral_constant<std::size_t, find_intrinsic_index("eosvmoc_internal.grow_memory")>::value
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
@@ -83,7 +83,7 @@ static void eosio_exit(int32_t code) {
    __builtin_unreachable();
 }
 static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
+  std::integral_constant<std::size_t, find_intrinsic_index("env.eosio_exit")>::value
 );
 
 static void throw_internal_exception(const char* const s) {
@@ -95,7 +95,7 @@ static void throw_internal_exception(const char* const s) {
 #define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
 	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,IR::FunctionType::get(),(void*)&name, \
-     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
+     std::integral_constant<std::size_t, find_intrinsic_index(#module "." #name)>::value \
    ); \
 	void name()
 
@@ -168,7 +168,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
       uint64_t initial_page_offset = std::min(static_cast<std::size_t>(code.starting_memory_pages), mem.size_of_memory_slice_mapping()/memory::stride - 1);
-      if(initial_page_offset < code.starting_memory_pages) {
+      if(initial_page_offset < static_cast<uint64_t>(code.starting_memory_pages)) {
          mprotect(mem.full_page_memory_base() + initial_page_offset * eosio::chain::wasm_constraints::wasm_page_size,
                   (code.starting_memory_pages - initial_page_offset) * eosio::chain::wasm_constraints::wasm_page_size, PROT_READ | PROT_WRITE);
       }
@@ -235,7 +235,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
          stack.run([&]{
-            code.start.visit(overloaded {
+            std::visit(overloaded {
                [&](const no_offset&) {},
                [&](const intrinsic_ordinal& i) {
                   void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
@@ -245,7 +245,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
                   void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
                   start_func();
                }
-            });
+            }, code.start);
             apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          });
          break;

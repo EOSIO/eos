@@ -30,6 +30,11 @@ set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON )
 
+#adds -pthread. Ubuntu eosio.contracts build breaks without this flag specified
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads)
+
 if ( APPLE )
    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
 else ( APPLE )
@@ -47,6 +52,7 @@ find_package(Boost @Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@ EXACT REQUIRED CO
    iostreams
    unit_test_framework)
 
+find_library(librocksdb rocksdb @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib)
 find_library(libtester eosio_testing @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libchain eosio_chain @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
@@ -69,12 +75,11 @@ get_filename_component(ssldir @OPENSSL_SSL_LIBRARY@ DIRECTORY)
 find_library(libosssl ssl "${ssldir}" NO_DEFAULT_PATH)
 find_library(libchainbase chainbase @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
 find_library(libbuiltins builtins @CMAKE_INSTALL_PREFIX@/lib64 @CMAKE_INSTALL_PREFIX@/lib NO_DEFAULT_PATH)
-find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
-    HINTS ENV GMP_LIB_DIR
-          ENV GMP_DIR
-    PATH_SUFFIXES lib
-    DOC "Path to the GMP library"
-)
+
+#Ubuntu build requires rt library to be specified explicitly
+if(UNIX AND NOT APPLE)
+  find_library(LIBRT rt)
+endif()
 
 set(EOSIO_WASM_RUNTIMES @EOSIO_WASM_RUNTIMES@)
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
@@ -98,7 +103,7 @@ macro(add_eosio_test_executable test_name)
        ${libchainbase}
        ${libbuiltins}
        ${libsecp256k1}
-       ${GMP_LIBRARIES}
+       @GMP_LIBRARIES@
 
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}
@@ -112,7 +117,14 @@ macro(add_eosio_test_executable test_name)
        ${PLATFORM_SPECIFIC_LIBS}
 
        ${WRAP_MAIN}
+       Threads::Threads
+       ${librocksdb}
       )
+   
+   #adds -ltr. Ubuntu eosio.contracts build breaks without this
+   if(UNIX AND NOT APPLE)
+      target_link_libraries(${test_name} ${LIBRT})
+   endif()
 
    target_include_directories( ${test_name} PUBLIC
                                ${Boost_INCLUDE_DIRS}

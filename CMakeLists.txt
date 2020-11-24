@@ -22,7 +22,7 @@ set( CXX_STANDARD_REQUIRED ON)
 set(VERSION_MAJOR 2)
 set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
-set(VERSION_SUFFIX alpha1)
+set(VERSION_SUFFIX alpha2)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
@@ -45,13 +45,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wsign-compare -Wrange-loop-analysis")
+endif()
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 endif()
 
 if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
    add_compile_options(-fdiagnostics-color=always)
 endif()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(ENABLE_MULTIVERSION_PROTOCOL_TEST FALSE CACHE BOOL "Enable nodeos multiversion protocol test")
 
@@ -65,15 +69,15 @@ endif()
 #  * ctest entries with --runtime
 # TODO reenable later
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
-   #if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-   #   #list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
-   #   # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-   #   # can be created with the exact version found
-   #   find_package(LLVM REQUIRED CONFIG)
-   #  if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
-   #     message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
-   #  endif()
-   #endif()
+   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+      # can be created with the exact version found
+      find_package(LLVM REQUIRED CONFIG)
+     if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 10)
+        message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 10.0")
+     endif()
+   endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
@@ -95,10 +99,11 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
+set(Boost_USE_MULTITHREADED      ON)
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
-find_package(Boost 1.70 REQUIRED COMPONENTS program_options unit_test_framework)
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
@@ -182,6 +187,8 @@ if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( eosio-wasm-spec-tests/generated-tests )
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
 install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/launcher)
@@ -189,8 +196,8 @@ install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/launcher)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/launcher/testnet.template COPYONLY)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio.version.in ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.in ${CMAKE_CURRENT_BINARY_DIR}/version.hpp)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio)
 
 set(EOS_ROOT_DIR ${CMAKE_BINARY_DIR})
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake @ONLY)
@@ -222,6 +229,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.Apache
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.rocksdb COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/amqp-cpp/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.amqpcpp COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
@@ -233,6 +242,7 @@ install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROO
 install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.eos-vm COMPONENT base)
 install(FILES libraries/rocksdb/LICENSE.Apache DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.rocksdb COMPONENT base)
 install(FILES libraries/rocksdb/LICENSE.leveldb DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.leveldb COMPONENT base)
+install(FILES libraries/amqp-cpp/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.amqpcpp COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

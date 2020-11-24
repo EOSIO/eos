@@ -1,5 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
-
+#include <eosio/chain/webassembly/preconditions.hpp>
 #include <softfloat.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {

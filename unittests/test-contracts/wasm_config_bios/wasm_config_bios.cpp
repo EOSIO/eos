@@ -1,6 +1,10 @@
 #include <eosio/contract.hpp>
 
 extern "C" __attribute__((eosio_wasm_import)) void set_wasm_parameters_packed(const void*, std::size_t);
+#ifdef USE_EOSIO_CDT_1_7_X
+extern "C" __attribute__((eosio_wasm_import)) uint32_t read_action_data( void* msg, uint32_t len );
+extern "C" __attribute__((eosio_wasm_import))    uint32_t action_data_size();
+#endif
 
 struct wasm_config {
    std::uint32_t max_mutable_global_bytes;

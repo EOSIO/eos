@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
 
 
 uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
-   fc::uint128_t _id(tid._hash[3], tid._hash[2]);
+   fc::uint128 _id(tid._hash[3], tid._hash[2]);
    return (unsigned __int128)_id;
 }
 
@@ -122,7 +122,7 @@ void apply_eosio_newaccount(apply_context& context) {
       event_id = STORAGE_EVENT_ID("${name}", ("name", create.name));
    }
 
-   context.add_ram_usage(create.name, ram_delta, storage_usage_trace(context.get_action_id(), event_id.c_str(), "account", "add", "newaccount"));
+   context.add_ram_usage(create.name, ram_delta, storage_usage_trace(context.get_action_id(), std::move(event_id), "account", "add", "newaccount"));
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
@@ -196,7 +196,7 @@ void apply_eosio_setcode(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      std::string operation;
+      const char* operation = "";
       std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
@@ -209,7 +209,7 @@ void apply_eosio_setcode(apply_context& context) {
          event_id = STORAGE_EVENT_ID("${account}", ("account", act.account));
       }
 
-      context.add_ram_usage( act.account, new_size - old_size, storage_usage_trace(context.get_action_id(), event_id.c_str(), "code", operation.c_str(), "setcode") );
+      context.add_ram_usage( act.account, new_size - old_size, storage_usage_trace(context.get_action_id(), std::move(event_id), "code", operation, "setcode") );
    }
 }
 
@@ -236,7 +236,7 @@ void apply_eosio_setabi(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      std::string operation;
+      const char* operation = "";
       std::string event_id;
       if (context.control.get_deep_mind_logger() != nullptr) {
          operation = "update";
@@ -249,7 +249,7 @@ void apply_eosio_setabi(apply_context& context) {
          event_id = STORAGE_EVENT_ID("${account}", ("account", act.account));
       }
 
-      context.add_ram_usage( act.account, new_size - old_size, storage_usage_trace(context.get_action_id(), event_id.c_str(), "abi", operation.c_str(), "setabi") );
+      context.add_ram_usage( act.account, new_size - old_size, storage_usage_trace(context.get_action_id(), std::move(event_id), "abi", operation, "setabi") );
    }
 }
 
@@ -312,7 +312,7 @@ void apply_eosio_updateauth(apply_context& context) {
          event_id = STORAGE_EVENT_ID("${id}", ("id", permission->id));
       }
 
-      context.add_ram_usage( permission->owner, new_size - old_size, storage_usage_trace(context.get_action_id(), event_id.c_str(), "auth", "update", "updateauth_update") );
+      context.add_ram_usage( permission->owner, new_size - old_size, storage_usage_trace(context.get_action_id(), std::move(event_id), "auth", "update", "updateauth_update") );
    } else {
       const auto& p = authorization.create_permission( update.account, update.permission, parent_id, update.auth, context.get_action_id() );
 
@@ -323,7 +323,7 @@ void apply_eosio_updateauth(apply_context& context) {
          event_id = STORAGE_EVENT_ID("${id}", ("id", p.id));
       }
 
-      context.add_ram_usage( update.account, new_size, storage_usage_trace(context.get_action_id(), event_id.c_str(), "auth", "add", "updateauth_create") );
+      context.add_ram_usage( update.account, new_size, storage_usage_trace(context.get_action_id(), std::move(event_id), "auth", "add", "updateauth_create") );
    }
 }
 
@@ -359,7 +359,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 
    authorization.remove_permission( permission, context.get_action_id() );
 
-   context.add_ram_usage( remove.account, -old_size, storage_usage_trace(context.get_action_id(), event_id.c_str(), "auth", "remove", "deleteauth") );
+   context.add_ram_usage( remove.account, -old_size, storage_usage_trace(context.get_action_id(), std::move(event_id), "auth", "remove", "deleteauth") );
 }
 
 void apply_eosio_linkauth(apply_context& context) {
@@ -417,7 +417,7 @@ void apply_eosio_linkauth(apply_context& context) {
          context.add_ram_usage(
             l.account,
             (int64_t)(config::billable_size_v<permission_link_object>),
-            storage_usage_trace(context.get_action_id(), event_id.c_str(), "auth_link", "add", "linkauth")
+            storage_usage_trace(context.get_action_id(), std::move(event_id), "auth_link", "add", "linkauth")
          );
       }
 
@@ -444,7 +444,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    context.add_ram_usage(
       link->account,
       -(int64_t)(config::billable_size_v<permission_link_object>),
-      storage_usage_trace(context.get_action_id(), event_id.c_str(), "auth_link", "remove", "unlinkauth")
+      storage_usage_trace(context.get_action_id(), std::move(event_id), "auth_link", "remove", "unlinkauth")
    );
 
    db.remove(*link);

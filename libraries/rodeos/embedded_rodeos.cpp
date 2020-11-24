@@ -134,9 +134,14 @@ void with_result(const char* data, uint64_t size, F f) {
    eosio::ship_protocol::result result;
    from_bin(result, bin);
    auto* result_v0 = std::get_if<eosio::ship_protocol::get_blocks_result_v0>(&result);
-   if (!result_v0)
-      throw std::runtime_error("expected a get_blocks_result_v0");
-   f(*result_v0);
+   if (result_v0)
+      return f(*result_v0);
+
+   auto* result_v1 = std::get_if<eosio::ship_protocol::get_blocks_result_v1>(&result);
+   if (result_v1)
+      return f(*result_v1);
+
+   throw std::runtime_error("expected a get_blocks_result_v0 or get_blocks_result_v1");
 }
 
 extern "C" rodeos_bool rodeos_start_block(rodeos_error* error, rodeos_db_snapshot* snapshot, const char* data,
@@ -248,7 +253,7 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       auto                                    thread_state = handler->state_cache.get_state();
       eosio::ship_protocol::transaction_trace tt;
-      if (snapshot->snap.has_value()) {
+      if (snapshot->snap) {
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx,
                                      snapshot->snap->snapshot(), memory, true);
       } else {

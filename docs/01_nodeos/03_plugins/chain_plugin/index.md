@@ -65,6 +65,37 @@ Config Options for eosio::chain_plugin:
   --blocks-dir arg (="blocks")          the location of the blocks directory 
                                         (absolute path or relative to 
                                         application data dir)
+  --blocks-log-stride arg (=4294967295)
+                                        split the block log file when the head
+                                        block number is the multiple of the
+                                        stride. When the stride is reached, the
+                                        current block log and index will be
+                                        renamed '<blocks-retained-dir>/blocks-
+                                        <start num>-<end num>.log/index' and a
+                                        new current block log and index will be
+                                        created with the most recent block. All
+                                        files following this format will be
+                                        used to construct an extended block log
+  --max-retained-block-files arg (=10)  the maximum number of blocks files to
+                                        retain so that the blocks in those
+                                        files can be queried. When the number
+                                        is reached, the oldest block file would
+                                        be moved to archive dir or deleted if
+                                        the archive dir is empty. The retained
+                                        block log files should not be
+                                        manipulated by users.
+  --blocks-retained-dir arg (="")       the location of the blocks retained
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty, it
+                                        is set to the value of blocks dir.
+  --blocks-archive-dir (="archive")     the location of the blocks archive
+                                        directory (absolute path or relative to
+                                        blocks dir). If the value is empty,
+                                        blocks files beyond the retained limit
+                                        will be deleted. All files in the
+                                        archive directory are completely under
+                                        user's control, i.e. they won't be
+                                        accessed by nodeos anymore.
   --protocol-features-dir arg (="protocol_features")
                                         the location of the protocol_features 
                                         directory (absolute path or relative to
@@ -82,6 +113,15 @@ Config Options for eosio::chain_plugin:
                                         Safely shut down node when free space 
                                         remaining in the chain state database 
                                         drops below this size (in MiB).
+  --backing-store arg (=chainbase)      The storage for state, chainbase or 
+                                        rocksdb
+  --rocksdb-threads arg 	            Number of rocksdb threads for flush and
+                                        compaction.  Defaults to the number of 
+										available cores.  
+  --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
+                                        open. -1 = unlimited.
+  --rocksdb-write-buffer-size-mb arg (=134217728)
+                                        Size of a single rocksdb memtable
   --reversible-blocks-db-size-mb arg (=340)
                                         Maximum size (in MiB) of the reversible
                                         blocks database
@@ -167,6 +207,13 @@ Config Options for eosio::chain_plugin:
   --database-hugepage-path arg          Optional path for database hugepages 
                                         when in "locked" mode (may specify 
                                         multiple times)
+                                        
+  --max-nonprivileged-inline-action-size arg          
+                                        Sets the maximum limit for 
+                                        non-privileged inline actions. 
+                                        The default value is 4 KB 
+                                        and if this threshold is exceeded,
+                                        the transaction will subjectively fail.                                       
 ```
 
 ## Dependencies

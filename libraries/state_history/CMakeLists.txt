@@ -2,9 +2,9 @@ file(GLOB HEADERS "include/eosio/state-history/*.hpp")
 
 add_library( state_history
              abi.cpp
-             compression.cpp
              create_deltas.cpp
-             trace_converter.cpp
+             log.cpp
+             transaction_trace_cache.cpp
              ${HEADERS}
            )
 

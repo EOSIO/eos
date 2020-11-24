@@ -27,6 +27,8 @@ class state_history_plugin : public plugin<state_history_plugin> {
    void plugin_startup();
    void plugin_shutdown();
 
+   void handle_sighup() override;
+
  private:
    state_history_ptr my;
 };

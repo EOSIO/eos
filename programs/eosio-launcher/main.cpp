@@ -21,7 +21,6 @@
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/public_key.hpp>
 #include <fc/io/json.hpp>
-#include <fc/optional.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/log/logger_config.hpp>
@@ -101,7 +100,7 @@ struct local_identity {
     }
     catch (...) {
       // not an ip address
-      for (const auto n : names) {
+      for (const auto& n : names) {
         if (n == name)
           return true;
       }
@@ -423,8 +422,8 @@ struct launcher_def {
    producer_set_def producer_set;
    string start_temp;
    string start_script;
-   fc::optional<uint32_t> max_block_cpu_usage;
-   fc::optional<uint32_t> max_transaction_cpu_usage;
+   std::optional<uint32_t> max_block_cpu_usage;
+   std::optional<uint32_t> max_transaction_cpu_usage;
    eosio::chain::genesis_state genesis_from_file;
 
    void assign_name (eosd_def &node, bool is_bios);
@@ -799,7 +798,7 @@ launcher_def::define_network () {
   }
   else {
     int ph_count = 0;
-    host_def *lhost = nullptr;
+    std::unique_ptr<host_def> lhost{nullptr};
     size_t host_ndx = 0;
     size_t num_prod_addr = servers.producer.size();
     size_t num_nonprod_addr = servers.nonprod.size();
@@ -808,9 +807,8 @@ launcher_def::define_network () {
       if (ph_count == 0) {
         if (lhost) {
           bindings.emplace_back(move(*lhost));
-          delete lhost;
         }
-        lhost = new host_def;
+        lhost.reset(new host_def);
         lhost->genesis = genesis.string();
         if (host_ndx < num_prod_addr ) {
            do_bios = servers.producer[host_ndx].has_bios;
@@ -842,13 +840,12 @@ launcher_def::define_network () {
       assign_name(eosd, do_bios);
 
       aliases.push_back(eosd.name);
-      eosd.set_host (lhost, do_bios);
+      eosd.set_host (lhost.get(), do_bios);
       do_bios = false;
       lhost->instances.emplace_back(move(eosd));
       --ph_count;
     } // for i
     bindings.emplace_back( move(*lhost) );
-    delete lhost;
   }
 }
 
@@ -1887,7 +1884,7 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    }
 
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
-   for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
+   for(const boost::shared_ptr<bpo::option_description>& od : cfg.options())
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description() << std::endl;

@@ -1,7 +1,13 @@
 #include "cloner_plugin.hpp"
 #include "ship_client.hpp"
+#include "config.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
+
+#include <fc/log/logger.hpp>
+#include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -31,14 +37,16 @@ struct cloner_session;
 struct cloner_config : ship_client::connection_config {
    uint32_t    skip_to     = 0;
    uint32_t    stop_before = 0;
+   bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
-   std::shared_ptr<cloner_config>  config = std::make_shared<cloner_config>();
-   std::shared_ptr<cloner_session> session;
-   boost::asio::deadline_timer     timer;
+   std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
+   std::shared_ptr<cloner_session>                                          session;
+   boost::asio::deadline_timer                                              timer;
+   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -130,7 +138,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return result;
    }
 
-   bool received(get_blocks_result_v0& result, eosio::input_stream bin) override {
+   template<typename Get_Blocks_Result>
+   bool process_received(Get_Blocks_Result& result, eosio::input_stream bin) {
       if (!result.this_block)
          return true;
       if (config->stop_before && result.this_block->block_num >= config->stop_before) {
@@ -157,19 +166,34 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_block_info(result);
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
-      // todo: remove
-      if (filter)
-         filter->process(*rodeos_snapshot, result, bin, [](const char*, uint64_t) {});
+      if (filter) {
+         filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
+            if (my->streamer) {
+               my->streamer(data, data_size);
+            }
+         });
+      }
 
       rodeos_snapshot->end_block(result, false);
       return true;
-   } // receive_result()
+   }
+
+   bool received(get_blocks_result_v0& result, eosio::input_stream bin) override {
+      return process_received(result, bin);
+   }
+
+   bool received(get_blocks_result_v1& result, eosio::input_stream bin) override {
+      return process_received(result, bin);
+   }
 
    void closed(bool retry) override {
       if (my) {
          my->session.reset();
-         if (retry)
+         if (retry) {
             my->schedule_retry();
+         } else if (my->config->exit_on_filter_wasm_error) {
+            appbase::app().quit();
+         }
       }
    }
 
@@ -199,6 +223,14 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "State-history endpoint to connect to (nodeos)");
    clop("clone-skip-to,k", bpo::value<uint32_t>(), "Skip blocks before [arg]");
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
+   op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
+      "Shutdown application if filter wasm throws an exception");
+   op("telemetry-url", bpo::value<std::string>(),
+      "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" );
+   op("telemetry-service-name", bpo::value<std::string>()->default_value(b1::rodeos::config::rodeos_executable_name),
+      "Zipkin localEndpoint.serviceName sent with each span" );
+   op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+      "Timeout for sending Zipkin span." );
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -216,23 +248,40 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       my->config->port        = port;
       my->config->skip_to     = options.count("clone-skip-to") ? options["clone-skip-to"].as<uint32_t>() : 0;
       my->config->stop_before = options.count("clone-stop") ? options["clone-stop"].as<uint32_t>() : 0;
+      my->config->exit_on_filter_wasm_error = options["clone-exit-on-filter-wasm-error"].as<bool>();
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
 
-void cloner_plugin::plugin_startup() { my->start(); }
+void cloner_plugin::plugin_startup() {
+   handle_sighup();
+   my->start();
+}
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
       my->session->connection->close(false);
    my->timer.cancel();
+   fc::zipkin_config::shutdown();
    ilog("cloner_plugin stopped");
+}
+
+void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
+   my->streamer = std::move(streamer_func);
+}
+
+void cloner_plugin::handle_sighup() {
 }
 
 } // namespace b1

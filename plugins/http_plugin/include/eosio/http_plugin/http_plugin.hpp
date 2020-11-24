@@ -1,8 +1,9 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/exception/exception.hpp>
-
 #include <fc/reflect/reflect.hpp>
+#include <fc/io/json.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio {
    using namespace appbase;
@@ -13,7 +14,7 @@ namespace eosio {
     *
     * Arguments: response_code, response_body
     */
-   using url_response_callback = std::function<void(int,fc::variant)>;
+   using url_response_callback = std::function<void(int,std::optional<fc::variant>)>;
 
    /**
     * @brief Callback type for a URL handler
@@ -64,13 +65,13 @@ namespace eosio {
    {
       public:
         http_plugin();
-        virtual ~http_plugin();
+        ~http_plugin() override;
 
         //must be called before initialize
-        static void set_defaults(const http_plugin_defaults config);
+        static void set_defaults(const http_plugin_defaults& config);
 
         APPBASE_PLUGIN_REQUIRES()
-        virtual void set_program_options(options_description&, options_description& cfg) override;
+        void set_program_options(options_description&, options_description& cfg) override;
 
         void plugin_initialize(const variables_map& options);
         void plugin_startup();
@@ -133,7 +134,7 @@ namespace eosio {
 
          static const uint8_t details_limit = 10;
 
-         error_info() {};
+         error_info() = default;
 
          error_info(const fc::exception& exc, bool include_full_log) {
             code = exc.code();
@@ -157,6 +158,93 @@ namespace eosio {
 
       error_info error;
    };
+
+   /**
+    * @brief Used to trim whitespace from body. 
+    * Returned string_view valid only for lifetime of body
+    */
+   inline std::string_view make_trimmed_string_view(const std::string& body) {
+      if (body.empty()) {
+         return {};
+      }
+      size_t left = 0;
+      size_t right = body.size() - 1;
+
+      while(left < right)
+      {
+         if (body[left] == ' ') {
+            ++left;
+         } else {
+            break;
+         }
+      }
+      while(left < right)
+      {
+         if (body[right] == ' ') {
+            --right;
+         } else {
+            break;
+         }
+      }
+      if ((left == right) && (body[left] == ' ')) {
+         return {};
+      }
+      return std::string_view(body).substr(left, right-left+1);
+   }
+
+   inline bool is_empty_content(const std::string& body) {
+      const auto trimmed_body_view = make_trimmed_string_view(body);
+      if (trimmed_body_view.empty()) {
+         return true;
+      }
+      const size_t body_size = trimmed_body_view.size();
+      if ((body_size > 1) && (trimmed_body_view.at(0) == '{') && (trimmed_body_view.at(body_size - 1) == '}')) {
+         for(size_t idx=1; idx<body_size-1; ++idx)
+         {
+            if ((trimmed_body_view.at(idx) != ' ') && (trimmed_body_view.at(idx) != '\t'))
+            {
+               return false;
+            }
+         }
+      } else {
+         return false;
+      }
+      return true;
+   }
+
+   enum class http_params_types {
+      no_params_required = 0,
+      params_required = 1,
+      possible_no_params = 2
+   };
+
+   template<typename T, http_params_types params_type>
+   T parse_params(const std::string& body) {
+      if constexpr (params_type == http_params_types::params_required) {
+         if (is_empty_content(body)) {
+            EOS_THROW(chain::invalid_http_request, "A Request body is required");
+         }
+      }
+
+      try {
+         try {
+            if constexpr (params_type == http_params_types::no_params_required || params_type == http_params_types::possible_no_params) {
+               if (is_empty_content(body)) {
+                  if constexpr (std::is_same_v<T, std::string>) {
+                     return std::string("{}");
+                  }
+                  return {};
+               }
+               if constexpr (params_type == http_params_types::no_params_required) {
+                  EOS_THROW(chain::invalid_http_request, "no parameter should be given");
+               }
+            }
+            return fc::json::from_string(body).as<T>();
+         } catch (const chain::chain_exception& e) { // EOS_RETHROW_EXCEPTIONS does not re-type these so, re-code it
+            throw fc::exception(e);
+         }
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_http_request, "Unable to parse valid input from POST body");
+   }
 }
 
 FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))

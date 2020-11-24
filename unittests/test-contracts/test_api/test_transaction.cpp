@@ -1,6 +1,6 @@
-#include <eosiolib/action.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/transaction.hpp>
+#include <eosio/action.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/transaction.hpp>
 
 #include "test_api.hpp"
 
@@ -100,12 +100,27 @@ void test_transaction::send_action_large() {
 }
 
 /**
+ * send an inline action that is 4K
+ */
+void test_transaction::send_action_4k() {
+   using namespace eosio;
+   static char large_message[4 * 1024];
+   test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_action", "test_action_ordinal4" )> test_action;
+   copy_data( large_message, 4*1024, test_action.data );
+
+   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "test_action_ordinal4")}, test_action );
+
+   act.send();
+}
+
+/**
  * cause failure due recursive loop
  */
 void test_transaction::send_action_recurse() {
    using namespace eosio;
    char buffer[1024];
-   read_action_data( buffer, 1024 );
+   eosio::read_action_data( buffer, 1024 );
 
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_transaction", "send_action_recurse" )> test_action;
    copy_data( buffer, 1024, test_action.data );
@@ -132,23 +147,23 @@ void test_transaction::send_action_inline_fail() {
 void test_transaction::test_tapos_block_prefix() {
    using namespace eosio;
    int tbp;
-   read_action_data( (char*)&tbp, sizeof(int) );
-   eosio_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
+   eosio::read_action_data( (char*)&tbp, sizeof(int) );
+   eosio_assert( tbp == eosio::tapos_block_prefix(), "tapos_block_prefix does not match" );
 }
 
 void test_transaction::test_tapos_block_num() {
    using namespace eosio;
    int tbn;
-   read_action_data( (char*)&tbn, sizeof(int) );
-   eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
+   eosio::read_action_data( (char*)&tbn, sizeof(int) );
+   eosio_assert( tbn == eosio::tapos_block_num(), "tapos_block_num does not match" );
 }
 
 void test_transaction::test_read_transaction() {
    using namespace eosio;
    checksum256 h;
-   auto size = transaction_size();
+   auto size = eosio::transaction_size();
    char buf[size];
-   uint32_t read = read_transaction( buf, size );
+   uint32_t read = eosio::read_transaction( buf, size );
    eosio_assert( size == read, "read_transaction failed");
    h = eosio::sha256(buf, read);
    print(h);
@@ -157,9 +172,9 @@ void test_transaction::test_read_transaction() {
 void test_transaction::test_transaction_size() {
    using namespace eosio;
    uint32_t trans_size = 0;
-   read_action_data( (char*)&trans_size, sizeof(uint32_t) );
-   print( "size: ", transaction_size() );
-   eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
+   eosio::read_action_data( (char*)&trans_size, sizeof(uint32_t) );
+   print( "size: ", eosio::transaction_size() );
+   eosio_assert( trans_size == eosio::transaction_size(), "transaction size does not match" );
 }
 
 void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
@@ -179,7 +194,7 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
 void test_transaction::send_action_sender( uint64_t receiver, uint64_t, uint64_t ) {
    using namespace eosio;
    uint64_t cur_send;
-   read_action_data( &cur_send, sizeof(name) );
+   eosio::read_action_data( &cur_send, sizeof(name) );
 
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
@@ -254,6 +269,18 @@ void test_transaction::send_deferred_transaction( uint64_t receiver, uint64_t, u
    trx.send( 0xffffffffffffffff, name{receiver} );
 }
 
+void test_transaction::send_deferred_transaction_4k_action( uint64_t receiver, uint64_t, uint64_t ) {
+   using namespace eosio;
+   test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_transaction", "send_action_4k" )> test_action;
+
+   auto trx = transaction();
+   std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
+
+   trx.actions.emplace_back( permissions, name{"testapi"}, name{ WASM_TEST_ACTION("test_transaction", "send_action_4k" )}, test_action );
+   trx.delay_sec = 2;
+   trx.send( 0xffffffffffffffff, name{receiver} );
+}
+
 void test_transaction::send_deferred_transaction_replace( uint64_t receiver, uint64_t, uint64_t ) {
    using namespace eosio;
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION( "test_transaction", "deferred_print" )> test_action;
@@ -269,7 +296,7 @@ void test_transaction::send_deferred_transaction_replace( uint64_t receiver, uin
 void test_transaction::send_deferred_tx_with_dtt_action() {
    using namespace eosio;
    dtt_action dtt_act;
-   read_action_data( &dtt_act, action_data_size() );
+   eosio::read_action_data( &dtt_act, eosio::action_data_size() );
 
    action deferred_act;
    deferred_act.account = name{dtt_act.deferred_account};
@@ -285,13 +312,13 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
 
 void test_transaction::cancel_deferred_transaction_success() {
    using namespace eosio;
-   auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+   auto r = eosio::cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
    eosio_assert( (bool)r, "transaction was not found" );
 }
 
 void test_transaction::cancel_deferred_transaction_not_found() {
    using namespace eosio;
-   auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+   auto r = eosio::cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
    eosio_assert( !r, "transaction was canceled, whild should not be found" );
 }
 
@@ -315,7 +342,7 @@ void test_transaction::stateful_api() {
 
 void test_transaction::context_free_api() {
    char buf[128] = {0};
-   get_context_free_data( 0, buf, sizeof(buf) );
+   eosio::get_context_free_data( 0, buf, sizeof(buf) );
 }
 
 void test_transaction::repeat_deferred_transaction( uint64_t receiver, uint64_t code, uint64_t action ) {
@@ -326,7 +353,7 @@ void test_transaction::repeat_deferred_transaction( uint64_t receiver, uint64_t 
    uint32_t payload = unpack_action_data<uint32_t>();
    print("repeat_deferred_transaction called: payload = ", payload);
 
-   bool res = cancel_deferred( sender_id );
+   bool res = eosio::cancel_deferred( sender_id );
 
    print("\nrepeat_deferred_transaction cancelled trx with sender_id = ", sender_id, ", result is ", res);
 
