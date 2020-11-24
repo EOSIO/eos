@@ -45,7 +45,7 @@ void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
          }
       }
    }
-   FC_RETHROW_EXCEPTIONS ( error, "blockvault_client plugin initialization error")
+   FC_RETHROW_EXCEPTIONS ( error, "blockvault_client plugin initialization error, please double check if the specified `--block-vault-backend` value is correct")
 #endif
 }
 

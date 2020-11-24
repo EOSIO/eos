@@ -20,7 +20,8 @@ struct blockvault_sync_strategy : public sync_callback {
 
    ~blockvault_sync_strategy() {
       if (_num_unlinkable_blocks)
-         wlog("Received ${num} unlinkable blocks during sync", ("num", _num_unlinkable_blocks));
+         wlog("${num} out of ${total} blocks received are unlinkable",
+              ("num", _num_unlinkable_blocks)("total", _num_blocks_received));
    }
 
    void run_startup() {
@@ -74,9 +75,14 @@ struct blockvault_sync_strategy : public sync_callback {
       }
 
       try {
+         ++_num_blocks_received;
          _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
-      }
-      catch (unlinkable_block_exception&) {
+      } catch (unlinkable_block_exception& e) {
+         if (block->block_num() == 2) {
+            elog("Received unlinkable block 2. Please double check if --genesis-json and --genesis-timestamp are "
+                 "correctly specified");
+            throw e;
+         }
          ++_num_unlinkable_blocks;
       }
    }
@@ -88,7 +94,8 @@ struct blockvault_sync_strategy : public sync_callback {
    std::function<bool()>  _check_shutdown;
    bool                   _startup_run;
    bool                   _received_snapshot;
-   unsigned               _num_unlinkable_blocks=0;
+   uint32_t               _num_unlinkable_blocks = 0;
+   uint32_t               _num_blocks_received   = 0;
 };
 
 } // namespace blockvault

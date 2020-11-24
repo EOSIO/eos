@@ -45,8 +45,9 @@ class block_vault_impl : public block_vault_interface {
    boost::asio::io_context                                                  ioc;
    std::thread                                                              thr;
    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work;
- public:
+   std::atomic<bool>                                                        syncing;
 
+ public:
    block_vault_impl(std::unique_ptr<blockvault::backend>&& be)
        : backend(std::move(be))
        , work(boost::asio::make_work_guard(ioc)) {}
@@ -78,6 +79,9 @@ class block_vault_impl : public block_vault_interface {
    }
    void async_append_external_block(uint32_t lib, chain::signed_block_ptr block,
                                     std::function<void(bool)> handler) override {
+      if (syncing.load())
+         return;
+
       boost::asio::post(ioc, [this, handler, lib, block]() {
          try {
             fc::datastream<std::vector<char>> stream;
@@ -110,6 +114,9 @@ class block_vault_impl : public block_vault_interface {
       transform_callback<Compressor> cb{compressor, callback};
       std::string_view bid = ptr_block_id ? std::string_view{ptr_block_id->data(), ptr_block_id->data_size()}
                                           : std::string_view{nullptr, 0};
+      syncing.store(true);
+      auto on_exit = fc::make_scoped_exit([this](){
+         syncing.store(false); });
       backend->sync(bid, cb);
    }
 
