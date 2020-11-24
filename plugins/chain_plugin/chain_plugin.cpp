@@ -312,6 +312,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Size of a single rocksdb memtable (in MiB)")
          ("persistent-storage-bytes-per-sync", bpo::value<uint64_t>()->default_value(config::default_persistent_storage_bytes_per_sync),
           "Rocksdb write rate of flushes and compactions.")
+         ("persistent-storage-mbytes-snapshot-batch", bpo::value<uint32_t>()->default_value(config::default_persistent_storage_mbytes_batch),
+          "Rocksdb batch size threshold before writing read in snapshot data to database.")
 
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
          ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
@@ -855,6 +857,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_ASSERT( my->chain_config->persistent_storage_bytes_per_sync > 0, plugin_config_exception,
                      "persistent-storage-bytes-per-sync ${num} must be greater than 0", ("num", my->chain_config->persistent_storage_bytes_per_sync) );
       }
+
+      my->chain_config->persistent_storage_mbytes_batch = options.at( "persistent-storage-mbytes-snapshot-batch" ).as<uint32_t>();
+      EOS_ASSERT( my->chain_config->persistent_storage_mbytes_batch > 0, plugin_config_exception,
+                  "persistent-storage-mbytes-snapshot-batch ${num} must be greater than 0", ("num", my->chain_config->persistent_storage_mbytes_batch) );
 
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =

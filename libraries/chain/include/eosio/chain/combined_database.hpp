@@ -84,7 +84,8 @@ namespace eosio { namespace chain {
 
    class combined_database {
     public:
-      explicit combined_database(chainbase::database& chain_db);
+      explicit combined_database(chainbase::database& chain_db,
+                                 uint32_t snapshot_batch_threashold);
 
       combined_database(chainbase::database& chain_db,
                         const controller::config& cfg);
@@ -138,6 +139,7 @@ namespace eosio { namespace chain {
       chainbase::database&                                       db;
       std::unique_ptr<rocks_db_type>                             kv_database;
       kv_undo_stack_ptr                                          kv_undo_stack;
+      const uint64_t                                             kv_snapshot_batch_threashold;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);
