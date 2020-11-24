@@ -367,9 +367,7 @@ private:
       if (!is_standalone() || is_same_table(code, scope, table)) {
          return;
       }
-      table_context_->code = code;
-      table_context_->scope = scope;
-      table_context_->table = table;
+      table_context_ = table_id_object_view{code, scope, table, name{}, 0};
       receiver_.add_row(*table_context_);
    }
 
