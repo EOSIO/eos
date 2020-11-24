@@ -775,7 +775,7 @@ public:
          auto lower = chain::backing_store::db_key_value_format::create_full_prefix_secondary_key(p.code, scope, name(table_with_index), secondary_key_lower);
          auto upper = chain::backing_store::db_key_value_format::create_full_prefix_secondary_key(p.code, scope, name(table_with_index), secondary_key_upper);
          if (reverse) {
-            lower = lower.previous();
+            lower = eosio::session::shared_bytes::truncate_key(lower);
          }
          // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
          // this secondary type, we need to move it to just before the beginning of the next type
@@ -879,7 +879,7 @@ public:
          auto lower = chain::backing_store::db_key_value_format::create_full_primary_key(p.code, scope, p.table, primary_lower);
          auto upper = chain::backing_store::db_key_value_format::create_full_primary_key(p.code, scope, p.table, primary_upper);
          if (reverse) {
-            lower = lower.previous();
+            lower = eosio::session::shared_bytes::truncate_key(lower);
          }
          // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
          // this secondary type, we need to move it to just before the beginning of the next type

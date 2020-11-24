@@ -2485,7 +2485,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
                                                                                      std::get<1>(upper_bound_lookup_tuple),
                                                                                      std::get<2>(upper_bound_lookup_tuple));
       if (reverse) {
-         lower = lower.previous();
+         lower = eosio::session::shared_bytes::truncate_key(lower);
       }
       // since upper is either the upper_bound of a forward search, or the reverse iterator <= for the beginning of the end of
       // the table, we need to move it to just before the beginning of the next table
