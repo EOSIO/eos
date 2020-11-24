@@ -89,6 +89,7 @@ namespace eosio { namespace chain {
             int                      persistent_storage_max_num_files = chain::config::default_persistent_storage_max_num_files;
             uint64_t                 persistent_storage_write_buffer_size = chain::config::default_persistent_storage_write_buffer_size;
             uint64_t                 persistent_storage_bytes_per_sync = chain::config::default_persistent_storage_bytes_per_sync;
+            uint32_t                 persistent_storage_mbytes_batch = chain::config::default_persistent_storage_mbytes_batch;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
