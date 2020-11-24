@@ -87,14 +87,14 @@ string convert_to_string(const float128_t& source, const string& key_type, const
 
 class keep_processing {
 public:
-   keep_processing(fc::microseconds&& duration = fc::milliseconds(10)) : end_time_(fc::time_point::now() + duration) {}
+   explicit keep_processing(fc::microseconds&& duration = fc::milliseconds(10)) : end_time_(fc::time_point::now() + duration) {}
 
    fc::microseconds time_remaining() const { return end_time_ - fc::time_point::now(); }
    bool operator()() const {
       return time_remaining().count() >= 0;
    }
 private:
-   fc::time_point end_time_ = fc::time_point::now() + fc::microseconds(1000 * 10);
+   fc::time_point end_time_;
 };
 
 class read_only {

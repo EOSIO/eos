@@ -286,12 +286,11 @@ public:
             composite_key);
 
       const name code = name{contract};
-      if (table_context_ && is_reversed() && !is_same_table(code, scope, table)) {
+      if (!is_same_table(code, scope, table)) {
          // since the table is being traversed in reverse order and
          // we have identified a key for a new table, need to add
          // the key count for the completed table and report it
-         table_context_->count = total_count();
-         receiver_.add_row(*table_context_);
+         complete();
       }
 
       if (!keep_processing_()) {
