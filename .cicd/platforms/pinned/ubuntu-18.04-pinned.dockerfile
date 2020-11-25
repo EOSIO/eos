@@ -8,7 +8,9 @@ RUN apt-get update && \
     autotools-dev python2.7 python2.7-dev python3 \
     python3-dev python-configparser python-requests python-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev\
-    libcurl4-gnutls-dev pkg-config patch vim-common jq
+    libcurl4-gnutls-dev pkg-config patch vim-common jq && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
@@ -45,10 +47,14 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
-# install libpq
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+# install libpq, postgresql-13
+ENV TZ=America/Chicago
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    apt-get update && apt-get -y install libpq-dev 
+    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
@@ -67,4 +73,6 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN sudo apt-get install -y nodejs
+RUN apt-get update && apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
