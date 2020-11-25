@@ -88,7 +88,7 @@ class shared_bytes {
       using reference         = value_type&;
       using iterator_category = std::random_access_iterator_tag;
    };
-   using iterator = shared_bytes_iterator<iterator_traits>;
+   using iterator       = shared_bytes_iterator<iterator_traits>;
    using const_iterator = const iterator;
    friend class shared_bytes_iterator<iterator_traits>;
 
@@ -149,9 +149,9 @@ class shared_bytes {
    char*             data();
    const char* const data() const;
 
-   iterator begin();
+   iterator       begin();
    const_iterator begin() const;
-   iterator end();
+   iterator       end();
    const_iterator end() const;
 
    static shared_bytes from_hex_string(const std::string& str);
@@ -467,13 +467,13 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator--() {
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator*() const {
-   return (*m_buffer)[m_index];
+   return (*const_cast<const shared_bytes*>(m_buffer))[m_index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator->() const {
-   return (*m_buffer)[m_index];
+   return (*const_cast<const shared_bytes*>(m_buffer))[m_index];
 }
 
 template <typename Iterator_traits>
@@ -555,13 +555,13 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator-(const shared_byt
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::reference
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](size_t index) {
-   return m_buffer[index];
+   return (*m_buffer)[index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](size_t index) const {
-   return m_buffer[index];
+   return (*const_cast<const shared_bytes*>(m_buffer))[index];
 }
 
 } // namespace eosio::session
