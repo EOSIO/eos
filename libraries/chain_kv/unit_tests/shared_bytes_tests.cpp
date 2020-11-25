@@ -68,6 +68,18 @@ BOOST_AUTO_TEST_CASE(next_test) {
    BOOST_REQUIRE(memcmp(aa.next().data(), reinterpret_cast<const int8_t*>(aa_next_expected), 2) == 0);
    BOOST_REQUIRE(aa.next().size() == 2);
 
+   char test_value_1[3] = {static_cast<char>(0x00), static_cast<char>(0x00), static_cast<char>(0xFF)};
+   char test_value_1_next_expected[2] = {static_cast<char>(0x00), static_cast<char>(0x01)};
+   auto test_value_1_sb = shared_bytes(test_value_1, 3);
+   BOOST_REQUIRE(test_value_1_sb.next().size() == 2);
+   BOOST_REQUIRE(memcmp(test_value_1_sb.next().data(), reinterpret_cast<const int8_t*>(test_value_1_next_expected), 2) == 0);
+
+   char test_value_2[3] = {static_cast<char>(0x00), static_cast<char>(0xFF), static_cast<char>(0xFF)};
+   char test_value_2_next_expected[1] = {static_cast<char>(0x01)};
+   auto test_value_2_sb = shared_bytes(test_value_2, 3);
+   BOOST_REQUIRE(test_value_2_sb.next().size() == 1);
+   BOOST_REQUIRE(memcmp(test_value_2_sb.next().data(), reinterpret_cast<const int8_t*>(test_value_2_next_expected), 1) == 0);
+
    static constexpr auto* empty_value  = "";
    auto empty = shared_bytes(empty_value, 0);
    BOOST_CHECK_THROW(empty.next().size(), eosio::chain::chain_exception);

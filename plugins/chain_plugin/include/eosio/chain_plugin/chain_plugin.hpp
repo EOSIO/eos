@@ -536,8 +536,7 @@ public:
                                bool as_json = true) const;
 
    auto get_primary_key_value(const std::string_view& type, const abi_serializer& abis, bool as_json = true) const {
-      std::string table_type {type}; // capture by value so it can outlive the caller
-      return [table_type,abis,as_json,this](fc::variant& result_var, const auto& obj) {
+      return [table_type=std::string{type},abis,as_json,this](fc::variant& result_var, const auto& obj) {
          vector<char> data;
          read_only::copy_inline_row(obj, data);
          if (as_json) {
