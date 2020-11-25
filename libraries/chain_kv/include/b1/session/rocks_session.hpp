@@ -23,8 +23,8 @@ namespace eosio::session {
 struct rocksdb_t {};
 
 /// \brief A specialization of session that interacts with a RocksDB instance instead of an in-memory cache.
-/// \remarks The interface on this session type should work just like the non specialized version of session.  For
-/// additional on undocumented methods in this header, refer to the session header file.
+/// \remarks The interface on this session type should work just like the non specialized version of session.  
+/// For more documentation on methods in this header, refer to the session header file.
 template <>
 class session<rocksdb_t> {
  public:
