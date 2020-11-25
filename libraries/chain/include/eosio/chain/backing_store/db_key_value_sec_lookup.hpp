@@ -20,7 +20,7 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( pp.value_size == 0, db_rocksdb_invalid_operation_exception,
                      "Payload should not have anything more than the payer");
       }
-      uint64_t overhead() { return config::billable_size_v<index64_object>;}
+      constexpr inline uint64_t overhead() { return config::billable_size_v<index64_object>;}
    };
 
    template<>
@@ -35,7 +35,7 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( pp.value_size == 0, db_rocksdb_invalid_operation_exception,
                      "Payload should not have anything more than the payer");
       }
-      uint64_t overhead() { return config::billable_size_v<index128_object>;}
+      constexpr inline uint64_t overhead() { return config::billable_size_v<index128_object>;}
    };
 
    template<>
@@ -50,7 +50,7 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( pp.value_size == 0, db_rocksdb_invalid_operation_exception,
                      "Payload should not have anything more than the payer");
       }
-      uint64_t overhead() { return config::billable_size_v<index256_object>;}
+      constexpr inline uint64_t overhead() { return config::billable_size_v<index256_object>;}
    };
 
    template<>
@@ -72,7 +72,7 @@ namespace eosio { namespace chain { namespace backing_store {
          // see note on value(...) method above
          memcpy(&sec_key, pp.value, pp.value_size);
       }
-      uint64_t overhead() { return config::billable_size_v<index_double_object>;}
+      constexpr inline uint64_t overhead() { return config::billable_size_v<index_double_object>;}
    };
 
    template<>
@@ -95,7 +95,7 @@ namespace eosio { namespace chain { namespace backing_store {
          // see note on value(...) method above
          memcpy(&sec_key, pp.value, pp.value_size);
       }
-      uint64_t overhead() { return config::billable_size_v<index_long_double_object>;}
+      constexpr inline uint64_t overhead() { return config::billable_size_v<index_long_double_object>;}
    };
 
    template<typename SecondaryKey >
