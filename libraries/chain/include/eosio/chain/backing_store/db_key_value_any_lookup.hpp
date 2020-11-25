@@ -69,8 +69,8 @@ namespace eosio { namespace chain { namespace backing_store {
 
       db_context&                parent;
       session_variant_type       current_session;
-      static constexpr uint64_t  table_overhead = config::billable_size_v<table_id_object>;
-      static constexpr uint64_t  overhead = config::billable_size_v<key_value_object>;
+      static constexpr int64_t   table_overhead = config::billable_size_v<table_id_object>;
+      static constexpr int64_t   overhead = config::billable_size_v<key_value_object>;
       // this is used for any value that just needs something in it to distinguish it from the invalid value
       static const shared_bytes useless_value;
    };
