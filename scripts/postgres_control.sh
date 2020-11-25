@@ -42,63 +42,53 @@ if [ ! -z `which docker 2>/dev/null` ]; then
       echo true 
    esac
 elif [ "$CI" = "true" ]; then
-   if [ ! -z `which  pg_ctlcluster 2>/dev/null` ]; then
-      # Ubuntu variant
-      case "$1" in 
-      start)
-         pg_ctlcluster 13 main start
-         su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
-         ;;
-      stop)
-         pg_ctlcluster 13 main stop
-         ;;
-      exec)
-         PGPASSWORD=password su - postgres -c "psql -U postgres -q -c \"$2\""
-         ;;
-      status)
-         echo true 
-      esac
-   else 
-      PG_CTL=`which pg_ctl 2>/dev/null`
-      if [ -z $PG_CTL ] && [ -f "$PostgreSQL_ROOT/bin/pg_ctl" ]; then
+   PG_CTL=`which pg_ctl 2>/dev/null`
+   if [ -z $PG_CTL ]; then 
+     if [ -f "$PostgreSQL_ROOT/bin/pg_ctl" ]; then
+         # CentOS
          PG_CTL=$PostgreSQL_ROOT/bin/pg_ctl
+      elif [ ! -z `which  pg_ctlcluster 2>/dev/null` ]; then
+         # ubuntu
+         PG_CTL="pg_ctlcluster 13 main"
       fi
+   fi
 
-      if [ ! -z "$PG_CTL" ]; then
-         OS=`uname`
-         if [ "$OS" = "Darwin" ]; then
-            ## mac
-            case "$1" in 
-            start)
-               $PG_CTL -D /usr/local/var/postgres start
-               psql postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
-               ;;
-            stop)
-               $PG_CTL -D /usr/local/var/postgres stop
-               ;;
-            exec)
-               PGPASSWORD=password psql postgres -q -c "$2"
-               ;;
-            status)
-               echo true 
-            esac
-         else  
-            ## CentOS, amazon Linux
-            case "$1" in 
-            start)
-               su - postgres -c "$PG_CTL start"
-               su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
-               ;;
-            stop)
-               su - postgres -c "$PG_CTL stop"
-               ;;
-            exec)
-               PGPASSWORD=password psql -U postgres -q -c "$2"
-               ;;
-            status)
-               echo true 
-            esac
-         fi
+   if [ ! -z "$PG_CTL" ]; then
+      OS=`uname`
+      if [ "$OS" = "Darwin" ]; then
+         ## mac
+         case "$1" in 
+         start)
+            $PG_CTL -D /usr/local/var/postgres start
+            psql postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
+            if [ ! -z "$2" ]; then psql postgres -q -c "psql -q -c $2" > /dev/null ; fi
+            ;;
+         stop)
+            $PG_CTL -D /usr/local/var/postgres stop
+            ;;
+         exec)
+            PGPASSWORD=password psql postgres -q -c "$2"
+            ;;
+         status)
+            echo true 
+         esac
+      else  
+         ## Linux
+         case "$1" in 
+         start)
+            su - postgres -c "$PG_CTL start"
+            su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
+            if [ ! -z "$2" ]; then su - postgres -c "psql -q -c \"$2\""  > /dev/null; fi
+            ;;
+         stop)
+            su - postgres -c "$PG_CTL stop"
+            ;;
+         exec)
+            su - postgres -c "psql -U postgres -q -c \"$2\""
+            ;;
+         status)
+            echo true 
+         esac
       fi
    fi
 elif [ ! -z "$PGHOST" ] && [ -n `which psql` ]; then
@@ -114,6 +104,3 @@ elif [ ! -z "$PGHOST" ] && [ -n `which psql` ]; then
       echo true 
    esac
 fi
-
-
-
