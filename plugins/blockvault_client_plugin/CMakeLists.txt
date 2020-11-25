@@ -19,11 +19,15 @@ pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0 libpq>=10.0)
 
 if (pqxx_FOUND)
    add_library(blockvault postgres_backend.cpp)
-   target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-   target_link_libraries(blockvault PUBLIC PkgConfig::pqxx eosio_chain)
+   target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+                                         PRIVATE ${pqxx_INCLUDE_DIRS})
+   target_link_libraries(blockvault PUBLIC ${pqxx_LIBRARIES} eosio_chain)
+   target_link_directories(blockvault PUBLIC ${pqxx_LIBRARY_DIRS} ${_OPENSSL_LIBRARY_DIRS})
 
    target_link_libraries( blockvault_client_plugin blockvault)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
 
    add_subdirectory(tests)
+else()
+   message(WARNING "libpqxx is not found, blockvault_client_plugin will not be functional for the lack of available backend")
 endif()

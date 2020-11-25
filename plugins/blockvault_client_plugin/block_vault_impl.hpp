@@ -69,7 +69,7 @@ class block_vault_impl : public block_vault_interface {
             bool r = backend->propose_constructed_block({block->block_num(), block->timestamp.slot}, lib, stream.storage(),
                                                        {block_id.data(), block_id.data_size()},
                                                        {block->previous.data(), block->previous.data_size()});
-            ilog("propose_constructed_block(watermark={${bn}, ${ts}}, lib=${lib}) returns ${r}", ("bn", block->block_num())("ts", block->timestamp.slot)("lib", lib)("r", r));
+            dlog("propose_constructed_block(watermark={${bn}, ${ts}}, lib=${lib}) returns ${r}", ("bn", block->block_num())("ts", block->timestamp.slot)("lib", lib)("r", r));
             handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());
@@ -91,7 +91,7 @@ class block_vault_impl : public block_vault_interface {
             bool r = backend->append_external_block(block->block_num(), lib, stream.storage(),
                                                    {block_id.data(), block_id.data_size()},
                                                    {block->previous.data(), block->previous.data_size()});
-            ilog("append_external_block(block_num=${bn}, lib=${lib}) returns ${r}", ("bn", block->block_num())("lib", lib)("r", r));
+            dlog("append_external_block(block_num=${bn}, lib=${lib}) returns ${r}", ("bn", block->block_num())("lib", lib)("r", r));
             handler(r);
          } catch (std::exception& ex) {
             elog(ex.what());

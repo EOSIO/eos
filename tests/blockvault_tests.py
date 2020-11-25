@@ -124,7 +124,7 @@ try:
         time.sleep(2)
 
     Print("#################################################################################")
-    Print("# Scenario 1: Test node 1 failover without snapshot in the block vault         #")
+    Print("# Scenario 1: Test node 1 failover without snapshot in the block vault          #")
     Print("#################################################################################")
     testFailOver(cluster, nodeToKill=node1)
     
@@ -138,7 +138,7 @@ try:
     testFailOver(cluster, nodeToKill=node1)
 
     Print("#################################################################################")
-    Print("# Scenario 3: Test two identical producer nodes conneting to the block vault    #")
+    Print("# Scenario 3: Test two identical producer nodes connecting to the block vault   #")
     Print("#################################################################################")
     node2 = cluster.getNode(2)
     testFailOver(cluster, nodeToKill=node2, addSwapFlags={
