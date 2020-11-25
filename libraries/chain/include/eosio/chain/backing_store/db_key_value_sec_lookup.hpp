@@ -193,8 +193,8 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          if( key_store.payer != payer ) {
-            context.update_db_usage( key_store.payer, -(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
-            context.update_db_usage( payer, +(static_cast<int64_t>(helper.overhead())), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
+            context.update_db_usage( key_store.payer, -helper.overhead(), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
+            context.update_db_usage( payer, helper.overhead(), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
          }
 
          // if the secondary value is different, remove the old key and add the new key
