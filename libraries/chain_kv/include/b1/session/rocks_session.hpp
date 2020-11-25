@@ -23,7 +23,7 @@ namespace eosio::session {
 struct rocksdb_t {};
 
 /// \brief A specialization of session that interacts with a RocksDB instance instead of an in-memory cache.
-/// \remarks The interface on this session type should work just like the non specialized version of session.  
+/// \remarks The interface on this session type should work just like the non specialized version of session.
 /// For more documentation on methods in this header, refer to the session header file.
 template <>
 class session<rocksdb_t> {
@@ -42,7 +42,6 @@ class session<rocksdb_t> {
       using reference         = typename Iterator_traits::reference;
       using iterator_category = typename Iterator_traits::iterator_category;
 
-      rocks_iterator() = default;
       rocks_iterator(const rocks_iterator& other);
       rocks_iterator(rocks_iterator&& other);
       rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit, int64_t index = -1);
@@ -60,6 +59,10 @@ class session<rocksdb_t> {
 
       shared_bytes key() const;
       bool         deleted() const;
+
+    private:
+      rocks_iterator() = default;
+      void reset();
 
     private:
       session<rocksdb_t>* m_session{ nullptr };
@@ -189,16 +192,10 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
          return std::move(db);
       }() },
       m_iterator_read_options{ [&]() {
-         auto read_options = rocksdb::ReadOptions{};
-         // read_options.readahead_size   = 256 * 1024 * 1024;
-         read_options.verify_checksums = false;
-         // read_options.read_tier = rocksdb::ReadTier::kMemtableTier;
-         read_options.fill_cache = false;
-         // read_options.auto_prefix_mode                     = true;
-         // read_options.total_order_seek                     = false;
-         // read_options.prefix_same_as_start                 = true;
+         auto read_options                                 = rocksdb::ReadOptions{};
+         read_options.verify_checksums                     = false;
+         read_options.fill_cache                           = false;
          read_options.background_purge_on_iterator_cleanup = true;
-         // read_options.pin_data                             = true;
          return read_options;
       }() },
       m_iterators{ [&]() {
@@ -407,30 +404,13 @@ inline rocksdb::ColumnFamilyHandle* session<rocksdb_t>::column_family_() const {
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(const rocks_iterator& it)
-    : m_session{ it.m_session } {
-   if (!m_session) {
-      return;
-   }
-
-   auto new_iterator = rocks_iterator<iterator_traits>{};
-   if (it.m_iterator->Valid()) {
-      new_iterator = m_session->find(it.key());
-   } else {
-      new_iterator = std::end(*m_session);
-   }
-   m_iterator              = new_iterator.m_iterator;
-   m_index                 = new_iterator.m_index;
-   new_iterator.m_iterator = nullptr;
-   new_iterator.m_index    = -1;
-}
+    : rocks_iterator{ it.m_iterator->Valid() ? it.m_session->find(it.key()) : it.m_session->end() } {}
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(rocks_iterator&& it)
-    : m_session{ it.m_session }, m_iterator{ it.m_iterator }, m_index{ it.m_index } {
-   it.m_session  = nullptr;
-   it.m_iterator = nullptr;
-   it.m_index    = -1;
-}
+    : m_session{ std::exchange(it.m_session, nullptr) }, m_iterator{ std::exchange(it.m_iterator, nullptr) }, m_index{
+         std::exchange(it.m_index, -1)
+      } {}
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit,
@@ -444,8 +424,10 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(const rocks_itera
       return *this;
    }
 
+   reset();
+
    m_session = it.m_session;
-   if (!m_session) {
+   if (m_session) {
       return *this;
    }
 
@@ -455,10 +437,8 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(const rocks_itera
    } else {
       new_iterator = std::end(*m_session);
    }
-   m_iterator              = new_iterator.m_iterator;
-   m_index                 = new_iterator.m_index;
-   new_iterator.m_iterator = nullptr;
-   new_iterator.m_index    = -1;
+   m_iterator = std::exchange(new_iterator.m_iterator, nullptr);
+   m_index    = std::exchange(new_iterator.m_index, -1);
 
    return *this;
 }
@@ -470,24 +450,30 @@ session<rocksdb_t>::rocks_iterator<Iterator_traits>::operator=(rocks_iterator&& 
       return *this;
    }
 
-   m_session     = it.m_session;
-   m_iterator    = it.m_iterator;
-   m_index       = it.m_index;
-   it.m_session  = nullptr;
-   it.m_iterator = nullptr;
-   it.m_index    = -1;
+   reset();
+
+   m_session  = std::exchange(it.m_session, nullptr);
+   m_iterator = std::exchange(it.m_iterator, nullptr);
+   m_index    = std::exchange(it.m_index, -1);
 
    return *this;
 }
 
 template <typename Iterator_traits>
 session<rocksdb_t>::rocks_iterator<Iterator_traits>::~rocks_iterator() {
+   reset();
+}
+
+template <typename Iterator_traits>
+void session<rocksdb_t>::rocks_iterator<Iterator_traits>::reset() {
    if (m_index > -1) {
       m_session->m_free_list.push_back(m_index);
    } else if (m_iterator) {
       delete m_iterator;
    }
    m_iterator = nullptr;
+   m_index    = -1;
+   m_session  = nullptr;
 }
 
 template <typename Iterator_traits>
