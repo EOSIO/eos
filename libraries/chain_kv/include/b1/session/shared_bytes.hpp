@@ -54,7 +54,7 @@ class shared_bytes {
       /// \param end The ending point of the range within the buffer the iterator iterates over, inclusive.
       /// \param index The starting index within the range to start iterating.
       /// \remarks -1 for the index indicates the end iterator.
-      shared_bytes_iterator(char* buffer, int64_t begin, int64_t end, int64_t index);
+      shared_bytes_iterator(shared_bytes* buffer, int64_t begin, int64_t end, int64_t index);
 
       shared_bytes_iterator& operator=(const shared_bytes_iterator& other) = default;
       shared_bytes_iterator& operator=(shared_bytes_iterator&& other) = default;
@@ -75,10 +75,10 @@ class shared_bytes {
       value_type             operator[](size_t index) const;
 
     private:
-      underlying_type_t* m_buffer{ nullptr };
-      int64_t            m_end{ 0 };
-      int64_t            m_begin{ 0 };
-      int64_t            m_index{ -1 };
+      shared_bytes* m_buffer{ nullptr };
+      int64_t       m_end{ 0 };
+      int64_t       m_begin{ 0 };
+      int64_t       m_index{ -1 };
    };
 
    struct iterator_traits {
@@ -89,6 +89,8 @@ class shared_bytes {
       using iterator_category = std::random_access_iterator_tag;
    };
    using iterator = shared_bytes_iterator<iterator_traits>;
+
+   friend class iterator;
 
  public:
    /// \brief Default Constructor.
@@ -151,6 +153,9 @@ class shared_bytes {
    iterator end() const;
 
    static shared_bytes from_hex_string(const std::string& str);
+
+ private:
+   void detach_();
 
  private:
    size_t                             m_size{ 0 };
@@ -267,6 +272,16 @@ inline shared_bytes::shared_bytes(size_t size)
          return result;
       }() } {}
 
+inline void shared_bytes::detach_() {
+   if (m_data.unique() || m_size == 0) {
+      return;
+   }
+   auto cow = std::shared_ptr<underlying_type_t>{ new underlying_type_t[m_size + m_offset],
+                                                  std::default_delete<underlying_type_t[]>() };
+   std::memcpy(cow.get(), m_data.get(), m_size + m_offset);
+   m_data = cow;
+}
+
 inline shared_bytes shared_bytes::next() const {
    auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
 
@@ -316,8 +331,11 @@ inline shared_bytes shared_bytes::previous() const {
 
 inline size_t            shared_bytes::size() const { return m_size; }
 inline size_t            shared_bytes::aligned_size() const { return eosio::session::details::aligned_size(m_size); }
-inline char*             shared_bytes::data() { return m_data.get(); }
 inline const char* const shared_bytes::data() const { return m_data.get(); }
+inline char*             shared_bytes::data() {
+   detach_();
+   return m_data.get();
+}
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
@@ -371,16 +389,19 @@ inline bool shared_bytes::operator!() const { return *this == shared_bytes{}; }
 
 inline shared_bytes::operator bool() const { return *this != shared_bytes{}; }
 
-inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) { return m_data.get()[index]; }
+inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) {
+   detach_();
+   return m_data.get()[index];
+}
 
 inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const { return m_data.get()[index]; }
 
 inline shared_bytes::iterator shared_bytes::begin() const {
-   return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
+   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
 }
 
 inline shared_bytes::iterator shared_bytes::end() const {
-   return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, -1 };
+   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, -1 };
 }
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
@@ -409,8 +430,8 @@ inline shared_bytes shared_bytes::from_hex_string(const std::string& str) {
 }
 
 template <typename Iterator_traits>
-shared_bytes::shared_bytes_iterator<Iterator_traits>::shared_bytes_iterator(char* buffer, int64_t begin, int64_t end,
-                                                                            int64_t index)
+shared_bytes::shared_bytes_iterator<Iterator_traits>::shared_bytes_iterator(shared_bytes* buffer, int64_t begin,
+                                                                            int64_t end, int64_t index)
     : m_buffer{ buffer }, m_end{ end }, m_begin{ begin }, m_index{ index } {}
 
 template <typename Iterator_traits>
