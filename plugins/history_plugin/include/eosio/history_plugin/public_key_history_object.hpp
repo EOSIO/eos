@@ -20,7 +20,7 @@ class public_key_history_object : public chainbase::object<chain::public_key_his
 
 struct by_id;
 struct by_pub_key;
-struct by_account_permission;
+struct by_account_permission_name;
 using public_key_history_multi_index = chainbase::shared_multi_index_container<
    public_key_history_object,
    indexed_by<
@@ -31,7 +31,7 @@ using public_key_history_multi_index = chainbase::shared_multi_index_container<
             member<public_key_history_object, public_key_history_object::id_type, &public_key_history_object::id>
          >
       >,
-      ordered_unique<tag<by_account_permission>,
+      ordered_unique<tag<by_account_permission_name>,
          composite_key< public_key_history_object,
             member<public_key_history_object, account_name,     &public_key_history_object::name>,
             member<public_key_history_object, permission_name,  &public_key_history_object::permission>,

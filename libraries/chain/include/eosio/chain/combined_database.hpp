@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
       void flush();
 
       std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
-                                                    const kv_database_config& limits);
+                                                    const kv_database_config& limits)const;
 
       std::unique_ptr<db_context> create_db_context(apply_context& context, name receiver);
 
@@ -130,6 +130,7 @@ namespace eosio { namespace chain {
 
       auto &get_db(void) const { return db; }
       auto &get_kv_undo_stack(void) const { return kv_undo_stack; }
+      backing_store_type get_backing_store() const { return backing_store; }
 
     private:
       void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;

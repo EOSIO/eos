@@ -1488,6 +1488,22 @@ class Node(object):
         param = { }
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
 
+    def getScope(self, contract, table=None, limit=None, lower=None, upper=None, reverse=False, exitOnError=False):
+        cmdDesc = "get scope"
+        cmd="%s %s " % (cmdDesc, contract)
+        if table:
+            cmd+="--table %s " % (table)
+        if limit:
+            cmd+="--limit %s " % (limit)
+        if lower:
+            cmd+="--lower %s " % (lower)
+        if upper:
+            cmd+="--upper %s " % (upper)
+        if reverse:
+            cmd+="--reverse "
+        msg="contract=%s" % (contract);
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+
     # kill all exsiting nodeos in case lingering from previous test
     @staticmethod
     def killAllNodeos():
