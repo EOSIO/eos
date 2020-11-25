@@ -28,7 +28,6 @@ namespace eosio { namespace chain {
    // credited when storage is removed or changed
    // to another payer
    inline static eosio::session::shared_bytes build_value(const char* value, uint32_t value_size, const account_name& payer) {
-#warning replace with make_shared_bytes
       const uint32_t final_value_size = backing_store::payer_in_value_size + value_size;
       auto result = eosio::session::shared_bytes(final_value_size);
 
