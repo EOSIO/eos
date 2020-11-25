@@ -89,8 +89,8 @@ class shared_bytes {
       using iterator_category = std::random_access_iterator_tag;
    };
    using iterator = shared_bytes_iterator<iterator_traits>;
-
-   friend class iterator;
+   using const_iterator = const iterator;
+   friend class shared_bytes_iterator<iterator_traits>;
 
  public:
    /// \brief Default Constructor.
@@ -149,8 +149,10 @@ class shared_bytes {
    char*             data();
    const char* const data() const;
 
-   iterator begin() const;
-   iterator end() const;
+   iterator begin();
+   const_iterator begin() const;
+   iterator end();
+   const_iterator end() const;
 
    static shared_bytes from_hex_string(const std::string& str);
 
@@ -396,11 +398,19 @@ inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) {
 
 inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const { return m_data.get()[index]; }
 
-inline shared_bytes::iterator shared_bytes::begin() const {
+inline shared_bytes::iterator shared_bytes::begin() {
    return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
 }
 
-inline shared_bytes::iterator shared_bytes::end() const {
+inline shared_bytes::iterator shared_bytes::end() {
+   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, -1 };
+}
+
+inline shared_bytes::const_iterator shared_bytes::begin() const {
+   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
+}
+
+inline shared_bytes::const_iterator shared_bytes::end() const {
    return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, -1 };
 }
 
@@ -457,25 +467,25 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator--() {
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator*() const {
-   return m_buffer[m_index];
+   return (*m_buffer)[m_index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::value_type
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator->() const {
-   return m_buffer[m_index];
+   return (*m_buffer)[m_index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::reference
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator*() {
-   return m_buffer[m_index];
+   return (*m_buffer)[m_index];
 }
 
 template <typename Iterator_traits>
 typename shared_bytes::shared_bytes_iterator<Iterator_traits>::reference
 shared_bytes::shared_bytes_iterator<Iterator_traits>::operator->() {
-   return m_buffer[m_index];
+   return (*m_buffer)[m_index];
 }
 
 template <typename Iterator_traits>
