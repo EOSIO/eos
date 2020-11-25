@@ -281,7 +281,7 @@ inline void shared_bytes::detach_() {
    auto cow = std::shared_ptr<underlying_type_t>{ new underlying_type_t[m_size + m_offset],
                                                   std::default_delete<underlying_type_t[]>() };
    std::memcpy(cow.get(), m_data.get(), m_size + m_offset);
-   m_data = cow;
+   m_data = std::move(cow);
 }
 
 inline shared_bytes shared_bytes::next() const {
@@ -399,11 +399,11 @@ inline shared_bytes::underlying_type_t& shared_bytes::operator[](size_t index) {
 inline shared_bytes::underlying_type_t shared_bytes::operator[](size_t index) const { return m_data.get()[index]; }
 
 inline shared_bytes::iterator shared_bytes::begin() {
-   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
+   return iterator{ this, 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
 }
 
 inline shared_bytes::iterator shared_bytes::end() {
-   return iterator{ const_cast<shared_bytes*>(this), 0, static_cast<int64_t>(m_size) - 1, -1 };
+   return iterator{ this, 0, static_cast<int64_t>(m_size) - 1, -1 };
 }
 
 inline shared_bytes::const_iterator shared_bytes::begin() const {
