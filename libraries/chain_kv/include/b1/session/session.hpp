@@ -275,7 +275,7 @@ void session<Parent>::prime_cache_() {
    auto update = [&](const auto& key, const auto& value) {
       auto it = m_cache.emplace(key, value_state{});
       if (it.second) {
-        it.first->second.value = value;
+         it.first->second.value = value;
       }
    };
 
@@ -295,9 +295,9 @@ void session<Parent>::prime_cache_() {
                              if (begin == end) {
                                 return;
                              }
-                            update(begin.key(), (*begin).second.value());
-                            --end;
-                            update(end.key(), (*end).second.value());
+                             update(begin.key(), (*begin).second.value());
+                             --end;
+                             update(end.key(), (*end).second.value());
                           } },
               m_parent);
 }
@@ -403,8 +403,7 @@ void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) const {
 }
 
 template <typename Parent>
-typename session<Parent>::cache_type::iterator
-session<Parent>::update_iterator_cache_(const shared_bytes& key) const {
+typename session<Parent>::cache_type::iterator session<Parent>::update_iterator_cache_(const shared_bytes& key) const {
    auto  result = m_cache.emplace(key, value_state{});
    auto& it     = result.first;
 
@@ -437,18 +436,18 @@ session<Parent>::update_iterator_cache_(const shared_bytes& key) const {
       if (!it->second.next_in_cache || !it->second.previous_in_cache) {
          std::visit(
                [&](auto* p) {
-                  auto pit   = p->lower_bound(key);
-                  auto end   = std::end(*p);
+                  auto pit = p->lower_bound(key);
+                  auto end = std::end(*p);
                   if (!it->second.next_in_cache) {
-                    next_key_(it, pit, end);
+                     next_key_(it, pit, end);
                   }
                   if (!it->second.previous_in_cache) {
-                    auto begin = std::begin(*p);
-                    previous_key_(it, pit, begin, end);
+                     auto begin = std::begin(*p);
+                     previous_key_(it, pit, begin, end);
                   }
                },
                m_parent);
-      } 
+      }
    }
 
    return it;
