@@ -164,10 +164,7 @@ namespace eosio { namespace chain {
             options.create_if_missing = true; // Creates a database if it is missing
             options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
-            options.allow_mmap_reads = true;
-            options.allow_mmap_writes = true;
             options.use_adaptive_mutex = true;
-            options.avoid_unnecessary_blocking_io = true;
 
             // Number of threads used for flush and compaction.
             options.IncreaseParallelism(cfg.persistent_storage_num_threads);
