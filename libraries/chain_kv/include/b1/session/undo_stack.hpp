@@ -124,7 +124,7 @@ void undo_stack<Session>::commit(int64_t revision) {
       return;
    }
 
-   auto start_index = revision - initial_revision;
+   const auto start_index = revision - initial_revision;
 
    for (int64_t i = start_index; i >= 0; --i) { m_sessions[i].commit(); }
    m_sessions.erase(std::begin(m_sessions), std::begin(m_sessions) + start_index + 1);
