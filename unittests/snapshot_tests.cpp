@@ -606,20 +606,13 @@ static const char kv_snapshot_bios[] = R"=====(
 )
 )=====";
 
-static void set_backing_store(tester& chain, const backing_store_type backing_store) {
-   chain.close(); // clean up chain so no dirty db error
-   auto cfg = chain.get_config();
-   cfg.backing_store = backing_store;
-   chain.init(cfg); // enable new config
-}
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
    for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
          tester chain;
 
          // Set backing_store for save snapshot
-         set_backing_store(chain, origin_backing_store);
+         chain.restart_with_backing_store(origin_backing_store);
 
          chain.create_accounts({"manager"_n});
          auto get_ext = [](unsigned i) {

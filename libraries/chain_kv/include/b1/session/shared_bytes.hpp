@@ -137,13 +137,12 @@ class shared_bytes {
    /// value
    ///          to the next byte (from back to front) until no carry over is encountered.
    shared_bytes next() const;
-   shared_bytes next_sub_key() const;
-   shared_bytes previous() const;
    size_t       size() const;
 
    /// \brief Returns the size of the buffer when aligned on a the size of uint64_t.
    size_t aligned_size() const;
 
+   bool              empty() const;
    char*             data();
    const char* const data() const;
 
@@ -151,6 +150,7 @@ class shared_bytes {
    iterator end() const;
 
    static shared_bytes from_hex_string(const std::string& str);
+   static shared_bytes truncate_key(const shared_bytes &key);
 
  private:
    size_t                             m_size{ 0 };
@@ -277,40 +277,7 @@ inline shared_bytes shared_bytes::next() const {
       buffer.pop_back();
    }
 
-   return eosio::session::shared_bytes(buffer.data(), buffer.size());
-}
-
-inline shared_bytes shared_bytes::next_sub_key() const {
-   auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
-   buffer.push_back('\0');
-
-   return eosio::session::shared_bytes(buffer.data(), buffer.size());
-}
-
-inline shared_bytes shared_bytes::previous() const {
-   if (!*this)
-      return shared_bytes{};
-
-   auto buffer = std::vector<unsigned char>{ std::begin(*this), std::end(*this) };
-
-   int index = buffer.size() - 1;
-   while (true) {
-      auto& val = buffer[index];
-      if (val) {
-         --val;
-         ++index; // ensure we increment any indexes past this one
-         break;
-      }
-      if (--index < 0) {
-         buffer.pop_back();
-         index = buffer.size();
-      }
-   }
-
-   while (static_cast<std::size_t>(index) < buffer.size()) {
-      buffer[index] = std::numeric_limits<unsigned char>::max();
-   }
-
+   EOS_ASSERT(!buffer.empty(), eosio::chain::chain_exception, "shared_bytes::next() result buffer is empty");
    return eosio::session::shared_bytes(buffer.data(), buffer.size());
 }
 
@@ -318,6 +285,8 @@ inline size_t            shared_bytes::size() const { return m_size; }
 inline size_t            shared_bytes::aligned_size() const { return eosio::session::details::aligned_size(m_size); }
 inline char*             shared_bytes::data() { return m_data.get(); }
 inline const char* const shared_bytes::data() const { return m_data.get(); }
+
+inline bool shared_bytes::empty() const { return m_size == 0; }
 
 inline bool shared_bytes::operator==(const shared_bytes& other) const {
    if (m_data.get() == other.m_data.get()) {
@@ -381,6 +350,12 @@ inline shared_bytes::iterator shared_bytes::begin() const {
 
 inline shared_bytes::iterator shared_bytes::end() const {
    return iterator{ m_data.get(), 0, static_cast<int64_t>(m_size) - 1, -1 };
+}
+
+inline shared_bytes shared_bytes::truncate_key(const shared_bytes &key) {
+   EOS_ASSERT(!key.empty(), eosio::chain::chain_exception, "chain_plugin::truncate_key() invalid key parameter: empty");
+
+   return shared_bytes(key.data(), key.size() - 1);
 }
 
 inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {

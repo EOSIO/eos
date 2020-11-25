@@ -109,9 +109,16 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       return true;
    }
 
+   b1::chain_kv::bytes create_prefix_type_key(name scope, name table, key_type kt) {
+      static constexpr std::size_t no_key_size = 0;
+      static constexpr std::size_t no_extension_size = 0;
+      b1::chain_kv::bytes composite_key = detail::prepare_composite_key(scope, table, no_key_size, kt, no_extension_size);
+      return composite_key;
+   }
+
    b1::chain_kv::bytes create_table_key(name scope, name table) {
       // table key ends with the type, so just reuse method
-      return create_prefix_type_key<key_type::table>(scope, table);
+      return create_prefix_type_key(scope, table, key_type::table);
    }
 
    eosio::session::shared_bytes create_table_key(const eosio::session::shared_bytes& prefix_key) {
@@ -272,5 +279,15 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       data.type_prefix = {data.legacy_key->data(), type_prefix_length};
 
       return data;
+   }
+
+   eosio::session::shared_bytes create_full_primary_key(name code, name scope, name table, uint64_t primary_key) {
+      bytes composite_key = create_primary_key(scope, table, primary_key);
+      return create_full_key(composite_key, code);
+   }
+
+   eosio::session::shared_bytes create_full_prefix_key(name code, name scope, name table, std::optional<key_type> kt) {
+      bytes composite_key = kt ? create_prefix_type_key(scope, table, *kt) : create_prefix_key(scope, table);
+      return create_full_key(composite_key, code);
    }
 }}}} // namespace eosio::chain::backing_store::db_key_value_format

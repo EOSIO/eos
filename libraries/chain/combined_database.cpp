@@ -153,8 +153,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   combined_database::combined_database(chainbase::database& chain_db)
-       : backing_store(backing_store_type::CHAINBASE), db(chain_db) {}
+   combined_database::combined_database(chainbase::database& chain_db,
+                                        uint32_t snapshot_batch_threashold)
+       : backing_store(backing_store_type::CHAINBASE), db(chain_db), kv_snapshot_batch_threashold(snapshot_batch_threashold * 1024 * 1024) {}
 
    combined_database::combined_database(chainbase::database& chain_db,
                                         const controller::config& cfg)
@@ -231,7 +232,8 @@ namespace eosio { namespace chain {
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
-         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)) {}
+         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
+         kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
    void combined_database::check_backing_store_setting() {
       switch (backing_store) {
@@ -310,7 +312,7 @@ namespace eosio { namespace chain {
    }
 
    std::unique_ptr<kv_context> combined_database::create_kv_context(name receiver, kv_resource_manager resource_manager,
-                                                                    const kv_database_config& limits) {
+                                                                    const kv_database_config& limits) const {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
             return std::visit([&](auto* session){
@@ -559,19 +561,32 @@ namespace eosio { namespace chain {
 
    template <typename Section>
    void rocksdb_read_contract_tables_from_snapshot(rocks_db_type& kv_database, chainbase::database& db,
-                                                   Section& section) {
+                                                   Section& section, uint64_t snapshot_batch_threashold) {
       std::vector<std::pair<eosio::session::shared_bytes, eosio::session::shared_bytes>> batch;
       bool                more     = !section.empty();
       auto                read_row = [&section, &more, &db](auto& row) { more = section.read_row(row, db); };
+      uint64_t            batch_mem_size = 0;
 
       while (more) {
          // read the row for the table
          backing_store::table_id_object_view table_obj;
          read_row(table_obj);
-         auto put = [&batch, &table_obj](auto&& value, auto create_fun, auto&&... args) {
+         auto put = [&batch, &table_obj, &batch_mem_size, &kv_database, snapshot_batch_threashold]
+               (auto&& value, auto create_fun, auto&&... args) {
             auto composite_key = create_fun(table_obj.scope, table_obj.table, std::forward<decltype(args)>(args)...);
             batch.emplace_back(backing_store::db_key_value_format::create_full_key(composite_key, table_obj.code),
                                std::forward<decltype(value)>(value));
+
+            const auto& back = batch.back();
+            const auto size = back.first.size() + back.second.size();
+            if (size >= snapshot_batch_threashold || snapshot_batch_threashold - size < batch_mem_size) {
+               kv_database.write(batch);
+               batch_mem_size = 0;
+               batch.clear();
+            }
+            else {
+               batch_mem_size += size;
+            }
          };
 
          // handle the primary key index
@@ -580,7 +595,7 @@ namespace eosio { namespace chain {
          for (size_t i = 0; i < size.value; ++i) {
             backing_store::primary_index_view row;
             read_row(row);
-            backing_store::payer_payload pp{row.payer, row.value.data.data(), row.value.data.size()};
+            backing_store::payer_payload pp{row.payer, row.value.data(), row.value.size()};
             put(pp.as_payload(), backing_store::db_key_value_format::create_primary_key, row.primary_key);
          }
 
@@ -608,6 +623,7 @@ namespace eosio { namespace chain {
          backing_store::payer_payload pp{table_obj.payer, nullptr, 0};
          b1::chain_kv::bytes (*create_table_key)(name scope, name table) = backing_store::db_key_value_format::create_table_key;
          put(pp.as_payload(), create_table_key);
+
       }
       kv_database.write(batch);
    }
@@ -615,7 +631,7 @@ namespace eosio { namespace chain {
    void combined_database::read_contract_tables_from_snapshot(const snapshot_reader_ptr& snapshot) {
       snapshot->read_section("contract_tables", [this](auto& section) {
          if (kv_undo_stack && db.get<kv_db_config_object>().backing_store == backing_store_type::ROCKSDB)
-            rocksdb_read_contract_tables_from_snapshot(*kv_database, db, section);
+            rocksdb_read_contract_tables_from_snapshot(*kv_database, db, section, kv_snapshot_batch_threashold);
          else
             chainbase_read_contract_tables_from_snapshot(db, section);
       });

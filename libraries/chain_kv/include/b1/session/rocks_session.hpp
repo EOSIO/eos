@@ -42,6 +42,7 @@ class session<rocksdb_t> {
       using reference         = typename Iterator_traits::reference;
       using iterator_category = typename Iterator_traits::iterator_category;
 
+      rocks_iterator() = default;
       rocks_iterator(const rocks_iterator& other);
       rocks_iterator(rocks_iterator&& other);
       rocks_iterator(session<rocksdb_t>& session, rocksdb::Iterator& rit, int64_t index = -1);
@@ -61,7 +62,6 @@ class session<rocksdb_t> {
       bool         deleted() const;
 
     private:
-      rocks_iterator() = default;
       void reset();
 
     private:

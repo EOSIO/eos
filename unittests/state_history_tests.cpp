@@ -483,13 +483,6 @@ public:
       return result;
    }
 
-   void set_backing_store(const backing_store_type backing_store) {
-      close(); // clean up chain so no dirty db error
-      auto cfg = get_config();
-      cfg.backing_store = backing_store;
-      init(cfg); // enable new config
-   }
-
 private:
    deltas_vector v;
 };
@@ -497,7 +490,7 @@ private:
 BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE/* TODO: uncomment this , backing_store_type::ROCKSDB*/ } ) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       auto deltas = eosio::state_history::create_deltas(chain.control->kv_db(), false);
 
@@ -510,7 +503,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_not_empty) {
 BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       // Check that no account table deltas are present
@@ -532,7 +525,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_creation) {
 BOOST_AUTO_TEST_CASE(test_deltas_account_metadata) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_account("newacc"_n);
@@ -552,7 +545,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_metadata) {
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_account("newacc"_n);
@@ -564,7 +557,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
       auto &it_permission = result.second;
       BOOST_REQUIRE_EQUAL(it_permission->rows.obj.size(), 2);
       auto accounts_permissions = chain.deserialize_data<eosio::ship_protocol::permission_v0, eosio::ship_protocol::permission>(it_permission);
-      for (int i = 0; i < accounts_permissions.size(); i++) {
+      for (std::size_t i = 0; i < accounts_permissions.size(); i++) {
          BOOST_REQUIRE_EQUAL(it_permission->rows.obj[i].first, 2);
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].owner.to_string(), "newacc");
          BOOST_REQUIRE_EQUAL(accounts_permissions[i].name.to_string(), expected_permission_names[i]);
@@ -575,7 +568,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission) {
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_account("newacc"_n);
@@ -622,7 +615,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_creation_and_deletion) {
 BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_account("newacc"_n);
@@ -663,7 +656,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_account_permission_modification) {
 BOOST_AUTO_TEST_CASE(test_deltas_permission_link) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_account("newacc"_n);
@@ -691,7 +684,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       // Assuming max transaction delay is 45 days (default in config.hpp)
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       // Change max_transaction_delay to 60 sec
       auto params = chain.control->get_global_properties().configuration;
@@ -712,7 +705,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
 BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain(setup_policy::none);
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       const auto &pfm = chain.control->get_protocol_feature_manager();
 
       chain.produce_block();
@@ -748,7 +741,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_protocol_feature_history) {
 BOOST_AUTO_TEST_CASE(test_deltas_kv) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       chain.produce_blocks(2);
 
@@ -810,7 +803,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain(setup_policy::none);
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       chain.produce_block();
 
@@ -905,6 +898,23 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
       }
       BOOST_REQUIRE(expected_contract_index256_table_names == result_contract_index256_table_names);
 
+      // test modify
+      chain.produce_block();
+
+      trace = chain.push_action("tester"_n, "modifynumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+
+      result = chain.find_table_delta("contract_row");
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table_modified = result.second;
+      auto modified_contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_modified);
+      BOOST_REQUIRE_EQUAL(modified_contract_tables.size(), 1);
+
+      for(auto &row : it_contract_table_modified->rows.obj) {
+         BOOST_REQUIRE_EQUAL(row.first, 1);
+      }
+
+      // test erase
       chain.produce_block();
 
       trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
@@ -939,7 +949,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
 BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain(setup_policy::none);
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
 
       chain.produce_block();
 
@@ -1025,7 +1035,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
 BOOST_AUTO_TEST_CASE(test_deltas_table_and_kv) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE }) {
       table_deltas_tester chain(setup_policy::none);
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.execute_setup_policy(setup_policy::full);
 
       chain.produce_blocks(2);
@@ -1122,7 +1132,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_table_and_kv) {
 BOOST_AUTO_TEST_CASE(test_deltas_resources_history) {
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain;
-      chain.set_backing_store(backing_store);
+      chain.restart_with_backing_store(backing_store);
       chain.produce_block();
 
       chain.create_accounts({ "eosio.token"_n, "eosio.ram"_n, "eosio.ramfee"_n, "eosio.stake"_n});
