@@ -47,12 +47,13 @@ elif [ "$CI" = "true" ]; then
       case "$1" in 
       start)
          pg_ctlcluster 13 main start
+         su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
          ;;
       stop)
          pg_ctlcluster 13 main stop
          ;;
       exec)
-         su - postgres -c "psql -U postgres -q -c \"$2\""
+         PGPASSWORD=password su - postgres -c "psql -U postgres -q -c \"$2\""
          ;;
       status)
          echo true 
