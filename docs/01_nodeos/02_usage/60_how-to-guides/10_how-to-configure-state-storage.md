@@ -12,19 +12,24 @@ Config Options for eosio::chain_plugin:
 
   --backing-store arg (=chainbase)      The storage for state, chainbase or 
                                         rocksdb
-  --rocksdb-threads arg 	            Number of rocksdb threads for flush and
-                                        compaction. Defaults to the number of available cores. 
-  --rocksdb-files arg (=-1)             Max number of rocksdb files to keep 
+  --persistent-storage-num-threads arg 	Number of rocksdb threads for flush and
+                                        compaction.  Defaults to the number of 
+										available cores.  
+  --persistent-storage-max-num-files arg (=-1)
+  										Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
-  --rocksdb-write-buffer-size-mb arg (=128)
-                                        Size of a single rocksdb memtable (in MiB)
+  --persistent-storage-write-buffer-size-mb arg (=128)
+                                        Size of a single rocksdb memtable (in MiB).
+  --persistent-storage-bytes-per-sync   Rocksdb write rate of flushes and compactions.
+  --persistent-storage-mbytes-snapshot-batch
+										Rocksdb batch size threshold before writing read in snapshot data to database.
 ``` 
 
 # Procedure
 To use `rocksdb` for state storage:
 
 ```shell
-nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’rocksdb’ --rocksdb-threads=’2’ --rocksdb-files=’2’ --rocksdb-write-buffer-size-mb=’128’  --plugin eosio::http_plugin 
+nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --backing-store=’rocksdb’ --persistent-storage-num-threads=’2’ --persistent-storage-max-num-files=’2’ --persistent-storage-write-buffer-size-mb=’128’  --plugin eosio::http_plugin 
 ```
 
 To use `chainbase` for state storage:
