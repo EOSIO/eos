@@ -14,7 +14,7 @@
 #
 # Usage:
 #
-#   # start the PostgreSQL server in case 1 or 2; in case 3, executing the "Drop TABLE mytable" on the existing PostgreSQL server
+#   # start the PostgreSQL server when not existed and execute the "Drop TABLE mytable" on the PostgreSQL server when necessary
 #   $ postgres_control.sh start "Drop TABLE mytable"
 # 
 #   # start the PostgreSQL server in case 1 or 2; in cause 3, do nothing. 
@@ -29,8 +29,12 @@ if [ ! -z `which docker 2>/dev/null` ]; then
    ### use docker
    case "$1" in 
    start)
-      docker run --rm -p 127.0.0.1:5432:5432 --name test_postgres -e POSTGRES_PASSWORD=password -d postgres
-      until docker run --rm --link test_postgres:pg postgres pg_isready -U postgres -h pg; do sleep 1; done
+      if [ -z `docker ps --filter name=test_postgres -q` ]; then
+         docker run --rm -p 127.0.0.1:5432:5432 --name test_postgres -e POSTGRES_PASSWORD=password -d postgres
+         until docker run --rm --link test_postgres:pg postgres pg_isready -U postgres -h pg; do sleep 1; done
+      elif [ ! -z "$2" ]; then
+         docker run --rm --link test_postgres:pg -e PGPASSWORD=password postgres psql -U postgres -h pg -q -c "$2"
+      fi
       ;;
    stop)
       docker rm -f test_postgres

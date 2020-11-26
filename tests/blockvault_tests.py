@@ -49,8 +49,8 @@ def num_rows_in_table(tableName):
 def testFailOver(cluster, nodeToKill, addSwapFlags={}):
     node0 = cluster.getNode(0)
     
-    Print("Kill node 1 and then remove the state and blocks")
     nodeId = nodeToKill.nodeId
+    Print("Kill node %d and then remove the state and blocks" % nodeId)
 
     nodeToKill.kill(signal.SIGTERM)
     shutil.rmtree(Utils.getNodeDataDir(nodeId,"state"))
@@ -85,17 +85,17 @@ WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
 try:
-    
-    Print("start postgres")
-    reset_statement="DROP TABLE IF EXISTS BlockData; DROP TABLE IF EXISTS SnapshotData; SELECT lo_unlink(l.oid) FROM pg_largeobject_metadata l;"
-    subprocess.check_call(['scripts/postgres_control.sh', 'start', reset_statement])
-    atexit.register(subprocess.call, ['scripts/postgres_control.sh', 'stop'])
-
     TestHelper.printSystemInfo("BEGIN")
     cluster.setWalletMgr(walletMgr)
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
+
+    Print("start postgres")
+    reset_statement="DROP TABLE IF EXISTS BlockData; DROP TABLE IF EXISTS SnapshotData; SELECT lo_unlink(l.oid) FROM pg_largeobject_metadata l;"
+    subprocess.check_call(['scripts/postgres_control.sh', 'start', reset_statement])
+    if not dontKill:
+        atexit.register(subprocess.call, ['scripts/postgres_control.sh', 'stop'])
 
     extraProducerAccounts = Cluster.createAccountKeys(1)
     vltproducerAccount = extraProducerAccounts[0]
@@ -148,7 +148,7 @@ try:
         "--signature-provider": "{}=KEY:{}".format(vltproducerAccount.ownerPublicKey, vltproducerAccount.ownerPrivateKey)
     })
 
-    assert node2.waitForLibToAdvance()
+    assert node2.waitForLibToAdvance(timeout=60)
 
     testSuccessful=True
 finally:
