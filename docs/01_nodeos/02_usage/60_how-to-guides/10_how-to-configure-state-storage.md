@@ -7,6 +7,7 @@ Version 2.1 or above of the EOSIO development environment.
 # Parameter Definitions 
 Specify which backing store to use with the `chain_plugin` `--backing-store` argument. This argument sets state storage to either `chainbase`, the default, or `rocksdb`.
 
+```console
 Config Options for eosio::chain_plugin:
 
   --backing-store arg (=chainbase)      The storage for state, chainbase or 
@@ -17,7 +18,8 @@ Config Options for eosio::chain_plugin:
                                         open. -1 = unlimited.
   --rocksdb-write-buffer-size-mb arg (=128)
                                         Size of a single rocksdb memtable (in MiB)
- 
+``` 
+
 # Procedure
 To use `rocksdb` for state storage:
 
@@ -37,4 +39,3 @@ or
 nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin 
 ```
 
-# Next Steps
