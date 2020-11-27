@@ -82,33 +82,33 @@ typedef boost::mpl::list<eosio::blockvault::postgres_backend> test_types;
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_propose_constructed_block, T, test_types) {
    backend_test_fixture<T> fixture;
 
-   // watermark_bn should be increasing,
-   // watermark_ts and lib should be non-decreasing
+   // watermark_bn and watermark_ts should be increasing,
+   // lib should be non-decreasing
 
    BOOST_REQUIRE(fixture.propose_constructed_block(10, 1, 1, 'a'));
-   BOOST_REQUIRE(fixture.propose_constructed_block(11, 1, 2, 'b'));
-   BOOST_REQUIRE(fixture.propose_constructed_block(12, 1, 3, 'c'));
+   BOOST_REQUIRE(fixture.propose_constructed_block(11, 2, 2, 'b'));
+   BOOST_REQUIRE(fixture.propose_constructed_block(12, 3, 3, 'c'));
 
-   // neither watermark_bn nor lib is increasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(12, 1, 3, 'd'));
+   // watermark_ts is  not increasing
+   BOOST_REQUIRE(!fixture.propose_constructed_block(13, 3, 4, 'd'));
 
    // watermark_bn is not increasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(12, 1, 4, 'd'));
+   BOOST_REQUIRE(!fixture.propose_constructed_block(12, 4, 4, 'd'));
 
    // lib is not increasing
-   BOOST_REQUIRE(fixture.propose_constructed_block(13, 1, 3, 'd'));
+   BOOST_REQUIRE(fixture.propose_constructed_block(13, 4, 3, 'd'));
 
    // watermark_bn, watermark_ts and lib are all increasing
-   BOOST_REQUIRE(fixture.propose_constructed_block(14, 2, 4, 'e'));
+   BOOST_REQUIRE(fixture.propose_constructed_block(14, 5, 4, 'e'));
 
    // lib is decreasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(14, 2, 3, 'f'));
+   BOOST_REQUIRE(!fixture.propose_constructed_block(15, 6, 3, 'f'));
 
    // watermark_bn is decreasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(11, 2, 5, 'f'));
+   BOOST_REQUIRE(!fixture.propose_constructed_block(13, 6, 4, 'f'));
 
    // watermark_ts is decreasing
-   BOOST_REQUIRE(!fixture.propose_constructed_block(14, 1, 5, 'f'));
+   BOOST_REQUIRE(!fixture.propose_constructed_block(15, 4, 4, 'f'));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_append_external_block, T, test_types) {
@@ -118,8 +118,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_append_external_block, T, test_types) {
    BOOST_REQUIRE(fixture.append_external_block(9, 1));
 
    BOOST_REQUIRE(fixture.propose_constructed_block(10, 1, 2));
-   BOOST_REQUIRE(fixture.propose_constructed_block(11, 1, 3));
-   BOOST_REQUIRE(fixture.propose_constructed_block(12, 1, 4)); // watermark (12, 1), max_lib 4
+   BOOST_REQUIRE(fixture.propose_constructed_block(11, 2, 3));
+   BOOST_REQUIRE(fixture.propose_constructed_block(12, 3, 4)); // watermark (12, 3), max_lib 4
 
    // block.block_num > max_lib
    BOOST_REQUIRE(fixture.append_external_block(5, 4));
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_append_external_block, T, test_types) {
    // block lib > max_lib
    BOOST_REQUIRE(fixture.append_external_block(6, 5));
 
-   BOOST_REQUIRE(fixture.propose_constructed_block(13, 2, 5));
+   BOOST_REQUIRE(fixture.propose_constructed_block(13, 4, 5));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_propose_snapshot, T, test_types) {
@@ -181,20 +181,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_sync, T, test_types) {
 
    backend_test_fixture<T> fixture;
 
-   BOOST_REQUIRE(fixture.propose_constructed_block(10, 1, 1, 'a', '\0')); // watermark (4, 1), max_lib 1
-   BOOST_REQUIRE(fixture.propose_constructed_block(11, 1, 2, 'b', 'a'));  // watermark (11, 1), max_lib 2
-   BOOST_REQUIRE(fixture.propose_constructed_block(12, 1, 3, 'c', 'b'));  // watermark (12, 1), max_lib 3
-   BOOST_REQUIRE(fixture.propose_constructed_block(13, 2, 4, 'd', 'c'));  // watermark (13, 2), max_lib 4
+   BOOST_REQUIRE(fixture.propose_constructed_block(10, 1, 1, 'a', '\0')); // watermark (10, 1), max_lib 1
+   BOOST_REQUIRE(fixture.propose_constructed_block(11, 2, 2, 'b', 'a'));  // watermark (11, 2), max_lib 2
+   BOOST_REQUIRE(fixture.propose_constructed_block(12, 3, 3, 'c', 'b'));  // watermark (12, 3), max_lib 3
+   BOOST_REQUIRE(fixture.propose_constructed_block(13, 4, 4, 'd', 'c'));  // watermark (13, 4), max_lib 4
 
    // append two different blocks with the same block numbers
-   BOOST_REQUIRE(fixture.append_external_block(11, 2, 'e', 'a')); // watermark (13, 2), max_lib 4
-   BOOST_REQUIRE(fixture.append_external_block(11, 2, 'f', 'a')); // watermark (13, 2), max_lib 4
+   BOOST_REQUIRE(fixture.append_external_block(13, 4, 'e', 'a')); // watermark (13, 4), max_lib 4
+   BOOST_REQUIRE(fixture.append_external_block(13, 4, 'f', 'a')); // watermark (13, 4), max_lib 4
 
-   BOOST_REQUIRE(fixture.propose_constructed_block(14, 3, 5, 'g', 'd')); // watermark (14, 3), max_lib 5
+   BOOST_REQUIRE(fixture.propose_constructed_block(14, 5, 5, 'g', 'd')); // watermark (14, 5), max_lib 5
 
    //  block relationship constructed by above code
    //
-   //  (10,1)   (11,1)  (12,1) (13,2) (14,3)
+   //  (10,1)   (11,2)  (12,3) (13,4) (14,5)
    //
    //         +-- b ---- c ---- d ---- g
    //    a  --+---------------- e
