@@ -13,8 +13,7 @@ Config Options for eosio::chain_plugin:
   --backing-store arg (=chainbase)      The storage for state, chainbase or 
                                         rocksdb
   --persistent-storage-num-threads arg 	Number of rocksdb threads for flush and
-                                        compaction.  Defaults to the number of 
-										available cores.  
+                                        compaction.   
   --persistent-storage-max-num-files arg (=-1)
   										Max number of rocksdb files to keep 
                                         open. -1 = unlimited.
