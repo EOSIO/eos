@@ -537,7 +537,7 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
 // will walk through all entries with the given prefix, so if passed an exact key, it will match that key
 // and any keys with that key as a prefix
 template <typename Receiver, typename Session, typename Function = std::decay_t < decltype(process_all)>>
-bool process_rocksdb_entry(const Session& session,
+bool process_rocksdb_entry(Session& session,
                            const eosio::session::shared_bytes& key,
                            Receiver& receiver) {
    if (!key) {

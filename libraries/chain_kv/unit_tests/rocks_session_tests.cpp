@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(rocks_session_iterator_test) {
    {
       auto datastore2 = eosio::session_tests::make_session("/tmp/rocks11");
       make_data_store(datastore2, char_key_values, string_t{});
-      verify_iterators<const decltype(datastore2)>(datastore2, string_t{});
+      verify_iterators<decltype(datastore2)>(datastore2, string_t{});
    }
    {
       auto datastore3 = eosio::session_tests::make_session("/tmp/rocks12");
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(rocks_session_iterator_test) {
    {
       auto datastore4 = eosio::session_tests::make_session("/tmp/rocks13");
       make_data_store(datastore4, int_key_values, int_t{});
-      verify_iterators<const decltype(datastore4)>(datastore4, int_t{});
+      verify_iterators<decltype(datastore4)>(datastore4, int_t{});
    }
 }
 
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(rocks_session_iterator_key_order_test) {
    {
       auto datastore2 = eosio::session_tests::make_session("/tmp/rocks15");
       make_data_store(datastore2, char_key_values, string_t{});
-      verify_key_order<const decltype(datastore2)>(datastore2);
+      verify_key_order<decltype(datastore2)>(datastore2);
    }
    {
       auto datastore3 = eosio::session_tests::make_session("/tmp/rocks16");
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(rocks_session_iterator_key_order_test) {
    {
       auto datastore4 = eosio::session_tests::make_session("/tmp/rocks17");
       make_data_store(datastore4, int_key_values, int_t{});
-      verify_key_order<const decltype(datastore4)>(datastore4);
+      verify_key_order<decltype(datastore4)>(datastore4);
    }
 }
 
