@@ -165,8 +165,8 @@ struct kv_rocksdb_fixture {
 
    void check_test_kv_it_status(it_state state, it_pos pos, kv_it_stat expected_status) {
       mock_get_kv = []() -> std::pair<eosio::session::shared_bytes, std::optional<eosio::session::shared_bytes>> {
-         auto expected_key = prefix + std::string{"key"};
-         auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
+         static const auto expected_key = prefix + std::string{"key"};
+         static const auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
          return std::pair{ key, eosio::session::shared_bytes{"payernamValue", 13} };
       };
       mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), prefix.size()); };
@@ -328,8 +328,8 @@ struct kv_rocksdb_fixture {
       mock_is_erased = [state]() -> bool { return state == it_state::ERASED; };
 
       mock_get_kv = []() -> std::pair<eosio::session::shared_bytes, std::optional<eosio::session::shared_bytes>> {
-         auto expected_key = prefix + std::string{"key"};
-         auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
+         static const auto expected_key = prefix + std::string{"key"};
+         static const auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
          return std::pair{ key, eosio::session::shared_bytes{"payernamValue", 13} };
       };
       mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), prefix.size()); };
@@ -597,17 +597,17 @@ BOOST_FIXTURE_TEST_CASE(test_kv_it_compare_erased, kv_rocksdb_fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_equal, kv_rocksdb_fixture) {
-   auto key = prefix + std::string{"key"};
+   static const auto key = prefix + std::string{"key"};
    check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::YES, key.c_str());
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_non_equal, kv_rocksdb_fixture) {
-   auto key = prefix + std::string{"randomkey"};
+   static const auto key = prefix + std::string{"randomkey"};
    check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::NO, key.c_str());
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_erased, kv_rocksdb_fixture) {
-   auto key = prefix + std::string{"key"};
+   static const auto key = prefix + std::string{"key"};
    check_kv_it_key_compare(it_state::ERASED, it_keys_equal::YES, key.c_str());
 }
 
