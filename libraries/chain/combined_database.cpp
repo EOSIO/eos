@@ -165,6 +165,7 @@ namespace eosio { namespace chain {
             options.create_if_missing = true; // Creates a database if it is missing
             options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
+            options.use_adaptive_mutex = true;
 
             // Number of threads used for flush and compaction.
             options.IncreaseParallelism(cfg.persistent_storage_num_threads);
@@ -314,8 +315,10 @@ namespace eosio { namespace chain {
                                                                     const kv_database_config& limits) const {
       switch (backing_store) {
          case backing_store_type::ROCKSDB:
-            return create_kv_rocksdb_context<session_type, kv_resource_manager>(kv_undo_stack->top(), receiver,
-                                                                                resource_manager, limits);
+            return std::visit([&](auto* session){
+              return create_kv_rocksdb_context<std::remove_pointer_t<decltype(session)>, kv_resource_manager>(*session, receiver,
+                                                                                  resource_manager, limits);
+            }, kv_undo_stack->top().holder());
          case backing_store_type::CHAINBASE:
             return create_kv_chainbase_context<kv_resource_manager>(db, receiver, resource_manager, limits);
       }

@@ -28,7 +28,6 @@ namespace eosio { namespace chain {
    // credited when storage is removed or changed
    // to another payer
    inline static eosio::session::shared_bytes build_value(const char* value, uint32_t value_size, const account_name& payer) {
-#warning replace with make_shared_bytes
       const uint32_t final_value_size = backing_store::payer_in_value_size + value_size;
       auto result = eosio::session::shared_bytes(final_value_size);
 
@@ -112,8 +111,6 @@ namespace eosio { namespace chain {
       kv_it_stat kv_it_status() override {
          if (kv_current == kv_end) 
             return kv_it_stat::iterator_end; 
-         else if (kv_current.key() < kv_prefix) 
-            return kv_it_stat::iterator_end; 
          else if (kv_current.deleted())
             return kv_it_stat::iterator_erased;
          else
@@ -188,24 +185,26 @@ namespace eosio { namespace chain {
 
       kv_it_stat kv_it_next(uint32_t* found_key_size, uint32_t* found_value_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
+         kv_it_stat status;
          try {
             try {
-               if (kv_it_status() == kv_it_stat::iterator_end) {
+               if (kv_current == kv_end) {
                   kv_current = kv_begin;
                } else {
                   ++kv_current;
                }
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = get_current_key_value_sizes(found_key_size, found_value_size);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_prev(uint32_t* found_key_size, uint32_t* found_value_size) override {
          EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
+         kv_it_stat status;
          try {
             try {
                if (kv_current == kv_begin) {
@@ -213,17 +212,18 @@ namespace eosio { namespace chain {
                } else {
                   --kv_current;
                }
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = get_current_key_value_sizes(found_key_size, found_value_size);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_lower_bound(const char* key, uint32_t size, uint32_t* found_key_size,
                                    uint32_t* found_value_size) override {
+         kv_it_stat status;
          try {
             try {
                auto key_bytes = make_composite_key(kv_contract, nullptr, 0, key, size);
@@ -232,13 +232,13 @@ namespace eosio { namespace chain {
                }
 
                kv_current = kv_session->lower_bound(key_bytes);
-               get_current_key_value_sizes(found_key_size, found_value_size);
+               status = get_current_key_value_sizes(found_key_size, found_value_size);
             }
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
 
-         return kv_it_status();
+         return status;
       }
 
       kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) override {
@@ -258,7 +258,7 @@ namespace eosio { namespace chain {
          if (key) {
             actual_size = actual_key_size(key.size());
             if (offset < actual_size) {
-               memcpy(dest, actual_key_start(key.data()) + offset, std::min(size, actual_size - offset));
+               std::memcpy(dest, actual_key_start(key.data()) + offset, std::min(size, actual_size - offset));
             }
             return kv_it_stat::iterator_ok;
          } else {
@@ -284,8 +284,9 @@ namespace eosio { namespace chain {
          auto& value = kv.second;
          if (value) {
             actual_size = backing_store::actual_value_size(value->size());
-            if (offset < actual_size)
-               memcpy(dest, backing_store::actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
+            if (offset < actual_size) {
+               std::memcpy(dest, backing_store::actual_value_start(value->data()) + offset, std::min(size, actual_size - offset));
+            }
             return kv_it_stat::iterator_ok;
          } else {
             actual_size = 0;
@@ -294,8 +295,9 @@ namespace eosio { namespace chain {
       }
 
     private:
-      void get_current_key_value_sizes(uint32_t* found_key_size, uint32_t* found_value_size) {
-         if (kv_it_status() == kv_it_stat::iterator_ok) {
+      kv_it_stat get_current_key_value_sizes(uint32_t* found_key_size, uint32_t* found_value_size) {
+         auto status = kv_it_status();
+         if (status == kv_it_stat::iterator_ok) {
             // Not end or at an erased kv pair
             auto kv = *kv_current;
             *found_value_size = backing_store::actual_value_size(
@@ -305,6 +307,7 @@ namespace eosio { namespace chain {
             *found_key_size   = 0;
             *found_value_size = 0;
          }
+         return status;
       }
    }; // kv_iterator_rocksdb
 
@@ -440,14 +443,14 @@ namespace eosio { namespace chain {
       }
 
       uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) override {
-         const char* temp        = nullptr;
-         uint32_t      temp_size = 0;
+         uint32_t temp_size = 0;
          if (current_value) {
-            temp      = backing_store::actual_value_start(current_value->data());
             temp_size = backing_store::actual_value_size(current_value->size());
          }
-         if (offset < temp_size)
-            memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
+         if (offset < temp_size) {
+            const char* temp = backing_store::actual_value_start(current_value->data());
+            std::memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
+         }
          return temp_size;
       }
 

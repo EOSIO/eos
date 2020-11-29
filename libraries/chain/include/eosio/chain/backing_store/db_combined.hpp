@@ -453,7 +453,7 @@ namespace detail {
       iterator_pair(const eosio::session::shared_bytes& begin_key,
                     const eosio::session::shared_bytes& end_key,
                     bool is_reverse,
-                    session_type& session) : is_reverse_(is_reverse) {
+                    kv_undo_stack_ptr::element_type::variant_type& session) : is_reverse_(is_reverse) {
          EOS_ASSERT(begin_key < end_key, database_exception, "Invalid iterator_pair request: begin_key was greater than or equal to end_key.");
          if (is_reverse_) {
             current_ = session.lower_bound(end_key);
@@ -491,8 +491,8 @@ namespace detail {
       }
    private:
       const bool is_reverse_;
-      session_type::iterator current_;
-      session_type::iterator end_;
+      kv_undo_stack_ptr::element_type::variant_type::iterator current_;
+      kv_undo_stack_ptr::element_type::variant_type::iterator end_;
    };
 
    template<typename Receiver, typename Function>
@@ -521,8 +521,7 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
                                       const eosio::session::shared_bytes& begin_key,
                                       const eosio::session::shared_bytes& end_key,
                                       F& function) {
-   detail::manage_stack ms(kv_undo_stack);
-   auto& session = kv_undo_stack->top();
+   auto session = kv_undo_stack->top();
 
    detail::iterator_pair iter_pair(begin_key, end_key, detail::is_reversed(function), session);
    bool keep_processing = true;
@@ -538,7 +537,7 @@ void walk_rocksdb_entries_with_prefix(const kv_undo_stack_ptr& kv_undo_stack,
 // will walk through all entries with the given prefix, so if passed an exact key, it will match that key
 // and any keys with that key as a prefix
 template <typename Receiver, typename Session, typename Function = std::decay_t < decltype(process_all)>>
-bool process_rocksdb_entry(const Session& session,
+bool process_rocksdb_entry(Session& session,
                            const eosio::session::shared_bytes& key,
                            Receiver& receiver) {
    if (!key) {

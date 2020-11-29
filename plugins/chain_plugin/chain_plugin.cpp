@@ -2635,7 +2635,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          lower_key = backing_store::db_key_value_format::create_full_prefix_secondary_key(code, scope, sec_producers_table, float64_t{lower.to_uint64_t()});
       }
 
-      auto& session = kv_database.get_kv_undo_stack()->top();
+      auto session = kv_database.get_kv_undo_stack()->top();
       auto retrieve_primary_key = [&code,&scope,&producers_table,&session](uint64_t primary_key) {
          auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(code, scope, producers_table, primary_key);
          auto value = session.read(full_primary_key);

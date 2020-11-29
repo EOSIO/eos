@@ -491,7 +491,7 @@ public:
                     "Support for configured backing_store has not been added to get_primary_key");
          const auto& kv_database = db.kv_db();
          const auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, primary_key);
-         auto& current_session = kv_database.get_kv_undo_stack()->top();
+         auto current_session = kv_database.get_kv_undo_stack()->top();
          const auto value = current_session.read(full_key);
          // check if we didn't actually find the key
          if (!value) {
@@ -780,7 +780,7 @@ public:
          // this secondary type, we need to move it to just before the beginning of the next type
          upper = upper.next();
          const auto& kv_database = db.kv_db();
-         auto& session = kv_database.get_kv_undo_stack()->top();
+         auto session = kv_database.get_kv_undo_stack()->top();
          auto get_primary = [code=p.code,scope,table=p.table,&session,&get_prim_key_val](const chain::backing_store::secondary_index_view<secondary_key_type>& row, vector<fc::variant>& rows) {
             auto full_key = chain::backing_store::db_key_value_format::create_full_primary_key(code, scope, table, row.primary_key);
             auto value = session.read(full_key);
