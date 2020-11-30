@@ -65,7 +65,7 @@ elif [ "$CI" = "true" ]; then
          start)
             $PG_CTL -D /usr/local/var/postgres start
             psql postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
-            if [ ! -z "$2" ]; then psql postgres -q -c "psql -q -c $2" > /dev/null ; fi
+            if [ ! -z "$2" ]; then psql postgres -q -c "$2" > /dev/null ; fi
             ;;
          stop)
             $PG_CTL -D /usr/local/var/postgres stop

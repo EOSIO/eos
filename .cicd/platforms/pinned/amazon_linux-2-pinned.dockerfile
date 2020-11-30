@@ -52,6 +52,7 @@ RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && 
     cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
+ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig
 # install nvm
 RUN touch ~/.bashrc
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash

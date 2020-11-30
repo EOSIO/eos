@@ -34,7 +34,7 @@ RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x
     dnf install -y postgresql13-devel postgresql13-server \
   	&& dnf clean all && rm -rf /var/cache/yum
 ENV PostgreSQL_ROOT=/usr/pgsql-13  
-ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
+ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig:/usr/local/lib64/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
