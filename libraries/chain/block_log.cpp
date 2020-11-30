@@ -910,7 +910,7 @@ namespace eosio { namespace chain {
       return {};
    }
 
-   std::shared_ptr<std::vector<char>> block_log::read_signed_block_buffer_by_num(uint32_t block_num, bool return_signed_block) const {
+   std::shared_ptr<std::vector<char>> block_log::get_block_buffer_by_number(uint32_t block_num, bool return_signed_block) const {
        return my->read_block_buffer_by_num(block_num, return_signed_block);
    }
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {

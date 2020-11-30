@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
 
          std::unique_ptr<signed_block>   read_signed_block_by_num(uint32_t block_num) const;
 
-         std::shared_ptr<std::vector<char>> read_signed_block_buffer_by_num(uint32_t block_num, bool return_signed_block) const;
+         std::shared_ptr<std::vector<char>> get_block_buffer_by_number(uint32_t block_num, bool return_signed_block) const;
 
          const signed_block_ptr&        head() const;
          uint32_t                       first_block_num() const;
