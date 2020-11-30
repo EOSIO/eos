@@ -447,6 +447,9 @@ struct controller_impl {
          // revision ordinal to the appropriate expected value here.
          if( self.skip_db_sessions( controller::block_status::irreversible ) )
             kv_db.set_revision( head->block_num );
+
+         const auto hash = calculate_integrity_hash();
+         ilog( "database after replay hash: ${hash}", ("hash", hash) );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
