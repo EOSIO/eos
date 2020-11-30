@@ -1,0 +1,587 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [
+        {
+            "new_type_name": "block_signing_authority",
+            "type": "variant_block_signing_authority_v0"
+        }
+    ],
+    "structs": [
+        {
+            "name": "abi_hash",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "hash",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "activate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "authority",
+            "base": "",
+            "fields": [
+                {
+                    "name": "threshold",
+                    "type": "uint32"
+                },
+                {
+                    "name": "keys",
+                    "type": "key_weight[]"
+                },
+                {
+                    "name": "accounts",
+                    "type": "permission_level_weight[]"
+                },
+                {
+                    "name": "waits",
+                    "type": "wait_weight[]"
+                }
+            ]
+        },
+        {
+            "name": "block_signing_authority_v0",
+            "base": "",
+            "fields": [
+                {
+                    "name": "threshold",
+                    "type": "uint32"
+                },
+                {
+                    "name": "keys",
+                    "type": "key_weight[]"
+                }
+            ]
+        },
+        {
+            "name": "blockchain_parameters",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max_block_net_usage",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_block_net_usage_pct",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_net_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "base_per_transaction_net_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "net_usage_leeway",
+                    "type": "uint32"
+                },
+                {
+                    "name": "context_free_discount_net_usage_num",
+                    "type": "uint32"
+                },
+                {
+                    "name": "context_free_discount_net_usage_den",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_block_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "target_block_cpu_usage_pct",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "min_transaction_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_lifetime",
+                    "type": "uint32"
+                },
+                {
+                    "name": "deferred_trx_expiration_window",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_delay",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_inline_action_size",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_inline_action_depth",
+                    "type": "uint16"
+                },
+                {
+                    "name": "max_authority_depth",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "canceldelay",
+            "base": "",
+            "fields": [
+                {
+                    "name": "canceling_auth",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "trx_id",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "deleteauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "key_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "public_key"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "kv_parameters",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max_key_size",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_value_size",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_iterators",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "linkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                },
+                {
+                    "name": "requirement",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "newaccount",
+            "base": "",
+            "fields": [
+                {
+                    "name": "creator",
+                    "type": "name"
+                },
+                {
+                    "name": "name",
+                    "type": "name"
+                },
+                {
+                    "name": "owner",
+                    "type": "authority"
+                },
+                {
+                    "name": "active",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "onerror",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sender_id",
+                    "type": "uint128"
+                },
+                {
+                    "name": "sent_trx",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "permission_level",
+            "base": "",
+            "fields": [
+                {
+                    "name": "actor",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "permission_level_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "permission",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "producer_authority",
+            "base": "",
+            "fields": [
+                {
+                    "name": "producer_name",
+                    "type": "name"
+                },
+                {
+                    "name": "authority",
+                    "type": "block_signing_authority"
+                }
+            ]
+        },
+        {
+            "name": "reqactivated",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "reqauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "setabi",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "abi",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "setalimits",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "ram_bytes",
+                    "type": "int64"
+                },
+                {
+                    "name": "net_weight",
+                    "type": "int64"
+                },
+                {
+                    "name": "cpu_weight",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "setcode",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "vmtype",
+                    "type": "uint8"
+                },
+                {
+                    "name": "vmversion",
+                    "type": "uint8"
+                },
+                {
+                    "name": "code",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "setkvparams",
+            "base": "",
+            "fields": [
+                {
+                    "name": "params",
+                    "type": "kv_parameters"
+                }
+            ]
+        },
+        {
+            "name": "setparams",
+            "base": "",
+            "fields": [
+                {
+                    "name": "params",
+                    "type": "blockchain_parameters"
+                }
+            ]
+        },
+        {
+            "name": "setpriv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "is_priv",
+                    "type": "uint8"
+                }
+            ]
+        },
+        {
+            "name": "setprods",
+            "base": "",
+            "fields": [
+                {
+                    "name": "schedule",
+                    "type": "producer_authority[]"
+                }
+            ]
+        },
+        {
+            "name": "unlinkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "updateauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                },
+                {
+                    "name": "parent",
+                    "type": "name"
+                },
+                {
+                    "name": "auth",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "wait_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "wait_sec",
+                    "type": "uint32"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "activate",
+            "type": "activate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "canceldelay",
+            "type": "canceldelay",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deleteauth",
+            "type": "deleteauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "linkauth",
+            "type": "linkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "newaccount",
+            "type": "newaccount",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "onerror",
+            "type": "onerror",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "reqactivated",
+            "type": "reqactivated",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "reqauth",
+            "type": "reqauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setabi",
+            "type": "setabi",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setalimits",
+            "type": "setalimits",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setcode",
+            "type": "setcode",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setkvparams",
+            "type": "setkvparams",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setparams",
+            "type": "setparams",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpriv",
+            "type": "setpriv",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setprods",
+            "type": "setprods",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unlinkauth",
+            "type": "unlinkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateauth",
+            "type": "updateauth",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "abihash",
+            "type": "abi_hash",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [
+        {
+            "name": "variant_block_signing_authority_v0",
+            "types": ["block_signing_authority_v0"]
+        }
+    ],
+    "action_results": []
+}

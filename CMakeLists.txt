@@ -178,6 +178,7 @@ add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( unittests )
+add_subdirectory( contracts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
@@ -195,6 +196,11 @@ install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosi
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/launcher)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/launcher/testnet.template COPYONLY)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.bios/eosio.bios DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts RENAME eosio.bios.wasm)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.bios/eosio.abi DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts RENAME eosio.bios.abi)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.boot/eosio.boot DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts RENAME eosio.boot.wasm)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.boot/eosio.abi DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts RENAME eosio.boot.abi)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.in ${CMAKE_CURRENT_BINARY_DIR}/version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio)
