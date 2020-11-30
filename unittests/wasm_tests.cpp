@@ -2007,6 +2007,7 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
    chain.produce_block( fc::days(1) ); // produce for one day to reset account cpu
 
    cpu_limit = mgr.get_account_cpu_limit_ex(acc).first.max;
+   cpu_limit -= EOS_PERCENT( cpu_limit, 10 * config::percent_1 ); // transaction_context verifies within 10%, so subtract 10% out
 
    ptrx = create_trx(0);
    BOOST_CHECK_LT( cpu_limit+1, max_cpu_time_us ); // needs to be less or this just tests the same thing as max_cpu_time_us test above
