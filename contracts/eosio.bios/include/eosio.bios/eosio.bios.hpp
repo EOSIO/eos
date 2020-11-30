@@ -96,8 +96,8 @@ namespace eosiobios {
           *
           * @param account - the account for which the permission is updated,
           * @param pemission - the permission name which is updated,
-          * @param parem - the parent of the permission which is updated,
-          * @param aut - the json describing the permission authorization.
+          * @param parent - the parent of the permission which is updated,
+          * @param auth - the json describing the permission authorization.
           */
          [[eosio::action]]
          void updateauth(  ignore<name>  account,
