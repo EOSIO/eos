@@ -26,4 +26,6 @@ if (pqxx_FOUND)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
 
    add_subdirectory(tests)
+else()
+   message(WARNING "libpqxx is not found, blockvault_client_plugin will not be functional for the lack of available backend")
 endif()

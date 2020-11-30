@@ -49,7 +49,7 @@ struct mock_blockvault_t : public block_vault_interface {
    eosio::chain::block_id_type _previous_block_id{};
    bool                        _previous_block_id_sent = false;
 
-   virtual void async_propose_constructed_block(watermark_t watermark, uint32_t lib,
+   virtual void async_propose_constructed_block(uint32_t lib,
                                                 eosio::chain::signed_block_ptr block,
                                                 std::function<void(bool)>      handler) override {}
    virtual void async_append_external_block(uint32_t lib, eosio::chain::signed_block_ptr block,

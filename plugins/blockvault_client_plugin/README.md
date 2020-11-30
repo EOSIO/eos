@@ -34,6 +34,15 @@ docker run  -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
 
 We recommend to deploy PostgreSQL with HA (high availability) mode and synchronous replication strategy. 
 
+### Database schema
+
+This plugin would create two tables `BlockData` and `SnapshotData` if it is not already in the database. The tables are created in the following SQL statement.
+
+```
+CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, block_id bytea, previous_block_id bytea, block oid, block_size bigint);
+CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigint, snapshot oid);
+```
+
 ## Plugin configuration
 
 To use this plugin, `nodeos` has to be configured as a producer with `--block-vault-backend` option.  For example

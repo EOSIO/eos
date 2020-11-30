@@ -166,7 +166,7 @@ struct mock_sync_callback : eosio::blockvault::backend::sync_callback {
 
    void on_block(std::string_view block) override {
       BOOST_REQUIRE(reverse_expected_block_first_bytes.size());
-      BOOST_CHECK(block[0] == reverse_expected_block_first_bytes.back());
+      BOOST_CHECK_EQUAL(block[0], reverse_expected_block_first_bytes.back());
       reverse_expected_block_first_bytes.pop_back();
    }
 
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_sync, T, test_types) {
    {
       mock_sync_callback callback;
       callback.expected_snapshot_content          = mock_snapshot_content;
-      callback.reverse_expected_block_first_bytes = {'g', 'f', 'e', 'd', 'c'};
+      callback.reverse_expected_block_first_bytes = {'g', 'f', 'e', 'd'};
       // sync from empty block id
       BOOST_REQUIRE_NO_THROW(fixture.sync(std::optional<mock_block_id>{}, callback));
    }
@@ -235,16 +235,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_sync, T, test_types) {
    {
       mock_sync_callback callback;
       callback.expected_snapshot_content          = mock_snapshot_content;
-      callback.reverse_expected_block_first_bytes = {'g', 'f', 'e', 'd', 'c'};
+      callback.reverse_expected_block_first_bytes = {'g', 'f', 'e', 'd'};
       // sync from non-existant block id
       BOOST_REQUIRE_NO_THROW(fixture.sync(mock_block_id{12, 't'}, callback));
    }
 
    {
       mock_sync_callback callback;
-      callback.reverse_expected_block_first_bytes = {'g', 'f', 'e', 'd'};
+      callback.reverse_expected_block_first_bytes = {'g'};
       // sync from existant block id
-      BOOST_REQUIRE_NO_THROW(fixture.sync(mock_block_id{12, 'c'}, callback));
+      BOOST_REQUIRE_NO_THROW(fixture.sync(mock_block_id{13, 'd'}, callback));
    }
 
    {

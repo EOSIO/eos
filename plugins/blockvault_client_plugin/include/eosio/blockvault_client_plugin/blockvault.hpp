@@ -30,15 +30,13 @@ class block_vault_interface {
    /// of this member function.
    ///
    ///
-   /// \param watermark The producer watermark implied by accepting this block.
-   ///
    /// \param lib The LIB implied by accepting this block.
    ///
    /// \param block A signed constructed block.
    ///
    /// \param handler The callback function to inform caller whether the block has accepted the Block Vault or not.
 
-   virtual void async_propose_constructed_block(watermark_t watermark, uint32_t lib,
+   virtual void async_propose_constructed_block(uint32_t lib,
                                                 eosio::chain::signed_block_ptr block,
                                                 std::function<void(bool)>      handler) = 0;
 

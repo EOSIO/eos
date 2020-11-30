@@ -27,10 +27,14 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-# install libpq
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+# install libpq postgresql
+ENV TZ=America/Chicago
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    apt-get update && apt-get -y install libpq-dev 
+    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \

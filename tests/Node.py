@@ -1108,9 +1108,11 @@ class Node(object):
 
     def kill(self, killSignal):
         if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
-        assert(self.pid is not None)
+        assert (self.pid is not None)
+        Utils.Print("Killing node pid: {}", self.pid)
         try:
             if self.popenProc is not None:
+               Utils.Print("self.popenProc is not None")
                self.popenProc.send_signal(killSignal)
                self.popenProc.wait()
             else:
@@ -1227,7 +1229,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1247,7 +1249,7 @@ class Node(object):
                 if skip:
                     skip=False
                     continue
-                if "--genesis-json" == i or "--genesis-timestamp" == i:
+                if skipGenesis and ("--genesis-json" == i or "--genesis-timestamp" == i):
                     skip=True
                     continue
 
@@ -1563,3 +1565,26 @@ class Node(object):
             blockAnalysis[specificBlockNum] = { "slot": None, "prod": None}
 
         return blockAnalysis
+
+    def hasProducedBlockInRange(self, blockProducer, range):
+        """Returns if any block in the specified range is produced by the specified producer"""
+        try: 
+            for blockNum in reversed(range):
+                if blockProducer == self.getBlockProducerByNum(blockNum):
+                    return True
+            return False
+        except:
+            return False
+
+    def waitForIrreversibleBlockProducedBy(self, producer, startBlockNum=0, retry=10):
+        """
+            wait until a node has seen a least an irreversible block produced by the specified producer since the specified startBlockNum
+        """
+        while retry > 0:
+            latestBlockNum = self.getIrreversibleBlockNum()
+            if self.hasProducedBlockInRange(producer, range(startBlockNum, latestBlockNum + 1)):
+                return True
+            time.sleep(1)
+            retry = retry - 1
+            startBlockNum = latestBlockNum + 1
+        return False

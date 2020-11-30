@@ -2037,11 +2037,8 @@ void producer_plugin_impl::produce_block() {
    if ( blockvault != nullptr ) {
       std::promise<bool> p;
       std::future<bool> f = p.get_future();
-      blockvault->async_propose_constructed_block({pending_blk_state->block->block_num(), pending_blk_state->block->timestamp},
-                                                               pending_blk_state->dpos_irreversible_blocknum,
-                                                               pending_blk_state->block, [&p](bool b) {
-         p.set_value( b );
-      });
+      blockvault->async_propose_constructed_block(pending_blk_state->dpos_irreversible_blocknum,
+                                                  pending_blk_state->block, [&p](bool b) { p.set_value(b); });
       EOS_ASSERT(f.get(), block_validation_error, "Block rejected by block vault" );
    }
 

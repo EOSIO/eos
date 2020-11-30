@@ -58,6 +58,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/resource_monitor_plugin_test.py ${CMA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_filter.wasm COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_BINARY_DIR}/blockvault_tests.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -105,6 +106,7 @@ add_test(NAME keosd_auto_launch_test COMMAND tests/keosd_auto_launch_test.py WOR
 set_property(TEST keosd_auto_launch_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME db_modes_test COMMAND tests/db_modes_test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(db_modes_test PROPERTIES COST 6000)
+set_property(TEST db_modes_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME release-build-test COMMAND tests/release-build.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME validate-reflection-test COMMAND build/tests/validate-reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/..)
 add_test(NAME version-label-test COMMAND tests/version-label.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -181,6 +183,14 @@ add_subdirectory(se_tests)
 
 add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
+
+if (pqxx_FOUND )
+  execute_process(COMMAND ${CMAKE_SOURCE_DIR}/scripts/postgres_control.sh status OUTPUT_VARIABLE HAS_POSTGRES_SERVER)
+  if (HAS_POSTGRES_SERVER)
+    add_test(NAME blockvault_tests COMMAND tests/blockvault_tests.py --dump-error-detail -v --clean-run WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_property(TEST blockvault_tests PROPERTY LABELS nonparallelizable_tests)
+  endif()
+endif()
 
 if(ENABLE_COVERAGE_TESTING)
 
