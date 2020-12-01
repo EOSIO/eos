@@ -13,6 +13,6 @@ if (EOSIO_COMPILE_TEST_CONTRACTS)
 
    target_compile_options( eosio.bios PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/ricardian -R${CMAKE_CURRENT_BINARY_DIR}/ricardian )
 else()
-   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/bin/eosio.bios ${CMAKE_CURRENT_BINARY_DIR}/eosio.bios COPYONLY )
-   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/bin/eosio.abi ${CMAKE_CURRENT_BINARY_DIR}/eosio.abi COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/bin/eosio.bios.abi ${CMAKE_CURRENT_BINARY_DIR}/ COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/bin/eosio.bios.wasm ${CMAKE_CURRENT_BINARY_DIR}/ COPYONLY )
 endif()

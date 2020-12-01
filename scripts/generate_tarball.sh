@@ -15,10 +15,8 @@ cp -R "${BUILD_DIR}"/bin/* ${EOS_PREFIX}/bin
 cp -R "${BUILD_DIR}"/licenses/eosio/* ${EOS_PREFIX}/licenses
 
 # install bios and boot contracts
-cp -R "${BUILD_DIR}"/contracts/eosio.bios/eosio.abi ${EOS_PREFIX}/etc/eosio/contracts/eosio.bios.abi
-cp -R "${BUILD_DIR}"/contracts/eosio.bios/eosio.bios ${EOS_PREFIX}/etc/eosio/contracts/eosio.bios.wasm
-cp -R "${BUILD_DIR}"/contracts/eosio.boot/eosio.abi ${EOS_PREFIX}/etc/eosio/contracts/eosio.boot.abi
-cp -R "${BUILD_DIR}"/contracts/eosio.boot/eosio.boot ${EOS_PREFIX}/etc/eosio/contracts/eosio.boot.wasm
+cp -R "${BUILD_DIR}"/contracts/contracts/eosio.bios/eosio.bios.* ${EOS_PREFIX}/etc/eosio/contracts
+cp -R "${BUILD_DIR}"/contracts/contracts/eosio.boot/eosio.boot.* ${EOS_PREFIX}/etc/eosio/contracts
 
 for f in $(ls "${BUILD_DIR}/bin/"); do
     bn=$(basename "$f")
