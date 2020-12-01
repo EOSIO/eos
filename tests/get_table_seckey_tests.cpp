@@ -21,11 +21,7 @@
 #include <array>
 #include <utility>
 
-#ifdef NON_VALIDATING_TEST
-#define TESTER tester
-#else
-#define TESTER validating_tester
-#endif
+#include <eosio/testing/backing_store_tester_macros.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -34,15 +30,18 @@ using namespace fc;
 
 BOOST_AUTO_TEST_SUITE(get_table_seckey_tests)
 
-BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
-   create_account("test"_n);
+using backing_store_ts = boost::mpl::list<TESTER, ROCKSDB_TESTER>;
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_next_key_test, TESTER_T, backing_store_ts) { try {
+   TESTER_T t;
+   t.create_account("test"_n);
 
    // setup contract and abi
-   set_code( "test"_n, contracts::get_table_seckey_test_wasm() );
-   set_abi( "test"_n, contracts::get_table_seckey_test_abi().data() );
-   produce_block();
+   t.set_code( "test"_n, contracts::get_table_seckey_test_wasm() );
+   t.set_abi( "test"_n, contracts::get_table_seckey_test_abi().data() );
+   t.produce_block();
 
-   chain_apis::read_only plugin(*(this->control), {}, fc::microseconds::maximum());
+   chain_apis::read_only plugin(*(t.control), {}, fc::microseconds::maximum());
    chain_apis::read_only::get_table_rows_params params = []{
       chain_apis::read_only::get_table_rows_params params{};
       params.json=true;
@@ -56,9 +55,9 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
 
 
    // name secondary key type
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 2)("nm", "a"));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 5)("nm", "b"));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 7)("nm", "c"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 2)("nm", "a"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 5)("nm", "b"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 7)("nm", "c"));
 
    params.table = "numobjs"_n;
    params.key_type = "name";
@@ -79,9 +78,9 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    res_nm = plugin.get_table_rows(params);
    BOOST_REQUIRE(res_nm.rows.size() == 3);
 
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 8)("nm", "1111"));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 9)("nm", "2222"));
-   push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 10)("nm", "3333"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 8)("nm", "1111"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 9)("nm", "2222"));
+   t.push_action("test"_n, "addnumobj"_n, "test"_n, mutable_variant_object()("input", 10)("nm", "3333"));
 
    params.lower_bound = "1111";
    params.upper_bound = "3333";
@@ -93,6 +92,6 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    res_nm = plugin.get_table_rows(params);
    BOOST_REQUIRE(res_nm.rows.size() == 2);
 
-} FC_LOG_AND_RETHROW() /// get_table_next_key_test
+} FC_LOG_AND_RETHROW() }/// get_table_next_key_test
 
 BOOST_AUTO_TEST_SUITE_END()

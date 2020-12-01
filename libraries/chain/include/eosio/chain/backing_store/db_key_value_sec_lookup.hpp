@@ -289,7 +289,7 @@ namespace eosio { namespace chain { namespace backing_store {
             const backing_store::unique_table* table = iter_store.find_table_by_end_iterator(iterator);
             EOS_ASSERT( table, invalid_table_iterator, "not a valid end iterator" );
             constexpr static auto kt = db_key_value_format::derive_secondary_key_type<SecondaryKey>();
-            const bytes legacy_type_key = db_key_value_format::create_prefix_type_key<kt>(table->scope, table->table);
+            const bytes legacy_type_key = db_key_value_format::create_prefix_type_key(table->scope, table->table, kt);
             const shared_bytes type_prefix = db_key_value_format::create_full_key(legacy_type_key, table->contract);
             const shared_bytes next_type_prefix = type_prefix.next();
             auto session_iter = current_session.lower_bound(next_type_prefix);

@@ -72,9 +72,9 @@ class session_variant {
    /// \brief Commits the changes in this session into its parent.
    void commit();
 
-   std::optional<shared_bytes> read(const shared_bytes& key) const;
+   std::optional<shared_bytes> read(const shared_bytes& key);
    void                        write(const shared_bytes& key, const shared_bytes& value);
-   bool                        contains(const shared_bytes& key) const;
+   bool                        contains(const shared_bytes& key);
    void                        erase(const shared_bytes& key);
    void                        clear();
 
@@ -82,7 +82,7 @@ class session_variant {
    /// \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the key.
    template <typename Iterable>
    const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
-   read(const Iterable& keys) const;
+   read(const Iterable& keys);
 
    /// \brief Writes a batch of key/value pairs into this session.
    /// \param key_values A type that supports iteration and returns in its iterator a pair containing shared_bytes
@@ -100,29 +100,29 @@ class session_variant {
    /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
    /// key.
    template <typename Other_data_store, typename Iterable>
-   void write_to(Other_data_store& ds, const Iterable& keys) const;
+   void write_to(Other_data_store& ds, const Iterable& keys);
 
    /// \brief Reads a batch of keys from another container into this session.
    /// \param ds The container to read from.  This type must implement a batch read method like the one defined in this
    /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
    /// key.
    template <typename Other_data_store, typename Iterable>
-   void read_from(const Other_data_store& ds, const Iterable& keys);
+   void read_from(Other_data_store& ds, const Iterable& keys);
 
    /// \brief Returns an iterator to the key, or the end iterator if the key is not in the cache or session heirarchy.
    /// \param key The key to search for.
    /// \return An iterator to the key if found, the end iterator otherwise.
-   iterator find(const shared_bytes& key) const;
-   iterator begin() const;
-   iterator end() const;
+   iterator find(const shared_bytes& key);
+   iterator begin();
+   iterator end();
 
    /// \brief Returns an iterator to the first key that is not less than, in lexicographical order, the given key.
    /// \param key The key to search on.
    /// \return An iterator to the first key that is not less than the given key, or the end iterator if there is no key
    /// that matches that criteria.
-   iterator lower_bound(const shared_bytes& key) const;
+   iterator lower_bound(const shared_bytes& key);
 
-   std::variant<T*...> holder() const;
+   std::variant<T*...> holder();
 
  private:
    std::variant<T*...> m_holder;
@@ -143,7 +143,7 @@ std::unordered_set<shared_bytes> session_variant<T...>::deleted_keys() const {
 }
 
 template <typename... T>
-std::variant<T*...> session_variant<T...>::holder() const {
+std::variant<T*...> session_variant<T...>::holder() {
    return m_holder;
 }
 
@@ -158,7 +158,7 @@ void session_variant<T...>::commit() {
 }
 
 template <typename... T>
-std::optional<shared_bytes> session_variant<T...>::read(const shared_bytes& key) const {
+std::optional<shared_bytes> session_variant<T...>::read(const shared_bytes& key) {
    return std::visit([&](auto* session) { return session->read(key); }, m_holder);
 }
 
@@ -168,7 +168,7 @@ void session_variant<T...>::write(const shared_bytes& key, const shared_bytes& v
 }
 
 template <typename... T>
-bool session_variant<T...>::contains(const shared_bytes& key) const {
+bool session_variant<T...>::contains(const shared_bytes& key) {
    return std::visit([&](auto* session) { return session->contains(key); }, m_holder);
 }
 
@@ -185,7 +185,7 @@ void session_variant<T...>::clear() {
 template <typename... T>
 template <typename Iterable>
 const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
-session_variant<T...>::read(const Iterable& keys) const {
+session_variant<T...>::read(const Iterable& keys) {
    return std::visit([&](auto* session) { return session->read(keys); }, m_holder);
 }
 
@@ -203,33 +203,33 @@ void session_variant<T...>::erase(const Iterable& keys) {
 
 template <typename... T>
 template <typename Other_data_store, typename Iterable>
-void session_variant<T...>::write_to(Other_data_store& ds, const Iterable& keys) const {
+void session_variant<T...>::write_to(Other_data_store& ds, const Iterable& keys) {
    std::visit([&](auto* session) { return session->write_to(ds, keys); }, m_holder);
 }
 
 template <typename... T>
 template <typename Other_data_store, typename Iterable>
-void session_variant<T...>::read_from(const Other_data_store& ds, const Iterable& keys) {
+void session_variant<T...>::read_from(Other_data_store& ds, const Iterable& keys) {
    std::visit([&](auto* session) { return session->read_from(ds, keys); }, m_holder);
 }
 
 template <typename... T>
-typename session_variant<T...>::iterator session_variant<T...>::find(const shared_bytes& key) const {
+typename session_variant<T...>::iterator session_variant<T...>::find(const shared_bytes& key) {
    return std::visit([&](auto* session) { return session_variant<T...>::iterator{ session->find(key) }; }, m_holder);
 }
 
 template <typename... T>
-typename session_variant<T...>::iterator session_variant<T...>::begin() const {
+typename session_variant<T...>::iterator session_variant<T...>::begin() {
    return std::visit([&](auto* session) { return session_variant<T...>::iterator{ session->begin() }; }, m_holder);
 }
 
 template <typename... T>
-typename session_variant<T...>::iterator session_variant<T...>::end() const {
+typename session_variant<T...>::iterator session_variant<T...>::end() {
    return std::visit([&](auto* session) { return session_variant<T...>::iterator{ session->end() }; }, m_holder);
 }
 
 template <typename... T>
-typename session_variant<T...>::iterator session_variant<T...>::lower_bound(const shared_bytes& key) const {
+typename session_variant<T...>::iterator session_variant<T...>::lower_bound(const shared_bytes& key) {
    return std::visit([&](auto* session) { return session_variant<T...>::iterator{ session->lower_bound(key) }; },
                      m_holder);
 }

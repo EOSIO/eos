@@ -170,9 +170,9 @@ class session {
    /// \brief Commits the changes in this session into its parent.
    void commit();
 
-   std::optional<shared_bytes> read(const shared_bytes& key) const;
+   std::optional<shared_bytes> read(const shared_bytes& key);
    void                        write(const shared_bytes& key, const shared_bytes& value);
-   bool                        contains(const shared_bytes& key) const;
+   bool                        contains(const shared_bytes& key);
    void                        erase(const shared_bytes& key);
    void                        clear();
 
@@ -180,7 +180,7 @@ class session {
    /// \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the key.
    template <typename Iterable>
    const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
-   read(const Iterable& keys) const;
+   read(const Iterable& keys);
 
    /// \brief Writes a batch of key/value pairs into this session.
    /// \param key_values A type that supports iteration and returns in its iterator a pair containing shared_bytes
@@ -198,27 +198,27 @@ class session {
    /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
    /// key.
    template <typename Other_data_store, typename Iterable>
-   void write_to(Other_data_store& ds, const Iterable& keys) const;
+   void write_to(Other_data_store& ds, const Iterable& keys);
 
    /// \brief Reads a batch of keys from another container into this session.
    /// \param ds The container to read from.  This type must implement a batch read method like the one defined in this
    /// type. \param keys A type that supports iteration and returns in its iterator a shared_bytes type representing the
    /// key.
    template <typename Other_data_store, typename Iterable>
-   void read_from(const Other_data_store& ds, const Iterable& keys);
+   void read_from(Other_data_store& ds, const Iterable& keys);
 
    /// \brief Returns an iterator to the key, or the end iterator if the key is not in the cache or session heirarchy.
    /// \param key The key to search for.
    /// \return An iterator to the key if found, the end iterator otherwise.
-   iterator find(const shared_bytes& key) const;
-   iterator begin() const;
-   iterator end() const;
+   iterator find(const shared_bytes& key);
+   iterator begin();
+   iterator end();
 
    /// \brief Returns an iterator to the first key that is not less than, in lexicographical order, the given key.
    /// \param key The key to search on.
    /// \return An iterator to the first key that is not less than the given key, or the end iterator if there is no key
    /// that matches that criteria.
-   iterator lower_bound(const shared_bytes& key) const;
+   iterator lower_bound(const shared_bytes& key);
 
  private:
    /// \brief Sets the lower/upper bounds of the session's cache based on the parent's cache lower/upper bound
@@ -233,7 +233,7 @@ class session {
    /// \param pend An end iterator of the parent session.
    /// \remarks This method is only called by update_iterator_cache_.
    template <typename It, typename Parent_it>
-   void next_key_(It& it, Parent_it& pit, Parent_it& pend) const;
+   void next_key_(It& it, Parent_it& pit, Parent_it& pend);
 
    /// \brief Searches the session heirarchy for the key that is previous, in lexicographical order, from the given key.
    /// \param it An iterator pointing to the current key.
@@ -241,13 +241,13 @@ class session {
    /// \param pend An end iterator of the parent session.
    /// \remarks This method is only called by update_iterator_cache_.
    template <typename It, typename Parent_it>
-   void previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend) const;
+   void previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend);
 
    /// \brief Updates the cache with the previous and next keys, in lexicographical order, of the given key.
    /// \param key The key to search on.
    /// \remarks This method is invoked when reading, writing, erasing on this session and when iterating over the
    /// session.
-   typename cache_type::iterator update_iterator_cache_(const shared_bytes& key) const;
+   typename cache_type::iterator update_iterator_cache_(const shared_bytes& key);
 
    /// \brief Increments the given cache iterator until an iterator is found that isn't pointing to a deleted key.
    /// \param it The cache iterator to increment.
@@ -260,7 +260,7 @@ class session {
 
  private:
    parent_variant_type m_parent{ nullptr };
-   mutable cache_type  m_cache;
+   cache_type          m_cache;
 };
 
 template <typename Parent>
@@ -352,7 +352,7 @@ void session<Parent>::undo() {
 
 template <typename Parent>
 template <typename It, typename Parent_it>
-void session<Parent>::previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend) const {
+void session<Parent>::previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, Parent_it& pend) {
    if (it->first) {
       if (pit != pbegin) {
          --pit;
@@ -376,7 +376,7 @@ void session<Parent>::previous_key_(It& it, Parent_it& pit, Parent_it& pbegin, P
 
 template <typename Parent>
 template <typename It, typename Parent_it>
-void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) const {
+void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) {
    if (it->first) {
       bool decrement = false;
       if (pit.key() == it->first) {
@@ -403,7 +403,7 @@ void session<Parent>::next_key_(It& it, Parent_it& pit, Parent_it& pend) const {
 }
 
 template <typename Parent>
-typename session<Parent>::cache_type::iterator session<Parent>::update_iterator_cache_(const shared_bytes& key) const {
+typename session<Parent>::cache_type::iterator session<Parent>::update_iterator_cache_(const shared_bytes& key) {
    auto  result = m_cache.emplace(key, value_state{});
    auto& it     = result.first;
 
@@ -528,7 +528,7 @@ void session<Parent>::commit() {
 }
 
 template <typename Parent>
-std::optional<shared_bytes> session<Parent>::read(const shared_bytes& key) const {
+std::optional<shared_bytes> session<Parent>::read(const shared_bytes& key) {
    // Find the key within the session.
    // Check this level first and then traverse up to the parent to see if this key/value
    // has been read and/or update.
@@ -569,7 +569,7 @@ void session<Parent>::write(const shared_bytes& key, const shared_bytes& value) 
 }
 
 template <typename Parent>
-bool session<Parent>::contains(const shared_bytes& key) const {
+bool session<Parent>::contains(const shared_bytes& key) {
    // Traverse the heirarchy to see if this session (and its parent session)
    // has already read the key into memory.
 
@@ -607,7 +607,7 @@ void session<Parent>::erase(const shared_bytes& key) {
 template <typename Parent>
 template <typename Iterable>
 const std::pair<std::vector<std::pair<shared_bytes, shared_bytes>>, std::unordered_set<shared_bytes>>
-session<Parent>::read(const Iterable& keys) const {
+session<Parent>::read(const Iterable& keys) {
    auto not_found = std::unordered_set<shared_bytes>{};
    auto kvs       = std::vector<std::pair<shared_bytes, shared_bytes>>{};
 
@@ -639,7 +639,7 @@ void session<Parent>::erase(const Iterable& keys) {
 
 template <typename Parent>
 template <typename Other_data_store, typename Iterable>
-void session<Parent>::write_to(Other_data_store& ds, const Iterable& keys) const {
+void session<Parent>::write_to(Other_data_store& ds, const Iterable& keys) {
    auto results = std::vector<std::pair<shared_bytes, shared_bytes>>{};
    for (const auto& key : keys) {
       auto value = read(key);
@@ -652,7 +652,7 @@ void session<Parent>::write_to(Other_data_store& ds, const Iterable& keys) const
 
 template <typename Parent>
 template <typename Other_data_store, typename Iterable>
-void session<Parent>::read_from(const Other_data_store& ds, const Iterable& keys) {
+void session<Parent>::read_from(Other_data_store& ds, const Iterable& keys) {
    ds.write_to(*this, keys);
 }
 
@@ -690,18 +690,17 @@ It& session<Parent>::first_not_deleted_in_iterator_cache_(It& it, const It& end)
 }
 
 template <typename Parent>
-typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key) const {
-   auto  version  = uint64_t{ 0 };
-   auto& it_cache = const_cast<cache_type&>(m_cache);
-   auto  end      = std::end(it_cache);
-   auto  it       = it_cache.find(key);
+typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key) {
+   auto version = uint64_t{ 0 };
+   auto end     = std::end(m_cache);
+   auto it      = m_cache.find(key);
    if (it == end) {
       // We didn't find the key in our cache, ask the parent if he has one.
       std::visit(
             [&](auto* p) {
                auto pit = p->find(key);
                if (pit != std::end(*p)) {
-                  auto result = it_cache.emplace(key, value_state{});
+                  auto result = m_cache.emplace(key, value_state{});
                   it          = result.first;
                   if (result.second) {
                      it->second.value = *(*pit).second;
@@ -721,12 +720,11 @@ typename session<Parent>::iterator session<Parent>::find(const shared_bytes& key
 }
 
 template <typename Parent>
-typename session<Parent>::iterator session<Parent>::begin() const {
-   auto& it_cache = const_cast<cache_type&>(m_cache);
-   auto  end      = std::end(it_cache);
-   auto  begin    = std::begin(it_cache);
-   auto  it       = begin;
-   auto  version  = uint64_t{ 0 };
+typename session<Parent>::iterator session<Parent>::begin() {
+   auto end     = std::end(m_cache);
+   auto begin   = std::begin(m_cache);
+   auto it      = begin;
+   auto version = uint64_t{ 0 };
 
    auto previous_in_cache = true;
    first_not_deleted_in_iterator_cache_(it, end, previous_in_cache);
@@ -746,7 +744,7 @@ typename session<Parent>::iterator session<Parent>::begin() const {
                auto pend = std::end(*p);
                first_not_deleted_in_iterator_cache_(pit, pend);
                if (pit != pend && pit.key() < pending_key) {
-                  auto result = it_cache.emplace(pit.key(), value_state{});
+                  auto result = m_cache.emplace(pit.key(), value_state{});
                   it          = result.first;
                   if (result.second) {
                      it->second.value = *(*pit).second;
@@ -763,17 +761,15 @@ typename session<Parent>::iterator session<Parent>::begin() const {
 }
 
 template <typename Parent>
-typename session<Parent>::iterator session<Parent>::end() const {
-   auto& it_cache = const_cast<cache_type&>(m_cache);
-   return { const_cast<session*>(this), std::end(it_cache), 0 };
+typename session<Parent>::iterator session<Parent>::end() {
+   return { const_cast<session*>(this), std::end(m_cache), 0 };
 }
 
 template <typename Parent>
-typename session<Parent>::iterator session<Parent>::lower_bound(const shared_bytes& key) const {
-   auto& it_cache = const_cast<cache_type&>(m_cache);
-   auto  version  = uint64_t{ 0 };
-   auto  end      = std::end(it_cache);
-   auto  it       = it_cache.lower_bound(key);
+typename session<Parent>::iterator session<Parent>::lower_bound(const shared_bytes& key) {
+   auto version = uint64_t{ 0 };
+   auto end     = std::end(m_cache);
+   auto it      = m_cache.lower_bound(key);
 
    auto previous_in_cache = true;
    first_not_deleted_in_iterator_cache_(it, end, previous_in_cache);
@@ -794,7 +790,7 @@ typename session<Parent>::iterator session<Parent>::lower_bound(const shared_byt
                first_not_deleted_in_iterator_cache_(pit, pend);
                if (pit != pend) {
                   if (!pending_key || pit.key() < pending_key) {
-                     auto result = it_cache.emplace(pit.key(), value_state{});
+                     auto result = m_cache.emplace(pit.key(), value_state{});
                      it          = result.first;
                      if (result.second) {
                         it->second.value = *(*pit).second;

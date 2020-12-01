@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
       auto session2 = eosio::session_tests::make_session("/tmp/session8");
       make_data_store(session2, char_key_values, string_t{});
-      verify_iterators<const decltype(session2)>(session2, string_t{});
+      verify_iterators<decltype(session2)>(session2, string_t{});
    }
    {
       auto session3 = eosio::session_tests::make_session("/tmp/session9");
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
       auto session4 = eosio::session_tests::make_session("/tmp/session10");
       make_data_store(session4, int_key_values, int_t{});
-      verify_iterators<const decltype(session4)>(session4, int_t{});
+      verify_iterators<decltype(session4)>(session4, int_t{});
    }
 }
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
       auto session2 = eosio::session_tests::make_session("/tmp/session12");
       make_data_store(session2, char_key_values, string_t{});
-      verify_session_key_order<const decltype(session2)>(session2);
+      verify_session_key_order<decltype(session2)>(session2);
    }
    {
       auto session3 = eosio::session_tests::make_session("/tmp/session13");
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
       auto session4 = eosio::session_tests::make_session("/tmp/session14");
       make_data_store(session4, int_key_values, int_t{});
-      verify_session_key_order<const decltype(session4)>(session4);
+      verify_session_key_order<decltype(session4)>(session4);
    }
 }
 

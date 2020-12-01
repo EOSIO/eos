@@ -432,6 +432,8 @@ namespace eosio { namespace testing {
             return {cfg, gen};
          }
 
+         void restart_with_backing_store(chain::backing_store_type backing_store);
+
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs );
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs,
@@ -572,19 +574,8 @@ namespace eosio { namespace testing {
          return validating_node;
       }
 
-      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
-         auto def_conf = default_config(tempdir);
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-
-         if (use_genesis) {
-            init(def_conf.first, def_conf.second);
-         }
-         else {
-            init(def_conf.first);
-         }
-      }
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis,
+                        std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
 
       template <typename Lambda>
       validating_tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
@@ -601,6 +592,8 @@ namespace eosio { namespace testing {
             init(def_conf.first);
          }
       }
+
+      static backing_store_type alternate_type(backing_store_type type);
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          auto sb = _produce_block(skip_time, false);

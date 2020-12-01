@@ -134,7 +134,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       // gets a prefix that allows for only primary key iterators
       static prefix_bundle get_primary_slice_in_primaries(name code, name scope, name table, uint64_t id);
-      pv_bundle get_primary_key_value(name code, name scope, name table, uint64_t id) const;
+      pv_bundle get_primary_key_value(name code, name scope, name table, uint64_t id);
       void set_value(const shared_bytes& primary_key, const payer_payload& pp);
       int32_t find_and_store_primary_key(const session_variant_type::iterator& session_iter, int32_t table_ei,
                                          const shared_bytes& type_prefix, int32_t not_found_return,
@@ -661,7 +661,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return { primary_key, end_of_prefix::at_type, code };
    }
 
-   pv_bundle db_context_rocksdb::get_primary_key_value(name code, name scope, name table, uint64_t id) const {
+   pv_bundle db_context_rocksdb::get_primary_key_value(name code, name scope, name table, uint64_t id) {
       prefix_bundle primary_key = get_primary_slice_in_primaries(code, scope, table, id);
       return { primary_key, current_session.read(primary_key.full_key) };
    }
