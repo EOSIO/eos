@@ -199,7 +199,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINA
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.bios/eosio.bios.abi DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.bios/eosio.bios.wasm DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.bios/eosio.bios.wasm DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.boot/eosio.boot.abi DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.boot/eosio.boot.wasm DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/contracts)
 
