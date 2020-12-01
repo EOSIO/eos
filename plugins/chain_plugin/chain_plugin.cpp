@@ -688,7 +688,8 @@ void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
+         auto backup_dir = block_log::repair_log( my->chain_config->blog,
+                                                  options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
          if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
              options.at( "fix-reversible-blocks" ).as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -907,7 +908,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          std::optional<genesis_state> gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
-            gs = block_log::extract_genesis_state( my->blocks_dir );
+            gs = block_log::extract_genesis_state( my->chain_config->blog );
             EOS_ASSERT( gs,
                         plugin_config_exception,
                         "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
@@ -963,6 +964,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             wlog( "The --truncate-at-block option does not make sense when deleting all blocks." );
          clear_directory_contents( my->chain_config->state_dir );
          clear_directory_contents( my->blocks_dir );
+         clear_directory_contents( my->chain_config->blog.retained_dir );
+         clear_directory_contents( my->chain_config->blog.archive_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
          do_hard_replay(options);
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
@@ -1029,57 +1032,55 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                  plugin_config_exception,
                  "Snapshot can only be used to initialize an empty database." );
 
-         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            auto block_log_genesis = block_log::extract_genesis_state(my->blocks_dir);
-            if( block_log_genesis ) {
-               const auto& block_log_chain_id = block_log_genesis->compute_chain_id();
-               EOS_ASSERT( *chain_id == block_log_chain_id,
-                           plugin_config_exception,
-                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
-                           ("snapshot_chain_id",  *chain_id)
-                           ("block_log_chain_id", block_log_chain_id)
-               );
-            } else {
-               const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
-               EOS_ASSERT( *chain_id == block_log_chain_id,
-                           plugin_config_exception,
-                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
-                           ("snapshot_chain_id",  *chain_id)
-                           ("block_log_chain_id", block_log_chain_id)
-               );
-            }
+         auto block_log_genesis = block_log::extract_genesis_state(my->chain_config->blog);
+
+         if( block_log_genesis ) {
+            const auto& block_log_chain_id = block_log_genesis->compute_chain_id();
+            EOS_ASSERT( *chain_id == block_log_chain_id,
+                        plugin_config_exception,
+                        "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
+                        ("snapshot_chain_id",  *chain_id)
+                        ("block_log_chain_id", block_log_chain_id)
+            );
+         } else {
+            auto block_log_chain_id = block_log::extract_chain_id(my->chain_config->blog);
+            
+            EOS_ASSERT( *chain_id == block_log_chain_id,
+                        plugin_config_exception,
+                        "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
+                        ("snapshot_chain_id",  *chain_id)
+                        ("block_log_chain_id", block_log_chain_id)
+            );
          }
 
       } else {
 
          chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
 
-         std::optional<genesis_state> block_log_genesis;
+         std::optional<genesis_state> block_log_genesis = block_log::extract_genesis_state(my->chain_config->blog);
          std::optional<chain_id_type> block_log_chain_id;
 
-         if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
-            block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
-            if( block_log_genesis ) {
-               block_log_chain_id = block_log_genesis->compute_chain_id();
-            } else {
-               block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
-            }
-
-            if( chain_id ) {
-               EOS_ASSERT( *block_log_chain_id == *chain_id, block_log_exception,
-                           "Chain ID in blocks.log (${block_log_chain_id}) does not match the existing "
-                           " chain ID in state (${state_chain_id}).",
-                           ("block_log_chain_id", *block_log_chain_id)
-                           ("state_chain_id", *chain_id)
-               );
-            } else if( block_log_genesis ) {
-               ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
-               my->genesis = block_log_genesis;
-               // Delay setting chain_id until later so that the code handling genesis-json below can know
-               // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
-            }
+         if(block_log_genesis) {
+            ilog("Computing chain_id from genesis state...");
+            block_log_chain_id = block_log_genesis->compute_chain_id();
+         } else {
+            block_log_chain_id = block_log::extract_chain_id(my->chain_config->blog);
          }
 
+         if( chain_id ) {
+            EOS_ASSERT( *block_log_chain_id == *chain_id, block_log_exception,
+                        "Chain ID in blocks.log (${block_log_chain_id}) does not match the existing "
+                        " chain ID in state (${state_chain_id}).",
+                        ("block_log_chain_id", *block_log_chain_id)
+                        ("state_chain_id", *chain_id)
+            );
+         } else if( block_log_genesis ) {
+            ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
+            my->genesis = block_log_genesis;
+            // Delay setting chain_id until later so that the code handling genesis-json below can know
+            // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
+         }
+         
          if( options.count( "genesis-json" ) ) {
             bfs::path genesis_file = options.at( "genesis-json" ).as<bfs::path>();
             if( genesis_file.is_relative()) {
@@ -1139,7 +1140,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         plugin_config_exception,
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
-
+         
+         ilog("chain_id : ${id}", ("id", *chain_id));
          if( !chain_id ) {
             if( my->genesis ) {
                // Uninitialized state database and genesis state extracted from block log

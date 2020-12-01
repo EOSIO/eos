@@ -23,7 +23,8 @@ void for_each_file_in_dir_matches(const bfs::path& dir, std::string pattern, Lam
       // skip if it does not match the pattern
       if (!std::regex_match(p->path().filename().string(), what, my_filter))
          continue;
-      lambda(p->path());
+      if (!lambda(p->path()))
+         break;
    }
 }
 
@@ -100,7 +101,7 @@ struct log_catalog {
                wlog("${log_path} contains the overlapping range with ${existing_path}.log, dropping ${log_path} "
                     "from catalog",
                     ("log_path", log_path.string())("existing_path", existing_itr->second.filename_base.string()));
-               return;
+               return true;
             } else {
                wlog(
                    "${log_path} contains the overlapping range with ${existing_path}.log, droping ${existing_path}.log "
@@ -110,6 +111,7 @@ struct log_catalog {
          }
 
          collection.insert_or_assign(log.first_block_num(), mapped_type{log.last_block_num(), path_without_extension});
+         return true;
       });
    }
 

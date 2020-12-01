@@ -82,7 +82,7 @@ struct restart_from_block_log_test_fixture {
    ~restart_from_block_log_test_fixture() {
       controller::config copied_config      = chain.get_config();
       copied_config.blog.fix_irreversible_blocks = this->fix_irreversible_blocks;
-      auto genesis                          = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+      auto genesis                          = chain::block_log::extract_genesis_state(chain.get_config().blog);
       BOOST_REQUIRE(genesis);
 
       // remove the state files to make sure we are starting from block log
@@ -96,21 +96,26 @@ struct restart_from_block_log_test_fixture {
 
    
 
-void  light_validation_restart_from_block_log_test_case(bool do_prune, uint32_t stride) {
+void  light_validation_restart_from_block_log_test_case(bool do_prune, uint32_t stride, bool use_retained=false, bool use_arch=false) {
 
    fc::temp_directory temp_dir;
    auto [ config, gen]  = tester::default_config(temp_dir);
    config.read_mode = db_read_mode::SPECULATIVE;
    config.blog.stride = stride;
+   if (use_retained)
+      config.blog.retained_dir = config.blog.log_dir / "retained";
+   if (use_arch)
+      config.blog.archive_dir = config.blog.log_dir / "archive";
+   
    tester chain(config, gen);
    chain.execute_setup_policy(setup_policy::full);
 
    eosio::chain::transaction_trace_ptr trace;
 
    deploy_test_api(chain);
-   chain.produce_blocks(10);
+   chain.produce_blocks(stride != UINT32_MAX ? stride : 10);
    trace = push_test_cfd_transaction(chain);
-   chain.produce_blocks(10);
+   chain.produce_blocks(stride != UINT32_MAX ? stride : 10);
 
    BOOST_REQUIRE(trace->receipt);
    BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::executed);
@@ -124,18 +129,16 @@ void  light_validation_restart_from_block_log_test_case(bool do_prune, uint32_t 
 
    chain.close();
 
-   const auto&                      blocks_dir = chain.get_config().blog.log_dir;
-
    if (do_prune) {    
       block_log                        blog(chain.get_config().blog);
       std::vector<transaction_id_type> ids{trace->id};
       BOOST_CHECK(blog.prune_transactions(trace->block_num, ids) == 1);
       BOOST_CHECK(ids.empty());
-      BOOST_REQUIRE_NO_THROW(block_log::repair_log(blocks_dir));
+      BOOST_REQUIRE_NO_THROW(block_log::repair_log(chain.get_config().blog));
    }
 
    controller::config copied_config = chain.get_config();
-   auto               genesis       = chain::block_log::extract_genesis_state(blocks_dir);
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog);
    BOOST_REQUIRE(genesis);
 
    // remove the state files to make sure we are starting from block log
@@ -260,6 +263,12 @@ BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_tr
    light_validation_restart_from_block_log_test_case(do_prune, blocks_log_stride);
 }
 
+BOOST_AUTO_TEST_CASE(test_light_validation_restart_from_block_log_with_pruned_trx_and_split_log_retained_archive) {
+   bool do_prune = true;
+   uint32_t blocks_log_stride = 10;
+   light_validation_restart_from_block_log_test_case(do_prune, blocks_log_stride, true, true);
+}
+
 BOOST_AUTO_TEST_CASE(test_split_log) {
    namespace bfs = boost::filesystem;
    fc::temp_directory temp_dir;
@@ -371,7 +380,7 @@ void split_log_replay(uint32_t replay_max_retained_block_files) {
    chain.produce_blocks(150);
    
    controller::config copied_config = chain.get_config();
-   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog);
    BOOST_REQUIRE(genesis);
 
    chain.close();
@@ -435,7 +444,7 @@ BOOST_AUTO_TEST_CASE(test_restart_without_blocks_log_file) {
    chain.produce_blocks(160);
    
    controller::config copied_config = chain.get_config();
-   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+   auto               genesis       = chain::block_log::extract_genesis_state(chain.get_config().blog);
    BOOST_REQUIRE(genesis);
 
    chain.close();

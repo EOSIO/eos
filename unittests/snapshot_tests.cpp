@@ -343,7 +343,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that chain's block_log has a genesis_state (and blocks starting at 1)
    controller::config copied_config = copy_config_and_files(chain.get_config(), ordinal++);
-   auto genesis = eosio::chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state(chain.get_config().blog);
    BOOST_REQUIRE(genesis);
    tester from_block_log_chain(copied_config, *genesis);
    const auto from_block_log_head = from_block_log_chain.control->head_block_num();
@@ -426,7 +426,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    }
 
    auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
-   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state({source_log_dir});
    bfs::create_directories(config.blog.log_dir);
    bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
    tester base_chain(config, *genesis);
@@ -489,7 +489,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    const auto source_log_dir = bfs::path(source_log_dir_str.c_str());
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
    auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
-   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state({source_log_dir});
    bfs::create_directories(config.blog.log_dir);
    bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
    tester blockslog_chain(config, *genesis);

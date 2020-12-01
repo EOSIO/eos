@@ -20,6 +20,10 @@ namespace chain {
       struct snapshot_global_property_object_v4;
    }
 
+   namespace detail {
+      class block_log_impl;
+   }
+
    struct chain_id_type : public fc::sha256 {
       using fc::sha256::sha256;
 
@@ -51,6 +55,7 @@ namespace chain {
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
          friend class block_log;
+         friend class detail::block_log_impl;
          friend struct block_log_preamble;
          friend struct block_log_verifier;
          friend class controller;

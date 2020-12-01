@@ -508,6 +508,27 @@ namespace eosio { namespace chain {
    
    namespace detail {
 
+      struct files_sorter{
+         std::regex filter;
+         inline std::smatch what(const std::string& str) const{
+            std::smatch      what;
+            std::regex_search(str, what, filter);
+            return what;
+         };
+         bool operator() (const fc::path& p1, const fc::path& p2) const{
+            std::smatch what1 = what(p1.filename().generic_string());
+            //if doesn't match blocks-[num]-[num].log that means it is blocks.log
+            //blocks.log expected to have latest blocks so it is placed at the end
+            if (what1.size() <= 1)
+               return false;
+
+            std::smatch what2 = what(p2.filename().generic_string());
+            if (what2.size() <= 1)
+               return true;
+            
+            return fc::to_uint64(what1[1]) < fc::to_uint64(what2[1]);
+         }
+      };
       /**
        * The implementation detail for the read/write access to the block log/index
        *
@@ -517,6 +538,8 @@ namespace eosio { namespace chain {
        **/
       class block_log_impl {
        public:
+         using file_list_type = std::set<fc::path, files_sorter>;
+
          signed_block_ptr          head;
          block_log_catalog         catalog;
          fc::datastream<fc::cfile> block_file;
@@ -558,6 +581,14 @@ namespace eosio { namespace chain {
          block_id_type                 read_block_id_by_num(uint32_t block_num);
          std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
          void                          read_head();
+
+         static file_list_type get_log_files(const block_log_config& config);
+         static std::optional<genesis_state> extract_genesis_state( const block_log_config& config );
+         static std::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
+         static chain_id_type extract_chain_id( const block_log_config& config );
+         static chain_id_type extract_chain_id( const fc::path& data_dir );
+         static fc::path backup_block_files(const block_log_config& data_dir, bool move);
+         static fc::path repair_log(const block_log_config& config, uint32_t truncate_at_block, const char* reversible_block_dir_name);
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -629,8 +660,7 @@ namespace eosio { namespace chain {
                      log_data.construct_index(index_file.get_file_path());
                   }        
                   else if (!recover_from_incomplete_block_head(log_data, index)) {
-                     block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
-                     block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+                     block_log::repair_log(config, UINT32_MAX);
                   }
                } else if (config.fix_irreversible_blocks) {
                   ilog("Irreversible blocks was not corrupted.");
@@ -638,8 +668,7 @@ namespace eosio { namespace chain {
             }
             else {
                if (config.fix_irreversible_blocks) {
-                  block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
-                  block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+                  block_log::repair_log(config, UINT32_MAX);
                }
                else {
                   log_data.construct_index(index_file.get_file_path());
@@ -881,7 +910,9 @@ namespace eosio { namespace chain {
    }
 
    static void write_incomplete_block_data(const fc::path& blocks_dir, fc::time_point now, uint32_t block_num, const char* start, int size) {
-      auto tail_path = blocks_dir / std::string("blocks-bad-tail-").append(now).append(".log");
+      std::string filename = std::string("blocks-bad-tail-");
+      filename.append(now).append("-").append(fc::to_string(block_num)).append(".log");
+      auto tail_path = blocks_dir / filename;
       fc::cfile tail;
       tail.set_file_path(tail_path);
       tail.open(fc::cfile::create_or_update_rw_mode);
@@ -928,101 +959,268 @@ namespace eosio { namespace chain {
          return true;
       } catch (...) { return false; }
    }
-
-   fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block, const char* reversible_block_dir_name) {
-      ilog("Recovering Block Log...");
-      EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
-                 
-      if (truncate_at_block == 0)
-         truncate_at_block = UINT32_MAX;
-
-      auto now = fc::time_point::now();
-
-      auto blocks_dir      = fc::canonical(data_dir); // canonical always returns an absolute path that has no symbolic link, dot, or dot-dot elements
-      auto blocks_dir_name = blocks_dir.filename();
-      auto backup_dir      = blocks_dir.parent_path() / blocks_dir_name.generic_string().append("-").append(now);
+   fc::path detail::block_log_impl::backup_block_files(const block_log_config& config, bool move) {
+      //assert log_dir exists
+      auto fc_log_dir = fc::canonical(config.log_dir);
+      auto backup_dir_name = fc_log_dir.filename().generic_string();
+      backup_dir_name.append("-").append(fc::time_point::now());
+      const auto backup_dir = fc_log_dir.parent_path() / backup_dir_name;
 
       EOS_ASSERT(!fc::exists(backup_dir), block_log_backup_dir_exist,
                  "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
                  ("new_blocks_dir", backup_dir));
 
       fc::create_directories(backup_dir);
-      fc::rename(blocks_dir / "blocks.log", backup_dir / "blocks.log");
-      if (fc::exists(blocks_dir/ "blocks.index")) {
-         fc::rename(blocks_dir/ "blocks.index", backup_dir/ "blocks.index");
+      ilog("Backup directory: ${dir}", ("dir", backup_dir));
+
+      for (const auto& cur_dir : {config.log_dir, config.retained_dir, config.archive_dir}) {
+         if (fc::exists(cur_dir)){
+            auto dir = fc::canonical(cur_dir);
+            auto backup_cur_dir = backup_dir / dir.filename();
+            fc::create_directories(backup_cur_dir);
+            for_each_file_in_dir_matches(dir,
+                                         //matches blocks.log|index and blocks-[num]-[num].log|index
+                                         R"(blocks(?:(-\d+-\d+))?\.(log|index))", 
+                                         [&](const auto& path){ 
+                                             fc::copy(fc::path(path), backup_cur_dir / fc::path(path).filename());
+                                             if (move)
+                                                fc::remove(path);
+                                             return true;
+                                          });
+         }
       }
-      if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
-         fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
+
+      return backup_dir;
+   }
+   detail::block_log_impl::file_list_type detail::block_log_impl::get_log_files(const block_log_config& config) {
+      // canonical always returns an absolute path that has no symbolic link, dot, or dot-dot elements
+      const auto retained_dir = fc::canonical(config.retained_dir);
+      const auto archive_dir = fc::canonical(config.archive_dir);
+      const auto blocks_dir = fc::canonical(config.log_dir);
+      const detail::files_sorter path_sort{ std::regex(R"(blocks-(\d+)-)") };
+
+      //TODO: add noexcept to fc::path to avoid copies on resize
+      file_list_type paths(path_sort);
+
+      auto add_path = [&paths](const auto& p){ 
+                        paths.emplace(p); 
+                        return true; 
+                     };
+      
+      if (fc::exists(blocks_dir)) {
+         for_each_file_in_dir_matches(blocks_dir, R"(blocks-\d+-\d+\.log)", add_path);
       }
-      ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir));
 
-      const auto block_log_path  = blocks_dir / "blocks.log";
-      const auto block_file_name = block_log_path.generic_string();
+      const auto blocks_log_path = blocks_dir / "blocks.log";
+      if (fc::exists(blocks_log_path)){
+         paths.emplace(blocks_log_path);
+      }
 
-      ilog("Reconstructing '${new_block_log}' from backed up block log", ("new_block_log", block_file_name));
+      if (fc::exists(retained_dir)){
+         for_each_file_in_dir_matches(retained_dir, R"(blocks-\d+-\d+\.log)", add_path);
+      }
 
-      block_log_data log_data;
-      auto           ds  = log_data.open(backup_dir / "blocks.log");
-      auto           pos = ds.tellp();
+      if (fc::exists(archive_dir)){
+         for_each_file_in_dir_matches(archive_dir, R"(blocks-\d+-\d+\.log)", add_path);
+      }
+
+      return paths;
+   }
+
+   chain_id_type detail::block_log_impl::extract_chain_id( const fc::path& data_dir ) {
+      boost::filesystem::path p(data_dir / "blocks.log");
+      chain_id_type ret;
+      if (fc::exists(p))
+         ret = block_log_data(p).chain_id();
+      
+      if (ret.empty()){
+         for_each_file_in_dir_matches(data_dir, 
+                                   R"(blocks-\d+-\d+\.log)", 
+                                   [&](const auto& log_path) {
+                                      ret = block_log_data(log_path).chain_id();
+                                      if (!ret.empty()){
+                                         p = log_path;
+                                         return false;
+                                      }
+                                      return true;
+                                   });
+      }
+      
+      if (!ret.empty())
+         ilog("chain_id found at: ${p}", ("p", p.generic_string()));
+
+      return ret;
+   }
+   chain_id_type detail::block_log_impl::extract_chain_id( const block_log_config& config ) {
+      using id_opt = std::optional<chain_id_type>;
+      if (id_opt id = detail::block_log_impl::extract_chain_id(config.log_dir))
+         return *id;
+      
+      if (id_opt id = detail::block_log_impl::extract_chain_id(config.retained_dir))
+         return *id;
+      
+      if (id_opt id = detail::block_log_impl::extract_chain_id(config.archive_dir))
+         return *id;
+      
+      return {};
+   }
+   chain_id_type block_log::extract_chain_id( const block_log_config& config ) {
+      return detail::block_log_impl::extract_chain_id(config);
+   }
+
+   std::optional<genesis_state> detail::block_log_impl::extract_genesis_state( const fc::path& block_dir ) {
+      boost::filesystem::path p(block_dir / "blocks.log");
+      std::optional<genesis_state> genesis;
+
+      if (fc::exists(p)){
+         genesis = block_log_data(p).get_genesis_state();
+      }
+
+      if (!genesis){
+         for_each_file_in_dir_matches(block_dir, 
+                                    R"(blocks-1-\d+\.log)", 
+                                    [&](boost::filesystem::path log_path) { 
+                                       p = log_path;
+                                       genesis = block_log_data(p).get_genesis_state();
+                                       return false;
+                                    });
+      }
+
+      if (genesis){
+         ilog("genesis state extracted from ${p}", ("p", p.generic_string()));
+         return genesis;
+      }
+      
+      return {};
+   }
+   std::optional<genesis_state> detail::block_log_impl::extract_genesis_state( const block_log_config& config ) {
+      if (auto g = detail::block_log_impl::extract_genesis_state( config.log_dir ))
+         return g;
+      
+      if (auto g = detail::block_log_impl::extract_genesis_state(config.archive_dir))
+         return g;
+      
+      if (auto g = detail::block_log_impl::extract_genesis_state(config.retained_dir))
+         return g;
+
+      return {};
+   }
+   std::optional<genesis_state> block_log::extract_genesis_state( const block_log_config& config ) {
+      return detail::block_log_impl::extract_genesis_state(config);
+   }
+
+   fc::path detail::block_log_impl::repair_log(const block_log_config& config,
+                                               uint32_t truncate_at_block, 
+                                               const char* reversible_block_dir_name) {
+      ilog("Recovering Block Log...");
+
+      const auto retained_dir = fc::canonical(config.retained_dir);
+      const auto archive_dir = fc::canonical(config.archive_dir);
+      const auto blocks_dir = fc::canonical(config.log_dir);
+      const auto now = fc::time_point::now();
+
+      if (truncate_at_block == 0)
+         truncate_at_block = UINT32_MAX;
+
+      const auto backup_dir = detail::block_log_impl::backup_block_files(config, false);
+      
+      auto paths = detail::block_log_impl::get_log_files(config);
+      
+      EOS_ASSERT(paths.size(), block_log_not_found, 
+                 "No any blocks file in '${blocks_dir}' '${retained_dir}' '${archive_dir}'", 
+                 ("blocks_dir", blocks_dir)("retained_dir", retained_dir)("archive_dir", archive_dir));
+
+      ilog("Ordered blocks files for replay:");
+      for (const auto& p : paths){
+         ilog("${p}", ("p", p));
+      }
+
       std::string    error_msg;
-      uint32_t       block_num = log_data.first_block_num() - 1;
-      block_id_type  block_id;
+      bool exception_occured = false;
+      for (const auto& cur_path : paths){
+         auto index_path = cur_path;
+         index_path.replace_extension("index");
 
-      log_entry entry;
-      if (log_data.version() < pruned_transaction_version) {
-         entry.emplace<signed_block_v0>();
-      }
+         block_log_data log_data;
+         auto           ds  = log_data.open(cur_path);
+         auto           pos = ds.tellp();
+         auto           first_block_pos = pos;
+         uint32_t       block_num = log_data.first_block_num() - 1;
+         block_id_type  block_id;
 
-      try {
+         log_entry entry;
+         if (log_data.version() < pruned_transaction_version) {
+            entry.emplace<signed_block_v0>();
+         }
+
          try {
-            while (ds.remaining() > 0 && block_num < truncate_at_block) {
-               std::tie(block_num, block_id) = block_log_data::full_validate_block_entry(ds, block_num, block_id, entry);
-               if (block_num % 1000 == 0)
-                  ilog("Verified block ${num}", ("num", block_num));
-               pos  = ds.tellp();
+            try {
+               if (exception_occured) {
+                  write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
+                  fc::remove(cur_path);
+                  fc::remove(index_path);
+                  continue;
+               }
+
+               while (ds.remaining() > 0 && block_num < truncate_at_block) {
+                  std::tie(block_num, block_id) = block_log_data::full_validate_block_entry(ds, block_num, block_id, entry);
+                  if (block_num % 1000 == 0)
+                     ilog("Verified block ${num}", ("num", block_num));
+                  pos  = ds.tellp();
+               }
             }
+            catch (const bad_block_exception& e) {
+               write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
+               std::rethrow_exception(e.inner);
+            }
+         } catch (const fc::exception& e) {
+            if (exception_occured) {
+               elog("got exception on writing incomplete data: ${err}", ("err", e.what()));
+               break;
+            }
+            exception_occured = true;
+            error_msg = e.what();
+
+         } catch (const std::exception& e) {
+            if (exception_occured) {
+               elog("got exception on writing incomplete data: ${err}", ("err", e.what()));
+               break;
+            }
+            exception_occured = true;
+            error_msg = e.what();
+
+         } catch (...) {
+            if (exception_occured) {
+               elog("got exception on writing incomplete data");
+               break;
+            }
+            exception_occured = true;
+            error_msg = "unrecognized exception";
          }
-         catch (const bad_block_exception& e) {
-            write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
-            std::rethrow_exception(e.inner);
+
+         std::filesystem::resize_file({cur_path.generic_string()}, pos);
+         block_log::construct_index(cur_path, index_path);
+
+         if (error_msg.size()) {
+            ilog("Recovered only up to block number ${num}. "
+               "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
+               ("num", block_num)("next_num", block_num + 1)("error_msg", block_num));
+         } else if (block_num == truncate_at_block && pos < log_data.size()) {
+            ilog("Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block));
+         } else {
+            ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.",
+               ("num", block_num));
          }
-      } catch (const fc::exception& e) {
-         error_msg = e.what();
-      } catch (const std::exception& e) {
-         error_msg = e.what();
-      } catch (...) {
-         error_msg = "unrecognized exception";
       }
 
-      fc::cfile new_block_file;
-      new_block_file.set_file_path(block_log_path);
-      new_block_file.open(fc::cfile::create_or_update_rw_mode);
-      new_block_file.write(log_data.data(), pos);
-
-      if (error_msg.size()) {
-         ilog("Recovered only up to block number ${num}. "
-              "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
-              ("num", block_num)("next_num", block_num + 1)("error_msg", error_msg));
-      } else if (block_num == truncate_at_block && pos < log_data.size()) {
-         ilog("Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block));
-      } else {
-         ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.",
-              ("num", block_num));
-      }
       return backup_dir;
    }
 
-   std::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
-      boost::filesystem::path p(block_dir / "blocks.log");
-      for_each_file_in_dir_matches(block_dir, R"(blocks-1-\d+\.log)", [&p](boost::filesystem::path log_path) { p = log_path; });
-      return block_log_data(p).get_genesis_state();
+   fc::path block_log::repair_log(const block_log_config& config,
+                                  uint32_t truncate_at_block, 
+                                  const char* reversible_block_dir_name) {
+      return detail::block_log_impl::repair_log(config, truncate_at_block, reversible_block_dir_name);
    }
-      
-   chain_id_type block_log::extract_chain_id( const fc::path& data_dir ) {
-      return block_log_data(data_dir / "blocks.log").chain_id();
-   }
-
    size_t prune_trxs(fc::datastream<char*> strm, uint32_t block_num, std::vector<transaction_id_type>& ids, uint32_t version) {
 
       EOS_ASSERT(version >= pruned_transaction_version, block_log_exception,
