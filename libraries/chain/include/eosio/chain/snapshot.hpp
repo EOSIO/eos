@@ -329,6 +329,7 @@ namespace eosio { namespace chain {
    class ostream_snapshot_writer : public snapshot_writer {
       public:
          explicit ostream_snapshot_writer(std::ostream& snapshot);
+         ostream_snapshot_writer(std::ostream& snapshot, fc::sha256::encoder&  e);
 
          void write_start_section( const std::string& section_name ) override;
          void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
@@ -342,7 +343,8 @@ namespace eosio { namespace chain {
          std::streampos          header_pos;
          std::streampos          section_pos;
          uint64_t                row_count;
-
+         fc::sha256::encoder     dummy;
+         fc::sha256::encoder&    enc;
    };
 
    class istream_snapshot_reader : public snapshot_reader {

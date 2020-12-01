@@ -450,6 +450,9 @@ struct controller_impl {
 
          const auto hash = calculate_integrity_hash();
          ilog( "database after replay hash: ${hash}", ("hash", hash) );
+
+         const auto hash2 = write_snapshot_and_return_hash();
+         ilog( "database after replay hash2: ${hash}", ("hash", hash2) );
       } else {
          ilog( "no irreversible blocks need to be replayed" );
       }
@@ -504,6 +507,9 @@ struct controller_impl {
          }
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+
+         const auto hash2 = write_snapshot_and_return_hash();
+         ilog( "database after replay hash2: ${hash}", ("hash", hash2) );
 
          init(check_shutdown);
       } catch (boost::interprocess::bad_alloc& e) {
@@ -747,6 +753,18 @@ struct controller_impl {
       kv_db.add_to_snapshot(hash_writer, *fork_db.head(), authorization, resource_limits);
       hash_writer->finalize();
 
+      return enc.result();
+   }
+
+   sha256 write_snapshot_and_return_hash() const {
+      auto temp = conf.state_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head->id));
+      auto snap_out = std::ofstream(temp.generic_string(), (std::ios::out | std::ios::binary));
+      sha256::encoder enc;
+      auto writer = std::make_shared<ostream_snapshot_writer>(snap_out, enc);
+      kv_db.add_to_snapshot(writer, *fork_db.head(), authorization, resource_limits);
+      writer->finalize();
+      snap_out.flush();
+      snap_out.close();
       return enc.result();
    }
 

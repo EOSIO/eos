@@ -124,6 +124,23 @@ ostream_snapshot_writer::ostream_snapshot_writer(std::ostream& snapshot)
 ,header_pos(snapshot.tellp())
 ,section_pos(-1)
 ,row_count(0)
+,enc(dummy)
+{
+   // write magic number
+   auto totem = magic_number;
+   snapshot.write((char*)&totem, sizeof(totem));
+
+   // write version
+   auto version = current_snapshot_version;
+   snapshot.write((char*)&version, sizeof(version));
+}
+
+ostream_snapshot_writer::ostream_snapshot_writer(std::ostream& snapshot, fc::sha256::encoder&  e)
+:snapshot(snapshot)
+,header_pos(snapshot.tellp())
+,section_pos(-1)
+,row_count(0)
+,enc(e)
 {
    // write magic number
    auto totem = magic_number;
@@ -157,6 +174,7 @@ void ostream_snapshot_writer::write_row( const detail::abstract_snapshot_row_wri
    auto restore = snapshot.tellp();
    try {
       row_writer.write(snapshot);
+      row_writer.write(enc);
    } catch (...) {
       snapshot.seekp(restore);
       throw;
