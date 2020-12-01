@@ -56,6 +56,16 @@
             ]
         },
         {
+            "name": "modifynumobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "numobj",
             "base": "",
             "fields": [
@@ -96,6 +106,11 @@
         {
             "name": "erasenumobj",
             "type": "erasenumobj",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modifynumobj",
+            "type": "modifynumobj",
             "ricardian_contract": ""
         }
     ],

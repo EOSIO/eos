@@ -233,7 +233,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db)
+          ? combined_database(db, cfg.persistent_storage_mbytes_batch)
           : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
@@ -1912,7 +1912,7 @@ struct controller_impl {
             emit( self.irreversible_block, bsp );
 
             if (!self.skip_db_sessions(s)) {
-               db.commit(bsp->block_num);
+               kv_db.commit(bsp->block_num);
             }
 
          } else {
@@ -2345,7 +2345,7 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
-eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
+eosio::chain::combined_database& controller::kv_db() const { return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 

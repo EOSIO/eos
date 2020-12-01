@@ -97,7 +97,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return memcmp(shorter.data(), longer.data(), shorter.size()) == 0;
    }
 
-   bool db_key_value_any_lookup::match_prefix(const shared_bytes& shorter, const session_type::iterator& iter) {
+   bool db_key_value_any_lookup::match_prefix(const shared_bytes& shorter, const session_variant_type::iterator& iter) {
       if (iter == current_session.end()) {
          return false;
       }
@@ -109,7 +109,7 @@ namespace eosio { namespace chain { namespace backing_store {
              memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
    }
 
-   bool db_key_value_any_lookup::match(const shared_bytes& lhs, const session_type::iterator& iter) {
+   bool db_key_value_any_lookup::match(const shared_bytes& lhs, const session_variant_type::iterator& iter) {
       if (iter == current_session.end()) {
          return false;
       }

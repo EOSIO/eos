@@ -222,6 +222,7 @@ void apply_context::exec()
    increment_action_id();
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       std::tie( receiver, action_ordinal ) = _notified[i];
+      _db_context->receiver = receiver;
       exec_one();
       increment_action_id();
    }
