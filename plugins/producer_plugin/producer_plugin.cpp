@@ -168,6 +168,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       chain_plugin*                                             chain_plug = nullptr;
       eosio::blockvault::block_vault_interface*                 blockvault = nullptr;
+      uint32_t                                                  _latest_rejected_block_num = 0;
 
       incoming::channels::block::channel_type::handle           _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle     _incoming_transaction_subscription;
@@ -1382,6 +1383,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if ( _max_irreversible_block_age_us.count() >= 0 && irreversible_block_age >= _max_irreversible_block_age_us ) {
       elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", irreversible_block_age.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
       _pending_block_mode = pending_block_mode::speculating;
+   } else if ( _latest_rejected_block_num ==  hbs->block_num + 1 ) {
+      _pending_block_mode = pending_block_mode::speculating;
    }
 
    if (_pending_block_mode == pending_block_mode::producing) {
@@ -1970,10 +1973,6 @@ bool producer_plugin_impl::maybe_produce_block() {
       return true;
    } 
    catch(block_validation_error&) {
-      reschedule.cancel();
-      _timer.cancel();
-      schedule_delayed_production_loop(weak_from_this(),
-                                       calculate_producer_wake_up_time(calculate_pending_block_time()));
       reason = "block vault rejected block, waiting on external block to continue";
    }
    LOG_AND_DROP();
@@ -2042,7 +2041,11 @@ void producer_plugin_impl::produce_block() {
       std::future<bool> f = p.get_future();
       blockvault->async_propose_constructed_block(pending_blk_state->dpos_irreversible_blocknum,
                                                   pending_blk_state->block, [&p](bool b) { p.set_value(b); });
-      EOS_ASSERT(f.get(), block_validation_error, "Block rejected by block vault" );
+      if (!f.get()) {
+         _latest_rejected_block_num = pending_blk_state->block->block_num();
+         EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
+      }
+      
    }
 
    chain.commit_block();
