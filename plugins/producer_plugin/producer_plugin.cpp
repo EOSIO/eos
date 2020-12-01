@@ -1971,6 +1971,9 @@ bool producer_plugin_impl::maybe_produce_block() {
    } 
    catch(block_validation_error&) {
       reschedule.cancel();
+      _timer.cancel();
+      schedule_delayed_production_loop(weak_from_this(),
+                                       calculate_producer_wake_up_time(calculate_pending_block_time()));
       reason = "block vault rejected block, waiting on external block to continue";
    }
    LOG_AND_DROP();
