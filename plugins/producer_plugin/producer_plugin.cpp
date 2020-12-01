@@ -1108,9 +1108,6 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("message", ec.message()));
 
          next( producer_plugin::snapshot_information{head_id, head_block_num, head_block_time, chain_snapshot_header::current_version, snapshot_path.generic_string()} );
-         if ( my->blockvault != nullptr ) {
-            my->blockvault->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, snapshot_path.generic_string().c_str() );
-         }
       } CATCH_AND_CALL (next);
       return;
    }
@@ -1142,11 +1139,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
                ("ec", ec.value())
                ("message", ec.message()));
 
-         my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string());
-
-         if ( my->blockvault != nullptr ) {
-            my->blockvault->propose_snapshot( blockvault::watermark_t{head_block_num, head_block_time}, pending_path.generic_string().c_str() );
-         }
+         my->_pending_snapshot_index.emplace(head_id, next, pending_path.generic_string(), snapshot_path.generic_string(), my->blockvault);
       } CATCH_AND_CALL (next);
    }
 }
