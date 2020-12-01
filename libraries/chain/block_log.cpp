@@ -244,8 +244,9 @@ namespace eosio { namespace chain {
            EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
                       block_log_exception, "Only \"none\" compression type is supported.");
            // block data
-           buff = std::make_shared<std::vector<char>>(sz);
-           ds.read(buff->data(), sz);
+           uint32_t data_size = sz - 5; //5 = 4 bytes + 1 byte
+           buff = std::make_shared<std::vector<char>>(data_size);
+           ds.read(buff->data(), data_size);
        }else{
            // read a packed block from old version block log file that doesn't have block size saved.
            EOS_ASSERT(sb_v0_size > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
