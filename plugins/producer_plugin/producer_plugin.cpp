@@ -1831,7 +1831,10 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             }
 
             auto start = fc::time_point::now();
+            auto billed = trx->billed_cpu_time_us;
             auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
+            auto duration_us = (start - fc::time_point::now()).count();
+
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
@@ -1840,10 +1843,8 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      break;
                   }
                } else {
-                  auto duration_us = (start - fc::time_point::now()).count();
-                  auto billed = trx->billed_cpu_time_us;
                   fc_dlog(_log, "[TRX_TRACE] Process unapplied is REJECTING tx: ${txid} after ${duration_us}us billed for ${billed}us : [${code}]${why} ",
-                         ("txid", trx->id())("duration_us", duration_us)("code", trace->except->code())("why",trace->except->what()));
+                         ("txid", trx->id())("billed", billed)("duration_us", duration_us)("code", trace->except->code())("why",trace->except->what()));
 
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
@@ -1851,8 +1852,8 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   continue;
                }
             } else {
-               fc_dlog(_log, "[TRX_TRACE] Process unapplied has SUCCESSFULLY REAPPLIED tx: ${txid}",
-                         ("txid", trx->id()));
+               fc_dlog(_log, "[TRX_TRACE] Process unapplied has SUCCESSFULLY REAPPLIED tx: ${txid} after ${duration_us}us billed for ${billed}us",
+                         ("txid", trx->id())("billed", billed)("duration_us", duration_us));
 
                ++num_applied;
                itr = _unapplied_transactions.erase( itr );
