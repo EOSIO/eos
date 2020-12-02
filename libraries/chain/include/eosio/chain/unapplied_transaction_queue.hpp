@@ -135,7 +135,8 @@ public:
       }
    }
 
-   void add_forked( const branch_type& forked_branch ) {
+   template<typename LogFn>
+   void add_forked( const branch_type& forked_branch, LogFn log  ) {
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
@@ -143,30 +144,48 @@ public:
          for( auto itr = bsptr->trxs_metas().begin(), end = bsptr->trxs_metas().end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
+            log(trx);
             queue.insert( { trx, expiry, trx_enum_type::forked } );
          }
       }
    }
 
-   void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
+   void add_forked( const branch_type& forked_branch ) {
+      add_forked(forked_branch, [](const auto&){});
+   }
+
+   template<typename LogFn>
+   void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs, LogFn log ) {
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
+         log(trx);
          queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
       }
    }
 
-   void add_persisted( const transaction_metadata_ptr& trx ) {
+   void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
+      add_aborted(std::move(aborted_trxs), [](const auto&){});
+   }
+
+   template<typename LogFn, typename LogUpgradeFn>
+   void add_persisted( const transaction_metadata_ptr& trx, LogFn log, LogUpgradeFn log_upgrade ) {
       if( mode == process_mode::non_speculative ) return;
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
+         log(trx);
          queue.insert( { trx, expiry, trx_enum_type::persisted } );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
+         log_upgrade(trx);
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
          } );
       }
+   }
+
+   void add_persisted( const transaction_metadata_ptr& trx ) {
+      add_persisted(trx, [](const auto&){}, [](const auto&){});
    }
 
    using iterator = unapplied_trx_queue_type::index<by_type>::type::iterator;

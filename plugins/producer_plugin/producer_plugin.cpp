@@ -341,6 +341,34 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       };
 
+      void abort_speculative_block() {
+         auto& chain = chain_plug->chain();
+         if (_log.is_enabled(fc::log_level::debug)) {
+            _unapplied_transactions.add_aborted( chain.abort_block(), [](const auto& trx){
+               const auto& trx_id = trx->id();
+               const auto usage = trx->billed_cpu_time_us;
+               fc_dlog(_log, "[TRX_TRACE] Aborted Speculative block is UNAPPLYING tx: ${txid} cpu_time_us: ${usage}",
+                      ("txid", trx_id)("usage", usage));
+            });
+         } else {
+            _unapplied_transactions.add_aborted( chain.abort_block(), [](const auto& trx){} );
+         }
+      }
+
+      void abort_production_block() {
+         auto& chain = chain_plug->chain();
+         if (_log.is_enabled(fc::log_level::debug)) {
+            _unapplied_transactions.add_aborted( chain.abort_block(), [](const auto& trx){
+               const auto& trx_id = trx->id();
+               const auto usage = trx->billed_cpu_time_us;
+               fc_dlog(_log, "[TRX_TRACE] Aborted Production block is UNAPPLYING tx: ${txid} cpu_time_us: ${usage}",
+                      ("txid", trx_id)("usage", usage));
+            });
+         } else {
+            _unapplied_transactions.add_aborted( chain.abort_block(), [](const auto& trx){} );
+         }
+      }
+
       bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
          auto& chain = chain_plug->chain();
          if ( _pending_block_mode == pending_block_mode::producing ) {
@@ -365,7 +393,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         _unapplied_transactions.add_aborted( chain.abort_block() );
+         abort_speculative_block();
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
@@ -375,7 +403,16 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          try {
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
-               _unapplied_transactions.add_forked( forked_branch );
+               if (_log.is_enabled(fc::log_level::debug)) {
+                  _unapplied_transactions.add_forked( forked_branch, [](const auto& trx){
+                     const auto& trx_id = trx->id();
+                     const auto usage = trx->billed_cpu_time_us;
+                     fc_dlog(_log, "[TRX_TRACE] Forked block is UNAPPLYING tx: ${txid} cpu_time_us: ${usage}",
+                            ("txid", trx_id)("usage", usage));
+                  });
+               } else {
+                  _unapplied_transactions.add_forked( forked_branch, [](const auto& trx){} );
+               }
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
@@ -587,7 +624,21 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if( persist_until_expired ) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
-                  _unapplied_transactions.add_persisted( trx );
+                  if (_log.is_enabled(fc::log_level::debug)) {
+                     _unapplied_transactions.add_persisted( trx, [](const auto& trx){
+                        const auto& trx_id = trx->id();
+                        const auto usage = trx->billed_cpu_time_us;
+                        fc_dlog(_log, "[TRX_TRACE] Adding to PERSITED tx: ${txid} cpu_time_us: ${usage}",
+                               ("txid", trx_id)("usage", usage));
+                     }, [](const auto& trx){
+                        const auto& trx_id = trx->id();
+                        const auto usage = trx->billed_cpu_time_us;
+                        fc_dlog(_log, "[TRX_TRACE] Upgrading UNAPPLIED to PERSITED tx: ${txid} cpu_time_us: ${usage}",
+                               ("txid", trx_id)("usage", usage));
+                     });
+                  } else {
+                     _unapplied_transactions.add_persisted( trx, [](const auto& trx){}, [](const auto& trx){} );
+                  }
                }
                send_response( trace );
             }
@@ -1050,8 +1101,7 @@ void producer_plugin::resume() {
    // re-evaluate that now
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
-      chain::controller& chain = my->chain_plug->chain();
-      my->_unapplied_transactions.add_aborted( chain.abort_block() );
+      my->abort_speculative_block();
       fc_ilog(_log, "Producer resumed. Scheduling production.");
       my->schedule_production_loop();
    } else {
@@ -1093,7 +1143,7 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
    }
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
-      my->_unapplied_transactions.add_aborted( chain.abort_block() );
+      my->abort_speculative_block();;
       my->schedule_production_loop();
    }
 
@@ -1177,7 +1227,11 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
-      my->_unapplied_transactions.add_aborted( chain.abort_block() );
+      if (my->_pending_block_mode == pending_block_mode::speculating) {
+         my->abort_speculative_block();
+      } else {
+         my->abort_production_block();
+      }
    } else {
       reschedule.cancel();
    }
@@ -1206,7 +1260,11 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
       if (chain.is_building_block()) {
          // abort the pending block
-         my->_unapplied_transactions.add_aborted( chain.abort_block() );
+         if (my->_pending_block_mode == pending_block_mode::speculating) {
+            my->abort_speculative_block();
+         } else {
+            my->abort_production_block();
+         }
       } else {
          reschedule.cancel();
       }
@@ -1562,7 +1620,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
-      _unapplied_transactions.add_aborted( chain.abort_block() );
+      // abort the pending block
+      if (previous_pending_mode == pending_block_mode::speculating) {
+         abort_speculative_block();
+      } else {
+         abort_production_block();
+      }
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
@@ -1767,6 +1830,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                trx_deadline = deadline;
             }
 
+            auto start = fc::time_point::now();
             auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
@@ -1776,12 +1840,20 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      break;
                   }
                } else {
+                  auto duration_us = (start - fc::time_point::now()).count();
+                  auto billed = trx->billed_cpu_time_us;
+                  fc_dlog(_log, "[TRX_TRACE] Process unapplied is REJECTING tx: ${txid} after ${duration_us}us billed for ${billed}us : [${code}]${why} ",
+                         ("txid", trx->id())("duration_us", duration_us)("code", trace->except->code())("why",trace->except->what()));
+
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
             } else {
+               fc_dlog(_log, "[TRX_TRACE] Process unapplied has SUCCESSFULLY REAPPLIED tx: ${txid}",
+                         ("txid", trx->id()));
+
                ++num_applied;
                itr = _unapplied_transactions.erase( itr );
                continue;
@@ -2065,7 +2137,7 @@ bool producer_plugin_impl::maybe_produce_block() {
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
-   _unapplied_transactions.add_aborted( chain.abort_block() );
+   abort_production_block();
    return false;
 }
 
