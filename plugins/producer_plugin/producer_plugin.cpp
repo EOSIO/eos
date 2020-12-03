@@ -1846,6 +1846,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   fc_dlog(_log, "[TRX_TRACE] Process unapplied is REJECTING tx: ${txid} after ${duration_us}us billed for ${billed}us : [${code}]${why} ",
                          ("txid", trx->id())("billed", billed)("duration_us", duration_us)("code", trace->except->code())("why",trace->except->what()));
 
+                  if ( duration_us > billed * 2  ) {
+                     auto trx_hex = fc::to_hex(fc::raw::pack(trx->packed_trx()->get_transaction()));
+                     fc_dlog(_log, "[TRX_TRACE] Transaction has excessive reapplied cost: \"${trx_hex}\"",
+                         ("trx_hex", trx_hex));
+                  }
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
                   itr = _unapplied_transactions.erase( itr );
