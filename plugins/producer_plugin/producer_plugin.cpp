@@ -1777,7 +1777,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      break;
                   }
                } else {
-                  fc_dlog( _log, "Failed ${c} trx, prev billed: ${p}us, ran: ${r}us, id: ${id}",
+                  fc_dlog( _log, "Failed unapplied trx ec: ${c}, previous billed: ${p}us, ran: ${r}us, id: ${id}",
                            ("c", trace->except->code())("p", prev_billed_cpu_time_us)("r", trace->elapsed.count())("id", trx->id()) );
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;

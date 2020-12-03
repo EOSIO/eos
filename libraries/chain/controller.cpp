@@ -1504,6 +1504,7 @@ struct controller_impl {
             trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
             trace->except_ptr = std::current_exception();
+            trace->elapsed = fc::time_point::now() - trx_context.start;
          }
 
          emit( self.accepted_transaction, trx );
