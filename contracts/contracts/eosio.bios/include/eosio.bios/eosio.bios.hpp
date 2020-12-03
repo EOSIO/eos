@@ -291,6 +291,7 @@ namespace eosiobios {
          using setalimits_action = action_wrapper<"setalimits"_n, &bios::setalimits>;
          using setprods_action = action_wrapper<"setprods"_n, &bios::setprods>;
          using setparams_action = action_wrapper<"setparams"_n, &bios::setparams>;
+         using setpparams_action = action_wrapper<"setpparams"_n, &bios::setpparams>;
          using setkvparams_action = action_wrapper<"setkvparams"_n, &bios::setkvparams>;
          using reqauth_action = action_wrapper<"reqauth"_n, &bios::reqauth>;
          using activate_action = action_wrapper<"activate"_n, &bios::activate>;
