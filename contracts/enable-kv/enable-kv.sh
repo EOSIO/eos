@@ -32,9 +32,7 @@ curl -X POST $url/v1/producer/schedule_protocol_feature_activations -d '{"protoc
 sleep 1s
 cleos set contract eosio $contracts_dir/eosio.boot -p eosio@active
 sleep 1s
-#cleos set contract eosio $contracts_dir/eosio.bios -p eosio@active
 sleep 1s
-#cleos push action eosio setkvparams '[{"max_key_size":64, "max_value_size":1024, "max_iterators":128}]' -p eosio@active
 sleep 1s
 cleos push action eosio activate '["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]' -p eosio@active
 sleep 1s
