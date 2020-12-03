@@ -1833,7 +1833,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             auto start = fc::time_point::now();
             auto billed = trx->billed_cpu_time_us;
             auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
-            auto duration_us = (start - fc::time_point::now()).count();
+            auto duration_us = (fc::time_point::now() - start).count();
 
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
