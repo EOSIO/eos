@@ -700,6 +700,26 @@ struct controller_impl {
          // else no checks needed since fork_db will be completely reset on replay anyway
       }
 
+      if (auto dm_logger = get_deep_mind_logger()) {
+         // FIXME: We should probably feed that from CMake directly somehow ...
+         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 13 0");
+
+         fc_dlog(*dm_logger, "ABIDUMP START ${block_num} ${global_sequence_num}",
+            ("block_num", head->block_num)
+            ("global_sequence_num", db.get<dynamic_global_property_object>().global_action_sequence)
+         );
+         const auto& idx = db.get_index<account_index>();
+         for (auto& row : idx.indices()) {
+            if (row.abi.size() != 0) {
+               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
+                  ("contract", row.name)
+                  ("abi", row.abi)
+               );
+            }
+         }
+         fc_dlog(*dm_logger, "ABIDUMP END");
+      }
+
       if( last_block_num > head->block_num ) {
          replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
@@ -894,9 +914,11 @@ struct controller_impl {
       }
 
       if (auto dm_logger = get_deep_mind_logger()) {
+         auto packed_trx = fc::raw::pack(etrx);
+
          fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
-            ("trx", self.maybe_to_variant_with_abi(etrx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+            ("trx", fc::to_hex(packed_trx))
          );
       }
 
@@ -2254,9 +2276,11 @@ struct controller_impl {
       }
 
       if (auto dm_logger = get_deep_mind_logger()) {
+         auto packed_trx = fc::raw::pack(trx);
+
          fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
-            ("trx", self.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+            ("trx", fc::to_hex(packed_trx))
          );
       }
 

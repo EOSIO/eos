@@ -1281,9 +1281,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
          if (auto dm_logger = my->chain->get_deep_mind_logger()) {
+            auto packed_blk = fc::raw::pack(*blk);
+
             fc_dlog(*dm_logger, "ACCEPTED_BLOCK ${num} ${blk}",
                ("num", blk->block_num)
-               ("blk", blk)
+               ("blk", fc::to_hex(packed_blk))
             );
          }
          
@@ -1306,9 +1308,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
                if (auto dm_logger = my->chain->get_deep_mind_logger()) {
+                  auto packed_trace = fc::raw::pack(*std::get<0>(t));
+
                   fc_dlog(*dm_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                      ("block", my->chain->head_block_num() + 1)
-                     ("traces", my->chain->maybe_to_variant_with_abi(std::get<0>(t), abi_serializer::create_yield_function(my->chain->get_abi_serializer_max_time())))
+                     ("traces", fc::to_hex(packed_trace))
                   );
                }
 
