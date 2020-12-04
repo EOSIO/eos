@@ -647,6 +647,7 @@ namespace eosio { namespace chain {
         if (auto dm_logger = control.get_deep_mind_logger()) {
             event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
 
+            auto packed_signed_trx = fc::raw::pack(packed_trx.to_packed_transaction_v0()->get_signed_transaction());
             fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", get_action_id())
                ("sender", gto.sender)
@@ -655,8 +656,8 @@ namespace eosio { namespace chain {
                ("published", gto.published)
                ("delay", gto.delay_until)
                ("expiration", gto.expiration)
-               ("trx_id", trx.id())
-               ("trx", control.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(control.get_abi_serializer_max_time())))
+               ("trx_id", gto.trx_id)
+               ("trx", fc::to_hex(packed_signed_trx.data(), packed_signed_trx.size()))
             );
          }
       });

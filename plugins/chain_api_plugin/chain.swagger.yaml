@@ -604,7 +604,7 @@ paths:
 
   /abi_json_to_bin:
     post:
-      description: Returns an object containing rows from the specified table.
+      description: Returns an object containing the serialized action data.
       operationId: abi_json_to_bin
       requestBody:
         content:
@@ -612,9 +612,17 @@ paths:
             schema:
               type: object
               title: AbiJsonToBinRequest
+                - code
+                - action
+                - args
               properties:
-                binargs:
-                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Hex.yaml"
+                code:
+                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                action:
+                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                args:
+                  type: object
+                  description: json object of the action parameters that will be serialized.
 
       responses:
         "200":
@@ -629,7 +637,7 @@ paths:
 
   /abi_bin_to_json:
     post:
-      description: Returns an object containing rows from the specified table.
+      description: Returns an object containing the deserialized action data.
       operationId: abi_bin_to_json
       requestBody:
         content:
@@ -637,6 +645,10 @@ paths:
             schema:
               type: object
               title: AbiBinToJsonRequest
+              required:
+                - code
+                - action
+                - binargs
               properties:
                 code:
                   $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
@@ -654,7 +666,7 @@ paths:
 
   /get_code:
     post:
-      description: Returns an object containing rows from the specified table.
+      description: Returns an object containing the smart contract WASM code.
       operationId: get_code
       requestBody:
         content:
@@ -693,7 +705,7 @@ paths:
 
   /get_raw_abi:
     post:
-      description: Returns an object containing rows from the specified table.
+      description: Returns an object containing the smart contract abi.
       operationId: get_raw_abi
       requestBody:
         content:
