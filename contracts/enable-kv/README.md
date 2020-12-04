@@ -14,7 +14,7 @@ In the first terminal
 1. cd $EOSIO_CDT_3_0/examples/kv_map
 1. mkdir build
 1. cd build
-1. cmake .. -DCMAKE_PREFIX_PATH=$EOS_3_0/build -DEOSIO_CONTRACTS_ROOT=$EOSIO_CDT_3_0/build/contracts
+1. cmake .. -DCMAKE_PREFIX_PATH=$EOS_3_0/build
 1. make
 1. cleos create account eosio jane EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 1. cleos set contract jane $EOSIO_CDT_3_0/examples/kv_map/build/kv_map -p jane@active
