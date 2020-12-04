@@ -173,8 +173,10 @@ namespace eosio { namespace chain {
       }
 
       if( !explicit_billed_cpu_time ) {
-         // if account no longer has enough cpu to exec trx, don't try
-         validate_account_cpu_usage( billed_cpu_time_us, account_cpu_limit, true );
+         // Fail early if amount of the previous speculative execution is within 10% of remaining account cpu available
+         int64_t validate_account_cpu_limit = account_cpu_limit - EOS_PERCENT( account_cpu_limit, 10 * config::percent_1 );
+         if( validate_account_cpu_limit < 0 ) validate_account_cpu_limit = 0;
+         validate_account_cpu_usage( billed_cpu_time_us, validate_account_cpu_limit, true );
       }
 
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
