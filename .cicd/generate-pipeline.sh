@@ -643,12 +643,6 @@ cat <<EOF
     timeout: "${TIMEOUT:-5}"
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
-  - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
-    command: echo "Test egonz push EOS 18.04 image to Dockerhub"
-      - buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
 
 EOF
 IFS=$oIFS
