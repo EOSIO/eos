@@ -111,6 +111,8 @@ namespace eosio { namespace chain {
 
       void flush();
 
+      static void destroy(const fc::path& p);
+
       std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
                                                     const kv_database_config& limits)const;
 

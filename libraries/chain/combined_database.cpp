@@ -248,6 +248,16 @@ namespace eosio { namespace chain {
          ilog("using chainbase for backing store");
    }
 
+   void combined_database::destroy(const fc::path& p) {
+      if( !fc::is_directory( p ) )
+          return;
+
+      fc::remove( p / "shared_memory.bin" );
+      fc::remove( p / "shared_memory.meta" );
+
+      rocks_db_type::destroy((p / "chain-kv").string());
+   }
+
    void combined_database::set_revision(uint64_t revision) {
       db.set_revision(revision);
 
