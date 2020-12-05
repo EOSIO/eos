@@ -432,8 +432,6 @@ namespace eosio { namespace testing {
             return {cfg, gen};
          }
 
-         void restart_with_backing_store(chain::backing_store_type backing_store);
-
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs );
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs,

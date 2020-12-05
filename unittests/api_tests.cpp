@@ -1655,7 +1655,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(more_deferred_transaction_tests, TYPE_T, backing_s
    TYPE_T bs_type;
    fc::temp_directory tempdir;
    validating_tester chain( tempdir, true, {bs_type} );
-   chain.restart_with_backing_store(bs_type);
    chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    const auto& pfm = chain.control->get_protocol_feature_manager();
