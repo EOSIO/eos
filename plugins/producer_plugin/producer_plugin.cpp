@@ -311,7 +311,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto handle_error = [&](const auto& e)
          {
             elog((e.to_detail_string()));
-            app().get_channel<channels::rejected_block>().publish( priority::medium, block );
             throw;
          };
 
@@ -321,9 +320,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
-            if ( blockvault != nullptr ) {
-               blockvault->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
-            }
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
             return false;

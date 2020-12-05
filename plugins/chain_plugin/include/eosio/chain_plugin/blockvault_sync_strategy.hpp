@@ -53,7 +53,7 @@ struct blockvault_sync_strategy : public sync_callback {
 
    void on_snapshot(const char* snapshot_filename) override final {
       ilog("Received snapshot from blockvault ${fn}", ("fn", snapshot_filename));
-      EOS_ASSERT(!_received_snapshot, plugin_exception, "Received multiple snapshots from blockvault.", );
+      EOS_ASSERT(!_received_snapshot, plugin_exception, "Received multiple snapshots from blockvault." );
       _received_snapshot = true;
 
       if (_check_shutdown()) {
@@ -81,7 +81,9 @@ struct blockvault_sync_strategy : public sync_callback {
 
       try {
          ++_num_blocks_received;
-         _blockchain_provider.incoming_blockvault_sync_method(block);
+         EOS_ASSERT(_blockchain_provider.incoming_blockvault_sync_method(block), plugin_exception,
+                    "Unable to sync block from blockvault, block num=${bnum}, block id=${bid}",
+                    ("bnum", block->block_num())("bid", block->calculate_id()));
       } catch (unlinkable_block_exception& e) {
          if (block->block_num() == 2) {
             elog("Received unlinkable block 2. Please double check if --genesis-json and --genesis-timestamp are "
