@@ -88,7 +88,7 @@ struct blockvault_sync_strategy : public sync_callback {
 
          ++_num_blocks_received;
          auto rc = _blockchain_provider.incoming_blockvault_sync_method(block,
-            (!_received_snapshot || (block->block_num() != _snapshot_height +1)));
+            !(_received_snapshot && block->block_num() == _snapshot_height +1));
 
          EOS_ASSERT(rc, plugin_exception,
                     "Unable to sync block from blockvault, block num=${bnum}, block id=${bid}",
