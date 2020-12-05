@@ -70,7 +70,10 @@ struct blockvault_sync_strategy : public sync_callback {
    }
 
    void on_block(eosio::chain::signed_block_ptr block) override final {
-      ilog("Received block number ${bn}", ("bn", block->block_num()));
+      if (0 == (_num_blocks_received % 100)) {
+         ilog("Received block number ${bn}", ("bn", block->block_num()));
+      }
+      
       if (_check_shutdown()) {
          _shutdown();
       }
