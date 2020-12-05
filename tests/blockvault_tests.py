@@ -150,6 +150,17 @@ try:
 
     assert node2.waitForLibToAdvance(timeout=60)
 
+    Print("#################################################################################")
+    Print("# Scenario 4: Test one of the two identical producer node fails and the other   #")
+    Print("#             can take over.                                                    #")
+    Print("#################################################################################")
+    Print("Kill node 1")
+    cluster.biosNode.kill(signal.SIGTERM)
+    node0.kill(signal.SIGTERM)
+    node1.kill(signal.SIGTERM)
+    time.sleep(10)
+    assert node2.waitForHeadToAdvance(timeout=60)
+
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
