@@ -45,11 +45,15 @@ struct blockvault_sync_strategy : public sync_callback {
          ilog("Received no data from blockvault.");
          run_startup();
       }
+
+      ilog("Sync from blockvault completed. ${snap}. ${blks} blocks received. ${ulnk} blocks unlinkable",
+           ("snap", _received_snapshot ? "Got snapshot" : "No snapshot")
+           ("blks", _num_blocks_received)("ulnk", _num_unlinkable_blocks));
    }
 
    void on_snapshot(const char* snapshot_filename) override final {
       ilog("Received snapshot from blockvault ${fn}", ("fn", snapshot_filename));
-      EOS_ASSERT(!_received_snapshot, plugin_exception, "Received multiple snapshots from blockvault.", );
+      EOS_ASSERT(!_received_snapshot, plugin_exception, "Received multiple snapshots from blockvault." );
       _received_snapshot = true;
 
       if (_check_shutdown()) {
@@ -63,9 +67,15 @@ struct blockvault_sync_strategy : public sync_callback {
       _startup_run = true;
 
       infile.close();
+
+      _snapshot_height = _blockchain_provider.chain->head_block_num();
    }
 
    void on_block(eosio::chain::signed_block_ptr block) override final {
+      if (0 == (_num_blocks_received % 100)) {
+         dlog("Received block number ${bn}", ("bn", block->block_num()));
+      }
+
       if (_check_shutdown()) {
          _shutdown();
       }
@@ -75,8 +85,14 @@ struct blockvault_sync_strategy : public sync_callback {
       }
 
       try {
+
          ++_num_blocks_received;
-         _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
+         auto rc = _blockchain_provider.incoming_blockvault_sync_method(block,
+            !(_received_snapshot && block->block_num() == _snapshot_height +1));
+
+         EOS_ASSERT(rc, plugin_exception,
+                    "Unable to sync block from blockvault, block num=${bnum}, block id=${bid}",
+                    ("bnum", block->block_num())("bid", block->calculate_id()));
       } catch (unlinkable_block_exception& e) {
          if (block->block_num() == 2) {
             elog("Received unlinkable block 2. Please double check if --genesis-json and --genesis-timestamp are "
@@ -96,6 +112,7 @@ struct blockvault_sync_strategy : public sync_callback {
    bool                   _received_snapshot;
    uint32_t               _num_unlinkable_blocks = 0;
    uint32_t               _num_blocks_received   = 0;
+   uint32_t               _snapshot_height       = 0;
 };
 
 } // namespace blockvault

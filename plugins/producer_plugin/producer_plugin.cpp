@@ -176,6 +176,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       compat::channels::transaction_ack::channel_type&          _transaction_ack_channel;
 
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
+      incoming::methods::blockvault_sync::method_type::handle   _incoming_blockvault_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
       transaction_id_with_expiry_index                          _blacklisted_transactions;
@@ -292,9 +293,61 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       };
 
+      bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
+         auto& chain = chain_plug->chain();
+
+         const auto& id = block->calculate_id();
+         auto blk_num = block->block_num();
+
+         fc_dlog(_log, "syncing blockvault block ${n} ${id}", ("n", blk_num)("id", id));
+
+         if (check_connectivity) {
+            auto previous = chain.fetch_block_by_id(block->previous);
+            if (!previous) {
+               dlog("Don't have previous block for block number ${bn}, looking for block id ${pbi}",
+                    ("bn", block->block_num())("pbi", block->previous));
+               return true;
+            }
+         }
+
+         // start processing of block
+         auto bsf = chain.create_block_state_future( id, block );
+
+         // abort the pending block
+         _unapplied_transactions.add_aborted( chain.abort_block() );
+
+         // push the new block
+         auto handle_error = [&](const auto& e)
+         {
+            elog((e.to_detail_string()));
+            throw;
+         };
+
+         try {
+            block_state_ptr blk_state = chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
+               _unapplied_transactions.add_forked( forked_branch );
+            }, [this]( const transaction_id_type& id ) {
+               return _unapplied_transactions.get_trx( id );
+            } );
+         } catch ( const guard_exception& e ) {
+            chain_plugin::handle_guard_exception(e);
+            return false;
+         } catch ( const std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
+         } catch ( boost::interprocess::bad_alloc& ) {
+            chain_plugin::handle_db_exhaustion();
+         } catch( const fc::exception& e ) {
+            handle_error(e);
+         } catch (const std::exception& e) {
+            handle_error(fc::std_exception_wrapper::from_current_exception(e));
+         }
+
+         return true;
+      }
+
       bool on_incoming_block(const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
          auto& chain = chain_plug->chain();
-         if ( _pending_block_mode == pending_block_mode::producing ) {
+         if ( _pending_block_mode == pending_block_mode::producing) {
             fc_wlog( _log, "dropped incoming block #${num} id: ${id}",
                      ("num", block->block_num())("id", block_id ? (*block_id).str() : "UNKNOWN") );
             return false;
@@ -811,6 +864,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
          [this](const signed_block_ptr& block, const std::optional<block_id_type>& block_id) {
       return my->on_incoming_block(block, block_id);
+   });
+
+   my->_incoming_blockvault_sync_provider = app().get_method<incoming::methods::blockvault_sync>().register_provider(
+         [this](const signed_block_ptr& block, bool check_connectivity) {
+            return my->on_sync_block(block, check_connectivity);
    });
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
