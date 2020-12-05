@@ -39,7 +39,7 @@ We recommend to deploy PostgreSQL with HA (high availability) mode and synchrono
 This plugin would create two tables `BlockData` and `SnapshotData` if it is not already in the database. The tables are created in the following SQL statement.
 
 ```
-CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, block_id bytea, previous_block_id bytea, block oid, block_size bigint);
+CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, block_num bigint, block_id bytea UNIQUE, previous_block_id bytea, block oid, block_size bigint);
 CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigint, snapshot oid);
 ```
 

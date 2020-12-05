@@ -10,25 +10,32 @@ namespace blockvault {
 
 postgres_backend::postgres_backend(const std::string& options)
     : conn(options) {
-   pqxx::work w(conn);
-   w.exec("CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, "
-          "block_id bytea, previous_block_id bytea, block oid, block_size bigint);"
-          "CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigint, snapshot oid);");
-   w.commit();
+   
+   try {
+      pqxx::work w(conn);
+      w.exec("CREATE TABLE IF NOT EXISTS BlockData (watermark_bn bigint, watermark_ts bigint, lib bigint, block_num bigint, "
+            "block_id bytea UNIQUE, previous_block_id bytea, block oid, block_size bigint);"
+            "CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigint, snapshot oid);");
+      w.commit();
+   }
+   catch (pqxx::integrity_constraint_violation&) {
+      // this would happen when multiple clients try to create the tables at the same time. The first one client should succeed, just ignore it. 
+   }
+   
+   conn.prepare("serialize_transaction", "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
 
    conn.prepare(
        "insert_constructed_block",
-       "INSERT INTO BlockData (watermark_bn, watermark_ts, lib, block_id, previous_block_id, block, block_size) "
-       "SELECT $1, $2, $3, $4, $5, $6, $7  WHERE NOT "
-       "EXISTS (SELECT * FROM BlockData WHERE (watermark_bn >= $1) OR (watermark_ts >= $2) OR (lib > $3) OR (block_id "
-       "= $4))");
+       "INSERT INTO BlockData (watermark_bn, watermark_ts, lib, block_num, block_id, previous_block_id, block, block_size) "
+       "SELECT $1, $2, $3, $1, $4, $5, $6, $7  WHERE NOT "
+       "EXISTS (SELECT * FROM BlockData WHERE (watermark_bn >= $1) OR (watermark_ts >= $2) OR (lib > $3))");
 
    conn.prepare(
        "insert_external_block",
-       "INSERT INTO BlockData (watermark_bn, watermark_ts, lib, block_id, previous_block_id, block, block_size) SELECT "
+       "INSERT INTO BlockData (watermark_bn, watermark_ts, lib, block_num, block_id, previous_block_id, block, block_size) SELECT "
        "COALESCE((SELECT MAX(watermark_bn) FROM BlockData),0), COALESCE((SELECT MAX(watermark_ts) FROM "
-       "BlockData),0), $2, $3, $4, $5, $6 WHERE NOT "
-       "EXISTS (SELECT * FROM BlockData WHERE lib >= $1 OR block_id = $3)");
+       "BlockData),0), $2, $1, $3, $4, $5, $6 WHERE NOT "
+       "EXISTS (SELECT * FROM BlockData WHERE lib >= $1)");
 
    conn.prepare("get_block_insertion_result", "SELECT block from BlockData WHERE block=$1");
 
@@ -46,7 +53,7 @@ postgres_backend::postgres_backend(const std::string& options)
 
    conn.prepare("get_blocks_since_watermark", "SELECT block, block_size FROM BlockData WHERE "
                                               "watermark_bn >= $1 AND watermark_ts >= $2"
-                                              "ORDER BY watermark_ts, watermark_bn");
+                                              "ORDER BY block_num");
 
    conn.prepare("get_all_blocks", "SELECT block, block_size FROM BlockData");
 
@@ -66,8 +73,9 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
                                                  std::string_view previous_block_id) {
    try {
       pqxx::work w(conn);
-
+      w.exec_prepared0("serialize_transaction");
       pqxx::largeobjectaccess obj(w);
+      
       obj.write(nullptr, 0);
       pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
       pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
@@ -78,15 +86,17 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       w.commit();
       return true;
    } catch (pqxx::unexpected_rows&) {
-      return false;
+   } catch (pqxx::transaction_rollback&) {
    }
+
+   return false;
 }
 
 bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, const std::vector<char>& block_content,
                                              std::string_view block_id, std::string_view previous_block_id) {
    try {
       pqxx::work w(conn);
-
+      w.exec_prepared0("serialize_transaction");
       pqxx::largeobjectaccess obj(w);
       obj.write(nullptr, 0);
       pqxx::binarystring      block_id_blob(block_id.data(), block_id.size());
@@ -98,9 +108,11 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       w.commit();
       return true;
 
-   } catch (pqxx::unexpected_rows& ex) {
-      return false;
+   } catch (pqxx::unexpected_rows&) {
+   } catch (pqxx::transaction_rollback&) {
    }
+
+   return false;
 }
 
 bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark, const char* snapshot_filename) {
@@ -111,6 +123,7 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       infile.open(snapshot_filename, std::ios::in);
 
       pqxx::work              w(conn);
+      w.exec_prepared0("serialize_transaction");
       pqxx::largeobjectaccess obj(w);
       obj.write(nullptr, 0);
 
@@ -137,9 +150,10 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       w.commit();
       return !r.empty();
 
-   } catch (pqxx::unexpected_rows&) {
-      return false;
+   } catch (pqxx::transaction_rollback&) {
    }
+
+   return false;
 }
 
 void retrieve_blocks(backend::sync_callback& callback, pqxx::work& trx, pqxx::result r) {
