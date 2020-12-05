@@ -84,7 +84,7 @@ struct blockvault_sync_strategy : public sync_callback {
 
       try {
          ++_num_blocks_received;
-         EOS_ASSERT(_blockchain_provider.incoming_blockvault_sync_method(block), plugin_exception,
+         EOS_ASSERT(_blockchain_provider.incoming_blockvault_sync_method(block, (1 != _num_blocks_received)), plugin_exception,
                     "Unable to sync block from blockvault, block num=${bnum}, block id=${bid}",
                     ("bnum", block->block_num())("bid", block->calculate_id()));
       } catch (unlinkable_block_exception& e) {

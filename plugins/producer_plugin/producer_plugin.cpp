@@ -293,13 +293,22 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       };
 
-      bool on_sync_block(const signed_block_ptr& block) {
+      bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
          auto& chain = chain_plug->chain();
 
          const auto& id = block->calculate_id();
          auto blk_num = block->block_num();
 
          fc_dlog(_log, "syncing blockvault block ${n} ${id}", ("n", blk_num)("id", id));
+
+         if (check_connectivity) {
+            auto previous = chain.fetch_block_by_id(block->previous);
+            if (!previous) {
+               dlog("Don't have previous block for block number ${bn}, looking for block id ${pbi}",
+                    ("bn", block->block_num())("pbi", block->previous));
+               return true;
+            }
+         }
 
          // start processing of block
          auto bsf = chain.create_block_state_future( id, block );
@@ -858,8 +867,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    });
 
    my->_incoming_blockvault_sync_provider = app().get_method<incoming::methods::blockvault_sync>().register_provider(
-         [this](const signed_block_ptr& block) {
-            return my->on_sync_block(block);
+         [this](const signed_block_ptr& block, bool check_connectivity) {
+            return my->on_sync_block(block, check_connectivity);
    });
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(

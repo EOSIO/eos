@@ -70,7 +70,7 @@ struct mock_chain_plugin_t {
       chain            = std::make_unique<mock_chain_t>();
    }
 
-   bool incoming_blockvault_sync_method(const chain::signed_block_ptr& block) {
+   bool incoming_blockvault_sync_method(const chain::signed_block_ptr& block, bool check_connectivity) {
       _block = block;
       return _accept_block_rc;
    }
