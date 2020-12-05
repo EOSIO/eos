@@ -235,6 +235,16 @@ namespace eosio { namespace chain {
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
          kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
+   void combined_database::destroy(const fc::path& p) {
+      if( !fc::is_directory( p ) )
+          return;
+
+      fc::remove( p / "shared_memory.bin" );
+      fc::remove( p / "shared_memory.meta" );
+
+      rocks_db_type::destroy((p / "chain-kv").string());
+   }
+
    void combined_database::check_backing_store_setting() {
       switch (backing_store) {
       case backing_store_type::CHAINBASE:

@@ -129,6 +129,8 @@ class session<rocksdb_t> {
    /// \brief Forces a flush on the underlying RocksDB db instance.
    void flush();
 
+   static void destroy(const std::string& db_name);
+
    /// \brief User specified write options that are applied when writing or erasing data from RocksDB.
    rocksdb::WriteOptions& write_options();
 
@@ -374,6 +376,11 @@ inline void session<rocksdb_t>::flush() {
    op.allow_write_stall = true;
    op.wait              = true;
    m_db->Flush(op);
+}
+
+inline void session<rocksdb_t>::destroy(const std::string& db_name) {
+  rocksdb::Options options;
+  rocksdb::DestroyDB(db_name, options);
 }
 
 inline rocksdb::WriteOptions& session<rocksdb_t>::write_options() { return m_write_options; }
