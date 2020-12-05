@@ -164,13 +164,14 @@ try:
     lvnPreInfo = lightValidationNode.getInfo(exitOnError=True)
 
     Utils.Print("Ensure light validation node continues to sync")
+
     headAdvanced = lightValidationNode.waitForHeadToAdvance()
     pvnPostInfo = producerNode.getInfo(exitOnError=True)
     fvnPostInfo = fullValidationNode.getInfo(exitOnError=True)
     lvnPostInfo = lightValidationNode.getInfo(exitOnError=True)
     if not headAdvanced:
-        Utils.Print(f"Pre waiting info for each node:\nproducer: {pvnPreInfo}\nfull: {fvnPreInfo},\nlight: {lvnPreInfo}")
-        Utils.Print(f"Post waiting info for each node:\nproducer: {pvnPreInfo}\nfull: {fvnPreInfo},\nlight: {lvnPreInfo}")
+        Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
+        Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
 
     assert headAdvanced, "the light validation node stops syncing"
 
@@ -181,9 +182,9 @@ try:
         pvnPost2Info = producerNode.getInfo(exitOnError=True)
         fvnPost2Info = fullValidationNode.getInfo(exitOnError=True)
         lvnPost2Info = lightValidationNode.getInfo(exitOnError=True)
-        Utils.Print(f"Pre waiting info for each node:\nproducer: {pvnPreInfo}\nfull: {fvnPreInfo},\nlight: {lvnPreInfo}")
-        Utils.Print(f"Post light validation waiting info for each node:\nproducer: {pvnPostInfo}\nfull: {fvnPostInfo},\nlight: {lvnPostInfo}")
-        Utils.Print(f"Post full validation waiting info for each node:\nproducer: {pvnPost2Info}\nfull: {fvnPost2Info},\nlight: {lvnPost2Info}")
+        Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
+        Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
+        Utils.Print("Post full validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPost2Info, indent=1), json.dumps(fvnPost2Info, indent=1), json.dumps(lvnPost2Info, indent=1)))
 
     assert not headAdvanced, "the full validation node is still syncing"
 
