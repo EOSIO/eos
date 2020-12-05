@@ -45,6 +45,10 @@ struct blockvault_sync_strategy : public sync_callback {
          ilog("Received no data from blockvault.");
          run_startup();
       }
+
+      ilog("Sync from blockvault completed. ${snap}. ${blks} blocks received. ${ulnk} blocks unlinkable",
+           ("snap", _received_snapshot ? "Got snapshot" : "No snapshot")
+           ("blks", _num_blocks_received)("ulnk", _num_unlinkable_blocks));
    }
 
    void on_snapshot(const char* snapshot_filename) override final {
@@ -66,6 +70,7 @@ struct blockvault_sync_strategy : public sync_callback {
    }
 
    void on_block(eosio::chain::signed_block_ptr block) override final {
+      ilog("Received block number ${bn}", ("bn", block->block_num()));
       if (_check_shutdown()) {
          _shutdown();
       }
@@ -76,7 +81,7 @@ struct blockvault_sync_strategy : public sync_callback {
 
       try {
          ++_num_blocks_received;
-         _blockchain_provider.incoming_block_sync_method(block, block->calculate_id());
+         _blockchain_provider.incoming_blockvault_sync_method(block);
       } catch (unlinkable_block_exception& e) {
          if (block->block_num() == 2) {
             elog("Received unlinkable block 2. Please double check if --genesis-json and --genesis-timestamp are "

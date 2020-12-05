@@ -70,9 +70,8 @@ struct mock_chain_plugin_t {
       chain            = std::make_unique<mock_chain_t>();
    }
 
-   bool incoming_block_sync_method(const chain::signed_block_ptr& block, const chain::block_id_type& id) {
+   bool incoming_blockvault_sync_method(const chain::signed_block_ptr& block) {
       _block = block;
-      _id    = id;
       return _accept_block_rc;
    }
 
@@ -147,7 +146,6 @@ BOOST_FIXTURE_TEST_CASE(on_block_no_snapshot, TESTER) {
       BOOST_TEST(plugin._startup_non_snapshot_called);
       BOOST_TEST(!plugin.chain->_startup_reader_called);
       BOOST_TEST(plugin._block->calculate_id() == b->calculate_id());
-      BOOST_TEST(plugin._block->calculate_id() == plugin._id);
    }
    FC_LOG_AND_RETHROW()
 }

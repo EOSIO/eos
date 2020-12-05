@@ -177,6 +177,7 @@ public:
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
+   ,incoming_blockvault_sync_method(app().get_method<incoming::methods::blockvault_sync>())
    ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
    {}
 
@@ -208,6 +209,7 @@ public:
 
    // retained references to methods for easy calling
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
+   incoming::methods::blockvault_sync::method_type&        incoming_blockvault_sync_method;
    incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
 
    // method provider handles
