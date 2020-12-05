@@ -86,6 +86,7 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       w.commit();
       return true;
    } catch (pqxx::unexpected_rows&) {
+   } catch (pqxx::integrity_constraint_violation&) {
    } catch (pqxx::transaction_rollback&) {
    }
 
@@ -109,6 +110,7 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       return true;
 
    } catch (pqxx::unexpected_rows&) {
+   } catch (pqxx::integrity_constraint_violation&) {
    } catch (pqxx::transaction_rollback&) {
    }
 

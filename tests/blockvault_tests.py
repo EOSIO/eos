@@ -42,6 +42,95 @@ import atexit
 #############################################################################################################################################
 
 
+logging="""{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "net_plugin_impl",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "http_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "producer_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "blockvault_client_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}"""
+
+loggingFile = os.path.join(os.getcwd(), "logging.json")
+
+with open(loggingFile, "w") as textFile:
+    print(logging,file=textFile)
+
 def num_rows_in_table(tableName):
     stmt = 'SELECT COUNT(*) FROM {};'.format(tableName)
     return int(subprocess.check_output([ "scripts/postgres_control.sh", "exec", stmt]).splitlines()[2])
@@ -103,7 +192,7 @@ try:
     Print("Stand up cluster")
     if cluster.launch(onlyBios=False, pnodes=1, totalNodes=totalNodes,
                     useBiosBootFile=False, onlySetProds=False,
-                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3",
+                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3 --logconf %s" % loggingFile,
                     specificExtraNodeosArgs={
                         1:"--plugin eosio::blockvault_client_plugin --block-vault-backend postgresql://postgres:password@localhost"},
                     manualProducerNodeConf={ 1: { 'key': vltproducerAccount, 'names': ['vltproducera']}}) is False:
