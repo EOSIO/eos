@@ -18,6 +18,7 @@ import subprocess
 import os
 import os.path
 import atexit
+import glob
 
 ############################################################################################################################################
 # blockvault_test.py
@@ -150,6 +151,20 @@ def testFailOver(cluster, nodeToKill, addSwapFlags={}):
     assert nodeToKill.relaunch(timeout=30, skipGenesis=False, cachePopen=True, addSwapFlags=addSwapFlags), "Fail to relaunch"
     assert node0.waitForIrreversibleBlockProducedBy("vltproducera", blockNumAfterNode1Killed, retry=30), "failed to see blocks produced by vltproducera"
 
+def get_successful_constructed_block_numbers_in_file(filename):
+  result = []
+  with open(filename, "r") as f:
+    for line in f:
+      m = re.search("propose_constructed_block\(watermark=\{(\d+), \d+\}, lib=\d+\) returns true", line)
+      if m:
+        result.append(int(m[1]))
+  return result
+
+def get_successful_constructed_block_numbers_for_node(nodeId):
+  result = []
+  for filename in glob.glob(os.path.join(Utils.getNodeDataDir(nodeId), 'stderr.*.txt')):
+    result.extend(get_successful_constructed_block_numbers_in_file(filename))
+  return set(result)
 
 Print=Utils.Print
 errorExit=Utils.errorExit
@@ -230,6 +245,7 @@ try:
     Print("# Scenario 3: Test two identical producer nodes connecting to the block vault   #")
     Print("#################################################################################")
     node2 = cluster.getNode(2)
+    time.sleep(10)
     testFailOver(cluster, nodeToKill=node2, addSwapFlags={
         "--plugin": "eosio::blockvault_client_plugin",
         "--block-vault-backend": "postgresql://postgres:password@localhost",
@@ -238,6 +254,11 @@ try:
     })
 
     assert node2.waitForLibToAdvance(timeout=60)
+
+    double_produced_block_numbers = get_successful_constructed_block_numbers_for_node(1).intersection(get_successful_constructed_block_numbers_for_node(2))
+
+    if len(double_produced_block_numbers) != 0:
+      Utils.errorExit("Found double production for the following blocks {}".format(double_produced_block_numbers))
 
     testSuccessful=True
 finally:

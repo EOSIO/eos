@@ -26,7 +26,7 @@ struct transform_callback : backend::sync_callback {
       if (uncompressed_file.size())
          target.on_snapshot(uncompressed_file.c_str());
       else
-         elog("snapshot uncompress failed");
+         FC_THROW_EXCEPTION(chain::snapshot_decompress_exception, "Unable to decompress snapshot received from block vault");
    }
 
    void on_block(std::string_view block) override {
@@ -70,6 +70,10 @@ class block_vault_impl : public block_vault_interface {
             bool r = backend->propose_constructed_block({block->block_num(), block->timestamp.slot}, lib,
                                                         stream.storage(), {block_id.data(), block_id.data_size()},
                                                         {block->previous.data(), block->previous.data_size()});
+
+            // Notice : 
+            //   This following logging line is used for checking double production in 'tests/blockvault_tests.py'.
+            //   Make sure the corresponding code in 'tests/blockvault_tests.py' is changed if the format is changed.
             fc_dlog(log, "propose_constructed_block(watermark={${bn}, ${ts}}, lib=${lib}) returns ${r}",
                  ("bn", block->block_num())("ts", block->timestamp.slot)("lib", lib)("r", r));
             handler(r);
