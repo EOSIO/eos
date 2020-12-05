@@ -67,6 +67,8 @@ struct blockvault_sync_strategy : public sync_callback {
       _startup_run = true;
 
       infile.close();
+
+      _snapshot_height = _blockchain_provider.chain->head_block_num();
    }
 
    void on_block(eosio::chain::signed_block_ptr block) override final {
@@ -83,8 +85,12 @@ struct blockvault_sync_strategy : public sync_callback {
       }
 
       try {
+
          ++_num_blocks_received;
-         EOS_ASSERT(_blockchain_provider.incoming_blockvault_sync_method(block, (1 != _num_blocks_received)), plugin_exception,
+         auto rc = _blockchain_provider.incoming_blockvault_sync_method(block,
+            (!_received_snapshot || (block->block_num() != _snapshot_height +1)));
+
+         EOS_ASSERT(rc, plugin_exception,
                     "Unable to sync block from blockvault, block num=${bnum}, block id=${bid}",
                     ("bnum", block->block_num())("bid", block->calculate_id()));
       } catch (unlinkable_block_exception& e) {
@@ -106,6 +112,7 @@ struct blockvault_sync_strategy : public sync_callback {
    bool                   _received_snapshot;
    uint32_t               _num_unlinkable_blocks = 0;
    uint32_t               _num_blocks_received   = 0;
+   uint32_t               _snapshot_height       = 0;
 };
 
 } // namespace blockvault

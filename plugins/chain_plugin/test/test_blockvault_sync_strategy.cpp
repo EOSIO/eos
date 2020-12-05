@@ -43,6 +43,9 @@ struct mock_chain_t {
    std::shared_ptr<istream_snapshot_reader> _reader;
 
    bool _startup_reader_called;
+
+   uint32_t _head_block_num  = 0;
+   uint32_t head_block_num() {return _head_block_num;}
 };
 
 struct mock_blockvault_t : public block_vault_interface {
