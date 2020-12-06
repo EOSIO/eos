@@ -279,27 +279,18 @@ void session<Parent>::prime_cache_() {
       }
    };
 
-   std::visit(overloaded{ [&](session<Parent>* p) {
-                            auto begin = std::begin(p->m_cache);
-                            auto end   = std::end(p->m_cache);
-                            if (begin == end) {
-                               return;
-                            }
-                            update(begin->first, begin->second.value);
-                            --end;
-                            update(end->first, end->second.value);
-                         },
-                          [&](Parent* p) {
-                             auto begin = std::begin(*p);
-                             auto end   = std::end(*p);
-                             if (begin == end) {
-                                return;
-                             }
-                             update(begin.key(), (*begin).second.value());
-                             --end;
-                             update(end.key(), (*end).second.value());
-                          } },
-              m_parent);
+   std::visit(
+         [&](auto* p) {
+            auto begin = std::begin(*p);
+            auto end   = std::end(*p);
+            if (begin == end) {
+               return;
+            }
+            update(begin.key(), (*begin).second.value());
+            --end;
+            update(end.key(), (*end).second.value());
+         },
+         m_parent);
 }
 
 template <typename Parent>
