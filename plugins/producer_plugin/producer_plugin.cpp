@@ -2109,7 +2109,8 @@ void block_only_sync::on_snapshot(const char*) {
 
 void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    try {
-      _impl->on_sync_block(block,  block->block_num() != _impl->chain_plug->chain().head_block_num() + 1);
+      bool connectivity_check = false; // use false right now, should investigate further after 3.0 rc
+      _impl->on_sync_block(block, connectivity_check);
    }
    catch (unlinkable_block_exception&) {
       fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
