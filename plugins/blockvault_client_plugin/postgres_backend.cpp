@@ -85,9 +85,9 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       obj.write(block_content.data(), block_content.size());
       w.commit();
       return true;
-   } catch (pqxx::unexpected_rows&) {
-   } catch (pqxx::integrity_constraint_violation&) {
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::unexpected_rows&) {
+   } catch (const pqxx::integrity_constraint_violation&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
 
    return false;
@@ -109,9 +109,9 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       w.commit();
       return true;
 
-   } catch (pqxx::unexpected_rows&) {
-   } catch (pqxx::integrity_constraint_violation&) {
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::unexpected_rows&) {
+   } catch (const pqxx::integrity_constraint_violation&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
    return false;
 }
@@ -151,8 +151,8 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       w.commit();
       return !r.empty();
 
-   } catch (pqxx::integrity_constraint_violation&) {
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::integrity_constraint_violation&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
 
    return false;
