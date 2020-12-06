@@ -323,7 +323,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          if (check_connectivity) {
             auto previous = chain.fetch_block_by_id(block->previous);
             if (!previous) {
-               dlog("Don't have previous block for block number ${bn}, looking for block id ${pbi}",
+               fc_dlog(_log, "Don't have previous block for block number ${bn}, looking for block id ${pbi}",
                     ("bn", block->block_num())("pbi", block->previous));
                return true;
             }
@@ -338,7 +338,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          auto handle_error = [&](const auto& e)
          {
-            elog((e.to_detail_string()));
+            fc_elog(_log, (e.to_detail_string()));
             throw;
          };
 
@@ -2083,15 +2083,16 @@ void block_only_sync::schedule() {
       // wait one second to see if we can actually get the block from net plugin before we try to resync from block vault
       _start_sync_timer.expires_from_now(boost::posix_time::seconds(1));
       _pending = true;
-      _start_sync_timer.async_wait(
-          app().get_priority_queue().wrap(priority::high, [this](const boost::system::error_code& ec) {
-             if (!ec) {
+      _start_sync_timer.async_wait(app().get_priority_queue().wrap(
+          priority::high, [this, weak_impl = _impl->weak_from_this()](const boost::system::error_code& ec) {
+             auto shared_impl = weak_impl.lock();
+             if (shared_impl.get() && !ec) {
                 auto id = _impl->chain_plug->chain().last_irreversible_block_id();
                 fc_dlog(_log, "Attempt to resync from block vault");
                 try {
                   _impl->blockvault->sync(&id, *this);
                 } catch( fc::exception& er ) {
-                   wlog("Attempting to resync from blockvault encountered ${details}; the node must restart to "
+                   fc_wlog(_log, "Attempting to resync from blockvault encountered ${details}; the node must restart to "
                         "continue!",
                         ("details", er.to_detail_string()));
                    app().quit();
