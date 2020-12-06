@@ -151,6 +151,7 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       w.commit();
       return !r.empty();
 
+   } catch (pqxx::integrity_constraint_violation&) {
    } catch (pqxx::transaction_rollback&) {
    }
 
