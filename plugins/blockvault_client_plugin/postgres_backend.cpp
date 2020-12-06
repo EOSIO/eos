@@ -113,7 +113,6 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
    } catch (pqxx::integrity_constraint_violation&) {
    } catch (pqxx::transaction_rollback&) {
    }
-
    return false;
 }
 
