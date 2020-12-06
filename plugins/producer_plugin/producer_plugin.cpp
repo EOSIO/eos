@@ -372,11 +372,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return false;
          }
 
-         if (_block_vault_resync.is_pending() && _producers.count( block->producer ) > 0 ) {
-            // Cancel any pending resync from blockvault if we received any blocks from the same logical producer
-            _block_vault_resync.cancel();
-         }
-
          const auto& id = block_id ? *block_id : block->calculate_id();
          auto blk_num = block->block_num();
 
@@ -414,7 +409,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
             } );
+
             if ( blockvault != nullptr ) {
+               if (_block_vault_resync.is_pending() && _producers.count( block->producer ) > 0 ) {
+                  // Cancel any pending resync from blockvault if we received any blocks from the same logical producer
+                  _block_vault_resync.cancel();
+               }
                blockvault->async_append_external_block(blk_state->dpos_irreversible_blocknum, blk_state->block, [](bool){});
             }
          } catch ( const guard_exception& e ) {
@@ -968,6 +968,7 @@ void producer_plugin::plugin_startup()
 void producer_plugin::plugin_shutdown() {
    try {
       my->_timer.cancel();
+      my->_block_vault_resync.cancel();
    } catch ( const std::bad_alloc& ) {
      chain_plugin::handle_bad_alloc();
    } catch ( const boost::interprocess::bad_alloc& ) {
@@ -2084,10 +2085,17 @@ void block_only_sync::schedule() {
       _pending = true;
       _start_sync_timer.async_wait(
           app().get_priority_queue().wrap(priority::high, [this](const boost::system::error_code& ec) {
-             if (ec != boost::asio::error::operation_aborted) {
+             if (!ec) {
                 auto id = _impl->chain_plug->chain().last_irreversible_block_id();
                 fc_dlog(_log, "Attempt to resync from block vault");
-                _impl->blockvault->sync(&id, *this);
+                try {
+                  _impl->blockvault->sync(&id, *this);
+                } catch( fc::exception& er ) {
+                   wlog("Attempting to resync from blockvault encountered ${details}; the node must restart to "
+                        "continue!",
+                        ("details", er.to_detail_string()));
+                   app().quit();
+                }
              }
              _pending = false;
           }));
@@ -2095,12 +2103,12 @@ void block_only_sync::schedule() {
 }
 
 void block_only_sync::on_snapshot(const char*) {
-   EOS_THROW(producer_exception, "Attempting to resync from blockvault encountered a snapshot and the node must restart to continue!");
+   EOS_THROW(producer_exception, "a snapshot");
 }
 
 void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    try {
-      _impl->on_sync_block(block, true);
+      _impl->on_sync_block(block,  block->block_num() != _impl->chain_plug->chain().head_block_num() + 1);
    }
    catch (unlinkable_block_exception&) {
       fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
