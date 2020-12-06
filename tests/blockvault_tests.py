@@ -157,7 +157,7 @@ def get_successful_constructed_block_numbers_in_file(filename):
     for line in f:
       m = re.search("propose_constructed_block\(watermark=\{(\d+), \d+\}, lib=\d+\) returns true", line)
       if m:
-        result.append(int(m[1]))
+        result.append(int(m.group(1)))
   return result
 
 def get_successful_constructed_block_numbers_for_node(nodeId):
