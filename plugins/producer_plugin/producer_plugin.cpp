@@ -2086,11 +2086,12 @@ void block_only_sync::schedule() {
       _start_sync_timer.async_wait(app().get_priority_queue().wrap(
           priority::high, [this, weak_impl = _impl->weak_from_this()](const boost::system::error_code& ec) {
              auto shared_impl = weak_impl.lock();
-             if (shared_impl.get() && !ec) {
-                auto id = _impl->chain_plug->chain().last_irreversible_block_id();
+             auto impl        = shared_impl.get();
+             if (impl && !ec) {
+                auto id = impl->chain_plug->chain().last_irreversible_block_id();
                 fc_dlog(_log, "Attempt to resync from block vault");
                 try {
-                  _impl->blockvault->sync(&id, *this);
+                  impl->blockvault->sync(&id, *this);
                 } catch( fc::exception& er ) {
                    fc_wlog(_log, "Attempting to resync from blockvault encountered ${details}; the node must restart to "
                         "continue!",
@@ -2098,7 +2099,7 @@ void block_only_sync::schedule() {
                    app().quit();
                 }
              }
-             _pending = false;
+             this->_pending = false;
           }));
    }
 }
