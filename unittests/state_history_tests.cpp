@@ -986,17 +986,14 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       BOOST_REQUIRE(expected_contract_row_table_names == result_contract_row_table_names);
       BOOST_REQUIRE(expected_contract_row_table_primary_keys == result_contract_row_table_primary_keys);
 
-      /* TODO: uncomment this when related issues resolved
       chain.produce_block();
-      */
-
+      
       trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 1));
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
       trace = chain.push_action("tester"_n, "erasenumobj"_n, "tester"_n, mutable_variant_object()("id", 0));
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
-      /* TODO: uncomment this when related issues resolved
       result = chain.find_table_delta("contract_row");
       BOOST_REQUIRE(result.first);
       auto &it_contract_row_after_delete = result.second;
@@ -1018,7 +1015,6 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
          BOOST_REQUIRE_EQUAL(it_contract_index_double->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_index_double_elems[i].table.to_string(), "numobjs.....2");
       }
-      */
    }
 }
 
