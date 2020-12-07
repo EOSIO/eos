@@ -255,6 +255,20 @@ try:
 
     assert node2.waitForLibToAdvance(timeout=60)
 
+    Print("#################################################################################")
+    Print("# Scenario 4: Test one of the two identical producer node fails and the other   #")
+    Print("#             can take over.                                                    #")
+    Print("#################################################################################")
+    Print("Kill bios, node0, node1")
+    cluster.biosNode.kill(signal.SIGTERM)
+    node0.kill(signal.SIGTERM)
+    node1.kill(signal.SIGTERM)
+    time.sleep(10)
+    assert node2.waitForHeadToAdvance(timeout=60)
+
+    Print("#################################################################################")
+    Print("# Verify if there's any double production                                       #")
+    Print("#################################################################################")
     double_produced_block_numbers = get_successful_constructed_block_numbers_for_node(1).intersection(get_successful_constructed_block_numbers_for_node(2))
 
     if len(double_produced_block_numbers) != 0:
