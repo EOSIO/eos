@@ -502,7 +502,7 @@ struct controller_impl {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
 
-         init(check_shutdown);
+         init(check_shutdown, true);
       } catch (boost::interprocess::bad_alloc& e) {
          elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
          throw e;
@@ -548,7 +548,7 @@ struct controller_impl {
       } else {
          blog.reset( genesis, head->block, packed_transaction::cf_compression_type::none );
       }
-      init(check_shutdown);
+      init(check_shutdown, true);
    }
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
@@ -581,7 +581,7 @@ struct controller_impl {
       }
       head = fork_db.head();
 
-      init(check_shutdown);
+      init(check_shutdown, false);
    }
 
 
@@ -598,7 +598,7 @@ struct controller_impl {
       return header_itr;
    }
 
-   void init(std::function<bool()> check_shutdown) {
+   void init(std::function<bool()> check_shutdown, bool clean_startup) {
       uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
 
       auto header_itr = validate_db_version( db );
@@ -618,7 +618,7 @@ struct controller_impl {
          });
       }
 
-      kv_db.check_backing_store_setting();
+      kv_db.check_backing_store_setting( clean_startup );
 
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.

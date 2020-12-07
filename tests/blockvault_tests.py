@@ -18,6 +18,7 @@ import subprocess
 import os
 import os.path
 import atexit
+import glob
 
 ############################################################################################################################################
 # blockvault_test.py
@@ -42,6 +43,95 @@ import atexit
 #############################################################################################################################################
 
 
+logging="""{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "net_plugin_impl",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "http_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "producer_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "blockvault_client_plugin",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}"""
+
+loggingFile = os.path.join(os.getcwd(), "logging.json")
+
+with open(loggingFile, "w") as textFile:
+    print(logging,file=textFile)
+
 def num_rows_in_table(tableName):
     stmt = 'SELECT COUNT(*) FROM {};'.format(tableName)
     return int(subprocess.check_output([ "scripts/postgres_control.sh", "exec", stmt]).splitlines()[2])
@@ -61,6 +151,20 @@ def testFailOver(cluster, nodeToKill, addSwapFlags={}):
     assert nodeToKill.relaunch(timeout=30, skipGenesis=False, cachePopen=True, addSwapFlags=addSwapFlags), "Fail to relaunch"
     assert node0.waitForIrreversibleBlockProducedBy("vltproducera", blockNumAfterNode1Killed, retry=30), "failed to see blocks produced by vltproducera"
 
+def get_successful_constructed_block_numbers_in_file(filename):
+  result = []
+  with open(filename, "r") as f:
+    for line in f:
+      m = re.search("propose_constructed_block\(watermark=\{(\d+), \d+\}, lib=\d+\) returns true", line)
+      if m:
+        result.append(int(m.group(1)))
+  return result
+
+def get_successful_constructed_block_numbers_for_node(nodeId):
+  result = []
+  for filename in glob.glob(os.path.join(Utils.getNodeDataDir(nodeId), 'stderr.*.txt')):
+    result.extend(get_successful_constructed_block_numbers_in_file(filename))
+  return set(result)
 
 Print=Utils.Print
 errorExit=Utils.errorExit
@@ -103,7 +207,7 @@ try:
     Print("Stand up cluster")
     if cluster.launch(onlyBios=False, pnodes=1, totalNodes=totalNodes,
                     useBiosBootFile=False, onlySetProds=False,
-                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3",
+                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3 --logconf %s" % loggingFile,
                     specificExtraNodeosArgs={
                         1:"--plugin eosio::blockvault_client_plugin --block-vault-backend postgresql://postgres:password@localhost"},
                     manualProducerNodeConf={ 1: { 'key': vltproducerAccount, 'names': ['vltproducera']}}) is False:
@@ -141,6 +245,7 @@ try:
     Print("# Scenario 3: Test two identical producer nodes connecting to the block vault   #")
     Print("#################################################################################")
     node2 = cluster.getNode(2)
+    time.sleep(10)
     testFailOver(cluster, nodeToKill=node2, addSwapFlags={
         "--plugin": "eosio::blockvault_client_plugin",
         "--block-vault-backend": "postgresql://postgres:password@localhost",
@@ -154,12 +259,20 @@ try:
     Print("# Scenario 4: Test one of the two identical producer node fails and the other   #")
     Print("#             can take over.                                                    #")
     Print("#################################################################################")
-    Print("Kill node 1")
+    Print("Kill bios, node0, node1")
     cluster.biosNode.kill(signal.SIGTERM)
     node0.kill(signal.SIGTERM)
     node1.kill(signal.SIGTERM)
     time.sleep(10)
     assert node2.waitForHeadToAdvance(timeout=60)
+
+    Print("#################################################################################")
+    Print("# Verify if there's any double production                                       #")
+    Print("#################################################################################")
+    double_produced_block_numbers = get_successful_constructed_block_numbers_for_node(1).intersection(get_successful_constructed_block_numbers_for_node(2))
+
+    if len(double_produced_block_numbers) != 0:
+      Utils.errorExit("Found double production for the following blocks {}".format(double_produced_block_numbers))
 
     testSuccessful=True
 finally:

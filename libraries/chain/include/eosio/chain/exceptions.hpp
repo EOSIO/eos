@@ -331,7 +331,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( database_revision_mismatch_exception, database_exception,
                                     3060006, "Chainbase and chain-kv databases are at different revisions" )
       FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
-                                    3060007, "Chainbase already contains eosio.kvdisk entries; use resync, replay, or snapshot to move these to rocksdb" )
+                                    3060007, "Cannot change backing store when existing state has already stored data in a different backing store; use resync, replay, or snapshot to move these to the new backing store" )
       FC_DECLARE_DERIVED_EXCEPTION( kv_rocksdb_bad_value_size_exception, database_exception,
                                     3060008, "The size of value returned from RocksDB is less than payer's size" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
@@ -654,6 +654,8 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_decompress_exception,   snapshot_exception,
+                                    3240002, "Snapshot decompress error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
                                  3250000, "Protocol feature exception" )

@@ -18,7 +18,7 @@ postgres_backend::postgres_backend(const std::string& options)
             "CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigint, snapshot oid);");
       w.commit();
    }
-   catch (pqxx::integrity_constraint_violation&) {
+   catch (const pqxx::integrity_constraint_violation&) {
       // this would happen when multiple clients try to create the tables at the same time. The first one client should succeed, just ignore it. 
    }
    
@@ -85,8 +85,10 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       obj.write(block_content.data(), block_content.size());
       w.commit();
       return true;
-   } catch (pqxx::unexpected_rows&) {
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::unexpected_rows&) {
+   } catch (const pqxx::unique_violation&) {
+   } catch (const pqxx::serialization_failure&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
 
    return false;
@@ -108,10 +110,11 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       w.commit();
       return true;
 
-   } catch (pqxx::unexpected_rows&) {
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::unexpected_rows&) {
+   } catch (const pqxx::unique_violation&) {
+   } catch (const pqxx::serialization_failure&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
-
    return false;
 }
 
@@ -150,7 +153,7 @@ bool postgres_backend::propose_snapshot(std::pair<uint32_t, uint32_t> watermark,
       w.commit();
       return !r.empty();
 
-   } catch (pqxx::transaction_rollback&) {
+   } catch (const pqxx::transaction_rollback&) {
    }
 
    return false;

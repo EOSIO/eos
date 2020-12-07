@@ -235,6 +235,19 @@ namespace eosio { namespace chain {
          kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
          kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
+   void combined_database::check_backing_store_setting(bool clean_startup) {
+      if (backing_store != db.get<kv_db_config_object>().backing_store) {   
+         EOS_ASSERT(clean_startup, database_move_kv_disk_exception,
+                   "Existing state indicates a different backing store is in use; use resync, replay, or restore from snapshot to switch backing store");
+         db.modify(db.get<kv_db_config_object>(), [this](auto& cfg) { cfg.backing_store = backing_store; });
+      }
+
+      if (backing_store == backing_store_type::ROCKSDB)
+         ilog("using rocksdb for backing store");
+      else
+         ilog("using chainbase for backing store");
+   }
+
    void combined_database::destroy(const fc::path& p) {
       if( !fc::is_directory( p ) )
           return;
@@ -243,28 +256,6 @@ namespace eosio { namespace chain {
       fc::remove( p / "shared_memory.meta" );
 
       rocks_db_type::destroy((p / "chain-kv").string());
-   }
-
-   void combined_database::check_backing_store_setting() {
-      switch (backing_store) {
-      case backing_store_type::CHAINBASE:
-         EOS_ASSERT(db.get<kv_db_config_object>().backing_store == backing_store_type::CHAINBASE, database_move_kv_disk_exception,
-                    "Chainbase indicates that RocksDB is in use; resync, replay, or restore from snapshot to switch back to chainbase");
-         break;
-      case backing_store_type::ROCKSDB:
-         if (db.get<kv_db_config_object>().backing_store != backing_store_type::ROCKSDB) {
-            auto& idx = db.get_index<kv_index, by_kv_key>();
-            auto  it  = idx.lower_bound(std::make_tuple(name{}, std::string_view{}));
-            EOS_ASSERT(it == idx.end(), database_move_kv_disk_exception,
-                     "Chainbase already contains KV entries; use resync, replay, or snapshot to move these to "
-                     "rocksdb");
-            db.modify(db.get<kv_db_config_object>(), [](auto& cfg) { cfg.backing_store = backing_store_type::ROCKSDB; });
-         }
-      }
-      if (backing_store == backing_store_type::ROCKSDB)
-         ilog("using rocksdb for backing store");
-      else
-         ilog("using chainbase for backing store");
    }
 
    void combined_database::set_revision(uint64_t revision) {
@@ -386,7 +377,7 @@ namespace eosio { namespace chain {
       });
 
       db.create<kv_db_config_object>([](auto&) {});
-      check_backing_store_setting();
+      check_backing_store_setting(true);
 
       { /// load and upgrade the block header state
          block_header_state head_header_state;

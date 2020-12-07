@@ -50,7 +50,8 @@ void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void blockvault_client_plugin::plugin_startup() {
-   if (my.get())
+   handle_sighup(); // setup logging
+   if (my.get()) 
       my->start();
 }
 
@@ -60,5 +61,10 @@ void blockvault_client_plugin::plugin_shutdown() {
 }
 
 eosio::blockvault::block_vault_interface* blockvault_client_plugin::get() { return my.get(); }
+
+void blockvault_client_plugin::handle_sighup() {
+   if (my.get())
+      my->set_logger_name("blockvault_client_plugin");
+}
 
 } // namespace eosio

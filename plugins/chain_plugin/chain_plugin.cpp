@@ -2170,6 +2170,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::
 
 read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& pp, kv_context  &kv_context, const abi_def &abi )const {
    read_only::get_kv_table_rows_params p(pp);
+   EOS_ASSERT(p.limit > 0, chain::contract_table_query_exception,  "invalid limit : ${n}", ("n", p.limit));
    string tbl_name = p.table.to_string();
 
    // Check valid table name
@@ -2213,6 +2214,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       const string &index_value = *p.index_value;
       p.lower_bound = p.index_value;
       unbounded = true;
+      p.reverse = false;
    }
 
    ///////////////////////////////////////////////////////////
@@ -2284,8 +2286,8 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    if( has_upper_bound ) {
       auto exact_match = kv_context.kv_get(p.code.to_uint64_t(), ub_key.data(), ub_key.size(), value_size);
       status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
-      if( p.reverse && !point_query && !exact_match ) {
-            status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
+      if( !point_query && !exact_match ) {
+         status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
       }
 
       EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
@@ -2320,7 +2322,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       }
 
       unsigned int count = 0;
-      for( count = 0; cur_time <= end_time && count < p.limit && cmp < 0; cur_time = fc::time_point::now() ) {
+      for( count = 0; cur_time <= end_time && count < p.limit && cmp <= 0; cur_time = fc::time_point::now() ) {
          row_key.resize(key_size);
          status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
          EOS_ASSERT(key_size == actual_size, chain::contract_table_query_exception, "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
@@ -2354,9 +2356,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
             auto time_left = end_time - cur_time;
             try {
                row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
-            }
-            catch ( fc::exception &e )
-            {
+            } catch ( fc::exception &e ) {
                row_var = fc::variant( row_value );
             }
          } else {
@@ -2371,7 +2371,10 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          } else {
             status = itr->kv_it_next(&key_size, &value_size);
          }
-         EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+         if( status == chain::kv_it_stat::iterator_end ) {
+            break;
+         }
+         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
 
          if (unbounded) {
             cur_status = itr->kv_it_status();
@@ -2386,7 +2389,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
             }
          }
 
-         if (count == p.limit && cmp < 0)
+         if (count == p.limit && cmp <= 0)
          {
             result.more = true;
             row_key.resize(key_size);
