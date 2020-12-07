@@ -85,6 +85,7 @@ The logging library built into EOSIO currently supports the following loggers:
 - `transaction_success_tracing` - detailed log that emits successful verdicts from relay nodes on the P2P network.
 - `transaction_failure_tracing` - detailed log that emits failed verdicts from relay nodes on the P2P network.
 - `trace_api` - detailed logging for the trace_api plugin.
+- `blockvault_client_plugin` - detailed logging for the blockvault client plugin.
 
 The configuration options are:
 
