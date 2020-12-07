@@ -539,13 +539,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
                   _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
-                     fc_dlog(_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
+                     fc_dlog(_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT ${c}, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
-                              ("prod", get_pending_block_producer())
+                              ("prod", get_pending_block_producer())("c", trace->except->code())
                               ("txid", trx->id()));
                   } else {
-                     fc_dlog(_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
-                              ("txid", trx->id()));
+                     fc_dlog(_log, "[TRX_TRACE] Speculative execution COULD NOT FIT ${c} tx: ${txid} RETRYING",
+                              ("txid", trx->id())("c", trace->except->code()));
                   }
                   if( !exhausted )
                      exhausted = block_is_exhausted();
