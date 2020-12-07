@@ -2130,9 +2130,6 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
    catch (const unlinkable_block_exception&) {
       fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
    }
-   catch (const fork_database_exception&) {
-      fc_dlog(_log, "got fork_database_exception", ("num", block->block_num()));
-   }
 }
 
 void producer_plugin_impl::produce_block() {
