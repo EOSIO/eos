@@ -329,6 +329,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
          }
 
+         auto existing = chain.fetch_block_by_id( id );
+         if( existing ) { return true; }
+
          // start processing of block
          auto bsf = chain.create_block_state_future( id, block );
 
@@ -2124,7 +2127,7 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
       bool connectivity_check = false; // use false right now, should investigate further after 3.0 rc
       _impl->on_sync_block(block, connectivity_check);
    }
-   catch (unlinkable_block_exception&) {
+   catch (const unlinkable_block_exception&) {
       fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
    }
 }
