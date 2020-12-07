@@ -382,6 +382,7 @@ struct controller_impl {
       }
 
       if( root_id != fork_db.root()->id ) {
+         branch.emplace_back(fork_db.root());
          fork_db.advance_root( root_id );
       }
 
