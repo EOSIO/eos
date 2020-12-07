@@ -258,13 +258,7 @@ namespace chain { namespace backing_store { namespace db_key_value_format {
       return composite_key;
    }
 
-   template<key_type kt>
-   b1::chain_kv::bytes create_prefix_type_key(name scope, name table) {
-      static constexpr std::size_t no_key_size = 0;
-      static constexpr std::size_t no_extension_size = 0;
-      b1::chain_kv::bytes composite_key = detail::prepare_composite_key(scope, table, no_key_size, kt, no_extension_size);
-      return composite_key;
-   }
+   b1::chain_kv::bytes create_prefix_type_key(name scope, name table, key_type kt);
 
    template<typename Key>
    b1::chain_kv::bytes create_prefix_secondary_key(name scope, name table, const Key& sec_key) {
@@ -568,4 +562,20 @@ namespace chain { namespace backing_store { namespace db_key_value_format {
                  "remaining string size is less than the sizeof(uint64_t)");
       return true;
    }
+
+   eosio::session::shared_bytes create_full_primary_key(name code, name scope, name table, uint64_t primary_key);
+   eosio::session::shared_bytes create_full_prefix_key(name code, name scope, name table, std::optional<key_type> kt = std::optional<key_type>{});
+
+   template<typename Key>
+   eosio::session::shared_bytes create_full_secondary_key(name code, name scope, name table, const Key& sec_key, uint64_t primary_key) {
+      bytes composite_key = create_secondary_key(scope, table, sec_key, primary_key);
+      return create_full_key(composite_key, code);
+   }
+
+   template<typename Key>
+   eosio::session::shared_bytes create_full_prefix_secondary_key(name code, name scope, name table, const Key& sec_key) {
+      bytes composite_key = create_prefix_secondary_key(scope, table, sec_key);
+      return create_full_key(composite_key, code);
+   }
+
 }}}} // ns eosio::chain::backing_store::db_key_value_format

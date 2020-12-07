@@ -21,7 +21,7 @@ protected:
    rocksdb_receiver(std::vector<table_delta> &deltas, const chainbase::database& db) : deltas_(deltas), db_(db) {};
 
    std::optional<chain::backing_store::table_id_object_view> table_;
-   bool present_{true};
+   uint8_t present_{2};
 
    template<typename Object>
    void add_delta_with_table(const char *name, const Object& row){
@@ -162,7 +162,7 @@ public:
       table_ = {};
    }
 
-   void set_delta_present_flag(bool value) {
+   void set_delta_present(uint8_t value) {
       maybe_process_table();
 
       present_ = value;

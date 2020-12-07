@@ -7,6 +7,8 @@
 #include <eosio/chain/types.hpp>
 #include <b1/session/shared_bytes.hpp>
 #include <b1/session/session.hpp>
+#include <b1/session/session_variant.hpp>
+#include <b1/session/rocks_session.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
    struct db_context;
@@ -37,9 +39,10 @@ namespace eosio { namespace chain { namespace backing_store {
 
    struct db_key_value_any_lookup {
       using session_type = eosio::session::session<eosio::session::session<eosio::session::rocksdb_t>>;
+      using session_variant_type = eosio::session::session_variant<session_type::parent_type, session_type>;
       using shared_bytes = eosio::session::shared_bytes;
 
-      db_key_value_any_lookup(db_context& c, session_type& session) : parent(c), current_session(session) {}
+      db_key_value_any_lookup(db_context& c, session_variant_type session) : parent(c), current_session(session) {}
 
       static key_bundle get_slice(name code, name scope, name table);
       static key_bundle get_table_end_slice(name code, name scope, name table);
@@ -59,15 +62,15 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       bool match_prefix(const shared_bytes& shorter, const shared_bytes& longer);
-      bool match_prefix(const shared_bytes& shorter, const session_type::iterator& iter);
+      bool match_prefix(const shared_bytes& shorter, const session_variant_type::iterator& iter);
 
       bool match(const shared_bytes& lhs, const shared_bytes& rhs);
-      bool match(const shared_bytes& lhs, const session_type::iterator& iter);
+      bool match(const shared_bytes& lhs, const session_variant_type::iterator& iter);
 
-      db_context&               parent;
-      session_type&             current_session;
-      static constexpr int64_t  table_overhead = config::billable_size_v<table_id_object>;
-      static constexpr int64_t  overhead = config::billable_size_v<key_value_object>;
+      db_context&                parent;
+      session_variant_type       current_session;
+      static constexpr int64_t   table_overhead = config::billable_size_v<table_id_object>;
+      static constexpr int64_t   overhead = config::billable_size_v<key_value_object>;
       // this is used for any value that just needs something in it to distinguish it from the invalid value
       static const shared_bytes useless_value;
    };

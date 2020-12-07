@@ -39,7 +39,7 @@ FC_REFLECT(itparam, (db)(count)(erase))
 
 class kv_tester : public tester {
  public:
-   kv_tester() {
+   kv_tester(backing_store_type backing_store) : tester(setup_policy::full, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, backing_store) {
       produce_blocks(2);
 
       create_accounts({ "kvtest"_n, "kvtest1"_n, "kvtest2"_n, "kvtest3"_n, "kvtest4"_n });
@@ -690,87 +690,86 @@ class kv_tester : public tester {
    abi_serializer sys_abi_ser;
 };
 
+class kv_chainbase_tester : public kv_tester {
+ public:
+   kv_chainbase_tester() : kv_tester(backing_store_type::CHAINBASE) { }
+};
+
 class kv_rocksdb_tester : public kv_tester {
  public:
-   kv_rocksdb_tester() {
-      // Switch configuration option to RocksDB
-      close();
-      auto cfg = get_config();
-      cfg.backing_store = eosio::chain::backing_store_type::ROCKSDB;
-      init(cfg);
-   }
+   kv_rocksdb_tester() : kv_tester(backing_store_type::ROCKSDB) { }
 };
 
 BOOST_AUTO_TEST_SUITE(kv_tests)
 
-BOOST_FIXTURE_TEST_CASE(kv_basic, kv_tester) try {
+BOOST_FIXTURE_TEST_CASE(kv_basic, kv_chainbase_tester) try {
    test_kv_basic_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scan, kv_tester) try {
+BOOST_FIXTURE_TEST_CASE(kv_scan, kv_chainbase_tester) try {
    test_kv_scan_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_tester) try {
+BOOST_FIXTURE_TEST_CASE(kv_scanrev, kv_chainbase_tester) try {
    test_kv_scanrev_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(kv_scanrev2, kv_chainbase_tester) try { //
    test_kv_scanrev2_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(kv_iterase, kv_chainbase_tester) try { //
    test_kv_iterase_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(kv_ram_usage, kv_chainbase_tester) try { //
    test_kv_ram_usage_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(kv_resource_limit, kv_chainbase_tester) try { //
    test_kv_resource_limit_common();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(kv_key_value_limit, kv_chainbase_tester) try { //
    test_kv_key_value_limit_common();
 }
 FC_LOG_AND_RETHROW()
 
 constexpr name databases[] = { "eosio.kvram"_n };
 
-BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_inc_dec_usage, bdata::make(databases), db) try { //
    test_kv_inc_dec_usage();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_tester, kv_inc_usage_and_limit, bdata::make(databases), db) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_inc_usage_and_limit, bdata::make(databases), db) try { //
    test_kv_inc_usage_and_limit();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_tester, kv_dec_limit_and_usage, bdata::make(databases), db) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, kv_dec_limit_and_usage, bdata::make(databases), db) try { //
    test_kv_dec_limit_and_usage();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_tester, get_data, bdata::make(databases), db) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, get_data, bdata::make(databases), db) try { //
    test_get_data();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_tester, other_contract, bdata::make(databases), db) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, other_contract, bdata::make(databases), db) try { //
    test_other_contract();
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(max_iterators, kv_tester) try { //
+BOOST_FIXTURE_TEST_CASE(max_iterators, kv_chainbase_tester) try { //
    test_max_iterators();
 }
 FC_LOG_AND_RETHROW()
@@ -847,7 +846,7 @@ BOOST_FIXTURE_TEST_CASE(max_iterators_rocksdb, kv_rocksdb_tester) try { //
 }
 FC_LOG_AND_RETHROW()
 
-BOOST_DATA_TEST_CASE_F(kv_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
+BOOST_DATA_TEST_CASE_F(kv_chainbase_tester, undo, bdata::make(databases) * bdata::make({false, true}), db, rocks) try { //
    test_undo();
 }
 FC_LOG_AND_RETHROW()

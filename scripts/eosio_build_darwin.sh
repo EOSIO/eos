@@ -38,3 +38,5 @@ ensure-brew-packages "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 build-clang
 # BOOST Installation
 ensure-boost
+# `libpq` and `libpqxx` Installation
+ensure-libpq-and-libpqxx

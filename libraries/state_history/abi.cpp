@@ -61,7 +61,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "row", "fields": [
+            "name": "row_v0", "fields": [
                 { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
             ]
@@ -69,7 +69,19 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "table_delta_v0", "fields": [
                 { "name": "name", "type": "string" },
-                { "name": "rows", "type": "row[]" }
+                { "name": "rows", "type": "row_v0[]" }
+            ]
+        },
+        {
+            "name": "row_v1", "fields": [
+                { "name": "present", "type": "uint8" },
+                { "name": "data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "table_delta_v1", "fields": [
+                { "name": "name", "type": "string" },
+                { "name": "rows", "type": "row_v1[]" }
             ]
         },
         {
@@ -623,7 +635,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "prunable_data_type", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
         { "name": "context_free_segment_type", "types": ["signature", "bytes"] },
 
-        { "name": "table_delta", "types": ["table_delta_v0"] },
+        { "name": "table_delta", "types": ["table_delta_v0", "table_delta_v1"] },
         { "name": "account", "types": ["account_v0"] },
         { "name": "account_metadata", "types": ["account_metadata_v0"] },
         { "name": "code", "types": ["code_v0"] },

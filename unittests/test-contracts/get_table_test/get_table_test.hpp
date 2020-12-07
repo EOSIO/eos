@@ -56,6 +56,9 @@ class [[eosio::contract]] get_table_test : public eosio::contract {
    void addnumobj(uint64_t input);
 
    [[eosio::action]]
+   void modifynumobj(uint64_t id);
+
+   [[eosio::action]]
    void erasenumobj(uint64_t id);
 
    [[eosio::action]]

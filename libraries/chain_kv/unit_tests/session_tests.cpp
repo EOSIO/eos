@@ -1,5 +1,4 @@
 #include "data_store_tests.hpp"
-#include <b1/session/cache.hpp>
 #include <b1/session/rocks_session.hpp>
 #include <b1/session/session.hpp>
 
@@ -29,7 +28,7 @@ void perform_session_level_test(const std::string& dbpath, bool always_undo = fa
       verify_session_key_order(block_session);
 
       for (size_t j = 0; j < 3; ++j) {
-         auto transaction = session_type(block_session);
+         auto transaction = session_type(block_session, nullptr);
          kvs_list.emplace_back(generate_kvs(50));
          ordered_list.emplace_back(std::begin(kvs_list.back()), std::end(kvs_list.back()));
          write(transaction, kvs_list.back());
@@ -143,7 +142,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
       auto session2 = eosio::session_tests::make_session("/tmp/session8");
       make_data_store(session2, char_key_values, string_t{});
-      verify_iterators<const decltype(session2)>(session2, string_t{});
+      verify_iterators<decltype(session2)>(session2, string_t{});
    }
    {
       auto session3 = eosio::session_tests::make_session("/tmp/session9");
@@ -153,7 +152,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_test) {
    {
       auto session4 = eosio::session_tests::make_session("/tmp/session10");
       make_data_store(session4, int_key_values, int_t{});
-      verify_iterators<const decltype(session4)>(session4, int_t{});
+      verify_iterators<decltype(session4)>(session4, int_t{});
    }
 }
 
@@ -166,7 +165,7 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
       auto session2 = eosio::session_tests::make_session("/tmp/session12");
       make_data_store(session2, char_key_values, string_t{});
-      verify_session_key_order<const decltype(session2)>(session2);
+      verify_session_key_order<decltype(session2)>(session2);
    }
    {
       auto session3 = eosio::session_tests::make_session("/tmp/session13");
@@ -176,13 +175,17 @@ BOOST_AUTO_TEST_CASE(session_iterator_key_order_test) {
    {
       auto session4 = eosio::session_tests::make_session("/tmp/session14");
       make_data_store(session4, int_key_values, int_t{});
-      verify_session_key_order<const decltype(session4)>(session4);
+      verify_session_key_order<decltype(session4)>(session4);
    }
 }
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) { eosio::session_tests::perform_session_level_test("/tmp/session22"); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_sometimes) {
+   eosio::session_tests::perform_session_level_test("/tmp/session22");
+}
 
-BOOST_AUTO_TEST_CASE(session_level_test_undo_always) { eosio::session_tests::perform_session_level_test("/tmp/session23", true); }
+BOOST_AUTO_TEST_CASE(session_level_test_undo_always) {
+   eosio::session_tests::perform_session_level_test("/tmp/session23", true);
+}
 
 BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
    size_t key_count      = 10;
@@ -216,7 +219,7 @@ BOOST_AUTO_TEST_CASE(session_level_test_attach_detach) {
       auto& kvs = block_session_kvs[i];
 
       for (size_t j = 0; j < 3; ++j) {
-         transaction_sessions.emplace_back(session_type(block_session));
+         transaction_sessions.emplace_back(session_type(block_session, nullptr));
          transaction_session_kvs.emplace_back(generate_kvs(key_count));
          write(transaction_sessions.back(), transaction_session_kvs.back());
          verify_equal(transaction_sessions.back(), collapse({ root_session_kvs, kvs, transaction_session_kvs.back() }),
@@ -304,7 +307,7 @@ BOOST_AUTO_TEST_CASE(session_overwrite_key_in_child) {
    verify_key_value(block_session, 3, 1003);
    verify_key_value(block_session, 4, 1004);
 
-   auto transaction_session = session_type(block_session);
+   auto transaction_session = session_type(block_session, nullptr);
    auto transaction_session_kvs =
          std::unordered_map<uint16_t, uint16_t>{ { 0, 2000 }, { 1, 2001 }, { 2, 2002 }, { 3, 2003 },
                                                  { 4, 2004 }, { 9, 2005 }, { 10, 2006 } };
@@ -337,8 +340,9 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
       auto end   = std::end(ds);
       do {
          if (it != end) {
-            auto key_value = *it;
-            BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(key_value.first.data())) == std::end(keys));
+            auto key    = it.key();
+            auto buffer = std::vector<shared_bytes::underlying_type_t>{ std::begin(key), std::end(key) };
+            BOOST_REQUIRE(keys.find(*reinterpret_cast<const uint16_t*>(buffer.data())) == std::end(keys));
          }
          ++it;
       } while (it != begin);
@@ -363,8 +367,12 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
             continue;
          }
          auto key_value = *it;
-         auto key       = *reinterpret_cast<const uint16_t*>(key_value.first.data());
-         auto value     = *reinterpret_cast<const uint16_t*>(key_value.second->data());
+         auto buffer =
+               std::vector<shared_bytes::underlying_type_t>{ std::begin(key_value.first), std::end(key_value.first) };
+         auto key   = *reinterpret_cast<const uint16_t*>(buffer.data());
+         buffer     = std::vector<shared_bytes::underlying_type_t>{ std::begin(*key_value.second),
+                                                                std::end(*key_value.second) };
+         auto value = *reinterpret_cast<const uint16_t*>(buffer.data());
 
          auto kv_it = key_values.find(key);
          if (kv_it != std::end(key_values)) {
@@ -398,7 +406,7 @@ BOOST_AUTO_TEST_CASE(session_delete_key_in_child) {
    verify_keys_deleted(block_session, std::unordered_set<uint16_t>{ 2, 4, 6 });
    // verify_equal(root_session, root_session_kvs, int_t{});
 
-   auto transaction_session     = session_type(block_session);
+   auto transaction_session     = session_type(block_session, nullptr);
    auto transaction_session_kvs = std::unordered_map<uint16_t, uint16_t>{ { 2, 2003 }, { 4, 2004 } };
    write(transaction_session, transaction_session_kvs);
    verify_keys_deleted(transaction_session, std::unordered_set<uint16_t>{ 6 });

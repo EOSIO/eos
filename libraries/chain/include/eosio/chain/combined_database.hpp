@@ -25,7 +25,6 @@
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/controller.hpp>
 
-#include <b1/session/cache.hpp>
 #include <b1/session/rocks_session.hpp>
 #include <b1/session/session.hpp>
 #include <b1/session/undo_stack.hpp>
@@ -84,7 +83,8 @@ namespace eosio { namespace chain {
 
    class combined_database {
     public:
-      explicit combined_database(chainbase::database& chain_db);
+      explicit combined_database(chainbase::database& chain_db,
+                                 uint32_t snapshot_batch_threashold);
 
       combined_database(chainbase::database& chain_db,
                         const controller::config& cfg);
@@ -93,10 +93,9 @@ namespace eosio { namespace chain {
       combined_database& operator=(const combined_database& copy) = delete;
 
       // Save the backing_store setting to the chainbase in order to detect
-      // when this setting is switched from chainbase to rocksdb, in which
-      // case, check that no KV entries already exist in the chainbase.
-      // Otherwise, they would become unreachable.
-      void check_backing_store_setting();
+      // when this setting is switched between chainbase and rocksdb.
+      // If existing state is not clean, switching is not allowed.
+      void check_backing_store_setting(bool clean_startup);
 
       static combined_session make_no_op_session() { return combined_session(); }
 
@@ -112,8 +111,10 @@ namespace eosio { namespace chain {
 
       void flush();
 
+      static void destroy(const fc::path& p);
+
       std::unique_ptr<kv_context> create_kv_context(name receiver, kv_resource_manager resource_manager,
-                                                    const kv_database_config& limits);
+                                                    const kv_database_config& limits)const;
 
       std::unique_ptr<db_context> create_db_context(apply_context& context, name receiver);
 
@@ -129,6 +130,7 @@ namespace eosio { namespace chain {
 
       auto &get_db(void) const { return db; }
       auto &get_kv_undo_stack(void) const { return kv_undo_stack; }
+      backing_store_type get_backing_store() const { return backing_store; }
 
     private:
       void add_contract_tables_to_snapshot(const snapshot_writer_ptr& snapshot) const;
@@ -138,6 +140,7 @@ namespace eosio { namespace chain {
       chainbase::database&                                       db;
       std::unique_ptr<rocks_db_type>                             kv_database;
       kv_undo_stack_ptr                                          kv_undo_stack;
+      const uint64_t                                             kv_snapshot_batch_threashold;
    };
 
    std::optional<eosio::chain::genesis_state> extract_legacy_genesis_state(snapshot_reader& snapshot, uint32_t version);

@@ -16,9 +16,9 @@ namespace eosio { namespace chain { namespace webassembly {
       fc::raw::unpack( ds, s );
       fc::raw::unpack( pubds, p );
 
-      EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+      EOS_ASSERT(static_cast<unsigned>(s.which()) < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
         "Unactivated signature type used during assert_recover_key");
-      EOS_ASSERT(p.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+      EOS_ASSERT(static_cast<unsigned>(p.which()) < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
         "Unactivated key type used when creating assert_recover_key");
 
       if(context.control.is_producing_block())
@@ -36,7 +36,7 @@ namespace eosio { namespace chain { namespace webassembly {
       datastream<const char*> ds( sig.data(), sig.size() );
       fc::raw::unpack(ds, s);
 
-      EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+      EOS_ASSERT(static_cast<unsigned>(s.which()) < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
                  "Unactivated signature type used during recover_key");
 
       if(context.control.is_producing_block())
@@ -47,7 +47,7 @@ namespace eosio { namespace chain { namespace webassembly {
       auto recovered = fc::crypto::public_key(s, *digest, false);
 
       // the key types newer than the first 2 may be varible in length
-      if (s.which() >= config::genesis_num_supported_key_types ) {
+      if (static_cast<unsigned>(s.which()) >= config::genesis_num_supported_key_types ) {
          EOS_ASSERT(pub.size() >= 33, wasm_execution_error,
                     "destination buffer must at least be able to hold an ECC public key");
          auto packed_pubkey = fc::raw::pack(recovered);

@@ -220,11 +220,11 @@ namespace {
    struct vslice {
       enum mode { read_mode, write_mode};
       vslice(mode m = write_mode) : _mode(m) {}
-      long tellp() const {
+      unsigned long tellp() const {
          return _pos;
       }
 
-      void seek( long loc ) {
+      void seek( unsigned long loc ) {
          if (_mode == read_mode) {
             if (loc > _buffer.size()) {
                throw std::ios_base::failure( "read vslice unable to seek to: " + std::to_string(loc) + ", end is at: " + std::to_string(_buffer.size()));
@@ -268,7 +268,7 @@ namespace {
 
       std::vector<char> _buffer;
       mode _mode = write_mode;
-      long _pos = 0l;
+      unsigned long _pos = 0lu;
       bool _flush = false;
       bool _sync = false;
    };
@@ -706,7 +706,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
-      for (int reps = 0; reps < file_paths.size(); reps++) {
+      for (std::size_t reps = 0; reps < file_paths.size(); reps++) {
          //  leading edge,
          //  compresses one slice
          files.erase(std::get<1>(file_paths.at(reps)));
@@ -761,7 +761,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
-      for (int reps = 0; reps < file_paths.size() + 1; reps++) {
+      for (std::size_t reps = 0; reps < file_paths.size() + 1; reps++) {
          //  leading edge,
          //  compresses one slice IF its not past the end of our test,
          if (reps < file_paths.size()) {

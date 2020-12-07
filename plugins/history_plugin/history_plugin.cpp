@@ -44,14 +44,14 @@ namespace eosio {
 
    struct by_action_sequence_num;
    struct by_account_action_seq;
-   struct by_trx_id;
+   struct by_trx_id_act_seq;
 
    using action_history_index = chainbase::shared_multi_index_container<
       action_history_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<action_history_object, action_history_object::id_type, &action_history_object::id>>,
          ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>,
-         ordered_unique<tag<by_trx_id>,
+         ordered_unique<tag<by_trx_id_act_seq>,
             composite_key< action_history_object,
                member<action_history_object, transaction_id_type, &action_history_object::trx_id>,
                member<action_history_object, uint64_t, &action_history_object::action_sequence_num >
@@ -237,7 +237,7 @@ namespace eosio {
             else if( at.act.name == "updateauth"_n )
             {
                const auto update = at.act.data_as<chain::updateauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
+               remove<public_key_history_multi_index, by_account_permission_name>(db, update.account, update.permission);
                remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
                add(db, update.auth.keys, update.account, update.permission);
                add(db, update.auth.accounts, update.account, update.permission);
@@ -245,7 +245,7 @@ namespace eosio {
             else if( at.act.name == "deleteauth"_n )
             {
                const auto del = at.act.data_as<chain::deleteauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
+               remove<public_key_history_multi_index, by_account_permission_name>(db, del.account, del.permission);
                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
             }
          }
@@ -463,7 +463,7 @@ namespace eosio {
          };
 
          const auto& db = chain.db();
-         const auto& idx = db.get_index<action_history_index, by_trx_id>();
+         const auto& idx = db.get_index<action_history_index, by_trx_id_act_seq>();
          auto itr = idx.lower_bound( boost::make_tuple( input_id ) );
 
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
