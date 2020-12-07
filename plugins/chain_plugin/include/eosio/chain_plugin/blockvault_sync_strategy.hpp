@@ -101,6 +101,9 @@ struct blockvault_sync_strategy : public sync_callback {
          }
          ++_num_unlinkable_blocks;
       }
+      catch (const fork_database_exception&) {
+         elog("fork db error attempting to sync block ${num}.  likely duplicate reversible block", ("num", block->block_num()));
+      }
    }
 
  private:
