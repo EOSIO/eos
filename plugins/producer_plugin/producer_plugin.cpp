@@ -2124,8 +2124,11 @@ void block_only_sync::on_block(eosio::chain::signed_block_ptr block) {
       bool connectivity_check = false; // use false right now, should investigate further after 3.0 rc
       _impl->on_sync_block(block, connectivity_check);
    }
-   catch (unlinkable_block_exception&) {
+   catch (const unlinkable_block_exception&) {
       fc_dlog(_log, "got unlinkable block ${num} from block vault", ("num", block->block_num()));
+   }
+   catch (const fork_database_exception&) {
+      fc_dlog(_log, "got fork_database_exception", ("num", block->block_num()));
    }
 }
 
