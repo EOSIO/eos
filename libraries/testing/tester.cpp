@@ -1195,13 +1195,6 @@ namespace eosio { namespace testing {
       preactivate_protocol_features( preactivations );
    }
 
-   void base_tester::restart_with_backing_store(chain::backing_store_type backing_store) {
-      auto cfg = get_config();
-      close(); // clean up chain so no dirty db error
-      cfg.backing_store = backing_store;
-      init(cfg); // enable new config
-   }
-
    tester::tester(const std::function<void(controller&)>& control_setup, setup_policy policy, db_read_mode read_mode) {
       auto def_conf            = default_config(tempdir);
       def_conf.first.read_mode = read_mode;

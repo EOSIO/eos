@@ -609,10 +609,7 @@ static const char kv_snapshot_bios[] = R"=====(
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
    for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-         tester chain;
-
-         // Set backing_store for save snapshot
-         chain.restart_with_backing_store(origin_backing_store);
+         tester chain {setup_policy::full, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, origin_backing_store};
 
          chain.create_accounts({"manager"_n});
          auto get_ext = [](unsigned i) {
