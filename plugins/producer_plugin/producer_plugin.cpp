@@ -1759,7 +1759,15 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
          const transaction_metadata_ptr trx = itr->trx_meta;
          ++num_processed;
          try {
-            auto trx_deadline = fc::time_point::now() + fc::milliseconds( _max_transaction_time_ms );
+            auto start = fc::time_point::now();
+            auto trx_deadline = start + fc::milliseconds( _max_transaction_time_ms );
+
+            auto prev_billed_cpu_time_us = trx->billed_cpu_time_us;
+            if( prev_billed_cpu_time_us > 0 ) {
+               auto prev_billed_plus50 = prev_billed_cpu_time_us + EOS_PERCENT( prev_billed_cpu_time_us, 50 * config::percent_1 );
+               auto trx_dl = start + fc::microseconds( prev_billed_plus50 );
+               if( trx_dl < trx_deadline ) trx_deadline = trx_dl;
+            }
             bool deadline_is_subjective = false;
             if( _max_transaction_time_ms < 0 ||
                 (_pending_block_mode == pending_block_mode::producing && deadline < trx_deadline) ) {
@@ -1767,7 +1775,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                trx_deadline = deadline;
             }
 
-            auto trace = chain.push_transaction( trx, trx_deadline, trx->billed_cpu_time_us, false );
+            auto trace = chain.push_transaction( trx, trx_deadline, prev_billed_cpu_time_us, false );
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective ) ) {
                   if( block_is_exhausted() ) {
@@ -1777,6 +1785,9 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   }
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
+                  fc_dlog( _log, "Failed ${c} trx, prev billed: ${p}us, ran: ${r}us, id: ${id}",
+                           ("c", trace->except->code())("p", prev_billed_cpu_time_us)
+                           ("r", fc::time_point::now() - start)("id", trx->id()) );
                   ++num_failed;
                   itr = _unapplied_transactions.erase( itr );
                   continue;
@@ -2137,7 +2148,7 @@ void producer_plugin_impl::produce_block() {
 
 void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const {
    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
-           ("trxid", trx_id)("reason", reason));
+           ("txid", trx_id)("why", reason));
 }
 
 } // namespace eosio

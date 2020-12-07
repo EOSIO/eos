@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 # variables
-echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
+echo "--- $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 [[ -z "$JOBS" ]] && export JOBS=$(getconf _NPROCESSORS_ONLN)
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 if [[ "$(uname)" == 'Linux' ]]; then
@@ -10,11 +10,11 @@ if [[ "$(uname)" == 'Linux' ]]; then
         [[ -f /opt/rh/rh-python36/enable ]] && source /opt/rh/rh-python36/enable
     fi
 fi
-cd $GIT_ROOT/build
+cd "$GIT_ROOT/build"
 # count tests
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running WASM Spec Tests"
-TEST_COUNT=$(ctest -N -L wasm_spec_tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
-if [[ $TEST_COUNT > 0 ]]; then
+TEST_COUNT=$(ctest -N -L 'wasm_spec_tests' | grep -i 'Total Tests: ' | cut -d ':' -f '2' | awk '{print $1}')
+if [[ "$TEST_COUNT" > '0' ]]; then
     echo "$TEST_COUNT tests found."
 else
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests registered with ctest! Exiting..."
@@ -22,8 +22,9 @@ else
 fi
 # run tests
 set +e # defer ctest error handling to end
-echo "$ ctest -j $JOBS -L wasm_spec_tests --output-on-failure -T Test"
-ctest -j $JOBS -L wasm_spec_tests --output-on-failure -T Test
+CTEST_COMMAND="ctest -j '$JOBS' -L 'wasm_spec_tests' --output-on-failure -T 'Test'"
+echo "$ $CTEST_COMMAND"
+eval $CTEST_COMMAND
 EXIT_STATUS=$?
 echo 'Done running WASM spec tests.'
 exit $EXIT_STATUS

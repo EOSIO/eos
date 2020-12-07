@@ -6,21 +6,26 @@ set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
-    ./"$@"
+    TEST_COMMAND="\"./$1\" ${@: 2}"
+    echo "$ $TEST_COMMAND"
+    eval $TEST_COMMAND
     EXIT_STATUS=$?
 else # Linux
-    COMMANDS="$MOUNTED_DIR/$@"
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
-    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY $FULL_TAG bash -c \"$COMMANDS\""
+    echo '--- :docker: Selecting Container'
+    TEST_COMMAND="'\"'$MOUNTED_DIR/$1'\"' ${@: 2}"
+    COMMANDS="echo \"$ $TEST_COMMAND\" && eval $TEST_COMMAND"
+    . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile"
+    DOCKER_RUN_COMMAND="docker run --rm --init -v \"\$(pwd):$MOUNTED_DIR\" $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY '$FULL_TAG' bash -c '$COMMANDS'"
     set +e # defer error handling to end
-    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS -e BUILDKITE_API_KEY $FULL_TAG bash -c \"$COMMANDS\"
+    echo "$ $DOCKER_RUN_COMMAND"
+    eval $DOCKER_RUN_COMMAND
     EXIT_STATUS=$?
 fi
 # buildkite
 if [[ "$BUILDKITE" == 'true' ]]; then
     cd build
     # upload artifacts
-    echo '+++ :arrow_up: Uploading Artifacts'
+    echo '--- :arrow_up: Uploading Artifacts'
     echo 'Compressing core dumps...'
     [[ $((`ls -1 core.* 2>/dev/null | wc -l`)) != 0 ]] && tar czf core.tar.gz core.* || : # collect core dumps
     echo 'Exporting xUnit XML'
@@ -34,7 +39,8 @@ if [[ "$BUILDKITE" == 'true' ]]; then
     echo 'Done uploading artifacts.'
 fi
 # re-throw
-if [[ "$EXIT_STATUS" != 0 ]]; then
+if [[ "$EXIT_STATUS" != '0' ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
     exit $EXIT_STATUS
 fi
+echo '--- :white_check_mark: Done!'
