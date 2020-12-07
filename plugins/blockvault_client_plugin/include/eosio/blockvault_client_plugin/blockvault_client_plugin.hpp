@@ -38,6 +38,8 @@ public:
    void plugin_shutdown();
    eosio::blockvault::block_vault_interface* get();
 
+   void handle_sighup() override;
+
  private:
    std::unique_ptr<class blockvault_client_plugin_impl> my;
 };

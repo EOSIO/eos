@@ -654,6 +654,8 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_decompress_exception,   snapshot_exception,
+                                    3240002, "Snapshot decompress error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
                                  3250000, "Protocol feature exception" )
