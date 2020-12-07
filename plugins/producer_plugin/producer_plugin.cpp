@@ -329,6 +329,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
          }
 
+         auto existing = chain.fetch_block_by_id( id );
+         if( existing ) { return true; }
+
          // start processing of block
          auto bsf = chain.create_block_state_future( id, block );
 
