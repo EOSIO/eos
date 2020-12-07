@@ -541,9 +541,9 @@ paths:
                 - args
               properties:
                 code:
-                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 action:
-                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                  $ref: "https://eosio.github.io/schemata/v2.0/oas/Name.yaml"
                 args:
                   type: object
                   description: json object of the action parameters that will be serialized.
