@@ -149,8 +149,10 @@ class shared_bytes {
    const char* const data() const;
 
    iterator       begin();
+   const_iterator cbegin();
    const_iterator begin() const;
    iterator       end();
+   const_iterator cend();
    const_iterator end() const;
 
    static shared_bytes from_hex_string(const std::string& str);
@@ -372,6 +374,14 @@ inline shared_bytes::iterator shared_bytes::begin() {
 }
 
 inline shared_bytes::iterator shared_bytes::end() {
+   return iterator{ this, 0, static_cast<int64_t>(m_size) - 1, -1 };
+}
+
+inline shared_bytes::const_iterator shared_bytes::cbegin() {
+   return iterator{ this, 0, static_cast<int64_t>(m_size) - 1, m_size == 0 ? -1 : 0 };
+}
+
+inline shared_bytes::const_iterator shared_bytes::cend() {
    return iterator{ this, 0, static_cast<int64_t>(m_size) - 1, -1 };
 }
 
