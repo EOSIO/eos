@@ -339,9 +339,17 @@ struct controller_impl {
       if( fork_head->dpos_irreversible_blocknum <= lib_num )
          return;
 
-      const auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
+      auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
       try {
          const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
+
+         std::vector<std::future<std::tuple<signed_block_ptr, std::vector<char>>>> v;
+         v.reserve( branch.size() );
+         for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
+            v.emplace_back( blog.create_append_future( thread_pool.get_executor(), (*bitr)->block,
+                                                       packed_transaction::cf_compression_type::none ) );
+         }
+         auto it = v.begin();
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
@@ -354,7 +362,8 @@ struct controller_impl {
 
             // blog.append could fail due to failures like running out of space.
             // Do it before commit so that in case it throws, DB can be rolled back.
-            blog.append( (*bitr)->block, packed_transaction::cf_compression_type::none );
+            blog.append( std::move( *it ) );
+            ++it;
 
             kv_db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
@@ -373,8 +382,12 @@ struct controller_impl {
       }
 
       if( root_id != fork_db.root()->id ) {
+         branch.emplace_back(fork_db.root());
          fork_db.advance_root( root_id );
       }
+
+      // delete branch in thread pool
+      boost::asio::post( thread_pool.get_executor(), [branch{std::move(branch)}]() {} );
    }
 
    /**
@@ -1536,6 +1549,21 @@ struct controller_impl {
 
       auto& pbhs = pending->get_pending_block_header_state();
 
+      auto& bb = std::get<building_block>(pending->_block_stage);
+
+      auto action_merkle_fut = async_thread_pool( thread_pool.get_executor(),
+                                                  [ids{std::move( bb._action_receipt_digests )}]() mutable {
+                                                     return merkle( std::move( ids ) );
+                                                  } );
+      const bool calc_trx_merkle = !std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests);
+      std::future<checksum256_type> trx_merkle_fut;
+      if( calc_trx_merkle ) {
+         trx_merkle_fut = async_thread_pool( thread_pool.get_executor(),
+                                             [ids{std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) )}]() mutable {
+                                                return merkle( std::move( ids ) );
+                                             } );
+      }
+
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
@@ -1546,14 +1574,10 @@ struct controller_impl {
       );
       resource_limits.process_block_usage(pbhs.block_num);
 
-      auto& bb = std::get<building_block>(pending->_block_stage);
-
       // Create (unsigned) block:
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
-         std::holds_alternative<checksum256_type>(bb._trx_mroot_or_receipt_digests) ?
-               std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests) :
-               merkle( std::move( std::get<digests_t>(bb._trx_mroot_or_receipt_digests) ) ),
-         merkle( std::move( std::get<building_block>(pending->_block_stage)._action_receipt_digests ) ),
+         calc_trx_merkle ? trx_merkle_fut.get() : std::get<checksum256_type>(bb._trx_mroot_or_receipt_digests),
+         action_merkle_fut.get(),
          bb._new_pending_producer_schedule,
          std::move( bb._new_protocol_feature_activations ),
          protocol_features.get_protocol_feature_set()
