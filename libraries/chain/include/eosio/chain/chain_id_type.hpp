@@ -2,8 +2,6 @@
 
 #include <fc/crypto/sha256.hpp>
 
-struct hello;
-
 namespace eosio {
 
    class net_plugin_impl;

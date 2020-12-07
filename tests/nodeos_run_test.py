@@ -67,7 +67,9 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap) is False:
+        specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
+                                  1 : " --backing-store=rocksdb" }
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:

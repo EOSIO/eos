@@ -164,11 +164,22 @@ struct kv_rocksdb_fixture {
    }
 
    void check_test_kv_it_status(it_state state, it_pos pos, kv_it_stat expected_status) {
-      mock_is_end = [pos]() -> bool { return pos == it_pos::END; };
+      mock_get_kv = []() -> std::pair<eosio::session::shared_bytes, std::optional<eosio::session::shared_bytes>> {
+         static const auto expected_key = prefix + std::string{"key"};
+         static const auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
+         return std::pair{ key, eosio::session::shared_bytes{"payernamValue", 13} };
+      };
+      mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), prefix.size()); };
+      mock_is_erased = []() -> bool { return false; };
+      mock_is_end = []() -> bool { return false; };
+      std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), prefix.size());
+      if (pos != it_pos::END) {
+         uint32_t found_key_size = 0;
+         uint32_t found_value_size = 0;
+         it->kv_it_next(&found_key_size, &found_value_size);
+      }
       mock_is_erased = [state]() -> bool { return state == it_state::ERASED; };
-      mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), it_key_size); };
-
-      std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
+      mock_is_end = [pos]() -> bool { return pos == it_pos::END; };
       BOOST_CHECK(it->kv_it_status() == expected_status);
    }
 
@@ -317,13 +328,18 @@ struct kv_rocksdb_fixture {
       mock_is_erased = [state]() -> bool { return state == it_state::ERASED; };
 
       mock_get_kv = []() -> std::pair<eosio::session::shared_bytes, std::optional<eosio::session::shared_bytes>> {
-         return std::pair{ eosio::session::shared_bytes("key", 3), std::optional<eosio::session::shared_bytes>{} };
+         static const auto expected_key = prefix + std::string{"key"};
+         static const auto key = eosio::chain::make_prefix_key(contract, expected_key.c_str(), expected_key.size());
+         return std::pair{ key, eosio::session::shared_bytes{"payernamValue", 13} };
       };
-      mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), it_key_size); };
-      std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
+      mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), prefix.size()); };
+      std::unique_ptr<kv_iterator> it = my_kv_context->kv_it_create(contract, prefix.c_str(), prefix.size());
       if (state == it_state::ERASED) {
          BOOST_CHECK_THROW(it->kv_it_key_compare(mykey.c_str(), mykey.size()), kv_bad_iter);
       } else {
+         uint32_t found_key_size = 0;
+         uint32_t found_value_size = 0;
+         it->kv_it_next(&found_key_size, &found_value_size);
          if (keys_equal == it_keys_equal::YES) {
             BOOST_CHECK(it->kv_it_key_compare(mykey.c_str(), mykey.size()) == 0);
          } else {
@@ -541,7 +557,7 @@ BOOST_FIXTURE_TEST_CASE(test_iter_creation_too_many, kv_rocksdb_fixture) {
    mock_get_key_prefix = [&]() { return eosio::chain::make_prefix_key(contract, prefix.c_str(), it_key_size); };
 
    // Creating max_iterators iterators
-   for (auto i = 0; i < max_iterators; ++i) {
+   for (auto i = 0U; i < max_iterators; ++i) {
       its[i] = my_kv_context->kv_it_create(contract, prefix.c_str(), it_key_size);
    }
 
@@ -581,16 +597,18 @@ BOOST_FIXTURE_TEST_CASE(test_kv_it_compare_erased, kv_rocksdb_fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_equal, kv_rocksdb_fixture) {
-#warning Re-enable after merge
-//   check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::YES, "key");
+   static const auto key = prefix + std::string{"key"};
+   check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::YES, key.c_str());
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_non_equal, kv_rocksdb_fixture) {
-   check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::NO, "randomkey");
+   static const auto key = prefix + std::string{"randomkey"};
+   check_kv_it_key_compare(it_state::NOT_ERASED, it_keys_equal::NO, key.c_str());
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_key_compare_erased, kv_rocksdb_fixture) {
-   check_kv_it_key_compare(it_state::ERASED, it_keys_equal::YES, "key");
+   static const auto key = prefix + std::string{"key"};
+   check_kv_it_key_compare(it_state::ERASED, it_keys_equal::YES, key.c_str());
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_status_end, kv_rocksdb_fixture) {
@@ -599,13 +617,11 @@ BOOST_FIXTURE_TEST_CASE(test_kv_it_status_end, kv_rocksdb_fixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_status_erased, kv_rocksdb_fixture) {
-#warning Re-enable after merge
-//   check_test_kv_it_status(it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_erased);
+   check_test_kv_it_status(it_state::ERASED, it_pos::NOT_END, kv_it_stat::iterator_erased);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_status_ok, kv_rocksdb_fixture) {
-#warning Re-enable after merge
-//   check_test_kv_it_status(it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
+   check_test_kv_it_status(it_state::NOT_ERASED, it_pos::NOT_END, kv_it_stat::iterator_ok);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_kv_it_move_to_end, kv_rocksdb_fixture) {

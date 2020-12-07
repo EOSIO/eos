@@ -22,6 +22,10 @@
 
 #include <new>
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/vm/allocator.hpp>
+#endif
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -229,7 +233,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode ),
     kv_db(cfg.backing_store == backing_store_type::CHAINBASE
-          ? combined_database(db)
+          ? combined_database(db, cfg.persistent_storage_mbytes_batch)
           : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
@@ -511,7 +515,7 @@ struct controller_impl {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
 
-         init(check_shutdown);
+         init(check_shutdown, true);
       } catch (boost::interprocess::bad_alloc& e) {
          elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
          throw e;
@@ -557,7 +561,7 @@ struct controller_impl {
       } else {
          blog.reset( genesis, head->block, packed_transaction::cf_compression_type::none );
       }
-      init(check_shutdown);
+      init(check_shutdown, true);
    }
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
@@ -590,7 +594,7 @@ struct controller_impl {
       }
       head = fork_db.head();
 
-      init(check_shutdown);
+      init(check_shutdown, false);
    }
 
 
@@ -607,7 +611,7 @@ struct controller_impl {
       return header_itr;
    }
 
-   void init(std::function<bool()> check_shutdown) {
+   void init(std::function<bool()> check_shutdown, bool clean_startup) {
       uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
 
       auto header_itr = validate_db_version( db );
@@ -627,7 +631,7 @@ struct controller_impl {
          });
       }
 
-      kv_db.check_backing_store_setting();
+      kv_db.check_backing_store_setting( clean_startup );
 
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
@@ -709,6 +713,26 @@ struct controller_impl {
          // else no checks needed since fork_db will be completely reset on replay anyway
       }
 
+      if (auto dm_logger = get_deep_mind_logger()) {
+         // FIXME: We should probably feed that from CMake directly somehow ...
+         fc_dlog(*dm_logger, "DEEP_MIND_VERSION 13 0");
+
+         fc_dlog(*dm_logger, "ABIDUMP START ${block_num} ${global_sequence_num}",
+            ("block_num", head->block_num)
+            ("global_sequence_num", db.get<dynamic_global_property_object>().global_action_sequence)
+         );
+         const auto& idx = db.get_index<account_index>();
+         for (auto& row : idx.indices()) {
+            if (row.abi.size() != 0) {
+               fc_dlog(*dm_logger, "ABIDUMP ABI ${contract} ${abi}",
+                  ("contract", row.name)
+                  ("abi", row.abi)
+               );
+            }
+         }
+         fc_dlog(*dm_logger, "ABIDUMP END");
+      }
+
       if( last_block_num > head->block_num ) {
          replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
@@ -754,6 +778,7 @@ struct controller_impl {
       reversible_blocks.add_index<reversible_block_index>();
 
       controller_index_set::add_indices(db);
+      db.add_index<kv_index>();
       contract_database_index_set::add_indices(db);
 
       authorization.add_indices();
@@ -916,9 +941,11 @@ struct controller_impl {
       }
 
       if (auto dm_logger = get_deep_mind_logger()) {
+         auto packed_trx = fc::raw::pack(etrx);
+
          fc_dlog(*dm_logger, "TRX_OP CREATE onerror ${id} ${trx}",
             ("id", etrx.id())
-            ("trx", self.maybe_to_variant_with_abi(etrx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+            ("trx", fc::to_hex(packed_trx))
          );
       }
 
@@ -1860,7 +1887,7 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future,
+   block_state_ptr push_block( std::future<block_state_ptr>& block_state_future,
                     const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
    {
       controller::block_status s = controller::block_status::complete;
@@ -1876,7 +1903,7 @@ struct controller_impl {
          if( conf.terminate_at_block > 0 && conf.terminate_at_block < b->block_num() ) {
             ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
             shutdown();
-            return;
+            return bsp;
          }
 
          emit( self.pre_accepted_block, b );
@@ -1894,8 +1921,9 @@ struct controller_impl {
          } else {
             log_irreversible();
          }
-
-      } FC_LOG_AND_RETHROW( )
+         return bsp;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
@@ -1944,7 +1972,7 @@ struct controller_impl {
             emit( self.irreversible_block, bsp );
 
             if (!self.skip_db_sessions(s)) {
-               db.commit(bsp->block_num);
+               kv_db.commit(bsp->block_num);
             }
 
          } else {
@@ -2286,9 +2314,11 @@ struct controller_impl {
       }
 
       if (auto dm_logger = get_deep_mind_logger()) {
+         auto packed_trx = fc::raw::pack(trx);
+
          fc_dlog(*dm_logger, "TRX_OP CREATE onblock ${id} ${trx}",
             ("id", trx.id())
-            ("trx", self.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(self.get_abi_serializer_max_time())))
+            ("trx", fc::to_hex(packed_trx))
          );
       }
 
@@ -2381,7 +2411,7 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
-eosio::chain::combined_database& controller::kv_db() { return my->kv_db; }
+eosio::chain::combined_database& controller::kv_db() const { return my->kv_db; }
 
 const chainbase::database& controller::reversible_db()const { return my->reversible_blocks; }
 
@@ -2596,12 +2626,12 @@ std::future<block_state_ptr> controller::create_block_state_future( const block_
    return my->create_block_state_future( id, b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future,
+block_state_ptr controller::push_block( std::future<block_state_ptr>& block_state_future,
                              const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
 {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future, forked_branch_cb, trx_lookup );
+   return my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
@@ -2764,6 +2794,9 @@ time_point controller::last_irreversible_block_time() const {
    return my->fork_db.root()->header.timestamp.to_time_point();
 }
 
+const signed_block_ptr controller::last_irreversible_block() const {
+  return my->blog.head();
+}
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();

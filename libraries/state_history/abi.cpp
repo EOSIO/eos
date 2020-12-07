@@ -61,7 +61,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "row", "fields": [
+            "name": "row_v0", "fields": [
                 { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
             ]
@@ -69,7 +69,19 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "table_delta_v0", "fields": [
                 { "name": "name", "type": "string" },
-                { "name": "rows", "type": "row[]" }
+                { "name": "rows", "type": "row_v0[]" }
+            ]
+        },
+        {
+            "name": "row_v1", "fields": [
+                { "name": "present", "type": "uint8" },
+                { "name": "data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "table_delta_v1", "fields": [
+                { "name": "name", "type": "string" },
+                { "name": "rows", "type": "row_v1[]" }
             ]
         },
         {
@@ -361,10 +373,10 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "key_value_v0", "fields": [
-                { "type": "name", "name": "database" },
                 { "type": "name", "name": "contract" },
                 { "type": "bytes", "name": "key" },
-                { "type": "bytes", "name": "value" }
+                { "type": "bytes", "name": "value" },
+                { "type": "name", "name": "payer" }
             ]
         },
         {
@@ -623,7 +635,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "prunable_data_type", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
         { "name": "context_free_segment_type", "types": ["signature", "bytes"] },
 
-        { "name": "table_delta", "types": ["table_delta_v0"] },
+        { "name": "table_delta", "types": ["table_delta_v0", "table_delta_v1"] },
         { "name": "account", "types": ["account_v0"] },
         { "name": "account_metadata", "types": ["account_metadata_v0"] },
         { "name": "code", "types": ["code_v0"] },
@@ -662,7 +674,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "cntrctidx3", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx4", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx5", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "keyvalue", "type": "key_value", "key_names": ["database", "contract", "key"] },
+        { "name": "keyvalue", "type": "key_value", "key_names": ["contract", "key"] },
         { "name": "global.pty", "type": "global_property", "key_names": [] },
         { "name": "generatedtrx", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "protocolst", "type": "protocol_state", "key_names": [] },

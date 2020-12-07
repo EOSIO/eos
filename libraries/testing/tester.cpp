@@ -1222,7 +1222,7 @@ namespace eosio { namespace testing {
       vcfg = config_state.first;
       if (config_backing_store) {
          // can only have one instance of RocksDB running in the test process
-         vcfg.backing_store = *config_backing_store == backing_store_type::CHAINBASE ? backing_store_type::ROCKSDB : backing_store_type::CHAINBASE;
+         vcfg.backing_store = alternate_type(*config_backing_store);
       }
       config_validator(vcfg);
       vcfg.trusted_producers = trusted_producers;
@@ -1231,6 +1231,29 @@ namespace eosio { namespace testing {
 
       init(config_state.first, config_state.second);
       execute_setup_policy(setup_policy::full);
+   }
+
+   validating_tester::validating_tester(const fc::temp_directory& tempdir, bool use_genesis,
+                     std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, std::optional<uint32_t>{}, std::optional<uint32_t>{}, config_backing_store);
+      vcfg = def_conf.first;
+      if (config_backing_store) {
+         // can only have one instance of RocksDB running in the test process
+         vcfg.backing_store = alternate_type(*config_backing_store);
+      }
+      config_validator(vcfg);
+      validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+      if (use_genesis) {
+         init(def_conf.first, def_conf.second);
+      }
+      else {
+         init(def_conf.first);
+      }
+   }
+
+   backing_store_type validating_tester::alternate_type(backing_store_type type) {
+      return type == backing_store_type::CHAINBASE ? backing_store_type::ROCKSDB : backing_store_type::CHAINBASE;
    }
 
    bool fc_exception_code_is::operator()( const fc::exception& ex ) {

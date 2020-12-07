@@ -67,7 +67,7 @@ struct add_file_system_fixture {
 
       set_threshold(80, 75);
 
-      for (auto k = 0; k < capacity.size(); k++) {
+      for (auto k = 0U; k < capacity.size(); k++) {
          add_file_system("/test" + std::to_string(k));
       }
    }

@@ -588,7 +588,7 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
             ->run();
 
       threads.reserve(http_config->num_threads);
-      for (int i = 0; i < http_config->num_threads; ++i)
+      for (unsigned i = 0; i < http_config->num_threads; ++i)
          threads.emplace_back([self = shared_from_this()] { self->ioc.run(); });
    }
 }; // server_impl

@@ -5,6 +5,7 @@
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/testing/snapshot_suites.hpp>
 
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
@@ -77,109 +78,7 @@ public:
    bool validate() { return true; }
 };
 
-struct variant_snapshot_suite {
-   using writer_t = variant_snapshot_writer;
-   using reader_t = variant_snapshot_reader;
-   using write_storage_t = fc::mutable_variant_object;
-   using snapshot_t = fc::variant;
-
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const snapshot_t& storage)
-      :reader_t(storage)
-      {}
-   };
-
-
-   static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
-   }
-
-   static auto finalize(const std::shared_ptr<writer>& w) {
-      w->finalize();
-      return snapshot_t(*w->storage);
-   }
-
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(buffer);
-   }
-
-   static snapshot_t load_from_file(const std::string& filename) {
-      snapshot_input_file<snapshot::json> file(filename);
-      return file.read();
-   }
-
-   static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
-     snapshot_output_file<snapshot::json> file(basename);
-     file.write<snapshot_t>(snapshot);
-   }
-};
-
-struct buffered_snapshot_suite {
-   using writer_t = ostream_snapshot_writer;
-   using reader_t = istream_snapshot_reader;
-   using write_storage_t = std::ostringstream;
-   using snapshot_t = std::string;
-   using read_storage_t = std::istringstream;
-
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const std::shared_ptr<read_storage_t>& storage)
-      :reader_t(*storage)
-      ,storage(storage)
-      {}
-
-      std::shared_ptr<read_storage_t> storage;
-   };
-
-
-   static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
-   }
-
-   static auto finalize(const std::shared_ptr<writer>& w) {
-      w->finalize();
-      return w->storage->str();
-   }
-
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
-   }
-
-   static snapshot_t load_from_file(const std::string& filename) {
-      snapshot_input_file<snapshot::binary> file(filename);
-      return file.read_as_string();
-   }
-
-   static void write_to_file( const std::string& basename, const snapshot_t& snapshot ) {
-      snapshot_output_file<snapshot::binary> file(basename);
-      file.write<snapshot_t>(snapshot);
-   }
-};
-
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
-
-using snapshot_suites = boost::mpl::list<variant_snapshot_suite, buffered_snapshot_suite>;
 
 namespace {
    void variant_diff_helper(const fc::variant& lhs, const fc::variant& rhs, std::function<void(const std::string&, const fc::variant&, const fc::variant&)>&& out){
@@ -707,22 +606,29 @@ static const char kv_snapshot_bios[] = R"=====(
 )
 )=====";
 
-static void set_backing_store(tester& chain, const backing_store_type backing_store) {
-   chain.close(); // clean up chain so no dirty db error
-   auto cfg = chain.get_config();
-   cfg.backing_store = backing_store;
-   chain.init(cfg); // enable new config
-}
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
    for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
-         tester chain;
+         tester chain {setup_policy::full, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, origin_backing_store};
 
-         // Set backing_store for save snapshot
-         set_backing_store(chain, origin_backing_store);
+         chain.create_accounts({"manager"_n});
+         auto get_ext = [](unsigned i) {
+            std::string ext;
+            do {
+               unsigned rem = i % 5;
+               i /= 5;
+               ext += std::to_string(rem + 1);
+            } while(i > 0);
+            std::reverse(ext.begin(), ext.end());
+            return ext;
+         };
+         std::vector<name> contracts;
+         for (unsigned i = 0; i < 10; ++i) {
+            name contract { std::string("snapshot") + get_ext(i) };
+            contracts.push_back(contract);
+         }
+         chain.create_accounts(contracts);
 
-         chain.create_accounts({"snapshot"_n, "manager"_n});
          chain.set_code("manager"_n, kv_snapshot_bios);
          chain.push_action("eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "manager")("is_priv", 1));
 
@@ -735,7 +641,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             chain.push_transaction(trx);
          }
          chain.produce_blocks(1);
-         chain.set_code("snapshot"_n, kv_snapshot_wast);
+
+         for (auto contract : contracts) {
+            chain.set_code(contract, kv_snapshot_wast);
+         }
          chain.produce_blocks(1);
          chain.control->abort_block();
 
@@ -755,13 +664,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
             // create a new child at this snapshot
             sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
 
-            // Calling apply method which will increment the
-            // current value stored
-            signed_transaction trx;
-            trx.actions.push_back({{{"snapshot"_n, "active"_n}}, "snapshot"_n, "eosio.kvram"_n, {}});
-            chain.set_transaction_headers(trx);
-            trx.sign(chain.get_private_key("snapshot"_n, "active"), chain.control->get_chain_id());
-            chain.push_transaction(trx);
+            int contract_gen = 0;
+            for (auto contract : contracts) {
+               if (contract_gen++ > generation)
+                  break; // ensure that every entry in the KV tables are not just exactly the same data
+
+               // Calling apply method which will increment the
+               // current value stored
+               signed_transaction trx;
+               trx.actions.push_back({{{contract, "active"_n}}, contract, "eosio.kvram"_n, {}});
+               chain.set_transaction_headers(trx);
+               trx.sign(chain.get_private_key(contract, "active"), chain.control->get_chain_id());
+               chain.push_transaction(trx);
+            }
 
             // produce block
             auto new_block = chain.produce_block();

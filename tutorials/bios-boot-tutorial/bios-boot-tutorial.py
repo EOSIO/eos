@@ -289,7 +289,7 @@ def stepStartWallet():
     importKeys()
 def stepStartBoot():
     startNode(0, {'name': 'eosio', 'pvt': args.private_key, 'pub': args.public_key})
-    sleep(1.5)
+    sleep(10.0)
 def stepInstallSystemContracts():
     run(args.cleos + 'set contract eosio.token ' + args.contracts_dir + '/eosio.token/')
     run(args.cleos + 'set contract eosio.msig ' + args.contracts_dir + '/eosio.msig/')
@@ -317,6 +317,14 @@ def stepSetSystemContract():
     sleep(3)
 
     # activate remaining features
+    # KV_DATABASE
+    retry(args.cleos + 'push action eosio activate \'["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]\' -p eosio@active')
+    # ACTION_RETURN_VALUE
+    retry(args.cleos + 'push action eosio activate \'["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]\' -p eosio@active')
+    # CONFIGURABLE_WASM_LIMITS
+    retry(args.cleos + 'push action eosio activate \'["bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"]\' -p eosio@active')
+    # BLOCKCHAIN_PARAMETERS
+    retry(args.cleos + 'push action eosio activate \'["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]\' -p eosio@active')
     # GET_SENDER
     retry(args.cleos + 'push action eosio activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p eosio@active')
     # FORWARD_SETCODE

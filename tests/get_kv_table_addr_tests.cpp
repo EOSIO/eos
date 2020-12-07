@@ -151,7 +151,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    p.upper_bound = "lois";
    p.reverse = false;
    result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    chk_result(0, 2);
 
    p.index_name = "accname"_n;
@@ -174,7 +174,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    p.upper_bound = "steve";
    p.reverse = true;
    result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(3u, result.rows.size());
    chk_result(0, 4);
    chk_result(1, 3);
 
