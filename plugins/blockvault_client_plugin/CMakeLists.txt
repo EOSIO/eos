@@ -21,7 +21,7 @@ pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0)
 if (pqxx_FOUND)
    add_library(blockvault postgres_backend.cpp)
    target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include 
-                                         PRIVATE ${pqxx_STATIC_INCLUDE_DIRS})
+                                         PUBLIC ${pqxx_STATIC_INCLUDE_DIRS})
 
    target_link_libraries(blockvault PUBLIC libpqxx.a PkgConfig::pq eosio_chain)
    target_link_directories(blockvault PUBLIC ${pqxx_STATIC_LIBRARY_DIRS})
