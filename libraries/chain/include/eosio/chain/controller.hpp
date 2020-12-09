@@ -76,6 +76,7 @@ namespace eosio { namespace chain {
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
+            bool                     skip_all_checks        =  false;
             bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
             bool                     allow_ram_billing_in_notify = false;

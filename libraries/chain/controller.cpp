@@ -2037,7 +2037,7 @@ struct controller_impl {
          EOS_ASSERT( (s == controller::block_status::irreversible || s == controller::block_status::validated),
                      block_validate_exception, "invalid block status for replay" );
          emit( self.pre_accepted_block, b );
-         const bool skip_validate_signee = !conf.force_all_checks;
+         const bool skip_validate_signee = conf.skip_all_checks || !conf.force_all_checks;
 
          auto bsp = std::make_shared<block_state>(
                         *head,
@@ -3042,7 +3042,7 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
 
 
 bool controller::skip_auth_check() const {
-   return light_validation_allowed(my->conf.force_all_checks);
+   return my->conf.skip_all_checks || light_validation_allowed(my->conf.force_all_checks);
 }
 
 bool controller::skip_db_sessions( block_status bs ) const {
