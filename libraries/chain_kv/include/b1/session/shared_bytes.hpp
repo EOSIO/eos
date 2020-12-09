@@ -27,7 +27,7 @@ class shared_bytes {
    using underlying_type_t = char;
 
    template <typename T>
-   friend class std::hash;
+   friend struct std::hash;
 
    template <typename StringView, std::size_t N>
    friend shared_bytes make_shared_bytes(std::array<StringView, N>&& data);
