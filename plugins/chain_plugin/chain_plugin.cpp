@@ -2395,9 +2395,9 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
             row_key.resize(key_size);
             auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
             EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-            auto next_key = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
+            auto next_key_bytes = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
 
-            boost::algorithm::hex(next_key.begin(), next_key.end(), std::back_inserter(result.next_key));
+            boost::algorithm::hex(next_key_bytes.begin(), next_key_bytes.end(), std::back_inserter(result.next_key_bytes));
        }
       } // end of for
    };

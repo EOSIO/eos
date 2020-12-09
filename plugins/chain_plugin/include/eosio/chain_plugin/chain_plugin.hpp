@@ -365,6 +365,7 @@ public:
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
       string              next_key; ///< fill lower_bound with this value to fetch more rows
+      string              next_key_bytes; ///< fill lower_bound with this value to fetch more rows with encode-type of "bytes"
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
@@ -1098,7 +1099,7 @@ FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transactio
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_kv_table_rows_params, (json)(code)(table)(index_name)(encode_type)(index_value)(lower_bound)(upper_bound)(limit)(reverse)(show_payer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key)(next_key_bytes) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
