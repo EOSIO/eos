@@ -1000,7 +1000,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj.size(), 2);
       contract_rows = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row);
 
-      for(int i=0; i < contract_rows.size(); i++) {
+      for(size_t i=0; i < contract_rows.size(); i++) {
          BOOST_REQUIRE_EQUAL(it_contract_row->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_rows[i].table.to_string(), "numobjs");
       }
@@ -1011,7 +1011,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
       BOOST_REQUIRE_EQUAL(it_contract_index_double->rows.obj.size(), 2);
       auto contract_index_double_elems = chain.deserialize_data<eosio::ship_protocol::contract_index_double_v0, eosio::ship_protocol::contract_index_double>(it_contract_index_double);
 
-      for(int i=0; i < contract_index_double_elems.size(); i++) {
+      for(size_t i=0; i < contract_index_double_elems.size(); i++) {
          BOOST_REQUIRE_EQUAL(it_contract_index_double->rows.obj[i].first, 0);
          BOOST_REQUIRE_EQUAL(contract_index_double_elems[i].table.to_string(), "numobjs.....2");
       }
