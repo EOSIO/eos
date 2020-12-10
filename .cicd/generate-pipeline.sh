@@ -644,7 +644,7 @@ cat <<EOF
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
-    command: "./.cicd/create-docker-from-binary.sh"
+    command:  "./.cicd/create-docker-from-binary.sh"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
