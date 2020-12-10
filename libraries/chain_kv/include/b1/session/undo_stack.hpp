@@ -13,9 +13,9 @@
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
-   const uint32_t undo_stack_magic_number = 0x30510ABC;
-   const uint32_t undo_stack_min_supported_version = 1;
-   const uint32_t undo_stack_max_supported_version = 1;
+   constexpr uint32_t undo_stack_magic_number = 0x30510ABC;
+   constexpr uint32_t undo_stack_min_supported_version = 1;
+   constexpr uint32_t undo_stack_max_supported_version = 1;
    constexpr auto undo_stack_filename = "undo_stack.dat";
 
 /// \brief Represents a container of pending sessions to be committed.
@@ -95,8 +95,6 @@ undo_stack<Session>::undo_stack(Session& head, const fc::path& datadir) : m_head
 template <typename Session>
 undo_stack<Session>::~undo_stack() {
    close();
-
-   for (auto& session : m_sessions) { session.undo(); }
 }
 
 template <typename Session>
@@ -259,11 +257,8 @@ void undo_stack<Session>::open() {
 
          size_t num_sessions; fc::raw::unpack( ds, num_sessions );
          for( size_t i = 0; i < num_sessions; ++i ) {
-            session_type session;
-            if (m_sessions.empty())
-               session.attach(*m_head);
-            else
-               session.attach(m_sessions.back());
+            push();
+            auto& session = m_sessions.back();
 
             size_t num_updated_keys; fc::raw::unpack( ds, num_updated_keys );
             for( size_t j = 0; j < num_updated_keys; ++j ) {
@@ -283,7 +278,7 @@ void undo_stack<Session>::open() {
                session.erase(key);
             }
 
-            m_sessions.emplace_back(std::move(session));
+            m_revision = rev; // restore head revision
          }
       } FC_CAPTURE_AND_RETHROW( (undo_stack_dat) )
 
