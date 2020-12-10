@@ -6,7 +6,6 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/reflect/typename.hpp>
 #include <fstream>
 #include <b1/session/session.hpp>
 #include <b1/session/session_variant.hpp>
@@ -253,7 +252,6 @@ void undo_stack<Session>::open() {
          );
 
          int64_t rev; fc::raw::unpack( ds, rev );
-         revision(rev);
 
          size_t num_sessions; fc::raw::unpack( ds, num_sessions );
          for( size_t i = 0; i < num_sessions; ++i ) {
@@ -262,19 +260,14 @@ void undo_stack<Session>::open() {
 
             size_t num_updated_keys; fc::raw::unpack( ds, num_updated_keys );
             for( size_t j = 0; j < num_updated_keys; ++j ) {
-               shared_bytes_reflect raw_key; fc::raw::unpack( ds, raw_key );
-               shared_bytes_reflect raw_value; fc::raw::unpack( ds, raw_value );
-
-               shared_bytes key(raw_key.data.data(), raw_key.data.size());
-               shared_bytes value(raw_value.data.data(), raw_value.data.size());
+               shared_bytes key; ds >> key;
+               shared_bytes value; ds >> value;
                session.write(key, value);
             }
 
             size_t num_deleted_keys; fc::raw::unpack( ds, num_deleted_keys );
             for( size_t j = 0; j < num_deleted_keys; ++j ) {
-               shared_bytes_reflect raw_key; fc::raw::unpack( ds, raw_key );
-
-               shared_bytes key(raw_key.data.data(), raw_key.data.size());
+               shared_bytes key; ds >> key;
                session.erase(key);
             }
 
@@ -309,12 +302,8 @@ void undo_stack<Session>::close() {
         auto value = session.read(key);
 
         if ( value ) {
-           shared_bytes_reflect raw_key; 
-           raw_key.data.assign(key.data(), key.data() + key.size());
-           shared_bytes_reflect raw_value;
-           raw_value.data.assign(value->data(), value->data() + value->size());
-           fc::raw::pack( out, raw_key );
-           fc::raw::pack( out, raw_value );
+           out << key;
+           out << *value;
         }
       }
 

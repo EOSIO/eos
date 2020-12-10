@@ -11,6 +11,8 @@
 #include <boost/endian/detail/intrinsic.hpp>
 
 #include <fc/crypto/base64.hpp>
+#include <fc/io/datastream.hpp>
+#include <fc/io/raw.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 
@@ -365,6 +367,23 @@ inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
    return os;
 }
 
+template <typename Stream>
+inline Stream& operator<<(Stream& ds, const shared_bytes& b) {
+   fc::raw::pack( ds, b.size() );
+   ds.write(b.data(), b.size());
+   return ds;
+}
+
+template <typename Stream>
+inline Stream& operator>>(Stream& ds, shared_bytes& b) {
+   std::size_t sz;
+   fc::raw::unpack( ds, sz );
+   shared_bytes tmp = {sz};
+   ds.read(tmp.data(), tmp.size());
+   b = tmp;
+   return ds;
+}
+
 inline shared_bytes shared_bytes::from_hex_string(const std::string& str) {
    if (str.empty()) {
       return shared_bytes{};
@@ -508,13 +527,7 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](size_t index) c
    return m_buffer[index];
 }
 
-struct shared_bytes_reflect{
-   std::vector<char> data;
-};
-
 } // namespace eosio::session
-
-FC_REFLECT(eosio::session::shared_bytes_reflect, (data))
 
 namespace std {
 
