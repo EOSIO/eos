@@ -387,11 +387,20 @@ paths:
                   type: object
                   description: Defines the snapshot to be created
                   properties:
+                    head_block_id:
+                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
+                    head_block_num:
+                      type: integer
+                      description: Highest block number on the chain
+                    head_block_time:
+                      type: string
+                      description: Highest block unix timestamp
+                    version:
+                      type: integer
+                      description: Version number
                     snapshot_name:
                       type: string
                       description: The name of the snapshot
-                    head_block_id:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
 
 
       responses:
