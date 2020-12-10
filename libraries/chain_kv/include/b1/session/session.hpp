@@ -139,7 +139,7 @@ class session {
 
    /// \brief Constructs a child session from another instance of the same session type.
    explicit session(session& parent, std::nullptr_t);
-   //session(const session&) = delete;
+   session(const session&) = delete;
    session(session&& other);
    ~session();
 

@@ -318,6 +318,7 @@ void undo_stack<Session>::close() {
          fc::raw::pack( out, key );
       }
 
+      session.detach();
       m_sessions.pop_front();
    }
 }
