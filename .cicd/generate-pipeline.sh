@@ -643,6 +643,5 @@ cat <<EOF
     timeout: "${TIMEOUT:-5}"
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
-
 EOF
 IFS=$oIFS
