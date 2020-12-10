@@ -270,9 +270,8 @@ void undo_stack<Session>::open() {
                shared_bytes key; ds >> key;
                session.erase(key);
             }
-
-            m_revision = rev; // restore head revision
          }
+         m_revision = rev; // restore head revision
       } FC_CAPTURE_AND_RETHROW( (undo_stack_dat) )
 
       fc::remove( undo_stack_dat );
