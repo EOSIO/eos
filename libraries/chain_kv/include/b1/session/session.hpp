@@ -139,7 +139,7 @@ class session {
 
    /// \brief Constructs a child session from another instance of the same session type.
    explicit session(session& parent, std::nullptr_t);
-   session(const session&) = delete;
+   //session(const session&) = delete;
    session(session&& other);
    ~session();
 
@@ -259,7 +259,8 @@ class session {
    It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
 
  private:
-   parent_variant_type m_parent{ nullptr };
+   //parent_variant_type m_parent{ nullptr };
+   parent_variant_type m_parent{ static_cast<Parent*>(nullptr) };
    cache_type          m_cache;
 };
 

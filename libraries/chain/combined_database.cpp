@@ -73,6 +73,12 @@ namespace eosio { namespace chain {
       }
    }
 
+   void combined_session::set_datadir(const fc::path& datadir) {
+       if ( kv_undo_stack ) {
+          kv_undo_stack->set_datadir( datadir );
+       }
+   }
+
    template <typename Util, typename F>
    void walk_index(const Util& utils, const chainbase::database& db, F&& function) {
       utils.walk(db, std::forward<F>(function));
@@ -309,6 +315,12 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
+   void combined_database::set_datadir(const fc::path& datadir) {
+      if (backing_store == backing_store_type::ROCKSDB) {
+         kv_undo_stack->set_datadir(datadir);
       }
    }
 

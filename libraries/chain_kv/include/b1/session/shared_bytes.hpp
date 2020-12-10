@@ -508,7 +508,13 @@ shared_bytes::shared_bytes_iterator<Iterator_traits>::operator[](size_t index) c
    return m_buffer[index];
 }
 
+struct shared_bytes_reflect{
+   std::vector<char> data;
+};
+
 } // namespace eosio::session
+
+FC_REFLECT(eosio::session::shared_bytes_reflect, (data))
 
 namespace std {
 

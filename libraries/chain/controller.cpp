@@ -252,6 +252,11 @@ struct controller_impl {
                            { check_protocol_features( timestamp, cur_features, new_features ); }
       );
 
+      // Might be too late?
+      if ( cfg.backing_store == backing_store_type::ROCKSDB ) {
+         kv_db.set_datadir( cfg.state_dir );
+      }
+
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
