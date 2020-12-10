@@ -29,7 +29,7 @@ class undo_stack {
 
    /// \brief Constructor.
    /// \param head The session that the changes are merged into when commit is called.
-   undo_stack(Session& head);
+   undo_stack(Session& head, const fc::path& datadir = {});
    undo_stack(const undo_stack&) = delete;
    undo_stack(undo_stack&&)      = default;
    ~undo_stack();
@@ -76,7 +76,6 @@ class undo_stack {
    /// \remarks This is the next session to be committed.
    const_variant_type bottom() const;
 
-   void set_datadir(const fc::path& datadir);
    void open();
    void close();
 
@@ -89,7 +88,7 @@ class undo_stack {
 };
 
 template <typename Session>
-undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {
+undo_stack<Session>::undo_stack(Session& head, const fc::path& datadir) : m_head{ &head }, m_datadir{ datadir } {
    open();
 }
 
@@ -217,12 +216,10 @@ typename undo_stack<Session>::const_variant_type undo_stack<Session>::bottom() c
 }
 
 template <typename Session>
-void undo_stack<Session>::set_datadir(const fc::path& datadir) {
-   m_datadir = datadir;
-}
-
-template <typename Session>
 void undo_stack<Session>::open() {
+   if (m_datadir.empty())
+      return;
+
    if (!fc::is_directory(m_datadir))
       fc::create_directories(m_datadir);
 
@@ -288,6 +285,9 @@ void undo_stack<Session>::open() {
 
 template <typename Session>
 void undo_stack<Session>::close() {
+   if (m_datadir.empty())
+      return;
+
    auto undo_stack_dat = m_datadir / undo_stack_filename;
 
    std::ofstream out( undo_stack_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );

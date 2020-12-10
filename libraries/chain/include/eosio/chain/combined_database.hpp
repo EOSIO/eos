@@ -76,8 +76,6 @@ namespace eosio { namespace chain {
 
       void undo();
 
-      void set_datadir(const fc::path& datadir);
-
     private:
       std::unique_ptr<chainbase::database::session> cb_session    = {};
       eosio::session::undo_stack<rocks_db_type>*     kv_undo_stack = nullptr;
@@ -112,8 +110,6 @@ namespace eosio { namespace chain {
       void commit(int64_t revision);
 
       void flush();
-
-      void set_datadir(const fc::path& datadir);
 
       static void destroy(const fc::path& p);
 

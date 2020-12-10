@@ -73,12 +73,6 @@ namespace eosio { namespace chain {
       }
    }
 
-   void combined_session::set_datadir(const fc::path& datadir) {
-       if ( kv_undo_stack ) {
-          kv_undo_stack->set_datadir( datadir );
-       }
-   }
-
    template <typename Util, typename F>
    void walk_index(const Util& utils, const chainbase::database& db, F&& function) {
       utils.walk(db, std::forward<F>(function));
@@ -238,7 +232,7 @@ namespace eosio { namespace chain {
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
-         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
+         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database, cfg.state_dir)),
          kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
    void combined_database::check_backing_store_setting(bool clean_startup) {
@@ -315,12 +309,6 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
-      }
-   }
-
-   void combined_database::set_datadir(const fc::path& datadir) {
-      if (backing_store == backing_store_type::ROCKSDB) {
-         kv_undo_stack->set_datadir(datadir);
       }
    }
 
