@@ -275,6 +275,14 @@ void undo_stack<Session>::open() {
                session.write(key, value);
             }
 
+            size_t num_deleted_keys; fc::raw::unpack( ds, num_deleted_keys );
+            for( size_t j = 0; j < num_deleted_keys; ++j ) {
+               shared_bytes_reflect raw_key; fc::raw::unpack( ds, raw_key );
+
+               shared_bytes key(raw_key.data.data(), raw_key.data.size());
+               session.erase(key);
+            }
+
             m_sessions.emplace_back(std::move(session));
          }
       } FC_CAPTURE_AND_RETHROW( (undo_stack_dat) )
@@ -306,8 +314,12 @@ void undo_stack<Session>::close() {
         auto value = session.read(key);
 
         if ( value ) {
-           fc::raw::pack( out, key );
-           fc::raw::pack( out, value );
+           shared_bytes_reflect raw_key; 
+           raw_key.data.assign(key.data(), key.data() + key.size());
+           shared_bytes_reflect raw_value;
+           raw_value.data.assign(value->data(), value->data() + value->size());
+           fc::raw::pack( out, raw_key );
+           fc::raw::pack( out, raw_value );
         }
       }
 
