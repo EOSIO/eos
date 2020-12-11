@@ -259,7 +259,7 @@ class session {
    It& first_not_deleted_in_iterator_cache_(It& it, const It& end) const;
 
  private:
-   parent_variant_type m_parent{ nullptr };
+   parent_variant_type m_parent{ static_cast<Parent*>(nullptr) };
    cache_type          m_cache;
 };
 

@@ -232,7 +232,7 @@ namespace eosio { namespace chain {
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
-         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
+         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database, cfg.state_dir)),
          kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
    void combined_database::check_backing_store_setting(bool clean_startup) {
@@ -269,6 +269,20 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
+   int64_t combined_database::revision() {
+      if (backing_store == backing_store_type::ROCKSDB) {
+         try {
+            try {
+                return kv_undo_stack->revision();
+            }
+            FC_LOG_AND_RETHROW()
+         }
+         CATCH_AND_EXIT_DB_FAILURE()
+      } else {
+        return db.revision();
       }
    }
 

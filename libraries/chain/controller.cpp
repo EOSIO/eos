@@ -487,13 +487,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const snapshot_reader_ptr& snapshot) {
       EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
-# warning TODO: Chain_kv needs to fix kv_undo_stack's revision after restar
-      // Currently kv_undo_stack returns a wrong revision after restart,
-      // failing tests/terminate-scenarios-test.py.
-      // As chain_kv is being rewritten, comment out this check for now
-      // and retest after chain_kv rewriting is finished.
-      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
-      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       this->shutdown = shutdown;
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
       try {
@@ -526,13 +521,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
-# warning TODO: Chain_kv needs to fix kv_undo_stack's revision
-      // Currently kv_undo_stack returns a wrong revision after restart,
-      // failing tests/terminate-scenarios-test.py.
-      // As chain_kv is being rewritten, comment out this check for now
-      // and retest after chain_kv rewriting is finished.
-      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
-      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       const auto& genesis_chain_id = genesis.compute_chain_id();
       EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
                   "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
@@ -566,9 +556,8 @@ struct controller_impl {
 
    void startup(std::function<void()> shutdown, std::function<bool()> check_shutdown) {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
-# warning TODO: Chain_kv needs to fix kv_undo_stack's revision
-      //EOS_ASSERT( db.revision() == kv_undo_stack.revision(), database_revision_mismatch_exception,
-      //            "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_undo_stack.revision()) );
+      EOS_ASSERT( db.revision() == kv_db.revision(), database_revision_mismatch_exception,
+                  "chainbase is at revision ${a}, but chain-kv is at revision ${b}", ("a", db.revision())("b", kv_db.revision()) );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
       this->shutdown = shutdown;
