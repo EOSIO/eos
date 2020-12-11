@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+EOS_VERSION=@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@
+EOS_VERSION_SUFFIX=@VERSION_SUFFIX@
+
+EOS_VERSION_SUFFIX=${EOS_VERSION_SUFFIX:-1}
+
+function ensure-sudo() {
+  ( [[ $(whoami) != "root" ]] && [[ -z $SUDO_LOCATION ]] ) && echo "${COLOR_RED}Please install the 'sudo' command before proceeding!${COLOR_NC}" && exit 1
+  true 1>/dev/null # Needed
+}
+
+function usage() {
+   printf "Usage: $0 OPTION...
+  -v VER      The version of EOSIO to download and install (default $EOS_VERSION)
+  -y          Noninteractive mode (answers yes to every prompt)
+  -f FILE     Install the specified local file instead of downloading the binary package from github
+   \\n" "$0" 1>&2
+   exit 1
+}
+
+if [ $# -ne 0 ]; then
+   while getopts "f:v:y" opt; do
+      case "${opt}" in
+         y )
+            INTERACTIVE_OPT="-y"
+         ;;
+         v )
+            EOS_VERSION=$OPTARG
+         ;;
+         f )
+            ASSET_FILE=$OPTARG
+         ;;
+         h )
+            usage
+         ;;
+         ? )
+            echo "Invalid Option!" 1>&2
+            usage
+         ;;
+         * )
+            usage
+         ;;
+      esac
+   done
+fi
+
+ASSET_URL_PREFIX="${ASSET_URL_PREFIX:-https://github.com/EOSIO/eos/releases/download/v$EOS_VERSION}"
+
+if [[ $- == *i* ]]; then # Disable if the shell isn't interactive (avoids: tput: No value for $TERM and no -T specified)
+  export COLOR_NC=$(tput sgr0) # No Color
+  export COLOR_RED=$(tput setaf 1)
+  export COLOR_GREEN=$(tput setaf 2)
+  export COLOR_YELLOW=$(tput setaf 3)
+  export COLOR_BLUE=$(tput setaf 4)
+  export COLOR_MAGENTA=$(tput setaf 5)
+  export COLOR_CYAN=$(tput setaf 6)
+  export COLOR_WHITE=$(tput setaf 7)
+fi
+
+# Ensure sudo is available (only if not using the root user)
+ensure-sudo
+
+[[ -z "${ARCH}" ]] && export ARCH=$( uname )
+if [[ -z "${NAME}" ]]; then
+    if [[ $ARCH == "Linux" ]]; then
+        [[ ! -e /etc/os-release ]] && echo "${COLOR_RED} - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution.${COLOR_NC}" && exit 1
+        # Obtain OS NAME, and VERSION
+        . /etc/os-release
+    else echo " ${COLOR_RED}- EOSIO is not supported for your Architecture!${COLOR_NC}" && exit 1
+    fi
+fi
+
+case $NAME in
+   "Amazon Linux AMI" | "Amazon Linux")
+      amazon-linux-extras enable postgresql11
+      [[ -z "${ASSET_FILE}" ]] || { yum install $INTERACTIVE_OPT ${ASSET_FILE}; exit $?; }
+      ASSET="eosio-$EOS_VERSION-$EOS_VERSION_SUFFIX.el7.x86_64.rpm"
+      yum install $INTERACTIVE_OPT $ASSET_URL_PREFIX/$ASSET
+   ;;
+   "CentOS Linux")
+      yum install $INTERACTIVE_OPT https://download.postgresql.org/pub/repos/yum/reporpms/EL-${VERSION_ID}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+      [ ${VERSION_ID} -lt 8 ] || dnf -q $INTERACTIVE_OPT module disable postgresql
+      [[ -z "${ASSET_FILE}" ]] || { yum install $INTERACTIVE_OPT ${ASSET_FILE}; exit $?; }
+      ASSET="eosio-$EOS_VERSION-$EOS_VERSION_SUFFIX.el${VERSION_ID}.x86_64.rpm"
+      yum install $INTERACTIVE_OPT $ASSET_URL_PREFIX/$ASSET
+   ;;
+   "Ubuntu")
+      echo "deb http://apt.postgresql.org/pub/repos/apt ${UBUNTU_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+      curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+      apt-get update
+      [[ -z "${ASSET_FILE}" ]] || { apt-get install $INTERACTIVE_OPT ${ASSET_FILE}; exit $?; }
+      ASSET="eosio_$EOS_VERSION-$EOS_VERSION_SUFFIX-ubuntu-${VERSION_ID}_amd64.deb"
+      curl -LO $ASSET_URL_PREFIX/$ASSET && apt-get install $INTERACTIVE_OPT ./$ASSET && rm ./$ASSET
+   ;;
+esac
