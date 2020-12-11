@@ -272,6 +272,20 @@ namespace eosio { namespace chain {
       }
    }
 
+   int64_t combined_database::revision() {
+      if (backing_store == backing_store_type::ROCKSDB) {
+         try {
+            try {
+                return kv_undo_stack->revision();
+            }
+            FC_LOG_AND_RETHROW()
+         }
+         CATCH_AND_EXIT_DB_FAILURE()
+      } else {
+        return db.revision();
+      }
+   }
+
    void combined_database::undo() {
       db.undo();
 
