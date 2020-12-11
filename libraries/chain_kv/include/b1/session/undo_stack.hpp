@@ -298,12 +298,16 @@ void undo_stack<Session>::close() {
       fc::raw::pack( out, updated_keys.size() ); // number of updated keys
 
       for (const auto& key: updated_keys) {
-        auto value = session.read(key);
+         auto value = session.read(key);
 
-        if ( value ) {
-           out << key;
-           out << *value;
-        }
+         if ( value ) {
+            out << key;
+            out << *value;
+         } else {
+            fc::remove( undo_stack_dat ); // May not be used by next startup
+            elog( "Did not find value for ${k}", ("k", key.data() ) );
+            return; // Do not assert as we are during shutdown
+         }
       }
 
       auto deleted_keys = session.deleted_keys();
