@@ -1241,7 +1241,8 @@ struct controller_impl {
                                            fc::time_point deadline,
                                            uint32_t billed_cpu_time_us,
                                            bool explicit_billed_cpu_time,
-                                           std::optional<uint32_t> explicit_net_usage_words )
+                                           std::optional<uint32_t> explicit_net_usage_words,
+                                           uint32_t subjective_cpu_bill_us )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
@@ -1269,6 +1270,7 @@ struct controller_impl {
          trx_context.deadline = deadline;
          trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
+         trx_context.subjective_cpu_bill_us = subjective_cpu_bill_us;
          trace = trx_context.trace;
 
          auto handle_exception =[&](const auto& e)
@@ -1276,6 +1278,7 @@ struct controller_impl {
             trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
             trace->except_ptr = std::current_exception();
+            trace->elapsed = fc::time_point::now() - trx_context.start;
          };
 
          try {
@@ -1505,7 +1508,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true, {} );
+            push_transaction( onbtrx, fc::time_point::maximum(), gpo.configuration.min_transaction_cpu_usage, true, {}, 0 );
          } catch( const std::bad_alloc& e ) {
             elog( "on block transaction failed due to a std::bad_alloc" );
             throw;
@@ -1768,7 +1771,7 @@ struct controller_impl {
                if( explicit_net ) {
                   explicit_net_usage_words = receipt.net_usage_words.value;
                }
-               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, explicit_net_usage_words );
+               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true, explicit_net_usage_words, 0 );
                ++packed_idx;
             } else if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
                trace = push_scheduled_transaction( std::get<transaction_id_type>(receipt.trx), fc::time_point::maximum(), receipt.cpu_usage_us, true );
@@ -2607,11 +2610,12 @@ block_state_ptr controller::push_block( std::future<block_state_ptr>& block_stat
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
-                                                    uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time ) {
+                                                    uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time,
+                                                    uint32_t subjective_cpu_bill_us ) {
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != db_read_mode::IRREVERSIBLE, transaction_type_exception, "push transaction not allowed in irreversible mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time, {} );
+   return my->push_transaction(trx, deadline, billed_cpu_time_us, explicit_billed_cpu_time, {}, subjective_cpu_bill_us );
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline,
