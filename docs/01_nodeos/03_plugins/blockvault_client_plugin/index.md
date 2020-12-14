@@ -60,9 +60,9 @@ nodeos --plugin eosio::producer_plugin --producer-name myproducer --plugin eosio
 
 ## Software Dependencies
 
-To build `blockvault_client_plugin` you need `libpq` version 10 or above and `libpqxx` version 6 or above. These dependencies are installed when you follow the instructions from the [Build EOSIO from Source](../../../00_install/build-from-source/index.md) section. You may also install these dependencies manually prior to building EOSIO.
+To build `blockvault_client_plugin` you need `libpq` version 10 or above and `libpqxx` version 6 or above. These dependencies are typically installed (alongside other dependencies) when you either [Install EOSIO](../../../00_install/index.md) from prebuilt binaries or build from source. You may also opt to install these dependencies manually prior to installing or building EOSIO.
 
-For MacOS, you can simply use homebrew to install the dependencies:
+For MacOS, you can simply use homebrew to install these dependencies:
 
 ```sh
 brew install libpq libpqxx
