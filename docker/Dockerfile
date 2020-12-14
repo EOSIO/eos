@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-COPY *.deb .
+COPY *.deb /
 
 RUN apt update && \
   apt install -y curl wget && \
