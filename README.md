@@ -34,8 +34,11 @@ EOSIO currently supports the following operating systems:
 
 1. Amazon Linux 2
 2. CentOS 7
+2. CentOS 7.x
+2. CentOS 8
 3. Ubuntu 16.04
 4. Ubuntu 18.04
+4. Ubuntu 20.04
 5. MacOS 10.14 (Mojave)
 
 ---
