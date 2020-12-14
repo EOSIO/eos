@@ -44,8 +44,8 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "https://eosio.github.io/schemata/v3.0/oas/BlockTraceV0.yaml"
-                  - $ref: "https://eosio.github.io/schemata/v3.0/oas/BlockTraceV1.yaml"
+                  - $ref: "https://eosio.github.io/schemata/v2.1/oas/BlockTraceV0.yaml"
+                  - $ref: "https://eosio.github.io/schemata/v2.1/oas/BlockTraceV1.yaml"
         "400":
           description: Error - requested block number is invalid (not a number, larger than max int)
         "404":

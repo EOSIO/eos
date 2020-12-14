@@ -61,17 +61,17 @@ paths:
                           description: Incremental value above a computed base
                           type: integer
                         chain_id:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                         node_id:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                         key:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/PublicKey.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/PublicKey.yaml'
                         time:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/DateTimeSeconds.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/DateTimeSeconds.yaml'
                         token:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                         sig:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Signature.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Signature.yaml'
                         p2p_address:
                           description: IP address or URL of the peer
                           type: string
@@ -79,12 +79,12 @@ paths:
                           description: Last irreversible block number
                           type: integer
                         last_irreversible_block_id:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                         head_num:
                           description: Head number
                           type: integer
                         head_id:
-                          $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                          $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                         os:
                           description: Operating system name
                           type: string
@@ -190,17 +190,17 @@ paths:
                         description: Incremental value above a computed base
                         type: integer
                       chain_id:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                       node_id:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                       key:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/PublicKey.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/PublicKey.yaml'
                       time:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/DateTimeSeconds.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/DateTimeSeconds.yaml'
                       token:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                       sig:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Signature.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Signature.yaml'
                       p2p_address:
                         description: IP address or URL of the peer
                         type: string
@@ -208,12 +208,12 @@ paths:
                         description: Last irreversible block number
                         type: integer
                       last_irreversible_block_id:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                       head_num:
                         description: Head number
                         type: integer
                       head_id:
-                        $ref: 'https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml'
+                        $ref: 'https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml'
                       os:
                         description: Operating system name
                         type: string
