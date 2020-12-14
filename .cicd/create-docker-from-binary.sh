@@ -23,9 +23,9 @@ echo ":done: Done"
 # do docker push
 
 echo "Pushing Image..."
-docker push "eos_18.04:$BUILDKITE_COMMIT"
+docker push "eosio_18.04:$BUILDKITE_COMMIT"
 echo ":done: Done"
 
-echo "Cleaning up EOS_18.04_image:$BUILDKITE_COMMIT"
-docker rmi "eos_18.04_image:$BUILDKITE_COMMIT" --force
+echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
+docker rmi "eosio_18.04:$BUILDKITE_COMMIT" --force
 echo ":done: clean"
