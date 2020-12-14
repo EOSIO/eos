@@ -17,7 +17,7 @@ echo ":docker::build: Build image"
 set -e
 
 echo "Building...."
-docker build -t "eosio:$BUILDKITE_COMMIT" -f "eosio/eos/docker/Dockerfile" "eosio/eos/docker"
+docker build -t "eosio:$BUILDKITE_COMMIT" -f "eosio/eos/docker/Dockerfile" "./eos/docker"
 echo ":done: Done"
 
 # do docker push
