@@ -46,15 +46,6 @@
         {
             "name": "swagger",
             "options": {
-                "swagger_path": "plugins/test_control_api_plugin/test_control.swagger.yaml",
-                "swagger_dest_path": "nodeos/plugins/test_control_api_plugin/api-reference",
-                "disable_filters": true,
-                "disable_summary_gen": true
-            }
-        },
-        {
-            "name": "swagger",
-            "options": {
                 "swagger_path": "plugins/trace_api_plugin/trace_api.swagger.yaml",
                 "swagger_dest_path": "nodeos/plugins/trace_api_plugin/api-reference",
                 "disable_filters": true,
@@ -64,7 +55,7 @@
         {
           "name": "doxygen_to_xml",
           "options": {
-            "INPUT": "libraries/chain/include/eosio/chain/webassembly/interface.hpp"
+            "INPUT": "libraries/chain/include/eosio/chain/webassembly/interface.hpp plugins/blockvault_client_plugin/include/eosio/blockvault_client_plugin/blockvault.hpp"
           },
           "disable_default_filters" :true,
           "filters" : []

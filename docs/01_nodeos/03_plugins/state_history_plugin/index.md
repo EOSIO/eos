@@ -36,6 +36,46 @@ Config Options for eosio::state_history_plugin:
                                         the location of the state-history 
                                         directory (absolute path or relative to
                                         application data dir)
+  --state-history-retained-dir arg (="")
+                                        the location of the state history 
+                                        retained directory (absolute path or 
+                                        relative to state-history dir).
+                                        If the value is empty, it is set to the
+                                        value of state-history directory.
+  --state-history-archive-dir arg (="archive")
+                                        the location of the state history 
+                                        archive directory (absolute path or 
+                                        relative to state-history dir).
+                                        If the value is empty, blocks files 
+                                        beyond the retained limit will be 
+                                        deleted.
+                                        All files in the archive directory are 
+                                        completely under user's control, i.e. 
+                                        they won't be accessed by nodeos 
+                                        anymore.
+  --state-history-stride arg (=4294967295)
+                                        split the state history log files when 
+                                        the block number is the multiple of the
+                                        stride
+                                        When the stride is reached, the current
+                                        history log and index will be renamed 
+                                        '*-history-<start num>-<end 
+                                        num>.log/index'
+                                        and a new current history log and index
+                                        will be created with the most recent 
+                                        blocks. All files following
+                                        this format will be used to construct 
+                                        an extended history log.
+  --max-retained-history-files arg (=10)
+                                        the maximum number of history file 
+                                        groups to retain so that the blocks in 
+                                        those files can be queried.
+                                        When the number is reached, the oldest 
+                                        history file would be moved to archive 
+                                        dir or deleted if the archive dir is 
+                                        empty.
+                                        The retained history log files should 
+                                        not be manipulated by users.
   --trace-history                       enable trace history
   --chain-state-history                 enable chain state history
   --state-history-endpoint arg (=127.0.0.1:8080)
@@ -44,6 +84,10 @@ Config Options for eosio::state_history_plugin:
                                         expose this port to your internal 
                                         network.
   --trace-history-debug-mode            enable debug mode for trace history
+  --context-free-data-compression arg (=zlib)
+                                        compression mode for context free data 
+                                        in transaction traces. Supported 
+                                        options are "zlib" and "none"
 ```
 
 ## Examples
