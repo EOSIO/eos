@@ -84,6 +84,8 @@ namespace eosio { namespace chain { namespace resource_limits {
          bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
 
+         bool is_unlimited_cpu( const account_name& account ) const;
+
          void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );
 

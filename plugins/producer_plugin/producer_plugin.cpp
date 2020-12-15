@@ -1918,6 +1918,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
    if( !_unapplied_transactions.empty() ) {
       account_failures account_fails;
       chain::controller& chain = chain_plug->chain();
+      const auto& rl = chain.get_resource_limits_manager();
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
       // unapplied and persisted do not have a next method to call
@@ -1945,7 +1946,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             }
 
             auto prev_billed_cpu_time_us = trx->billed_cpu_time_us;
-            if( prev_billed_cpu_time_us > 0 ) {
+            if( prev_billed_cpu_time_us > 0 && !rl.is_unlimited_cpu( first_auth )) {
                auto prev_billed_plus100 = prev_billed_cpu_time_us + EOS_PERCENT( prev_billed_cpu_time_us, 100 * config::percent_1 );
                auto trx_dl = start + fc::microseconds( prev_billed_plus100 );
                if( trx_dl < trx_deadline ) trx_deadline = trx_dl;
