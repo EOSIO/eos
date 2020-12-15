@@ -351,9 +351,11 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
 }
 
 bool resource_limits_manager::is_unlimited_cpu( const account_name& account ) const {
-   int64_t x, y, cpu_weight;
-   get_account_limits( account, x, y, cpu_weight );
-   return cpu_weight == -1;
+   const auto* buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(false, account) );
+   if (buo) {
+      return buo->cpu_weight == -1;
+   }
+   return false;
 }
 
 void resource_limits_manager::process_account_limit_updates() {
