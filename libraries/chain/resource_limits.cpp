@@ -350,6 +350,12 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
    cpu_weight = buo.cpu_weight;
 }
 
+bool resource_limits_manager::is_unlimited_cpu( const account_name& account ) const {
+   int64_t x, y, cpu_weight;
+   get_account_limits( account, x, y, cpu_weight );
+   return cpu_weight == -1;
+}
+
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
    auto& by_owner_index = multi_index.indices().get<by_owner>();
