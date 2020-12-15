@@ -817,27 +817,7 @@ namespace eosio { namespace chain {
            auto[ds, version] = catalog.ro_stream_for_block(block_num);
            if (ds.remaining()){
                blog_version = version;
-               if (blog_version  >= pruned_transaction_version){
-                   pBuffer = read_packed_block(ds, blog_version);
-               }else {
-                   //calculate and pass block size
-                   auto c_pos = catalog.get_block_position(block_num, boost::iostreams::mapped_file::mapmode::readonly);
-                   auto c_next_pos = catalog.get_block_position(block_num + 1,
-                                                                boost::iostreams::mapped_file::mapmode::readonly);
-                   uint32_t last_num = catalog.log_data.last_block_num();
-                   auto c_last_pos = catalog.get_block_position(last_num,
-                                                                boost::iostreams::mapped_file::mapmode::readonly);
-                   uint64_t block_size;
-                   if (c_pos && c_last_pos && c_pos != c_last_pos){
-                       if (c_next_pos){
-                           block_size = (c_next_pos.value() - c_pos.value()) - sizeof(uint64_t);
-                           pBuffer = read_packed_block(ds, blog_version, block_size);
-                       }
-                   }else if (c_pos && c_last_pos && c_pos == c_last_pos){
-                       block_size =catalog.log_data.get_blog_file_size() - c_pos.value() - sizeof(uint64_t);
-                       pBuffer = read_packed_block(ds, blog_version, block_size);
-                   }
-               }
+               pBuffer = read_packed_block(ds, blog_version);
            }
        }
 
