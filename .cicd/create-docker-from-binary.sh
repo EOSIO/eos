@@ -23,7 +23,7 @@ echo ":done: Done"
 # do docker push
 
 echo "Pushing Image..."
-docker image push "eosio_18.04:$BUILDKITE_COMMIT" docker.io/eosio/eos/  
+docker push "eosio_18.04:$BUILDKITE_COMMIT"   
 echo ":done: Done"
 
 echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
