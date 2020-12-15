@@ -17,13 +17,18 @@ echo ":docker::build: Build image"
 set -e
 
 echo "Building...."
-docker build -t "eosio_18.04:$BUILDKITE_COMMIT" -f "./docker/Dockerfile" .
+docker build -t "eosio_18.04:$BUILDKITE_COMMIT-bin" -f "./docker/Dockerfile" .
 echo ":done: Done"
 
 # do docker push
 
-echo "Pushing Image..."
-docker push "eosio_18.04:$BUILDKITE_COMMIT"   
+#echo "Pushing Image DockerHub..."
+#docker push "eosio_18.04:$BUILDKITE_COMMIT"   
+#echo ":done: Done"
+
+$BUILDED_IMAGE=eosio_18.04:$BUILDKITE_COMMIT-bin
+echo "Pushing Image to ECR..."
+docker push docker push '$MIRROR_REGISTRY:$BUILDED_IMAGE' 
 echo ":done: Done"
 
 echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
