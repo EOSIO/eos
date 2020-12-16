@@ -27,7 +27,7 @@ echo ":done: Done"
 #echo ":done: Done"
 
 echo "Pushing Image to ECR..."
-docker push $MIRROR_REGISTRY/eosio_18.04:$BUILDKITE_COMMIT
+docker push $MIRROR_REGISTRY/eosio_18.04:$BUILDKITE_COMMIT-bin
 echo ":done: Done"
 
 echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
