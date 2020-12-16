@@ -52,6 +52,8 @@ public:
            "Threshold in terms of percentage of used space vs total space. If used space is above (threshold - 5%), a warning is generated.  If used space is above the threshold and resource-monitor-not-shutdown-on-threshold-exceeded is enabled, a graceful shutdown is initiated. The value should be between 6 and 99" )
          ( "resource-monitor-not-shutdown-on-threshold-exceeded",
            "Used to indicate nodeos will not shutdown when threshold is exceeded." )
+         ( "threshold-warning-interval-seconds", bpo::value<uint32_t>()->default_value(def_threshold_warning_interval_in_secs),
+           "Time in seconds between two consecutive warnings when the threshold is hit. Should be between \"resource-monitor-interval-seconds\" and 300" )
          ;
    }
    
@@ -78,6 +80,14 @@ public:
          // Default will shut down
          space_handler.set_shutdown_on_exceeded(true);
          ilog("Shutdown flag when threshold exceeded set to true");
+      }
+
+      if (options.count("threshold-warning-interval-seconds")) {
+         auto warning_interval = options.at("threshold-warning-interval-seconds").as<uint32_t>();
+         EOS_ASSERT(warning_interval >= interval && warning_interval <= warning_interval_high, chain::plugin_config_exception,
+            "\"threshold-warning-interval-seconds\" must be between ${interval} and ${warning_interval_high}", ("interval", interval) ("warning_interval_high", warning_interval_high));
+         space_handler.set_warning_interval(warning_interval);
+         ilog("Warning interval set to ${warning_interval}", ("warning_interval", warning_interval));
       }
    }
    
@@ -131,8 +141,10 @@ private:
    std::vector<bfs::path>    directories_registered;
    
    static constexpr uint32_t def_interval_in_secs = 2;
+   static constexpr uint32_t def_threshold_warning_interval_in_secs = 2;
    static constexpr uint32_t interval_low = 1;
    static constexpr uint32_t interval_high = 300;
+   static constexpr uint32_t warning_interval_high = 300;
 
    static constexpr uint32_t def_space_threshold = 90; // in percentage
    static constexpr uint32_t space_threshold_low = 6; // in percentage

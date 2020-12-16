@@ -50,7 +50,7 @@ struct space_handler_fixture {
       space_handler.set_shutdown_on_exceeded(shutdown_on_exceeded);
    }
 
-   bool is_threshold_exceeded() const {
+   bool is_threshold_exceeded() {
       return space_handler.is_threshold_exceeded();
    }
 
