@@ -20,8 +20,12 @@ echo ${MIRROR_REGISTRY}
 echo ${BUILDKITE_COMMIT}
 
 echo "Building...."
-docker build -t "$MIRROR_REGISTRY/eosio_18.04:$BUILDKITE_COMMIT-bin" -f "./docker/Dockerfile" .
+docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
 echo ":done: Done"
+
+echo "Tag Images to be pushed...."
+docker tag eosio_18.04-bin:${BUILDKITE_COMMIT} ${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}
+echo "done.. image tagged"
 
 # do docker push
 
@@ -30,8 +34,8 @@ echo ":done: Done"
 #echo ":done: Done"
 
 echo "Pushing Image to ECR..."
-echo "docker push ${MIRROR_REGISTRY}/eosio_18.04:${BUILDKITE_COMMIT}-bin"
-docker push ${MIRROR_REGISTRY}/eosio_18.04
+echo "docker push eosio_18.04-bin:${BUILDKITE_COMMIT} to ${MIRROR_REGISTRY}"
+docker push ${MIRROR_REGISTRY}/eosio_18.04-bin
 echo ":done: Done"
 
 #echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
