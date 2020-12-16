@@ -16,6 +16,9 @@ echo ":docker::build: Build image"
 
 set -e
 
+echo ${MIRROR_REGISTRY}
+echo ${BUILDKITE_COMMIT}
+
 echo "Building...."
 docker build -t "$MIRROR_REGISTRY/eosio_18.04:$BUILDKITE_COMMIT-bin" -f "./docker/Dockerfile" .
 echo ":done: Done"
@@ -27,9 +30,10 @@ echo ":done: Done"
 #echo ":done: Done"
 
 echo "Pushing Image to ECR..."
-docker push $MIRROR_REGISTRY/eosio_18.04:$BUILDKITE_COMMIT-bin
+echo "docker push ${MIRROR_REGISTRY}/eosio_18.04:${BUILDKITE_COMMIT}-bin"
+docker push ${MIRROR_REGISTRY}/eosio_18.04:${BUILDKITE_COMMIT}-bin
 echo ":done: Done"
 
-echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
-docker rmi "eosio_18.04:$BUILDKITE_COMMIT" --force
-echo ":done: clean"
+#echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
+#docker rmi "eosio_18.04:$BUILDKITE_COMMIT" --force
+#echo ":done: clean"
