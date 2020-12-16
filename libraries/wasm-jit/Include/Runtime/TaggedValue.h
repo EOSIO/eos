@@ -32,9 +32,10 @@ namespace Runtime
 		UntaggedValue(F32 inF32) { f32 = inF32; }
 		UntaggedValue(F64 inF64) { f64 = inF64; }
 		#if ENABLE_SIMD_PROTOTYPE
+		#error Not implemented
 		UntaggedValue(IR::V128 inV128) { v128 = inV128; }
 		#endif
-		UntaggedValue() {memset(this,0,sizeof(*this));}
+		UntaggedValue() {u64 = 0;}
 	};
 
 	// A boxed value: may hold any value that can be passed to a function invoked through the runtime.
