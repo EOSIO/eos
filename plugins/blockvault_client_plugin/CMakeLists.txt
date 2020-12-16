@@ -21,7 +21,7 @@ pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0)
 if (pqxx_FOUND)
 
    add_library(pqxx STATIC IMPORTED)
-   set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_STATIC_LIBRARY_DIRS}/libpqxx.a)
+   set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
    target_include_directories(pqxx INTERFACE ${pqxx_STATIC_INCLUDE_DIRS})
    target_link_libraries(pqxx INTERFACE PkgConfig::pq)
 
