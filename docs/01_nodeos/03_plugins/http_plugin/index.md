@@ -22,10 +22,11 @@ These can be specified from both the command-line or the `config.ini` file:
 
 ```console
 Config Options for eosio::http_plugin:
+
   --unix-socket-path arg                The filename (relative to data-dir) to 
                                         create a unix socket for HTTP RPC; set 
-                                        blank to disable (=keosd.sock for keosd)
-  --http-server-address arg (=127.0.0.1:8888 for nodeos)
+                                        blank to disable.
+  --http-server-address arg (=127.0.0.1:8888)
                                         The local IP and port to listen for 
                                         incoming http connections; set blank to
                                         disable.
@@ -53,8 +54,14 @@ Config Options for eosio::http_plugin:
   --http-max-bytes-in-flight-mb arg (=500)
                                         Maximum size in megabytes http_plugin 
                                         should use for processing http 
-                                        requests. 503 error response when 
+                                        requests. 429 error response when 
                                         exceeded.
+  --http-max-in-flight-requests arg (=-1)
+                                        Maximum number of requests http_plugin 
+                                        should use for processing http 
+                                        requests. 429 error response when 
+                                        exceeded.
+  --http-max-response-time-ms arg (=30) Maximum time for processing a request.
   --verbose-http-errors                 Append the error log to HTTP responses
   --http-validate-host arg (=1)         If set to false, then any incoming 
                                         "Host" header is considered valid
