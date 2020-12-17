@@ -23,10 +23,10 @@ echo "Building...."
 docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
 echo ":done: Done"
 
-docker images ls
+docker images
 
 wait
- 
+
 echo "Tag Images to be pushed...."
 docker tag eosio_18.04-bin:${BUILDKITE_COMMIT} ${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}
 echo "done.. image tagged"
