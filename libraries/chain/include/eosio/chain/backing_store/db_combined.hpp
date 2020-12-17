@@ -457,17 +457,15 @@ namespace detail {
          EOS_ASSERT(begin_key < end_key, database_exception, "Invalid iterator_pair request: begin_key was greater than or equal to end_key.");
          if (is_reverse_) {
             current_ = session.lower_bound(end_key);
-            EOS_ASSERT(current_ != session.end(), database_exception, "iterator_pair: failed to find lower bound of end_key");
             end_ = session.lower_bound(begin_key);
             // since this is reverse iterating, then need to iterate backward if this is a greater-than iterator,
             // to get a greater-than-or-equal reverse iterator
-            if ((*current_).first > end_key) {
+            if (current_ == session.end() || (*current_).first > end_key) {
                --current_;
+               EOS_ASSERT(current_ != session.end(), database_exception, "iterator_pair: failed to find lower bound of end_key");
             }
             // since this is reverse iterating, then need to iterate backward to get a less-than iterator
-            if (end_ != session.end()) {
-               --end_;
-            }
+            --end_;
          }
          else {
             current_ = session.lower_bound(begin_key);
