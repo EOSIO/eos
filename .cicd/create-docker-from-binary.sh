@@ -16,11 +16,15 @@ echo ":docker::build: Build image"
 
 set -e
 
-echo ${MIRROR_REGISTRY}
-echo ${BUILDKITE_COMMIT}
+#echo ${MIRROR_REGISTRY}
+#echo ${BUILDKITE_COMMIT}
 
 echo "Building...."
-docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
+#docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
+DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+echo "$ $DOCKER_PUSH_COMMAND"
+eval $DOCKER_PUSH_COMMAND
+
 echo ":done: Done"
 
 docker images
@@ -37,8 +41,8 @@ echo "done.. image tagged"
 #docker push "eosio_18.04:$BUILDKITE_COMMIT"   
 #echo ":done: Done"
 
-DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
-echo "$ $DOCKER_PUSH_COMMAND"
+#DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+#echo "$ $DOCKER_PUSH_COMMAND"
 
 #echo "Pushing Image to ECR..."
 #echo "docker push eosio_18.04-bin:${BUILDKITE_COMMIT} to ${MIRROR_REGISTRY}"
