@@ -54,6 +54,8 @@ public:
            "Used to indicate nodeos will not shutdown when threshold is exceeded." )
          ( "threshold-warning-interval-seconds", bpo::value<uint32_t>()->default_value(def_threshold_warning_interval_in_secs),
            "Time in seconds between two consecutive warnings when the threshold is hit. Should be between \"resource-monitor-interval-seconds\" and 300" )
+         ( "threshold-warning-frequency", bpo::value<uint32_t>()->default_value(def_threshold_warning_frequency),
+           "Numbers of resource usage checks between two consecutive warnings when the threshold is hit. Should be between 1 and 100" )
          ;
    }
    
@@ -88,6 +90,22 @@ public:
             "\"threshold-warning-interval-seconds\" must be between ${interval} and ${warning_interval_high}", ("interval", interval) ("warning_interval_high", warning_interval_high));
          space_handler.set_warning_interval(warning_interval);
          ilog("Warning interval set to ${warning_interval}", ("warning_interval", warning_interval));
+      } else {
+         // Default to monitor interval
+         space_handler.set_warning_interval(interval);
+         ilog("Warning interval set to ${interval}", ("interval", interval));
+      }
+
+      if (options.count("threshold-warning-frequency")) {
+         auto warning_frequency = options.at("threshold-warning-frequency").as<uint32_t>();
+         EOS_ASSERT(warning_frequency >= 1 && warning_frequency <= warning_frequency_high, chain::plugin_config_exception,
+            "\"threshold-warning-frequency\" must be between 1 and ${warning_frequency_high}", ("warning_frequency_high", warning_frequency_high));
+         space_handler.set_warning_frequency(warning_frequency);
+         ilog("Warning frequency set to ${warning_frequency}", ("warning_frequency", warning_frequency));
+      } else {
+         // Default to 1
+         space_handler.set_warning_frequency(1);
+         ilog("Warning frequency set to 1");
       }
    }
    
@@ -141,17 +159,21 @@ private:
    std::vector<bfs::path>    directories_registered;
    
    static constexpr uint32_t def_interval_in_secs = 2;
-   static constexpr uint32_t def_threshold_warning_interval_in_secs = 2;
    static constexpr uint32_t interval_low = 1;
    static constexpr uint32_t interval_high = 300;
-   static constexpr uint32_t warning_interval_high = 300;
 
    static constexpr uint32_t def_space_threshold = 90; // in percentage
    static constexpr uint32_t space_threshold_low = 6; // in percentage
    static constexpr uint32_t space_threshold_high = 99; // in percentage
    static constexpr uint32_t space_threshold_warning_diff = 5; // Warning issued when space used reached (threshold - space_threshold_warning_diff). space_threshold_warning_diff must be smaller than space_threshold_low
 
-   boost::asio::io_context     ctx;
+   static constexpr uint32_t def_threshold_warning_interval_in_secs = 2;
+   static constexpr uint32_t warning_interval_high = 300;
+
+   static constexpr uint32_t def_threshold_warning_frequency = 1; // After every this number of monitor intervals, warning is output if the threshold is hit
+   static constexpr uint32_t warning_frequency_high = 100;
+
+   boost::asio::io_context   ctx;
 
    using file_space_handler_t = file_space_handler<system_file_space_provider>;
    file_space_handler_t space_handler;
