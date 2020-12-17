@@ -33,8 +33,6 @@ namespace eosio { namespace chain {
     * linear scan of the main file.
     */
 
-   // mutex all public calls here to do...
-
    namespace bfs = boost::filesystem;
 
    class block_log {

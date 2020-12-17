@@ -413,10 +413,6 @@ namespace eosio { namespace chain {
       }
 
       void construct_index(const fc::path& index_file_name);
-
-      uint64_t get_blog_file_size()const{
-          return file.size();
-      }
    };
 
    using block_log_index = eosio::chain::log_index<block_log_exception>;
