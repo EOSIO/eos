@@ -200,8 +200,8 @@ void state_history_log::truncate(state_history_log::block_num_type block_num) {
       uint64_t pos = get_pos(block_num);
       write_log.seek(0);
       index.seek(0);
-      boost::filesystem::resize_file(index.get_file_path(), pos);
-      boost::filesystem::resize_file(read_log.get_file_path(), (block_num - _begin_block) * sizeof(uint64_t));
+      boost::filesystem::resize_file(read_log.get_file_path(), pos);
+      boost::filesystem::resize_file(index.get_file_path(), (block_num - _begin_block) * sizeof(uint64_t));
       _end_block = block_num;
    }
    write_log.flush();
