@@ -33,10 +33,13 @@ echo "done.. image tagged"
 #docker push "eosio_18.04:$BUILDKITE_COMMIT"   
 #echo ":done: Done"
 
-echo "Pushing Image to ECR..."
-echo "docker push eosio_18.04-bin:${BUILDKITE_COMMIT} to ${MIRROR_REGISTRY}"
-docker push ${MIRROR_REGISTRY}:eosio_18.04-bin
-echo ":done: Done"
+DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+echo "$ $DOCKER_PUSH_COMMAND"
+
+#echo "Pushing Image to ECR..."
+#echo "docker push eosio_18.04-bin:${BUILDKITE_COMMIT} to ${MIRROR_REGISTRY}"
+#docker push ${MIRROR_REGISTRY}:eosio_18.04-bin
+#echo ":done: Done"
 
 #echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
 #docker rmi "eosio_18.04:$BUILDKITE_COMMIT" --force
