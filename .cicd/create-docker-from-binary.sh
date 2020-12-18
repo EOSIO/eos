@@ -20,7 +20,7 @@ IMAGE="$MIRROR_REGISTRY:eosio-ubuntu-18.04-$BUILDKITE_COMMIT-bin"
 
 echo ":docker: Building Image...."
 #docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
-docker build -t $IMAGE -f ./docker/dockerfile .
+docker build -t $IMAGE -f ./docker/Dockerfile .
 echo "Build Done!!"
 
 #echo "Tag Images to be pushed...."
