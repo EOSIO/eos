@@ -442,6 +442,7 @@ namespace eosio { namespace chain {
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
             using v3 = legacy::snapshot_global_property_object_v3;
+            using v4 = legacy::snapshot_global_property_object_v4;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version) {
                std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -473,6 +474,19 @@ namespace eosio { namespace chain {
                });
                return; // early out to avoid default processing
             }
+
+            if (std::clamp(header.version, v4::minimum_version, v4::maximum_version) == header.version) {
+               snapshot->read_section<global_property_object>([&db = this->db](auto& section) {
+                  v4 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo) {
+                     gpo.initalize_from(legacy_global_properties);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+
          }
 
          snapshot->read_section<value_t>([this](auto& section) {
