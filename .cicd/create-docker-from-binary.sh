@@ -16,28 +16,18 @@ echo ":docker::build: Build image"
 
 set -e
 
-#echo ${MIRROR_REGISTRY}
-#echo ${BUILDKITE_COMMIT}
+IMAGE="$MIRROR_REGISTRY:eosio-ubuntu-18.04-$BUILDKITE_COMMIT-bin"
 
-DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
-echo "$ $DOCKER_PUSH_COMMAND"
-#eval $DOCKER_PUSH_COMMAND
-
-echo "Building...."
+echo ":docker: Building Image...."
 #docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
+docker build -t $IMAGE -f dockerfile .
+echo "Build Done!!"
 
-echo ":done: Done"
-
-docker images
-
-wait
-
-echo "Tag Images to be pushed...."
-docker tag eosio_18.04-bin:${BUILDKITE_COMMIT} ${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}
-echo "done.. image tagged"
+#echo "Tag Images to be pushed...."
+#docker tag eosio_18.04-bin:${BUILDKITE_COMMIT} ${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}
+#echo "done.. image tagged"
 
 # do docker push
-
 #echo "Pushing Image DockerHub..."
 #docker push "eosio_18.04:$BUILDKITE_COMMIT"   
 #echo ":done: Done"
@@ -48,9 +38,11 @@ echo "done.. image tagged"
 #echo "Pushing Image to ECR..."
 #echo "docker push eosio_18.04-bin:${BUILDKITE_COMMIT} to ${MIRROR_REGISTRY}"
 #docker push ${MIRROR_REGISTRY}:eosio_18.04-bin
-#echo ":done: Done"
 
-#echo "Cleaning up EOS_18.04:$BUILDKITE_COMMIT"
+docker push $IMAGE
+echo ":done: Done"
+
+echo "Cleaning up ${IMAGE}"
 #docker rmi "eosio_18.04:$BUILDKITE_COMMIT" --force
-
-#echo ":done: clean"
+docker rmi $IMAGE
+echo ":clean: clean"
