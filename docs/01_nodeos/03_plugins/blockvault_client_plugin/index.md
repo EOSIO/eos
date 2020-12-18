@@ -106,9 +106,9 @@ Block Vault is exclusively responsible for providing guarantees against double-p
 
 Cluster nodes interact with the Block Vault through the following messages:
 
-* [`async_propose_constructed_block()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-async_propose_constructed_block)
-* [`async_append_external_block()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-async_append_external_block)
-* [`propose_snapshot()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-propose_snapshot)
-* [`sync()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-sync)
+* [`async_propose_constructed_block()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-async_propose_constructed_block)
+* [`async_append_external_block()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-async_append_external_block)
+* [`propose_snapshot()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-propose_snapshot)
+* [`sync()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-sync)
 
-For more information visit the [block_vault_interface](/classeosio_1_1blockvault_1_1block__vault__interface) C++ reference.
+For more information visit the [block_vault_interface](../../../classeosio_1_1blockvault_1_1block__vault__interface) C++ reference.
