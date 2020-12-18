@@ -346,10 +346,10 @@ function ensure-libpq-and-libpqxx() {
         if [ ! -d ${OPT_DIR}/pqxx ]; then
             execute bash -c "cd $SRC_DIR && \
                 curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-                cd  libpqxx-7.2.1  && \
-                ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-                ${CMAKE} --build build && ${CMAKE} --install build && \
-                cd .. && rm -rf libpqxx-7.2.1"
+                cd libpqxx-7.2.1 && mkdir build && cd build && \
+                ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
+                make -j${JOBS} && make install && \
+                cd ../.. && rm -rf libpqxx-7.2.1"
         fi
 
         if [ -z "$PKG_CONFIG_PATH" ]; then
