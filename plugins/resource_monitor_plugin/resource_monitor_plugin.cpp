@@ -52,10 +52,8 @@ public:
            "Threshold in terms of percentage of used space vs total space. If used space is above (threshold - 5%), a warning is generated.  If used space is above the threshold and resource-monitor-not-shutdown-on-threshold-exceeded is enabled, a graceful shutdown is initiated. The value should be between 6 and 99" )
          ( "resource-monitor-not-shutdown-on-threshold-exceeded",
            "Used to indicate nodeos will not shutdown when threshold is exceeded." )
-         ( "threshold-warning-interval-seconds", bpo::value<uint32_t>()->default_value(def_threshold_warning_interval_in_secs),
-           "Time in seconds between two consecutive warnings when the threshold is hit. Should be between \"resource-monitor-interval-seconds\" and 300" )
-         ( "threshold-warning-frequency", bpo::value<uint32_t>()->default_value(def_threshold_warning_frequency),
-           "Numbers of resource usage checks between two consecutive warnings when the threshold is hit. Should be between 1 and 100" )
+         ( "resource-monitor-warning-interval", bpo::value<uint32_t>()->default_value(def_monitor_warning_interval),
+           "Number of resource monitor intervals between two consecutive warnings when the threshold is hit. Should be between 1 and (TODO)1000" ) //TODO
          ;
    }
    
@@ -84,28 +82,16 @@ public:
          ilog("Shutdown flag when threshold exceeded set to true");
       }
 
-      if (options.count("threshold-warning-interval-seconds")) {
-         auto warning_interval = options.at("threshold-warning-interval-seconds").as<uint32_t>();
-         EOS_ASSERT(warning_interval >= interval && warning_interval <= warning_interval_high, chain::plugin_config_exception,
-            "\"threshold-warning-interval-seconds\" must be between ${interval} and ${warning_interval_high}", ("interval", interval) ("warning_interval_high", warning_interval_high));
+      if (options.count("resource-monitor-warning-interval")) {
+         auto warning_interval = options.at("resource-monitor-warning-interval").as<uint32_t>();
+         EOS_ASSERT(warning_interval >= 1 && warning_interval <= warning_interval_high, chain::plugin_config_exception,
+            "\"resource-monitor-warning-interval\" must be between 1 and ${warning_interval_high}", ("warning_interval_high", warning_interval_high));
          space_handler.set_warning_interval(warning_interval);
          ilog("Warning interval set to ${warning_interval}", ("warning_interval", warning_interval));
-      } else {
-         // Default to monitor interval
-         space_handler.set_warning_interval(interval);
-         ilog("Warning interval set to ${interval}", ("interval", interval));
-      }
-
-      if (options.count("threshold-warning-frequency")) {
-         auto warning_frequency = options.at("threshold-warning-frequency").as<uint32_t>();
-         EOS_ASSERT(warning_frequency >= 1 && warning_frequency <= warning_frequency_high, chain::plugin_config_exception,
-            "\"threshold-warning-frequency\" must be between 1 and ${warning_frequency_high}", ("warning_frequency_high", warning_frequency_high));
-         space_handler.set_warning_frequency(warning_frequency);
-         ilog("Warning frequency set to ${warning_frequency}", ("warning_frequency", warning_frequency));
-      } else {
-         // Default to 1
-         space_handler.set_warning_frequency(1);
-         ilog("Warning frequency set to 1");
+      // } else {
+      //    // Default to 30
+      //    space_handler.set_warning_interval(30);
+      //    ilog("Warning interval set to 30");
       }
    }
    
@@ -167,11 +153,8 @@ private:
    static constexpr uint32_t space_threshold_high = 99; // in percentage
    static constexpr uint32_t space_threshold_warning_diff = 5; // Warning issued when space used reached (threshold - space_threshold_warning_diff). space_threshold_warning_diff must be smaller than space_threshold_low
 
-   static constexpr uint32_t def_threshold_warning_interval_in_secs = 2;
-   static constexpr uint32_t warning_interval_high = 300;
-
-   static constexpr uint32_t def_threshold_warning_frequency = 1; // After every this number of monitor intervals, warning is output if the threshold is hit
-   static constexpr uint32_t warning_frequency_high = 100;
+   static constexpr uint32_t def_monitor_warning_interval = 30; // After this number of monitor intervals, warning is output if the threshold is hit
+   static constexpr uint32_t warning_interval_high = 450; // e.g. if the monitor interval is 2 sec, the warning interval is at most 15 minutes
 
    boost::asio::io_context   ctx;
 
