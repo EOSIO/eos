@@ -205,14 +205,6 @@ public:
       }
    }
 
-   void remove_subjective_billing( const branch_type& forked_branch ) {
-      if( !_trx_cache_index.empty() ) {
-         for( const auto& bsp : forked_branch ) {
-            remove_subjective_billing( bsp );
-         }
-      }
-   }
-
    void subjective_bill( const packed_transaction& pt, const fc::microseconds& elapsed, bool speculative ) {
       if( !_disabled ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
@@ -226,7 +218,7 @@ public:
             _account_subjective_bill_cache[first_auth] += bill;
             if( speculative ) {
                // if speculative then we have billed user until block is aborted
-               _block_subjective_bill_cache[first_auth] += elapsed.count();
+               _block_subjective_bill_cache[first_auth] += bill;
             }
          }
       }
@@ -521,7 +513,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          try {
             block_state_ptr blk_state = chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
-               _subjective_billing.remove_subjective_billing( forked_branch );
                _unapplied_transactions.add_forked( forked_branch );
             }, [this]( const transaction_id_type& id ) {
                return _unapplied_transactions.get_trx( id );
@@ -704,10 +695,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   // No need to subjective bill since it will be re-applied
                   _unapplied_transactions.add_persisted( trx );
                } else {
-                  if( _pending_block_mode != pending_block_mode::producing ) {
-                     _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
-                                                          chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
-                  }
+                  _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
+                                                       chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
                }
                send_response( trace );
             }
@@ -1984,10 +1973,8 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   continue;
                }
             } else {
-               if( _pending_block_mode != pending_block_mode::producing ) {
-                  _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
-                                                       chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
-               }
+               _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
+                                                    chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
                ++num_applied;
                if( itr->trx_type != trx_enum_type::persisted ) {
                   if( itr->next ) itr->next( trace );
