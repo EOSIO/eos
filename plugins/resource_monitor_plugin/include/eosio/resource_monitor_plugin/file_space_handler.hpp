@@ -37,11 +37,7 @@ namespace eosio::resource_monitor {
       }
 
       void set_warning_interval(uint32_t new_warning_interval) {
-         warning_interval_in_secs = new_warning_interval;
-      }
-
-      void set_warning_frequency(uint32_t new_warning_frequency) {
-         warning_frequency = new_warning_frequency;
+         warning_interval = new_warning_interval;
       }
 
       bool is_threshold_exceeded() {
@@ -62,49 +58,15 @@ namespace eosio::resource_monitor {
                continue;
             }
 
-            if (warning_by_interval) {
-               if ( info.available < fs.shutdown_available ) {
-                  const std::string format = "Space usage on ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}";
-                  const auto args = fc::mutable_variant_object()
-                     ("path", path_str) 
-                     ("threshold", shutdown_threshold) 
-                     ("available", info.available) 
-                     ("capacity", info.capacity ) 
-                     ("shutdown_available", fs.shutdown_available);
-
-                  latest_warnings[path_str] = fc::format_string(format, args);
-                  // If shutdown_on_exceeded is true, the warning messages will be logged before the app quits.
-                  if ( shutdown_on_exceeded ) {
-                     log_warnings();
-                  }
-
-                  return true;
-               } else if ( info.available < fs.warning_available ) {
-                  const std::string format = "Space usage on ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}";
-                  const auto args = fc::mutable_variant_object()
-                     ("path", path_str) 
-                     ("available", info.available) 
-                     ("warning_available", fs.warning_available);
-                  
-                  latest_warnings[fs.path_name.string()] = fc::format_string(format, args);
-                  if ( shutdown_on_exceeded ) {
-                     latest_warnings[path_str] += "\n" + 
-                        fc::format_string("nodeos will shutdown when space usage exceeds threshold ${threshold}%", fc::mutable_variant_object("threshold", shutdown_threshold));
-                  }
+            if ( info.available < fs.shutdown_available ) {
+               if (output_threshold_warning) {
+                  wlog("Space usage on ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
                }
-            } else {
-               if ( info.available < fs.shutdown_available ) {
-                     if (output_threshold_warning) {
-                        wlog("Space usage on ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
-                     }
-                     return true;
-               } else if ( info.available < fs.warning_available ) {
-                  if (output_threshold_warning) {
-                     wlog("Space usage on ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
-                     if ( shutdown_on_exceeded) {
-                        wlog("nodeos will shutdown when space usage exceeds threshold ${threshold}%", ("threshold", shutdown_threshold));
-                     }
-                  }
+               return true;
+            } else if ( info.available < fs.warning_available && output_threshold_warning ) {
+               wlog("Space usage on ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
+               if ( shutdown_on_exceeded) {
+                  wlog("nodeos will shutdown when space usage exceeds threshold ${threshold}%", ("threshold", shutdown_threshold));
                }
             }
          }
@@ -152,41 +114,21 @@ namespace eosio::resource_monitor {
       }
    
    void space_monitor_loop() {
-      if (warning_by_interval) {
-         if ( sleep_counter == sleep_time_in_secs ) {
-            sleep_counter = 0;
-            if ( is_threshold_exceeded() && shutdown_on_exceeded ) {
-               wlog("Shutting down");
-               appbase::app().quit(); // This will gracefully stop Nodeos
-               return;
-            }
-         } 
-         ++sleep_counter;
-
-         if ( warning_counter == warning_interval_in_secs ) {
-            warning_counter = 0;
-            log_warnings();
-         }
-         ++warning_counter;
-
-         timer.expires_from_now( boost::posix_time::seconds( 1 ));
-      } else {
-         if ( is_threshold_exceeded() && shutdown_on_exceeded ) {
-            wlog("Shutting down");
-            appbase::app().quit(); // This will gracefully stop Nodeos
-            return;
-         }
-
-         if ( warning_frequency_counter == warning_frequency ) {
-            output_threshold_warning = true;
-            warning_frequency_counter = 0;
-         } else {
-            output_threshold_warning = false;
-         }
-         ++warning_frequency_counter;
-
-         timer.expires_from_now( boost::posix_time::seconds( sleep_time_in_secs ));
+      if ( is_threshold_exceeded() && shutdown_on_exceeded ) {
+         wlog("Shutting down");
+         appbase::app().quit(); // This will gracefully stop Nodeos
+         return;
       }
+
+      if ( warning_interval_counter == warning_interval ) {
+         output_threshold_warning = true;
+         warning_interval_counter = 0;
+      } else {
+         output_threshold_warning = false;
+      }
+      ++warning_interval_counter;
+
+      timer.expires_from_now( boost::posix_time::seconds( sleep_time_in_secs ));
 
       timer.async_wait([this](auto& ec) {
          if ( ec ) {
@@ -229,22 +171,9 @@ namespace eosio::resource_monitor {
       // Stores file systems to be monitored. Duplicate
       // file systems are not stored.
       std::vector<filesystem_info> filesystems;
-
-      uint32_t warning_interval_in_secs {2};
-      uint32_t sleep_counter {0};
-      uint32_t warning_counter {0};
-      std::unordered_map<std::string, std::string> latest_warnings; // key: filesystem path string; value: last warning for the path
       
-      uint32_t warning_frequency {1};
-      uint32_t warning_frequency_counter {0};
-      bool     warning_by_interval {false}; // (TODO) temporarily assume warning by freqency
+      uint32_t warning_interval {1};
+      uint32_t warning_interval_counter {0};
       bool     output_threshold_warning {true};
-
-      void log_warnings() {
-         for (const auto & [path, msg] : latest_warnings) {
-            wlog(msg);
-         }
-         latest_warnings.clear();
-      }
    };
 }
