@@ -9,7 +9,7 @@ The `Zipkin service` is a [distributed tracing system](https://zipkin.io/). It h
 
 ### How To Enable Zipkin Tracer
 
-EOSIO makes available `Zipkin tracer` through the [core `chain_plugin`](https://developers.eos.io/manuals/eos/v2.1/nodeos/plugins/chain_plugin/index/?query=chain%20plugin&page=1#gatsby-focus-wrapper). To enable the `Zipkin tracer` you must set the `telemetry-url` parameter for the `chain_plugin`. There are two additional parameters you can set: `telemetry-service-name` and `telemetry-timeout-us`. All three available parameters are detailed below:
+EOSIO makes available `Zipkin tracer` through the [core `chain_plugin`](../../plugins/chain_plugin/index/?query=chain%20plugin&page=1#gatsby-focus-wrapper). To enable the `Zipkin tracer` you must set the `telemetry-url` parameter for the `chain_plugin`. There are two additional parameters you can set: `telemetry-service-name` and `telemetry-timeout-us`. All three available parameters are detailed below:
 
 * `telemetry-url` specifies the url of the Zipkin service, e.g. [http://127.0.0.1:9411/api/v2/spans](http://127.0.0.1:9411/api/v2/spans) if it is installed in the local environment.
 * `telemetry-service-name` specifies the Zipkin `localEndpoint.serviceName` sent with each span.
