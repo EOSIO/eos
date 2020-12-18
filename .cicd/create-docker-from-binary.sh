@@ -16,7 +16,7 @@ echo ":docker::build: Build image"
 
 set -e
 
-IMAGE="$MIRROR_REGISTRY:eosio-ubuntu-18.04-$BUILDKITE_COMMIT-bin"
+IMAGE="$EOSIO_REGISTRY:eosio-ubuntu-18.04-$BUILDKITE_COMMIT-bin"
 
 echo ":docker: Building Image...."
 #docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
