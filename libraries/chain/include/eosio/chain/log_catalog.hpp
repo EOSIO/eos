@@ -234,6 +234,38 @@ struct log_catalog {
       if (max_retained_files > 0)
          this->collection.emplace(start_block_num, mapped_type{end_block_num, new_path});
    }
+
+   /// Truncate the catalog so that the log/index bundle containing the block with \c block_num
+   /// would be rename to \c new_name; the log/index bundles with blocks strictly higher 
+   /// than \c block_num would be deleted, and all the renamed/removed entries would be erased
+   /// from the catalog. 
+   /// 
+   /// \return if nonzero, it's the starting block number for the log/index bundle being renamed. 
+   uint32_t truncate(uint32_t block_num, bfs::path new_name) {
+      if (collection.empty())
+            return 0;
+
+      auto remove_files = [](typename collection_t::const_reference v) {
+         auto name = v.second.filename_base;
+         bfs::remove(name.replace_extension("log"));
+         bfs::remove(name.replace_extension("index"));
+      };
+
+      if (block_num < collection.begin()->first) {
+         std::for_each(collection.begin(), collection.end(), remove_files);
+         collection.clear();
+         return 0;
+      } else {
+         auto truncate_it = --collection.upper_bound(block_num);
+         auto name = truncate_it->second.filename_base;
+         bfs::rename(name.replace_extension("log"), new_name.replace_extension("log"));
+         bfs::rename(name.replace_extension("index"), new_name.replace_extension("index"));
+         std::for_each(truncate_it + 1, collection.end(), remove_files);
+         auto result = truncate_it->first;
+         collection.erase(truncate_it, collection.end());
+         return result;
+      }
+   }
 };
 
 } // namespace chain
