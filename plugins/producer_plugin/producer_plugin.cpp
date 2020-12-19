@@ -174,9 +174,6 @@ private:
       }
    }
 
-public:
-   void disable() { _disabled = true; }
-
    void remove_subjective_billing( const transaction_id_type& trx_id ) {
       auto& idx = _trx_cache_index.get<by_id>();
       auto itr = idx.find( trx_id );
@@ -205,7 +202,11 @@ public:
       }
    }
 
-   void subjective_bill( const packed_transaction& pt, const fc::microseconds& elapsed, bool speculative ) {
+public:
+   void disable() { _disabled = true; }
+
+   /// @param in_pending_block pass true if pt's bill time is accounted for in the pending block
+   void subjective_bill( const packed_transaction& pt, const fc::microseconds& elapsed, bool in_pending_block ) {
       if( !_disabled ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
          auto first_auth = pt.get_transaction().first_authorizer();
@@ -216,8 +217,9 @@ public:
                                pt.expiration()} );
          if( p.second ) {
             _account_subjective_bill_cache[first_auth] += bill;
-            if( speculative ) {
-               // if speculative then we have billed user until block is aborted
+            if( in_pending_block ) {
+               // if in_pending_block then we have billed user until block is aborted/applied
+               // keep track of this double bill amount so we can subtract it out in get_subjective_bill
                _block_subjective_bill_cache[first_auth] += bill;
             }
          }
@@ -239,11 +241,16 @@ public:
       return sub_bill;
    }
 
-   void abort_block() {
+   void abort_block( const vector<transaction_metadata_ptr>& trxs ) {
+      remove_subjective_billing( trxs );
       _block_subjective_bill_cache.clear();
    }
 
-   bool remove_expired_subjective_billing( const fc::time_point& pending_block_time, const fc::time_point& deadline ) {
+   void on_block( const block_state_ptr& bsp ) {
+      remove_subjective_billing( bsp );
+   }
+
+   bool remove_expired( const fc::time_point& pending_block_time, const fc::time_point& deadline ) {
       bool exhausted = false;
       auto& idx = _trx_cache_index.get<by_expiry>();
       if( !idx.empty() ) {
@@ -378,7 +385,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_block( const block_state_ptr& bsp ) {
          auto before = _unapplied_transactions.size();
          _unapplied_transactions.clear_applied( bsp );
-         _subjective_billing.remove_subjective_billing( bsp );
+         _subjective_billing.on_block( bsp );
          fc_dlog( _log, "Removed applied transactions before: ${before}, after: ${after}",
                   ("before", before)("after", _unapplied_transactions.size()) );
       }
@@ -411,10 +418,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto& chain = chain_plug->chain();
 
          auto meta_trxs = chain.abort_block();
-         _subjective_billing.remove_subjective_billing( meta_trxs );
+         _subjective_billing.abort_block( meta_trxs );
          _unapplied_transactions.add_aborted( std::move( meta_trxs ) );
-
-         _subjective_billing.abort_block();
       }
 
       bool on_sync_block(const signed_block_ptr& block, bool check_connectivity) {
@@ -695,6 +700,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   // No need to subjective bill since it will be re-applied
                   _unapplied_transactions.add_persisted( trx );
                } else {
+                  // if db_read_mode SPECULATIVE then trx is in the pending block and not immediately reverted
                   _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
                                                        chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
                }
@@ -1716,7 +1722,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             return start_block_result::exhausted;
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
-         if( !_subjective_billing.remove_expired_subjective_billing( chain.pending_block_time(), preprocess_deadline ))
+         if( !_subjective_billing.remove_expired( chain.pending_block_time(), preprocess_deadline ))
             return start_block_result::exhausted;
 
          // limit execution of pending incoming to once per block
@@ -1973,6 +1979,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                   continue;
                }
             } else {
+               // if db_read_mode SPECULATIVE then trx is in the pending block and not immediately reverted
                _subjective_billing.subjective_bill( *trx->packed_trx(), trace->elapsed,
                                                     chain.get_read_mode() == chain::db_read_mode::SPECULATIVE );
                ++num_applied;
