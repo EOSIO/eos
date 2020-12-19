@@ -1,17 +1,17 @@
 
 ## Overview
 
-The `blockvault_client_plugin` enables blockchain administrators to implement industry standard disaster recovery to maximize producer operational uptime. The plugin allows a block producer to cluster three or more nodes deployed as a single logical producer. If the primary node goes down, one of the secondary nodes takes over without human intervention, thereby meeting certain guarantees for the producer to continue to operate with minimal service disruption.
+The `blockvault_client_plugin` enables blockchain administrators to implement industry standard disaster recovery to maximize producer operational uptime. The plugin allows a block producer to cluster two or more nodes deployed as a single logical producer. If one of the nodes goes down, the other nodes in the cluster continue to operate, thereby meeting certain guarantees for the producer to continue to function with minimal service disruption.
 
 ## Goals
 
-Block Vault is a clustered component within an EOSIO network architecture that enables replicated durable storage with strong consistency guarantees for the input required by a redundant cluster of nodes. In particular, Block Vault achieves the following guarantees for any cluster node running `nodeos` with both `blockvault_client_plugin` and `producer_plugin` enabled:
+Block Vault is a clustered component within an EOSIO network architecture that enables replicated durable storage with strong consistency guarantees for the input required by a redundant cluster of nodes. In particular, Block Vault achieves the following guarantees for any cluster node running `nodeos` configured as a Block Vault client in producing mode:
 
 * Guarantee against double-production of blocks
 * Guarantee against finality violation
 * Guarantee of liveness (ability to make progress as a blockchain)
 
-By facilitating these guarantees, Block Vault allows `nodeos` to run in a redundant and/or highly available mode. Block Vault itself does not implement any coordination of nodes in a cluster. It merely guarantees that any such coordination, including faulty coordination leading to multiple active block constructing nodes, will be safe as defined by the above guarantees. Read [Block Vault Operation](#block-vault-operation) below for more information.
+To facilitate these guarantees, Block Vault allows `nodeos` to run in a redundant and/or highly available mode. Block Vault itself does not implement any coordination of nodes in a cluster. It merely guarantees that any such coordination, including faulty coordination leading to multiple active block constructing nodes, will be safe as defined by the above guarantees. For more information, read the [Block Vault Operation](#block-vault-operation) section below.
 
 ## Usage
 
@@ -100,15 +100,15 @@ CREATE TABLE IF NOT EXISTS SnapshotData (watermark_bn bigint, watermark_ts bigin
 
 As new nodes join a cluster, the Block Vault will be their exclusive source of sync data, enabling it to guarantee a consistent view of the blockchain as a base. When a node participating in the cluster constructs a new block, it will submit it to the Block Vault for approval prior to broadcasting it to external peers via the P2P network.
 
-Block Vault is exclusively responsible for providing guarantees against double-production of blocks and finality violations. It facilitates partial guarantee of liveness by ensuring that data needed to construct new blocks are durable and replicated. However, Block Vault cannot guarantee that the data it contains was not malformed. To that end, Block Vault depends on the proper operation of the clustered nodes.
+Block Vault is exclusively responsible for providing guarantees against double-production of blocks and finality violations. It facilitates partial guarantee of liveness through node redundancy by ensuring that data needed to construct new blocks are durable and replicated. However, Block Vault cannot guarantee that the data it contains was not malformed. To that end, Block Vault depends on the proper operation of the clustered nodes.
 
 ## Block Vault Client API
 
 Cluster nodes interact with the Block Vault through the following messages:
 
-* [`async_propose_constructed_block()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-async_propose_constructed_block)
-* [`async_append_external_block()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-async_append_external_block)
-* [`propose_snapshot()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-propose_snapshot)
-* [`sync()`](/classeosio_1_1blockvault_1_1block__vault__interface#function-sync)
+* [`async_propose_constructed_block()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-async_propose_constructed_block)
+* [`async_append_external_block()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-async_append_external_block)
+* [`propose_snapshot()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-propose_snapshot)
+* [`sync()`](../../../classeosio_1_1blockvault_1_1block__vault__interface#function-sync)
 
-For more information visit the [block_vault_interface](/classeosio_1_1blockvault_1_1block__vault__interface) C++ reference.
+For more information visit the [block_vault_interface](../../../classeosio_1_1blockvault_1_1block__vault__interface) C++ reference.
