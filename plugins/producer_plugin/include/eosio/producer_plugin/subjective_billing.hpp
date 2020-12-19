@@ -4,7 +4,6 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/transaction_metadata.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
@@ -17,7 +16,6 @@ namespace bmi = boost::multi_index;
 using chain::transaction_id_type;
 using chain::account_name;
 using chain::block_state_ptr;
-using chain::transaction_metadata_ptr;
 using chain::packed_transaction;
 
 class subjective_billing {
@@ -66,14 +64,6 @@ private:
                const auto& pt = receipt.trx.get<packed_transaction>();
                remove_subjective_billing( pt.id() );
             }
-         }
-      }
-   }
-
-   void remove_subjective_billing( const std::vector<transaction_metadata_ptr>& trxs ) {
-      if( !_trx_cache_index.empty() ) {
-         for( const auto& trx : trxs ) {
-            remove_subjective_billing( trx->id() );
          }
       }
    }
