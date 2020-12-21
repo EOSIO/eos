@@ -224,7 +224,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (current_request->fetch_block)
                   result.block = plugin->get_block(current_request->start_block_num);
                if (current_request->fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_traces(current_request->start_block_num);
+                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
                }
                if (current_request->fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
