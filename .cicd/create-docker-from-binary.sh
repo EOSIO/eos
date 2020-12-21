@@ -23,25 +23,24 @@ set -e
 IMAGE="$EOSIO_REGISTRY:eosio-ubuntu-18.04-$BUILDKITE_COMMIT-bin"
 
 echo ":docker: Building Image...."
-#docker build -t "${MIRROR_REGISTRY}/eosio_18.04-bin:${BUILDKITE_COMMIT}" -f "./docker/Dockerfile" .
 
 docker build -t $IMAGE -f ./docker/dockerfile .
 echo "Build Done successfully!!"
 
-echo "Tag Images to be pushed to Dockerhub EOSIO/EOS...."
-DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
-
-docker tag ${PREFIX}:${SANITIZED_BRANCH} ${DOCKERHUB_EOS_REGISTRY}/${PREFIX}:${SANITIZED_BRANCH}
-echo "done.. image tagged"
-
-# do docker push
-echo "Pushing Image DockerHub EOSIO/EOS ..."
-docker push ${PREFIX}:${SANITIZED_BRANCH}   
-echo ":done: Done"
-
+#do docker push to ECR
 echo "Pushing Image to ECR..."
 
 docker push $IMAGE
+echo ":done: Done"
+
+# do docker push Dockerhub
+echo "Tag Images to be pushed to Dockerhub EOSIO/EOS...."
+DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
+docker tag ${PREFIX}:${SANITIZED_BRANCH} ${DOCKERHUB_EOS_REGISTRY}/${PREFIX}:${SANITIZED_BRANCH}
+echo "done.. image tagged"
+
+echo "Pushing Image DockerHub EOSIO/EOS ..."
+docker push ${PREFIX}:${SANITIZED_BRANCH}   
 echo ":done: Done"
 
 #do clean up image
