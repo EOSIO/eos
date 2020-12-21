@@ -36,7 +36,7 @@ echo ":done: Done"
 # do docker push Dockerhub
 echo "Tag Images to be pushed to Dockerhub EOSIO/EOS...."
 DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
-docker tag ${PREFIX}:${SANITIZED_BRANCH} ${DOCKERHUB_EOS_REGISTRY}/${PREFIX}:${SANITIZED_BRANCH}
+docker tag ${IMAGE} ${DOCKERHUB_EOS_REGISTRY}/${PREFIX}:${SANITIZED_BRANCH}
 echo "done.. image tagged"
 
 echo "Pushing Image DockerHub EOSIO/EOS ..."
