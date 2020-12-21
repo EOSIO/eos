@@ -320,12 +320,12 @@ namespace eosio { namespace chain {
          return fc::endian_reverse_u32(prev_block_num) + 1;
       }
 
-      fc::datastream<const char*> ro_stream_at(uint64_t pos) {
-         return fc::datastream<const char*>(file.const_data() + pos, file.size() - pos);
+      std::pair<fc::datastream<const char*>,uint32_t> ro_stream_at(uint64_t pos) {
+         return std::make_pair(fc::datastream<const char*>(file.const_data() + pos, file.size() - pos), version());
       }
 
-      fc::datastream<char*> rw_stream_at(uint64_t pos) {
-         return fc::datastream<char*>(file.data() + pos, file.size() - pos);
+      std::pair<fc::datastream<char*>,uint32_t> rw_stream_at(uint64_t pos) {
+         return std::make_pair(fc::datastream<char*>(file.data() + pos, file.size() - pos), version());
       }
 
       /**
