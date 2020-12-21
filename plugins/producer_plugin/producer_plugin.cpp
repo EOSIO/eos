@@ -534,7 +534,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             auto first_auth = trx->packed_trx()->get_transaction().first_authorizer();
-            uint32_t sub_bill = _subjective_billing.get_subjective_bill( first_auth );
+            uint32_t sub_bill = 0;
+            if( _pending_block_mode != pending_block_mode::producing)
+               sub_bill = _subjective_billing.get_subjective_bill( first_auth );
 
             auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false, sub_bill );
             if( trace->except ) {
@@ -1814,7 +1816,8 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                deadline_is_subjective = true;
                trx_deadline = deadline;
             }
-            uint32_t sub_bill = _subjective_billing.get_subjective_bill( first_auth );
+            // no subjective billing since we are producing or processing persisted trxs
+            const uint32_t sub_bill = 0;
 
             auto trace = chain.push_transaction( trx, trx_deadline, prev_billed_cpu_time_us, false, sub_bill );
             if( trace->except ) {
