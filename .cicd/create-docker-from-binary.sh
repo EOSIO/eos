@@ -2,15 +2,13 @@
 
 set -euo pipefail
 
-echo ":docker::package: Push EOS ubuntu 18.04 base Image to Dockerhub"
-
 # buildkite-agent artifact download someversion.deb .
 
 echo ":download: Downloading artifact from Buildkite step Ubuntu 18.04"
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 echo ":done: download successfull"
 
-PREFIX='base-ubuntu-18.04'
+#PREFIX='base-ubuntu-18.04'
 SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
 SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | sed 's.^/..' | tr '/' '_')
 echo "$SANITIZED_BRANCH"
@@ -19,10 +17,9 @@ echo "$SANITIZED_TAG"
 # do docker build
 echo ":docker::build: Building image..."
 
-set -e
-IMAGE_ECR="$EOSIO_REGISTRY:$PREFIX-bin-$SANITIZED_BRANCH"
+IMAGE_ECR="$EOSIO_REGISTRY:$SANITIZED_BRANCH"
 DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
-IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$PREFIX-bin-$SANITIZED_BRANCH"
+IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_BRANCH"
 
 echo ":docker: Building Image...."
 docker build -t $IMAGE_ECR -t $IMAGE_DOCKER -f ./docker/dockerfile .
