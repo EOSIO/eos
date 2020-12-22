@@ -21,7 +21,7 @@ echo ":docker::build: Building image..."
 
 set -e
 IMAGE_ECR="$EOSIO_REGISTRY:$PREFIX-bin-$BUILDKITE_COMMIT"
-DOCKERHUB_EOS_REGISTRY="/eosio/eos"
+DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
 IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$PREFIX-bin-$BUILDKITE_COMMIT"
 echo ":docker: Building Image...."
 
