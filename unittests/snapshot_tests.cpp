@@ -189,8 +189,6 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
    chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
 
-#warning add a snapshot2 account and send the action against it as well, so that we are actually walking through more than just one contract's data'
-
    // increment the test contract
    chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
@@ -377,6 +375,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+/*
 static auto get_extra_args() {
    bool save_snapshot = false;
    bool generate_log = false;
@@ -678,8 +677,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // produce block
             auto new_block = chain.produce_block();
-
-#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
 
             // undo the auto-pending from tester
             chain.control->abort_block();
