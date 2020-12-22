@@ -45,6 +45,6 @@ docker push $IMAGE_DOCKER
 echo ":done: Done"
 
 #do clean up image
-echo "Cleaning up ${IMAGE}"
-docker rmi $IMAGE
+echo "Cleaning up ${IMAGE_ECR} && ${IMAGE_DOCKER}"
+docker rmi ${IMAGE_ECR} ${IMAGE_DOCKER}
 echo ":clean: cleaned"
