@@ -20,26 +20,20 @@ echo "$SANITIZED_TAG"
 echo ":docker::build: Building image..."
 
 set -e
-IMAGE_ECR="$EOSIO_REGISTRY:$PREFIX-bin-$BUILDKITE_COMMIT"
+IMAGE_ECR="$EOSIO_REGISTRY:$PREFIX-bin-$SANITIZED_BRANCH"
 DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
-IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$PREFIX-bin-$BUILDKITE_COMMIT"
-echo ":docker: Building Image...."
+IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$PREFIX-bin-$SANITIZED_BRANCH"
 
+echo ":docker: Building Image...."
 docker build -t $IMAGE_ECR -t $IMAGE_DOCKER -f ./docker/dockerfile .
 echo "Build Done successfully!!"
 
 #do docker push to ECR
 echo "Pushing Image to ECR..."
-
 docker push $IMAGE_ECR
 echo ":done: Done"
 
 # do docker push Dockerhub
-#echo "Tag Images to be pushed to Dockerhub EOSIO/EOS...."
-
-#docker tag ${IMAGE} ${DOCKERHUB_EOS_REGISTRY}/${PREFIX}:${SANITIZED_BRANCH}
-#echo "done.. image tagged"
-
 echo "Pushing Image DockerHub EOSIO/EOS ..."
 docker push $IMAGE_DOCKER
 echo ":done: Done"
