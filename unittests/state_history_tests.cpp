@@ -4,6 +4,7 @@
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <utilities.hpp>
 #include <eosio/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
@@ -180,6 +181,19 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
 
    BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
        get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
+}
+
+BOOST_AUTO_TEST_CASE(test_trace_log_versions) {
+   namespace bfs = boost::filesystem;
+
+   for(std::string version : {"v0", "v1"}) {
+      tester chain;
+      eosio::state_history_traces_log log({ .log_dir = state_history_data_base_path() + "/trace-log-"+ version });
+
+      for(int i = 2; i <= 11; i++) {
+         auto traces = get_traces(log, i);
+      }
+   }
 }
 
 BOOST_AUTO_TEST_CASE(test_chain_state_log) {
