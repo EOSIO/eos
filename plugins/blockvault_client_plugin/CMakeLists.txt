@@ -1,5 +1,8 @@
 find_package(PkgConfig REQUIRED)
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 add_library( blockvault_client_plugin
              blockvault_client_plugin.cpp)
 target_link_libraries( blockvault_client_plugin appbase eosio_chain)

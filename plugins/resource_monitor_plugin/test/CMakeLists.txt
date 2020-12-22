@@ -1,3 +1,6 @@
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 add_executable( test_threshold test_threshold.cpp )
 target_link_libraries( test_threshold resource_monitor_plugin )
 target_include_directories( test_threshold PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
