@@ -115,8 +115,9 @@ nodeos
 
 * Mac OS: `~/Library/Application\ Support/eosio/nodeos/data`
 * Linux: `~/.local/share/eosio/nodeos/data`
- 
+
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 
 [[info | What's next?]]
-| We will explore how to setup and run a [single-host, multi-node testnet](01_local-multi-node-testnet.md).
+| You can explore how to setup and run a [single-host, single-node testnet with consensus](10_local-single-node-testnet-consensus.md) or
+| You can explore how to setup and run a [single-host, multi-node testnet](20_local-multi-node-testnet.md).
