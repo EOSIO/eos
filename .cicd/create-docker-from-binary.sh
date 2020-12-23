@@ -4,7 +4,6 @@ set -euo pipefail
 
 # buildkite-agent artifact download someversion.deb .
 
-echo ":download: Downloading artifact from Buildkite step Ubuntu 18.04"
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 echo ":done: download successfull"
 
