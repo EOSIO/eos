@@ -268,6 +268,17 @@ packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vect
    }
 }
 
+packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vector<signature_type>& sigs, vector<bytes> cfd, compression_type _compression)
+:signatures(sigs)
+,compression(_compression)
+,packed_trx(packed_txn)
+{
+   local_unpack_transaction( std::move(cfd) );
+   if( !packed_context_free_data.empty() ) {
+      local_unpack_context_free_data();
+   }
+}
+
 packed_transaction_v0::packed_transaction_v0( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
 :signatures(std::move(sigs))
 ,compression(_compression)
@@ -504,10 +515,11 @@ packed_transaction::packed_transaction(packed_transaction_v0&& other, bool legac
 packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
    const auto* sigs = get_signatures();
    const auto* context_free_data = get_context_free_data();
-   signed_transaction strx( transaction( get_transaction() ),
+
+   return std::make_shared<const packed_transaction_v0>( bytes(packed_trx),
                             sigs != nullptr ? *sigs : vector<signature_type>(),
-                            context_free_data != nullptr ? *context_free_data : vector<bytes>() );
-   return std::make_shared<const packed_transaction_v0>( std::move( strx ), get_compression() );
+                            context_free_data != nullptr ? *context_free_data : vector<bytes>(),
+                            compression.value );
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {
