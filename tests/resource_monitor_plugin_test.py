@@ -99,7 +99,7 @@ def isMsgInStderrFile(msg):
                 msgFound=True
                 break
     return msgFound
-  
+
 def testCommon(title, extraNodeosArgs, expectedMsgs):
     global testNum
     testNum+=1
