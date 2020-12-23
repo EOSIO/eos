@@ -274,8 +274,8 @@ packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vect
 ,packed_trx(packed_txn)
 {
    local_unpack_transaction( std::move(cfd) );
-   if( !packed_context_free_data.empty() ) {
-      local_unpack_context_free_data();
+   if( !unpacked_trx.context_free_data.empty() ) {
+      local_pack_context_free_data();
    }
 }
 
