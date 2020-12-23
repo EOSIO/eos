@@ -827,14 +827,6 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK( packed == pkt8.get_packed_transaction() ); // extra maintained
 
    // Check extra maintained in transitions of v0 -> v1 -> v0
-   /*
-   packed_transaction pkt9(pkt8, true); // Build v1 with extra
-   auto packed9 = fc::raw::pack( static_cast<const transaction&>(pkt9.get_transaction()) );
-   packed_transaction_v0 pkt10( packed9, *pkt9.get_signatures(), pkt9.to_packed_transaction_v0()->get_packed_context_free_data(),
-                               packed_transaction_v0::compression_type::none ); // v1 -> v0
-   packed_transaction pkt11(pkt10, true); // v0 -> v1
-   */
-
    packed_transaction pkt8_v0_to_v1(pkt8, true); // Build v1 with extra
    auto pkt8_v0_to_v1_to_v0 = pkt8_v0_to_v1.to_packed_transaction_v0();
    BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt8_v0_to_v1_to_v0->get_transaction().id());
