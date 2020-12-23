@@ -268,17 +268,6 @@ packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vect
    }
 }
 
-packed_transaction_v0::packed_transaction_v0(const bytes& packed_txn, const vector<signature_type>& sigs, vector<bytes> cfd, compression_type _compression)
-:signatures(sigs)
-,compression(_compression)
-,packed_trx(packed_txn)
-{
-   local_unpack_transaction( std::move(cfd) );
-   if( !unpacked_trx.context_free_data.empty() ) {
-      local_pack_context_free_data();
-   }
-}
-
 packed_transaction_v0::packed_transaction_v0( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
 :signatures(std::move(sigs))
 ,compression(_compression)
@@ -514,11 +503,11 @@ packed_transaction::packed_transaction(packed_transaction_v0&& other, bool legac
 
 packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
    const auto* sigs = get_signatures();
-   const auto* context_free_data = get_context_free_data();
+   auto& legacy = std::get<prunable_data_type::full_legacy>(prunable_data.prunable_data);
 
-   return std::make_shared<const packed_transaction_v0>( bytes(packed_trx),
+   return std::make_shared<const packed_transaction_v0>( packed_trx,
                             sigs != nullptr ? *sigs : vector<signature_type>(),
-                            context_free_data != nullptr ? *context_free_data : vector<bytes>(),
+                            legacy.packed_context_free_data,
                             compression.value );
 }
 
