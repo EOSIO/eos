@@ -60,11 +60,11 @@ namespace eosio::resource_monitor {
 
             if ( info.available < fs.shutdown_available ) {
                if (output_threshold_warning) {
-                  wlog("Space usage on ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
+                  wlog("Space usage warning: ${path}'s file system exceeded threshold ${threshold}%, available: ${available}, Capacity: ${capacity}, shutdown_available: ${shutdown_available}", ("path", fs.path_name.string()) ("threshold", shutdown_threshold) ("available", info.available) ("capacity", info.capacity) ("shutdown_available", fs.shutdown_available));
                }
                return true;
             } else if ( info.available < fs.warning_available && output_threshold_warning ) {
-               wlog("Space usage on ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
+               wlog("Space usage warning: ${path}'s file system approaching threshold. available: ${available}, warning_available: ${warning_available}", ("path", fs.path_name.string()) ("available", info.available) ("warning_available", fs.warning_available));
                if ( shutdown_on_exceeded) {
                   wlog("nodeos will shutdown when space usage exceeds threshold ${threshold}%", ("threshold", shutdown_threshold));
                }

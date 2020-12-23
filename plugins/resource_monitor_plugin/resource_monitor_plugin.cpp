@@ -82,17 +82,11 @@ public:
          ilog("Shutdown flag when threshold exceeded set to true");
       }
 
-      if (options.count("resource-monitor-warning-interval")) {
-         auto warning_interval = options.at("resource-monitor-warning-interval").as<uint32_t>();
-         EOS_ASSERT(warning_interval >= 1 && warning_interval <= warning_interval_high, chain::plugin_config_exception,
-            "\"resource-monitor-warning-interval\" must be between 1 and ${warning_interval_high}", ("warning_interval_high", warning_interval_high));
-         space_handler.set_warning_interval(warning_interval);
-         ilog("Warning interval set to ${warning_interval}", ("warning_interval", warning_interval));
-      // } else {
-      //    // Default to 30
-      //    space_handler.set_warning_interval(30);
-      //    ilog("Warning interval set to 30");
-      }
+      auto warning_interval = options.at("resource-monitor-warning-interval").as<uint32_t>();
+      EOS_ASSERT(warning_interval >= warning_interval_low && warning_interval <= warning_interval_high, chain::plugin_config_exception,
+         "\"resource-monitor-warning-interval\" must be between ${warning_interval_low} and ${warning_interval_high}", ("warning_interval_low", warning_interval_low) ("warning_interval_high", warning_interval_high));
+      space_handler.set_warning_interval(warning_interval);
+      ilog("Warning interval set to ${warning_interval}", ("warning_interval", warning_interval));
    }
    
    // Start main thread
@@ -154,6 +148,7 @@ private:
    static constexpr uint32_t space_threshold_warning_diff = 5; // Warning issued when space used reached (threshold - space_threshold_warning_diff). space_threshold_warning_diff must be smaller than space_threshold_low
 
    static constexpr uint32_t def_monitor_warning_interval = 30; // After this number of monitor intervals, warning is output if the threshold is hit
+   static constexpr uint32_t warning_interval_low = 1;
    static constexpr uint32_t warning_interval_high = 450; // e.g. if the monitor interval is 2 sec, the warning interval is at most 15 minutes
 
    boost::asio::io_context   ctx;
