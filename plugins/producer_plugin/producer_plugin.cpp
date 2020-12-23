@@ -428,7 +428,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
          } catch( const fc::exception& e ) {
-            elog((e.to_detail_string()));
+            // The log will help us debug
+            fc_dlog(_log, "${exp}", ("exp", e.to_detail_string()));
             handle_error(e);
          } catch (const std::exception& e) {
             handle_error(fc::std_exception_wrapper::from_current_exception(e));
