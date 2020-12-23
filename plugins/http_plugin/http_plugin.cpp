@@ -1013,13 +1013,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            if (e.code() != chain::greylist_net_usage_exceeded::code_value &&
-                e.code() != chain::greylist_cpu_usage_exceeded::code_value &&
-                e.code() != fc::timeout_exception::code_value ) {
-               fc_elog( logger, "FC Exception encountered while processing ${api}.${call}",
-                        ("api", api_name)( "call", call_name ) );
-            }
-            fc_dlog( logger, "Exception Details: ${e}", ("e", e.to_detail_string()) );
+            fc_dlog( logger, "Exception while processing ${api}.${call}: ${e}",
+                     ("api", api_name)( "call", call_name )("e", e.to_detail_string()) );
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::variant( results ));

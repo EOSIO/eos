@@ -66,7 +66,7 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
         install-package sudo
 	install-package libstdc++
         install-package dnf-plugins-core
-        sudo dnf config-manager --set-enabled PowerTools
+        sudo dnf config-manager --set-enabled PowerTools || sudo dnf config-manager --set-enabled powertools
         install-package doxygen
         install-package ocaml
 	install-package ncurses-compat-libs

@@ -34,8 +34,11 @@ EOSIO currently supports the following operating systems:
 
 1. Amazon Linux 2
 2. CentOS 7
+2. CentOS 7.x
+2. CentOS 8
 3. Ubuntu 16.04
 4. Ubuntu 18.04
+4. Ubuntu 20.04
 5. MacOS 10.14 (Mojave)
 
 ---
@@ -74,13 +77,13 @@ brew remove eosio
 
 #### Ubuntu 18.04 Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.1.0-alpha2/eosio_2.1.0-alpha2-ubuntu-18.04_amd64.deb
-sudo apt install ./eosio_2.1.0-alpha2-ubuntu-18.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
+sudo apt install ./eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.1.0-alpha2/eosio_2.1.0-alpha2-ubuntu-16.04_amd64.deb
-sudo apt install ./eosio_2.1.0-alpha2-ubuntu-16.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
+sudo apt install ./eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
@@ -91,8 +94,8 @@ sudo apt remove eosio
 
 #### RPM Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.1.0-alpha2/eosio-2.1.0-alpha2.el7.x86_64.rpm
-sudo yum install ./eosio-2.1.0-alpha2.el7.x86_64.rpm
+wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio-2.1.0-rc1.el7.x86_64.rpm
+sudo yum install ./eosio-2.1.0-rc1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh

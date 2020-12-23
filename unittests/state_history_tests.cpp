@@ -288,6 +288,79 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
+void push_blocks( tester& from, tester& to ) {
+   while( to.control->fork_db_pending_head_block_num()
+            < from.control->fork_db_pending_head_block_num() )
+   {
+      auto fb = from.control->fetch_block_by_number( to.control->fork_db_pending_head_block_num()+1 );
+      to.push_block( fb );
+   }
+}
+
+bool test_fork(uint32_t stride, uint32_t max_retained_files) {
+   namespace bfs = boost::filesystem;
+
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+
+   eosio::state_history_config config{
+      .log_dir = state_history_dir.path,
+      .retained_dir = "retained",
+      .archive_dir = "archive",
+      .stride  = stride,
+      .max_retained_files = max_retained_files 
+   };
+
+   state_history_tester chain1(config);
+   chain1.produce_blocks(2);
+
+   chain1.create_accounts( {"dan"_n,"sam"_n,"pam"_n} );
+   chain1.produce_block();
+   chain1.set_producers( {"dan"_n,"sam"_n,"pam"_n} );
+   chain1.produce_blocks(30);
+
+   tester chain2(setup_policy::none);
+   push_blocks(chain1, chain2);
+
+   auto fork_block_num = chain1.control->head_block_num();
+
+   chain1.produce_blocks(12);
+   auto create_account_traces = chain2.create_accounts( {"adam"_n} );
+   auto create_account_trace_id = create_account_traces[0]->id;
+
+   auto b = chain2.produce_block();
+   chain2.produce_blocks(11+12);
+
+   for( uint32_t start = fork_block_num + 1, end = chain2.control->head_block_num(); start <= end; ++start ) {
+      auto fb = chain2.control->fetch_block_by_number( start );
+      chain1.push_block( fb );
+   }
+   auto traces = chain1.traces_log.get_traces(b->block_num());
+
+   bool trace_found = std::find_if(traces.begin(), traces.end(), [create_account_trace_id](const auto& v) {
+                         return std::get<eosio::state_history::transaction_trace_v0>(v).id == create_account_trace_id;
+                      }) != traces.end();
+
+   return trace_found;
+}
+
+BOOST_AUTO_TEST_CASE(test_fork_no_stride) { 
+   // In this case, the chain fork would NOT trunk the trace log across the stride boundary. 
+   BOOST_CHECK(test_fork(UINT32_MAX, 10)); 
+}
+BOOST_AUTO_TEST_CASE(test_fork_with_stride1) { 
+   // In this case, the chain fork would trunk the trace log across the stride boundary. 
+   // However, there are still some traces remains after the truncation. 
+   BOOST_CHECK(test_fork(10, 10)); 
+}
+BOOST_AUTO_TEST_CASE(test_fork_with_stride2) { 
+   // In this case, the chain fork would trunk the trace log across the stride boundary. 
+   // However, no existing trace remain after the truncation. Because we only keep a very
+   // short history, the create_account_trace is not available to be found. We just need
+   // to make sure no exception is throw. 
+   BOOST_CHECK_NO_THROW(test_fork(5, 1)); 
+}
+
 BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
   namespace bfs = boost::filesystem;
 

@@ -11,6 +11,8 @@
 #include <boost/endian/detail/intrinsic.hpp>
 
 #include <fc/crypto/base64.hpp>
+#include <fc/io/datastream.hpp>
+#include <fc/io/raw.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 
@@ -363,6 +365,23 @@ inline std::ostream& operator<<(std::ostream& os, const shared_bytes& bytes) {
       std::cout << std::hex << std::setfill('0') << std::setw(2) << std::uppercase << (0xFF & static_cast<int>(c));
    }
    return os;
+}
+
+template <typename Stream>
+inline Stream& operator<<(Stream& ds, const shared_bytes& b) {
+   fc::raw::pack( ds, b.size() );
+   ds.write(b.data(), b.size());
+   return ds;
+}
+
+template <typename Stream>
+inline Stream& operator>>(Stream& ds, shared_bytes& b) {
+   std::size_t sz;
+   fc::raw::unpack( ds, sz );
+   shared_bytes tmp = {sz};
+   ds.read(tmp.data(), tmp.size());
+   b = tmp;
+   return ds;
 }
 
 inline shared_bytes shared_bytes::from_hex_string(const std::string& str) {

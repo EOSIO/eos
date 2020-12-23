@@ -232,7 +232,7 @@ namespace eosio { namespace chain {
             auto rdb        = std::shared_ptr<rocksdb::DB>{ p };
             return std::make_unique<rocks_db_type>(eosio::session::make_session(std::move(rdb), 1024));
          }() },
-         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database)),
+         kv_undo_stack(std::make_unique<eosio::session::undo_stack<rocks_db_type>>(*kv_database, cfg.state_dir)),
          kv_snapshot_batch_threashold(cfg.persistent_storage_mbytes_batch * 1024 * 1024)  {}
 
    void combined_database::check_backing_store_setting(bool clean_startup) {
@@ -269,6 +269,20 @@ namespace eosio { namespace chain {
             FC_LOG_AND_RETHROW()
          }
          CATCH_AND_EXIT_DB_FAILURE()
+      }
+   }
+
+   int64_t combined_database::revision() {
+      if (backing_store == backing_store_type::ROCKSDB) {
+         try {
+            try {
+                return kv_undo_stack->revision();
+            }
+            FC_LOG_AND_RETHROW()
+         }
+         CATCH_AND_EXIT_DB_FAILURE()
+      } else {
+        return db.revision();
       }
    }
 
@@ -428,6 +442,7 @@ namespace eosio { namespace chain {
          if (std::is_same<value_t, global_property_object>::value) {
             using v2 = legacy::snapshot_global_property_object_v2;
             using v3 = legacy::snapshot_global_property_object_v3;
+            using v4 = legacy::snapshot_global_property_object_v4;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version) {
                std::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
@@ -459,6 +474,19 @@ namespace eosio { namespace chain {
                });
                return; // early out to avoid default processing
             }
+
+            if (std::clamp(header.version, v4::minimum_version, v4::maximum_version) == header.version) {
+               snapshot->read_section<global_property_object>([&db = this->db](auto& section) {
+                  v4 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&legacy_global_properties](auto& gpo) {
+                     gpo.initalize_from(legacy_global_properties);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+
          }
 
          snapshot->read_section<value_t>([this](auto& section) {

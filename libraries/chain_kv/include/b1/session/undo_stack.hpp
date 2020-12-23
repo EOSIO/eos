@@ -2,11 +2,20 @@
 
 #include <queue>
 
+#include <fc/filesystem.hpp>
+#include <fc/io/fstream.hpp>
+#include <fc/io/datastream.hpp>
+#include <fc/io/raw.hpp>
+#include <fstream>
 #include <b1/session/session.hpp>
 #include <b1/session/session_variant.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 namespace eosio::session {
+   constexpr uint32_t undo_stack_magic_number = 0x30510ABC;
+   constexpr uint32_t undo_stack_min_supported_version = 1;
+   constexpr uint32_t undo_stack_max_supported_version = 1;
+   constexpr auto undo_stack_filename = "undo_stack.dat";
 
 /// \brief Represents a container of pending sessions to be committed.
 template <typename Session>
@@ -19,7 +28,7 @@ class undo_stack {
 
    /// \brief Constructor.
    /// \param head The session that the changes are merged into when commit is called.
-   undo_stack(Session& head);
+   undo_stack(Session& head, const fc::path& datadir = {});
    undo_stack(const undo_stack&) = delete;
    undo_stack(undo_stack&&)      = default;
    ~undo_stack();
@@ -66,19 +75,25 @@ class undo_stack {
    /// \remarks This is the next session to be committed.
    const_variant_type bottom() const;
 
+   void open();
+   void close();
+
  private:
    int64_t                  m_revision{ 0 };
    Session*                 m_head;
    std::deque<session_type> m_sessions; // Need a deque so pointers don't become invalidated.  The session holds a
                                         // pointer to the parent internally.
+   fc::path                 m_datadir;
 };
 
 template <typename Session>
-undo_stack<Session>::undo_stack(Session& head) : m_head{ &head } {}
+undo_stack<Session>::undo_stack(Session& head, const fc::path& datadir) : m_head{ &head }, m_datadir{ datadir } {
+   open();
+}
 
 template <typename Session>
 undo_stack<Session>::~undo_stack() {
-   for (auto& session : m_sessions) { session.undo(); }
+   close();
 }
 
 template <typename Session>
@@ -197,4 +212,113 @@ typename undo_stack<Session>::const_variant_type undo_stack<Session>::bottom() c
    return { *m_head, nullptr };
 }
 
+template <typename Session>
+void undo_stack<Session>::open() {
+   if (m_datadir.empty())
+      return;
+
+   if (!fc::is_directory(m_datadir))
+      fc::create_directories(m_datadir);
+
+   auto undo_stack_dat = m_datadir / undo_stack_filename;
+   if( fc::exists( undo_stack_dat ) ) {
+      try {
+         std::string content;
+         fc::read_file_contents( undo_stack_dat, content );
+
+         fc::datastream<const char*> ds( content.data(), content.size() );
+
+         // validate totem
+         uint32_t totem = 0;
+         fc::raw::unpack( ds, totem );
+         EOS_ASSERT( totem == undo_stack_magic_number, eosio::chain::chain_exception,
+                     "Undo stack data file '${filename}' has unexpected magic number: ${actual_totem}. Expected ${expected_totem}",
+                     ("filename", undo_stack_dat.generic_string())
+                     ("actual_totem", totem)
+                     ("expected_totem", undo_stack_magic_number)
+         );
+
+         // validate version
+         uint32_t version = 0;
+         fc::raw::unpack( ds, version );
+         EOS_ASSERT( version >= undo_stack_min_supported_version && version <= undo_stack_max_supported_version,
+                    eosio::chain::chain_exception,
+                    "Unsupported version of Undo stack data file '${filename}'. "
+                    "Undo stack data version is ${version} while code supports version(s) [${min},${max}]",
+                    ("filename", undo_stack_dat.generic_string())
+                    ("version", version)
+                    ("min", undo_stack_min_supported_version)
+                    ("max", undo_stack_max_supported_version)
+         );
+
+         int64_t rev; fc::raw::unpack( ds, rev );
+
+         size_t num_sessions; fc::raw::unpack( ds, num_sessions );
+         for( size_t i = 0; i < num_sessions; ++i ) {
+            push();
+            auto& session = m_sessions.back();
+
+            size_t num_updated_keys; fc::raw::unpack( ds, num_updated_keys );
+            for( size_t j = 0; j < num_updated_keys; ++j ) {
+               shared_bytes key; ds >> key;
+               shared_bytes value; ds >> value;
+               session.write(key, value);
+            }
+
+            size_t num_deleted_keys; fc::raw::unpack( ds, num_deleted_keys );
+            for( size_t j = 0; j < num_deleted_keys; ++j ) {
+               shared_bytes key; ds >> key;
+               session.erase(key);
+            }
+         }
+         m_revision = rev; // restore head revision
+      } FC_CAPTURE_AND_RETHROW( (undo_stack_dat) )
+
+      fc::remove( undo_stack_dat );
+   }
+}
+
+template <typename Session>
+void undo_stack<Session>::close() {
+   if (m_datadir.empty())
+      return;
+
+   auto undo_stack_dat = m_datadir / undo_stack_filename;
+
+   std::ofstream out( undo_stack_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
+   fc::raw::pack( out, undo_stack_magic_number );
+   fc::raw::pack( out, undo_stack_max_supported_version );
+
+   fc::raw::pack( out, revision() );
+   fc::raw::pack( out, size() ); // number of sessions
+
+   while ( !m_sessions.empty() ) {
+      auto& session = m_sessions.front();
+      auto updated_keys = session.updated_keys();
+      fc::raw::pack( out, updated_keys.size() ); // number of updated keys
+
+      for (const auto& key: updated_keys) {
+         auto value = session.read(key);
+
+         if ( value ) {
+            out << key;
+            out << *value;
+         } else {
+            fc::remove( undo_stack_dat ); // May not be used by next startup
+            elog( "Did not find value for ${k}", ("k", key.data() ) );
+            return; // Do not assert as we are during shutdown
+         }
+      }
+
+      auto deleted_keys = session.deleted_keys();
+      fc::raw::pack( out, deleted_keys.size() ); // number of deleted keys
+
+      for (const auto& key: deleted_keys) {
+         fc::raw::pack( out, key );
+      }
+
+      session.detach();
+      m_sessions.pop_front();
+   }
+}
 } // namespace eosio::session

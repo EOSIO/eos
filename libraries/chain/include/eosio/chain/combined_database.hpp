@@ -105,6 +105,8 @@ namespace eosio { namespace chain {
 
       void set_revision(uint64_t revision);
 
+      int64_t revision();
+
       void undo();
 
       void commit(int64_t revision);
