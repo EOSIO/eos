@@ -15,7 +15,12 @@ endif()
 
 add_subdirectory( fc )
 add_subdirectory( builtins )
+
+# Suppress warnings on 3rdParty Library
+add_definitions( -w )
 add_subdirectory( softfloat )
+remove_definitions( -w )
+
 add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
 add_subdirectory( appbase )
