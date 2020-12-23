@@ -45,13 +45,12 @@ namespace eosio::resource_monitor {
          for (auto& fs: filesystems) {
             boost::system::error_code ec;
             auto info = space_provider.get_space(fs.path_name, ec);
-            const auto path_str = fs.path_name.string();
             if ( ec ) {
                // As the system is running and this plugin is not a critical
                // part of the system, we should not exit.
                // Just report the failure and continue;
                wlog( "Unable to get space info for ${path_name}: [code: ${ec}] ${message}. Ignore this failure.",
-                  ("path_name", path_str)
+                  ("path_name", fs.path_name.string())
                   ("ec", ec.value())
                   ("message", ec.message()));
 

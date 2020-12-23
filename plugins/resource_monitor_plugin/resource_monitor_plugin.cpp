@@ -53,7 +53,7 @@ public:
          ( "resource-monitor-not-shutdown-on-threshold-exceeded",
            "Used to indicate nodeos will not shutdown when threshold is exceeded." )
          ( "resource-monitor-warning-interval", bpo::value<uint32_t>()->default_value(def_monitor_warning_interval),
-           "Number of resource monitor intervals between two consecutive warnings when the threshold is hit. Should be between 1 and (TODO)1000" ) //TODO
+           "Number of resource monitor intervals between two consecutive warnings when the threshold is hit. Should be between 1 and 450" )
          ;
    }
    
