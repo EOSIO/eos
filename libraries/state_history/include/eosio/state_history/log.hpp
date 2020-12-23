@@ -146,9 +146,9 @@ class state_history_log {
 
    template <typename F>
    void write_entry(state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
-      auto start_pos = write_log.tellp();
+
+      auto [block_num, start_pos] = write_entry_header(header, prev_id);
       try {
-         auto block_num = write_entry_header(header, prev_id);
          write_payload(write_log);
          write_entry_position(header, start_pos, block_num);
       } catch (...) {
@@ -176,9 +176,9 @@ class state_history_log {
    void               split_log();
 
    /**
-    *  @returns the block num
+    *  @returns the block num and the file position
     **/
-   block_num_type write_entry_header(const state_history_log_header& header, const chain::block_id_type& prev_id);
+   std::pair<block_num_type,file_position_type> write_entry_header(const state_history_log_header& header, const chain::block_id_type& prev_id);
    void write_entry_position(const state_history_log_header& header, file_position_type pos, block_num_type block_num);
 }; // state_history_log
 
