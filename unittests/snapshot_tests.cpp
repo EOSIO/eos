@@ -463,6 +463,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
+*/
 
 /*
 When WTMSIG changes were introduced in 1.8.x, the snapshot had to be able 
