@@ -190,19 +190,11 @@ void state_history_log::truncate(state_history_log::block_num_type block_num) {
    auto first_block_num     = catalog.empty() ? _begin_block : catalog.first_block_num();
    auto new_begin_block_num = catalog.truncate(block_num, read_log.get_file_path());
 
-   auto reopen = [this]() {
-      read_log.close();
-      read_log.open("rb");
-      write_log.close();
-      write_log.open("rb+");
-      index.close();
-      index.open("a+b");
-   };
-
    if (new_begin_block_num > 0) {
       // in this case, the original index/log file has been replaced from some files from the catalog, we need to
       // reopen read_log, write_log and index.
-      reopen();
+      index.close();
+      index.open("rb");
       _begin_block = new_begin_block_num;
    }
 
@@ -219,7 +211,14 @@ void state_history_log::truncate(state_history_log::block_num_type block_num) {
       boost::filesystem::resize_file(index.get_file_path(), (block_num - _begin_block) * sizeof(uint64_t));
       _end_block = block_num;
    }
-   reopen();
+
+   read_log.close();
+   read_log.open("rb");
+   write_log.close();
+   write_log.open("rb+");
+   index.close();
+   index.open("a+b");
+
    ilog("fork or replay: removed ${n} blocks from ${name}.log", ("n", num_removed)("name", name));
 }
 
