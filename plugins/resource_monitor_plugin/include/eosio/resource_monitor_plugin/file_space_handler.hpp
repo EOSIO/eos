@@ -132,12 +132,12 @@ namespace eosio::resource_monitor {
       timer.async_wait([this](auto& ec) {
          if ( ec ) {
             wlog("Exit due to error: ${ec}, message: ${message}",
-               ("ec", ec.value())
-               ("message", ec.message()));
+                 ("ec", ec.value())
+                 ("message", ec.message()));
             return;
          } else {
-         // Loop over
-         space_monitor_loop();
+            // Loop over
+            space_monitor_loop();
          }
       });
    }
