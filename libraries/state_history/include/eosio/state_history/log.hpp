@@ -80,13 +80,17 @@ class state_history_log_data : public chain::log_data_base<state_history_log_dat
    uint32_t first_block_num() const { return block_num_at(0); }
    uint32_t first_block_position() const { return 0; }
 
-   fc::datastream<const char*> ro_stream_at(uint64_t pos) const {
-      return fc::datastream<const char*>(file.const_data() + pos + sizeof(state_history_log_header),
-                                         payload_size_at(pos));
+   std::pair<fc::datastream<const char*>, uint32_t> ro_stream_at(uint64_t pos) const {
+      uint32_t ver = get_ship_version(chain::read_buffer<uint64_t>(file.const_data() + pos));
+      return std::make_pair(
+          fc::datastream<const char*>(file.const_data() + pos + sizeof(state_history_log_header), payload_size_at(pos)),
+          ver);
    }
 
-   fc::datastream<char*> rw_stream_at(uint64_t pos) const {
-      return fc::datastream<char*>(file.data() + pos + sizeof(state_history_log_header), payload_size_at(pos));
+   std::pair<fc::datastream<char*>, uint32_t> rw_stream_at(uint64_t pos) const {
+      uint32_t ver = get_ship_version(chain::read_buffer<uint64_t>(file.const_data() + pos));
+      return std::make_pair(
+          fc::datastream<char*>(file.data() + pos + sizeof(state_history_log_header), payload_size_at(pos)), ver);
    }
 
    uint32_t block_num_at(uint64_t position) const {
@@ -197,7 +201,7 @@ class state_history_traces_log : public state_history_log {
       cache.add_transaction(trace, transaction);
    }
 
-   std::vector<state_history::transaction_trace> get_traces(block_num_type block_num);
+   chain::bytes get_log_entry(block_num_type block_num);
 
    void block_start(uint32_t block_num) { cache.clear(); }
 

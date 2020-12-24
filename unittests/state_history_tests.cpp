@@ -1,20 +1,18 @@
-#include <eosio/chain/authorization_manager.hpp>
 #include <boost/test/unit_test.hpp>
 #include <contracts.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/state_history/create_deltas.hpp>
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <utilities.hpp>
 #include <eosio/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
 #include "test_cfd_transaction.hpp"
 #include <boost/filesystem.hpp>
 
-#pragma push_macro("N")
-#undef N
-#include <eosio/stream.hpp>
 #include <eosio/ship_protocol.hpp>
-#pragma pop_macro("N")
+#include <eosio/stream.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -24,11 +22,13 @@ using prunable_data_type = eosio::chain::packed_transaction::prunable_data_type;
 namespace bio = boost::iostreams;
 extern const char* const state_history_plugin_abi;
 
-prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<eosio::state_history::transaction_trace>& traces,
-                                                                  const transaction_id_type&                     id) {
-   auto cfd_trace_itr = std::find_if(traces.begin(), traces.end(), [id](const eosio::state_history::transaction_trace& v) {
-      return std::get<eosio::state_history::transaction_trace_v0>(v).id == id;
-   });
+prunable_data_type::prunable_data_t
+get_prunable_data_from_traces(std::vector<eosio::state_history::transaction_trace>& traces,
+                              const transaction_id_type&                            id) {
+   auto cfd_trace_itr =
+       std::find_if(traces.begin(), traces.end(), [id](const eosio::state_history::transaction_trace& v) {
+          return std::get<eosio::state_history::transaction_trace_v0>(v).id == id;
+       });
 
    // make sure the trace with cfd can be found
    BOOST_REQUIRE(cfd_trace_itr != traces.end());
@@ -39,12 +39,43 @@ prunable_data_type::prunable_data_t get_prunable_data_from_traces(std::vector<eo
    return std::get<eosio::state_history::partial_transaction_v1>(*trace_v0.partial).prunable_data->prunable_data;
 }
 
+bool operator==(const eosio::checksum256& lhs, const transaction_id_type& rhs) {
+   return memcmp(lhs.extract_as_byte_array().data(), rhs.data(), rhs.data_size()) == 0;
+}
+
+auto get_prunable_data_from_traces(std::vector<eosio::ship_protocol::transaction_trace>& traces,
+                                   const transaction_id_type&                            id) {
+   auto cfd_trace_itr =
+       std::find_if(traces.begin(), traces.end(), [id](const eosio::ship_protocol::transaction_trace& v) {
+          return std::get<eosio::ship_protocol::transaction_trace_v0>(v).id == id;
+       });
+
+   // make sure the trace with cfd can be found
+   BOOST_REQUIRE(cfd_trace_itr != traces.end());
+   BOOST_REQUIRE(std::holds_alternative<eosio::ship_protocol::transaction_trace_v0>(*cfd_trace_itr));
+   auto trace_v0 = std::get<eosio::ship_protocol::transaction_trace_v0>(*cfd_trace_itr);
+   BOOST_REQUIRE(trace_v0.partial);
+   BOOST_REQUIRE(std::holds_alternative<eosio::ship_protocol::partial_transaction_v1>(*trace_v0.partial));
+   return std::get<eosio::ship_protocol::partial_transaction_v1>(*trace_v0.partial).prunable_data->prunable_data;
+}
+
 prunable_data_type::prunable_data_t get_prunable_data_from_traces_bin(const std::vector<char>&   entry,
                                                                       const transaction_id_type& id) {
-   fc::datastream<const char*>                   strm(entry.data(), entry.size());
+   fc::datastream<const char*>                          strm(entry.data(), entry.size());
    std::vector<eosio::state_history::transaction_trace> traces;
    eosio::state_history::trace_converter::unpack(strm, traces);
    return get_prunable_data_from_traces(traces, id);
+}
+
+std::vector<eosio::ship_protocol::transaction_trace> get_traces(eosio::state_history_traces_log& log,
+                                                                block_num_type                   block_num) {
+   auto                                                 entry = log.get_log_entry(block_num);
+   std::vector<eosio::ship_protocol::transaction_trace> traces;
+   if (entry.size()) {
+      eosio::input_stream traces_bin{entry.data(), entry.data() + entry.size()};
+      BOOST_REQUIRE_NO_THROW(from_bin(traces, traces_bin));
+   }
+   return traces;
 }
 
 struct state_history_abi_serializer {
@@ -132,10 +163,11 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto cfd_trace = push_test_cfd_transaction(chain);
    chain.produce_blocks(1);
 
-   auto traces = log.get_traces(cfd_trace->block_num);
+   auto traces = get_traces(log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(traces, cfd_trace->id)));
+   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+       get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    log.prune_transactions(cfd_trace->block_num, ids);
@@ -144,10 +176,24 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    // we assume the nodeos has to be stopped while running, it can only be read
    // correctly with restart
    eosio::state_history_traces_log new_log({ .log_dir = state_history_dir.path });
-   auto                            pruned_traces = new_log.get_traces(cfd_trace->block_num);
+   auto                            pruned_traces = get_traces(new_log, cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
+   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+       get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
+}
+
+BOOST_AUTO_TEST_CASE(test_trace_log_versions) {
+   namespace bfs = boost::filesystem;
+
+   for(std::string version : {"v0", "v1"}) {
+      tester chain;
+      eosio::state_history_traces_log log({ .log_dir = state_history_data_base_path() + "/trace-log-"+ version });
+
+      for(int i = 2; i <= 11; i++) {
+         auto traces = get_traces(log, i);
+      }
+   }
 }
 
 BOOST_AUTO_TEST_CASE(test_chain_state_log) {
@@ -258,11 +304,11 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.index" ));
 
-   BOOST_CHECK(chain.traces_log.get_traces(10).empty());
-   BOOST_CHECK(chain.traces_log.get_traces(100).size());
-   BOOST_CHECK(chain.traces_log.get_traces(140).size());
-   BOOST_CHECK(chain.traces_log.get_traces(150).size());
-   BOOST_CHECK(chain.traces_log.get_traces(160).empty());
+   BOOST_CHECK(get_traces(chain.traces_log, 10).empty());
+   BOOST_CHECK(get_traces(chain.traces_log, 100).size());
+   BOOST_CHECK(get_traces(chain.traces_log, 140).size());
+   BOOST_CHECK(get_traces(chain.traces_log, 150).size());
+   BOOST_CHECK(get_traces(chain.traces_log, 160).empty());
 
    BOOST_CHECK(chain.chain_state_log.get_log_entry(10).empty());
    BOOST_CHECK(chain.chain_state_log.get_log_entry(100).size());
@@ -270,10 +316,11 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(chain.chain_state_log.get_log_entry(150).size());
    BOOST_CHECK(chain.chain_state_log.get_log_entry(160).empty());
 
-   auto traces = chain.traces_log.get_traces(cfd_trace->block_num);
+   auto traces = get_traces(chain.traces_log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
-   BOOST_REQUIRE(!std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(traces, cfd_trace->id)));
+   BOOST_REQUIRE(!std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+       get_prunable_data_from_traces(traces, cfd_trace->id)));
 
    std::vector<transaction_id_type> ids{cfd_trace->id};
    chain.traces_log.prune_transactions(cfd_trace->block_num, ids);
@@ -282,10 +329,11 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    // we assume the nodeos has to be stopped while running, it can only be read
    // correctly with restart
    eosio::state_history_traces_log new_log(config);
-   auto                            pruned_traces = new_log.get_traces(cfd_trace->block_num);
+   auto                            pruned_traces = get_traces(new_log, cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
-   BOOST_CHECK(std::holds_alternative<prunable_data_type::none>(get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
+   BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
+       get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
 void push_blocks( tester& from, tester& to ) {
@@ -335,10 +383,10 @@ bool test_fork(uint32_t stride, uint32_t max_retained_files) {
       auto fb = chain2.control->fetch_block_by_number( start );
       chain1.push_block( fb );
    }
-   auto traces = chain1.traces_log.get_traces(b->block_num());
+   auto traces = get_traces(chain1.traces_log, b->block_num());
 
    bool trace_found = std::find_if(traces.begin(), traces.end(), [create_account_trace_id](const auto& v) {
-                         return std::get<eosio::state_history::transaction_trace_v0>(v).id == create_account_trace_id;
+                         return std::get<eosio::ship_protocol::transaction_trace_v0>(v).id == create_account_trace_id;
                       }) != traces.end();
 
    return trace_found;
@@ -390,7 +438,7 @@ BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
    state_history_tester new_chain(config);
    new_chain.produce_blocks(50);
 
-   BOOST_CHECK(new_chain.traces_log.get_traces(10).size());
+   BOOST_CHECK(get_traces(new_chain.traces_log, 10).size());
    BOOST_CHECK(new_chain.chain_state_log.get_log_entry(10).size());
 }
 
@@ -510,24 +558,25 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
 
    BOOST_CHECK(onblock_test_executed);
 
-   auto traces = log.get_traces(tr_ptr->block_num);
+   auto traces = get_traces(log, tr_ptr->block_num);
    BOOST_REQUIRE_EQUAL(traces.size(), 1);
 
-   auto trace_itr = std::find_if(traces.begin(), traces.end(), [tr_ptr](const eosio::state_history::transaction_trace& v) {
-      return std::get<eosio::state_history::transaction_trace_v0>(v).id == tr_ptr->id;
-   });
+   auto trace_itr =
+       std::find_if(traces.begin(), traces.end(), [tr_ptr](const eosio::ship_protocol::transaction_trace& v) {
+          return std::get<eosio::ship_protocol::transaction_trace_v0>(v).id == tr_ptr->id;
+       });
 
    BOOST_REQUIRE(trace_itr != traces.end());
 
-   auto &action_traces = std::get<eosio::state_history::transaction_trace_v0>(*trace_itr).action_traces;
+   auto& action_traces = std::get<eosio::ship_protocol::transaction_trace_v0>(*trace_itr).action_traces;
 
-   auto new_account_action_itr = std::find_if(action_traces.begin(), action_traces.end(), [](const eosio::state_history::action_trace& v) {
-      return std::get<eosio::state_history::action_trace_v1>(v).act.name == "newaccount"_n.to_uint64_t();
-   });
+   auto new_account_action_itr =
+       std::find_if(action_traces.begin(), action_traces.end(), [](const eosio::ship_protocol::action_trace& v) {
+          return std::get<eosio::ship_protocol::action_trace_v1>(v).act.name.value == "newaccount"_n.to_uint64_t();
+       });
 
    BOOST_REQUIRE(new_account_action_itr != action_traces.end());
 }
-
 
 class table_deltas_tester : public tester {
 public:
