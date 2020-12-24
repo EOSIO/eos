@@ -128,9 +128,11 @@ def isMsgIntervalValid(msg, interval):
     with open(stderrFile) as errFile:
         for line in errFile:
             if msg in line:
+                Print(line)
                 hasMsg = True
                 if pre:
                     curInterval = extractTimestamp(line) - extractTimestamp(pre)
+                    Print(curInterval)
                     if firstInterval:
                         intervalTolerance = maxFirstIntervalTolerance
                         firstInterval = False
