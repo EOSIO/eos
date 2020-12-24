@@ -121,11 +121,11 @@ namespace eosio::resource_monitor {
 
       if ( warning_interval_counter == warning_interval ) {
          output_threshold_warning = true;
-         warning_interval_counter = 0;
+         warning_interval_counter = 1;
       } else {
          output_threshold_warning = false;
+         ++warning_interval_counter;
       }
-      ++warning_interval_counter;
 
       timer.expires_from_now( boost::posix_time::seconds( sleep_time_in_secs ));
 
@@ -172,7 +172,7 @@ namespace eosio::resource_monitor {
       std::vector<filesystem_info> filesystems;
       
       uint32_t warning_interval {1};
-      uint32_t warning_interval_counter {0};
+      uint32_t warning_interval_counter {1};
       bool     output_threshold_warning {true};
    };
 }

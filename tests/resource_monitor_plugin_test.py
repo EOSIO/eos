@@ -118,13 +118,11 @@ def extractTimestamp(msg):
     matches = re.compile("\s+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})\s").search(msg)
     return datetime.strptime(matches.group(0).strip(), '%Y-%m-%dT%H:%M:%S.%f')
 
-maxFirstIntervalTolerance = 5
-maxIntervalTolerance = 0.5
+intervalTolerance = 0.1 # 10%
 
 def isMsgIntervalValid(msg, interval):
     pre = ""
     hasMsg = validInterval = False
-    firstInterval = True
     with open(stderrFile) as errFile:
         for line in errFile:
             if msg in line:
@@ -133,12 +131,7 @@ def isMsgIntervalValid(msg, interval):
                 if pre:
                     curInterval = extractTimestamp(line) - extractTimestamp(pre)
                     Print(curInterval)
-                    if firstInterval:
-                        intervalTolerance = maxFirstIntervalTolerance
-                        firstInterval = False
-                    else:
-                        intervalTolerance = maxIntervalTolerance
-                    if abs((curInterval - timedelta(seconds=interval)).total_seconds()) <= intervalTolerance:
+                    if abs((curInterval - timedelta(seconds=interval)).total_seconds()) <= interval * intervalTolerance:
                         validInterval = True
                     else:
                         validInterval = False
