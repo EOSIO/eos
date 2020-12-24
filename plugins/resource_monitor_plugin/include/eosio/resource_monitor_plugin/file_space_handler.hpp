@@ -118,14 +118,7 @@ namespace eosio::resource_monitor {
          appbase::app().quit(); // This will gracefully stop Nodeos
          return;
       }
-
-      if ( warning_interval_counter == warning_interval ) {
-         output_threshold_warning = true;
-         warning_interval_counter = 1;
-      } else {
-         output_threshold_warning = false;
-         ++warning_interval_counter;
-      }
+      update_warning_interval_counter();
 
       timer.expires_from_now( boost::posix_time::seconds( sleep_time_in_secs ));
 
@@ -174,5 +167,15 @@ namespace eosio::resource_monitor {
       uint32_t warning_interval {1};
       uint32_t warning_interval_counter {1};
       bool     output_threshold_warning {true};
+
+      void update_warning_interval_counter() {
+         if ( warning_interval_counter == warning_interval ) {
+            output_threshold_warning = true;
+            warning_interval_counter = 1;
+         } else {
+            output_threshold_warning = false;
+            ++warning_interval_counter;
+         }
+      }
    };
 }
