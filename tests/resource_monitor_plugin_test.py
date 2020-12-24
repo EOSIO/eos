@@ -120,18 +120,18 @@ def extractTimestamp(msg):
 
 intervalTolerance = 0.1 # 10%
 
-def isMsgIntervalValid(msg, interval):
+def isMsgIntervalValid(msg, expectedInterval):
     pre = ""
     hasMsg = validInterval = False
     with open(stderrFile) as errFile:
         for line in errFile:
             if msg in line:
-                Print(line)
+                if debug: Print(line)
                 hasMsg = True
                 if pre:
                     curInterval = extractTimestamp(line) - extractTimestamp(pre)
-                    Print(curInterval)
-                    if abs((curInterval - timedelta(seconds=interval)).total_seconds()) <= interval * intervalTolerance:
+                    if debug: Print(curInterval)
+                    if abs((curInterval - timedelta(seconds=expectedInterval)).total_seconds()) <= expectedInterval * intervalTolerance:
                         validInterval = True
                     else:
                         validInterval = False
