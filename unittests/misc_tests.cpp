@@ -693,13 +693,13 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 } FC_LOG_AND_RETHROW() }
 
-void verify_packed_transaction_conversion(const packed_transaction_v0& start, const packed_transaction_v0_ptr end) {
+void verify_packed_transaction_conversion(const packed_transaction_v0& original, const packed_transaction_v0_ptr final) {
    // prunable_size and unprunable_size must be maintained
-   BOOST_CHECK_EQUAL(start.get_prunable_size(), end->get_prunable_size());
-   BOOST_CHECK_EQUAL(start.get_unprunable_size(), end->get_unprunable_size());
+   BOOST_CHECK_EQUAL(original.get_prunable_size(), final->get_prunable_size());
+   BOOST_CHECK_EQUAL(original.get_unprunable_size(), final->get_unprunable_size());
    // context_free_data must be maintained
-   BOOST_REQUIRE_EQUAL(start.get_context_free_data().size(), end->get_context_free_data().size());
-   BOOST_CHECK(std::equal(start.get_context_free_data().begin(), start.get_context_free_data().end(), end->get_context_free_data().begin()));
+   BOOST_REQUIRE_EQUAL(original.get_context_free_data().size(), final->get_context_free_data().size());
+   BOOST_CHECK(std::equal(original.get_context_free_data().begin(), original.get_context_free_data().end(), final->get_context_free_data().begin()));
 }
 
 BOOST_AUTO_TEST_CASE(transaction_test) { try {
@@ -834,35 +834,49 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt8.get_transaction()) ));
    BOOST_CHECK( packed == pkt8.get_packed_transaction() ); // extra maintained
 
-   // Test extra maintained in non-empty context_free_data transaction
-   // in transitions of v0 -> v1 -> v0
-   packed_transaction pkt8_v0_to_v1(pkt8, true); // Build v1 with extra
-   auto pkt8_v0_to_v1_to_v0 = pkt8_v0_to_v1.to_packed_transaction_v0();
-   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt8_v0_to_v1_to_v0->get_transaction().id());
-   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt8_v0_to_v1_to_v0->get_transaction()) ));
-   BOOST_CHECK( packed == pkt8_v0_to_v1_to_v0->get_packed_transaction() );
-   verify_packed_transaction_conversion(pkt8, pkt8_v0_to_v1_to_v0);
+   // Round trip from v0 to v1 to v0 (packed_transaction_v0 to
+   // packed_transaction_v0) with extra packed transaction and
+   // extra packed context free data
+   auto packed_context_free_data_extra = pkt6.to_packed_transaction_v0()->get_packed_context_free_data();
+   packed_context_free_data_extra.push_back('e');
+   packed_context_free_data_extra.push_back('x');
+   packed_context_free_data_extra.push_back('t');
+   packed_context_free_data_extra.push_back('r');
+   packed_context_free_data_extra.push_back('a');
 
-   // Test empty context_free_data transaction go transitions of v0 -> v1 -> v0
+   packed_transaction_v0 pkt_v0_original( packed, *pkt6.get_signatures(),packed_context_free_data_extra, packed_transaction_v0::compression_type::none );
+   packed_transaction pkt_v0_to_v1(pkt_v0_original, true);
+   auto pkt_v0_final = pkt_v0_to_v1.to_packed_transaction_v0();
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt_v0_final->get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt_v0_final->get_transaction()) ));
+   BOOST_CHECK( packed == pkt_v0_final->get_packed_transaction() );
+   verify_packed_transaction_conversion(pkt_v0_original, pkt_v0_final);
+
+   // Round trip from v0 to v1 to v0 (packed_transaction_v0 to
+   // packed_transaction_v0) with empty context free data
    signed_transaction empty_cfd_trx;
    empty_cfd_trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
    empty_cfd_trx.context_free_data.push_back(bytes());
    test.set_transaction_headers(empty_cfd_trx);
    empty_cfd_trx.sign( test.get_private_key( "eosio"_n, "active" ), test.control->get_chain_id() );
-   packed_transaction_v0 pkt_v0_empty_cfd(empty_cfd_trx);
-   packed_transaction pkt_v0_to_v1_empty_cfd(pkt_v0_empty_cfd, true);
-   auto pkt_v0_to_v1_to_v0_empty_cfd = pkt_v0_to_v1_empty_cfd.to_packed_transaction_v0();
-   verify_packed_transaction_conversion(pkt_v0_empty_cfd, pkt_v0_to_v1_to_v0_empty_cfd);
+   packed_transaction_v0 pkt_v0_empty_cfd_original(empty_cfd_trx);
+   packed_transaction pkt_v0_to_v1_empty_cfd(pkt_v0_empty_cfd_original, true);
+   auto pkt_v0_empty_cfd_final = pkt_v0_to_v1_empty_cfd.to_packed_transaction_v0();
+   verify_packed_transaction_conversion(pkt_v0_empty_cfd_original, pkt_v0_empty_cfd_final);
 
-   // Round trip from packed_transaction to packed_transaction
-   packed_transaction pkt_v0_to_v1(*pkt8_v0_to_v1_to_v0, true);
-   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt_v0_to_v1.get_transaction().id());
-   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt_v0_to_v1.get_transaction()) ));
-   BOOST_CHECK( packed == pkt_v0_to_v1.get_packed_transaction() );
-   BOOST_CHECK_EQUAL(pkt_v0_to_v1.get_prunable_size(), pkt_v0_to_v1.get_prunable_size());
-   BOOST_CHECK_EQUAL(pkt_v0_to_v1.get_unprunable_size(), pkt_v0_to_v1.get_unprunable_size());
-   BOOST_REQUIRE_EQUAL(pkt_v0_to_v1.get_context_free_data()->size(), pkt_v0_to_v1.get_context_free_data()->size());
-   BOOST_CHECK(std::equal(pkt_v0_to_v1.get_context_free_data()->begin(), pkt_v0_to_v1.get_context_free_data()->end(), pkt_v0_to_v1.get_context_free_data()->begin()));
+   // Round trip from v1 to v0 to v1 (packed_transaction to packed_transaction)
+   // with extra packed transaction and extra packed context free data
+   auto pkt_v1_original {pkt_v0_to_v1};
+   auto pkt_v1_to_v0 = pkt_v1_original.to_packed_transaction_v0();
+   packed_transaction pkt_v1_final(*pkt_v1_to_v0, true);
+
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt_v1_final.get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt_v1_final.get_transaction()) ));
+   BOOST_CHECK( packed == pkt_v1_final.get_packed_transaction() );
+   BOOST_CHECK_EQUAL(pkt_v1_original.get_prunable_size(), pkt_v1_final.get_prunable_size());
+   BOOST_CHECK_EQUAL(pkt_v1_original.get_unprunable_size(), pkt_v1_final.get_unprunable_size());
+   BOOST_REQUIRE_EQUAL(pkt_v1_original.get_context_free_data()->size(), pkt_v1_final.get_context_free_data()->size());
+   BOOST_CHECK(std::equal(pkt_v1_original.get_context_free_data()->begin(), pkt_v1_original.get_context_free_data()->end(), pkt_v1_final.get_context_free_data()->begin()));
 } FC_LOG_AND_RETHROW() }
 
 

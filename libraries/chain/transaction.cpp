@@ -484,6 +484,7 @@ packed_transaction::packed_transaction(const packed_transaction_v0& other, bool 
    unpacked_trx(other.unpacked_trx),
    trx_id(other.id())
 {
+   EOS_ASSERT( legacy, transaction_exception, "Full type of prunable_data_type is not supported" );
    estimated_size = calculate_estimated_size();
 }
 
@@ -498,17 +499,18 @@ packed_transaction::packed_transaction(packed_transaction_v0&& other, bool legac
    unpacked_trx(std::move(other.unpacked_trx)),
    trx_id(other.id())
 {
+   EOS_ASSERT( legacy, transaction_exception, "Full type of prunable_data_type is not supported" );
    estimated_size = calculate_estimated_size();
 }
 
 packed_transaction_v0_ptr packed_transaction::to_packed_transaction_v0() const {
    const auto* sigs = get_signatures();
+   EOS_ASSERT( std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(prunable_data.prunable_data), transaction_exception, "Failed to get full_legacy variant in to_packed_transaction_v0" );
    auto& legacy = std::get<prunable_data_type::full_legacy>(prunable_data.prunable_data);
-
    return std::make_shared<const packed_transaction_v0>( packed_trx,
                             sigs != nullptr ? *sigs : vector<signature_type>(),
                             legacy.packed_context_free_data,
-                            compression.value );
+                            compression);
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {
