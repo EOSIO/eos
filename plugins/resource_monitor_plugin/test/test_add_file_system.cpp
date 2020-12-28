@@ -42,7 +42,7 @@ struct add_file_system_fixture {
       space_handler.set_threshold( threshold, warning_threshold );
    }
 
-   bool is_threshold_exceeded() const {
+   bool is_threshold_exceeded() {
       return space_handler.is_threshold_exceeded();
    }
 
