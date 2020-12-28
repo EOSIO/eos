@@ -3290,19 +3290,19 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       });
 
-      get_primary_key(config::system_account_name, params.account_name, "userres"_n, params.account_name.to_uint64_t(),
+      result.total_resources = get_primary_key(config::system_account_name, params.account_name, "userres"_n, params.account_name.to_uint64_t(),
 		      row_requirements::optional, row_requirements::optional, "user_resources", abis); 
 
-      get_primary_key(config::system_account_name, params.account_name, "delband"_n, params.account_name.to_uint64_t(),
+      result.self_delegated_bandwidth = get_primary_key(config::system_account_name, params.account_name, "delband"_n, params.account_name.to_uint64_t(),
 		      row_requirements::optional, row_requirements::optional, "delegated_bandwidth", abis); 
 
-      get_primary_key(config::system_account_name, params.account_name, "refunds"_n, params.account_name.to_uint64_t(),
+      result.refund_request = get_primary_key(config::system_account_name, params.account_name, "refunds"_n, params.account_name.to_uint64_t(),
 		      row_requirements::optional, row_requirements::optional, "refund_request", abis); 
 
-      get_primary_key(config::system_account_name, config::system_account_name, "voters"_n, params.account_name.to_uint64_t(),
+      result.voter_info = get_primary_key(config::system_account_name, config::system_account_name, "voters"_n, params.account_name.to_uint64_t(),
 		      row_requirements::optional, row_requirements::optional, "voter_info", abis); 
 
-      get_primary_key(config::system_account_name, config::system_account_name, "rexbal"_n, params.account_name.to_uint64_t(),
+      result.rex_info = get_primary_key(config::system_account_name, config::system_account_name, "rexbal"_n, params.account_name.to_uint64_t(),
 		      row_requirements::optional, row_requirements::optional, "rex_balance", abis); 
    }
    return result;
