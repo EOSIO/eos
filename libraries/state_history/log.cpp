@@ -292,28 +292,39 @@ void state_history_log::split_log() {
 state_history_traces_log::state_history_traces_log(const state_history_config& config)
     : state_history_log("trace_history", config) {}
 
-std::vector<state_history::transaction_trace> state_history_traces_log::get_traces(block_num_type block_num) {
+chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
 
-   auto [ds, _] = catalog.ro_stream_for_block(block_num);
+   auto get_traces_bin = [](auto& ds, uint32_t version) {
+      if (version == 0) {
+         return state_history::zlib_decompress(ds);
+      }
+      else {
+         std::vector<state_history::transaction_trace> traces;
+         state_history::trace_converter::unpack(ds, traces);
+         return fc::raw::pack(traces);
+      }
+   };
+
+   auto [ds, version] = catalog.ro_stream_for_block(block_num);
    if (ds.remaining()) {
-      std::vector<state_history::transaction_trace> traces;
-      state_history::trace_converter::unpack(ds, traces);
-      return traces;
+      return get_traces_bin(ds, version);
    }
 
    if (block_num < begin_block() || block_num >= end_block())
       return {};
    state_history_log_header header;
    get_entry_header(block_num, header);
-   std::vector<state_history::transaction_trace> traces;
-   state_history::trace_converter::unpack(read_log, traces);
-   return traces;
+   return get_traces_bin(read_log, get_ship_version(header.magic));
 }
+
 
 void state_history_traces_log::prune_transactions(state_history_log::block_num_type        block_num,
                                                   std::vector<chain::transaction_id_type>& ids) {
-   auto [ds, _] = catalog.rw_stream_for_block(block_num);
+   auto [ds, version] = catalog.rw_stream_for_block(block_num);
+
    if (ds.remaining()) {
+      EOS_ASSERT(version > 0, chain::state_history_exception,
+              "The trace log version 0 does not support transaction pruning.");
       state_history::trace_converter::prune_traces(ds, ds.remaining(), ids);
       return;
    }
@@ -322,6 +333,8 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
       return;
    state_history_log_header header;
    get_entry_header(block_num, header);
+   EOS_ASSERT(get_ship_version(header.magic) > 0, chain::state_history_exception,
+              "The trace log version 0 does not support transaction pruning.");
    write_log.seek(read_log.tellp());
    state_history::trace_converter::prune_traces(write_log, header.payload_size, ids);
    write_log.flush();

@@ -162,7 +162,7 @@ struct log_catalog {
    std::pair<fc::datastream<const char*>, uint32_t> ro_stream_for_block(uint32_t block_num) {
       auto pos = get_block_position(block_num, mapmode::readonly);
       if (pos) {
-         return std::make_pair(log_data.ro_stream_at(*pos), log_data.version());
+         return log_data.ro_stream_at(*pos);
       }
       return {fc::datastream<const char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
@@ -170,7 +170,7 @@ struct log_catalog {
    std::pair<fc::datastream<char*>, uint32_t> rw_stream_for_block(uint32_t block_num) {
       auto pos = get_block_position(block_num, mapmode::readwrite);
       if (pos) {
-         return std::make_pair(log_data.rw_stream_at(*pos), log_data.version());
+         return log_data.rw_stream_at(*pos);
       }
       return {fc::datastream<char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
