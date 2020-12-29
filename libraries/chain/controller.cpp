@@ -1875,6 +1875,7 @@ struct controller_impl {
                if( receipt.trx.contains<packed_transaction>()) {
                   const auto& pt = receipt.trx.get<packed_transaction>();
                   transaction_metadata_ptr trx_meta_ptr = trx_lookup ? trx_lookup( pt.id() ) : transaction_metadata_ptr{};
+                  if( trx_meta_ptr && *trx_meta_ptr->packed_trx() != pt ) trx_meta_ptr = nullptr;
                   if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
                      trx_metas.emplace_back( std::move( trx_meta_ptr ), recover_keys_future{} );
                   } else if( skip_auth_checks ) {
