@@ -375,7 +375,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
-/*
 static auto get_extra_args() {
    bool save_snapshot = false;
    bool generate_log = false;
@@ -463,7 +462,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
-*/
 
 /*
 When WTMSIG changes were introduced in 1.8.x, the snapshot had to be able 
