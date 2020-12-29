@@ -16,8 +16,7 @@ echo "$SANITIZED_TAG"
 # do docker build
 echo ":docker::build: Building image..."
 
-if [ -z $SANITIZED_TAG]
-    then
+if [[ -z "$SANITIZED_TAG"]];then
     IMAGE_ECR="$EOSIO_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT"
     DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
     IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT"
