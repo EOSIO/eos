@@ -647,6 +647,7 @@ cat <<EOF
     command:  "./.cicd/create-docker-from-binary.sh"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
     timeout: ${TIMEOUT:-10}
 
 EOF
