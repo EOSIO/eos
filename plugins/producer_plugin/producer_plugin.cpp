@@ -215,6 +215,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       uint32_t                                                  _max_block_cpu_usage_threshold_us = 0;
       uint32_t                                                  _max_block_net_usage_threshold_bytes = 0;
       int32_t                                                   _max_scheduled_transaction_time_per_block_ms = 0;
+      bool                                                      _disable_persist_until_expired = false;
       fc::time_point                                            _irreversible_block_time;
       fc::microseconds                                          _keosd_provider_timeout_us;
 
@@ -584,7 +585,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   send_response( e_ptr );
                }
             } else {
-               if( persist_until_expired ) {
+               if( persist_until_expired && !_disable_persist_until_expired ) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
                   _unapplied_transactions.add_persisted( trx );
@@ -727,6 +728,8 @@ void producer_plugin::set_program_options(
           "ratio between incoming transactions and deferred transactions when both are queued for execution")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
+         ("disable-api-persisted-trx", bpo::bool_switch()->default_value(false),
+          "Disable the re-apply of API transactions.")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
           "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
@@ -909,6 +912,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_pending_incoming_transactions.set_max_incoming_transaction_queue_size( max_incoming_transaction_queue_size );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
+
+   my->_disable_persist_until_expired = options.at("disable-api-persisted-trx").as<bool>();
 
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
@@ -1739,10 +1744,79 @@ bool producer_plugin_impl::remove_expired_blacklisted_trxs( const fc::time_point
    return !exhausted;
 }
 
+namespace {
+// track multiple deadline / transaction cpu exceeded exceptions on unapplied transactions
+class account_failures {
+public:
+   constexpr static uint32_t max_failures_per_account = 3;
+
+   void add( const account_name& n, int64_t exception_code ) {
+      if( exception_code == deadline_exception::code_value || exception_code == tx_cpu_usage_exceeded::code_value ) {
+         auto& fa = failed_accounts[n];
+         ++fa.num_failures;
+         fa.add( exception_code );
+      }
+   }
+
+   // return true if exceeds max_failures_per_account and should be dropped
+   bool failure_limit( const account_name& n ) {
+      auto fitr = failed_accounts.find( n );
+      if( fitr != failed_accounts.end() && fitr->second.num_failures >= max_failures_per_account ) {
+         ++fitr->second.num_failures;
+         return true;
+      }
+      return false;
+   }
+
+   void report() const {
+      if( _log.is_enabled( fc::log_level::debug ) ) {
+         for( const auto& e : failed_accounts ) {
+            std::string reason;
+            if( e.second.num_failures > max_failures_per_account ) {
+               reason.clear();
+               if( e.second.is_deadline() ) reason += "deadline";
+               if( e.second.is_tx_cpu_usage() ) {
+                  if( !reason.empty() ) reason += ", ";
+                  reason += "tx_cpu_usage";
+               }
+               fc_dlog( _log, "Dropped ${n} trxs, account: ${a}, reason: ${r} exceeded",
+                        ("n", e.second.num_failures - max_failures_per_account)("a", e.first)("r", reason) );
+            }
+         }
+      }
+   }
+
+private:
+   struct account_failure {
+      enum class ex_fields : uint8_t {
+         ex_deadline_exception = 1,
+         ex_tx_cpu_usage_exceeded = 2
+      };
+
+      void add(int64_t exception_code = 0) {
+         if( exception_code == tx_cpu_usage_exceeded::code_value ) {
+            ex_flags = set_field( ex_flags, ex_fields::ex_tx_cpu_usage_exceeded );
+         } else if( exception_code == deadline_exception::code_value ) {
+            ex_flags = set_field( ex_flags, ex_fields::ex_deadline_exception );
+         }
+      }
+      bool is_deadline() const { return has_field( ex_flags, ex_fields::ex_deadline_exception ); }
+      bool is_tx_cpu_usage() const { return has_field( ex_flags, ex_fields::ex_tx_cpu_usage_exceeded ); }
+
+      uint32_t num_failures = 0;
+      uint8_t ex_flags = 0;
+   };
+
+   std::map<account_name, account_failure> failed_accounts;
+};
+
+} // anonymous namespace
+
 bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadline )
 {
    bool exhausted = false;
    if( !_unapplied_transactions.empty() ) {
+      account_failures account_fails;
       chain::controller& chain = chain_plug->chain();
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
@@ -1761,11 +1835,16 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
          try {
             auto start = fc::time_point::now();
             auto trx_deadline = start + fc::milliseconds( _max_transaction_time_ms );
+            if( account_fails.failure_limit( trx->packed_trx()->get_transaction().first_authorizer() ) ) {
+               ++num_failed;
+               itr = _unapplied_transactions.erase( itr );
+               continue;
+            }
 
             auto prev_billed_cpu_time_us = trx->billed_cpu_time_us;
             if( prev_billed_cpu_time_us > 0 ) {
-               auto prev_billed_plus50 = prev_billed_cpu_time_us + EOS_PERCENT( prev_billed_cpu_time_us, 50 * config::percent_1 );
-               auto trx_dl = start + fc::microseconds( prev_billed_plus50 );
+               auto prev_billed_plus100 = prev_billed_cpu_time_us + EOS_PERCENT( prev_billed_cpu_time_us, 100 * config::percent_1 );
+               auto trx_dl = start + fc::microseconds( prev_billed_plus100 );
                if( trx_dl < trx_deadline ) trx_deadline = trx_dl;
             }
             bool deadline_is_subjective = false;
@@ -1784,10 +1863,12 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                      break;
                   }
                } else {
+                  auto failure_code = trace->except->code();
                   // this failed our configured maximum transaction time, we don't want to replay it
                   fc_dlog( _log, "Failed ${c} trx, prev billed: ${p}us, ran: ${r}us, id: ${id}",
                            ("c", trace->except->code())("p", prev_billed_cpu_time_us)
                            ("r", fc::time_point::now() - start)("id", trx->id()) );
+                  account_fails.add( trx->packed_trx()->get_transaction().first_authorizer(), failure_code );
                   ++num_failed;
                   itr = _unapplied_transactions.erase( itr );
                   continue;
@@ -1803,6 +1884,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
 
       fc_dlog( _log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
                ("m", num_processed)( "n", unapplied_trxs_size )("applied", num_applied)("failed", num_failed) );
+      account_fails.report();
    }
    return !exhausted;
 }
