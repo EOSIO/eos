@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_scope_test, TESTER_T, backing_store_ts) { try
    }
 
    param.lower_bound = "initb";
-   param.upper_bound = "initd";
+   param.upper_bound = "inite";
    param.reverse = true;
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
