@@ -159,13 +159,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_table_next_key_reverse_test, TESTER_T, backin
    eosio::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(5u, result.rows.size());
    BOOST_REQUIRE_EQUAL("", result.more);
-   if (result.rows.size() >= 5) {
-      BOOST_REQUIRE_EQUAL(name("initd"_n), result.rows[0].scope);
-      BOOST_REQUIRE_EQUAL(name("initc"_n), result.rows[1].scope);
-      BOOST_REQUIRE_EQUAL(name("initb"_n), result.rows[2].scope);
-      BOOST_REQUIRE_EQUAL(name("inita"_n), result.rows[3].scope);
-      BOOST_REQUIRE_EQUAL(name("eosio"_n), result.rows[4].scope);
-   }
+
+   BOOST_REQUIRE_EQUAL(name("initd"_n), result.rows[0].scope);
+   BOOST_REQUIRE_EQUAL(name("initc"_n), result.rows[1].scope);
+   BOOST_REQUIRE_EQUAL(name("initb"_n), result.rows[2].scope);
+   BOOST_REQUIRE_EQUAL(name("inita"_n), result.rows[3].scope);
+   BOOST_REQUIRE_EQUAL(name("eosio"_n), result.rows[4].scope);
+
 } FC_LOG_AND_RETHROW() } /// get_scope_test
 
 BOOST_AUTO_TEST_SUITE_END()

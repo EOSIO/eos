@@ -122,11 +122,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( get_scope_test, TESTER_T, backing_store_ts) { try
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
    BOOST_REQUIRE_EQUAL("", result.more);
-   if (result.rows.size() >= 3) {
-      BOOST_REQUIRE_EQUAL(name("initd"_n), result.rows[0].scope);
-      BOOST_REQUIRE_EQUAL(name("initc"_n), result.rows[1].scope);
-      BOOST_REQUIRE_EQUAL(name("initb"_n), result.rows[2].scope);
-   }
+
+   BOOST_REQUIRE_EQUAL(name("initd"_n), result.rows[0].scope);
+   BOOST_REQUIRE_EQUAL(name("initc"_n), result.rows[1].scope);
+   BOOST_REQUIRE_EQUAL(name("initb"_n), result.rows[2].scope);
 
    param.limit = 1;
    result = plugin.read_only::get_table_by_scope(param);
