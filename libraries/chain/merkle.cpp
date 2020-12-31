@@ -32,20 +32,20 @@ bool is_canonical_right(const digest_type& val) {
 }
 
 
-digest_type merkle(vector<digest_type> ids) {
-   if( 0 == ids.size() ) { return digest_type(); }
-
-   while( ids.size() > 1 ) {
-      if( ids.size() % 2 )
+digest_type merkle(vector<digest_type> &ids) {
+   size_t sz = ids.size();
+   if(!sz) { return digest_type(); }
+   size_t i;
+   while( sz > 1 ) {
+      if( sz % 2 )
          ids.push_back(ids.back());
-
-      for (size_t i = 0; i < ids.size() / 2; i++) {
+      sz = ids.size();
+      for (i = 0; i < sz / 2; i++) {
          ids[i] = digest_type::hash(make_canonical_pair(ids[2 * i], ids[(2 * i) + 1]));
       }
-
-      ids.resize(ids.size() / 2);
+      ids.resize(sz/2);
+      sz = ids.size();
    }
-
    return ids.front();
 }
 
