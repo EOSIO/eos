@@ -428,7 +428,7 @@ namespace impl {
                      mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
                      mvo("hex_data", act.data);
                   } catch(...) {
-                     // any failure to serialize data, then leave as not serailzed
+                     // any failure to serialize data, then leave as not serialized
                      mvo("data", act.data);
                   }
                } else {
