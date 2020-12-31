@@ -42,7 +42,7 @@ struct add_file_system_fixture {
       space_handler.set_threshold( threshold, warning_threshold );
    }
 
-   bool is_threshold_exceeded() const {
+   bool is_threshold_exceeded() {
       return space_handler.is_threshold_exceeded();
    }
 
@@ -67,7 +67,7 @@ struct add_file_system_fixture {
 
       set_threshold(80, 75);
 
-      for (auto k = 0; k < capacity.size(); k++) {
+      for (auto k = 0U; k < capacity.size(); k++) {
          add_file_system("/test" + std::to_string(k));
       }
    }

@@ -2,6 +2,7 @@
 
 #include <b1/rodeos/callbacks/kv.hpp>
 #include <b1/rodeos/rodeos_tables.hpp>
+#include <fc/log/trace.hpp>
 
 namespace b1::rodeos {
 
@@ -162,6 +163,13 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
    table.put(info);
 }
 
+namespace {
+   std::string to_string( const eosio::checksum256& cs ) {
+      auto bytes = cs.extract_as_byte_array();
+      return fc::to_hex((const char*)bytes.data(), bytes.size());
+   }
+}
+
 void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result_v0& result) {
    check_write(result);
    if (!result.block)
@@ -171,6 +179,12 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    eosio::input_stream bin       = *result.block;
    signed_block_header block;
    from_bin(block, bin);
+
+   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
+   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
+   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_tag( blk_span, "block_num", block_num );
+   fc_add_tag( blk_span, "block_time", block.timestamp.to_time_point().elapsed.count() );
 
    write_block_info(block_num, result.this_block->block_id, block);
 }
@@ -184,6 +198,13 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
 
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
+
+   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
+   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
+   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_tag( blk_span, "block_num", block_num );
+   fc_add_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
+
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
@@ -198,22 +219,23 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
-      auto&  delta_v0      = std::get<0>(delta);
       size_t num_processed = 0;
-      store_delta({ view_state }, delta_v0, head == 0, [&]() {
-         if (delta_v0.rows.size() > 10000 && !(num_processed % 10000)) {
-            if (shutdown())
-               throw std::runtime_error("shutting down");
-            ilog("block ${b} ${t} ${n} of ${r}",
-                 ("b", block_num)("t", delta_v0.name)("n", num_processed)("r", delta_v0.rows.size()));
-            if (head == 0) {
-               end_write(false);
-               view_state.reset();
+      std::visit(
+         [&](auto& delta_any_v) {
+         store_delta({ view_state }, delta_any_v, head == 0, [&]() {
+            if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
+               if (shutdown())
+                  throw std::runtime_error("shutting down");
+               ilog("block ${b} ${t} ${n} of ${r}",
+                    ("b", block_num)("t", delta_any_v.name)("n", num_processed)("r", delta_any_v.rows.size()));
+               if (head == 0) {
+                  end_write(false);
+                  view_state.reset();
+               }
             }
-         }
-         ++num_processed;
-      });
-   }
+            ++num_processed;
+         });
+      }, delta);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,

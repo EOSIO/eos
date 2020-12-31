@@ -158,10 +158,35 @@ try:
     #
     timeForNodesToWorkOutReconnect=30 + 10    # 30 is reconnect cycle since all nodes are restarting and giving time for a little churn
     lightValidationNode.waitForBlock(cfTrxBlockNum, blockType=BlockType.lib, timeout=WaitSpec.calculate(leeway=timeForNodesToWorkOutReconnect), errorContext="lightValidationNode did not advance")
-    assert lightValidationNode.waitForHeadToAdvance(), "the light validation node stops syncing"
+
+    pvnPreInfo = producerNode.getInfo(exitOnError=True)
+    fvnPreInfo = fullValidationNode.getInfo(exitOnError=True)
+    lvnPreInfo = lightValidationNode.getInfo(exitOnError=True)
+
+    Utils.Print("Ensure light validation node continues to sync")
+
+    headAdvanced = lightValidationNode.waitForHeadToAdvance()
+    pvnPostInfo = producerNode.getInfo(exitOnError=True)
+    fvnPostInfo = fullValidationNode.getInfo(exitOnError=True)
+    lvnPostInfo = lightValidationNode.getInfo(exitOnError=True)
+    if not headAdvanced:
+        Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
+        Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
+
+    assert headAdvanced, "the light validation node stops syncing"
 
     fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
-    assert not fullValidationNode.waitForHeadToAdvance(), "the full validation node is still syncing"
+    Utils.Print("Ensure full validation node stops syncing")
+    headAdvanced = fullValidationNode.waitForHeadToAdvance()
+    if headAdvanced:
+        pvnPost2Info = producerNode.getInfo(exitOnError=True)
+        fvnPost2Info = fullValidationNode.getInfo(exitOnError=True)
+        lvnPost2Info = lightValidationNode.getInfo(exitOnError=True)
+        Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
+        Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
+        Utils.Print("Post full validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPost2Info, indent=1), json.dumps(fvnPost2Info, indent=1), json.dumps(lvnPost2Info, indent=1)))
+
+    assert not headAdvanced, "the full validation node is still syncing"
 
     testSuccessful = True
 finally:

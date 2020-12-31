@@ -42,7 +42,7 @@ struct threshold_fixture {
       space_handler.set_threshold(threshold, warning_threshold);
    }
 
-   bool is_threshold_exceeded() const {
+   bool is_threshold_exceeded() {
       return space_handler.is_threshold_exceeded();
    }
 
@@ -72,7 +72,7 @@ struct threshold_fixture {
       set_threshold(80, warning_threshold);
       set_shutdown_on_exceeded(true);
 
-      for (auto i = 0; i < available.size(); i++) {
+      for (auto i = 0U; i < available.size(); i++) {
         add_file_system("/test" + std::to_string(i));
       }
 

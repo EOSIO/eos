@@ -587,6 +587,24 @@ BOOST_FIXTURE_TEST_CASE( entry_import, TESTER ) try {
    BOOST_CHECK_THROW(push_transaction(trx), abort_called);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( entry_db, TESTER ) try {
+   create_accounts( {"entrydb"_n} );
+   produce_block();
+
+   set_code("entrydb"_n, entry_db_wast);
+
+   signed_transaction trx;
+   action act;
+   act.account = "entrydb"_n;
+   act.name = ""_n;
+   act.authorization = vector<permission_level>{{"entrydb"_n,config::active_name}};
+   trx.actions.push_back(act);
+
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( "entrydb"_n, "active" ), control->get_chain_id());
+   push_transaction(trx);
+} FC_LOG_AND_RETHROW()
+
 /**
  * Ensure we can load a wasm w/o memory
  */
@@ -732,6 +750,11 @@ BOOST_FIXTURE_TEST_CASE( table_init_oob, TESTER ) try {
 
    //an elem w/o a table is a setcode fail though
    BOOST_CHECK_THROW(set_code("tableinitoob"_n, table_init_oob_no_table_wast), eosio::chain::wasm_exception);
+
+   set_code("tableinitoob"_n, table_init_oob_empty_wast);
+   produce_block();
+   pushit_and_expect_fail();
+   pushit_and_expect_fail();
 
 } FC_LOG_AND_RETHROW()
 
@@ -1776,6 +1799,56 @@ BOOST_FIXTURE_TEST_CASE( varuint_memory_flags_tests, old_wasm_tester ) try {
    BOOST_REQUIRE_THROW(set_code("memflags"_n, varuint_memory_flags), wasm_exception);
 } FC_LOG_AND_RETHROW()
 
+static char reset_memory_fail1_wast[] = R"======(
+(module
+ (memory 2)
+ (func (export "apply") (param i64 i64 i64))
+)
+)======";
+
+// In a previous version of eos-vm, this would leave
+// memory incorrectly accessible to the next action.
+static char reset_memory_fail2_wast[] = R"======(
+(module
+ (memory 2)
+ (table 1 anyfunc)
+ (func $apply (export "apply") (param i64 i64 i64))
+ (elem (i32.const 1) $apply)
+)
+)======";
+
+static char reset_memory_fail3_wast[] = R"======(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (i64.store (i32.const 65536) (i64.const 0))
+ )
+)
+)======";
+
+BOOST_FIXTURE_TEST_CASE( reset_memory_fail, TESTER ) try {
+   produce_block();
+   create_accounts( {"usemem"_n, "resetmem"_n, "accessmem"_n} );
+   produce_block();
+
+   set_code("usemem"_n, reset_memory_fail1_wast);
+   set_code("resetmem"_n, reset_memory_fail2_wast);
+   set_code("accessmem"_n, reset_memory_fail3_wast);
+   produce_block();
+
+   auto pushit = [&](name acct) {
+      signed_transaction trx;
+      trx.actions.push_back({ { { acct, config::active_name } }, acct, ""_n, bytes() });
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( acct, "active" ), control->get_chain_id());
+      push_transaction(trx);
+   };
+   pushit("usemem"_n);
+   BOOST_CHECK_THROW(pushit("resetmem"_n), wasm_execution_error);
+   BOOST_CHECK_THROW(pushit("accessmem"_n), wasm_execution_error);
+   produce_block();
+} FC_LOG_AND_RETHROW()
+
 // TODO: Update to use eos-vm once merged
 BOOST_AUTO_TEST_CASE( code_size )  try {
    using namespace IR;
@@ -1917,6 +1990,7 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
    chain.produce_block( fc::days(1) ); // produce for one day to reset account cpu
 
    cpu_limit = mgr.get_account_cpu_limit_ex(acc).first.max;
+   cpu_limit -= EOS_PERCENT( cpu_limit, 10 * config::percent_1 ); // transaction_context verifies within 10%, so subtract 10% out
 
    ptrx = create_trx(0);
    BOOST_CHECK_LT( cpu_limit+1, max_cpu_time_us ); // needs to be less or this just tests the same thing as max_cpu_time_us test above

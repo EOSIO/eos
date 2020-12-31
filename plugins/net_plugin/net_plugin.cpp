@@ -16,6 +16,7 @@
 #include <fc/io/raw.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/crypto/rand.hpp>
 #include <fc/exception/exception.hpp>
@@ -97,7 +98,7 @@ namespace eosio {
       bool          have_block = false; // true if we have received the block, false if only received id notification
    };
 
-   struct by_block_id;
+   struct by_peer_block_id;
 
    typedef multi_index_container<
       eosio::peer_block_state,
@@ -109,7 +110,7 @@ namespace eosio {
                >,
                composite_key_compare< std::less<uint32_t>, sha256_less >
          >,
-         ordered_non_unique< tag<by_block_id>,
+         ordered_non_unique< tag<by_peer_block_id>,
                composite_key< peer_block_state,
                      member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
                      member<peer_block_state, bool, &eosio::peer_block_state::have_block>
@@ -232,7 +233,8 @@ namespace eosio {
       boost::asio::steady_timer::duration   connector_period{0};
       boost::asio::steady_timer::duration   txn_exp_period{0};
       boost::asio::steady_timer::duration   resp_expected_period{0};
-      boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+      std::chrono::milliseconds             keepalive_interval{std::chrono::milliseconds{32 * 1000}};
+      std::chrono::milliseconds             heartbeat_timeout{keepalive_interval * 2};
 
       int                                   max_cleanup_time_ms = 0;
       uint32_t                              max_client_count = 0;
@@ -389,6 +391,7 @@ namespace eosio {
    constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
    constexpr auto     def_sync_fetch_span = 100;
+   constexpr auto     def_keepalive_interval = 32000;
 
    constexpr auto     message_header_size = 4;
    constexpr uint32_t signed_block_v0_which       = fc::get_index<net_message, signed_block_v0>();       // see protocol net_message
@@ -418,8 +421,9 @@ namespace eosio {
    constexpr uint16_t proto_explicit_sync = 1;       // version at time of eosio 1.0
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
+   constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
 
-   constexpr uint16_t net_version = proto_pruned_types;
+   constexpr uint16_t net_version = heartbeat_interval;
 
    /**
     * Index by start_block_num
@@ -545,6 +549,10 @@ namespace eosio {
       void set_connection_type( const string& peer_addr );
       bool is_transactions_only_connection()const { return connection_type == transactions_only; }
       bool is_blocks_only_connection()const { return connection_type == blocks_only; }
+      void set_heartbeat_timeout(std::chrono::milliseconds msec) {
+         std::chrono::system_clock::duration dur = msec;
+         hb_timeout = dur.count();
+      }
 
    private:
       static const string unknown;
@@ -578,6 +586,7 @@ namespace eosio {
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{true};
       std::atomic<bool>       syncing{false};
+
       std::atomic<uint16_t>   protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
@@ -612,6 +621,9 @@ namespace eosio {
       tstamp                         dst{0};          //!< destination timestamp
       tstamp                         xmt{0};          //!< transmit timestamp
       /** @} */
+      // timestamp for the lastest message
+      tstamp                         latest_msg_time{0};
+      tstamp                         hb_timeout;
 
       bool connected();
       bool current();
@@ -647,6 +659,9 @@ namespace eosio {
       /** \name Peer Timestamps
        *  Time message handling
        */
+      /**  \brief Check heartbeat time and send Time_message
+       */
+      void check_heartbeat( tstamp current_time );
       /**  \brief Populate and queue time_message
        */
       void send_time();
@@ -1078,6 +1093,28 @@ namespace eosio {
             c->enqueue( last_handshake_sent );
          }
       });
+   }
+
+   // called from connection strand
+   void connection::check_heartbeat( tstamp current_time )
+   {
+      if( protocol_version >= heartbeat_interval ) {
+         if( latest_msg_time > 0 &&  current_time > latest_msg_time + hb_timeout ) {
+            no_retry = benign_other;
+            if( !peer_address().empty() ) {
+               fc_wlog(logger, "heartbeat timed out for peer address ${adr}", ("adr", peer_address()));
+               close(true);  // reconnect
+            } else {
+               {
+                  std::lock_guard<std::mutex> g_conn( conn_mtx );
+                  fc_wlog(logger, "heartbeat timed out from ${p} ${ag}", ("p", last_handshake_recv.p2p_address)("ag", last_handshake_recv.agent));
+               }
+               close(false); // don't reconnect
+            }
+            return;
+         }
+      }
+      send_time();
    }
 
    void connection::send_time() {
@@ -1990,8 +2027,8 @@ namespace eosio {
 
    bool dispatch_manager::have_block( const block_id_type& blkid ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
-      // by_block_id sorts have_block by greater so have_block == true will be the first one found
-      const auto& index = blk_state.get<by_block_id>();
+      // by_peer_block_id sorts have_block by greater so have_block == true will be the first one found
+      const auto& index = blk_state.get<by_peer_block_id>();
       auto blk_itr = index.find( blkid );
       if( blk_itr != index.end() ) {
          return blk_itr->have_block;
@@ -2363,6 +2400,7 @@ namespace eosio {
                   } );
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
                      fc_ilog( logger, "Accepted new connection: " + paddr_str );
+                     new_connection->set_heartbeat_timeout( heartbeat_timeout );
                      if( new_connection->start_session()) {
                         std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                         connections.insert( new_connection );
@@ -2533,6 +2571,8 @@ namespace eosio {
    // called from connection strand
    bool connection::process_next_message( uint32_t message_length ) {
       try {
+         latest_msg_time = get_time();
+
          // if next message is a block we already have, exit early
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
@@ -2913,6 +2953,7 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
@@ -2925,11 +2966,13 @@ namespace eosio {
          retry = false;
       }
       flush_queues();
+
       close( retry ); // reconnect if wrong_version
    }
 
    void connection::handle_message( const time_message& msg ) {
       peer_dlog( this, "received time_message" );
+
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
@@ -3244,10 +3287,12 @@ namespace eosio {
                if( my->in_shutdown ) return;
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            for_each_connection( []( auto& c ) {
+
+            tstamp current_time = connection::get_time();
+            for_each_connection( [current_time]( auto& c ) {
                if( c->socket_is_open() ) {
-                  c->strand.post( [c]() {
-                     c->send_time();
+                  c->strand.post([c, current_time]() {
+                     c->check_heartbeat(current_time);
                   } );
                }
                return true;
@@ -3330,6 +3375,13 @@ namespace eosio {
       controller& cc = chain_plug->chain();
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
+
+         auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
+         auto blk_span = fc_create_span( blk_trace, "Accepted" );
+         fc_add_tag( blk_span, "block_id", bs->id );
+         fc_add_tag( blk_span, "block_num", bs->block_num );
+         fc_add_tag( blk_span, "block_time", bs->block->timestamp.to_time_point() );
+
          dispatcher->bcast_block( bs->block, bs->id );
       });
    }
@@ -3342,6 +3394,14 @@ namespace eosio {
          dispatcher->strand.post( [this, block]() {
             auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
+
+            auto blk_trace = fc_create_trace_with_id("Block", id);
+            auto blk_span = fc_create_span(blk_trace, "PreAccepted");
+            fc_add_tag(blk_span, "block_id", id);
+            fc_add_tag(blk_span, "block_num", block->block_num());
+            fc_add_tag(blk_span, "block_time", block->timestamp.to_time_point());
+            fc_add_tag(blk_span, "producer", block->producer.to_string());
+
             dispatcher->bcast_block( block, id );
          });
       }
@@ -3533,6 +3593,8 @@ namespace eosio {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
+         ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
+
         ;
    }
 
@@ -3557,6 +3619,13 @@ namespace eosio {
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
+         my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() );
+         EOS_ASSERT( my->keepalive_interval.count() > 0, chain::plugin_config_exception,
+                     "p2p-keepalive_interval-ms must be greater than 0" );
+
+         if( options.count( "p2p-keepalive-interval-ms" )) {
+            my->heartbeat_timeout = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() * 2 );
+         }
 
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
@@ -3795,6 +3864,7 @@ namespace eosio {
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
          fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );
+         c->set_heartbeat_timeout( my->heartbeat_timeout );
          my->connections.insert( c );
       }
       return "added connection";

@@ -299,3 +299,63 @@ function build-clang() {
         export CC=$CC_COMP
     fi
 }
+
+function ensure-libpq-and-libpqxx() {  
+
+    if [[ $ARCH == "Darwin" ]] && [ ! -f "/usr/local/lib/pkgconfig/libpqxx.pc" ]; then
+        if $PIN_COMPILER; then
+            curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
+            brew install -f ./libpqxx.rb && rm ./libpqxx.rb
+        else
+            brew install libpq libpqxx
+        fi
+    fi
+
+    if [[ $ARCH == "Linux" ]]; then
+        if [[ $NAME == "Amazon Linux" ]]; then
+            #install libpq
+            if [ ! -d /usr/include/libpq ]; then
+                amazon-linux-extras enable postgresql11 && \
+                    yum install -y libpq-devel 
+            fi
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq"
+        elif [[ $NAME == "CentOS Linux" ]]; then
+            #install libpq
+            if [ ! -d /usr/pgsql-13 ]; then
+                CENTOS_VERSION=$(rpm -E %{rhel})
+                yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$CENTOS_VERSION-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+                [ $CENTOS_VERSION -lt 8 ] || dnf -qy module disable postgresql
+                yum install -y postgresql13-devel 
+            fi
+            export PostgreSQL_ROOT=/usr/pgsql-13   
+            export PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
+        elif [[ $NAME == "Ubuntu" ]]; then
+            # install libpq
+            if [ ! -d /usr/include/postgresql ]; then 
+                echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+                    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+                    apt-get update && apt-get -y install libpq-dev  
+            fi
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql"     
+        fi
+        #build libpqxx
+        if $PIN_COMPILER || $BUILD_CLANG; then
+            CXX_SPEC="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake"
+        fi
+
+        if [ ! -d ${OPT_DIR}/pqxx ]; then
+            execute bash -c "cd $SRC_DIR && \
+                curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+                cd libpqxx-7.2.1 && mkdir build && cd build && \
+                ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
+                make -j${JOBS} && make install && \
+                cd ../.. && rm -rf libpqxx-7.2.1"
+        fi
+
+        if [ -z "$PKG_CONFIG_PATH" ]; then
+            export PKG_CONFIG_PATH="${OPT_DIR}/pqxx/lib/pkgconfig"
+        else
+            export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPT_DIR}/pqxx/lib/pkgconfig"
+        fi
+    fi
+}

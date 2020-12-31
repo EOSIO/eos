@@ -196,7 +196,7 @@ paths:
                 type: array
                 description: List of account names stored in the greylist
                 items:
-                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                  $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
 
   /producer/add_greylist_accounts:
     post:
@@ -219,7 +219,7 @@ paths:
                       type: array
                       description: List of account names to add
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
 
       responses:
         "200":
@@ -249,7 +249,7 @@ paths:
                       type: array
                       description: List of account names to remove
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
 
       responses:
         "200":
@@ -260,7 +260,7 @@ paths:
                 type: array
                 description: List of account names stored in the greylist
                 items:
-                  $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                  $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
 
   /producer/get_whitelist_blacklist:
     post:
@@ -287,19 +287,19 @@ paths:
                   actor_whitelist:
                     type: array
                     items:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                   actor_blacklist:
                     type: array
                     items:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                   contract_whitelist:
                     type: array
                     items:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                   contract_blacklist:
                     type: array
                     items:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                   action_blacklist:
                     type: array
                     items:
@@ -307,12 +307,12 @@ paths:
                       description: Array of two string values, the account name as the first and action name as the second
                       items:
                         allOf:
-                          - $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
-                          - $ref: "https://eosio.github.io/schemata/v3.0/oas/CppSignature.yaml"
+                          - $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
+                          - $ref: "https://eosio.github.io/schemata/v2.1/oas/CppSignature.yaml"
                   key_blacklist:
                     type: array
                     items:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/KeyType.yaml"
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/KeyType.yaml"
 
   /producer/set_whitelist_blacklist:
     post:
@@ -335,19 +335,19 @@ paths:
                     actor_whitelist:
                       type: array
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                     actor_blacklist:
                       type: array
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                     contract_whitelist:
                       type: array
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                     contract_blacklist:
                       type: array
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
                     action_blacklist:
                       type: array
                       items:
@@ -355,12 +355,12 @@ paths:
                         description: Array of two string values, the account name as the first and action name as the second
                         items:
                           allOf:
-                            - $ref: "https://eosio.github.io/schemata/v3.0/oas/Name.yaml"
-                            - $ref: "https://eosio.github.io/schemata/v3.0/oas/CppSignature.yaml"
+                            - $ref: "https://eosio.github.io/schemata/v2.1/oas/Name.yaml"
+                            - $ref: "https://eosio.github.io/schemata/v2.1/oas/CppSignature.yaml"
                     key_blacklist:
                       type: array
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/KeyType.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/KeyType.yaml"
 
       responses:
         "200":
@@ -387,11 +387,20 @@ paths:
                   type: object
                   description: Defines the snapshot to be created
                   properties:
+                    head_block_id:
+                      $ref: "https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml"
+                    head_block_num:
+                      type: integer
+                      description: Highest block number on the chain
+                    head_block_time:
+                      type: string
+                      description: Highest block unix timestamp
+                    version:
+                      type: integer
+                      description: Version number
                     snapshot_name:
                       type: string
                       description: The name of the snapshot
-                    head_block_id:
-                      $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
 
 
       responses:
@@ -425,9 +434,9 @@ paths:
                 description: Defines the integrity hash information details
                 properties:
                   integrity_hash:
-                    $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
+                    $ref: "https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml"
                   head_block_id:
-                    $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
+                    $ref: "https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml"
 
   /producer/schedule_protocol_feature_activations:
     post:
@@ -450,7 +459,7 @@ paths:
                       type: array
                       description: List of protocol features to activate
                       items:
-                        $ref: "https://eosio.github.io/schemata/v3.0/oas/Sha256.yaml"
+                        $ref: "https://eosio.github.io/schemata/v2.1/oas/Sha256.yaml"
 
       responses:
         "200":

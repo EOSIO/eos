@@ -1,7 +1,13 @@
 #include "cloner_plugin.hpp"
 #include "ship_client.hpp"
+#include "config.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
+
+#include <fc/log/logger.hpp>
+#include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -219,6 +225,12 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
    op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
       "Shutdown application if filter wasm throws an exception");
+   op("telemetry-url", bpo::value<std::string>(),
+      "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" );
+   op("telemetry-service-name", bpo::value<std::string>()->default_value(b1::rodeos::config::rodeos_executable_name),
+      "Zipkin localEndpoint.serviceName sent with each span" );
+   op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+      "Timeout for sending Zipkin span." );
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -243,21 +255,33 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
 
-void cloner_plugin::plugin_startup() { my->start(); }
+void cloner_plugin::plugin_startup() {
+   handle_sighup();
+   my->start();
+}
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
       my->session->connection->close(false);
    my->timer.cancel();
+   fc::zipkin_config::shutdown();
    ilog("cloner_plugin stopped");
 }
 
 void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
-   my->streamer = streamer_func;
+   my->streamer = std::move(streamer_func);
+}
+
+void cloner_plugin::handle_sighup() {
 }
 
 } // namespace b1

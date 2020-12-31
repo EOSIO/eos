@@ -28,7 +28,7 @@ struct resmon_fixture {
       EOS_ASSERT(args.size() < 10, chain::plugin_exception, "number of arguments  (${size}) must be less than 10", ("size", args.size()));
 
       // argv[0] is program name, no need to fill in
-      for (auto i=0; i<args.size(); ++i) {
+      for (auto i=0U; i<args.size(); ++i) {
          argv[i+1] = args[i].c_str();
       }
 
@@ -142,4 +142,30 @@ BOOST_AUTO_TEST_SUITE(resmon_plugin_tests)
    {
       BOOST_REQUIRE_NO_THROW( plugin_startup({"/tmp"}, 120));
    }
+
+   BOOST_FIXTURE_TEST_CASE(warningIntervalTooBig, resmon_fixture)
+   {
+      BOOST_REQUIRE_THROW(set_options({"--resource-monitor-warning-interval=451"}), chain::plugin_config_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(warningIntervalTooSmall, resmon_fixture)
+   {
+      BOOST_REQUIRE_THROW(set_options({"--resource-monitor-warning-interval=0"}), chain::plugin_config_exception);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(warningIntervalLowBound, resmon_fixture)
+   {
+      BOOST_REQUIRE_NO_THROW(set_options({"--resource-monitor-warning-interval=1"}));
+   }
+
+   BOOST_FIXTURE_TEST_CASE(warningIntervalMiddle, resmon_fixture)
+   {
+      BOOST_REQUIRE_NO_THROW(set_options({"--resource-monitor-warning-interval=225"}));
+   }
+
+   BOOST_FIXTURE_TEST_CASE(warningIntervalHighBound, resmon_fixture)
+   {
+      BOOST_REQUIRE_NO_THROW(set_options({"--resource-monitor-warning-interval=450"}));
+   }
+
 BOOST_AUTO_TEST_SUITE_END()
