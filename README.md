@@ -97,12 +97,12 @@ sudo apt remove eosio
 
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
-#### RPM Package Install Centos 7
+#### RPM Package Install CentOS 7
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc2/eosio-2.1.0-rc2.el7.x86_64.rpm
 sudo yum install ./eosio-2.1.0-rc2.el7.x86_64.rpm
 ```
-#### RPM Package Install Centos 8
+#### RPM Package Install CentOS 8
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc2/eosio-2.1.0-rc2.el8.x86_64.rpm
 sudo yum install ./eosio-2.1.0-rc2.el8.x86_64.rpm
