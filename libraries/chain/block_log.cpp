@@ -911,6 +911,8 @@ namespace eosio { namespace chain {
            sb.unpack(ds, packed_transaction::cf_compression_type::none);
            //convert to signed_block_v0
            auto block_ptr = sb.to_signed_block_v0();
+           if (!block_ptr)
+               return {};
            size_t pack_size = fc::raw::pack_size(*block_ptr);
            //pack
            auto send_buf=std::make_shared<std::vector<char>>(pack_size);
