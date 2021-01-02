@@ -1246,13 +1246,14 @@ namespace eosio {
               connection_ptr c = weak.lock();
               if( !c ) return;
               controller& cc = my_impl->chain_plug->chain();
-              signed_block_ptr sb;
+              signed_block_ptr sb = nullptr;
               block_state_ptr blk_state;
               try {
                   blk_state = cc.fetch_block_state_by_number( num );
+                  if (blk_state)
+                      sb = blk_state->block;
               } FC_LOG_AND_DROP();
-              if( blk_state ) {
-                  sb = blk_state->block;
+              if( sb ) {
                   c->strand.post( [c, sb{std::move(sb)}]() {
                       c->enqueue_block( sb, true );
                   });
