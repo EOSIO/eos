@@ -187,7 +187,7 @@ struct partial_transaction_v0 {
    fc::unsigned_int                           max_net_usage_words    = {};
    uint8_t                                    max_cpu_usage_ms       = {};
    fc::unsigned_int                           delay_sec              = {};
-   std::vector<eosio::chain::extensions_type> transaction_extensions = {};
+   eosio::chain::extensions_type              transaction_extensions = {};
    std::vector<eosio::chain::signature_type>  signatures             = {};
    std::vector<bytes>                         context_free_data      = {};
 };
@@ -200,7 +200,7 @@ struct partial_transaction_v1 {
    fc::unsigned_int                           max_net_usage_words    = {};
    uint8_t                                    max_cpu_usage_ms       = {};
    fc::unsigned_int                           delay_sec              = {};
-   std::vector<eosio::chain::extensions_type> transaction_extensions = {};
+   eosio::chain::extensions_type              transaction_extensions = {};
    std::optional<prunable_data_type>          prunable_data          = {};
 };
 
