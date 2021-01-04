@@ -238,15 +238,21 @@ namespace eosio { namespace chain {
 
        std::shared_ptr<std::vector<char>> data_buff;
        if (version >= pruned_transaction_version) {
-           signed_block sb;
-           uint32_t sb_size =  fc::raw::pack_size(sb);
-           *pBlockSize = sb_size;
+           // block size - 4 bytes
+           uint32_t sz;
+           fc::raw::unpack(ds, sz);
+           // compression status - 1 byte
+           uint8_t  compression;
+           fc::raw::unpack(ds, compression);
+           EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
+                      block_log_exception, "Only \"none\" compression type is supported.");
+           // block data size
+           *pBlockSize = sz - 5; //5 = 4 bytes + 1 byte
        }else{
-           signed_block_v0 sb_v0;
-           uint32_t sb_v0_size =  fc::raw::pack_size(sb_v0);
-           *pBlockSize = sb_v0_size;
+           EOS_ASSERT(*pBlockSize > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
        }
 
+       // save block data into a buffer
        data_buff = std::make_shared<std::vector<char>>(*pBlockSize);
        ds.read(data_buff->data(), *pBlockSize);
 
@@ -841,11 +847,27 @@ namespace eosio { namespace chain {
        std::shared_ptr<std::vector<char>> pBuffer = nullptr;
        uint32_t blog_version = 0;
        uint32_t block_size = 0;
+
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
            blog_version = preamble.version;
+
            block_file.seek(pos);
-           pBuffer = read_packed_block(block_file, blog_version, &block_size);
+           if (blog_version  >= pruned_transaction_version){
+               pBuffer = read_packed_block(block_file, blog_version, &block_size);
+           }else{
+               //calculate and pass block size, which is needed when reading a packed block from a block log file with version < pruned_transaction_version
+               uint64_t next_pos = get_block_pos(block_num + 1);
+               if (next_pos != block_log::npos){
+                   block_size = (next_pos - pos) - sizeof(uint64_t);
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
+               }else if (head && block_num == head->block_num()){ //head block
+                   block_file.seek_end(0);
+                   block_size = (block_file.tellp() - pos) - sizeof(uint64_t);
+                   block_file.seek(pos); // restore position of the block needed
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
+               }
+           }
        }else {//search in catalog files
            auto[ds, version] = catalog.ro_stream_for_block(block_num);
            if (ds.remaining()){
