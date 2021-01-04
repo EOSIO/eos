@@ -7,7 +7,6 @@ set -euo pipefail
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 echo ":done: download successfull"
 
-#PREFIX='base-ubuntu-18.04'
 SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
 SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | sed 's.^/..' | tr '/' '_')
 echo "$SANITIZED_BRANCH"
@@ -21,9 +20,9 @@ if [[ -z "$SANITIZED_TAG" ]]; then
     DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
     IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT"
         else
-        IMAGE_ECR="$EOSIO_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT-$SANITIZED_TAG"
-        DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
-        IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT-$SANITIZED_TAG"
+            IMAGE_ECR="$EOSIO_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT-$SANITIZED_TAG"
+            DOCKERHUB_EOS_REGISTRY="docker.io/eosio/eos"
+            IMAGE_DOCKER="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_BRANCH-$BUILDKITE_COMMIT-$SANITIZED_TAG"
 fi
 
 echo ":docker: Building Image...."
