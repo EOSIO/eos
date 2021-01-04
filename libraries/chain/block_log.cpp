@@ -234,15 +234,10 @@ namespace eosio { namespace chain {
    };
 
    template <typename Stream>
-   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t sb_v0_size = 0) {
+   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t* pBlockSize) {
 
        std::shared_ptr<std::vector<char>> data_buff;
-       std::shared_ptr<std::vector<char>> send_buff;
-       uint32_t which; // signed_block_which or signed_block_v0_which; see net_message in net_plugin/protocol.hpp
-       uint32_t data_size;
-
        if (version >= pruned_transaction_version) {
-           which = 9; // signed_block_which
            // block size - 4 bytes
            uint32_t sz;
            fc::raw::unpack(ds, sz);
@@ -252,32 +247,16 @@ namespace eosio { namespace chain {
            EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
                       block_log_exception, "Only \"none\" compression type is supported.");
            // block data size
-           data_size = sz - 5; //5 = 4 bytes + 1 byte
+           *pBlockSize = sz - 5; //5 = 4 bytes + 1 byte
        }else{
-           which = 7; // signed_block_v0_which
-           data_size = sb_v0_size;
-           EOS_ASSERT(sb_v0_size > 0,block_log_exception, "Wrong sizstride( config.stride )e of signed_block_v0 was calculated.");
+           EOS_ASSERT(*pBlockSize > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
        }
 
        // save block data into a buffer
-       data_buff = std::make_shared<std::vector<char>>(data_size);
-       ds.read(data_buff->data(), data_size);
+       data_buff = std::make_shared<std::vector<char>>(*pBlockSize);
+       ds.read(data_buff->data(), *pBlockSize);
 
-       // collect header information
-       const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
-       const uint32_t payload_size = which_size + data_size;
-       const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
-       constexpr size_t header_size = 4;   // see message_header_size in net_plugin.cpp
-       const size_t buffer_size = header_size + payload_size;
-
-       // save the block data and its header information into a new buffer
-       send_buff = std::make_shared<std::vector<char>>(buffer_size);
-       fc::datastream<char*> datastream( send_buff->data(), buffer_size );
-       datastream.write( header, header_size );
-       fc::raw::pack( datastream, unsigned_int( which ) );
-       datastream.write(data_buff->data(), data_size);
-
-       return send_buff;
+       return data_buff;
    }
 
    template <typename Stream>
@@ -867,6 +846,7 @@ namespace eosio { namespace chain {
 
        std::shared_ptr<std::vector<char>> pBuffer = nullptr;
        uint32_t blog_version = 0;
+       uint32_t block_size = 0;
 
        uint64_t pos = get_block_pos(block_num);
        if (pos != block_log::npos) {
@@ -874,26 +854,25 @@ namespace eosio { namespace chain {
 
            block_file.seek(pos);
            if (blog_version  >= pruned_transaction_version){
-               pBuffer = read_packed_block(block_file, blog_version);
+               pBuffer = read_packed_block(block_file, blog_version, &block_size);
            }else{
                //calculate and pass block size, which is needed when reading a packed block from a block log file with version < pruned_transaction_version
-               uint32_t block_size;
                uint64_t next_pos = get_block_pos(block_num + 1);
                if (next_pos != block_log::npos){
                    block_size = (next_pos - pos) - sizeof(uint64_t);
-                   pBuffer = read_packed_block(block_file, blog_version, block_size);
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
                }else if (head && block_num == head->block_num()){ //head block
                    block_file.seek_end(0);
                    block_size = (block_file.tellp() - pos) - sizeof(uint64_t);
                    block_file.seek(pos); // restore position of the block needed
-                   pBuffer = read_packed_block(block_file, blog_version, block_size);
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
                }
            }
        }else {//search in catalog files
            auto[ds, version] = catalog.ro_stream_for_block(block_num);
            if (ds.remaining()){
                blog_version = version;
-               pBuffer = read_packed_block(ds, blog_version);
+               pBuffer = read_packed_block(ds, blog_version, &block_size);
            }
        }
 
@@ -901,11 +880,28 @@ namespace eosio { namespace chain {
            if ((blog_version >= pruned_transaction_version && !return_signed_block)
            || (blog_version < pruned_transaction_version && return_signed_block)){
                //block log version and protocol version mismatch
-               return handle_version_mismatch(pBuffer, blog_version, return_signed_block);
+               pBuffer = handle_version_mismatch(pBuffer, blog_version, return_signed_block);
            }
-           else{
-               return pBuffer;
-           }
+
+           // add block data and its header information into one buffer
+           std::shared_ptr<std::vector<char>> send_buff;
+           uint32_t which; // see net_message in net_plugin/protocol.hpp
+           if (blog_version >= pruned_transaction_version)
+               which = 9;  // signed_block_which
+           else
+               which = 7;  // signed_block_v0_which
+           const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+           const uint32_t payload_size = which_size + block_size;
+           const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+           constexpr size_t header_size = 4;   // see message_header_size in net_plugin.cpp
+           const size_t buffer_size = header_size + payload_size;
+           send_buff = std::make_shared<std::vector<char>>(buffer_size);
+           fc::datastream<char*> datastream( send_buff->data(), buffer_size );
+           datastream.write( header, header_size );
+           fc::raw::pack( datastream, unsigned_int( which ) );
+           datastream.write(pBuffer->data(), block_size);
+
+           return send_buff;
        }
 
        return {}; // archived or deleted
