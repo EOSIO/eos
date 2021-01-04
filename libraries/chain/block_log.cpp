@@ -235,8 +235,14 @@ namespace eosio { namespace chain {
 
    template <typename Stream>
    std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t sb_v0_size = 0) {
-       std::shared_ptr<std::vector<char>> buff;
+
+       std::shared_ptr<std::vector<char>> data_buff;
+       std::shared_ptr<std::vector<char>> send_buff;
+       uint32_t which; // signed_block_which or signed_block_v0_which; see net_message in net_plugin/protocol.hpp
+       uint32_t data_size;
+
        if (version >= pruned_transaction_version) {
+           which = 9; // signed_block_which
            // block size - 4 bytes
            uint32_t sz;
            fc::raw::unpack(ds, sz);
@@ -245,18 +251,33 @@ namespace eosio { namespace chain {
            fc::raw::unpack(ds, compression);
            EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
                       block_log_exception, "Only \"none\" compression type is supported.");
-           // block data
-           uint32_t data_size = sz - 5; //5 = 4 bytes + 1 byte
-           buff = std::make_shared<std::vector<char>>(data_size);
-           ds.read(buff->data(), data_size);
+           // block data size
+           data_size = sz - 5; //5 = 4 bytes + 1 byte
        }else{
-           // read a packed block from old version block log file that doesn't have block size saved.
+           which = 7; // signed_block_v0_which
+           data_size = sb_v0_size;
            EOS_ASSERT(sb_v0_size > 0,block_log_exception, "Wrong sizstride( config.stride )e of signed_block_v0 was calculated.");
-           buff = std::make_shared<std::vector<char>>(sb_v0_size);
-           ds.read(buff->data(), sb_v0_size);
        }
 
-       return buff;
+       // save block data into a buffer
+       data_buff = std::make_shared<std::vector<char>>(data_size);
+       ds.read(data_buff->data(), data_size);
+
+       // collect header information
+       const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+       const uint32_t payload_size = which_size + data_size;
+       const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+       constexpr size_t header_size = 4;   // see message_header_size in net_plugin.cpp
+       const size_t buffer_size = header_size + payload_size;
+
+       // save the block data and its header information into a new buffer
+       send_buff = std::make_shared<std::vector<char>>(buffer_size);
+       fc::datastream<char*> datastream( send_buff->data(), buffer_size );
+       datastream.write( header, header_size );
+       fc::raw::pack( datastream, unsigned_int( which ) );
+       datastream.write(data_buff->data(), data_size);
+
+       return send_buff;
    }
 
    template <typename Stream>
