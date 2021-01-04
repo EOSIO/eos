@@ -31,6 +31,7 @@ if [[ ! -z "$SANITIZED_TAG" ]]; then
             IMAGE_DOCKER_T="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_TAG"
             DOCKER_TAG_ECR="docker tag '$IMAGE_ECR_C' '$IMAGE_ECR_T"
             DOCKER_TAG_HUB="docker tag '$IMAGE_DOCKER_C '$IMAGE_DOCKER_T"
+        fi    
 fi
 
 #do docker push to ECR
