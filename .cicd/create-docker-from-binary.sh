@@ -25,12 +25,18 @@ if [[ ! -z "$SANITIZED_TAG" ]]; then
     echo "Building Image...."
     echo "$ $DOCKER_BUILD_COMMAND"
     eval $DOCKER_BUILD_COMMAND
+    export IMAGE_ECR_C
+    export IMAGE_ECR_B
+    export IMAGE_DOCKER_C
+    export IMAGE_DOCKER_B
     echo "Build Done successfully!!"
         if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
             IMAGE_ECR_T="$EOSIO_REGISTRY:$SANITIZED_TAG"
             IMAGE_DOCKER_T="$DOCKERHUB_EOS_REGISTRY:$SANITIZED_TAG"
             DOCKER_TAG_ECR="docker tag '$IMAGE_ECR_C' '$IMAGE_ECR_T"
             DOCKER_TAG_HUB="docker tag '$IMAGE_DOCKER_C '$IMAGE_DOCKER_T"
+            export IMAGE_ECR_T
+            export IMAGE_DOCKER_B
         fi    
 fi
 
