@@ -6,8 +6,10 @@ import time
 import unittest
 
 from testUtils import Utils
+from testUtils import Account
 from TestHelper import TestHelper
 from Node import Node
+from Cluster import Cluster
 from WalletMgr import WalletMgr
 
 class PluginHttpTest(unittest.TestCase):
@@ -16,7 +18,7 @@ class PluginHttpTest(unittest.TestCase):
     base_wallet_cmd_str = ("curl http://%s:%s/v1/") % (TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT)
     keosd = WalletMgr(True, TestHelper.DEFAULT_PORT, TestHelper.LOCAL_HOST, TestHelper.DEFAULT_WALLET_PORT, TestHelper.LOCAL_HOST)
     node_id = 1
-    nodeos = Node(TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT, node_id)
+    nodeos = Node(TestHelper.LOCAL_HOST, TestHelper.DEFAULT_PORT, node_id, walletMgr=keosd)
     data_dir = Utils.getNodeDataDir(node_id)
     http_post_str = " -X POST -d "
     http_post_invalid_param = " '{invalid}' "
@@ -59,6 +61,28 @@ class PluginHttpTest(unittest.TestCase):
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
 
+    def activateAllBuiltinProtocolFeatures(self):
+        self.nodeos.activatePreactivateFeature()
+
+        contract = "eosio.bios"
+        contractDir = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
+        wasmFile = "%s.wasm" % (contract)
+        abiFile = "%s.abi" % (contract)
+
+        producerKeys = Cluster.parseClusterKeys(0)
+
+        eosioAccount = Account("eosio")
+        eosioAccount.ownerPrivateKey = eosioAccount.activePrivateKey = producerKeys["eosio"]["private"]
+        eosioAccount.ownerPublicKey = activePublicKey = producerKeys["eosio"]["public"]
+
+        testWalletName = "test"
+        walletAccounts = [eosioAccount]
+        self.keosd.create(testWalletName, walletAccounts)
+
+        retMap = self.nodeos.publishContract(eosioAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+
+        self.nodeos.preactivateAllBuiltinProtocolFeature()
+
     # test all chain api
     def test_ChainApi(self) :
         cmd_base = self.base_node_cmd_str + "chain/"
@@ -92,39 +116,88 @@ class PluginHttpTest(unittest.TestCase):
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
+        # activate the builtin protocol features and get some useful data
+        self.activateAllBuiltinProtocolFeatures()
+        allProtocolFeatures = self.nodeos.getSupportedProtocolFeatures()
+        allFeatureDigests = [d['feature_digest'] for d in allProtocolFeatures]
+        ACT_FEATURE_DEFAULT_LIMIT = 10
 
         # get_activated_protocol_features without parameter
         default_cmd = cmd_base + "get_activated_protocol_features"
         ret_json = Utils.runCmdReturnJson(default_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+
         # get_activated_protocol_features with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_json = Utils.runCmdReturnJson(empty_content_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+        for index, _ in enumerate(ret_json["activated_protocol_features"]):
+            if index - 1 >= 0:
+                self.assertTrue(ret_json["activated_protocol_features"][index - 1]["activation_ordinal"] < ret_json["activated_protocol_features"][index]["activation_ordinal"])
+
         # get_activated_protocol_features with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
         self.assertEqual(ret_json["code"], 400)
+
         # get_activated_protocol_features with 1st param
         param_1st_cmd = default_cmd + self.http_post_str + "'{\"lower_bound\":1}'"
         ret_json = Utils.runCmdReturnJson(param_1st_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+
         # get_activated_protocol_features with 2nd param
         param_2nd_cmd = default_cmd + self.http_post_str + "'{\"upper_bound\":1000}'"
         ret_json = Utils.runCmdReturnJson(param_2nd_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+
+        # get_activated_protocol_features with 2nd param
+        upper_bound_param = 7
+        param_2nd_cmd = default_cmd + self.http_post_str + ("'{\"upper_bound\":%s}'" % upper_bound_param)
+        ret_json = Utils.runCmdReturnJson(param_2nd_cmd)
+        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+            self.assertTrue(dict_feature['activation_ordinal'] <= upper_bound_param)
+
         # get_activated_protocol_features with 3rd param
         param_3rd_cmd = default_cmd + self.http_post_str + "'{\"limit\":1}'"
         ret_json = Utils.runCmdReturnJson(param_3rd_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(1, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+
         # get_activated_protocol_features with 4th param
         param_4th_cmd = default_cmd + self.http_post_str + "'{\"search_by_block_num\":true}'"
         ret_json = Utils.runCmdReturnJson(param_4th_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+
         # get_activated_protocol_features with 5th param
         param_5th_cmd = default_cmd + self.http_post_str + "'{\"reverse\":true}'"
         ret_json = Utils.runCmdReturnJson(param_5th_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
+        for index, _ in enumerate(ret_json["activated_protocol_features"]):
+            if index - 1 >= 0:
+                self.assertTrue(ret_json["activated_protocol_features"][index - 1]["activation_ordinal"] > ret_json["activated_protocol_features"][index]["activation_ordinal"])
+
         # get_activated_protocol_features with valid parameter
         valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % ( default_cmd,
                                                     self.http_post_str,
@@ -135,6 +208,8 @@ class PluginHttpTest(unittest.TestCase):
                                                     "\"reverse\":true")
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(type(ret_json["activated_protocol_features"]), list)
+        for dict_feature in ret_json["activated_protocol_features"]:
+            self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
 
         # get_block with empty parameter
         default_cmd = cmd_base + "get_block"
