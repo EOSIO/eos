@@ -745,31 +745,22 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - params
               properties:
-                params:
-                  type: object
-                  description: Defines the filters to retreive the protocol features by
-                  required:
-                    - search_by_block_num
-                    - reverse
-                  properties:
-                    lower_bound:
-                      type: integer
-                      description: Lower bound
-                    upper_bound:
-                      type: integer
-                      description: Upper bound
-                    limit:
-                      type: integer
-                      description: The limit, default is 10
-                    search_by_block_num:
-                      type: boolean
-                      description: Flag to indicate it is has to search by block number
-                    reverse:
-                      type: boolean
-                      description: Flag to indicate it has to search in reverse
+                 lower_bound:
+                   type: integer
+                   description: Lower bound
+                 upper_bound:
+                   type: integer
+                   description: Upper bound
+                 limit:
+                   type: integer
+                   description: The limit, default is 10
+                 search_by_block_num:
+                   type: boolean
+                   description: Flag to indicate it is has to search by block number
+                 reverse:
+                   type: boolean
+                   description: Flag to indicate it has to search in reverse
       responses:
         "200":
           description: OK
