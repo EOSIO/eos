@@ -491,7 +491,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool process_incoming_transaction_async(const transaction_metadata_ptr& trx,
                                               bool persist_until_expired,
                                               next_function<transaction_trace_ptr> next,
-                                              RetryLaterFunc retry_later)
+                                              RetryLaterFunc retry_later,
+                                              bool return_failure_trace = false)
       {
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
@@ -546,8 +547,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   if( !exhausted )
                      exhausted = block_is_exhausted();
                } else {
-                  auto e_ptr = trace->except->dynamic_copy_exception();
-                  send_response( e_ptr );
+                  if( return_failure_trace ) {
+                     send_response( trace );
+                  } else {
+                     auto e_ptr = trace->except->dynamic_copy_exception();
+                     send_response( e_ptr );
+                  }
                }
             } else {
                if( persist_until_expired ) {
@@ -2094,7 +2099,8 @@ bool producer_plugin::execute_incoming_transaction(const chain::transaction_meta
    };
 
    const bool persist_until_expired = false;
-   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func );
+   const bool return_failure_trace = true;
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func, return_failure_trace );
    if( exhausted ) {
       if( my->_pending_block_mode == pending_block_mode::producing ) {
          my->schedule_maybe_produce_block( true );
