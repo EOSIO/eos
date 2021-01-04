@@ -458,18 +458,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          return [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
-            if (response.contains<fc::exception_ptr>()) {
+            if (response.contains<fc::exception_ptr>() || response.get<transaction_trace_ptr>()->except) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
-                        ("why",response.get<fc::exception_ptr>()->what()));
+                        ("why", response.contains<fc::exception_ptr>() ?
+                                response.get<fc::exception_ptr>()->what() : response.get<transaction_trace_ptr>()->except->what()));
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
-                          ("why",response.get<fc::exception_ptr>()->what()));
+                          ("why", response.contains<fc::exception_ptr>() ?
+                                  response.get<fc::exception_ptr>()->what() : response.get<transaction_trace_ptr>()->except->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
