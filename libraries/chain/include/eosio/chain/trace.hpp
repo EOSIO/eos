@@ -86,19 +86,19 @@ namespace eosio { namespace chain {
 
    struct storage_usage_trace {
    public:
-      storage_usage_trace(uint32_t action_id, std::string event_id, const char* family, const char* operation)
-      :storage_usage_trace(action_id, std::move(event_id), family, operation, ".")
+      storage_usage_trace(uint32_t action_id, std::string event_id, std::string_view family, std::string_view operation)
+      :storage_usage_trace(action_id, std::move(event_id), std::move(family), std::move(operation), ".")
       {}
 
-      storage_usage_trace(uint32_t action_id, std::string&& event_id, const char* family, const char* operation, const char* legacy_tag)
+      storage_usage_trace(uint32_t action_id, std::string&& event_id, std::string_view family, std::string_view operation, std::string_view legacy_tag)
       :action_id(action_id),event_id(std::move(event_id)),family(family),operation(operation),legacy_tag(legacy_tag)
       {}
 
       uint32_t          action_id  = 0;
       const std::string event_id   = "generic";
-      const char*       family     = "generic";
-      const char*       operation  = "generic";
-      const char*       legacy_tag = "generic";
+      const std::string family     = "generic";
+      const std::string operation  = "generic";
+      const std::string legacy_tag = "generic";
 
    private:
       storage_usage_trace(uint32_t action_id)
