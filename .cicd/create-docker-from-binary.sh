@@ -25,7 +25,8 @@ for REG in ${EOSIO_REGS[@]}; do
     DOCKER_TAG_COMMIT="docker tag eos_image $REG:$BUILDKITE_COMMIT"
     DOCKER_TAG_BRANCH="docker tag eos_image $REG:$SANITIZED_BRANCH"
     echo -e "$ Tagging Images: \n$DOCKER_TAG_COMMIT \n$DOCKER_TAG_BRANCH"
-    eval $DOCKER_TAG_COMMIT $DOCKER_TAG_BRANCH
+    eval $DOCKER_TAG_COMMIT 
+    eval $DOCKER_TAG_BRANCH
     DOCKER_PUSH_COMMIT="docker push $REG:$BUILDKITE_COMMIT"
     DOCKER_PUSH_BRANCH="docker push $REG:$SANITIZED_BRANCH"
     echo -e "$ Pushing Images: \n$DOCKER_PUSH_COMMIT \n$DOCKER_PUSH_BRANCH"
