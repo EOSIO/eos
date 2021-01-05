@@ -112,19 +112,19 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/cleos/cleos"
+    EosClientPath="bin/cleos"
     MiscEosClientArgs="--no-auto-keosd"
 
     EosWalletName="keosd"
-    EosWalletPath="programs/keosd/"+ EosWalletName
+    EosWalletPath="bin/"+ EosWalletName
 
     EosServerName="nodeos"
-    EosServerPath="programs/nodeos/"+ EosServerName
+    EosServerPath="bin/"+ EosServerName
 
-    EosLauncherPath="programs/eosio-launcher/eosio-launcher"
+    EosLauncherPath="bin/eosio-launcher"
     ShuttingDown=False
 
-    EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
+    EosBlockLogPath="bin/eosio-blocklog"
 
     FileDivider="================================================================="
     DataRoot="var"
