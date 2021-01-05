@@ -883,6 +883,7 @@ namespace eosio { namespace chain {
            || (blog_version < pruned_transaction_version && return_signed_block)){
                //block log version and protocol version mismatch
                pBuffer = handle_version_mismatch(pBuffer, blog_version, return_signed_block);
+               block_size = (*pBuffer).size();
            }
 
            // add block data and its header information into one buffer

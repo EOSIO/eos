@@ -31,6 +31,10 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
         //unpack
         fc::datastream<const char*> ds((*pBuffer).data(), (*pBuffer).size());
+        ds.skip(4); //skip header
+        unsigned_int which{};
+        fc::raw::unpack( ds, which );
+
         if (return_signed_block){
             signed_block sb;
             sb.unpack(ds, packed_transaction::cf_compression_type::none);
@@ -121,7 +125,9 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
             //fetch a block that is in blocks.log file
             fetch_block_buffer(chain, 5, true);
             fetch_block_buffer(chain, 5, false);
-
+            //fetch the head block
+            fetch_block_buffer(chain, 10, true);
+            fetch_block_buffer(chain, 10, false);
             //fetch a block that doesn't exist locally
             fetch_block_buffer(chain, 20, true);
             fetch_block_buffer(chain, 20, false);
