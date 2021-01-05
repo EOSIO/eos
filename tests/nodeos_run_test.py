@@ -25,6 +25,15 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
+for root, dirs, files in os.walk("."):
+    for directory in dirs:
+        if directory == "bin":
+            Print("found")
+        Print("directory: " + directory) 
+    for root2, dirs2, files2 in os.walk("bin"):
+        for filename in files2:
+            Print("bin/" + filename)
+
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
                               ,"--sanity-test","--wallet-port"})
