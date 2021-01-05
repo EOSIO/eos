@@ -241,13 +241,15 @@ namespace eosio { namespace chain {
            // block size - 4 bytes
            uint32_t sz;
            fc::raw::unpack(ds, sz);
+
            // compression status - 1 byte
            uint8_t  compression;
            fc::raw::unpack(ds, compression);
            EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
                       block_log_exception, "Only \"none\" compression type is supported.");
+
            // block data size
-           *pBlockSize = sz - 5; //5 = 4 bytes + 1 byte
+           *pBlockSize = sz - 4 -1 - 8; //block size: 4 bytes; compression status: 1 byte; pos size: 8 bytes
        }else{
            EOS_ASSERT(*pBlockSize > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
        }
