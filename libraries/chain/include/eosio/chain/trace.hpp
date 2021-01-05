@@ -87,7 +87,7 @@ namespace eosio { namespace chain {
    struct storage_usage_trace {
    public:
       storage_usage_trace(uint32_t action_id, std::string event_id, std::string_view family, std::string_view operation)
-      :storage_usage_trace(action_id, std::move(event_id), std::move(family), std::move(operation), ".")
+      :storage_usage_trace(action_id, std::move(event_id), family, operation, ".")
       {}
 
       storage_usage_trace(uint32_t action_id, std::string&& event_id, std::string_view family, std::string_view operation, std::string_view legacy_tag)
