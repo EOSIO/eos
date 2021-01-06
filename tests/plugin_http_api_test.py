@@ -9,7 +9,6 @@ from testUtils import Utils
 from testUtils import Account
 from TestHelper import TestHelper
 from Node import Node
-from Cluster import Cluster
 from WalletMgr import WalletMgr
 
 class PluginHttpTest(unittest.TestCase):
@@ -23,6 +22,8 @@ class PluginHttpTest(unittest.TestCase):
     http_post_str = " -X POST -d "
     http_post_invalid_param = " '{invalid}' "
     empty_content_str = " ' { } '  "
+    EOSIO_ACCT_PRIVATE_DEFAULT_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+    EOSIO_ACCT_PUBLIC_DEFAULT_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 
     # make a fresh data dir
     def createDataDir(self):
@@ -69,11 +70,9 @@ class PluginHttpTest(unittest.TestCase):
         wasmFile = "%s.wasm" % (contract)
         abiFile = "%s.abi" % (contract)
 
-        producerKeys = Cluster.parseClusterKeys(0)
-
         eosioAccount = Account("eosio")
-        eosioAccount.ownerPrivateKey = eosioAccount.activePrivateKey = producerKeys["eosio"]["private"]
-        eosioAccount.ownerPublicKey = activePublicKey = producerKeys["eosio"]["public"]
+        eosioAccount.ownerPrivateKey = eosioAccount.activePrivateKey = self.EOSIO_ACCT_PRIVATE_DEFAULT_KEY
+        eosioAccount.ownerPublicKey = eosioAccount.activePublicKey = self.EOSIO_ACCT_PUBLIC_DEFAULT_KEY
 
         testWalletName = "test"
         walletAccounts = [eosioAccount]
