@@ -183,6 +183,48 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
        get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
 }
 
+BOOST_AUTO_TEST_CASE(test_trace_log_with_transaction_extensions) {
+   tester c(setup_policy::preactivate_feature_and_new_bios);
+
+   scoped_temp_path state_history_dir;
+   fc::create_directories(state_history_dir.path);
+   eosio::state_history_traces_log log({.log_dir = state_history_dir.path});
+
+   c.control->applied_transaction.connect(
+       [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t) {
+          log.add_transaction(std::get<0>(t), std::get<1>(t));
+       });
+
+   c.control->accepted_block.connect([&](const block_state_ptr& bs) { log.store(c.control->db(), bs); });
+   c.control->block_start.connect([&](uint32_t block_num) { log.block_start(block_num); });
+
+   c.create_accounts({"alice"_n, "test"_n});
+   c.set_code("test"_n, contracts::deferred_test_wasm());
+   c.set_abi("test"_n, contracts::deferred_test_abi().data());
+   c.produce_block();
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   auto        d1  = pfm.get_builtin_digest(builtin_protocol_feature_t::replace_deferred);
+   auto        d2  = pfm.get_builtin_digest(builtin_protocol_feature_t::no_duplicate_deferred_id);
+   c.preactivate_protocol_features({*d1, *d2});
+   c.produce_block();
+
+   c.push_action("test"_n, "defercall"_n, "alice"_n,
+                 fc::mutable_variant_object()("payer", "alice")("sender_id", 1)("contract", "test")("payload", 40));
+
+   auto block  = c.produce_block();
+   auto traces = get_traces(log, block->block_num());
+
+   auto contains_transaction_extensions = [](const eosio::ship_protocol::transaction_trace& trace) {
+      const auto& trace_v0 = std::get<eosio::ship_protocol::transaction_trace_v0>(trace);
+      BOOST_REQUIRE(trace_v0.partial.has_value());
+      return std::get<eosio::ship_protocol::partial_transaction_v1>(*trace_v0.partial).transaction_extensions.size() >
+             0;
+   };
+
+   BOOST_CHECK(std::any_of(traces.begin(), traces.end(), contains_transaction_extensions));
+}
+
 BOOST_AUTO_TEST_CASE(test_trace_log_versions) {
    namespace bfs = boost::filesystem;
 
