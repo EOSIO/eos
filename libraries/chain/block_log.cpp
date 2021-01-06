@@ -889,7 +889,7 @@ namespace eosio { namespace chain {
            // add block data and its header information into one buffer
            std::shared_ptr<std::vector<char>> send_buff;
            uint32_t which; // see net_message in net_plugin/protocol.hpp
-           if (blog_version >= pruned_transaction_version)
+           if (return_signed_block)
                which = 9;  // signed_block_which
            else
                which = 7;  // signed_block_v0_which
