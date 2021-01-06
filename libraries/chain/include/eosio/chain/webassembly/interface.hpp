@@ -787,6 +787,11 @@ namespace webassembly {
 
          /**
           * Update a record in a primary 64-bit integer index table.
+          * Note that it does not allow changing the primary key of a table row. 
+          * The serialized data that is stored in the table row of a primary table 
+          * may include a primary key and that primary key value could be changed 
+          * by the contract calling the `db_update_i64` intrinsic. But that does not
+          * change the actual primary key recognized by the native side.
           *
           * @ingroup database primary-index
           * @param itr - iterator to the table row containing the record to update.
