@@ -14,7 +14,8 @@ echo "$SANITIZED_TAG"
 echo ":docker::build: Building image..."
 DOCKERHUB_REGISTRY="docker.io/eosio/eos"
 
-DOCKER_BUILD_GEN="docker build -t eos_image  -f ./docker/dockerfile ."
+BUILD_TAG=${BUILDKITE_BUILD_NUMBER:-latest}
+DOCKER_BUILD_GEN="docker build -t eos_image:$BUILD_TAG -f ./docker/dockerfile ."
 echo "$ $DOCKER_BUILD_GEN"
 eval $DOCKER_BUILD_GEN
 
@@ -22,8 +23,8 @@ eval $DOCKER_BUILD_GEN
 
 EOSIO_REGS=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
 for REG in ${EOSIO_REGS[@]}; do
-    DOCKER_TAG_COMMIT="docker tag eos_image $REG:$BUILDKITE_COMMIT"
-    DOCKER_TAG_BRANCH="docker tag eos_image $REG:$SANITIZED_BRANCH"
+    DOCKER_TAG_COMMIT="docker tag eos_image:$BUILD_TAG $REG:$BUILDKITE_COMMIT"
+    DOCKER_TAG_BRANCH="docker tag eos_image:$BUILD_TAG $REG:$SANITIZED_BRANCH"
     echo -e "$ Tagging Images: \n$DOCKER_TAG_COMMIT \n$DOCKER_TAG_BRANCH"
     eval $DOCKER_TAG_COMMIT 
     eval $DOCKER_TAG_BRANCH
@@ -45,3 +46,7 @@ for REG in ${EOSIO_REGS[@]}; do
         eval $DOCKER_REM
     fi
 done
+
+DOCKER_GEN="docker rmi eos_image:$BUILD_TAG"
+echo "Clean up base image"
+eval $DOCKER_GEN
