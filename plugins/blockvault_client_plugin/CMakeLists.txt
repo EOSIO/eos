@@ -1,5 +1,8 @@
 find_package(PkgConfig REQUIRED)
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 add_library( blockvault_client_plugin
              blockvault_client_plugin.cpp)
 target_link_libraries( blockvault_client_plugin appbase eosio_chain)
@@ -28,7 +31,7 @@ if (pqxx_FOUND)
       set(pqxx_lib PkgConfig::pqxx PkgConfig::pq)
    else()
       add_library(pqxx STATIC IMPORTED)
-      set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_STATIC_LIBRARY_DIRS}/libpqxx.a)
+      set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
       target_include_directories(pqxx INTERFACE ${pqxx_STATIC_INCLUDE_DIRS})
       target_link_libraries(pqxx INTERFACE PkgConfig::pq)
       set(pqxx_lib pqxx)
