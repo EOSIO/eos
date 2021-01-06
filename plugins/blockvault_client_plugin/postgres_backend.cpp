@@ -87,11 +87,8 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
          w.commit();
          return true;
       }
-   } catch (const pqxx::unexpected_rows&) {
-   } catch (const pqxx::unique_violation&) {
-   } catch (const pqxx::serialization_failure&) {
-   } catch (const pqxx::transaction_rollback&) {
-   }
+   } catch (const pqxx::sql_error&) {
+   } 
 
    return false;
 }
@@ -113,11 +110,8 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
          w.commit();
          return true;
       }
-   } catch (const pqxx::unexpected_rows&) {
-   } catch (const pqxx::unique_violation&) {
-   } catch (const pqxx::serialization_failure&) {
-   } catch (const pqxx::transaction_rollback&) {
-   }
+   } catch (const pqxx::sql_error&) {
+   } 
    return false;
 }
 
