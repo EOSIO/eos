@@ -81,10 +81,12 @@ bool postgres_backend::propose_constructed_block(std::pair<uint32_t, uint32_t> w
       pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_constructed_block", watermark.first, watermark.second, lib, block_id_blob,
                        previous_block_id_blob, obj.id(), block_content.size());
-      auto r = w.exec_prepared1("get_block_insertion_result", obj.id());
-      obj.write(block_content.data(), block_content.size());
-      w.commit();
-      return true;
+      auto r = w.exec_prepared("get_block_insertion_result", obj.id());
+      if (!r.empty()) {
+         obj.write(block_content.data(), block_content.size());
+         w.commit();
+         return true;
+      }
    } catch (const pqxx::unexpected_rows&) {
    } catch (const pqxx::unique_violation&) {
    } catch (const pqxx::serialization_failure&) {
@@ -105,11 +107,12 @@ bool postgres_backend::append_external_block(uint32_t block_num, uint32_t lib, c
       pqxx::binarystring      previous_block_id_blob(previous_block_id.data(), previous_block_id.size());
       w.exec_prepared0("insert_external_block", block_num, lib, block_id_blob, previous_block_id_blob, obj.id(),
                        block_content.size());
-      auto r = w.exec_prepared1("get_block_insertion_result", obj.id());
-      obj.write(block_content.data(), block_content.size());
-      w.commit();
-      return true;
-
+      auto r = w.exec_prepared("get_block_insertion_result", obj.id());
+      if (!r.empty()) {
+         obj.write(block_content.data(), block_content.size());
+         w.commit();
+         return true;
+      }
    } catch (const pqxx::unexpected_rows&) {
    } catch (const pqxx::unique_violation&) {
    } catch (const pqxx::serialization_failure&) {
