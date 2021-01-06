@@ -28,18 +28,17 @@ if (pqxx_FOUND)
       # Linking libpqxx from homebrew statically could generate `different visibility settings` warnings.
       # As a result, we'll just use link it dynamically for now. 
       ##################################################################################################
-      set(pqxx_lib PkgConfig::pqxx PkgConfig::pq)
+      set(pqxx_lib PkgConfig::pqxx )
    else()
       add_library(pqxx STATIC IMPORTED)
       set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
-      target_include_directories(pqxx INTERFACE ${pqxx_STATIC_INCLUDE_DIRS})
-      target_link_libraries(pqxx INTERFACE PkgConfig::pq)
+      set_property(TARGET pqxx PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pqxx_STATIC_INCLUDE_DIRS})
       set(pqxx_lib pqxx)
    endif()
 
    add_library(blockvault postgres_backend.cpp)
    target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-   target_link_libraries(blockvault PUBLIC ${pqxx_lib} eosio_chain)
+   target_link_libraries(blockvault PUBLIC ${pqxx_lib} PkgConfig::pq eosio_chain)
 
    target_link_libraries( blockvault_client_plugin blockvault)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
