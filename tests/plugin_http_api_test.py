@@ -106,12 +106,29 @@ class PluginHttpTest(unittest.TestCase):
         allFeatureDigests = [d['feature_digest'] for d in allProtocolFeatures]
         ACT_FEATURE_DEFAULT_LIMIT = 10
 
+        def get_activated_protocol_features():
+          prot_feat_cmd = cmd_base + "get_activated_protocol_features"
+          ret_json = Utils.runCmdReturnJson(prot_feat_cmd)
+          activated_protocol_features = ret_json["activated_protocol_features"]
+          self.assertEqual(type(activated_protocol_features), list)
+          return activated_protocol_features
+
+        initial_prot_feat = get_activated_protocol_features()
+
+        # wait till all the protocol features are activated in the blocks
+        pre_block = self.nodeos.getBlockNum()
+        later_block = pre_block + 2
+        self.nodeos.waitForBlock(later_block, reportInterval=1)
+
         # get_activated_protocol_features without parameter
-        default_cmd = cmd_base + "get_activated_protocol_features"
-        ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(type(ret_json["activated_protocol_features"]), list)
-        self.assertEqual(len(ret_json["activated_protocol_features"]), min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures)))
-        for dict_feature in ret_json["activated_protocol_features"]:
+        activated_protocol_features = get_activated_protocol_features()
+        min_expected = min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures))
+        if len(activated_protocol_features) != min_expected:
+            Utils.errorExit("Expected {} protocol features to be active, but only {} were active. "
+                            "(At block num: {} there were {} active protocol features, and waited till block num: {})".format(
+                                min_expected, len(activated_protocol_features), pre_block, len(initial_prot_feature), later_block)
+
+        for dict_feature in activated_protocol_features:
             self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
 
         # get_activated_protocol_features with empty content parameter
