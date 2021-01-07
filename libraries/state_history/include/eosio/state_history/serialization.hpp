@@ -91,30 +91,6 @@ ST& operator<<(ST& ds, const eosio::state_history::big_vector_wrapper<T>& obj) {
    return ds;
 }
 
-template <typename ST>
-inline void history_pack_varuint64(ST& ds, uint64_t val) {
-   do {
-      uint8_t b = uint8_t(val) & 0x7f;
-      val >>= 7;
-      b |= ((val > 0) << 7);
-      ds.write((char*)&b, 1);
-   } while (val);
-}
-
-template <typename ST>
-void history_pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
-   history_pack_varuint64(ds, v.size());
-   if (v.size())
-      ds.write(&v.front(), (uint32_t)v.size());
-}
-
-template <typename ST>
-void history_pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
-   fc::raw::pack(ds, v.has_value());
-   if (v)
-      history_pack_big_bytes(ds, *v);
-}
-
 template <typename ST, typename T>
 ST& operator<<(ST& ds, const history_serial_wrapper<std::vector<T>>& obj) {
    return history_serialize_container(ds, obj.db, obj.obj);
@@ -738,9 +714,9 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v0& obj) {
    fc::raw::pack(ds, obj.last_irreversible);
    fc::raw::pack(ds, obj.this_block);
    fc::raw::pack(ds, obj.prev_block);
-   history_pack_big_bytes(ds, obj.block);
-   history_pack_big_bytes(ds, obj.traces);
-   history_pack_big_bytes(ds, obj.deltas);
+   eosio::state_history::pack_big_bytes(ds, obj.block);
+   eosio::state_history::pack_big_bytes(ds, obj.traces);
+   eosio::state_history::pack_big_bytes(ds, obj.deltas);
    return ds;
 }
 
