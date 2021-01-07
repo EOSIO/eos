@@ -9,7 +9,7 @@ This section describes how to set up a single-node blockchain configuration runn
 
 ![Single host single node testnet](single-host-single-node-testnet.png)
 
-`cleos` is used to interact with wallets, and send actions to the the blockchain. `keosd` performs wallet management, including digital signing. If not started explicitly, `keosd` is started by `cleos` by default.
+`cleos` is used to interact with wallets, and send actions to the blockchain. `keosd` performs wallet management, including digital signing. If not started explicitly, `keosd` is started by `cleos` by default.
 
 ## Before you begin
 
