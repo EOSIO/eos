@@ -1036,7 +1036,7 @@ struct controller_impl {
       });
 
       // Initialize block summary index
-      for (int i = 0; i < 0x10000; i++)
+      for (int_fast32_t i = 0; i < 0x10000; i++)
          db.create<block_summary_object>([&](block_summary_object&) {});
 
       const auto& tapos_block_summary = db.get<block_summary_object>(1);
@@ -2061,7 +2061,7 @@ struct controller_impl {
             apply_block( bsp, s, trx_meta_cache_lookup{} );
             head = bsp;
 
-            // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
+            // On replay, log_irreversible is not called and so no irreversible_block signal is emited.
             // So emit it explicitly here.
             emit( self.irreversible_block, bsp );
 
@@ -2081,7 +2081,7 @@ struct controller_impl {
    void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s,
                             const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
    {
-      bool head_changed = true;
+      //bool head_changed = true;
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head, s, trx_lookup );
@@ -2143,12 +2143,14 @@ struct controller_impl {
          } /// end for each block in branch
 
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
-      } else {
-         head_changed = false;
-      }
-
-      if( head_changed )
          log_irreversible();
+      } 
+      //else {
+       //  head_changed = false;
+     // }
+
+     // if( head_changed )
+     //    log_irreversible();
 
    } /// push_block
 
@@ -2218,8 +2220,8 @@ struct controller_impl {
    }
 
    void create_block_summary(const block_id_type& id) {
-      auto block_num = block_header::num_from_id(id);
-      auto sid = block_num & 0xffff;
+      //auto block_num = block_header::num_from_id(id);
+      auto sid = block_header::num_from_id(id)&0xffff;
       db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
           bso.block_id = id;
       });
