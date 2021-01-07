@@ -64,12 +64,12 @@ class state_history_log_data : public chain::log_data_base<state_history_log_dat
 
  public:
    state_history_log_data() = default;
-   state_history_log_data(const fc::path& path, mapmode mode = mapmode::readonly)
-       : filename(path.string()) {
+   state_history_log_data(const fc::path& path, mapmode mode = mapmode::readonly) {
       open(path, mode);
    }
 
    void open(const fc::path& path, mapmode mode = mapmode::readonly) {
+      filename = path.string();
       if (file.is_open())
          file.close();
       file.open(path.string(), mode);
@@ -80,17 +80,34 @@ class state_history_log_data : public chain::log_data_base<state_history_log_dat
    uint32_t first_block_num() const { return block_num_at(0); }
    uint32_t first_block_position() const { return 0; }
 
-   std::pair<fc::datastream<const char*>, uint32_t> ro_stream_at(uint64_t pos) const {
-      uint32_t ver = get_ship_version(chain::read_buffer<uint64_t>(file.const_data() + pos));
-      return std::make_pair(
-          fc::datastream<const char*>(file.const_data() + pos + sizeof(state_history_log_header), payload_size_at(pos)),
-          ver);
+   template <typename CharT>
+   struct stream_context {
+      fc::datastream<CharT> stream;
+      uint32_t              version;
+      std::string           file;
+      uint64_t              offset;
+   };
+
+   template <typename CharT>
+   stream_context<CharT> stream_at(CharT addr, std::optional<uint64_t> pos) const {
+      if (pos) {
+         uint64_t file_position = *pos;
+         return {
+            fc::datastream<CharT>(addr + file_position + sizeof(state_history_log_header), payload_size_at(file_position)), 
+            get_ship_version(chain::read_buffer<uint64_t>(addr + file_position)),
+            filename,
+            file_position
+         };
+      }
+      return {fc::datastream<CharT>(0,0), 0, "" , 0};
    }
 
-   std::pair<fc::datastream<char*>, uint32_t> rw_stream_at(uint64_t pos) const {
-      uint32_t ver = get_ship_version(chain::read_buffer<uint64_t>(file.const_data() + pos));
-      return std::make_pair(
-          fc::datastream<char*>(file.data() + pos + sizeof(state_history_log_header), payload_size_at(pos)), ver);
+   stream_context<const char*> ro_stream_at(std::optional<uint64_t> pos) const {
+      return stream_at(file.const_data(), pos);
+   }
+
+   stream_context<char*> rw_stream_at(std::optional<uint64_t> pos) const {
+      return stream_at(file.data(), pos);
    }
 
    uint32_t block_num_at(uint64_t position) const {

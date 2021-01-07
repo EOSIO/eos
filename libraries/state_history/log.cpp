@@ -294,38 +294,47 @@ state_history_traces_log::state_history_traces_log(const state_history_config& c
 
 chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
 
-   auto get_traces_bin = [](auto& ds, uint32_t version) {
-      if (version == 0) {
-         return state_history::zlib_decompress(ds);
+   auto get_traces_bin = [block_num](auto& ds, uint32_t version, const std::string& filename, uint64_t file_position, std::size_t size) {
+      try {
+         if (version == 0) {
+            return state_history::zlib_decompress(ds);
+         }
+         else {
+            std::vector<state_history::transaction_trace> traces;
+            state_history::trace_converter::unpack(ds, traces);
+            return fc::raw::pack(traces);
+         }
       }
-      else {
-         std::vector<state_history::transaction_trace> traces;
-         state_history::trace_converter::unpack(ds, traces);
-         return fc::raw::pack(traces);
+      catch(const fc::exception& ex) {
+         elog("trace data in '${fn}' has problem, please use "
+              "`dd bs=1 skip=${file_pos} count=${size} if=${fn} of=invalid_trace_${block_num}_v${version}.bin` "
+              "to extract data for debugging", ("block_num", block_num)("fn", filename)
+              ("file_pos", file_position)("size", size)("version", version));
+         throw ex;
       }
    };
 
-   auto [ds, version] = catalog.ro_stream_for_block(block_num);
-   if (ds.remaining()) {
-      return get_traces_bin(ds, version);
+   auto context = catalog.ro_stream_for_block(block_num);
+   if (context.stream.remaining()) {
+      return get_traces_bin(context.stream, context.version, context.file, context.offset, context.stream.remaining());
    }
 
    if (block_num < begin_block() || block_num >= end_block())
       return {};
    state_history_log_header header;
    get_entry_header(block_num, header);
-   return get_traces_bin(read_log, get_ship_version(header.magic));
+   return get_traces_bin(read_log, get_ship_version(header.magic), read_log.get_file_path().string(), read_log.tellp(), header.payload_size);
 }
 
 
 void state_history_traces_log::prune_transactions(state_history_log::block_num_type        block_num,
                                                   std::vector<chain::transaction_id_type>& ids) {
-   auto [ds, version] = catalog.rw_stream_for_block(block_num);
+   auto context = catalog.rw_stream_for_block(block_num);
 
-   if (ds.remaining()) {
-      EOS_ASSERT(version > 0, chain::state_history_exception,
+   if (context.stream.remaining()) {
+      EOS_ASSERT(context.version > 0, chain::state_history_exception,
               "The trace log version 0 does not support transaction pruning.");
-      state_history::trace_converter::prune_traces(ds, ds.remaining(), ids);
+      state_history::trace_converter::prune_traces(context.stream, context.stream.remaining(), ids);
       return;
    }
 
@@ -360,9 +369,9 @@ state_history_chain_state_log::state_history_chain_state_log(const state_history
 
 chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_num) {
 
-   auto [ds, _] = catalog.ro_stream_for_block(block_num);
-   if (ds.remaining()) {
-      return state_history::zlib_decompress(ds);
+   auto context = catalog.ro_stream_for_block(block_num);
+   if (context.stream.remaining()) {
+      return state_history::zlib_decompress(context.stream);
    }
 
    if (block_num < begin_block() || block_num >= end_block())
