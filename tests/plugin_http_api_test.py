@@ -124,7 +124,7 @@ class PluginHttpTest(unittest.TestCase):
         activated_protocol_features = get_activated_protocol_features()
         min_expected = min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures))
         if len(activated_protocol_features) != min_expected:
-            Utils.errorExit("Expected {} protocol features to be active, but only {} were active. "
+            Utils.errorExit("Expected {} protocol features to be active, but only {} were active. " +
                             "(At block num: {} there were {} active protocol features, and waited till block num: {})".format(min_expected, len(activated_protocol_features), pre_block, len(initial_prot_feature), later_block)
 
         for dict_feature in activated_protocol_features:
