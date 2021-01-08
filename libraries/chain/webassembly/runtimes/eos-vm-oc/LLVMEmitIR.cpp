@@ -351,8 +351,8 @@ namespace LLVMJIT
 
 		//llvm11 removed inferring the function type automatically, plumb CreateCalls through here as done for 10 & earlier
 		llvm::CallInst* createCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args) {
-			auto* PTy = reinterpret_cast<llvm::PointerType*>(Callee->getType());
-			auto* FTy = reinterpret_cast<llvm::FunctionType*>(PTy->getElementType());
+			auto* PTy = llvm::cast<llvm::PointerType>(Callee->getType());
+			auto* FTy = llvm::cast<llvm::FunctionType>(PTy->getElementType());
 			return irBuilder.CreateCall(FTy, Callee, Args);
 		}
 
