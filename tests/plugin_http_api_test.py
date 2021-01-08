@@ -107,11 +107,11 @@ class PluginHttpTest(unittest.TestCase):
         ACT_FEATURE_DEFAULT_LIMIT = 10
 
         def get_activated_protocol_features():
-          prot_feat_cmd = cmd_base + "get_activated_protocol_features"
-          ret_json = Utils.runCmdReturnJson(prot_feat_cmd)
-          activated_protocol_features = ret_json["activated_protocol_features"]
-          self.assertEqual(type(activated_protocol_features), list)
-          return activated_protocol_features
+            prot_feat_cmd = cmd_base + "get_activated_protocol_features"
+            ret_json = Utils.runCmdReturnJson(prot_feat_cmd)
+            activated_protocol_features = ret_json["activated_protocol_features"]
+            self.assertEqual(type(activated_protocol_features), list)
+            return activated_protocol_features
 
         initial_prot_feat = get_activated_protocol_features()
 
@@ -124,8 +124,8 @@ class PluginHttpTest(unittest.TestCase):
         activated_protocol_features = get_activated_protocol_features()
         min_expected = min(ACT_FEATURE_DEFAULT_LIMIT, len(allProtocolFeatures))
         if len(activated_protocol_features) != min_expected:
-            Utils.errorExit("Expected {} protocol features to be active, but only {} were active. ".format(min_expected, len(activated_protocol_features)) +
-                            "(At block num: {} there were {} active protocol features, and waited till block num: {})".format(pre_block, len(initial_prot_feature), later_block))
+            Utils.errorExit("Expected {} protocol features to be active, but only {} were active. " \
+                            "(At block num: {} there were {} active protocol features, and waited till block num: {})".format(min_expected, len(activated_protocol_features), pre_block, len(initial_prot_feature), later_block))
 
         for dict_feature in activated_protocol_features:
             self.assertTrue(dict_feature['feature_digest'] in allFeatureDigests)
