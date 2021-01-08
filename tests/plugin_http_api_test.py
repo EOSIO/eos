@@ -106,8 +106,9 @@ class PluginHttpTest(unittest.TestCase):
         allFeatureDigests = [d['feature_digest'] for d in allProtocolFeatures]
         ACT_FEATURE_DEFAULT_LIMIT = 10
 
+        prot_feat_cmd = cmd_base + "get_activated_protocol_features"
+        default_cmd = prot_feat_cmd
         def get_activated_protocol_features():
-            prot_feat_cmd = cmd_base + "get_activated_protocol_features"
             ret_json = Utils.runCmdReturnJson(prot_feat_cmd)
             activated_protocol_features = ret_json["activated_protocol_features"]
             self.assertEqual(type(activated_protocol_features), list)
