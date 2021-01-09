@@ -332,8 +332,8 @@ function ensure-libpq-and-libpqxx() {
         elif [[ $NAME == "Ubuntu" ]]; then
             # install libpq
             if [ ! -d /usr/include/postgresql ]; then 
-                sudo echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-                    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+                sudo echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > sudo /etc/apt/sources.list.d/pgdg.list && \
+                    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - && \
                     sudo apt-get update && sudo apt-get -y install libpq-dev
             fi
             EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql"     
