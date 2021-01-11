@@ -139,18 +139,25 @@ execute cd $REPO_ROOT
 ensure-submodules-up-to-date
 
 # Try using oob cmake if possible so as to save building time
-if [[  -z $(command -v cmake 2>/dev/null)    ]] ; then
-   if [[ $ARCH == "Linux"  ]]; then
-      if [[ ${NAME} == "Ubuntu" ]]; then
+if [[ $ARCH == "Linux"  ]]; then
+   if [[ ${NAME} == "Ubuntu" ]]; then
+      if [[  -z $(command -v cmake 2>/dev/null)    ]] ; then
          if [[ ${VERSION_ID} == "18.04"  ||   ${VERSION_ID} == "20.04" ]]; then
             install-package cmake
          fi
-      elif [[ ${NAME} == "CentOS Linux"  ||  ${NAME} == "Amazon Linux" ]] ; then
-         install-package cmake3
-         if [[ -a  /usr/bin/cmake3  ]]; then
-            sudo ln -s /usr/bin/cmake3 /usr/bin/cmake
-         fi
-      fi
+   elif [[ ${NAME} == "CentOS Linux"  ||  ${NAME} == "Amazon Linux" ]] ; then
+      install-package cmake
+      install-package cmake3
+      sudo alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
+                             --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
+                             --slave /usr/local/bin/cpack cpack /usr/bin/cpack \
+                             --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
+                             --family cmake
+      sudo alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
+                             --slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
+                             --slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
+                             --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
+                             --family cmake
    fi
 fi
 
