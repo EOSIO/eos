@@ -259,9 +259,9 @@ namespace eosio { namespace chain {
                   "cannot advance root to a block that has not yet been validated" );
 
 
-      vector<block_id_type> blocks_to_remove;
+      deque<block_id_type> blocks_to_remove;
       for( auto b = new_root; b; ) {
-         blocks_to_remove.push_back( b->header.previous );
+         blocks_to_remove.emplace_back( b->header.previous );
          b = get_block( blocks_to_remove.back() );
          EOS_ASSERT( b || blocks_to_remove.back() == my->root->id, fork_database_exception, "invariant violation: orphaned branch was present in forked database" );
       }
@@ -442,9 +442,9 @@ namespace eosio { namespace chain {
 
    /// remove all of the invalid forks built off of this id including this id
    void fork_database::remove( const block_id_type& id ) {
-      vector<block_id_type> remove_queue{id};
+      deque<block_id_type> remove_queue{id};
       const auto& previdx = my->index.get<by_prev>();
-      const auto head_id = my->head->id;
+      const auto& head_id = my->head->id;
 
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          EOS_ASSERT( remove_queue[i] != head_id, fork_database_exception,
@@ -452,7 +452,7 @@ namespace eosio { namespace chain {
 
          auto previtr = previdx.lower_bound( remove_queue[i] );
          while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
-            remove_queue.push_back( (*previtr)->id );
+            remove_queue.emplace_back( (*previtr)->id );
             ++previtr;
          }
       }
