@@ -145,6 +145,7 @@ if [[ $ARCH == "Linux"  ]]; then
          if [[ ${VERSION_ID} == "18.04"  ||   ${VERSION_ID} == "20.04" ]]; then
             install-package cmake
          fi
+      fi
    elif [[ ${NAME} == "CentOS Linux"  ||  ${NAME} == "Amazon Linux" ]] ; then
       install-package cmake
       install-package cmake3
