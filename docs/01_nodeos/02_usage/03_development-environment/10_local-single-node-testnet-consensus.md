@@ -5,7 +5,7 @@ link_text: Local Single-Node Testnet With Consensus Protocol
 
 ## Goal
 
-This section describes how to set up a single-node blockchain configuration running on a single host with consensus protocol enabled.  This is referred to as a _**single host, single-node testnet with consensus**_.  We will set up one node on your local computer and have it produce blocks.  The following diagram depicts the desired single host testnet.
+This section describes how to set up a single-node blockchain configuration running on a single host with consensus protocol enabled.  This is referred to as a _**single host, single-node testnet with consensus**_.  We will set up one node on your local computer and have it produce blocks. The following diagram depicts the desired single host testnet.
 
 ![Single host single node testnet](single-host-single-node-testnet.png)
 
@@ -41,8 +41,11 @@ cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79z
 Start your own single-node blockchain with this single command:
 
 ```sh
-nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::http_plugin --plugin eosio::chain_api_plugin --filter-on="*" --access-control-allow-origin='*' --contracts-console --http-validate-host=false --verbose-http-errors
+nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --access-control-allow-origin='*' --contracts-console --http-validate-host=false --verbose-http-errors
 ```
+
+[[warning | Security Notice]]
+| Do not use the parameters `--access-control-allow-origin='*'`, `--http-validate-host=false`, `--verbose-http-errors` and `--contracts-console`, in production because they either weaken the security or affect performance of your node.
 
 After running `nodeos`, you should get log messages similar as below. It means the blocks are successfully produced.
 
