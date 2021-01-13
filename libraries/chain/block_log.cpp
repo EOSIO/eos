@@ -37,6 +37,8 @@ namespace eosio { namespace chain {
       uint32_t version         = 0;
       uint32_t first_block_num = 0;
       std::variant<genesis_state, chain_id_type> chain_context;
+      fc::path log_path; 
+      
 
       chain_id_type chain_id() const {
          return std::visit(overloaded{[](const chain_id_type& id) { return id; },
@@ -53,8 +55,8 @@ namespace eosio { namespace chain {
          EOS_ASSERT(
              block_log::is_supported_version(version), block_log_unsupported_version,
              "Unsupported version of block log. Block log version is ${version} while code supports version(s) "
-             "[${min},${max}]",
-             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version));
+             "[${min},${max}], log file: ${log}",
+             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version)("log", log_path));
 
          first_block_num = 1;
          if (version != initial_version) {
@@ -279,7 +281,10 @@ namespace eosio { namespace chain {
    public:
 
      block_log_data() = default;
-     block_log_data(const fc::path& path, mapmode mode = mapmode::readonly) { open(path, mode); }
+     block_log_data(const fc::path& path, mapmode mode = mapmode::readonly) { 
+        preamble.log_path = path;
+        open(path, mode); 
+     }
 
      const block_log_preamble& get_preamble() const { return preamble; }
 
@@ -297,6 +302,7 @@ namespace eosio { namespace chain {
       uint32_t      first_block_num() const { return preamble.first_block_num; }
       uint64_t      first_block_position() const { return first_block_pos; }
       chain_id_type chain_id() const { return preamble.chain_id(); }
+      fc::path      log_path() const { return preamble.log_path; }
 
       std::optional<genesis_state> get_genesis_state() const {
          return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>{}; },
@@ -398,11 +404,11 @@ namespace eosio { namespace chain {
       block_log_data  log_data;
       block_log_index log_index;
 
-      block_log_bundle(fc::path block_dir) {
-         block_file_name = block_dir / "blocks.log";
+      block_log_bundle(fc::path block_dir) 
+      : block_file_name (block_dir / "blocks.log")
+      , log_data(block_file_name)
+      {
          index_file_name = block_dir / "blocks.index";
-
-         log_data.open(block_file_name);
          log_index.open(index_file_name);
 
          uint32_t log_num_blocks   = log_data.num_blocks();
