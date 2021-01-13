@@ -516,13 +516,15 @@ namespace eosio { namespace chain {
             return what;
          };
          bool operator() (const fc::path& p1, const fc::path& p2) const{
-            std::smatch what1 = what(p1.filename().generic_string());
+            auto str1 = p1.filename().generic_string();
+            std::smatch what1 = what(str1);
             //if doesn't match blocks-[num]-[num].log that means it is blocks.log
             //blocks.log expected to have latest blocks so it is placed at the end
             if (what1.size() <= 1)
                return false;
 
-            std::smatch what2 = what(p2.filename().generic_string());
+            auto str2 = p2.filename().generic_string();
+            std::smatch what2 = what(str2);
             if (what2.size() <= 1)
                return true;
             
@@ -1002,18 +1004,13 @@ namespace eosio { namespace chain {
       //TODO: add noexcept to fc::path to avoid copies on resize
       file_list_type paths(path_sort);
 
-      auto add_path = [&paths](const auto& p){ 
-                        paths.emplace(p); 
+      auto add_path = [&paths](const auto& p){
+                        paths.emplace(p);
                         return true; 
                      };
       
       if (fc::exists(blocks_dir)) {
-         for_each_file_in_dir_matches(blocks_dir, R"(blocks-\d+-\d+\.log)", add_path);
-      }
-
-      const auto blocks_log_path = blocks_dir / "blocks.log";
-      if (fc::exists(blocks_log_path)){
-         paths.emplace(blocks_log_path);
+         for_each_file_in_dir_matches(blocks_dir, R"(blocks(?:(-\d+-\d+))?\.log)", add_path);
       }
 
       if (fc::exists(retained_dir)){
@@ -1114,8 +1111,6 @@ namespace eosio { namespace chain {
                                                const char* reversible_block_dir_name) {
       ilog("Recovering Block Log...");
 
-      const auto retained_dir = fc::canonical(config.retained_dir);
-      const auto archive_dir = fc::canonical(config.archive_dir);
       const auto blocks_dir = fc::canonical(config.log_dir);
       const auto now = fc::time_point::now();
 
@@ -1128,7 +1123,9 @@ namespace eosio { namespace chain {
       
       EOS_ASSERT(paths.size(), block_log_not_found, 
                  "No any blocks file in '${blocks_dir}' '${retained_dir}' '${archive_dir}'", 
-                 ("blocks_dir", blocks_dir)("retained_dir", retained_dir)("archive_dir", archive_dir));
+                 ("blocks_dir", blocks_dir)
+                 ("retained_dir", config.retained_dir.generic_string())
+                 ("archive_dir", config.archive_dir.generic_string()));
 
       ilog("Ordered blocks files for replay:");
       for (const auto& p : paths){
@@ -1136,7 +1133,9 @@ namespace eosio { namespace chain {
       }
 
       std::string    error_msg;
-      bool exception_occured = false;
+      bool           exception_occured = false;
+      uint32_t       block_num = 0;
+      bool           recovered_all = true;
       for (const auto& cur_path : paths){
          auto index_path = cur_path;
          index_path.replace_extension("index");
@@ -1145,7 +1144,7 @@ namespace eosio { namespace chain {
          auto           ds  = log_data.open(cur_path);
          auto           pos = ds.tellp();
          auto           first_block_pos = pos;
-         uint32_t       block_num = log_data.first_block_num() - 1;
+         block_num = log_data.first_block_num() - 1;
          block_id_type  block_id;
 
          log_entry entry;
@@ -1157,6 +1156,8 @@ namespace eosio { namespace chain {
             try {
                if (exception_occured) {
                   write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
+               }
+               if (exception_occured || block_num >= truncate_at_block) {
                   fc::remove(cur_path);
                   fc::remove(index_path);
                   continue;
@@ -1198,19 +1199,26 @@ namespace eosio { namespace chain {
             error_msg = "unrecognized exception";
          }
 
-         std::filesystem::resize_file({cur_path.generic_string()}, pos);
-         block_log::construct_index(cur_path, index_path);
+         //truncate file and recreate index if it was damaged
+         if (exception_occured){
+            std::filesystem::resize_file({cur_path.generic_string()}, pos);
+            block_log::construct_index(cur_path, index_path);
+         }
 
          if (error_msg.size()) {
             ilog("Recovered only up to block number ${num}. "
                "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
-               ("num", block_num)("next_num", block_num + 1)("error_msg", block_num));
+               ("num", block_num)("next_num", block_num + 1)("error_msg", error_msg));
+            recovered_all = false;
          } else if (block_num == truncate_at_block && pos < log_data.size()) {
             ilog("Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block));
-         } else {
-            ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.",
-               ("num", block_num));
+            recovered_all = false;
          }
+      }
+
+      if (recovered_all){
+         ilog("Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.",
+               ("num", block_num));
       }
 
       return backup_dir;
