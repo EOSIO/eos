@@ -375,6 +375,7 @@ public:
    void make_prefix(eosio::name table_name,  eosio::name index_name, uint8_t status, vector<char> &prefix)const;
    get_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
    get_table_rows_result get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, eosio::chain::kv_context &kv_context, const abi_def &abi )const;
+   void set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const;
 
    struct get_table_by_scope_params {
       name                 code; // mandatory

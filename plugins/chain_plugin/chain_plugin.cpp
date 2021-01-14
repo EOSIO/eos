@@ -2408,8 +2408,54 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
      walk_table_row_range( lb_itr, ub_itr, false );
    }
 
+   // fill up result.next_key
+   set_kv_next_key(p.encode_type, index_type, result);
+
    return result;
 }
+
+void read_only::set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const {
+    if (result.more == true) {
+        if (encode_type == "bytes") {
+            result.next_key = result.next_key_bytes;
+        }else if (encode_type == "string") {
+            result.next_key = boost::algorithm::unhex(result.next_key_bytes);
+            boost::algorithm::trim_right_if( result.next_key, []( char c ){ return c == '\0'; } );
+        }else if (encode_type == "name") {
+            std::string s = result.next_key_bytes;
+            std::stringstream ss;
+            ss << std::hex << s;
+            uint64_t ull;
+            ss >> ull;
+            name nm(ull);
+            result.next_key = nm.to_string();
+        }else if (encode_type == "hex") {
+            if (index_type == "uint64" || index_type == "uint32" || index_type == "uint16" || index_type == "uint8") {
+                result.next_key = result.next_key_bytes;
+                boost::algorithm::trim_left_if( result.next_key, []( char c ){ return c == '0'; } );
+            }
+
+            // todo other index types: int[64|32|16|8], sha256, and ripemd160
+
+        }else if (encode_type == "dec") {
+            if (index_type == "uint64" || index_type == "uint32" || index_type == "uint16" || index_type == "uint8") {
+                result.next_key = result.next_key_bytes;
+                boost::algorithm::trim_left_if( result.next_key, []( char c ){ return c == '0'; } );
+
+                std::stringstream ss;
+                ss << std::hex << result.next_key;
+                uint64_t ull;
+                ss >> ull;
+
+                result.next_key = std::to_string(ull);
+            }
+
+            //todo other index types: int[64|32|16|8], and float64
+
+        }
+    }
+}
+
 
 struct table_receiver
   : chain::backing_store::table_only_error_receiver<table_receiver, chain::contract_table_query_exception> {
