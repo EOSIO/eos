@@ -235,6 +235,12 @@ BOOST_AUTO_TEST_CASE(test_trace_log_versions) {
       for(int i = 2; i <= 11; i++) {
          auto traces = get_traces(log, i);
       }
+
+      vector<block_num_type> invalid_block_nums{0, 1, 1644156789};
+      for(auto invalid_block_num: invalid_block_nums) {
+         auto return_bytes = log.get_log_entry(invalid_block_num);
+         BOOST_REQUIRE(return_bytes.empty());
+      }
    }
 }
 
