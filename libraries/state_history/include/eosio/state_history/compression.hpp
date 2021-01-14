@@ -26,7 +26,7 @@ struct length_writer {
    }
 
    ~length_writer() {
-      uint32_t end_pos = strm.tellp();
+      uint64_t end_pos = strm.tellp();
       uint32_t len     = end_pos - start_pos;
       strm.seekp(start_pos - sizeof(len));
       strm.write((char*)&len, sizeof(len));
