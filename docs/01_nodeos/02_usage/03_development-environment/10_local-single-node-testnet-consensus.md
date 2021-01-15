@@ -14,7 +14,8 @@ This section describes how to set up a single-node blockchain configuration runn
 ## Before you begin
 
 * [Install the EOSIO software](../../../00_install/index.md) before starting this section.
-* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path. * Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
+* It is assumed that `nodeos`, `cleos`, and `keosd` are accessible through the path
+* Know how to pass [Nodeos options](../../02_usage/00_nodeos-options.md) to enable or disable functionality.
 
 ## Steps
 
@@ -23,10 +24,10 @@ Open one "terminal" window and perform the following steps:
 1. [Add the development key to the wallet](#1-add-the-development-key-to-the-wallet)
 2. [Start the Producer Node](#2-start-the-producer-node)
 3. [Preactivate Protocol Features](#3-preactivate-protocol-features)
-4. [Build System Smart Contracts](#4-build-system-smart-contracts)
-5. [Install eosio.boot System Contract](#5-install-eosio.boot-system-contract)
+4. [Get The System Smart Contracts](#4-get-the-system-smart-contracts)
+5. [Install eosio.boot System Contract](#5-install-eosioboot-system-contract)
 6. [Activate The Remaining Protocol Features](#6-activate-the-remaining-protocol-features)
-7. [Install eosio.bios System Contract](#7-install-eosio.bios-system-contract)
+7. [Install eosio.bios System Contract](#7-install-eosiobios-system-contract)
 
 ### 1. Add the development key to the wallet
 
@@ -115,7 +116,7 @@ cleos set contract eosio EOSIO_SYSTEM_CONTRACTS_DIRECTORY/eosio.boot/bin/ eosio.
 
 As result you should see something similar to the following output:
 
-```sh
+```console
 Reading WAST/WASM from /users/documents/eos/contracts/contracts/eosio.boot/build/eosio.boot.wasm...
 Using already assembled WASM...
 Publishing contract...
@@ -126,12 +127,12 @@ executed transaction: 2150ed87e4564cd3fe98ccdea841dc9ff67351f9315b6384084e8572a3
 
 ### 6. Activate The Remaining Protocol Features
 
-After you deploy the eosio.boot contract, run the following commands to enable the rest of the features which are highly recommended to enable an EOSIO-based blockchain.
+After you deploy the `eosio.boot` contract, run the following commands to enable the rest of the features which are highly recommended to enable an EOSIO-based blockchain.
 
 [[info | Optional Step]]
-|These features are optional. You can choose to enable or continue without these features, however they are highly recommended for an EOSIO-based blockchain.
+|These features are optional. You can choose to enable or continue without these features; however they are highly recommended for an EOSIO-based blockchain.
 
-```sh
+```console
 echo KV_DATABASE
 cleos push action eosio activate '["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]' -p eosio
 
@@ -189,7 +190,7 @@ To deploy the `eosio.bios` system contract execute the following at the command 
 cleos set contract eosio EOSIO_SYSTEM_CONTRACTS_DIRECTORY/eosio.bios/bin/ eosio.bios.wasm eosio.bios.abi
 ```
 
-If you want instead of `eosio.bios`, a more elaborate system smart contract like `eosio.system`, you have to build it first and then execute the following at the command prompt. Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where you have built the `eosio.system` system contract, the directory path where `eoios.system.abi` and `eosio.system.wasm` are located.
+If you want instead of `eosio.bios`, a more elaborate system smart contract like `eosio.system`, you have to build it first and then execute the following command from a terminal (or from the shell). Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where you have built the `eosio.system` system contract, the directory path where `eoios.system.abi` and `eosio.system.wasm` are located.
 
 ```sh
 cleos set contract eosio EOSIO_SYSTEM_CONTRACTS_DIRECTORY/eosio.system/ eosio.system.wasm eosio.system.abi
