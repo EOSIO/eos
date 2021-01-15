@@ -331,7 +331,7 @@ chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
    }
 
    if (block_num < begin_block() || block_num >= end_block())
-      return {};
+      return {'\0'}; // same as return fc::pack(std::vector<state_history::transaction_trace>{})
    state_history_log_header header;
    get_entry_header(block_num, header);
    return get_traces_bin(read_log, get_ship_version(header.magic), header.payload_size);
@@ -386,7 +386,7 @@ chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_n
    }
 
    if (block_num < begin_block() || block_num >= end_block())
-      return {};
+      return {'\0'};
    state_history_log_header header;
    get_entry_header(block_num, header);
    return state_history::zlib_decompress(read_log);
