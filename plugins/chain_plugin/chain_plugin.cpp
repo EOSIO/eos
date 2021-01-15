@@ -2408,10 +2408,57 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
      walk_table_row_range( lb_itr, ub_itr, false );
    }
 
-   // fill up result.next_key
+   // Set result.next_key
    set_kv_next_key(p.encode_type, index_type, result);
 
    return result;
+}
+
+template <typename UInt, typename T>
+UInt read_only::float_from_bytes(T& t, const std::string& next_key_bytes) const {
+    std::stringstream ss;
+    ss << std::hex << next_key_bytes;
+    UInt val;
+    ss >> val;
+    UInt mask = 0;
+    UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+    if (!(val & signbit)) //flip mask if val is positive
+        mask = ~mask;
+    val ^=(mask | signbit);
+    return val;
+}
+
+template <typename T>
+void read_only::convert_from_bytes( T& t, const std::string& next_key_bytes) const {
+    if constexpr (std::is_floating_point_v<T>) {
+        if constexpr (sizeof(T) == 4) {
+            uint32_t val = float_from_bytes<uint32_t>(t, next_key_bytes);
+            std::memcpy(&t, &val, sizeof(T));
+        }else {
+            static_assert(sizeof(T) == 8, "Unknown floating point type");
+            uint64_t val = float_from_bytes<uint64_t>(t, next_key_bytes);
+            std::memcpy(&t, &val, sizeof(T));
+        }
+    }else if constexpr (std::is_integral_v<T>) {
+        std::stringstream ss;
+        ss << std::hex << next_key_bytes;
+        auto unsigned_val = static_cast<std::make_unsigned_t<T>>(t);
+        ss >> unsigned_val;
+        if (unsigned_val > std::numeric_limits<T>::max()) {
+            t = unsigned_val + static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min());
+        }
+        else {
+            t = unsigned_val + std::numeric_limits<T>::min();
+        }
+    }else {
+        EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported type to convert from bytes");
+    }
+
+}
+void read_only::convert_to_hex(const int& n, string& str) const {
+    std::stringstream ss1;
+    ss1<< std::hex << std::uppercase << n;
+    ss1 >> str;
 }
 
 void read_only::set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const {
@@ -2430,28 +2477,84 @@ void read_only::set_kv_next_key(const string& encode_type, const string& index_t
             name nm(ull);
             result.next_key = nm.to_string();
         }else if (encode_type == "hex") {
-            if (index_type == "uint64" || index_type == "uint32" || index_type == "uint16" || index_type == "uint8") {
-                result.next_key = result.next_key_bytes;
-                boost::algorithm::trim_left_if( result.next_key, []( char c ){ return c == '0'; } );
+            if (index_type == "uint64") {
+                uint64_t u64;
+                convert_from_bytes(u64, result.next_key_bytes);
+                convert_to_hex(u64, result.next_key);
+            }else if (index_type == "uint32") {
+                uint32_t u32;
+                convert_from_bytes(u32, result.next_key_bytes);
+                convert_to_hex(u32, result.next_key);
+            }else if (index_type == "uint16") {
+                uint16_t u16;
+                convert_from_bytes(u16, result.next_key_bytes);
+                convert_to_hex(u16, result.next_key);
+            }else if (index_type == "uint8") {
+                uint8_t u8;
+                convert_from_bytes(u8, result.next_key_bytes);
+                convert_to_hex(u8, result.next_key);
+            }else if (index_type == "int64") {
+                int64_t i64;
+                convert_from_bytes(i64, result.next_key_bytes);
+                convert_to_hex(i64, result.next_key);
+            }else if (index_type == "int32") {
+                int32_t i32;
+                convert_from_bytes(i32, result.next_key_bytes);
+                convert_to_hex(i32, result.next_key);
+            }else if (index_type == "int16") {
+                int16_t i16;
+                convert_from_bytes(i16, result.next_key_bytes);
+                convert_to_hex(i16, result.next_key);
+            }else if (index_type == "int8") {
+                int8_t i8;
+                convert_from_bytes(i8, result.next_key_bytes);
+                convert_to_hex(i8, result.next_key);
             }
 
-            // todo other index types: int[64|32|16|8], sha256, and ripemd160
+            // TODO: sha256, and ripemd160
 
         }else if (encode_type == "dec") {
-            if (index_type == "uint64" || index_type == "uint32" || index_type == "uint16" || index_type == "uint8") {
-                result.next_key = result.next_key_bytes;
-                boost::algorithm::trim_left_if( result.next_key, []( char c ){ return c == '0'; } );
-
-                std::stringstream ss;
-                ss << std::hex << result.next_key;
-                uint64_t ull;
-                ss >> ull;
-
-                result.next_key = std::to_string(ull);
+            if (index_type == "float64") {
+                double d;
+                convert_from_bytes(d, result.next_key_bytes);
+                result.next_key = std::to_string(d);
+            }else if (index_type == "float32") {
+                float f;
+                convert_from_bytes(f, result.next_key_bytes);
+                result.next_key = std::to_string(f);
+            }else if (index_type == "uint64" ) {
+                uint64_t u64;
+                convert_from_bytes(u64, result.next_key_bytes);
+                result.next_key = std::to_string(u64);
+            }else if (index_type == "uint32") {
+                uint32_t u32;
+                convert_from_bytes(u32, result.next_key_bytes);
+                result.next_key = std::to_string(u32);
+            }else if (index_type == "uint16") {
+                uint16_t u16;
+                convert_from_bytes(u16, result.next_key_bytes);
+                result.next_key = std::to_string(u16);
+            }else if (index_type == "uint8") {
+                uint8_t u8;
+                convert_from_bytes(u8, result.next_key_bytes);
+                result.next_key = std::to_string(u8);
+            }else if (index_type == "int64") {
+                int64_t i64;
+                convert_from_bytes(i64, result.next_key_bytes);
+                result.next_key = std::to_string(i64);
+            }else if (index_type == "int32") {
+                int32_t i32;
+                convert_from_bytes(i32, result.next_key_bytes);
+                result.next_key = std::to_string(i32);
+            }else if (index_type == "int16") {
+                int16_t i16;
+                convert_from_bytes(i16, result.next_key_bytes);
+                result.next_key = std::to_string(i16);
+            }else if (index_type == "int8") {
+                int8_t i8;
+                convert_from_bytes(i8, result.next_key_bytes);
+                result.next_key = std::to_string(i8);
             }
-
-            //todo other index types: int[64|32|16|8], and float64
-
         }
     }
 }
