@@ -40,6 +40,7 @@ EOSIO currently supports the following operating systems:
 4. Ubuntu 18.04
 4. Ubuntu 20.04
 5. MacOS 10.14 (Mojave)
+6. MacOS 10.15 (Catalina)
 
 ---
 
