@@ -11,13 +11,13 @@ using namespace appbase;
 
 struct db_size_index_count {
    string   index;
-   uint64_t row_count;
+   uint64_t row_count = 0;
 };
 
 struct db_size_stats {
-   uint64_t                    free_bytes;
-   uint64_t                    used_bytes;
-   uint64_t                    size;
+   uint64_t                    free_bytes = 0;
+   uint64_t                    used_bytes = 0;
+   uint64_t                    size = 0;
    vector<db_size_index_count> indices;
 };
 

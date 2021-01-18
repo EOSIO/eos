@@ -51,7 +51,8 @@ db_size_stats db_size_api_plugin::get() {
 }
 
 db_size_stats db_size_api_plugin::get_reversible() {
-   return get_db_stats(app().get_plugin<chain_plugin>().chain().reversible_db());
+   // no longer have a reversible db
+   return {};
 }
 
 #undef INVOKE_R_V
