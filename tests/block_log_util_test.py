@@ -109,7 +109,7 @@ try:
     Print("Retrieve the whole blocklog for node 0")
     blockLog=cluster.getBlockLog(0)
     foundBlockNums=checkBlockLog(blockLog, [headBlockNum, headBlockNumAfter])
-    assert foundBlockNums[0], "Couldn't find \"%d\" in blocklog:\n\"%s\"\n" % (foundBlockNums[0], output)
+    assert foundBlockNums[0], "Couldn't find \"%d\" in blocklog:\n\"%s\"\n" % (foundBlockNums[0], blockLog)
     assert not foundBlockNums[1], "Should not find \"%d\" in blocklog:\n\"%s\"\n" % (foundBlockNums[1], blockLog)
 
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.smoke_test)
