@@ -5,7 +5,7 @@ link_text: Local Single-Node Testnet With Consensus Protocol
 
 ## Goal
 
-This section describes how to set up a single-node blockchain configuration running on a single host with consensus protocol enabled.  This is referred to as a _**single host, single-node testnet with consensus**_.  We will set up one node on your local computer and have it produce blocks. The following diagram depicts the desired single host testnet.
+This section describes how to set up a single-node blockchain configuration running on a single host with [consensus protocol](https://developers.eos.io/welcome/latest/protocol/consensus_protocol) enabled.  This is referred to as a _**single host, single-node testnet with consensus**_.  We will set up one node on your local computer and have it produce blocks. The following diagram depicts the desired single host testnet.
 
 ![Single host single node testnet](single-host-single-node-testnet.png)
 
@@ -24,9 +24,9 @@ Open one "terminal" window and perform the following steps:
 1. [Add the development key to the wallet](#1-add-the-development-key-to-the-wallet)
 2. [Start the Producer Node](#2-start-the-producer-node)
 3. [Preactivate Protocol Features](#3-preactivate-protocol-features)
-4. [Get The System Smart Contracts](#4-get-the-system-smart-contracts)
+4. [Get the System Smart Contracts](#4-get-the-system-smart-contracts)
 5. [Install eosio.boot System Contract](#5-install-eosioboot-system-contract)
-6. [Activate The Remaining Protocol Features](#6-activate-the-remaining-protocol-features)
+6. [Activate the Remaining Protocol Features](#6-activate-the-remaining-protocol-features)
 7. [Install eosio.bios System Contract](#7-install-eosiobios-system-contract)
 
 ### 1. Add the development key to the wallet
@@ -76,13 +76,13 @@ curl --request POST \
     -d '{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}'
 ```
 
-### 4. Get The System Smart Contracts
+### 4. Get the System Smart Contracts
 
 All of the protocol upgrade features introduced in v1.8 and on subsequent versions also require an updated version of the system smart contract which can make use of those protocol features.
 
 Two updated reference system smart contracts, `eosio.boot` and `eosio.bios`, are available in both source and binary form within the [`eos`](https://github.com/EOSIO/eos.git) repository. You can build them from source or deploy the binaries directly.
 
-#### 4.1 Use The Prebuilt System Smart Contracts
+#### 4.1 Use the Prebuilt System Smart Contracts
 
 To use the prebuilt system smart contract execute the following commands from a terminal:
 
@@ -127,7 +127,7 @@ executed transaction: 2150ed87e4564cd3fe98ccdea841dc9ff67351f9315b6384084e8572a3
 #         eosio <= eosio::setabi                {"account":"eosio","abi":{"types":[],"structs":[{"name":"buyrambytes","base":"","fields":[{"name":"p...
 ```
 
-### 6. Activate The Remaining Protocol Features
+### 6. Activate the Remaining Protocol Features
 
 After you deploy the `eosio.boot` contract, run the following commands from a terminal to enable the rest of the features which are highly recommended to enable an EOSIO-based blockchain.
 
