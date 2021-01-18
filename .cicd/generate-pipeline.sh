@@ -70,8 +70,8 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
       export ANKA_TAG_BASE=''
       export ANKA_TEMPLATE_NAME=''
     fi
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
-        "FILE_NAME": env.FILE_NAME, 
+    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+        "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
@@ -142,7 +142,7 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
-          pre-commands: 
+          pre-commands:
             - "rm -rf mac-anka-fleet; git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
@@ -171,7 +171,7 @@ cat <<EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
   - wait
 
@@ -411,7 +411,7 @@ done
 if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
-    command: 
+    command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - ./.cicd/test.sh .cicd/multiversion.sh
     env:
@@ -638,7 +638,7 @@ cat <<EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
   - wait
 
@@ -656,6 +656,13 @@ cat <<EOF
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
+
+  - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
+    command:  "./.cicd/create-docker-from-binary.sh"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
+    timeout: ${TIMEOUT:-10}
 
 EOF
 IFS=$oIFS
