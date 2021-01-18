@@ -331,8 +331,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("persistent-storage-mbytes-snapshot-batch", bpo::value<uint32_t>()->default_value(config::default_persistent_storage_mbytes_batch),
           "Rocksdb batch size threshold before writing read in snapshot data to database.")
 
-         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
-         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(0),
+          "(DEPRECATED: no longer used) Maximum size (in MiB) of the reversible blocks database")
+         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(0),
+          "(DEPRECATED: no longer used) Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
           "Percentage of actual signature recovery cpu to bill. Whole number percentages, e.g. 50 for 50%")
          ("chain-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
@@ -707,7 +709,9 @@ void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+
+         /* TODO: attempt to recover from forkdb ?
          if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
              options.at( "fix-reversible-blocks" ).as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -722,6 +726,7 @@ chain_plugin::do_hard_replay(const variables_map& options) {
                          my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
             }
          }
+         */
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
@@ -894,11 +899,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   "persistent-storage-mbytes-snapshot-batch ${num} must be greater than 0", ("num", my->chain_config->persistent_storage_mbytes_batch) );
 
       if( options.count( "reversible-blocks-db-size-mb" ))
-         my->chain_config->reversible_cache_size =
-               options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
+         wlog( "reversible-blocks-db-size-mb deprecated and will be removed in future version" );
 
       if( options.count( "reversible-blocks-db-guard-size-mb" ))
-         my->chain_config->reversible_guard_size = options.at( "reversible-blocks-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+         wlog( "reversible-blocks-db-guard-size-mb deprecated and will be removed in future version" );
 
       if( options.count( "max-nonprivileged-inline-action-size" ))
          my->chain_config->max_nonprivileged_inline_action_size = options.at( "max-nonprivileged-inline-action-size" ).as<uint32_t>();
@@ -971,6 +975,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if( options.count("export-reversible-blocks") ) {
+         /* TODO: any need for this?
          auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
 
          if( p.is_relative()) {
@@ -981,7 +986,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
          else
             ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-
+         */
          EOS_THROW( node_management_success, "exported reversible blocks" );
       }
 
@@ -999,12 +1004,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          eosio::chain::combined_database::destroy( my->chain_config->state_dir );
          if( options.at( "fix-reversible-blocks" ).as<bool>()) {
+            /* TODO: Don't see a use for this.
             if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                             my->chain_config->reversible_cache_size )) {
                ilog( "Reversible blocks database was not corrupted." );
             }
+            */
          }
       } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
+         /* TODO: Do we need this for fork database ?
          if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
                                          my->chain_config->reversible_cache_size,
                                          std::optional<fc::path>(),
@@ -1013,17 +1021,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          } else {
             ilog( "Exiting after fixing reversible blocks database..." );
          }
+         */
          EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
       } else if( options.count("import-reversible-blocks") ) {
+         /* TODO: Any need for this?
          auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
          ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
          fc::remove_all( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name );
 
          import_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name,
                                    my->chain_config->reversible_cache_size, reversible_blocks_file );
-
+         */
          EOS_THROW( node_management_success, "imported reversible blocks" );
       }
 
@@ -1702,7 +1712,7 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
 }
 
 void chain_plugin::handle_db_exhaustion() {
-   elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
+   elog("database memory exhausted: increase chain-state-db-size-mb");
    //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
 }
