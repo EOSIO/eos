@@ -929,7 +929,7 @@ namespace eosio { namespace chain {
       } catch (...) { return false; }
    }
 
-   fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block, const char* reversible_block_dir_name) {
+   fc::path block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {
       ilog("Recovering Block Log...");
       EOS_ASSERT(fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir));
@@ -951,9 +951,6 @@ namespace eosio { namespace chain {
       fc::rename(blocks_dir / "blocks.log", backup_dir / "blocks.log");
       if (fc::exists(blocks_dir/ "blocks.index")) {
          fc::rename(blocks_dir/ "blocks.index", backup_dir/ "blocks.index");
-      }
-      if (strlen(reversible_block_dir_name) && fc::is_directory(blocks_dir/reversible_block_dir_name)) {
-         fc::rename(blocks_dir/ reversible_block_dir_name, backup_dir/ reversible_block_dir_name);
       }
       ilog("Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir));
 

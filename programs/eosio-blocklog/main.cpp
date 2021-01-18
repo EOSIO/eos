@@ -84,28 +84,6 @@ void blocklog::read_log() {
       first_block = block_logger.first_block_num();
    }
 
-   std::optional<chainbase::database> reversible_blocks;
-   try {
-      ilog("opening reversible db");
-      reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
-      reversible_blocks->add_index<reversible_block_index>();
-      const auto& idx = reversible_blocks->get_index<reversible_block_index,by_num>();
-      auto first = idx.lower_bound(end->block_num());
-      auto last = idx.rbegin();
-      if (first != idx.end() && last != idx.rend())
-         ilog( "existing reversible block num ${first} through block num ${last} ", ("first",first->get_block()->block_num())("last",last->get_block()->block_num()) );
-      else {
-         elog( "no blocks available in reversible block database: only block_log blocks are available" );
-         reversible_blocks.reset();
-      }
-   } catch (const std::system_error&e) {
-      if (chainbase::db_error_code::dirty == e.code().value()) {
-         elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
-      } else {
-         throw;
-      }
-   }
-
    std::ofstream output_blocks;
    std::ostream* out;
    if (!output_file.empty()) {
@@ -152,18 +130,6 @@ void blocklog::read_log() {
       print_block(sb);
       ++block_num;
       contains_obj = true;
-   }
-
-   if (reversible_blocks) {
-      const reversible_block_object* obj = nullptr;
-      while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
-         if (as_json_array && contains_obj)
-            *out << ",";
-         auto next = obj->get_block();
-         print_block(next);
-         ++block_num;
-         contains_obj = true;
-      }
    }
 
    if (as_json_array)

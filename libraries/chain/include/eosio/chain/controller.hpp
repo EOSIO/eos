@@ -78,8 +78,6 @@ namespace eosio { namespace chain {
             path                     state_dir                  = chain::config::default_state_dir_name;
             uint64_t                 state_size                 = chain::config::default_state_size;
             uint64_t                 state_guard_size           = chain::config::default_state_guard_size;
-            uint64_t                 reversible_cache_size      = chain::config::default_reversible_cache_size;
-            uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
