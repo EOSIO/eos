@@ -2509,9 +2509,13 @@ void read_only::set_kv_next_key(const string& encode_type, const string& index_t
                 int8_t i8;
                 convert_from_bytes(i8, result.next_key_bytes);
                 convert_to_hex(i8, result.next_key);
+            }else if( index_type == "sha256" || index_type == "i256" ) {
+                result.next_key = result.next_key_bytes;
+            } else if( index_type == "ripemd160" ) {
+                result.next_key = result.next_key_bytes;
+            }else {
+                EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
             }
-
-            // TODO: sha256, and ripemd160
 
         }else if (encode_type == "dec") {
             if (index_type == "float64") {
@@ -2554,6 +2558,8 @@ void read_only::set_kv_next_key(const string& encode_type, const string& index_t
                 int8_t i8;
                 convert_from_bytes(i8, result.next_key_bytes);
                 result.next_key = std::to_string(i8);
+            }else {
+                EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
             }
         }
     }
