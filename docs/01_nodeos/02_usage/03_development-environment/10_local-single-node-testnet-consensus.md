@@ -48,9 +48,9 @@ nodeos -e -p eosio --plugin eosio::producer_plugin --plugin eosio::producer_api_
 [[warning | Security Notice]]
 | Do not use the parameters `--access-control-allow-origin='*'`, `--http-validate-host=false`, `--verbose-http-errors` and `--contracts-console`, in production because they either weaken the security or affect performance of your node.
 
-After running `nodeos`, you should get log messages similar as below. It means the blocks are successfully produced.
+After running `nodeos`, you should get log messages similar to the ones below. It means the blocks are successfully produced.
 
-```console
+```sh
 info  2021-01-07T15:59:07.902 thread-0  producer_plugin.cpp:2053      produce_block        ] Produced block 98fa5cdd7ce06ae8... #162 @ 2021-01-07T15:59:08.000 signed by eosio [trxs: 0, lib: 161, confirmed: 0]
 info  2021-01-07T15:59:08.401 thread-0  producer_plugin.cpp:2053      produce_block        ] Produced block 972190051a840992... #163 @ 2021-01-07T15:59:08.500 signed by eosio [trxs: 0, lib: 162, confirmed: 0]
 info  2021-01-07T15:59:08.901 thread-0  producer_plugin.cpp:2053      produce_block        ] Produced block d8727439a26f36f6... #164 @ 2021-01-07T15:59:09.000 signed by eosio [trxs: 0, lib: 163, confirmed: 0]
@@ -66,9 +66,9 @@ At this point, `nodeos` is running with a single producer, `eosio`.
 
 ### 3. Preactivate Protocol Features
 
-All of the protocol upgrade features introduced in v1.8 and on subsequent versions require a special protocol feature (also known as `PREACTIVATE_FEATURE`) to be activated and for an updated version of the system contract that makes use of the functionality introduced by that feature to be deployed.
+All of the protocol upgrade features introduced in v1.8 and on subsequent versions require a special protocol feature, also known as `PREACTIVATE_FEATURE`, to be activated.
 
-To activate the special protocol `PREACTIVATE_FEATURE` run the following command:
+To activate the special protocol `PREACTIVATE_FEATURE` run the following command  from a terminal:
 
 ```sh
 curl --request POST \
@@ -78,11 +78,13 @@ curl --request POST \
 
 ### 4. Get The System Smart Contracts
 
-Two reference system smart contracts, the `eosio.boot` and `eosio.bios`, are located in the [`eos`](https://github.com/EOSIO/eos.git) repository, with source code and their binary form. You can build them from source or use them directly.
+All of the protocol upgrade features introduced in v1.8 and on subsequent versions also require an updated version of the system smart contract which can make use of those protocol features.
+
+Two updated reference system smart contracts, `eosio.boot` and `eosio.bios`, are available in both source and binary form within the [`eos`](https://github.com/EOSIO/eos.git) repository. You can build them from source or deploy the binaries directly.
 
 #### 4.1 Use The Prebuilt System Smart Contracts
 
-To use the prebuilt system smart contract execute the following command lines:
+To use the prebuilt system smart contract execute the following commands from a terminal:
 
 ```sh
 cd ~
@@ -93,7 +95,7 @@ pwd
 
 Note the path printed at the command prompt, we will refer to it later as `EOSIO_SYSTEM_CONTRACTS_DIRECTORY`.
 
-Alternatively you can build the system smart contracts from source code yourself following the below command lines:
+Alternatively you can build the system smart contracts from source with the following commands:
 
 ```sh
 cd ~
@@ -108,15 +110,15 @@ pwd
 
 ### 5. Install eosio.boot System Contract
 
-To install the `eosio.boot` system contract execute the following command line. Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where the `eosio.boot.wasm` and `eosio.boot.abi` files are located.
+To install the `eosio.boot` system contract execute the following command from a terminal. Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where the `eosio.boot.wasm` and `eosio.boot.abi` files are located.
 
 ```sh
 cleos set contract eosio EOSIO_SYSTEM_CONTRACTS_DIRECTORY/eosio.boot/bin/ eosio.boot.wasm eosio.boot.abi
 ```
 
-As result you should see something similar to the following output:
+You should see something similar to the following output:
 
-```console
+```sh
 Reading WAST/WASM from /users/documents/eos/contracts/contracts/eosio.boot/build/eosio.boot.wasm...
 Using already assembled WASM...
 Publishing contract...
@@ -127,12 +129,12 @@ executed transaction: 2150ed87e4564cd3fe98ccdea841dc9ff67351f9315b6384084e8572a3
 
 ### 6. Activate The Remaining Protocol Features
 
-After you deploy the `eosio.boot` contract, run the following commands to enable the rest of the features which are highly recommended to enable an EOSIO-based blockchain.
+After you deploy the `eosio.boot` contract, run the following commands from a terminal to enable the rest of the features which are highly recommended to enable an EOSIO-based blockchain.
 
 [[info | Optional Step]]
 |These features are optional. You can choose to enable or continue without these features; however they are highly recommended for an EOSIO-based blockchain.
 
-```console
+```sh
 echo KV_DATABASE
 cleos push action eosio activate '["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]' -p eosio
 
@@ -184,7 +186,7 @@ cleos push action eosio activate '["299dcb6af692324b899b39f16d5a530a33062804e41f
 
 ### 7. Install eosio.bios System Contract
 
-To deploy the `eosio.bios` system contract execute the following at the command prompt. Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where the `eosio.bios.wasm` and `eosio.bios.abi` files are located.
+To deploy the `eosio.bios` system contract execute the following command from a terminal. Make sure you replace the `EOSIO_SYSTEM_CONTRACTS_DIRECTORY` with the directory path where the `eosio.bios.wasm` and `eosio.bios.abi` files are located.
 
 ```sh
 cleos set contract eosio EOSIO_SYSTEM_CONTRACTS_DIRECTORY/eosio.bios/bin/ eosio.bios.wasm eosio.bios.abi
