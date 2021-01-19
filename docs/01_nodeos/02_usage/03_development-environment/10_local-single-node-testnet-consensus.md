@@ -89,7 +89,7 @@ To use the prebuilt system smart contract execute the following commands from a 
 ```sh
 cd ~
 git clone https://github.com/EOSIO/eos.git
-cd ./eos/contracts/contracts/contracts/
+cd ./eos/contracts/contracts/
 pwd
 ```
 
