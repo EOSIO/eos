@@ -960,6 +960,28 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    p.index_name = "ff"_n;
    p.index_value = "";
    p.encode_type = "dec";
+
+   p.lower_bound = "-0.02";
+   p.upper_bound = "-0.01";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, false);
+
+   p.upper_bound = "";
+   p.limit = 1;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   BOOST_REQUIRE_EQUAL(result.next_key != "", true);
+   chk_result(0, 1);
+
+   p.lower_bound = result.next_key;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(result.more, true);
+   BOOST_REQUIRE_EQUAL(result.next_key != "", true);
+   chk_result(0, 2);
+
    p.lower_bound = "0.02";
    p.upper_bound = "3.03000001";
    p.limit = 2;
