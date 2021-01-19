@@ -282,7 +282,6 @@ namespace eosio { namespace chain {
 
      block_log_data() = default;
      block_log_data(const fc::path& path, mapmode mode = mapmode::readonly) { 
-        preamble.log_path = path;
         open(path, mode); 
      }
 
@@ -293,6 +292,7 @@ namespace eosio { namespace chain {
            file.close();
         file.open(path.string(), mode);
         fc::datastream<const char*> ds(this->data(), this->size());
+        preamble.log_path = path;
         preamble.read_from(ds);
         first_block_pos = ds.tellp();
         return ds;
@@ -302,7 +302,6 @@ namespace eosio { namespace chain {
       uint32_t      first_block_num() const { return preamble.first_block_num; }
       uint64_t      first_block_position() const { return first_block_pos; }
       chain_id_type chain_id() const { return preamble.chain_id(); }
-      fc::path      log_path() const { return preamble.log_path; }
 
       std::optional<genesis_state> get_genesis_state() const {
          return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>{}; },
