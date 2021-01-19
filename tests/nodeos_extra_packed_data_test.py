@@ -151,10 +151,10 @@ try:
     cluster.validateAccounts(accounts)
 
     for i in range(2):
-        if i == 2:
+        if i == 1:
             node = cluster.getNode(prodCount - 1)
         
-        transferAmount="{0}.0 {1}".format(i, CORE_SYMBOL)
+        transferAmount="{0}.0 {1}".format(i + 1, CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.defproduceraAccount.name, testeraAccount.name))
         trx = node.transferFunds(cluster.defproduceraAccount, testeraAccount, transferAmount, "test transfer", dontSend=True)
 
