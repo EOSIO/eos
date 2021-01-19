@@ -968,19 +968,23 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(result.more, false);
 
    p.upper_bound = "";
-   p.limit = 1;
+   p.limit = 2;
    result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key != "", true);
+   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "2.02", true);
    chk_result(0, 1);
+   chk_result(1, 2);
 
    p.lower_bound = result.next_key;
    result = plugin.read_only::get_kv_table_rows(p);
-   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key != "", true);
-   chk_result(0, 2);
+   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "4.04", true);
+   chk_result(0, 3);
+   chk_result(1, 4);
 
    p.lower_bound = "0.02";
    p.upper_bound = "3.03000001";
