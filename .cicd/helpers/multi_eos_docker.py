@@ -111,7 +111,7 @@ for label, commit in commits.items():
             build = resp.pop(0)
             for job in build.get('jobs'):
                 job_name = job.get('name')
-                if re.search(r":ubuntu:.+18.04.+Build$", job_name):
+                if job_name and re.search(r":ubuntu:.+18.04.+Build$", job_name):
                     artifact_urls[label] = job.get('artifacts_url')
                     break
         else:
