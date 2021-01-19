@@ -37,8 +37,6 @@ namespace eosio { namespace chain {
       uint32_t version         = 0;
       uint32_t first_block_num = 0;
       std::variant<genesis_state, chain_id_type> chain_context;
-      fc::path log_path; 
-      
 
       chain_id_type chain_id() const {
          return std::visit(overloaded{[](const chain_id_type& id) { return id; },
@@ -49,14 +47,14 @@ namespace eosio { namespace chain {
       constexpr static int nbytes_with_chain_id = // the bytes count when the preamble contains chain_id
           sizeof(version) + sizeof(first_block_num) + sizeof(chain_id_type) + sizeof(block_log::npos);
 
-      void read_from(fc::datastream<const char*>& ds) {
+      void read_from(fc::datastream<const char*>& ds, const fc::path& log_path) {
         ds.read((char*)&version, sizeof(version));
          EOS_ASSERT(version > 0, block_log_exception, "Block log was not setup properly");
          EOS_ASSERT(
              block_log::is_supported_version(version), block_log_unsupported_version,
              "Unsupported version of block log. Block log version is ${version} while code supports version(s) "
              "[${min},${max}], log file: ${log}",
-             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version)("log", log_path));
+             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version)("log", log_path.generic_string()));
 
          first_block_num = 1;
          if (version != initial_version) {
@@ -281,9 +279,7 @@ namespace eosio { namespace chain {
    public:
 
      block_log_data() = default;
-     block_log_data(const fc::path& path, mapmode mode = mapmode::readonly) { 
-        open(path, mode); 
-     }
+     block_log_data(const fc::path& path, mapmode mode = mapmode::readonly) { open(path, mode); }
 
      const block_log_preamble& get_preamble() const { return preamble; }
 
@@ -292,8 +288,7 @@ namespace eosio { namespace chain {
            file.close();
         file.open(path.string(), mode);
         fc::datastream<const char*> ds(this->data(), this->size());
-        preamble.log_path = path;
-        preamble.read_from(ds);
+        preamble.read_from(ds, path);
         first_block_pos = ds.tellp();
         return ds;
       }
@@ -403,11 +398,11 @@ namespace eosio { namespace chain {
       block_log_data  log_data;
       block_log_index log_index;
 
-      block_log_bundle(fc::path block_dir) 
-      : block_file_name (block_dir / "blocks.log")
-      , log_data(block_file_name)
-      {
+      block_log_bundle(fc::path block_dir) {
+         block_file_name = block_dir / "blocks.log";
          index_file_name = block_dir / "blocks.index";
+
+         log_data.open(block_file_name);
          log_index.open(index_file_name);
 
          uint32_t log_num_blocks   = log_data.num_blocks();
