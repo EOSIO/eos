@@ -515,13 +515,13 @@ BOOST_FIXTURE_TEST_CASE(test_kv_get_data, kv_rocksdb_fixture) {
    BOOST_CHECK(memcmp(data, v.c_str() + payer_in_value_size, data_size) == 0);
 
    // offset less than actual data size
-   BOOST_CHECK(my_kv_context->kv_get_data(5, data, data_size) == data_size);
+   BOOST_CHECK(my_kv_context->kv_get_data(5, data, data_size) == 5);
    BOOST_CHECK(memcmp(data, v.c_str() + payer_in_value_size + 5, data_size - 5) == 0);
 
    // offset greater than actual data size. Data should not be modified
    std::string pattern = "mypattern1";
    memcpy(data, pattern.c_str(), data_size);
-   BOOST_CHECK(my_kv_context->kv_get_data(data_size + 1, data, data_size) == data_size);
+   BOOST_CHECK(my_kv_context->kv_get_data(data_size + 1, data, data_size) == 0);
    BOOST_CHECK(memcmp(data, pattern.c_str(), data_size) == 0);
 }
 
