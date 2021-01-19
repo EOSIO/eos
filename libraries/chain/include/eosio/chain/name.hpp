@@ -2,7 +2,7 @@
 #include <string>
 #include <fc/reflect/reflect.hpp>
 #include <iosfwd>
-
+#define NAME_LEN_LIMIT 13
 namespace eosio::chain {
   struct name;
 }
@@ -23,8 +23,8 @@ namespace eosio::chain {
 
    static constexpr uint64_t string_to_uint64_t( std::string_view str ) {
       uint64_t n = 0;
-      int i = 0;
-      for ( ; str[i] && i < 12; ++i) {
+      uint8_t i = 0;
+      for ( ; str[i] && i < NAME_LEN_LIMIT-1; ++i) {
          // NOTE: char_to_symbol() returns char type, and without this explicit
          // expansion to uint64 type, the compilation fails at the point of usage
          // of string_to_name(), where the usage requires constant (compile time) expression.
@@ -32,10 +32,10 @@ namespace eosio::chain {
       }
 
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
-      // if (strlen(str) > 12) then encode str[12] into the low (remaining)
+      // if (strlen(str) > 12(NAME_LEN_LIMIT)) then encode str[12] into the low (remaining)
       // 4 bits of 'name'
-      if (i == 12)
-         n |= char_to_symbol(str[12]) & 0x0F;
+      if (i == NAME_LEN_LIMIT-1)
+         n |= char_to_symbol(str[NAME_LEN_LIMIT-1]) & 0x0F;
       return n;
    }
 
