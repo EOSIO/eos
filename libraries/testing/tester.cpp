@@ -2,6 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -969,41 +970,28 @@ namespace eosio { namespace testing {
    asset base_tester::get_currency_balance( const account_name& code,
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
-      const auto& db  = control->db();
-      const auto* tbl = db.template find<table_id_object, by_code_scope_table>(boost::make_tuple(code, account, "accounts"_n));
       share_type result = 0;
-
-      // the balance is implied to be 0 if either the table or row does not exist
-      if (tbl) {
-         const auto *obj = db.template find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.to_symbol_code().value));
-         if (obj) {
-            //balance is the first field in the serialization
-            fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
-            fc::raw::unpack(ds, result);
-         }
-      }
+      auto get_balance = [&result](name , const char* value, std::size_t size) {
+         //balance is the first field in the serialization
+         fc::datastream<const char *> ds(value, size);
+         fc::raw::unpack(ds, result);
+	 return true;
+      };
+      const auto& kv_database = control->kv_db();
+      kv_database.get_primary_key_data(code, account, "accounts"_n, asset_symbol.to_symbol_code().value, get_balance);
       return asset(result, asset_symbol);
    }
 
 
    vector<char> base_tester::get_row_by_account( name code, name scope, name table, const account_name& act ) const {
       vector<char> data;
-      const auto& db = control->db();
-      const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
-      if ( !t_id ) {
-         return data;
-      }
-      //FC_ASSERT( t_id != 0, "object not found" );
-
-      const auto& idx = db.get_index<chain::key_value_index, chain::by_scope_primary>();
-
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act.to_uint64_t() ) );
-      if ( itr == idx.end() || itr->t_id != t_id->id || act.to_uint64_t() != itr->primary_key ) {
-         return data;
-      }
-
-      data.resize( itr->value.size() );
-      memcpy( data.data(), itr->value.data(), data.size() );
+      auto copy_data = [&data](name , const char* value, std::size_t value_size) {
+         data.resize( value_size );
+         memcpy( data.data(), value, value_size );
+	 return true;
+      };
+      const auto& kv_database = control->kv_db();
+      kv_database.get_primary_key_data(code, scope, table, act.to_uint64_t(), copy_data);
       return data;
    }
 
@@ -1124,11 +1112,6 @@ namespace eosio { namespace testing {
 
    }
 
-
-   const table_id_object* base_tester::find_table( name code, name scope, name table ) {
-      auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-      return tid;
-   }
 
    void base_tester::schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests) {
       protocol_features_to_be_activated_wo_preactivation.insert(
