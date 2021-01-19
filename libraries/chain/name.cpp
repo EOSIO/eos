@@ -8,7 +8,7 @@ namespace eosio::chain {
 
    void name::set( std::string_view str ) {
       const auto len = str.size();
-      EOS_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
+      EOS_ASSERT(len <= NAME_LEN_LIMIT, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", std::string(str)));
       value = string_to_uint64_t(str);
       EOS_ASSERT(to_string() == str, name_type_exception,
                  "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
@@ -19,12 +19,12 @@ namespace eosio::chain {
    std::string name::to_string()const {
      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
-      std::string str(13,'.');
+      std::string str(NAME_LEN_LIMIT,'.');
 
       uint64_t tmp = value;
-      for( uint32_t i = 0; i <= 12; ++i ) {
+      for( uint8_t i = 0; i <= NAME_LEN_LIMIT-1; ++i ) {
          char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
-         str[12-i] = c;
+         str[NAME_LEN_LIMIT-1-i] = c;
          tmp >>= (i == 0 ? 4 : 5);
       }
 
