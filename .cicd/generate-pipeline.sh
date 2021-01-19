@@ -91,7 +91,7 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # build steps
-if [[ "$DEBUG" == 'true' ]];
+if [[ "$DEBUG" == 'true' ]]; then
     echo '# PLATFORMS_JSON_ARRAY'
     echo "# $(echo "$PLATFORMS_JSON_ARRAY" | jq -c '.')"
     echo ''
