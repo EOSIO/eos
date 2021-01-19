@@ -126,8 +126,7 @@ void state_history_log::recover_blocks(uint64_t size) {
          break;
       pos = pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix);
       if (!(++num_found % 10000)) {
-         printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
-         fflush(stdout);
+         dlog("${num_found} blocks found, log pos = ${pos}", ("num_found", num_found)("pos", pos));
       }
    }
    read_log.flush();
