@@ -8,9 +8,9 @@ Before you follow the steps to create a new key pair, make sure the following it
 * Install the currently supported version of `cleos`
 
 [[info | Note]]
-| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../00_install/index.md) will also install the cleos tool. 
+| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
 
-* Acquire functional understanding of asymmetric cryptography (public and private keypair)  in the context of blockchain
+* Acquire functional understanding of asymmetric cryptography (public and private keypair) in the context of blockchain
 
 ## Steps
 
