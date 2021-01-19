@@ -3221,7 +3221,6 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-    std::cout << "BEFORE\n";
    get_account_results result;
    result.account_name = params.account_name;
 
@@ -3240,7 +3239,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_code_update = accnt_metadata_obj.last_code_update;
    result.created          = accnt_obj.creation_date;
 
-   uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : db.get_greylist_limit(); // take into account global `greylist_limit`
+   uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : db.get_greylist_limit();
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
    if ( result.net_limit.last_usage_update_time && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
@@ -3292,21 +3291,20 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       });
 
       result.total_resources = get_primary_key(config::system_account_name, params.account_name, "userres"_n, params.account_name.to_uint64_t(),
-        	      row_requirements::optional, row_requirements::optional, "user_resources", abis); 
-      
+		      row_requirements::optional, row_requirements::optional, "user_resources", abis); 
+
       result.self_delegated_bandwidth = get_primary_key(config::system_account_name, params.account_name, "delband"_n, params.account_name.to_uint64_t(),
-        	      row_requirements::optional, row_requirements::optional, "delegated_bandwidth", abis); 
-      
+		      row_requirements::optional, row_requirements::optional, "delegated_bandwidth", abis); 
+
       result.refund_request = get_primary_key(config::system_account_name, params.account_name, "refunds"_n, params.account_name.to_uint64_t(),
-        	      row_requirements::optional, row_requirements::optional, "refund_request", abis); 
-      
+		      row_requirements::optional, row_requirements::optional, "refund_request", abis); 
+
       result.voter_info = get_primary_key(config::system_account_name, config::system_account_name, "voters"_n, params.account_name.to_uint64_t(),
-        	      row_requirements::optional, row_requirements::optional, "voter_info", abis); 
-      
+		      row_requirements::optional, row_requirements::optional, "voter_info", abis); 
+
       result.rex_info = get_primary_key(config::system_account_name, config::system_account_name, "rexbal"_n, params.account_name.to_uint64_t(),
-        	      row_requirements::optional, row_requirements::optional, "rex_balance", abis); 
+		      row_requirements::optional, row_requirements::optional, "rex_balance", abis); 
    }
-   std::cout << "AFTER\n";
    return result;
 }
 
