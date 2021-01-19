@@ -312,8 +312,8 @@ function ensure-libpq-and-libpqxx() {
     fi
 
     if [[ $ARCH == "Linux" ]]; then
-        if [[ $CURRENT_USER != "root" ]] ; then;
-            $LIBPQ_SUDO = $NEW_SUDO_COMMAND
+        if [[ $CURRENT_USER != "root" ]] ; then
+            LIBPQ_SUDO="$SUDO_LOCATION -E"
         fi
         if [[ $NAME == "Amazon Linux" ]]; then
             #install libpq
@@ -335,7 +335,7 @@ function ensure-libpq-and-libpqxx() {
         elif [[ $NAME == "Ubuntu" ]]; then
             # install libpq
             if [ ! -d /usr/include/postgresql ]; then 
-                eval $LIBPQ_SUDO apt-get update && sudo apt-get -y install libpq-dev
+                eval $LIBPQ_SUDO apt-get update && eval $LIBPQ_SUDO apt-get -y install libpq-dev
             fi
             EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql"     
         fi
