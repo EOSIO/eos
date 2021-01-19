@@ -443,15 +443,20 @@ namespace eosio { namespace chain {
       }
 
       uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) override {
-         uint32_t temp_size = 0;
+         uint32_t copy_size = 0;
          if (current_value) {
-            temp_size = backing_store::actual_value_size(current_value->size());
+            copy_size = backing_store::actual_value_size(current_value->size());
          }
-         if (offset < temp_size) {
-            const char* temp = backing_store::actual_value_start(current_value->data());
-            std::memcpy(data, temp + offset, std::min(data_size, temp_size - offset));
+         if (offset < copy_size) {
+            copy_size = std::min(data_size, copy_size - offset);
+         } else {
+            copy_size = 0;
          }
-         return temp_size;
+         if (copy_size > 0) {
+            const char *value_start_loc = backing_store::actual_value_start(current_value->data());
+            std::memcpy(data, value_start_loc + offset, copy_size);
+         }
+         return copy_size;
       }
 
       std::unique_ptr<kv_iterator> kv_it_create(uint64_t contract, const char* prefix, uint32_t size) override {
