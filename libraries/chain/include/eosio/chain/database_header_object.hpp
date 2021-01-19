@@ -8,7 +8,7 @@ namespace eosio { namespace chain {
        *  @brief tracks the version of the application data stored in the database
        *  @ingroup object
        *
-       *  the in-memory database expects that binay structures of data do not shift between executions.  Some
+       *  the in-memory database expects that binary structures of data do not shift between executions.  Some
        *  upgrades will bump this version to indicate that the expectations of the binary application data
        *  have changed.  When it is safe to directly use an older version that will be allowed though cases
        *  where this is possible may be rare.
