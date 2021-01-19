@@ -477,7 +477,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       
       main.produce_block();
       
-      // Check resources for test account."
+      // Check resources for test account.
       {
       int64_t ram_bytes, net_weight, cpu_weight;
       rlm.get_account_limits(test_account, ram_bytes, net_weight, cpu_weight);
