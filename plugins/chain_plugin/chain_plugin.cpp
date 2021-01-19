@@ -2738,11 +2738,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
                finished_ = true;
             }
             else {
-               auto full_primary_key =
-                     eosio::session::make_shared_bytes<std::string_view, 2>({std::string_view{prefix_primary_key_.data(),
-                                                                                              prefix_primary_key_.size()},
-                                                                             std::string_view{reinterpret_cast<const char*>(&row.primary_key),
-                                                                                              sizeof(row.primary_key)}});
+               auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(prefix_primary_key_, row.primary_key);
                auto value = session_.read(full_primary_key);
                EOS_ASSERT(value,
                           contract_table_query_exception,
