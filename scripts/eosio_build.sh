@@ -140,6 +140,9 @@ ensure-submodules-up-to-date
 
 # Try using oob cmake if possible so as to save building time
 if [[ $ARCH == "Linux"  ]]; then
+   if [[ $CURRENT_USER != "root" ]] ; then
+       $OOBCMAKE_SUDO="$SUDO_LOCATION -E"
+   fi
    if [[ ${NAME} == "Ubuntu" ]]; then
       if [[  -z $(command -v cmake 2>/dev/null)    ]] ; then
          if [[ ${VERSION_ID} == "18.04"  ||   ${VERSION_ID} == "20.04" ]]; then
@@ -148,13 +151,16 @@ if [[ $ARCH == "Linux"  ]]; then
       fi
    elif [[ ${NAME} == "CentOS Linux"  ||  ${NAME} == "Amazon Linux" ]] ; then
       install-package cmake
+      if [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
+         eval $OOBCMAKE_SUDO yum install -y https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/cmake3-3.17.5-1.el7.x86_64.rpm
+      fi
       install-package cmake3
-      sudo alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
+      eval $OOBCMAKE_SUDO alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
                              --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
                              --slave /usr/local/bin/cpack cpack /usr/bin/cpack \
                              --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
                              --family cmake
-      sudo alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
+      eval $OOBCMAKE_SUDO alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
                              --slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
                              --slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
                              --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
