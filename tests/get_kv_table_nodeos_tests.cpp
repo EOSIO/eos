@@ -242,6 +242,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "bobc");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "3D0E800000000000");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -249,6 +250,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.next_key, "bobe");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "3D0EA00000000000");
    chk_result(0, 3);
    chk_result(1, 4);
 
@@ -258,6 +260,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "bobf");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "3D0EB00000000000");
    chk_result(0, 5);
 
    p.lower_bound = result.next_key;
@@ -266,6 +269,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(5u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
    BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
    chk_result(0, 6);
    chk_result(1, 7);
    chk_result(2, 8);
@@ -280,6 +284,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "bobh");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "3D0ED00000000000");
    chk_result(0, 10);
    chk_result(1, 9);
 
@@ -289,6 +294,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(7u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "boba");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "3D0E600000000000");
    chk_result(0, 8);
    chk_result(1, 7);
    chk_result(2, 6);
@@ -303,6 +309,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
    BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
    chk_result(0, 1);
 
    //////////////////////////////
@@ -330,6 +337,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    p.upper_bound = "10";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(10u, result.rows.size());
+
 
 
    p.index_value = "";
@@ -445,6 +453,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(3));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "0000000000000003");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -454,6 +463,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(6));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "0000000000000006");
    chk_result(0, 3);
    chk_result(1, 4);
    chk_result(2, 5);
@@ -464,6 +474,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(4, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(10));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "000000000000000A");
    chk_result(0, 6);
    chk_result(1, 7);
    chk_result(2, 8);
@@ -474,6 +485,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
    BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
    chk_result(0, 10);
 
    p.encode_type = "hex";
@@ -484,6 +496,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(4u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(5));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "0000000000000005");
    chk_result(0, 1);
    chk_result(1, 2);
    chk_result(2, 3);
@@ -495,6 +508,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(5u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "A");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "000000000000000A");
    chk_result(0, 5);
    chk_result(1, 6);
    chk_result(2, 7);
@@ -506,6 +520,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
    BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
    chk_result(0, 10);
 
    p.lower_bound = "10";
@@ -514,6 +529,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
    BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
 
    //////////////////////////////
    // bar
@@ -684,6 +700,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "bobc");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "626F62630000");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -693,6 +710,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, "bobf");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "626F62660000");
    chk_result(0, 3);
    chk_result(1, 4);
    chk_result(2, 5);
@@ -702,6 +720,8 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(5u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
+   BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
    chk_result(0, 6);
    chk_result(1, 7);
    chk_result(2, 8);
@@ -815,6 +835,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(-20));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "7FFFFFEC");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -825,6 +846,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(0));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "80000000");
    chk_result(0, 3);
    chk_result(1, 4);
 
@@ -900,6 +922,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(-200));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "7FFFFFFFFFFFFF38");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -910,6 +933,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key, std::to_string(0));
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "8000000000000000");
    chk_result(0, 3);
    chk_result(1, 4);
 
@@ -1051,6 +1075,8 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, false);
+   BOOST_REQUIRE_EQUAL(result.next_key, "");
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "");
 
    p.upper_bound = "";
    p.limit = 2;
@@ -1058,6 +1084,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "2.02", true);
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C00028F5C28F5C29");
    chk_result(0, 1);
    chk_result(1, 2);
 
@@ -1066,6 +1093,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "4.04", true);
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C01028F5C28F5C29");
    chk_result(0, 3);
    chk_result(1, 4);
 
@@ -1076,6 +1104,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "3.03", true);
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C0083D70A3D70A3D");
    chk_result(0, 2);
    chk_result(1, 3);
 
@@ -1086,6 +1115,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
    BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "5.05", true);
+   BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C014333333333333");
    chk_result(0, 4);
    chk_result(1, 5);
 
