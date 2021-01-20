@@ -5,9 +5,6 @@ add_library( resource_monitor_plugin
              ${HEADERS} )
 
 target_link_libraries( resource_monitor_plugin appbase fc chain_plugin)
-if(ENABLE_CPPKIN)
-   target_link_libraries( resource_monitor_plugin curl )
-endif()
 target_include_directories( resource_monitor_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 add_subdirectory( test )

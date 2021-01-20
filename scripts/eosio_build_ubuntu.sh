@@ -29,8 +29,3 @@ ensure-llvm
 ensure-boost
 VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
 VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
-# CPPKIN Installation
-echo "${COLOR_CYAN}[Installing cppkin]${COLOR_NC}"
-curl -LO https://github.com/EOSIO/cppKin/releases/download/v1.2.0/cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-  apt install -y ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb && \
-  rm ./cppkin_1.2.0-1-ubuntu-18.04_amd64.deb

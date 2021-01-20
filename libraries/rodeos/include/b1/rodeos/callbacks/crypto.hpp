@@ -23,18 +23,22 @@ struct crypto_callbacks {
    void assert_ripemd160(int, int, int) { return unimplemented<void>("assert_ripemd160"); }
 
    void sha1(eosio::vm::span<const char> data, legacy_ptr<fc::sha1> hash_val) {
+      // TODO: needs checktime protection in queries. Filters don't need this protection.
       *hash_val = fc::sha1::hash(data.data(), data.size());
    }
 
    void sha256(eosio::vm::span<const char> data, legacy_ptr<fc::sha256> hash_val) {
+      // TODO: needs checktime protection in queries. Filters don't need this protection.
       *hash_val = fc::sha256::hash(data.data(), data.size());
    }
 
    void sha512(eosio::vm::span<const char> data, legacy_ptr<fc::sha512> hash_val) {
+      // TODO: needs checktime protection in queries. Filters don't need this protection.
       *hash_val = fc::sha512::hash(data.data(), data.size());
    }
 
    void ripemd160(eosio::vm::span<const char> data, legacy_ptr<fc::ripemd160> hash_val) {
+      // TODO: needs checktime protection in queries. Filters don't need this protection.
       *hash_val = fc::ripemd160::hash(data.data(), data.size());
    }
 

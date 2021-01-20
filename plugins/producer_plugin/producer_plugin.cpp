@@ -430,9 +430,17 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       auto make_retry_later_func() {
-         return [this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
+         return [this]( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
             _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
          };
+      }
+
+      void restart_speculative_block() {
+         chain::controller& chain = chain_plug->chain();
+         // abort the pending block
+         _unapplied_transactions.add_aborted( chain.abort_block() );
+
+         schedule_production_loop();
       }
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -475,21 +483,27 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          return [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
+            fc::exception_ptr except_ptr;
             if (std::holds_alternative<fc::exception_ptr>(response)) {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
+               except_ptr = std::get<fc::exception_ptr>(response);
+            } else if (std::get<transaction_trace_ptr>(response)->except) {
+               except_ptr = std::get<transaction_trace_ptr>(response)->except->dynamic_copy_exception();
+            }
+            _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(except_ptr, trx));
+
+            if (except_ptr) {
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
-                        ("why",std::get<fc::exception_ptr>(response)->what()));
+                        ("why", except_ptr->what()));
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
-                          ("why",std::get<fc::exception_ptr>(response)->what()));
+                          ("why", except_ptr->what()));
                }
             } else {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
@@ -508,7 +522,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool process_incoming_transaction_async(const transaction_metadata_ptr& trx,
                                               bool persist_until_expired,
                                               next_function<transaction_trace_ptr> next,
-                                              RetryLaterFunc retry_later)
+                                              RetryLaterFunc retry_later,
+                                              bool return_failure_trace = false)
       {
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
@@ -563,8 +578,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   if( !exhausted )
                      exhausted = block_is_exhausted();
                } else {
-                  auto e_ptr = trace->except->dynamic_copy_exception();
-                  send_response( e_ptr );
+                  if( return_failure_trace ) {
+                     send_response( trace );
+                  } else {
+                     auto e_ptr = trace->except->dynamic_copy_exception();
+                     send_response( e_ptr );
+                  }
                }
             } else {
                if( persist_until_expired ) {
@@ -2119,10 +2138,13 @@ bool producer_plugin::execute_incoming_transaction(const chain::transaction_meta
    };
 
    const bool persist_until_expired = false;
-   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func );
+   const bool return_failure_trace = true;
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func, return_failure_trace );
    if( exhausted ) {
       if( my->_pending_block_mode == pending_block_mode::producing ) {
          my->schedule_maybe_produce_block( true );
+      } else {
+         my->restart_speculative_block();
       }
    }
    return !exhausted;

@@ -1,8 +1,14 @@
 #include "cloner_plugin.hpp"
 #include "ship_client.hpp"
 #include "streams/stream.hpp"
+#include "config.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
+
+#include <fc/log/logger.hpp>
+#include <fc/log/logger_config.hpp>
+#include <fc/log/trace.hpp>
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -33,8 +39,9 @@ struct cloner_config : ship_client::connection_config {
    uint32_t    skip_to                   = 0;
    uint32_t    stop_before               = 0;
    bool        exit_on_filter_wasm_error = false;
-   eosio::name filter_name               = {}; // todo: remove
-   std::string filter_wasm               = {}; // todo: remove
+   eosio::name filter_name = {}; // todo: remove
+   std::string filter_wasm = {}; // todo: remove
+   bool        profile = false;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
@@ -78,7 +85,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, config->profile
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                                                   ,
                                                   app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
@@ -232,9 +239,16 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
    op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
       "Shutdown application if filter wasm throws an exception");
+   op("telemetry-url", bpo::value<std::string>(),
+      "Send Zipkin spans to url. e.g. http://127.0.0.1:9411/api/v2/spans" );
+   op("telemetry-service-name", bpo::value<std::string>()->default_value(b1::rodeos::config::rodeos_executable_name),
+      "Zipkin localEndpoint.serviceName sent with each span" );
+   op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
+      "Timeout for sending Zipkin span." );
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
+   op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -267,6 +281,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
+         my->config->profile     = options["profile-filter"].as<bool>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
@@ -279,17 +294,29 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options["eos-vm-oc-enable"].as<bool>())
          my->config->eosvmoc_tierup = true;
 #endif
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>() );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
 
-void cloner_plugin::plugin_startup() { my->start(); }
+void cloner_plugin::plugin_startup() {
+   handle_sighup();
+   my->start();
+}
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
       my->session->connection->close(false);
    my->timer.cancel();
+   fc::zipkin_config::shutdown();
    ilog("cloner_plugin stopped");
+}
+
+void cloner_plugin::handle_sighup() {
 }
 
 void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {

@@ -3,9 +3,9 @@
 #include <b1/rodeos/callbacks/chaindb.hpp>
 #include <b1/rodeos/callbacks/compiler_builtins.hpp>
 #include <b1/rodeos/callbacks/console.hpp>
+#include <b1/rodeos/callbacks/crypto.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
-#include <b1/rodeos/callbacks/unimplemented_query.hpp>
 #include <b1/rodeos/rodeos.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/multi_index/member.hpp>
@@ -68,10 +68,10 @@ struct callbacks : action_callbacks<callbacks>,
                    compiler_builtins_callbacks<callbacks>,
                    console_callbacks<callbacks>,
                    context_free_system_callbacks<callbacks>,
+                   crypto_callbacks<callbacks>,
                    db_callbacks<callbacks>,
                    memory_callbacks<callbacks>,
                    query_callbacks<callbacks>,
-                   unimplemented_query_callbacks<callbacks>,
                    unimplemented_callbacks<callbacks> {
    wasm_ql::thread_state& thread_state;
    rodeos::chaindb_state& chaindb_state;
@@ -94,10 +94,10 @@ void register_callbacks() {
    compiler_builtins_callbacks<callbacks>::register_callbacks<rhf_t>();
    console_callbacks<callbacks>::register_callbacks<rhf_t>();
    context_free_system_callbacks<callbacks>::register_callbacks<rhf_t>();
+   crypto_callbacks<callbacks>::register_callbacks<rhf_t>();
    db_callbacks<callbacks>::register_callbacks<rhf_t>();
    memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    query_callbacks<callbacks>::register_callbacks<rhf_t>();
-   unimplemented_query_callbacks<callbacks>::register_callbacks<rhf_t>();
    unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 

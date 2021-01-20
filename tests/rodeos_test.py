@@ -126,7 +126,8 @@ class Rodeos:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.rodeos is not None:
-            self.rodeos.kill()
+            self.rodeos.send_signal(signal.SIGINT)
+            self.rodeos.wait()
         if self.rodeosStdout is not None:
             self.rodeosStdout.close()
         if self.rodeosStderr is not None:

@@ -181,11 +181,11 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    signed_block_header block;
    from_bin(block, bin);
 
-   auto blk_trace = fc_create_trace( "Block" );
+   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
    auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
-   fc_add_str_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
-   fc_add_str_tag( blk_span, "block_num", std::to_string( block_num ) );
-   fc_add_str_tag( blk_span, "block_time", eosio::microseconds_to_str( block.timestamp.to_time_point().elapsed.count() ) );
+   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_tag( blk_span, "block_num", block_num );
+   fc_add_tag( blk_span, "block_time", block.timestamp.to_time_point().elapsed.count() );
 
    write_block_info(block_num, result.this_block->block_id, block);
 }
@@ -200,11 +200,11 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
 
-   auto blk_trace = fc_create_trace( "Block" );
+   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
    auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
-   fc_add_str_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
-   fc_add_str_tag( blk_span, "block_num", std::to_string( block_num ) );
-   fc_add_str_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
+   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_tag( blk_span, "block_num", block_num );
+   fc_add_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
 
    write_block_info(block_num, result.this_block->block_id, header);
 }
@@ -261,7 +261,7 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1&
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                              ,
                              const boost::filesystem::path&       eosvmoc_path,
@@ -286,6 +286,9 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename
    backend      = std::make_unique<filter::backend_t>(code, nullptr);
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
+   if (profile) {
+      prof = std::make_unique<eosio::vm::profile_data>(wasm_filename + ".profile", *backend);
+   }
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    if (eosvmoc_enable) {
       try {
@@ -329,6 +332,7 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {
+      eosio::vm::scoped_profile profile_runner(prof.get());
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
 
       if (!filter_state->console.empty())

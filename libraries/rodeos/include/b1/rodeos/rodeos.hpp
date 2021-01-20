@@ -3,6 +3,7 @@
 #include <b1/rodeos/filter.hpp>
 #include <b1/rodeos/wasm_ql.hpp>
 #include <eosio/ship_protocol.hpp>
+#include <eosio/vm/profile.hpp>
 #include <functional>
 
 namespace b1::rodeos {
@@ -74,8 +75,9 @@ struct rodeos_filter {
    eosio::name                           name         = {};
    std::unique_ptr<filter::backend_t>    backend      = {};
    std::unique_ptr<filter::filter_state> filter_state = {};
+   std::unique_ptr<eosio::vm::profile_data> prof      = {};
 
-   rodeos_filter(eosio::name name, const std::string& wasm_filename
+   rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                  ,
                  const boost::filesystem::path&       eosvmoc_path   = "",

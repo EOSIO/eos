@@ -21,7 +21,7 @@ namespace b1::rodeos::filter {
 
 struct callbacks;
 using rhf_t     = registered_host_functions<callbacks>;
-using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit>;
+using backend_t = eosio::vm::backend<rhf_t, eosio::vm::jit_profile, eosio::vm::default_options, eosio::vm::profile_instr_map>;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 struct eosvmoc_tier {

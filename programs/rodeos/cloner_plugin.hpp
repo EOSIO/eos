@@ -14,6 +14,7 @@ class cloner_plugin : public appbase::plugin<cloner_plugin> {
    void         plugin_initialize(const appbase::variables_map& options);
    void         plugin_startup();
    void         plugin_shutdown();
+   void         handle_sighup() override;
 
    void set_streamer(std::shared_ptr<struct streamer_t> streamer);
 

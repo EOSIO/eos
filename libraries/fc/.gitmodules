@@ -1,0 +1,6 @@
+[submodule "secp256k1/upstream"]
+	path = secp256k1/upstream
+	url = https://github.com/cryptonomex/secp256k1-zkp.git
+[submodule "include/fc/crypto/webauthn_json"]
+	path = include/fc/crypto/webauthn_json
+	url = https://github.com/Tencent/rapidjson/

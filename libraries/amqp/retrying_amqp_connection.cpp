@@ -8,7 +8,7 @@ namespace eosio {
 struct retrying_amqp_connection::impl : public AMQP::ConnectionHandler {
    impl(boost::asio::io_context& io_context, const AMQP::Address& address, connection_ready_callback_t ready,
         connection_failed_callback_t failed, fc::logger logger = fc::logger::get()) :
-     _strand(io_context), _resolver(_strand), _sock(_strand), _timer(_strand), _address(address),
+     _strand(io_context), _resolver(_strand.context()), _sock(_strand.context()), _timer(_strand.context()), _address(address),
      _ready_callback(ready), _failed_callback(failed), _logger(logger) {
 
       FC_ASSERT(!_address.secure(), "Only amqp:// URIs are supported for AMQP addresses (${a})", ("a", _address));
@@ -179,7 +179,7 @@ struct single_channel_retrying_amqp_connection::impl {
    impl(boost::asio::io_context& io_context, const AMQP::Address& address, channel_ready_callback_t ready,
                                                  failed_callback_t failed, fc::logger logger) :
      _connection(io_context, address, [this](AMQP::Connection* c){conn_ready(c);},[this](){conn_failed();}, logger),
-     _timer(_connection.strand()), _channel_ready(ready), _failed(failed)
+     _timer(_connection.strand().context()), _channel_ready(ready), _failed(failed)
    {}
 
    void conn_ready(AMQP::Connection* c) {
