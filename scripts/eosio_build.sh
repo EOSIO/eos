@@ -147,7 +147,6 @@ if [[ $ARCH == "Linux"  ]]; then
          fi
       fi
    elif [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]] || [[ ${NAME} == "Amazon Linux" ]] ; then
-      install-package cmake
       install-package cmake3
    fi
 fi
