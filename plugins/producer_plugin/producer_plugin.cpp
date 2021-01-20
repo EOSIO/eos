@@ -421,14 +421,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          return true;
       }
 
-      void restart_speculative_block() {
-         chain::controller& chain = chain_plug->chain();
-         // abort the pending block
-         _unapplied_transactions.add_aborted( chain.abort_block() );
-
-         schedule_production_loop();
-      }
-
       auto make_retry_later_func() {
          return [this]( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
             _unapplied_transactions.add_incoming( trx, persist_until_expired, next );

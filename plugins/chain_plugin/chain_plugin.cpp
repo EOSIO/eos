@@ -2801,7 +2801,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          fc_add_tag(trx_span, "trx_id", input_trx->id());
 
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            auto& eptr = result.get<chain::exception_ptr>();
+            auto& eptr = std::get<chain::exception_ptr>(result);
             fc_add_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
@@ -2943,7 +2943,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
          fc_add_tag(trx_span, "trx_id", input_trx->id());
 
          if (std::holds_alternative<fc::exception_ptr>(result)) {
-            auto& eptr = result.get<chain::exception_ptr>();
+            auto& eptr = std::get<chain::exception_ptr>(result);
             fc_add_tag(trx_span, "error", eptr->to_string());
             next(eptr);
          } else {
