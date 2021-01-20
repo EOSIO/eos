@@ -318,24 +318,24 @@ function ensure-libpq-and-libpqxx() {
         if [[ $NAME == "Amazon Linux" ]]; then
             #install libpq
             if [ ! -d /usr/include/libpq ]; then
-                eval $LIBPQ_SUDO amazon-linux-extras enable postgresql11 && \
-                    eval $LIBPQ_SUDO yum install -y libpq-devel
+                $LIBPQ_SUDO amazon-linux-extras enable postgresql11 && \
+                    $LIBPQ_SUDO yum install -y libpq-devel
             fi
             EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq"
         elif [[ $NAME == "CentOS Linux" ]]; then
             #install libpq
             if [ ! -d /usr/pgsql-13 ]; then
                 CENTOS_VERSION=$(rpm -E %{rhel})
-                eval $LIBPQ_SUDO yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$CENTOS_VERSION-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-                [ $CENTOS_VERSION -lt 8 ] ||  eval $LIBPQ_SUDO dnf -qy module disable postgresql
-                eval $LIBPQ_SUDO yum install -y postgresql13-devel
+                $LIBPQ_SUDO yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$CENTOS_VERSION-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+                [ $CENTOS_VERSION -lt 8 ] || $LIBPQ_SUDO dnf -qy module disable postgresql
+                $LIBPQ_SUDO yum install -y postgresql13-devel
             fi
             export PostgreSQL_ROOT=/usr/pgsql-13   
             export PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
         elif [[ $NAME == "Ubuntu" ]]; then
             # install libpq
             if [ ! -d /usr/include/postgresql ]; then
-              eval $LIBPQ_SUDO bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+              $LIBPQ_SUDO bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
                     curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
                     apt-get update && apt-get -y install libpq-dev'
             fi
