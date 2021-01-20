@@ -92,9 +92,12 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # build steps
+export LATEST_UBUNTU="$(echo "$PLATFORMS_JSON_ARRAY" | jq -c 'map(select(.PLATFORM_NAME == "ubuntu")) | sort_by(.VERSION_MAJOR) | .[-1]')" # isolate latest ubuntu from array
 if [[ "$DEBUG" == 'true' ]]; then
     echo '# PLATFORMS_JSON_ARRAY'
     echo "# $(echo "$PLATFORMS_JSON_ARRAY" | jq -c '.')"
+    echo '# LATEST_UBUNTU'
+    echo "# $(echo "$LATEST_UBUNTU" | jq -c '.')"
     echo ''
 fi
 echo '    # builds'
