@@ -2451,7 +2451,7 @@ namespace {
                 t = unsigned_val + std::numeric_limits<T>::min();
             }
         }else {
-            EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported type to convert from bytes");
+            FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported type to convert from bytes");
         }
     }
     void convert_to_hex(const int& n, string& str)  {

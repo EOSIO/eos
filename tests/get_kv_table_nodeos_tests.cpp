@@ -1083,7 +1083,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
-   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "2.02", true);
+   BOOST_REQUIRE_EQUAL(result.next_key.find("2.02") != string::npos, true);
    BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C00028F5C28F5C29");
    chk_result(0, 1);
    chk_result(1, 2);
@@ -1092,7 +1092,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
-   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "4.04", true);
+   BOOST_REQUIRE_EQUAL(result.next_key.find("4.04") != string::npos, true);
    BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C01028F5C28F5C29");
    chk_result(0, 3);
    chk_result(1, 4);
@@ -1103,7 +1103,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
-   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "3.03", true);
+   BOOST_REQUIRE_EQUAL(result.next_key.find("3.03") != string::npos, true);
    BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C0083D70A3D70A3D");
    chk_result(0, 2);
    chk_result(1, 3);
@@ -1114,7 +1114,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(2u, result.rows.size());
    BOOST_REQUIRE_EQUAL(result.more, true);
-   BOOST_REQUIRE_EQUAL(result.next_key.substr(0, 4) == "5.05", true);
+   BOOST_REQUIRE_EQUAL(result.next_key.find("5.05") != string::npos, true);
    BOOST_REQUIRE_EQUAL(result.next_key_bytes, "C014333333333333");
    chk_result(0, 4);
    chk_result(1, 5);
