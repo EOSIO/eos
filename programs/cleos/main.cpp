@@ -3544,7 +3544,7 @@ int main( int argc, char** argv ) {
 
    auto connections = net->add_subcommand("peers", localized("Status of all existing peers"));
    connections->callback([&] {
-      const auto& v = call(url, net_connections, new_host);
+      const auto& v = call(url, net_connections);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
