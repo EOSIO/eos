@@ -149,11 +149,8 @@ if [[ $ARCH == "Linux"  ]]; then
             install-package cmake
          fi
       fi
-   elif [[ ${NAME} == "CentOS Linux"  ||  ${NAME} == "Amazon Linux" ]] ; then
+   elif [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" >= 8  ]] || [[ ${NAME} == "Amazon Linux" ]] ; then
       install-package cmake
-      if [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
-         eval $OOBCMAKE_SUDO yum install -y https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/cmake3-3.17.5-1.el7.x86_64.rpm
-      fi
       install-package cmake3
       eval $OOBCMAKE_SUDO alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
                              --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
