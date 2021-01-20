@@ -1268,7 +1268,7 @@ namespace LLVMJIT
 			importedFunctionOffsets.push_back(io);
 		}
 
-		int current_prologue = -8;
+		intptr_t current_prologue = -8;
 
 		for(const GlobalDef& global : module.globals.defs) {
 			if(global.type.isMutable) {

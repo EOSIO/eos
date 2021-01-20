@@ -10,7 +10,7 @@ enum it_stat : int32_t {
    iterator_end    = -2,
 };
 
-struct kv {
+struct kv_t {
    std::vector<char> k;
    std::vector<char> v;
 };
@@ -109,7 +109,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       }
    }
 
-   [[eosio::action]] void setmany(name contract, const std::vector<kv>& kvs) {
+   [[eosio::action]] void setmany(name contract, const std::vector<kv_t>& kvs) {
       for (auto& kv : kvs) //
          kv_set(contract.value, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size(), contract.value);
    }
@@ -169,7 +169,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    }
 
    [[eosio::action]] void scan(name contract, const std::vector<char>& prefix,
-                               const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
+                               const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
       auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
       int32_t stat;
       uint32_t key_size, value_size;
@@ -217,10 +217,11 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             uint32_t v_size = 0xffff'ffff;
             check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
                   "value has wrong size (d)");
-               check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
+            {
                std::vector<char> v(v_size - offset);
                v.push_back(42);
                v.push_back(53);
+               check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
                v_size = 0xffff'ffff;
                check(kv_it_value(itr, 0, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
                      "value has wrong size (f)");
@@ -240,7 +241,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
    } // scan()
 
    [[eosio::action]] void scanrev(name contract, const std::vector<char>& prefix,
-                                  const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
+                                  const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
       auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
       uint32_t stat;
       uint32_t key_size = 0xffff'ffff, value_size = 0xffff'ffff;

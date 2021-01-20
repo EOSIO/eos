@@ -25,7 +25,7 @@ using key_value         = eosio::ship_protocol::key_value;
 using key_value_v0      = eosio::ship_protocol::key_value_v0;
 using producer_schedule = eosio::ship_protocol::producer_schedule;
 using table_delta       = eosio::ship_protocol::table_delta;
-using table_delta_v0    = eosio::ship_protocol::table_delta_v0;
+using table_delta_v1    = eosio::ship_protocol::table_delta_v1;
 
 struct fill_status_v0 {
    eosio::checksum256 chain_id        = {};
@@ -206,8 +206,8 @@ struct contract_index128_kv : eosio::kv_table<contract_index128> {
    }
 };
 
-template <typename Table, typename F>
-void store_delta_typed(eosio::kv_environment environment, table_delta_v0& delta, bool bypass_preexist_check, F f) {
+template <typename Table, typename D, typename F>
+void store_delta_typed(eosio::kv_environment environment, D& delta, bool bypass_preexist_check, F f) {
    Table table{ environment };
    for (auto& row : delta.rows) {
       f();
@@ -219,22 +219,25 @@ void store_delta_typed(eosio::kv_environment environment, table_delta_v0& delta,
    }
 }
 
-template <typename F>
-void store_delta_kv(eosio::kv_environment environment, table_delta_v0& delta, F f) {
+template <typename D, typename F>
+void store_delta_kv(eosio::kv_environment environment, D& delta, F f) {
    for (auto& row : delta.rows) {
       f();
       auto  obj  = eosio::from_bin<key_value>(row.data);
       auto& obj0 = std::get<key_value_v0>(obj);
+#warning uncomment this when we remove the database logic on rodeos
+      /*
       if (row.present)
          environment.kv_set(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining(),
                             obj0.value.pos, obj0.value.remaining());
       else
          environment.kv_erase(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining());
+      */
    }
 }
 
-template <typename F>
-inline void store_delta(eosio::kv_environment environment, table_delta_v0& delta, bool bypass_preexist_check, F f) {
+template <typename D, typename F>
+inline void store_delta(eosio::kv_environment environment, D& delta, bool bypass_preexist_check, F f) {
    if (delta.name == "global_property")
       store_delta_typed<global_property_kv>(environment, delta, bypass_preexist_check, f);
    if (delta.name == "account")
@@ -258,7 +261,7 @@ inline void store_delta(eosio::kv_environment environment, table_delta_v0& delta
 inline void store_deltas(eosio::kv_environment environment, std::vector<table_delta>& deltas,
                          bool bypass_preexist_check) {
    for (auto& delta : deltas) //
-      store_delta(environment, std::get<table_delta_v0>(delta), bypass_preexist_check, [] {});
+      std::visit([&](auto& delta_any_v) { store_delta(environment, delta_any_v, bypass_preexist_check, [] {}); }, delta);
 }
 
 } // namespace b1::rodeos

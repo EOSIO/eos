@@ -14,7 +14,75 @@ using open_state = slice_directory::open_state;
 namespace {
    struct test_fixture {
 
-      const block_trace_v1 bt {
+      std::vector<action_trace_v1> actions = {
+         {
+            {
+               1,
+               "receiver"_n, "contract"_n, "action"_n,
+               {{ "alice"_n, "active"_n }},
+               { 0x01, 0x01, 0x01, 0x01 }
+            },
+            { 0x05, 0x05, 0x05, 0x05 }
+         },
+         {
+            {
+               0,
+               "receiver"_n, "contract"_n, "action"_n,
+               {{ "alice"_n, "active"_n }},
+               { 0x00, 0x00, 0x00, 0x00 }
+            },
+            { 0x04, 0x04, 0x04, 0x04}
+         },
+         {
+            {
+               2,
+               "receiver"_n, "contract"_n, "action"_n,
+               {{ "alice"_n, "active"_n }},
+               { 0x02, 0x02, 0x02, 0x02 }
+            },
+            { 0x06, 0x06, 0x06, 0x06 }
+         }
+      };
+
+      transaction_trace_v2 transaction_trace {
+         "0000000000000000000000000000000000000000000000000000000000000001"_h,
+         actions,
+         fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{chain::transaction_receipt_header::status_enum::executed},
+         10,
+         5,
+         { chain::signature_type() },
+         { chain::time_point(), 1, 0, 100, 50, 0 }
+      };
+
+      block_trace_v2 block_trace1_v2 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         1,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         0,
+         std::vector<transaction_trace_v2> {
+            transaction_trace
+         }
+      };
+
+      block_trace_v2 block_trace2_v2 {
+         "b000000000000000000000000000000000000000000000000000000000000001"_h,
+         5,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         chain::block_timestamp_type(0),
+         "bp.one"_n,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         "0000000000000000000000000000000000000000000000000000000000000000"_h,
+         0,
+         std::vector<transaction_trace_v2> {
+            transaction_trace
+         }
+      };
+
+      const block_trace_v1 bt_v1 {
          {
             "0000000000000000000000000000000000000000000000000000000000000001"_h,
             1,
@@ -60,7 +128,7 @@ namespace {
          }
       };
       
-      const block_trace_v1 bt2 {
+      const block_trace_v1 bt2_v1 {
          {
             "0000000000000000000000000000000000000000000000000000000000000002"_h,
             5,
@@ -152,11 +220,11 @@ namespace {
    struct vslice {
       enum mode { read_mode, write_mode};
       vslice(mode m = write_mode) : _mode(m) {}
-      long tellp() const {
+      unsigned long tellp() const {
          return _pos;
       }
 
-      void seek( long loc ) {
+      void seek( unsigned long loc ) {
          if (_mode == read_mode) {
             if (loc > _buffer.size()) {
                throw std::ios_base::failure( "read vslice unable to seek to: " + std::to_string(loc) + ", end is at: " + std::to_string(_buffer.size()));
@@ -200,7 +268,7 @@ namespace {
 
       std::vector<char> _buffer;
       mode _mode = write_mode;
-      long _pos = 0l;
+      unsigned long _pos = 0lu;
       bool _flush = false;
       bool _sync = false;
    };
@@ -236,19 +304,19 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(write_data_trace, test_fixture)
    {
       vslice vs;
-      const auto offset = append_store(bt, vs );
+      const auto offset = append_store(bt_v1, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto offset2 = append_store(bt2, vs );
+      const auto offset2 = append_store(bt2_v1, vs );
       BOOST_REQUIRE(offset < offset2);
 
       vs._pos = offset;
       const auto bt_returned = extract_store<block_trace_v1>( vs );
-      BOOST_REQUIRE(bt_returned == bt);
+      BOOST_REQUIRE(bt_returned == bt_v1);
 
       vs._pos = offset2;
       const auto bt_returned2 = extract_store<block_trace_v1>( vs );
-      BOOST_REQUIRE(bt_returned2 == bt2);
+      BOOST_REQUIRE(bt_returned2 == bt2_v1);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_data_multi_trace_version, test_fixture)
@@ -257,8 +325,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       const auto offset = append_store(bt_v0, vs );
       BOOST_REQUIRE_EQUAL(offset,0);
 
-      const auto offset2 = append_store(bt, vs );
+      const auto offset2 = append_store(bt_v1, vs );
       BOOST_REQUIRE(offset < offset2);
+
+      const auto offset3 = append_store(block_trace1_v2, vs );
+      BOOST_REQUIRE(offset2 < offset3);
 
       vs._pos = offset;
       const auto bt_returned = extract_store<block_trace_v0>( vs );
@@ -266,7 +337,11 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
 
       vs._pos = offset2;
       const auto bt_returned2 = extract_store<block_trace_v1>( vs );
-      BOOST_REQUIRE(bt_returned2 == bt);
+      BOOST_REQUIRE(bt_returned2 == bt_v1);
+
+      vs._pos = offset3;
+      const auto bt_returned3 = extract_store<block_trace_v2>( vs );
+      BOOST_REQUIRE(bt_returned3 == block_trace1_v2);
    }
 
    BOOST_FIXTURE_TEST_CASE(write_metadata_trace, test_fixture)
@@ -375,9 +450,9 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(slice.is_open());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), 0);
       BOOST_REQUIRE_EQUAL(slice.tellp(), 0);
-      uint64_t offset = append_store(bt, slice);
+      uint64_t offset = append_store(bt_v1, slice);
       BOOST_REQUIRE_EQUAL(offset, 0);
-      auto data = fc::raw::pack(bt);
+      auto data = fc::raw::pack(bt_v1);
       BOOST_REQUIRE(slice.tellp() > 0);
       BOOST_REQUIRE_EQUAL(data.size(), slice.tellp());
       BOOST_REQUIRE_EQUAL(bfs::file_size(fp), slice.tellp());
@@ -631,7 +706,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
-      for (int reps = 0; reps < file_paths.size(); reps++) {
+      for (std::size_t reps = 0; reps < file_paths.size(); reps++) {
          //  leading edge,
          //  compresses one slice
          files.erase(std::get<1>(file_paths.at(reps)));
@@ -686,7 +761,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       sd.run_maintenance_tasks(14, {});
       verify_directory_contents(tempdir.path(), files);
 
-      for (int reps = 0; reps < file_paths.size() + 1; reps++) {
+      for (std::size_t reps = 0; reps < file_paths.size() + 1; reps++) {
          //  leading edge,
          //  compresses one slice IF its not past the end of our test,
          if (reps < file_paths.size()) {
@@ -711,14 +786,14 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE_EQUAL(files.size(), 0);
    }
 
-   BOOST_FIXTURE_TEST_CASE(store_provider_write_read, test_fixture)
+   BOOST_FIXTURE_TEST_CASE(store_provider_write_read_v1, test_fixture)
    {
       fc::temp_directory tempdir;
       test_store_provider sp(tempdir.path(), 100);
-      sp.append(bt);
+      sp.append(bt_v1);
       sp.append_lib(54);
-      sp.append(bt2);
-      const uint32_t bt_bn = bt.number;
+      sp.append(bt2_v1);
+      const uint32_t bt_bn = bt_v1.number;
       bool found_block = false;
       bool lib_seen = false;
       const uint64_t first_offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
@@ -758,19 +833,19 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }, []() {});
       BOOST_REQUIRE(lib_seen);
       BOOST_REQUIRE_EQUAL(block_nums.size(), 2);
-      BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
-      BOOST_REQUIRE_EQUAL(block_nums[1], bt2.number);
+      BOOST_REQUIRE_EQUAL(block_nums[0], bt_v1.number);
+      BOOST_REQUIRE_EQUAL(block_nums[1], bt2_v1.number);
       BOOST_REQUIRE_EQUAL(block_offsets.size(), 2);
       BOOST_REQUIRE(block_offsets[0] < block_offsets[1]);
       BOOST_REQUIRE(first_offset < offset);
 
       std::optional<data_log_entry> bt_data = sp.read_data_log(block_nums[0], block_offsets[0]);
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(*bt_data), bt);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(*bt_data), bt_v1);
 
       bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
       BOOST_REQUIRE(bt_data);
-      auto v = std::variant<block_trace_v0, block_trace_v1>(*bt_data);
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(v), bt2);
+      auto v = std::variant<block_trace_v0, block_trace_v1, block_trace_v2>(*bt_data);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(v), bt2_v1);
 
       block_nums.clear();
       block_offsets.clear();
@@ -799,18 +874,111 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       }
       BOOST_REQUIRE(lib_seen);
       BOOST_REQUIRE_EQUAL(block_nums.size(), 1);
-      BOOST_REQUIRE_EQUAL(block_nums[0], bt.number);
+      BOOST_REQUIRE_EQUAL(block_nums[0], bt_v1.number);
       BOOST_REQUIRE_EQUAL(block_offsets.size(), 1);
       BOOST_REQUIRE(first_offset < offset);
    }
 
-   BOOST_FIXTURE_TEST_CASE(test_get_block, test_fixture)
+   BOOST_FIXTURE_TEST_CASE(store_provider_write_read_v2, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      test_store_provider sp(tempdir.path(), 100);
+      sp.append(block_trace1_v2);
+      sp.append_lib(54);
+      sp.append(block_trace2_v2);
+      const uint32_t bt_bn = block_trace1_v2.number;
+      bool found_block = false;
+      bool lib_seen = false;
+      const uint64_t first_offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+         if (std::holds_alternative<block_entry_v0>(e)) {
+            const auto& block = std::get<block_entry_v0>(e);
+            if (block.number == bt_bn) {
+               BOOST_REQUIRE(!found_block);
+               found_block = true;
+            }
+         } else if (std::holds_alternative<lib_entry_v0>(e)) {
+            auto best_lib = std::get<lib_entry_v0>(e);
+            BOOST_REQUIRE(!lib_seen);
+            BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+            lib_seen = true;
+            return false;
+         }
+         return true;
+      }, []() {});
+      BOOST_REQUIRE(found_block);
+      BOOST_REQUIRE(lib_seen);
+
+      std::vector<uint32_t> block_nums;
+      std::vector<uint64_t> block_offsets;
+      lib_seen = false;
+      uint64_t offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+         if (std::holds_alternative<block_entry_v0>(e)) {
+            const auto& block = std::get<block_entry_v0>(e);
+            block_nums.push_back(block.number);
+            block_offsets.push_back(block.offset);
+         } else if (std::holds_alternative<lib_entry_v0>(e)) {
+            auto best_lib = std::get<lib_entry_v0>(e);
+            BOOST_REQUIRE(!lib_seen);
+            BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+            lib_seen = true;
+         }
+         return true;
+      }, []() {});
+      BOOST_REQUIRE(lib_seen);
+      BOOST_REQUIRE_EQUAL(block_nums.size(), 2);
+      BOOST_REQUIRE_EQUAL(block_nums[0], block_trace1_v2.number);
+      BOOST_REQUIRE_EQUAL(block_nums[1], block_trace2_v2.number);
+      BOOST_REQUIRE_EQUAL(block_offsets.size(), 2);
+      BOOST_REQUIRE(block_offsets[0] < block_offsets[1]);
+      BOOST_REQUIRE(first_offset < offset);
+
+      std::optional<data_log_entry> bt_data = sp.read_data_log(block_nums[0], block_offsets[0]);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(*bt_data), block_trace1_v2);
+
+      bt_data = sp.read_data_log(block_nums[1], block_offsets[1]);
+      BOOST_REQUIRE(bt_data);
+      auto v = data_log_entry(*bt_data);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(v), block_trace2_v2);
+
+      block_nums.clear();
+      block_offsets.clear();
+      lib_seen = false;
+      int counter = 0;
+      try {
+         offset = sp.scan_metadata_log_from(9, 0, [&](const metadata_log_entry& e) -> bool {
+            if (std::holds_alternative<block_entry_v0>(e)) {
+               const auto& block = std::get<block_entry_v0>(e);
+               block_nums.push_back(block.number);
+               block_offsets.push_back(block.offset);
+            } else if (std::holds_alternative<lib_entry_v0>(e)) {
+               auto best_lib = std::get<lib_entry_v0>(e);
+               BOOST_REQUIRE(!lib_seen);
+               BOOST_REQUIRE_EQUAL(best_lib.lib, 54);
+               lib_seen = true;
+            }
+            return true;
+         }, [&counter]() {
+            if( ++counter == 3 ) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+      BOOST_REQUIRE(lib_seen);
+      BOOST_REQUIRE_EQUAL(block_nums.size(), 1);
+      BOOST_REQUIRE_EQUAL(block_nums[0], block_trace1_v2.number);
+      BOOST_REQUIRE_EQUAL(block_offsets.size(), 1);
+      BOOST_REQUIRE(first_offset < offset);
+   }
+
+   BOOST_FIXTURE_TEST_CASE(test_get_block_v1, test_fixture)
    {
       fc::temp_directory tempdir;
       store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
-      sp.append(bt);
+      sp.append(bt_v1);
       sp.append_lib(1);
-      sp.append(bt2);
+      sp.append(bt2_v1);
       int count = 0;
       get_block_t block1 = sp.get_block(1, [&count]() {
          if (++count >= 3) {
@@ -820,7 +988,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(block1);
       BOOST_REQUIRE(std::get<1>(*block1));
       const auto block1_bt = std::get<0>(*block1);
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(block1_bt), bt);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(block1_bt), bt_v1);
 
       count = 0;
       get_block_t block2 = sp.get_block(5, [&count]() {
@@ -831,7 +999,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       BOOST_REQUIRE(block2);
       BOOST_REQUIRE(!std::get<1>(*block2));
       const auto block2_bt = std::get<0>(*block2);
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(block2_bt), bt2);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(block2_bt), bt2_v1);
 
       count = 0;
       try {
@@ -852,5 +1020,55 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
       });
       BOOST_REQUIRE(!block2);
    }
+
+   BOOST_FIXTURE_TEST_CASE(test_get_block_v2, test_fixture)
+   {
+      fc::temp_directory tempdir;
+      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
+      sp.append(block_trace1_v2);
+      sp.append_lib(1);
+      sp.append(block_trace2_v2);
+      int count = 0;
+      get_block_t block1 = sp.get_block(1, [&count]() {
+         if (++count >= 3) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block1);
+      BOOST_REQUIRE(std::get<1>(*block1));
+      const auto block1_bt = std::get<0>(*block1);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(block1_bt), block_trace1_v2);
+
+      count = 0;
+      get_block_t block2 = sp.get_block(5, [&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(block2);
+      BOOST_REQUIRE(!std::get<1>(*block2));
+      const auto block2_bt = std::get<0>(*block2);
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(block2_bt), block_trace2_v2);
+
+      count = 0;
+      try {
+         sp.get_block(5,[&count]() {
+            if (++count >= 3) {
+               throw yield_exception("");
+            }
+         });
+         BOOST_FAIL("Should not have completed scan");
+      } catch (const yield_exception& ex) {
+      }
+
+      count = 0;
+      block2 = sp.get_block(2,[&count]() {
+         if (++count >= 4) {
+            throw yield_exception("");
+         }
+      });
+      BOOST_REQUIRE(!block2);
+   }
+
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -294,6 +294,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options["eos-vm-oc-enable"].as<bool>())
          my->config->eosvmoc_tierup = true;
 #endif
+
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),

@@ -175,11 +175,8 @@ struct extraction_test_fixture {
        *
        * @param entry : the entry to append
        */
-      void append( const block_trace_v0& entry ) {
-         fixture.data_log.emplace_back(entry);
-      }
-
-      void append( const block_trace_v1& entry ) {
+      template <typename BlockTrace>
+      void append( const BlockTrace& entry ) {
          fixture.data_log.emplace_back(entry);
       }
 
@@ -235,55 +232,65 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
       
       const uint32_t expected_lib = 0;
-      const block_trace_v1 expected_trace{
+
+      const std::vector<action_trace_v1> expected_action_traces {
          {
-            bsp1->id,
-            1,
-            bsp1->prev(),
-            chain::block_timestamp_type(1),
-            "bp.one"_n
+            {
+               0,
+               "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+               {{"alice"_n, "active"_n}},
+               make_transfer_data("alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!")
+            },
+            {}
          },
+         {
+            {
+               1,
+               "alice"_n, "eosio.token"_n, "transfer"_n,
+               {{"alice"_n, "active"_n}},
+               make_transfer_data("alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!")
+            },
+            {}
+         },
+         {
+            {
+               2,
+               "bob"_n, "eosio.token"_n, "transfer"_n,
+               {{"alice"_n, "active"_n}},
+               make_transfer_data("alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!")
+            },
+            {}
+         }
+      };
+
+      const transaction_trace_v2 expected_transaction_trace {
+         ptrx1.id(),
+         expected_action_traces,
+         fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+         bsp1->block->transactions[0].cpu_usage_us,
+         bsp1->block->transactions[0].net_usage_words,
+         *ptrx1.get_signatures(),
+         make_trx_header(ptrx1.get_transaction())
+      };
+
+      const block_trace_v2 expected_block_trace {
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
-         {
-            {
-               {
-                  ptrx1.id(),
-                  {
-                     {
-                        0,
-                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "alice"_n, "active"_n }},
-                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                     },
-                     {
-                        1,
-                        "alice"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "alice"_n, "active"_n }},
-                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                     },
-                     {
-                        2,
-                        "bob"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "alice"_n, "active"_n }},
-                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                     }
-                  }
-               },
-               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
-               bsp1->block->transactions[0].cpu_usage_us,
-               bsp1->block->transactions[0].net_usage_words,
-               *ptrx1.get_signatures(),
-               make_trx_header(ptrx1.get_transaction())
-            }
+         std::vector<transaction_trace_v2> {
+            expected_transaction_trace
          }
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(basic_multi_transaction_block, extraction_test_fixture) {
@@ -317,81 +324,88 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
 
       const uint32_t expected_lib = 0;
 
-      const block_trace_v1 expected_trace{
+      const std::vector<action_trace_v1> expected_action_trace1 {
          {
-            bsp1->id,
-            1,
-            bsp1->prev(),
-            chain::block_timestamp_type(1),
-            "bp.one"_n
+            {
+               0,
+               "eosio.token"_n, "eosio.token"_n, "transfer"_n,
+               {{"alice"_n, "active"_n}},
+               make_transfer_data("alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!")
+            },
+            {}
+         }
+      };
+
+      const std::vector<action_trace_v1> expected_action_trace2 {
+         {
+            {
+               1,
+               "bob"_n, "eosio.token"_n, "transfer"_n,
+               {{ "bob"_n, "active"_n }},
+               make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
+            },
+            {}
+         }
+      };
+
+      const std::vector<action_trace_v1> expected_action_trace3 {
+         {
+            {
+               2,
+               "fred"_n, "eosio.token"_n, "transfer"_n,
+               {{ "fred"_n, "active"_n }},
+               make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
+            },
+            {}
+         }
+      };
+
+      const std::vector<transaction_trace_v2> expected_transaction_traces {
+         {
+            ptrx1.id(),
+            expected_action_trace1,
+            fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+            bsp1->block->transactions[0].cpu_usage_us,
+            bsp1->block->transactions[0].net_usage_words,
+            *ptrx1.get_signatures(),
+            make_trx_header(ptrx1.get_transaction())
          },
+         {
+            ptrx2.id(),
+            expected_action_trace2,
+            fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[1].status},
+            bsp1->block->transactions[1].cpu_usage_us,
+            bsp1->block->transactions[1].net_usage_words,
+            *ptrx2.get_signatures(),
+            make_trx_header(ptrx2.get_transaction())
+         },
+         {
+            ptrx3.id(),
+            expected_action_trace3,
+            fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[2].status},
+            bsp1->block->transactions[2].cpu_usage_us,
+            bsp1->block->transactions[2].net_usage_words,
+            *ptrx3.get_signatures(),
+            make_trx_header(ptrx3.get_transaction())
+         }
+      };
+
+      const block_trace_v2 expected_block_trace{
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
-         {
-            {
-               {
-                  ptrx1.id(),
-                  {
-                     {
-                        0,
-                        "eosio.token"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "alice"_n, "active"_n }},
-                        make_transfer_data( "alice"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                     }
-                  }
-               },
-               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
-               bsp1->block->transactions[0].cpu_usage_us,
-               bsp1->block->transactions[0].net_usage_words,
-               *ptrx1.get_signatures(),
-               make_trx_header(ptrx1.get_transaction())
-            }
-            ,
-            {
-               {
-                  ptrx2.id(),
-                  {
-                     {
-                        1,
-                        "bob"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "bob"_n, "active"_n }},
-                        make_transfer_data( "bob"_n, "alice"_n, "0.0001 SYS"_t, "Memo!" )
-                     }
-                  }
-               },
-               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[1].status},
-               bsp1->block->transactions[1].cpu_usage_us,
-               bsp1->block->transactions[1].net_usage_words,
-               *ptrx2.get_signatures(),
-               make_trx_header(ptrx2.get_transaction())
-            }
-            ,
-            {
-               {
-                  ptrx3.id(),
-                  {
-                     {
-                        2,
-                        "fred"_n, "eosio.token"_n, "transfer"_n,
-                        {{ "fred"_n, "active"_n }},
-                        make_transfer_data( "fred"_n, "bob"_n, "0.0001 SYS"_t, "Memo!" )
-                     }
-                  }
-               },
-               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[2].status},
-               bsp1->block->transactions[2].cpu_usage_us,
-               bsp1->block->transactions[2].net_usage_words,
-               *ptrx3.get_signatures(),
-               make_trx_header(ptrx3.get_transaction())
-            }
-         }
+         expected_transaction_traces
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
    }
 
    BOOST_FIXTURE_TEST_CASE(onerror_transaction_block, extraction_test_fixture)
@@ -417,43 +431,47 @@ BOOST_AUTO_TEST_SUITE(block_extraction)
       signal_accepted_block( bsp1 );
 
       const uint32_t expected_lib = 0;
-      const block_trace_v1 expected_trace {
+
+      const std::vector<action_trace_v1> expected_action_trace {
          {
-            bsp1->id,
-            1,
-            bsp1->prev(),
-            chain::block_timestamp_type(1),
-            "bp.one"_n
-         },
+            {
+               0,
+               "eosio.token"_n, "eosio"_n, "onerror"_n,
+               {{ "alice"_n, "active"_n }},
+               make_onerror_data( chain::onerror{ 1, "test ", 4 } )
+            },
+            {}
+         }
+      };
+
+      const std::vector<transaction_trace_v2> expected_transaction_traces {
+         {
+            transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
+            expected_action_trace,
+            fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
+            bsp1->block->transactions[0].cpu_usage_us,
+            bsp1->block->transactions[0].net_usage_words,
+            *transfer_trx.get_signatures(),
+            make_trx_header(transfer_trx.get_transaction())
+         }
+      };
+
+      const block_trace_v2 expected_block_trace {
+         bsp1->id,
+         1,
+         bsp1->prev(),
+         chain::block_timestamp_type(1),
+         "bp.one"_n,
          bsp1->block->transaction_mroot,
          bsp1->block->action_mroot,
          bsp1->block->schedule_version,
-         {
-            {
-               {
-                  transfer_trx.id(), // transfer_trx.id() because that is the trx id known to the user
-                  {
-                     {
-                        0,
-                        "eosio.token"_n, "eosio"_n, "onerror"_n,
-                        {{ "alice"_n, "active"_n }},
-                        make_onerror_data( chain::onerror{ 1, "test ", 4 } )
-                     }
-                  }
-               },
-               fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum>{bsp1->block->transactions[0].status},
-               bsp1->block->transactions[0].cpu_usage_us,
-               bsp1->block->transactions[0].net_usage_words,
-               *transfer_trx.get_signatures(),
-               make_trx_header(transfer_trx.get_transaction())
-            }
-         }
+         expected_transaction_traces
       };
 
       BOOST_REQUIRE_EQUAL(max_lib, 0);
       BOOST_REQUIRE(data_log.size() == 1);
-      BOOST_REQUIRE(std::holds_alternative<block_trace_v1>(data_log.at(0)));
-      BOOST_REQUIRE_EQUAL(std::get<block_trace_v1>(data_log.at(0)), expected_trace);
+      BOOST_REQUIRE(std::holds_alternative<block_trace_v2>(data_log.at(0)));
+      BOOST_REQUIRE_EQUAL(std::get<block_trace_v2>(data_log.at(0)), expected_block_trace);
    }
 
 BOOST_AUTO_TEST_SUITE_END()

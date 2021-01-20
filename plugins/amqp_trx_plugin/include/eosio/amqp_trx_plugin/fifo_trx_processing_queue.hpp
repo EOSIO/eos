@@ -123,7 +123,7 @@ private:
       chain::recover_keys_future fut;
       producer_plugin::next_function<chain::transaction_trace_ptr> next;
    };
-   detail::blocking_queue<q_item> queue_;
+   eosio::detail::blocking_queue<q_item> queue_;
    std::thread thread_;
    std::atomic_bool running_ = true;
    bool started_ = false;

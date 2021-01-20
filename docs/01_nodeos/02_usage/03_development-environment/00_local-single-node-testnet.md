@@ -8,7 +8,7 @@ This section describes how to set up a single-node blockchain configuration runn
 
 ![Single host single node testnet](single-host-single-node-testnet.png)
 
-`cleos` is used to manage the wallets, manage the accounts, and invoke actions on the blockchain.  `keosd` performs wallet management, including digital signing.  If not started explicitly, `keosd` is started by `cleos` by default.
+`cleos` is used to interact with wallets, and send actions to the blockchain. `keosd` performs wallet management, including digital signing. If not started explicitly, `keosd` is started by `cleos` by default.
 
 ## Before you begin
 
@@ -115,8 +115,9 @@ nodeos
 
 * Mac OS: `~/Library/Application\ Support/eosio/nodeos/data`
 * Linux: `~/.local/share/eosio/nodeos/data`
- 
+
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 
 [[info | What's next?]]
-| We will explore how to setup and run a [single-host, multi-node testnet](01_local-multi-node-testnet.md).
+| You can explore how to setup and run a [single-host, single-node testnet with consensus](10_local-single-node-testnet-consensus.md) or
+| You can explore how to setup and run a [single-host, multi-node testnet](20_local-multi-node-testnet.md).

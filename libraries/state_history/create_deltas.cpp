@@ -1,5 +1,8 @@
 #include <eosio/state_history/create_deltas.hpp>
+#include <eosio/state_history/rocksdb_receiver.hpp>
 #include <eosio/state_history/serialization.hpp>
+#include <eosio/chain/backing_store/db_combined.hpp>
+#include <b1/session/rocks_session.hpp>
 
 namespace eosio {
 namespace state_history {
@@ -84,7 +87,7 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
          auto& delta = deltas.back();
          delta.name  = name;
          for (auto& row : index.indices())
-            delta.rows.obj.emplace_back(true, pack_row(row));
+            delta.rows.obj.emplace_back(2, pack_row(row));
       } else {
          auto undo = index.last_undo_session();
          if (undo.old_values.empty() && undo.new_values.empty() && undo.removed_values.empty())
@@ -95,12 +98,16 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
          for (auto& old : undo.old_values) {
             auto& row = index.get(old.id);
             if (include_delta(old, row))
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               delta.rows.obj.emplace_back(1, pack_row(row));
          }
          for (auto& old : undo.removed_values)
-            delta.rows.obj.emplace_back(false, pack_row(old));
+            delta.rows.obj.emplace_back(0, pack_row(old));
          for (auto& row : undo.new_values) {
-            delta.rows.obj.emplace_back(true, pack_row(row));
+            delta.rows.obj.emplace_back(2, pack_row(row));
+         }
+
+         if(delta.rows.obj.empty()) {
+            deltas.pop_back();
          }
       }
    };
@@ -132,6 +139,72 @@ std::vector<table_delta> create_deltas(const chainbase::database& db, bool full_
                  pack_row);
    process_table("resource_limits_config", db.get_index<chain::resource_limits::resource_limits_config_index>(),
                  pack_row);
+
+   return deltas;
+}
+
+std::vector<table_delta> create_deltas_rocksdb(const chainbase::database& db, const eosio::chain::kv_undo_stack_ptr &kv_undo_stack, bool full_snapshot) {
+   std::vector<table_delta> deltas;
+
+   if(full_snapshot) {
+      //process key_value section
+      rocksdb_receiver_whole_db kv_receiver(deltas, db);
+      chain::backing_store::rocksdb_contract_kv_table_writer kv_writer(kv_receiver);
+
+      auto begin_key = eosio::session::shared_bytes(&chain::backing_store::rocksdb_contract_kv_prefix, 1);
+      auto end_key = begin_key.next();
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, kv_writer);
+
+      //process contract section
+      rocksdb_receiver_whole_db db_receiver(deltas, db);
+      using table_collector = chain::backing_store::rocksdb_whole_db_table_collector<rocksdb_receiver_whole_db>;
+      table_collector table_collector_receiver(db_receiver);
+      chain::backing_store::rocksdb_contract_db_table_writer writer(table_collector_receiver);
+
+      begin_key = eosio::session::shared_bytes(&chain::backing_store::rocksdb_contract_db_prefix, 1);
+      end_key = begin_key.next();
+      chain::backing_store::walk_rocksdb_entries_with_prefix(kv_undo_stack, begin_key, end_key, writer);
+   } else {
+      auto* session = std::visit(eosio::session::overloaded{
+        [](eosio::chain::kv_undo_stack_ptr::element_type::session_type* session){
+          return session;
+        }, [](auto*){
+          EOS_ASSERT(false, eosio::chain::chain_exception, "undo_stack is empty");
+          static eosio::chain::kv_undo_stack_ptr::element_type::session_type* invalid = nullptr;
+          return invalid;
+        }}, kv_undo_stack->top().holder());
+        
+      rocksdb_receiver_single_entry receiver(deltas, db);
+
+      for(auto &updated_key: session->updated_keys()) {
+         std::visit([&](auto* p) {
+            p->read(updated_key) ? receiver.set_delta_present(1) : receiver.set_delta_present(2);
+         }, session->parent());
+
+         chain::backing_store::process_rocksdb_entry(*session, updated_key, receiver);
+      }
+
+      receiver.set_delta_present(0);
+      for(auto &deleted_key: session->deleted_keys()) {
+         std::visit([&](auto* p) {
+            chain::backing_store::process_rocksdb_entry(*p, deleted_key, receiver);
+        }, session->parent());
+      }
+   }
+
+   return deltas;
+}
+
+std::vector<table_delta> create_deltas(const chain::combined_database& db, bool full_snapshot){
+   auto &chainbase_db = db.get_db();
+   auto &kv_undo_stack = db.get_kv_undo_stack();
+
+   std::vector<table_delta> deltas = create_deltas(chainbase_db, full_snapshot);
+
+   if(kv_undo_stack && chainbase_db.get<chain::kv_db_config_object>().backing_store == chain::backing_store_type::ROCKSDB) {
+      auto deltas_rocksdb = create_deltas_rocksdb(chainbase_db, kv_undo_stack, full_snapshot);
+      deltas.insert( deltas.end(), deltas_rocksdb.begin(), deltas_rocksdb.end() );
+   }
 
    return deltas;
 }

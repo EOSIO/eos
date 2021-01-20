@@ -3,9 +3,6 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/exceptions.hpp>
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-#include <eosio/vm/allocator.hpp>
-#endif
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
 

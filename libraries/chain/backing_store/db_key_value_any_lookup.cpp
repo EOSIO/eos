@@ -45,7 +45,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
    void db_key_value_any_lookup::remove_table_if_empty(const shared_bytes& key) {
       // look for any other entries in the table
-      auto entire_table_prefix_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::at_type);
+      auto entire_table_prefix_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
       // since this prefix key is just scope and table, it will include all primary, secondary, and table keys
       auto session_itr = current_session.lower_bound(entire_table_prefix_key);
       EOS_ASSERT( session_itr != current_session.end(), db_rocksdb_invalid_operation_exception,
@@ -97,7 +97,7 @@ namespace eosio { namespace chain { namespace backing_store {
       return memcmp(shorter.data(), longer.data(), shorter.size()) == 0;
    }
 
-   bool db_key_value_any_lookup::match_prefix(const shared_bytes& shorter, const session_type::iterator& iter) {
+   bool db_key_value_any_lookup::match_prefix(const shared_bytes& shorter, const session_variant_type::iterator& iter) {
       if (iter == current_session.end()) {
          return false;
       }
@@ -109,7 +109,7 @@ namespace eosio { namespace chain { namespace backing_store {
              memcmp(lhs.data(), rhs.data(), lhs.size()) == 0;
    }
 
-   bool db_key_value_any_lookup::match(const shared_bytes& lhs, const session_type::iterator& iter) {
+   bool db_key_value_any_lookup::match(const shared_bytes& lhs, const session_variant_type::iterator& iter) {
       if (iter == current_session.end()) {
          return false;
       }

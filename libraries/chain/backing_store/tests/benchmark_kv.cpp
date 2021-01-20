@@ -186,7 +186,7 @@ measurement_t benchmark_get(const cmd_args& args, const std::unique_ptr<kv_conte
    rusage usage_start, usage_end;
 
    getrusage(RUSAGE_SELF, &usage_start);
-   for (auto i = 0; i < num_loops; ++i) {
+   for (auto i = 0U; i < num_loops; ++i) {
       for (auto& key: workset) {
          uint32_t actual_value_size;
          kv_context_ptr->kv_get(contract, key.c_str(), key.size(),actual_value_size);
@@ -204,7 +204,7 @@ measurement_t benchmark_get_data(const cmd_args& args, const std::unique_ptr<kv_
    rusage usage_start, usage_end;
 
    getrusage(RUSAGE_SELF, &usage_start);
-   for (auto i = 0; i < num_loops; ++i) {
+   for (auto i = 0U; i < num_loops; ++i) {
       for (auto& key: workset) {
          kv_context_ptr->kv_get_data(0, data, args.value_size);
       }
@@ -221,7 +221,7 @@ measurement_t benchmark_set(const cmd_args& args, const std::unique_ptr<kv_conte
    rusage usage_start, usage_end;
 
    getrusage(RUSAGE_SELF, &usage_start);
-   for (auto i = 0; i < num_loops; ++i) {
+   for (auto i = 0U; i < num_loops; ++i) {
       for (auto& key: workset) {
          kv_context_ptr->kv_set(contract, key.c_str(), key.size(), value.c_str(), value.size(), payer);
       }
@@ -270,7 +270,7 @@ measurement_t benchmark_erase(const cmd_args& args, const std::unique_ptr<kv_con
 measurement_t benchmark_it_create(const cmd_args& args, const std::unique_ptr<kv_context>& kv_context_ptr) {
    rusage usage_start, usage_end;
    getrusage(RUSAGE_SELF, &usage_start);
-   auto i = 0;
+   auto i = 0U;
    std::string prefix = "a";
    while (i < args.num_runs) {
       kv_context_ptr->kv_it_create(contract, prefix.c_str(), 0); // kv_it_create creates a unique pointer. Will be destoryed at the end of the scope.
@@ -571,7 +571,7 @@ int main(int argc, char* argv[]) {
             return 1;
          }
       }
-   } catch (boost::wrapexcept<boost::program_options::required_option>& ex) {
+   } catch (boost::program_options::required_option& ex) {
       // This exception is thrown whenever required options are not supplied.
       // Need to catch it or we will get a crash.
       if (vmap.count("help") == 0) {

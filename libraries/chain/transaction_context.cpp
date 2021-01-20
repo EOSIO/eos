@@ -167,8 +167,10 @@ namespace eosio { namespace chain {
       }
 
       if( !explicit_billed_cpu_time ) {
-         // if account no longer has enough cpu to exec trx, don't try
-         validate_account_cpu_usage( billed_cpu_time_us, account_cpu_limit, true );
+         // Fail early if amount of the previous speculative execution is within 10% of remaining account cpu available
+         int64_t validate_account_cpu_limit = account_cpu_limit - EOS_PERCENT( account_cpu_limit, 10 * config::percent_1 );
+         if( validate_account_cpu_limit < 0 ) validate_account_cpu_limit = 0;
+         validate_account_cpu_usage( billed_cpu_time_us, validate_account_cpu_limit, true );
       }
 
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
@@ -647,6 +649,7 @@ namespace eosio { namespace chain {
         if (auto dm_logger = control.get_deep_mind_logger()) {
             event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
 
+            auto packed_signed_trx = fc::raw::pack(packed_trx.to_packed_transaction_v0()->get_signed_transaction());
             fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                ("action_id", get_action_id())
                ("sender", gto.sender)
@@ -655,8 +658,8 @@ namespace eosio { namespace chain {
                ("published", gto.published)
                ("delay", gto.delay_until)
                ("expiration", gto.expiration)
-               ("trx_id", trx.id())
-               ("trx", control.maybe_to_variant_with_abi(trx, abi_serializer::create_yield_function(control.get_abi_serializer_max_time())))
+               ("trx_id", gto.trx_id)
+               ("trx", fc::to_hex(packed_signed_trx.data(), packed_signed_trx.size()))
             );
          }
       });

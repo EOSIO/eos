@@ -20,6 +20,30 @@ struct big_vector_wrapper {
    T obj;
 };
 
+template <typename ST>
+inline void pack_varuint64(ST& ds, uint64_t val) {
+   do {
+      uint8_t b = uint8_t(val) & 0x7f;
+      val >>= 7;
+      b |= ((val > 0) << 7);
+      ds.write((char*)&b, 1);
+   } while (val);
+}
+
+template <typename ST>
+void pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
+   pack_varuint64(ds, v.size());
+   if (v.size())
+      ds.write(&v.front(), v.size());
+}
+
+template <typename ST>
+void pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
+   fc::raw::pack(ds, v.has_value());
+   if (v)
+      pack_big_bytes(ds, *v);
+}
+
 template <typename T>
 class opaque {
    std::vector<char> data;
@@ -41,7 +65,9 @@ class opaque {
 
    template <typename ST>
    void pack_to(ST& ds) const {
-      fc::raw::pack(ds, this->data);
+      // we need to pack as big vector because it can be used to hold the state delta object
+      // which would be as large as the eos snapshot when the nodeos restarted from a snapshot.
+      pack_big_bytes(ds, this->data);
    }
 };
 
@@ -65,9 +91,9 @@ struct augmented_transaction_trace {
 };
 
 struct table_delta {
-   fc::unsigned_int                                                       struct_version = 0;
-   std::string                                                            name{};
-   state_history::big_vector_wrapper<std::vector<std::pair<bool, bytes>>> rows{};
+   fc::unsigned_int                                                          struct_version = 1;
+   std::string                                                               name{};
+   state_history::big_vector_wrapper<std::vector<std::pair<uint8_t, bytes>>> rows{};
 };
 
 struct block_position {
@@ -187,7 +213,7 @@ struct partial_transaction_v0 {
    fc::unsigned_int                           max_net_usage_words    = {};
    uint8_t                                    max_cpu_usage_ms       = {};
    fc::unsigned_int                           delay_sec              = {};
-   std::vector<eosio::chain::extensions_type> transaction_extensions = {};
+   eosio::chain::extensions_type              transaction_extensions = {};
    std::vector<eosio::chain::signature_type>  signatures             = {};
    std::vector<bytes>                         context_free_data      = {};
 };
@@ -200,7 +226,7 @@ struct partial_transaction_v1 {
    fc::unsigned_int                           max_net_usage_words    = {};
    uint8_t                                    max_cpu_usage_ms       = {};
    fc::unsigned_int                           delay_sec              = {};
-   std::vector<eosio::chain::extensions_type> transaction_extensions = {};
+   eosio::chain::extensions_type              transaction_extensions = {};
    std::optional<prunable_data_type>          prunable_data          = {};
 };
 

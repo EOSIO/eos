@@ -58,7 +58,6 @@ class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
       eosvmoc::memory mem;
 };
 
-
 struct eos_vm_oc_type_converter : public basic_type_converter<eos_vm_oc_execution_interface> {
    using base_type = basic_type_converter<eos_vm_oc_execution_interface>;
    using base_type::basic_type_converter;

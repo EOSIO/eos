@@ -5,7 +5,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/ipc_helpers.hpp>
 #include <boost/multi_index_container.hpp>
-#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/key_extractors.hpp>
@@ -53,7 +53,7 @@ class code_cache_base {
          code_descriptor,
          indexed_by<
             sequenced<>,
-            ordered_unique<tag<by_hash>,
+            hashed_unique<tag<by_hash>,
                composite_key< code_descriptor,
                   member<code_descriptor, digest_type, &code_descriptor::code_hash>,
                   member<code_descriptor, uint8_t,     &code_descriptor::vm_version>

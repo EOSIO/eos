@@ -23,6 +23,8 @@ namespace boost { namespace asio {
    class thread_pool;
 }}
 
+namespace eosio { namespace vm { class wasm_allocator; }}
+
 namespace eosio { namespace chain {
 
    class authorization_manager;
@@ -83,9 +85,11 @@ namespace eosio { namespace chain {
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
             backing_store_type       backing_store              = backing_store_type::CHAINBASE;
-            uint16_t                 rocksdb_threads        =  0; // Will be set to number of cores dynamically or by user configuration;
-            int                      rocksdb_max_open_files =  chain::config::default_rocksdb_max_open_files;
-            uint64_t                 rocksdb_write_buffer_size =  chain::config::default_rocksdb_write_buffer_size;
+            uint16_t                 persistent_storage_num_threads = 0; // Will be set to number of cores dynamically or by user configuration;
+            int                      persistent_storage_max_num_files = chain::config::default_persistent_storage_max_num_files;
+            uint64_t                 persistent_storage_write_buffer_size = chain::config::default_persistent_storage_write_buffer_size;
+            uint64_t                 persistent_storage_bytes_per_sync = chain::config::default_persistent_storage_bytes_per_sync;
+            uint32_t                 persistent_storage_mbytes_batch = chain::config::default_persistent_storage_mbytes_batch;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
@@ -182,7 +186,7 @@ namespace eosio { namespace chain {
           * @param cb calls cb with forked applied transactions for each forked block
           * @param trx_lookup user provided lookup function for externally cached transaction_metadata
           */
-         void push_block( std::future<block_state_ptr>& block_state_future,
+         block_state_ptr push_block( std::future<block_state_ptr>& block_state_future,
                           const forked_branch_callback& cb,
                           const trx_meta_cache_lookup& trx_lookup );
 
@@ -249,6 +253,7 @@ namespace eosio { namespace chain {
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
          time_point last_irreversible_block_time() const;
+         const signed_block_ptr last_irreversible_block() const;
 
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
@@ -391,7 +396,7 @@ namespace eosio { namespace chain {
          void replace_producer_keys( const public_key_type& key );
          void replace_account_keys( name account, name permission, const public_key_type& key );
 
-         eosio::chain::combined_database& kv_db();
+         eosio::chain::combined_database& kv_db()const;
 
       private:
          friend class apply_context;

@@ -250,7 +250,7 @@ try:
     Print("Tracking block producers from %d till divergence or %d. Head block is %d and lowest LIB is %d" % (preKillBlockNum, lastBlockNum, headBlockNum, libNumAroundDivergence))
     transitionCount=0
     missedTransitionBlock=None
-    for blockNum in range(preKillBlockNum,lastBlockNum):
+    for blockNum in range(preKillBlockNum,lastBlockNum + 1):
         #avoiding getting LIB until my current block passes the head from the last time I checked
         if blockNum>headBlockNum:
             (headBlockNum, libNumAroundDivergence)=getMinHeadAndLib(prodNodes)
