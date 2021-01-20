@@ -134,8 +134,7 @@ namespace eosio { namespace chain {
       rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
 
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = 0;
-      int64_t account_cpu_limit = 0;
+      int64_t account_net_limit = 0,account_cpu_limit = 0;
       bool greylisted_net = false, greylisted_cpu = false;
       std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
       net_limit_due_to_greylist |= greylisted_net;
@@ -173,7 +172,7 @@ namespace eosio { namespace chain {
          validate_account_cpu_usage( billed_cpu_time_us, validate_account_cpu_limit, true );
       }
 
-      eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
+      //eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
 
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
@@ -325,8 +324,7 @@ namespace eosio { namespace chain {
       }
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = 0;
-      int64_t account_cpu_limit = 0;
+      int64_t account_net_limit = 0,account_cpu_limit = 0;
       bool greylisted_net = false, greylisted_cpu = false;
       std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
       net_limit_due_to_greylist |= greylisted_net;
@@ -511,10 +509,8 @@ namespace eosio { namespace chain {
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       auto& rl = control.get_mutable_resource_limits_manager();
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-      int64_t account_net_limit = large_number_no_overflow;
-      int64_t account_cpu_limit = large_number_no_overflow;
-      bool greylisted_net = false;
-      bool greylisted_cpu = false;
+      int64_t account_net_limit = large_number_no_overflow,account_cpu_limit = large_number_no_overflow;
+      bool greylisted_net = false,greylisted_cpu = false;
 
       uint32_t specified_greylist_limit = control.get_greylist_limit();
       for( const auto& a : bill_to_accounts ) {
