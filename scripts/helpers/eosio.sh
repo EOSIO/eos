@@ -335,7 +335,7 @@ function ensure-libpq-and-libpqxx() {
         elif [[ $NAME == "Ubuntu" ]]; then
             # install libpq
             if [ ! -d /usr/include/postgresql ]; then
-              $LIBPQ_SUDO bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+              $LIBPQ_SUDO bash -c 'source /etc/os-release; echo "deb http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
                     curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
                     apt-get update && apt-get -y install libpq-dev'
             fi
