@@ -376,12 +376,6 @@ public:
    get_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
    get_table_rows_result get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, eosio::chain::kv_context &kv_context, const abi_def &abi )const;
    void set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const;
-   void convert_to_hex(const int& n, string& str) const;
-   template <typename T>
-   void convert_from_bytes( T& t, const std::string& next_key_bytes)const;
-   template <typename UInt, typename T>
-   UInt float_from_bytes(T& t, const std::string& next_key_bytes)const;
-
 
    struct get_table_by_scope_params {
       name                 code; // mandatory
