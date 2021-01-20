@@ -140,9 +140,6 @@ ensure-submodules-up-to-date
 
 # Try using oob cmake if possible so as to save building time
 if [[ $ARCH == "Linux"  ]]; then
-   if [[ $CURRENT_USER != "root" ]] ; then
-       $OOBCMAKE_SUDO="$SUDO_LOCATION -E"
-   fi
    if [[ ${NAME} == "Ubuntu" ]]; then
       if [[  -z $(command -v cmake 2>/dev/null)    ]] ; then
          if [[ ${VERSION_ID} == "18.04"  ||   ${VERSION_ID} == "20.04" ]]; then
@@ -152,16 +149,6 @@ if [[ $ARCH == "Linux"  ]]; then
    elif [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]] || [[ ${NAME} == "Amazon Linux" ]] ; then
       install-package cmake
       install-package cmake3
-      $OOBCMAKE_SUDO alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
-                             --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
-                             --slave /usr/local/bin/cpack cpack /usr/bin/cpack \
-                             --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
-                             --family cmake
-      $OOBCMAKE_SUDO alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
-                             --slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
-                             --slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
-                             --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
-                             --family cmake
    fi
 fi
 
