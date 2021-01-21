@@ -172,6 +172,17 @@ EOF
     # debug build
     if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" == "$(echo "$LATEST_UBUNTU" | jq -r '.FILE_NAME')" ]]; then
         cat <<EOF
+  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - RelWithDebInfo Build"
+    command: "./.cicd/build.sh"
+    env:
+      CMAKE_BUILD_TYPE: "RelWithDebInfo"
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_TYPE: $PLATFORM_TYPE
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-180}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}${SKIP_DEBUG_BUILD}
+
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Debug Build"
     command: "./.cicd/build.sh"
     env:
@@ -654,6 +665,20 @@ cat <<EOF
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":ubuntu: Ubuntu 20.04 - RelWithDebInfo Package Builder"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 20.04 - RelWithDebInfo Build' && tar -xzf build.tar.gz"
+      - "./.cicd/package.sh"
+    env:
+      IMAGE_TAG: "ubuntu-20.04-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
+      OS: "ubuntu-20.04" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "deb"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}${SKIP_DEBUG_BUILD}
 
   - label: ":ubuntu: Ubuntu 20.04 - Debug Package Builder"
     command:
