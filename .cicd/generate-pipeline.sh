@@ -181,7 +181,7 @@ EOF
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}${SKIP_DEBUG_BUILD}
 
 EOF
     fi
@@ -667,7 +667,7 @@ cat <<EOF
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}${SKIP_DEBUG_BUILD}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
