@@ -126,8 +126,7 @@ void state_history_log::recover_blocks(uint64_t size) {
          break;
       pos = pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix);
       if (!(++num_found % 10000)) {
-         printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
-         fflush(stdout);
+         dlog("${num_found} blocks found, log pos = ${pos}", ("num_found", num_found)("pos", pos));
       }
    }
    read_log.flush();
@@ -294,27 +293,47 @@ state_history_traces_log::state_history_traces_log(const state_history_config& c
 
 chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
 
-   auto get_traces_bin = [](auto& ds, uint32_t version) {
-      if (version == 0) {
-         return state_history::zlib_decompress(ds);
-      }
-      else {
-         std::vector<state_history::transaction_trace> traces;
-         state_history::trace_converter::unpack(ds, traces);
-         return fc::raw::pack(traces);
+   auto get_traces_bin = [block_num](auto& ds, uint32_t version, std::size_t size) {
+      auto start_pos = ds.tellp();
+      try {
+         if (version == 0) {
+            return state_history::zlib_decompress(ds);
+         }
+         else {
+            std::vector<state_history::transaction_trace> traces;
+            state_history::trace_converter::unpack(ds, traces);
+            return fc::raw::pack(traces);
+         }
+      } catch (fc::exception& ex) {
+         std::vector<char> trace_data(size);
+         ds.seekp(start_pos);
+         ds.read(trace_data.data(), size);
+
+         fc::cfile output;
+         char      filename[PATH_MAX];
+         snprintf(filename, PATH_MAX, "invalid_trace_%u_v%u.bin", block_num, version);
+         output.set_file_path(filename);
+         output.open("w");
+         output.write(trace_data.data(), size);
+
+         ex.append_log(FC_LOG_MESSAGE(error,
+                                      "trace data for block ${block_num} has been written to ${filename} for debugging",
+                                      ("block_num", block_num)("filename", filename)));
+
+         throw ex;
       }
    };
 
    auto [ds, version] = catalog.ro_stream_for_block(block_num);
    if (ds.remaining()) {
-      return get_traces_bin(ds, version);
+      return get_traces_bin(ds, version, ds.remaining());
    }
 
    if (block_num < begin_block() || block_num >= end_block())
       return {};
    state_history_log_header header;
    get_entry_header(block_num, header);
-   return get_traces_bin(read_log, get_ship_version(header.magic));
+   return get_traces_bin(read_log, get_ship_version(header.magic), header.payload_size);
 }
 
 

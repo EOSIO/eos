@@ -290,4 +290,31 @@ namespace eosio { namespace chain { namespace backing_store { namespace db_key_v
       bytes composite_key = kt ? create_prefix_type_key(scope, table, *kt) : create_prefix_key(scope, table);
       return create_full_key(composite_key, code);
    }
+
+   eosio::session::shared_bytes create_full_primary_key(const eosio::session::shared_bytes& prefix, uint64_t primary_key) {
+      const auto prefix_size = detail::prefix_size<eosio::session::shared_bytes>();
+      b1::chain_kv::bytes composite_key;
+      constexpr static auto type_size = sizeof(key_type);
+      static_assert( type_size == 1, "" ); // this changing will break check below of prefix.back()
+      if (prefix.size() == prefix_size + type_size) {
+         const key_type kt = static_cast<key_type>(prefix[prefix.size() - 1]);
+         EOS_ASSERT(kt == key_type::primary, bad_composite_key_exception,
+                    "DB intrinsic create_full_primary_key should only be called with a prefix for a primary key, this has a prefix for type: ${type}",
+		    ("type", static_cast<uint64_t>(kt)));
+         composite_key.reserve(detail::key_size(key_type::primary));
+      }
+      else {
+         EOS_ASSERT(prefix.size() == prefix_size, bad_composite_key_exception,
+                    "DB intrinsic create_full_primary_key should only be called with a prefix of code, scope, and table and optionally a primary type indicator");
+         composite_key.reserve(type_size + detail::key_size(key_type::primary));
+	 composite_key.push_back(static_cast<char>(key_type::primary));
+      }
+
+      b1::chain_kv::append_key(composite_key, primary_key);
+      return eosio::session::make_shared_bytes<std::string_view, 2>({std::string_view{prefix.data(),
+                                                                                      prefix.size()},
+                                                                     std::string_view{composite_key.data(),
+								                      composite_key.size()}});
+
+   }
 }}}} // namespace eosio::chain::backing_store::db_key_value_format

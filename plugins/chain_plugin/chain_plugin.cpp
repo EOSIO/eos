@@ -2408,8 +2408,135 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
      walk_table_row_range( lb_itr, ub_itr, false );
    }
 
+   // Set result.next_key
+   set_kv_next_key(p.encode_type, index_type, result);
+
    return result;
 }
+
+namespace {
+    template <typename UInt, typename T>
+    UInt float_from_bytes(T& t, const std::string& next_key_bytes)  {
+        std::stringstream ss;
+        ss << std::hex << next_key_bytes;
+        UInt val;
+        ss >> val;
+        UInt mask = 0;
+        UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+        if (!(val & signbit)) //flip mask if val is positive
+            mask = ~mask;
+        val ^=(mask | signbit);
+        return val;
+    }
+    template <typename T>
+    void convert_from_bytes( T& t, const std::string& next_key_bytes)  {
+        if constexpr (std::is_floating_point_v<T>) {
+            if constexpr (sizeof(T) == 4) {
+                uint32_t val = float_from_bytes<uint32_t>(t, next_key_bytes);
+                std::memcpy(&t, &val, sizeof(T));
+            }else {
+                static_assert(sizeof(T) == 8, "Unknown floating point type");
+                uint64_t val = float_from_bytes<uint64_t>(t, next_key_bytes);
+                std::memcpy(&t, &val, sizeof(T));
+            }
+        }else if constexpr (std::is_integral_v<T>) {
+            std::stringstream ss;
+            ss << std::hex << next_key_bytes;
+            auto unsigned_val = static_cast<std::make_unsigned_t<T>>(t);
+            ss >> unsigned_val;
+            if (unsigned_val > std::numeric_limits<T>::max()) {
+                t = unsigned_val + static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min());
+            }
+            else {
+                t = unsigned_val + std::numeric_limits<T>::min();
+            }
+        }else {
+            FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported type to convert from bytes");
+        }
+    }
+    void convert_to_hex(const int& n, string& str)  {
+        std::stringstream ss1;
+        ss1<< std::hex << std::uppercase << n;
+        ss1 >> str;
+    }
+    template<typename T>
+    void hex_from_bytes(string& next_key, const string& next_key_bytes) {
+        T val;
+        convert_from_bytes(val, next_key_bytes);
+        convert_to_hex(val, next_key);
+    }
+    template<typename T>
+    void dec_from_bytes(string& next_key, const string& next_key_bytes) {
+        T val;
+        convert_from_bytes(val, next_key_bytes);
+        next_key = std::to_string(val);
+    }
+}
+
+void read_only::set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const {
+    if (result.more == true) {
+        if (encode_type == "bytes") {
+            result.next_key = result.next_key_bytes;
+        }else if (encode_type == "string") {
+            result.next_key = boost::algorithm::unhex(result.next_key_bytes);
+            boost::algorithm::trim_right_if( result.next_key, []( char c ){ return c == '\0'; } );
+        }else if (encode_type == "name") {
+            uint64_t ull;
+            convert_from_bytes(ull, result.next_key_bytes);
+            name nm(ull);
+            result.next_key = nm.to_string();
+        }else if (encode_type == "hex") {
+            if (index_type == "uint64") {
+                hex_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint32") {
+                hex_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint16") {
+                hex_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint8") {
+                hex_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int64") {
+                hex_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int32") {
+                hex_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int16") {
+                hex_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int8") {
+                hex_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
+            }else if( index_type == "sha256" || index_type == "i256" ) {
+                result.next_key = result.next_key_bytes;
+            } else if( index_type == "ripemd160" ) {
+                result.next_key = result.next_key_bytes;
+            }else {
+                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
+            }
+        }else if (encode_type == "dec") {
+            if (index_type == "float64") {
+                dec_from_bytes<double>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "float32") {
+                dec_from_bytes<float>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint64" ) {
+                dec_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint32") {
+                dec_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint16") {
+                dec_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "uint8") {
+                dec_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int64") {
+                dec_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int32") {
+                dec_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int16") {
+                dec_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
+            }else if (index_type == "int8") {
+                dec_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
+            }else {
+                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
+            }
+        }
+    }
+}
+
 
 struct table_receiver
   : chain::backing_store::table_only_error_receiver<table_receiver, chain::contract_table_query_exception> {
@@ -2649,23 +2776,20 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
 
       auto session = kv_database.get_kv_undo_stack()->top();
-      auto retrieve_primary_key = [&code,&scope,&producers_table,&session](uint64_t primary_key) {
-         auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(code, scope, producers_table, primary_key);
-         auto value = session.read(full_primary_key);
-         return *value;
-      };
+      auto prefix_primary_key =
+         backing_store::db_key_value_format::create_full_prefix_key(code, scope, producers_table, backing_store::db_key_value_format::key_type::primary);
 
       using done_func = decltype(done);
       using add_val_func = decltype(add_val);
-      using retrieve_prim_func = decltype(retrieve_primary_key);
+      using session_type = decltype(session);
 
       struct f64_secondary_key_receiver
       : backing_store::single_type_error_receiver<f64_secondary_key_receiver,
                                                   backing_store::secondary_index_view<float64_t>,
                                                   contract_table_query_exception> {
          f64_secondary_key_receiver(read_only::get_producers_result& result, done_func&& done,
-                                    add_val_func&& add_val, retrieve_prim_func&& retrieve_prim)
-         : result_(result), done_(done), add_val_(add_val), retrieve_primary_key_(retrieve_prim) {}
+                                    add_val_func&& add_val, eosio::session::shared_bytes&& prefix_primary_key, session_type& session)
+         : result_(result), done_(done), add_val_(add_val), prefix_primary_key_(std::move(prefix_primary_key)), session_(session) {}
 
          void add_only_row(const backing_store::secondary_index_view<float64_t>& row) {
             // needs to allow a second pass after limit is reached or time has passed, to allow "more" processing
@@ -2673,8 +2797,12 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
                finished_ = true;
             }
             else {
-               auto value = retrieve_primary_key_(row.primary_key);
-               add_val_(backing_store::primary_index_view::create(row.primary_key, value.data(), value.size()));
+               auto full_primary_key = backing_store::db_key_value_format::create_full_primary_key(prefix_primary_key_, row.primary_key);
+               auto value = session_.read(full_primary_key);
+               EOS_ASSERT(value,
+                          contract_table_query_exception,
+                          "Secondary key lookup identified primary key: ${pk}, but primary key not found in database", ("pk",row.primary_key));
+               add_val_(backing_store::primary_index_view::create(row.primary_key, value->data(), value->size()));
             }
          }
 
@@ -2691,10 +2819,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          read_only::get_producers_result& result_;
          done_func done_;
          add_val_func add_val_;
-         retrieve_prim_func retrieve_primary_key_;
+         eosio::session::shared_bytes prefix_primary_key_;
+         session_type& session_;
          bool finished_ = false;
       };
-      f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(retrieve_primary_key));
+      f64_secondary_key_receiver receiver(result, std::move(done), std::move(add_val), std::move(prefix_primary_key), session);
       auto kpe = receiver.keep_processing_entries();
       backing_store::rocksdb_contract_db_table_writer<f64_secondary_key_receiver, std::decay_t < decltype(kpe)>>
          writer(receiver, backing_store::key_context::standalone, kpe);

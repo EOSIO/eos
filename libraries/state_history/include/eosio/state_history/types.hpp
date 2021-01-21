@@ -20,6 +20,30 @@ struct big_vector_wrapper {
    T obj;
 };
 
+template <typename ST>
+inline void pack_varuint64(ST& ds, uint64_t val) {
+   do {
+      uint8_t b = uint8_t(val) & 0x7f;
+      val >>= 7;
+      b |= ((val > 0) << 7);
+      ds.write((char*)&b, 1);
+   } while (val);
+}
+
+template <typename ST>
+void pack_big_bytes(ST& ds, const eosio::chain::bytes& v) {
+   pack_varuint64(ds, v.size());
+   if (v.size())
+      ds.write(&v.front(), v.size());
+}
+
+template <typename ST>
+void pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
+   fc::raw::pack(ds, v.has_value());
+   if (v)
+      pack_big_bytes(ds, *v);
+}
+
 template <typename T>
 class opaque {
    std::vector<char> data;
@@ -41,7 +65,9 @@ class opaque {
 
    template <typename ST>
    void pack_to(ST& ds) const {
-      fc::raw::pack(ds, this->data);
+      // we need to pack as big vector because it can be used to hold the state delta object
+      // which would be as large as the eos snapshot when the nodeos restarted from a snapshot.
+      pack_big_bytes(ds, this->data);
    }
 };
 
