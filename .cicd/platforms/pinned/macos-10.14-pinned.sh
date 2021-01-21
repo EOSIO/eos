@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq postgres || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq rabbitmq postgres || :
 curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
 # install clang from source
