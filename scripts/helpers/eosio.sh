@@ -313,7 +313,7 @@ function ensure-libpq-and-libpqxx() {
 
     if [[ $ARCH == "Linux" ]]; then
         if [[ $CURRENT_USER != "root" ]] ; then
-            LIBPQ_SUDO="$SUDO_LOCATION -E"
+            LIBPQ_SUDO="$SUDO_LOCATION"
         fi
         if [[ $NAME == "Amazon Linux" ]]; then
             #install libpq
