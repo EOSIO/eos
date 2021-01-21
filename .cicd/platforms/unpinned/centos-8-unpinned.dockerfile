@@ -12,7 +12,7 @@ RUN yum update -y && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
-    dnf --enablerepo=PowerTools install -y doxygen ocaml
+    dnf --enablerepo=powertools install -y doxygen ocaml
 # install erlang and rabbitmq
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
     yum install -y erlang
