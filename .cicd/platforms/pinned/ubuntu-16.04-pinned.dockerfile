@@ -88,7 +88,7 @@ RUN git clone -b v0.7.3 https://github.com/stefanberger/libtpms && \
 # build swtpm
 RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     cd swtpm && \
-    pip3 install cryptography && \
+    pip3 install cryptography==3.2 && \
     autoreconf --install && \
     ./configure && \
     make -j$(nproc) install && \
