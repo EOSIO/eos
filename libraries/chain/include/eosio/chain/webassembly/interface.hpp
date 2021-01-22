@@ -793,7 +793,7 @@ namespace webassembly {
           * @param payer -  the account that pays for the storage costs.
           * @param buffer - new updated record.
           * 
-          * @details This function does not allow changing the primary key of a 
+          * @remark This function does not allow changing the primary key of a 
           * table row. The serialized data that is stored in the table row of a 
           * primary table may include a primary key and that primary key value 
           * could be changed by the contract calling the db_update_i64 intrinsic; 
