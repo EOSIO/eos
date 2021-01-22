@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
+buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' --build "${EOSIO_BUILD_ID:-$BUILDKITE_BUILD_ID}" .
 echo ":done: download successful"
 
 SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
