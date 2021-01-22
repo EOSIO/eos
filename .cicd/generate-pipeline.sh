@@ -153,7 +153,7 @@ EOF
 EOF
     fi
     # debug build
-    if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" == "$(echo "$LATEST_UBUNTU" | jq -r '.FILE_NAME')" ]]; then
+    if [[ "$PLATFORM_TYPE" == 'pinned' && "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" == "$(echo "$LATEST_UBUNTU" | jq -r '.FILE_NAME')" ]]; then
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - RelWithDebInfo Build"
     command: "./.cicd/build.sh"
