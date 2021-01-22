@@ -1,23 +1,9 @@
 steps:
   - wait
 
-  - label: ":git: Git tag test new pipeline"
-    command:
-      echo 'upload yaml file working'
+  - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
+    command:  "./.cicd/create-docker-from-binary.sh"
     agents:
-      queue: "automation-basic-builder-fleet"
-    timeout: ${TIMEOUT:-5}
-
-  - label: ":git: Git tag test new pipeline"
-    command:
-      echo 'upload yaml file working'
-    agents:
-      queue: "automation-basic-builder-fleet"
-    timeout: ${TIMEOUT:-5}
-
-  - label: ":git: Git tag test new pipeline"
-    command:
-      echo 'upload yaml file working'
-    agents:
-      queue: "automation-basic-builder-fleet"
-    timeout: ${TIMEOUT:-5}
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
+    timeout: ${TIMEOUT:-10}
