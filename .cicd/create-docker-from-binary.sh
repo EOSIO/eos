@@ -7,8 +7,12 @@ echo "$ $BUILDKITE_AGENT_ARTIFACT_DOWNLOAD"
 eval $BUILDKITE_AGENT_ARTIFACT_DOWNLOAD
 echo ":done: download successful"
 
-SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
-SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | sed 's.^/..' | tr '/' '_')
+[[ -z "$BRANCH" ]] && export BRANCH="$BUILDKITE_BRANCH"
+[[ -z "$COMMIT" ]] && export COMMIT="$BUILDKITE_COMMIT"
+[[ -z "$TAG" ]] && export TAG="$BUILDKITE_TAG"
+
+SANITIZED_BRANCH=$(echo "$BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
+SANITIZED_TAG=$(echo "$TAG" | sed 's.^/..' | tr '/' '_')
 echo "$SANITIZED_BRANCH"
 echo "$SANITIZED_TAG"
 
@@ -25,17 +29,17 @@ eval $DOCKER_BUILD_GEN
 
 EOSIO_REGS=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
 for REG in ${EOSIO_REGS[@]}; do
-    DOCKER_TAG_COMMIT="docker tag eos_image:$BUILD_TAG $REG:$BUILDKITE_COMMIT"
+    DOCKER_TAG_COMMIT="docker tag eos_image:$BUILD_TAG $REG:$COMMIT"
     DOCKER_TAG_BRANCH="docker tag eos_image:$BUILD_TAG $REG:$SANITIZED_BRANCH"
     echo -e "$ Tagging Images: \n$DOCKER_TAG_COMMIT \n$DOCKER_TAG_BRANCH"
     eval $DOCKER_TAG_COMMIT 
     eval $DOCKER_TAG_BRANCH
-    DOCKER_PUSH_COMMIT="docker push $REG:$BUILDKITE_COMMIT"
+    DOCKER_PUSH_COMMIT="docker push $REG:$COMMIT"
     DOCKER_PUSH_BRANCH="docker push $REG:$SANITIZED_BRANCH"
     echo -e "$ Pushing Images: \n$DOCKER_PUSH_COMMIT \n$DOCKER_PUSH_BRANCH"
     eval $DOCKER_PUSH_COMMIT 
     eval $DOCKER_PUSH_BRANCH
-    CLEAN_IMAGE_COMMIT="docker rmi $REG:$BUILDKITE_COMMIT"
+    CLEAN_IMAGE_COMMIT="docker rmi $REG:$COMMIT"
     CLEAN_IMAGE_BRANCH="docker rmi $REG:$SANITIZED_BRANCH"
     echo -e "Cleaning Up: \n$CLEAN_IMAGE_COMMIT \n$CLEAN_IMAGE_BRANCH$"
     eval $CLEAN_IMAGE_COMMIT 
