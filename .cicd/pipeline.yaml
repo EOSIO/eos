@@ -1,4 +1,16 @@
- - wait:
+- label: ":git: Git tag test new pipeline"
+  command:
+    echo 'upload yaml file working'
+  agents:
+    queue: "automation-basic-builder-fleet"
+  timeout: ${TIMEOUT:-5}
+
+- label: ":git: Git tag test new pipeline"
+  command:
+    echo 'upload yaml file working'
+  agents:
+    queue: "automation-basic-builder-fleet"
+  timeout: ${TIMEOUT:-5}
 
 - label: ":git: Git tag test new pipeline"
   command:
