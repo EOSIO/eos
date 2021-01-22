@@ -4,5 +4,5 @@ steps:
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
     command:  "./.cicd/create-docker-from-binary.sh"
     agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+      queue: "automation-eks-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
