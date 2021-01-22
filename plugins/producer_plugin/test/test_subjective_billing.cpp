@@ -22,9 +22,9 @@ BOOST_AUTO_TEST_CASE( subjective_bill_test ) {
    transaction_id_type id4 = sha256::hash( "4" );
    transaction_id_type id5 = sha256::hash( "5" );
    transaction_id_type id6 = sha256::hash( "6" );
-   account_name a = N("a");
-   account_name b = N("b");
-   account_name c = N("c");
+   account_name a = "a"_n;
+   account_name b = "b"_n;
+   account_name c = "c"_n;
 
    {  // Failed transactions remain until expired in subjective billing.
       subjective_billing sub_bill;
