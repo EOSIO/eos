@@ -159,10 +159,13 @@ if(ENABLE_MULTIVERSION_PROTOCOL_TEST)
            -v --clean-run --dump-error-detail --alternate-version-labels-file ${ALTERNATE_VERSION_LABELS_FILE} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_multiple_version_protocol_feature_mv_test PROPERTY LABELS mixed_version_tests)
 
-  add_test(NAME nodeos_extra_packed_data_test COMMAND tests/nodeos_extra_packed_data_test.py 
-         --alternate-version-labels-file ${ALTERNATE_VERSION_LABELS_FILE} -v --clean-run --prod-count 8 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_property(TEST nodeos_extra_packed_data_test PROPERTY LABELS mixed_version_tests)
+  add_test(NAME nodeos_extra_packed_data_multiversion_test COMMAND tests/nodeos_extra_packed_data_test.py 
+         --alternate-version-labels-file ${ALTERNATE_VERSION_LABELS_FILE} -v --clean-run -p 8 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST nodeos_extra_packed_data_multiversion_test PROPERTY LABELS mixed_version_tests)
 endif()
+
+add_test(NAME nodeos_extra_packed_data_test COMMAND tests/nodeos_extra_packed_data_test.py -v --clean-run -p 8 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_extra_packed_data_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME nodeos_producer_watermark_lr_test COMMAND tests/nodeos_producer_watermark_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_producer_watermark_lr_test PROPERTY LABELS long_running_tests)

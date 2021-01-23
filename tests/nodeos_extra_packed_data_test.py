@@ -29,8 +29,8 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key"
-                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
+args = TestHelper.parse_args({"--host","--port","-p","--defproducera_prvt_key","--defproducerb_prvt_key"
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--clean-run"
                               ,"--sanity-test","--wallet-port", "--alternate-version-labels-file"})
 server=args.host
 port=args.port
@@ -41,8 +41,7 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.leave_running
-prodCount=args.prod_count
-onlyBios=args.only_bios
+pnodes=args.p
 killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
@@ -78,16 +77,18 @@ try:
         Print("Stand up cluster")
         specificExtraNodeosArgs = {}
         associatedNodeLabels = {}
-        if len(specificExtraNodeosArgs):
-            specificExtraNodeosArgs[prodCount - 2] = " --backing-store=rocksdb"
-            specificExtraNodeosArgs[prodCount - 1] = " --backing-store=rocksdb"
+        if pnodes > 1:
+            specificExtraNodeosArgs[pnodes - 1] = " --backing-store=rocksdb"
+        if pnodes > 3:
+            specificExtraNodeosArgs[pnodes - 2] = " --backing-store=rocksdb"
 
-        for i in range( int(prodCount / 2) ):
-            associatedNodeLabels[str(i)] = "209"
+        if alternateVersionLabelsFile is not None:
+            #that means we are in multiversion mode
+            for i in range( int(pnodes / 2) ):
+                associatedNodeLabels[str(i)] = "209"
         
-        if cluster.launch(totalNodes=prodCount, 
-                          prodCount=1, 
-                          onlyBios=onlyBios, 
+        if cluster.launch(totalNodes=pnodes, 
+                          pnodes=1,
                           dontBootstrap=dontBootstrap,
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
@@ -150,9 +151,11 @@ try:
     accounts=[testeraAccount, testerbAccount]
     cluster.validateAccounts(accounts)
 
-    for i in range(2):
+    trxNumber = 2
+    postedTrxs = []
+    for i in range(trxNumber):
         if i == 1:
-            node = cluster.getNode(prodCount - 1)
+            node = cluster.getNode(pnodes - 1)
         
         transferAmount="{0}.0 {1}".format(i + 1, CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.defproduceraAccount.name, testeraAccount.name))
@@ -172,28 +175,21 @@ try:
         packedTrx["packed_trx"] = packed_trx_param + "00000000"
 
         exitMsg = "failed to send packed transaction: %s" % (packedTrx)
-        node.processCurlCmd("chain", "send_transaction", json.dumps(packedTrx), silentErrors=False, exitOnError=True, exitMsg=exitMsg)
+        sentTrx = node.processCurlCmd("chain", "send_transaction", json.dumps(packedTrx), silentErrors=False, exitOnError=True, exitMsg=exitMsg)
+        Print("sent transaction json: %s" % (sentTrx))
+        trx_id = sentTrx["transaction_id"]
+        postedTrxs.append(trx_id)
 
-    info = node.getInfo(exitOnError=True)
-    oldLIB = int(info["last_irreversible_block_num"])
+    assert len(postedTrxs) == trxNumber, Print("posted transactions number %d doesn't match %d" % (len(postedTrxs), trxNumber))
 
-    blocksGap = (12 * (2 * math.floor(2 * prodCount / 3)) + 12) * 1.3 #adding 30% more to be on the safe side
-    Print("Running nodeos idle for maximum %d seconds" % (blocksGap))
-    step = 10
-    newLIB = 0
-    for i in range(step):
-        sleepTime = int(blocksGap / step)
-        time.sleep(sleepTime)
-        info = node.getInfo(exitOnError=True)
-        newLIB = int(info["last_irreversible_block_num"])
-
-        if newLIB > oldLIB + 1:
-            Print("LIB advanced. new LIB: %d old LIB: %d" % (newLIB, oldLIB))
-            Print("sleep time : %d" %( i * sleepTime ))
-            break
-
-    assert newLIB > oldLIB + 1, Print("ERROR: LIB doesn't move %d" % (newLIB))
-
+    for trxId in postedTrxs:
+        for cur_node in cluster.getNodes():
+            trxBlock = cur_node.getBlockIdByTransId(trx_id)
+            assert trxBlock, Print("Transaction %s wasn't posted" % (trx_id))
+            timeout = (12 * pnodes) * 1.3
+            passed = cur_node.waitForBlock(trxBlock + 12 * pnodes, timeout)
+            assert passed, Print("Node %d not advanced head block within timeout")
+    
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
