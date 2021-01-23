@@ -181,12 +181,18 @@ try:
         postedTrxs.append(trx_id)
 
     assert len(postedTrxs) == trxNumber, Print("posted transactions number %d doesn't match %d" % (len(postedTrxs), trxNumber))
-
-    for trxId in postedTrxs:
-        trxBlock = node.getBlockIdByTransId(trx_id)
+    
+    for trxId in postedTrxs:        
+        attemptCnt = 10
+        trxBlock = None
+        while trxBlock is None and attemptCnt > 0:
+            trxBlock = node.getBlockIdByTransId(trx_id)
+            attemptCnt = attemptCnt - 1
+        
         assert trxBlock, Print("Transaction %s wasn't posted" % (trx_id))
 
         for cur_node in cluster.getNodes():
+
             timeout = (12 * pnodes) * 1.3
             passed = cur_node.waitForBlock(trxBlock + 12 * pnodes, timeout)
             assert passed, Print("Node %d not advanced head block within timeout")
