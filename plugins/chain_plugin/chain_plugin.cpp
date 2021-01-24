@@ -2297,10 +2297,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       ub_key.resize(ub_key_size);
       status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
       EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   }
-
-   // Set upper bound iterator
-   if (has_no_bound) {
+   }else if(has_no_bound) {
        //Set the last item as the upper bound
        ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
        auto status_nb = ub_itr->kv_it_move_to_end();
