@@ -88,7 +88,7 @@ try:
                 associatedNodeLabels[str(i)] = "209"
         
         if cluster.launch(totalNodes=pnodes, 
-                          pnodes=1,
+                          pnodes=pnodes,
                           dontBootstrap=dontBootstrap,
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
