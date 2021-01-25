@@ -370,11 +370,7 @@ public:
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
-   constexpr uint32_t prefix_size() const { return  1 + 2 * sizeof(uint64_t); }
-   void convert_key(const string& index_type, const string& encode_type, const string& index_value, vector<char>& bin)const;
-   void make_prefix(eosio::name table_name,  eosio::name index_name, uint8_t status, vector<char> &prefix)const;
    get_table_rows_result get_kv_table_rows( const get_kv_table_rows_params& params )const;
-   get_table_rows_result get_kv_table_rows_context( const read_only::get_kv_table_rows_params& p, eosio::chain::kv_context &kv_context, const abi_def &abi )const;
 
    struct get_table_by_scope_params {
       name                 code; // mandatory
