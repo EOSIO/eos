@@ -10,7 +10,6 @@
 namespace b1::rodeos {
 
 inline constexpr eosio::name kvram_db_id{ "eosio.kvram" };
-inline constexpr eosio::name kvdisk_db_id{ "eosio.kvdisk" };
 inline constexpr eosio::name state_db_id{ "eosio.state" };
 
 enum class kv_it_stat {
@@ -219,7 +218,6 @@ struct db_view_state {
    const kv_database_config                          limits;
    const kv_database_config                          kv_state_limits{ 1024, std::numeric_limits<uint32_t>::max() };
    kv_context_rocksdb                                kv_ram;
-   kv_context_rocksdb                                kv_disk;
    kv_context_rocksdb                                kv_state;
    std::vector<std::unique_ptr<kv_iterator_rocksdb>> kv_iterators;
    std::vector<size_t>                               kv_destroyed_iterators;
@@ -228,7 +226,6 @@ struct db_view_state {
                  const std::vector<char>& contract_kv_prefix)
        : receiver{ receiver }, database{ database }, //
          kv_ram{ database, write_session, contract_kv_prefix, kvram_db_id, receiver, limits },
-         kv_disk{ database, write_session, contract_kv_prefix, kvdisk_db_id, receiver, limits },
          kv_state{ database, write_session, contract_kv_prefix, state_db_id, receiver, kv_state_limits },
          kv_iterators(1) {}
 
@@ -337,8 +334,6 @@ struct db_callbacks {
    kv_context_rocksdb& kv_get_db(uint64_t db) {
       if (db == kvram_db_id.value)
          return derived().get_db_view_state().kv_ram;
-      else if (db == kvdisk_db_id.value)
-         return derived().get_db_view_state().kv_disk;
       else if (db == state_db_id.value)
          return derived().get_db_view_state().kv_state;
       throw std::runtime_error("Bad key-value database ID");

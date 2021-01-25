@@ -215,8 +215,6 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
    view_state.kv_ram.enable_write           = true;
    view_state.kv_ram.bypass_receiver_check  = true;
-   view_state.kv_disk.enable_write          = true;
-   view_state.kv_disk.bypass_receiver_check = true;
    view_state.kv_state.enable_write         = true;
    uint32_t num                             = deltas.unpack_size();
    for (uint32_t i = 0; i < num; ++i) {
@@ -311,7 +309,6 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    snapshot.check_write(result);
    chaindb_state chaindb_state;
    db_view_state view_state{ name, *snapshot.db, *snapshot.write_session, snapshot.partition->contract_kv_prefix };
-   view_state.kv_disk.enable_write = true;
    view_state.kv_ram.enable_write  = true;
    filter::callbacks cb{ *filter_state, chaindb_state, view_state };
    filter_state->max_console_size = 10000;

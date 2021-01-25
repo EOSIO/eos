@@ -234,7 +234,6 @@ inline key_type make_key(T val) {
 #endif
 
 static constexpr eosio::name kv_ram = "eosio.kvram"_n;
-static constexpr eosio::name kv_disk = "eosio.kvdisk"_n;
 
 struct default_constructor_tag;
 
