@@ -22,6 +22,15 @@ Create a new EOSIO blockchain account
 ```sh
 cleos create account [creator account name] [new account name][OwnerKey] [ActiveKey]
 ```
+Where:
+
+[creator account name] = name of the existing account that authorizes the creation of a new account
+
+[new account name] = The name of the new account account adhering to EOSIO account naming conventions
+
+[OwnerKey] = The owner permissions linked to the ownership of the account
+
+[ActiveKey] = The active permissions linked with the creator account
 
 [[info | Recommend]]
 | `ActiveKey` is optional but recommended.
