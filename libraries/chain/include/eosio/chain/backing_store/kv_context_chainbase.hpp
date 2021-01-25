@@ -56,19 +56,16 @@ namespace eosio { namespace chain {
       int32_t kv_it_compare(const kv_iterator& rhs) override {
          EOS_ASSERT(rhs.is_kv_chainbase_context_iterator(), kv_bad_iter, "Incompatible key-value iterators");
          auto& r = static_cast<const kv_iterator_chainbase&>(rhs);
+         if (!current && !r.current)
+            return 0;
+
          EOS_ASSERT(contract == r.contract, kv_bad_iter, "Incompatible key-value iterators");
          EOS_ASSERT(!current || !tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
          EOS_ASSERT(!r.current || !tracker.is_removed(*r.current), kv_bad_iter, "Iterator to erased element");
-         if (!r.current) {
-            if (!current)
-               return 0;
-            else {
-               return -1;
-            }
+         if (!current || !r.current) {
+            return r.current - current > 0; 
          }
-         if (!current) {
-            return 1;
-         }
+         
          return compare_blob(current->kv_key, r.current->kv_key);
       }
 
