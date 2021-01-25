@@ -26,3 +26,17 @@ Buys RAM in value of 0.1 SYS tokens for account `alice`:
 ```sh
 cleos system buyram alice alice "0.1 SYS" -p alice@active
 ```
+**Example Output**
+
+```sh
+# cleos system buyram alice alice "0.1 SYS" -p alice@active
+executed transaction: aa243c30571a5ecc8458cb971fa366e763682d89b636fe9dbe7d28327d1cc4e9  128 bytes  283 us
+#         eosio <= eosio::buyram                {"payer":"alice","receiver":"alice","quant":"0.1000 SYS"}
+#   eosio.token <= eosio.token::transfer        {"from":"alice","to":"eosio.ram","quantity":"0.0995 SYS","memo":"buy ram"}
+#   eosio.token <= eosio.token::transfer        {"from":"alice","to":"eosio.ramfee","quantity":"0.0005 SYS","memo":"ram fee"}
+#         alice <= eosio.token::transfer        {"from":"alice","to":"eosio.ram","quantity":"0.0995 SYS","memo":"buy ram"}
+#     eosio.ram <= eosio.token::transfer        {"from":"alice","to":"eosio.ram","quantity":"0.0995 SYS","memo":"buy ram"}
+#         alice <= eosio.token::transfer        {"from":"alice","to":"eosio.ramfee","quantity":"0.0005 SYS","memo":"ram fee"}
+#  eosio.ramfee <= eosio.token::transfer        {"from":"alice","to":"eosio.ramfee","quantity":"0.0005 SYS","memo":"ram fee"}
+warning: transaction executed locally, but may not be confirmed by the network yet         ]
+```
