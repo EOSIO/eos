@@ -4,10 +4,10 @@
 
 namespace b1::rodeos {
 
-// kv database which stores rodeos state, including a mirror of nodeos state
+// Used as db parameter to kv_table, not used for anything anymore
 inline constexpr eosio::name state_database{ "eosio.state" };
 
-// account within state_database which stores state
-inline constexpr eosio::name state_account{ "state" };
+// account which stores nodeos state
+inline constexpr eosio::name state_account{ "eosio.state" };
 
 } // namespace b1::rodeos
