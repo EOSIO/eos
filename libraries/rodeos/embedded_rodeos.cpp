@@ -228,6 +228,7 @@ extern "C" rodeos_query_handler* rodeos_create_query_handler(rodeos_error* error
       shared_state->max_console_size = max_console_size;
       shared_state->wasm_cache_size  = wasm_cache_size;
       shared_state->max_exec_time_ms = max_exec_time_ms;
+      shared_state->max_action_return_value_size = MAX_SIZE_OF_BYTE_ARRAYS;
       shared_state->contract_dir     = contract_dir ? contract_dir : "";
       return std::make_unique<rodeos_query_handler>(partition->obj, shared_state).release();
    });
