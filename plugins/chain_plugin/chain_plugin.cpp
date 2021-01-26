@@ -2222,12 +2222,11 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
    ///////////////////////////////////////////////////////////
    bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
    bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-   unbounded = !has_lower_bound || !has_upper_bound;
 
-   bool has_no_bound = (!has_lower_bound && !has_upper_bound && !point_query);
+   const bool has_default_lower_bound = !has_lower_bound && !p.reverse;
+   const bool has_default_upper_bound = !has_upper_bound && p.reverse;
 
-   // reverse mode has upper_bound value, non-reverse and point query has lower bound value
-   EOS_ASSERT((p.reverse && has_upper_bound) || (!p.reverse && has_lower_bound) || (has_lower_bound && point_query) || (has_no_bound), chain::contract_table_query_exception, "Unknown/Invalid range: ${t} ${i}", ("t", p.table)("i", p.index_name));
+   unbounded = (!has_lower_bound && !has_default_lower_bound) || (!has_upper_bound && !has_default_upper_bound);
 
    vector<char> lb_key;
    const string &lower_bound = *p.lower_bound;
@@ -2282,6 +2281,15 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
          status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
          EOS_ASSERT(lb_key_size == lb_key_actual_size, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
       }
+   }else if(has_default_lower_bound) {
+       //Set the first entry as default lower bound
+       lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
+       lb_itr->kv_it_move_to_end();
+       status_lb = lb_itr->kv_it_next(&lb_key_size, &lb_value_size);
+       EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Set default lower bound: invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+       lb_key.resize(lb_key_size);
+       status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
+       EOS_ASSERT(lb_key_size == lb_key_actual_size, chain::contract_table_query_exception, "Set default lower bound: invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
    }
 
   // Find upper bound iterator
@@ -2297,16 +2305,15 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
       ub_key.resize(ub_key_size);
       status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
       EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   }else if(has_no_bound) {
-       //Set the last item as the upper bound
+   }else if(has_default_upper_bound) {
+       //Set the last entry as default upper bound
        ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-       auto status_nb = ub_itr->kv_it_move_to_end();
-       EOS_ASSERT(status_ub == chain::kv_it_stat::iterator_end, chain::contract_table_query_exception,  "Set upper bound: invalid end of iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+       ub_itr->kv_it_move_to_end();
        status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
-       EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Set upper bound: invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+       EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Set default upper bound: invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
        ub_key.resize(ub_key_size);
        status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
-       EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Set upper bound: invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
+       EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Set default upper bound: invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
    }
 
    kv_it_stat status;
@@ -2411,11 +2418,11 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
             auto next_key_bytes = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
 
             boost::algorithm::hex(next_key_bytes.begin(), next_key_bytes.end(), std::back_inserter(result.next_key_bytes));
-       }
+         }
       } // end of for
    };
 
-   if( p.reverse || has_no_bound) {
+   if (p.reverse){
      walk_table_row_range( ub_itr, lb_itr, true);
    } else {
      walk_table_row_range( lb_itr, ub_itr, false );
@@ -2423,11 +2430,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows_context( const rea
 
    // Set result.next_key
    set_kv_next_key(p.encode_type, index_type, result);
-
-   if (has_no_bound && !p.reverse) {
-       //Restore order
-       std::reverse(result.rows.begin(), result.rows.end());
-   }
 
    return result;
 }
