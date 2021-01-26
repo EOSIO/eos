@@ -1023,7 +1023,7 @@ struct callbacks {
       throw std::runtime_error("kv_erase not implemented in tester");
    }
 
-   int64_t kv_set(uint64_t contract, span<const char> key, span<const char> value) {
+   int64_t kv_set(uint64_t contract, span<const char> key, span<const char> value, uint64_t payer) {
       throw std::runtime_error("kv_set not implemented in tester");
    }
 
