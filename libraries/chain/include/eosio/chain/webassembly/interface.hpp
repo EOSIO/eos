@@ -304,35 +304,213 @@ namespace eosio { namespace chain { namespace webassembly {
          */
          void set_privileged(account_name account, bool is_priv);
 
-         // producer api
-         int32_t get_active_producers(legacy_span<account_name>) const;
+         /**
+          * Get the list of active producer names.
+          *
+          * @ingroup producer
+          * @param[out] producers - output buffer containing the names of the current active producer names.
+          *
+          * @return number of bytes required (if the buffer is empty), or the number of bytes written to the buffer.
+         */
+         int32_t get_active_producers(legacy_span<account_name> producers) const;
 
-         // crypto api
-         void assert_recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<const char>) const;
-         int32_t recover_key(legacy_ptr<const fc::sha256>, legacy_span<const char>, legacy_span<char>) const;
-         void assert_sha256(legacy_span<const char>, legacy_ptr<const fc::sha256>) const;
-         void assert_sha1(legacy_span<const char>, legacy_ptr<const fc::sha1>) const;
-         void assert_sha512(legacy_span<const char>, legacy_ptr<const fc::sha512>) const;
-         void assert_ripemd160(legacy_span<const char>, legacy_ptr<const fc::ripemd160>) const;
-         void sha256(legacy_span<const char>, legacy_ptr<fc::sha256>) const;
-         void sha1(legacy_span<const char>, legacy_ptr<fc::sha1>) const;
-         void sha512(legacy_span<const char>, legacy_ptr<fc::sha512>) const;
-         void ripemd160(legacy_span<const char>, legacy_ptr<fc::ripemd160>) const;
+         /**
+          * Tests a given public key with the recovered public key from digest and signature.
+          *
+          * @ingroup crypto
+          * @param digest - digest of the message that was signed.
+          * @param sig - signature.
+          * @param pub - public key.
+         */
+         void assert_recover_key(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_span<const char> pub) const;
 
-         // permission api
-         bool check_transaction_authorization(legacy_span<const char>, legacy_span<const char>, legacy_span<const char>) const;
-         bool check_permission_authorization(account_name, permission_name, legacy_span<const char>, legacy_span<const char>, uint64_t) const;
-         int64_t get_permission_last_used(account_name, permission_name) const;
-         int64_t get_account_creation_time(account_name) const;
+         /**
+          * Calculates the public key used for a given signature on a given digest.
+          *
+          * @ingroup crypto
+          * @param digest - digest of the message that was signed.
+          * @param sig - signature.
+          * @param[out] pub - output buffer for the public key result.
+          *
+          * @return size of data written on the buffer.
+         */
+         int32_t recover_key(legacy_ptr<const fc::sha256> digest, legacy_span<const char> sig, legacy_span<char> pub) const;
 
-         // authorization api
-         void require_auth(account_name) const;
-         void require_auth2(account_name, permission_name) const;
-         bool has_auth(account_name) const;
-         void require_recipient(account_name);
-         bool is_account(account_name) const;
+         /**
+          * Tests if the sha256 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha256(legacy_span<const char> data, legacy_ptr<const fc::sha256> hash_val) const;
 
-         // system api
+         /**
+          * Tests if the sha1 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha1(legacy_span<const char> data, legacy_ptr<const fc::sha1> hash_val) const;
+
+         /**
+          * Tests if the sha512 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_sha512(legacy_span<const char> data, legacy_ptr<const fc::sha512> hash_val) const;
+
+         /**
+          * Tests if the ripemd160 hash generated from data matches the provided digest.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data you want to hash.
+          * @param hash_val - digest to compare to.
+         */
+         void assert_ripemd160(legacy_span<const char> data, legacy_ptr<const fc::ripemd160> hash_val) const;
+
+         /**
+          * Hashes data using SHA256.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param[out] hash_val - the resulting digest.
+         */
+         void sha256(legacy_span<const char> data, legacy_ptr<fc::sha256> hash_val) const;
+
+         /**
+          * Hashes data using SHA1.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param[out] hash_val - the resulting digest.
+         */
+         void sha1(legacy_span<const char> data, legacy_ptr<fc::sha1> hash_val) const;
+
+         /**
+          * Hashes data using SHA512.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param[out] hash_val - the hash
+         */
+         void sha512(legacy_span<const char> data, legacy_ptr<fc::sha512> hash_val) const;
+
+         /**
+          * Hashes data using RIPEMD160.
+          *
+          * @ingroup crypto
+          * @param data - a span containing the data.
+          * @param[out] hash_val - computed digest.
+         */
+         void ripemd160(legacy_span<const char> data, legacy_ptr<fc::ripemd160> hash_val) const;
+
+         /**
+          * Checks if a transaction is authorized by a provided set of keys and permissions.
+          *
+          * @ingroup permission
+          * @param trx_data - serialized transaction.
+          * @param pubkeys_data - serialized vector of provided public keys.
+          * @param perms_data - serialized vector of provided permissions (empty permission name acts as wildcard).
+          *
+          * @retval true if transaction is authorized.
+          * @retval false otherwise.
+         */
+         bool check_transaction_authorization(legacy_span<const char> trx_data, legacy_span<const char> pubkeys_data, legacy_span<const char> perms_data) const;
+
+         /**
+          * Checks if a permission is authorized by a provided delay and a provided set of keys and permissions.
+          *
+          * @ingroup permission
+          * @param account - the account owner of the permission.
+          * @param permission - the name of the permission to check for authorization.
+          * @param pubkeys_data - serialized vector of provided public keys.
+          * @param perms_data - serialized vector of provided permissions (empty permission name acts as wildcard).
+          * @param delay_us - the provided delay in microseconds (cannot exceed INT64_MAX)
+          *
+          * @retval true if permission is authorized.
+          * @retval false otherwise.
+         */
+         bool check_permission_authorization(account_name account, permission_name permission, legacy_span<const char> pubkeys_data, legacy_span<const char> perms_data, uint64_t delay_us) const;
+
+         /**
+          * Returns the last used time of a permission.
+          *
+          * @ingroup permission
+          * @param account - the account owner of the permission.
+          * @param permission - the name of the permission.
+          *
+          * @return the last used time (in microseconds since Unix epoch) of the permission.
+         */
+         int64_t get_permission_last_used(account_name account, permission_name permission) const;
+
+         /**
+          * Returns the creation time of an account.
+          *
+          * @ingroup permission
+          * @param account - the account name.
+          *
+          * @return the creation time (in microseconds since Unix epoch) of the account.
+         */
+         int64_t get_account_creation_time(account_name account) const;
+
+         /**
+          * Verifies that an account exists in the set of provided auths on an action. Fails if not found.
+          *
+          * @ingroup authorization
+          * @param account - the name of the account to be verified.
+         */
+         void require_auth(account_name account) const;
+
+         /**
+          * Verifies that an account with a specific permission exists in the set of provided auths on an action,
+          *
+          * @ingroup authorization
+          * @param account - the name of the account to be verified.
+          * @param permission - the name of the permission to be verified.
+         */
+         void require_auth2(account_name account, permission_name permission) const;
+
+         /**
+          * Test whether an account exists in the set of provided auths on an action.
+          *
+          * @ingroup authorization
+          * @param account - name of the account to be tested.
+          *
+          * @retval true if the action has an auth with the account name.
+          * @retval false otherwise.
+         */
+         bool has_auth(account_name account) const;
+
+         /**
+          * Add the specified account to set of accounts to be notified.
+          *
+          * @ingroup authorization
+          * @param recipient - account to be notified.
+         */
+         void require_recipient(account_name recipient);
+
+         /**
+          * Verifies that n is an existing account.
+          *
+          * @ingroup authorization
+          * @param account - name of the account to check.
+          *
+          * @return true if the account exists.
+          * @return false otherwise.
+         */
+         bool is_account(account_name account) const;
+
+         /**
+          * Returns the time in microseconds from 1970 of the current block.
+          *
+          * @ingroup system
+          *
+          * @return time in microseconds from 1970 of the current block.
+         */
          uint64_t current_time() const;
 
          /**
