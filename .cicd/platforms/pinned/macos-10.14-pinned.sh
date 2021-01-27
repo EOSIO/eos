@@ -7,7 +7,7 @@ brew install git cmake python libtool libusb graphviz automake wget gmp llvm@7 p
 git clone --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git clang8
 cd clang8
 git checkout 18e41dc
-sed -i 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
+sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
 cd tools
 git clone --single-branch --branch release_80 https://github.com/llvm-mirror/lld.git
 cd lld
@@ -20,7 +20,7 @@ cd ../
 git clone --single-branch --branch release_80 https://github.com/llvm-mirror/clang.git clang
 cd clang
 git checkout a03da8b
-sed -i 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
+sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
 cd tools
 mkdir extra
 cd extra
