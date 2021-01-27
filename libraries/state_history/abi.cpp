@@ -61,7 +61,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "row", "fields": [
+            "name": "row_v0", "fields": [
                 { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
             ]
@@ -69,7 +69,19 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "table_delta_v0", "fields": [
                 { "name": "name", "type": "string" },
-                { "name": "rows", "type": "row[]" }
+                { "name": "rows", "type": "row_v0[]" }
+            ]
+        },
+        {
+            "name": "row_v1", "fields": [
+                { "name": "present", "type": "uint8" },
+                { "name": "data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "table_delta_v1", "fields": [
+                { "name": "name", "type": "string" },
+                { "name": "rows", "type": "row_v1[]" }
             ]
         },
         {
@@ -361,10 +373,10 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "key_value_v0", "fields": [
-                { "type": "name", "name": "database" },
                 { "type": "name", "name": "contract" },
                 { "type": "bytes", "name": "key" },
-                { "type": "bytes", "name": "value" }
+                { "type": "bytes", "name": "value" },
+                { "type": "name", "name": "payer" }
             ]
         },
         {
@@ -416,6 +428,28 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32", "name": "max_inline_action_size" },
                 { "type": "uint16", "name": "max_inline_action_depth" },
                 { "type": "uint16", "name": "max_authority_depth" }
+            ]
+        },
+        {
+            "name": "chain_config_v1", "fields": [
+                { "type": "uint64", "name": "max_block_net_usage" },
+                { "type": "uint32", "name": "target_block_net_usage_pct" },
+                { "type": "uint32", "name": "max_transaction_net_usage" },
+                { "type": "uint32", "name": "base_per_transaction_net_usage" },
+                { "type": "uint32", "name": "net_usage_leeway" },
+                { "type": "uint32", "name": "context_free_discount_net_usage_num" },
+                { "type": "uint32", "name": "context_free_discount_net_usage_den" },
+                { "type": "uint32", "name": "max_block_cpu_usage" },
+                { "type": "uint32", "name": "target_block_cpu_usage_pct" },
+                { "type": "uint32", "name": "max_transaction_cpu_usage" },
+                { "type": "uint32", "name": "min_transaction_cpu_usage" },
+                { "type": "uint32", "name": "max_transaction_lifetime" },
+                { "type": "uint32", "name": "deferred_trx_expiration_window" },
+                { "type": "uint32", "name": "max_transaction_delay" },
+                { "type": "uint32", "name": "max_inline_action_size" },
+                { "type": "uint16", "name": "max_inline_action_depth" },
+                { "type": "uint16", "name": "max_authority_depth" },
+                { "type": "uint32", "name": "max_action_return_value_size" }
             ]
         },
         {
@@ -601,7 +635,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "prunable_data_type", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
         { "name": "context_free_segment_type", "types": ["signature", "bytes"] },
 
-        { "name": "table_delta", "types": ["table_delta_v0"] },
+        { "name": "table_delta", "types": ["table_delta_v0", "table_delta_v1"] },
         { "name": "account", "types": ["account_v0"] },
         { "name": "account_metadata", "types": ["account_metadata_v0"] },
         { "name": "code", "types": ["code_v0"] },
@@ -613,7 +647,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "key_value", "types": ["key_value_v0"] },
-        { "name": "chain_config", "types": ["chain_config_v0"] },
+        { "name": "chain_config", "types": ["chain_config_v0", "chain_config_v1"] },
         { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
@@ -640,7 +674,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "cntrctidx3", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx4", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "cntrctidx5", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "keyvalue", "type": "key_value", "key_names": ["database", "contract", "key"] },
+        { "name": "keyvalue", "type": "key_value", "key_names": ["contract", "key"] },
         { "name": "global.pty", "type": "global_property", "key_names": [] },
         { "name": "generatedtrx", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "protocolst", "type": "protocol_state", "key_names": [] },

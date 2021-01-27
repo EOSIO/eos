@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    /* these are both unfortunate that we didn't make the return type an int64_t */

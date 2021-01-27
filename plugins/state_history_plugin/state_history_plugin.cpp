@@ -46,12 +46,12 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
-   fc::optional<state_history_traces_log>                     trace_log;
-   fc::optional<state_history_chain_state_log>                chain_state_log;
+   std::optional<state_history_traces_log>                    trace_log;
+   std::optional<state_history_chain_state_log>               chain_state_log;
    bool                                                       stopping = false;
-   fc::optional<scoped_connection>                            applied_transaction_connection;
-   fc::optional<scoped_connection>                            block_start_connection;
-   fc::optional<scoped_connection>                            accepted_block_connection;
+   std::optional<scoped_connection>                           applied_transaction_connection;
+   std::optional<scoped_connection>                           block_start_connection;
+   std::optional<scoped_connection>                           accepted_block_connection;
    string                                                     endpoint_address = "0.0.0.0";
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
@@ -89,7 +89,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending  = false;
       bool                                       sent_abi = false;
       std::vector<std::vector<char>>             send_queue;
-      fc::optional<get_blocks_request_v0>        current_request;
+      std::optional<get_blocks_request_v0>       current_request;
       bool                                       need_to_send_update = false;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
@@ -120,7 +120,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
                    fc::raw::unpack(ds, req);
-                   req.visit(*self);
+                   std::visit(*self, req);
                    self->start_read();
                 });
              });
@@ -199,7 +199,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void operator()(get_blocks_ack_request_v0& req) {
          fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",req));
-         if (!current_request) {
+         if (!current_request.has_value()) {
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
          }
@@ -226,7 +226,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (current_request->fetch_block)
                   result.block = plugin->get_block(current_request->start_block_num);
                if (current_request->fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_traces(current_request->start_block_num);
+                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
                }
                if (current_request->fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
@@ -378,7 +378,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (trace_log)
          trace_log->store(chain_plug->chain().db(), block_state);
       if (chain_state_log)
-         chain_state_log->store(chain_plug->chain().db(), block_state);
+         chain_state_log->store(chain_plug->chain().kv_db(), block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {

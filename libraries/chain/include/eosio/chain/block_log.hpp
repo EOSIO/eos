@@ -3,6 +3,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/genesis_state.hpp>
 #include <eosio/chain/block_log_config.hpp>
+#include <future>
 
 namespace eosio { namespace chain {
 
@@ -46,6 +47,12 @@ namespace eosio { namespace chain {
          
          uint64_t append(const signed_block_ptr& block, packed_transaction::cf_compression_type segment_compression);
 
+         // create futures for append, must call in order of blocks
+         std::future<std::tuple<signed_block_ptr, std::vector<char>>>
+            create_append_future(boost::asio::io_context& thread_pool,
+                                 const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
+         uint64_t append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f);
+
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block, packed_transaction::cf_compression_type segment_compression);
          void reset( const chain_id_type& chain_id, uint32_t first_block_num );
          
@@ -72,7 +79,7 @@ namespace eosio { namespace chain {
 
          static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX, const char* reversible_block_dir_name="" );
 
-         static fc::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
+         static std::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
 
          static chain_id_type extract_chain_id( const fc::path& data_dir );
 

@@ -4,8 +4,10 @@
 #include <eosio/chain/log_index.hpp>
 #include <eosio/chain/log_catalog.hpp>
 #include <eosio/chain/block_log_config.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/io/raw.hpp>
+#include <future>
 #include <regex>
 
 namespace eosio { namespace chain {
@@ -45,14 +47,14 @@ namespace eosio { namespace chain {
       constexpr static int nbytes_with_chain_id = // the bytes count when the preamble contains chain_id
           sizeof(version) + sizeof(first_block_num) + sizeof(chain_id_type) + sizeof(block_log::npos);
 
-      void read_from(fc::datastream<const char*>& ds) {
+      void read_from(fc::datastream<const char*>& ds, const fc::path& log_path) {
         ds.read((char*)&version, sizeof(version));
          EOS_ASSERT(version > 0, block_log_exception, "Block log was not setup properly");
          EOS_ASSERT(
              block_log::is_supported_version(version), block_log_unsupported_version,
              "Unsupported version of block log. Block log version is ${version} while code supports version(s) "
-             "[${min},${max}]",
-             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version));
+             "[${min},${max}], log file: ${log}",
+             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version)("log", log_path.generic_string()));
 
          first_block_num = 1;
          if (version != initial_version) {
@@ -92,11 +94,11 @@ namespace eosio { namespace chain {
             ds.write(reinterpret_cast<const char*>(&first_block_num), sizeof(first_block_num));
 
             std::visit(overloaded{[&ds](const chain_id_type& id) { ds << id; },
-                                 [&ds](const genesis_state& state) {
-                                    auto data = fc::raw::pack(state);
-                                    ds.write(data.data(), data.size());
-                                 }},
-                     chain_context);
+                                  [&ds](const genesis_state& state) {
+                                      auto data = fc::raw::pack(state);
+                                      ds.write(data.data(), data.size());
+                                  }}, 
+                       chain_context);
 
             auto totem = block_log::npos;
             ds.write(reinterpret_cast<const char*>(&totem), sizeof(totem));
@@ -226,7 +228,7 @@ namespace eosio { namespace chain {
       boost::iostreams::mapped_file_sink index;
    };
 
-   struct bad_block_excpetion {
+   struct bad_block_exception {
       std::exception_ptr inner;
    };
 
@@ -286,7 +288,7 @@ namespace eosio { namespace chain {
            file.close();
         file.open(path.string(), mode);
         fc::datastream<const char*> ds(this->data(), this->size());
-        preamble.read_from(ds);
+        preamble.read_from(ds, path);
         first_block_pos = ds.tellp();
         return ds;
       }
@@ -296,9 +298,9 @@ namespace eosio { namespace chain {
       uint64_t      first_block_position() const { return first_block_pos; }
       chain_id_type chain_id() const { return preamble.chain_id(); }
 
-      fc::optional<genesis_state> get_genesis_state() const {
-         return std::visit(overloaded{[](const chain_id_type&) { return fc::optional<genesis_state>{}; },
-                                      [](const genesis_state& state) { return fc::optional<genesis_state>{state}; }},
+      std::optional<genesis_state> get_genesis_state() const {
+         return std::visit(overloaded{[](const chain_id_type&) { return std::optional<genesis_state>{}; },
+                                      [](const genesis_state& state) { return std::optional<genesis_state>{state}; }},
                            preamble.chain_context);
       }
 
@@ -318,12 +320,12 @@ namespace eosio { namespace chain {
          return fc::endian_reverse_u32(prev_block_num) + 1;
       }
 
-      fc::datastream<const char*> ro_stream_at(uint64_t pos) {
-         return fc::datastream<const char*>(file.const_data() + pos, file.size() - pos);
+      std::pair<fc::datastream<const char*>,uint32_t> ro_stream_at(uint64_t pos) {
+         return std::make_pair(fc::datastream<const char*>(file.const_data() + pos, file.size() - pos), version());
       }
 
-      fc::datastream<char*> rw_stream_at(uint64_t pos) {
-         return fc::datastream<char*>(file.data() + pos, file.size() - pos);
+      std::pair<fc::datastream<char*>,uint32_t> rw_stream_at(uint64_t pos) {
+         return std::make_pair(fc::datastream<char*>(file.data() + pos, file.size() - pos), version());
       }
 
       /**
@@ -356,7 +358,7 @@ namespace eosio { namespace chain {
          try {
             unpack(ds, entry);
          } catch (...) {
-            throw bad_block_excpetion{std::current_exception()};
+            throw bad_block_exception{std::current_exception()};
          }
 
          const block_header& header = get_block_header(entry);
@@ -521,10 +523,11 @@ namespace eosio { namespace chain {
          fc::datastream<fc::cfile> index_file;
          bool                      genesis_written_to_block_log = false;
          block_log_preamble        preamble;
-         size_t                    stride = std::numeric_limits<size_t>::max();
+         uint32_t                  future_version;
+         const size_t              stride;
          static uint32_t           default_version;
 
-         block_log_impl(const block_log::config_type& config);
+         explicit block_log_impl(const block_log::config_type& config);
 
          static void ensure_file_exists(fc::cfile& f) {
             if (fc::exists(f.get_file_path()))
@@ -541,7 +544,13 @@ namespace eosio { namespace chain {
 
          uint64_t append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
 
-         uint64_t write_log_entry(const signed_block& b, packed_transaction::cf_compression_type segment_compression);
+         // create futures for append, must call in order of blocks
+         std::future<std::tuple<signed_block_ptr, std::vector<char>>>
+            create_append_future(boost::asio::io_context& thread_pool,
+                                 const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
+         uint64_t append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f);
+
+         uint64_t write_log_entry(const std::vector<char>& block_buffer);
 
          void split_log();
          bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
@@ -562,7 +571,9 @@ namespace eosio { namespace chain {
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
    uint32_t block_log::version() const { return my->preamble.version; }
 
-   detail::block_log_impl::block_log_impl(const block_log::config_type& config) {
+   detail::block_log_impl::block_log_impl(const block_log::config_type& config)
+   : stride( config.stride )
+   {
 
       if (!fc::is_directory(config.log_dir))
          fc::create_directories(config.log_dir);
@@ -570,7 +581,6 @@ namespace eosio { namespace chain {
       catalog.open(config.log_dir, config.retained_dir, config.archive_dir, "blocks");
       
       catalog.max_retained_files = config.max_retained_files;
-      this->stride               = config.stride;
 
       block_file.set_file_path(config.log_dir / "blocks.log");
       index_file.set_file_path(config.log_dir / "blocks.index");
@@ -601,6 +611,7 @@ namespace eosio { namespace chain {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
          preamble = log_data.get_preamble();
+         future_version = preamble.version;
 
          EOS_ASSERT(catalog.verifier.chain_id.empty() || catalog.verifier.chain_id == preamble.chain_id(), block_log_exception,
                     "block log file ${path} has a different chain id", ("path", block_file.get_file_path()));
@@ -649,20 +660,26 @@ namespace eosio { namespace chain {
          read_head();
    }
 
-   uint64_t detail::block_log_impl::write_log_entry(const signed_block& b, packed_transaction::cf_compression_type segment_compression) {
-      uint64_t pos = block_file.tellp();
+   std::vector<char> create_block_buffer( const signed_block& b, uint32_t version, packed_transaction::cf_compression_type segment_compression ) {
       std::vector<char> buffer;
-     
-      if (preamble.version >= pruned_transaction_version)  {
+
+      if (version >= pruned_transaction_version)  {
          buffer = pack(b, segment_compression);
       } else {
          auto block_ptr = b.to_signed_block_v0();
          EOS_ASSERT(block_ptr, block_log_append_fail, "Unable to convert block to legacy format");
          EOS_ASSERT(segment_compression == packed_transaction::cf_compression_type::none, block_log_append_fail,
-            "the compression must be \"none\" for legacy format");
+                    "the compression must be \"none\" for legacy format");
          buffer = fc::raw::pack(*block_ptr);
       }
-      block_file.write(buffer.data(), buffer.size());
+
+      return buffer;
+   }
+
+   uint64_t detail::block_log_impl::write_log_entry(const std::vector<char>& block_buffer) {
+      uint64_t pos = block_file.tellp();
+
+      block_file.write(block_buffer.data(), block_buffer.size());
       block_file.write((char*)&pos, sizeof(pos));
       index_file.write((char*)&pos, sizeof(pos));
       flush();
@@ -673,7 +690,7 @@ namespace eosio { namespace chain {
       return my->append(b, segment_compression);
    }
 
-   uint64_t detail::block_log_impl::append(const  signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
+   uint64_t detail::block_log_impl::append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
       try {
          EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
@@ -685,7 +702,8 @@ namespace eosio { namespace chain {
                    ("position", (uint64_t) index_file.tellp())
                    ("expected", (b->block_num() - preamble.first_block_num) * sizeof(uint64_t)));
 
-         auto pos = write_log_entry(*b, segment_compression);
+         std::vector<char> buffer = create_block_buffer( *b, preamble.version, segment_compression );
+         auto pos = write_log_entry(buffer);
          head     = b;
          if (b->block_num() % stride == 0) {
             split_log();
@@ -695,7 +713,49 @@ namespace eosio { namespace chain {
       FC_LOG_AND_RETHROW()
    }
 
-   void detail::block_log_impl::split_log() { 
+   uint64_t detail::block_log_impl::append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f) {
+      try {
+         EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
+
+         block_file.seek_end(0);
+         index_file.seek_end(0);
+         auto[b, buffer] = f.get();
+         EOS_ASSERT(index_file.tellp() == sizeof(uint64_t) * (b->block_num() - preamble.first_block_num),
+                   block_log_append_fail,
+                   "Append to index file occuring at wrong position.",
+                   ("position", (uint64_t) index_file.tellp())
+                   ("expected", (b->block_num() - preamble.first_block_num) * sizeof(uint64_t)));
+
+         auto pos = write_log_entry(buffer);
+         head     = b;
+         if (b->block_num() % stride == 0) {
+            split_log();
+         }
+         return pos;
+      }
+      FC_LOG_AND_RETHROW()
+   }
+
+   std::future<std::tuple<signed_block_ptr, std::vector<char>>>
+   block_log::create_append_future(boost::asio::io_context& thread_pool, const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
+      return my->create_append_future(thread_pool, b, segment_compression);
+   }
+
+   std::future<std::tuple<signed_block_ptr, std::vector<char>>>
+   detail::block_log_impl::create_append_future(boost::asio::io_context& thread_pool, const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression) {
+      future_version = (b->block_num() % stride == 0) ? block_log::max_supported_version : future_version;
+      std::promise<std::tuple<signed_block_ptr, std::vector<char>>> p;
+      std::future<std::tuple<signed_block_ptr, std::vector<char>>> f = p.get_future();
+      return async_thread_pool( thread_pool, [b, version=future_version, segment_compression]() {
+         return std::make_tuple(b, create_block_buffer(*b, version, segment_compression));
+      } );
+   }
+
+   uint64_t block_log::append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f) {
+      return my->append( std::move( f ) );
+   }
+
+   void detail::block_log_impl::split_log() {
       block_file.close();
       index_file.close();
       
@@ -720,6 +780,7 @@ namespace eosio { namespace chain {
       block_file.open(fc::cfile::truncate_rw_mode);
       index_file.open(fc::cfile::truncate_rw_mode);
 
+      future_version           = block_log_impl::default_version;
       preamble.version         = block_log_impl::default_version; 
       preamble.first_block_num = first_bnum;
       preamble.chain_context   = std::move(chain_context);
@@ -922,7 +983,7 @@ namespace eosio { namespace chain {
                pos  = ds.tellp();
             }
          }
-         catch (const bad_block_excpetion& e) {
+         catch (const bad_block_exception& e) {
             write_incomplete_block_data(blocks_dir, now, block_num, log_data.data() + pos, log_data.size() - pos);
             std::rethrow_exception(e.inner);
          }
@@ -952,7 +1013,7 @@ namespace eosio { namespace chain {
       return backup_dir;
    }
 
-   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
+   std::optional<genesis_state> block_log::extract_genesis_state( const fc::path& block_dir ) {
       boost::filesystem::path p(block_dir / "blocks.log");
       for_each_file_in_dir_matches(block_dir, R"(blocks-1-\d+\.log)", [&p](boost::filesystem::path log_path) { p = log_path; });
       return block_log_data(p).get_genesis_state();
@@ -988,7 +1049,7 @@ namespace eosio { namespace chain {
 
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
-         num_trx_pruned += trx.trx.visit(pruner);
+         num_trx_pruned += std::visit(pruner, trx.trx);
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);

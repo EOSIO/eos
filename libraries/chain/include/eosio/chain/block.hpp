@@ -31,11 +31,11 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_receipt_v0 : public transaction_receipt_header {
-      using trx_type = fc::static_variant<transaction_id_type, packed_transaction_v0>;
+      using trx_type = std::variant<transaction_id_type, packed_transaction_v0>;
       transaction_receipt_v0() : transaction_receipt_header() {}
       transaction_receipt_v0(const transaction_receipt_header& header, trx_type&& t): transaction_receipt_header(header), trx(std::move(t)){}
-      explicit transaction_receipt_v0( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
-      explicit transaction_receipt_v0( const packed_transaction_v0& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+      explicit transaction_receipt_v0( transaction_id_type tid ):transaction_receipt_header(executed),trx(std::move(tid)){}
+      explicit transaction_receipt_v0( packed_transaction_v0 ptrx ):transaction_receipt_header(executed),trx(std::move(ptrx)){}
 
       trx_type trx;
 
@@ -44,10 +44,10 @@ namespace eosio { namespace chain {
          fc::raw::pack( enc, status );
          fc::raw::pack( enc, cpu_usage_us );
          fc::raw::pack( enc, net_usage_words );
-         if( trx.contains<transaction_id_type>() )
-            fc::raw::pack( enc, trx.get<transaction_id_type>() );
+         if( std::holds_alternative<transaction_id_type>(trx) )
+            fc::raw::pack( enc, std::get<transaction_id_type>(trx) );
          else
-            fc::raw::pack( enc, trx.get<packed_transaction_v0>().packed_digest() );
+            fc::raw::pack( enc, std::get<packed_transaction_v0>(trx).packed_digest() ); 
          return enc.result();
       }
    };
@@ -74,7 +74,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct block_extension_types {
-         using block_extension_t = fc::static_variant< Ts... >;
+         using block_extension_t = std::variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -94,6 +94,7 @@ namespace eosio { namespace chain {
       signed_block_v0() = default;
       explicit signed_block_v0( const signed_block_header& h ):signed_block_header(h){}
       signed_block_v0( signed_block_v0&& ) = default;
+      signed_block_v0& operator=(signed_block_v0&&) = default;
       signed_block_v0& operator=(const signed_block_v0&) = delete;
       signed_block_v0 clone() const { return *this; }
 
@@ -111,9 +112,10 @@ namespace eosio { namespace chain {
       transaction_receipt(const transaction_receipt_v0&, bool legacy);
       transaction_receipt(transaction_receipt_v0&&, bool legacy);
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
-      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
-      fc::static_variant<transaction_id_type, packed_transaction> trx;
+      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(std::in_place_type<packed_transaction>, ptrx){}
+      
+      std::variant<transaction_id_type, packed_transaction> trx;
 
       std::size_t maximum_pruned_pack_size( packed_transaction::cf_compression_type segment_compression ) const;
 
@@ -122,10 +124,10 @@ namespace eosio { namespace chain {
          fc::raw::pack( enc, status );
          fc::raw::pack( enc, cpu_usage_us );
          fc::raw::pack( enc, net_usage_words );
-         if( trx.contains<transaction_id_type>() )
-            fc::raw::pack( enc, trx.get<transaction_id_type>() );
+         if( std::holds_alternative<transaction_id_type>(trx) )
+            fc::raw::pack( enc, std::get<transaction_id_type>(trx) );
          else
-            fc::raw::pack( enc, trx.get<packed_transaction>().packed_digest() );
+            fc::raw::pack( enc, std::get<packed_transaction>(trx).packed_digest() );
          return enc.result();
       }
    };
@@ -144,7 +146,7 @@ namespace eosio { namespace chain {
       signed_block& operator=(const signed_block&) = delete;
       signed_block& operator=(signed_block&&) = default;
       signed_block clone() const { return *this; }
-      fc::optional<signed_block_v0> to_signed_block_v0() const;
+      std::optional<signed_block_v0> to_signed_block_v0() const;
 
       fc::enum_type<uint8_t,prune_state_type> prune_state{prune_state_type::complete_legacy};
       deque<transaction_receipt>              transactions; /// new or generated transactions

@@ -33,7 +33,7 @@ git clone https://github.com/EOSIO/eos.git $EOSIO_LOCATION
 cd $EOSIO_LOCATION && git submodule update --init --recursive
 ```
 
-## Install Dependencies
+## Install EOSIO Dependencies
 These commands install the EOSIO software dependencies. Make sure to [Download the EOSIO Repository](#download-eosio-repository) first and set the EOSIO directories.
 ```sh
 # install dependencies

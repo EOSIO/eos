@@ -6,7 +6,7 @@
 namespace eosio {
 
 // consume message types
-using transaction_msg = fc::static_variant<chain::packed_transaction_v0, chain::packed_transaction>;
+using transaction_msg = std::variant<chain::packed_transaction_v0, chain::packed_transaction>;
 
 class amqp_trx_plugin : public appbase::plugin<amqp_trx_plugin> {
 

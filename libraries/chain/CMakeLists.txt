@@ -35,7 +35,6 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc/default_real_main.cpp
                              webassembly/runtimes/eos-vm-oc/softfloat.cpp)
 
-
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
       list(APPEND CHAIN_EOSVMOC_SOURCES webassembly/runtimes/eos-vm-oc/llvmWARshim.llvmwar)
@@ -84,6 +83,7 @@ add_library( eosio_chain
              block_header_state.cpp
              block_state.cpp
              fork_database.cpp
+             combined_database.cpp
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp
@@ -122,19 +122,25 @@ add_library( eosio_chain
              whitelisted_intrinsics.cpp
              thread_utils.cpp
              platform_timer_accuracy.cpp
-             kv_context.cpp
-             kv_context_chainbase.cpp
+             backing_store/kv_context.cpp
+             backing_store/db_context.cpp
+             backing_store/db_context_chainbase.cpp
+             backing_store/db_context_rocksdb.cpp
+             backing_store/db_key_value_format.cpp
+             backing_store/db_key_value_any_lookup.cpp
              ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS} ${CHAIN_RT_LINKAGE}
+                       softfloat builtins rocksdb ${CHAIN_EOSVM_LIBRARIES} ${LLVM_LIBS} ${CHAIN_RT_LINKAGE}
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../rocksdb/include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../chain_kv/include"
                             )
 
 add_library(eosio_chain_wrap INTERFACE )
@@ -154,6 +160,8 @@ if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")
    target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
 endif()
+
+add_subdirectory ( backing_store/tests )
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

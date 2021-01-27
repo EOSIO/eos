@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
          auto exts = b->validate_and_extract_extensions();
 
          if ( exts.count(additional_sigs_eid) > 0 ) {
-            auto& additional_sigs = exts.lower_bound(additional_sigs_eid)->second.get<additional_block_signatures_extension>();
+            auto& additional_sigs = std::get<additional_block_signatures_extension>(exts.lower_bound(additional_sigs_eid)->second);
 
             return std::move(additional_sigs.signatures);
          }

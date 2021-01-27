@@ -18,7 +18,7 @@ Delegate resource for an account or application
 Delegate 0.01 SYS CPU bandwidth from `bob` to `alice`
 
 ```sh
-cleos system delegatebw bob alice "0.01 SYS" "0 SYS"
+cleos system delegatebw bob alice "0 SYS" "0.01 SYS"
 ```
 
 You should see something below:

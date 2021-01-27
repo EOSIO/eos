@@ -11,7 +11,6 @@
 #include <functional>
 #include <iterator>
 #include <memory>
-#include <fc/optional.hpp>
 #include <fc/exception/exception.hpp>
 #include <string>
 #include <unordered_map>

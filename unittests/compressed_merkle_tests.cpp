@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_SUITE(test_compressed_proof)
 BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
    tester chain(setup_policy::none);
    //I want to very precisely control the exact actions in the block; disable onblock
-   chain.set_code(N(eosio), fail_everything_wast);
+   chain.set_code("eosio"_n, fail_everything_wast);
    chain.produce_block();
 
    compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
@@ -136,12 +136,12 @@ BOOST_AUTO_TEST_CASE(test_proof_no_actions) try {
 // will be 4 total combinations tried, etc
 BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u), n_actions) try {
    tester chain(setup_policy::none);
-   chain.create_accounts({N(interested), N(nointerested)});
-   chain.set_abi(N(interested), test_account_abi);
-   chain.set_abi(N(nointerested), test_account_abi);
+   chain.create_accounts({"interested"_n, "nointerested"_n});
+   chain.set_abi("interested"_n, test_account_abi);
+   chain.set_abi("nointerested"_n, test_account_abi);
    chain.produce_block();
    //this test wants to very precisely control the exact actions in the block; disable onblock
-   chain.set_code(N(eosio), fail_everything_wast);
+   chain.set_code("eosio"_n, fail_everything_wast);
    chain.produce_block();
 
    bool expecting_callback = false;
@@ -149,12 +149,12 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
 
    compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act){
-         return act.account == N(interested);
+         return act.account == "interested"_n;
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expecting_callback);
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
-            BOOST_CHECK(name(receiver) == N(interested));
+            BOOST_CHECK(name(receiver) == "interested"_n);
          });
       }
    )});
@@ -165,9 +165,9 @@ BOOST_DATA_TEST_CASE(test_proof_actions, boost::unit_test::data::xrange(1u, 10u)
          bool push_interested = action_mask&1<<action_bit;
 
          if(push_interested)
-            chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", nonce++));
+            chain.push_action("interested"_n, "dothedew"_n, "interested"_n, fc::mutable_variant_object()("nonce", nonce++));
          else
-            chain.push_action(N(nointerested), N(dothedew), N(nointerested), fc::mutable_variant_object()("nonce", nonce++));
+            chain.push_action("nointerested"_n, "dothedew"_n, "nointerested"_n, fc::mutable_variant_object()("nonce", nonce++));
       }
 
       expecting_callback = action_mask; //when action_mask is 0, no interested action pushed meaning no callback called
@@ -198,8 +198,8 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
    };
    chain.execute_setup_policy(setup_policy::preactivate_feature_and_new_bios);
 
-   chain.create_account(N(interested));
-   chain.set_abi(N(interested), test_account_abi);
+   chain.create_account("interested"_n);
+   chain.set_abi("interested"_n, test_account_abi);
    produce_and_check();
    produce_and_check();
 
@@ -209,13 +209,13 @@ BOOST_AUTO_TEST_CASE(test_proof_arv_activation) try {
    chain.preactivate_protocol_features({*d});
 
    //put something else in the same block too
-   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0));
+   chain.push_action("interested"_n, "dothedew"_n, "interested"_n, fc::mutable_variant_object()("nonce", 0));
 
    produce_and_check();
    produce_and_check();
 
    //another post activation test
-   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0));
+   chain.push_action("interested"_n, "dothedew"_n, "interested"_n, fc::mutable_variant_object()("nonce", 0));
 
    produce_and_check();
    produce_and_check();
@@ -275,25 +275,25 @@ BOOST_AUTO_TEST_CASE(test_proof_ooo_sequence) try {
 
    compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       [&](const chain::action& act) {
-         return act.account == N(interested);
+         return act.account == "interested"_n;
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
-            BOOST_CHECK(name(receiver) == N(interested));
+            BOOST_CHECK(name(receiver) == "interested"_n);
             num_actions++;
          });
       }
    )});
 
-   chain.create_account(N(interested));
-   chain.set_code(N(interested), inliner_wast);
-   chain.set_abi(N(interested), test_account_abi);
+   chain.create_account("interested"_n);
+   chain.set_code("interested"_n, inliner_wast);
+   chain.set_abi("interested"_n, test_account_abi);
    chain.produce_block();
 
    signed_transaction trx;
-   trx.actions.emplace_back(action({permission_level{N(interested), N(owner)}}, N(interested), name(5ull), {}));
+   trx.actions.emplace_back(action({permission_level{"interested"_n, "owner"_n}}, "interested"_n, name(5ull), {}));
    chain.set_transaction_headers(trx, 10, 0);
-   trx.sign(chain.get_private_key(N(interested)), chain.control->get_chain_id() );
+   trx.sign(chain.get_private_key("interested"_n), chain.control->get_chain_id() );
    chain.push_transaction( trx );
 
    sha256 expected_mroot = chain.produce_block()->action_mroot;
@@ -312,7 +312,7 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
-            seen_interested |= name(receiver) == N(interested);
+            seen_interested |= name(receiver) == "interested"_n;
          });
       }
    )});
@@ -322,11 +322,11 @@ BOOST_AUTO_TEST_CASE(test_proof_delayed) try {
       BOOST_CHECK(new_mroot == computed_action_mroot);
    };
 
-   chain.create_account(N(interested));
-   chain.set_abi(N(interested), test_account_abi);
+   chain.create_account("interested"_n);
+   chain.set_abi("interested"_n, test_account_abi);
    produce_and_check();
 
-   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0), 100, 2);
+   chain.push_action("interested"_n, "dothedew"_n, "interested"_n, fc::mutable_variant_object()("nonce", 0), 100, 2);
 
    produce_and_check();
    produce_and_check();
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE(test_proof_deferred_soft_fail) try {
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          computed_action_mroot = validate_compressed_merkle_proof(serialized_compressed_proof, [&](uint64_t receiver, uint64_t action) {
-            seen_interested |= name(receiver) == N(interested) && action_name(action) == N(onerror);
+            seen_interested |= name(receiver) == "interested"_n && action_name(action) == "onerror"_n;
          });
       }
    )});
@@ -362,12 +362,12 @@ BOOST_AUTO_TEST_CASE(test_proof_deferred_soft_fail) try {
       BOOST_CHECK(new_mroot == computed_action_mroot);
    };
 
-   chain.create_account(N(interested));
-   chain.set_code(N(interested), send_def_then_blowup_wast);
-   chain.set_abi(N(interested), test_account_abi);
+   chain.create_account("interested"_n);
+   chain.set_code("interested"_n, send_def_then_blowup_wast);
+   chain.set_abi("interested"_n, test_account_abi);
    produce_and_check();
 
-   chain.push_action(N(interested), N(dothedew), N(interested), fc::mutable_variant_object()("nonce", 0), 100);
+   chain.push_action("interested"_n, "dothedew"_n, "interested"_n, fc::mutable_variant_object()("nonce", 0), 100);
 
    produce_and_check();
    produce_and_check();
@@ -391,43 +391,43 @@ BOOST_AUTO_TEST_CASE(test_proof_multiple) try {
    compressed_proof_generator proof_generator(*chain.control, {std::make_pair(
       //first up, this callback cares about everything on the spoon account
       [&](const chain::action& act){
-         return act.account == N(spoon);
+         return act.account == "spoon"_n;
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_spoon);
          computed_action_mroot1 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
-            BOOST_CHECK(name(receiver) == N(spoon));
+            BOOST_CHECK(name(receiver) == "spoon"_n);
          });
       }
    ),
    std::make_pair(
       //next up, this callback only cares about bananas on the spoon account
       [&](const chain::action& act){
-         return act.account == N(spoon) && act.name == N(banana);
+         return act.account == "spoon"_n && act.name == "banana"_n;
       },
       [&](auto bsp, std::vector<char>&& serialized_compressed_proof) {
          BOOST_CHECK(expect_banana);
          computed_action_mroot2 = validate_compressed_merkle_proof(serialized_compressed_proof, [](uint64_t receiver, uint64_t action) {
-            BOOST_CHECK(name(receiver) == N(spoon));
+            BOOST_CHECK(name(receiver) == "spoon"_n);
          });
       }
    )});
 
-   chain.create_account(N(spoon));
-   chain.set_abi(N(spoon), multi_account_abi);
+   chain.create_account("spoon"_n);
+   chain.set_abi("spoon"_n, multi_account_abi);
    chain.produce_block();
 
    unsigned nonce = 0;
 
    //block with an apple
-   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action("spoon"_n, "apple"_n, "spoon"_n, fc::mutable_variant_object()("nonce", nonce++));
    expect_spoon = true;
    BOOST_CHECK(chain.produce_block()->action_mroot == computed_action_mroot1);
 
    //block with a couple apples and a banana
-   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
-   chain.push_action(N(spoon), N(apple), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
-   chain.push_action(N(spoon), N(banana), N(spoon), fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action("spoon"_n, "apple"_n, "spoon"_n, fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action("spoon"_n, "apple"_n, "spoon"_n, fc::mutable_variant_object()("nonce", nonce++));
+   chain.push_action("spoon"_n, "banana"_n, "spoon"_n, fc::mutable_variant_object()("nonce", nonce++));
    expect_banana = true;
    BOOST_CHECK(chain.produce_block()->action_mroot == computed_action_mroot1 && computed_action_mroot1 == computed_action_mroot2);
 

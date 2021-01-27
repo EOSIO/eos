@@ -1,6 +1,9 @@
 ## Description
 set parameters dealing with account permissions
 
+[[info | JSON input]]
+| This command involves specifying JSON input which depends on underlying class definitions. Therefore, such JSON input is subject to change in future versions of the EOSIO software.
+
 ## Positionals
 - `account` _TEXT_ - The account to set/delete a permission authority for
 - `permission` _TEXT_ - The permission name to set/delete an authority for
@@ -33,7 +36,7 @@ set parameters dealing with account permissions
 `--delay-sec` _UINT_ - set the delay_sec seconds, defaults to 0s
 
 ## Command
-To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying. The set account permission command is subject to change so it's associated Class is not fully documented.
+To modify the permissions of an account, you must have the authority over the account and the permission of which you are modifying.
 
 The first example associates a new key to the active permissions of an account.
 
@@ -83,3 +86,6 @@ The authority JSON object ...
   weight            : 75      /*Set the weight of a signature from this permission*/
 }
 ```
+
+## See Also
+- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.

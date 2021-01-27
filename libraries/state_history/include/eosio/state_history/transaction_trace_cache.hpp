@@ -12,7 +12,7 @@ using chain::transaction_id_type;
 
 struct transaction_trace_cache {
    std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
-   fc::optional<augmented_transaction_trace>                  onblock_trace;
+   std::optional<augmented_transaction_trace>                 onblock_trace;
 
    void add_transaction(const transaction_trace_ptr& trace, const packed_transaction_ptr& transaction);
 

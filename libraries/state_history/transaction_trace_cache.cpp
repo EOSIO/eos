@@ -25,10 +25,10 @@ std::vector<augmented_transaction_trace> transaction_trace_cache::prepare_traces
       traces.push_back(*this->onblock_trace);
    for (auto& r : block_state->block->transactions) {
       transaction_id_type id;
-      if (r.trx.contains<transaction_id_type>())
-         id = r.trx.get<transaction_id_type>();
+      if (std::holds_alternative<transaction_id_type>(r.trx))
+         id = std::get<transaction_id_type>(r.trx);
       else
-         id = r.trx.get<packed_transaction>().id();
+         id = std::get<packed_transaction>(r.trx).id();
       auto it = this->cached_traces.find(id);
       EOS_ASSERT(it != this->cached_traces.end() && it->second.trace->receipt, state_history_exception,
                  "missing trace for transaction ${id}", ("id", id));

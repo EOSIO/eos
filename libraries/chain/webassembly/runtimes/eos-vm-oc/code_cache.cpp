@@ -69,12 +69,12 @@ void code_cache_async::wait_on_compile_monitor_message() {
       }
 
       auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
-      if(!success || !message.contains<wasm_compilation_result_message>()) {
+      if(!success || !std::holds_alternative<wasm_compilation_result_message>(message)) {
          _ctx.stop();
          return;
       }
 
-      _result_queue.push(message.get<wasm_compilation_result_message>());
+      _result_queue.push(std::get<wasm_compilation_result_message>(message));
 
       wait_on_compile_monitor_message();
    });
@@ -86,7 +86,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
    size_t bytes_remaining = 0;
    size_t gotsome = _result_queue.consume_all([&](const wasm_compilation_result_message& result) {
       if(_outstanding_compiles_and_poison[result.code] == false) {
-         result.result.visit(overloaded {
+         std::visit(overloaded {
             [&](const code_descriptor& cd) {
                _cache_index.push_front(cd);
             },
@@ -97,7 +97,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
             [&](const compilation_result_toofull&) {
                run_eviction_round();
             }
-         });
+         }, result.result);
       }
       _outstanding_compiles_and_poison.erase(result.code);
       bytes_remaining = result.cache_free_bytes;
@@ -192,14 +192,14 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
    EOS_ASSERT(success, wasm_execution_error, "failed to read response from monitor process");
-   EOS_ASSERT(message.contains<wasm_compilation_result_message>(), wasm_execution_error, "unexpected response from monitor process");
+   EOS_ASSERT(std::holds_alternative<wasm_compilation_result_message>(message), wasm_execution_error, "unexpected response from monitor process");
 
-   wasm_compilation_result_message result = message.get<wasm_compilation_result_message>();
-   EOS_ASSERT(result.result.contains<code_descriptor>(), wasm_execution_error, "failed to compile wasm");
+   wasm_compilation_result_message result = std::get<wasm_compilation_result_message>(message);
+   EOS_ASSERT(std::holds_alternative<code_descriptor>(result.result), wasm_execution_error, "failed to compile wasm");
 
    check_eviction_threshold(result.cache_free_bytes);
 
-   return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
+   return &*_cache_index.push_front(std::move(std::get<code_descriptor>(result.result))).first;
 }
 
 code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db) :

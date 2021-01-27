@@ -1,6 +1,8 @@
 #include <eosio/eosio.hpp>
 
+
 using namespace eosio;
+using namespace eosio::internal_use_do_not_use;
 
 enum it_stat : int32_t {
    iterator_ok     = 0,
@@ -8,27 +10,7 @@ enum it_stat : int32_t {
    iterator_end    = -2,
 };
 
-#define IMPORT extern "C" __attribute__((eosio_wasm_import))
-
-// clang-format off
-IMPORT int64_t  kv_erase(name db, name contract, const char* key, uint32_t key_size);
-IMPORT int64_t  kv_set(name db, name contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
-IMPORT bool     kv_get(name db, name contract, const char* key, uint32_t key_size, uint32_t& value_size);
-IMPORT uint32_t kv_get_data(name db, uint32_t offset, char* data, uint32_t data_size);
-IMPORT uint32_t kv_it_create(name db, name contract, const char* prefix, uint32_t size);
-IMPORT void     kv_it_destroy(uint32_t itr);
-IMPORT it_stat  kv_it_status(uint32_t itr);
-IMPORT int      kv_it_compare(uint32_t itr_a, uint32_t itr_b);
-IMPORT int      kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
-IMPORT it_stat  kv_it_move_to_end(uint32_t itr);
-IMPORT it_stat  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
-IMPORT it_stat  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
-IMPORT it_stat  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
-IMPORT it_stat  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
-IMPORT it_stat  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
-// clang-format on
-
-struct kv {
+struct kv_t {
    std::vector<char> k;
    std::vector<char> v;
 };
@@ -47,22 +29,22 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
  public:
    using eosio::contract::contract;
 
-   [[eosio::action]] void itlifetime(name db) {
-      check(1 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime a");
-      check(2 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime b");
-      check(3 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime c");
-      check(4 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime d");
-      check(5 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime e");
-      check(6 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime f");
+   [[eosio::action]] void itlifetime() {
+      check(1 == kv_it_create(""_n.value, nullptr, 0), "itlifetime a");
+      check(2 == kv_it_create(""_n.value, nullptr, 0), "itlifetime b");
+      check(3 == kv_it_create(""_n.value, nullptr, 0), "itlifetime c");
+      check(4 == kv_it_create(""_n.value, nullptr, 0), "itlifetime d");
+      check(5 == kv_it_create(""_n.value, nullptr, 0), "itlifetime e");
+      check(6 == kv_it_create(""_n.value, nullptr, 0), "itlifetime f");
       kv_it_destroy(4);
       kv_it_destroy(2);
       kv_it_destroy(5);
-      check(5 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime g");
-      check(2 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime h");
+      check(5 == kv_it_create(""_n.value, nullptr, 0), "itlifetime g");
+      check(2 == kv_it_create(""_n.value, nullptr, 0), "itlifetime h");
       kv_it_destroy(5);
-      check(5 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime i");
-      check(4 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime j");
-      check(7 == kv_it_create(db, ""_n, nullptr, 0), "itlifetime k");
+      check(5 == kv_it_create(""_n.value, nullptr, 0), "itlifetime i");
+      check(4 == kv_it_create(""_n.value, nullptr, 0), "itlifetime j");
+      check(7 == kv_it_create(""_n.value, nullptr, 0), "itlifetime k");
       check(kv_it_status(1) == iterator_end, "itlifetime l");
       check(kv_it_status(2) == iterator_end, "itlifetime m");
       check(kv_it_status(3) == iterator_end, "itlifetime n");
@@ -83,7 +65,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       if(!has_erase) {
          for(auto itop : params) {
             for(uint32_t i = 0; i < itop.count; ++i) {
-               kv_it_create(itop.db, ""_n, nullptr, 0);
+               kv_it_create(""_n.value, nullptr, 0);
             }
          }
       } else {
@@ -97,104 +79,104 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                }
             } else {
                for(uint32_t i = 0; i < itop.count; ++i) {
-                  iters.push_back(kv_it_create(itop.db, ""_n, nullptr, 0));
+                  iters.push_back(kv_it_create(""_n.value, nullptr, 0));
                }
             }
          }
       }
    }
 
-   [[eosio::action]] void erase(name db, name contract, const std::vector<char>& k) {
-      kv_erase(db, contract, k.data(), k.size());
+   [[eosio::action]] void erase(name contract, const std::vector<char>& k) {
+      kv_erase(contract.value, k.data(), k.size());
    }
 
-   [[eosio::action]] void set(name db, name contract, const std::vector<char>& k, const std::vector<char>& v) {
-      kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+   [[eosio::action]] void set(name contract, const std::vector<char>& k, const std::vector<char>& v, name payer) {
+      kv_set(contract.value, k.data(), k.size(), v.data(), v.size(), payer.value);
    }
 
-   [[eosio::action]] void get(name db, name contract, const std::vector<char>& k,
+   [[eosio::action]] void get(name contract, const std::vector<char>& k,
                               const std::optional<std::vector<char>>& v) {
       if (v) {
          uint32_t value_size = 0xffff'ffff;
-         check(kv_get(db, contract, k.data(), k.size(), value_size), "kv_get found nothing");
+         check(kv_get(contract.value, k.data(), k.size(), value_size), "kv_get found nothing");
          check(value_size == v->size(), "kv_get size mismatch");
          std::vector<char> actual(v->size());
-         check(kv_get_data(db, 0, actual.data(), actual.size()) == v->size(), "kv_get_data size mismatch");
+         check(kv_get_data(0, actual.data(), actual.size()) == v->size(), "kv_get_data size mismatch");
          check(actual == *v, "kv_get_data content mismatch");
       } else {
          uint32_t value_size = 0xffff'ffff;
-         check(!kv_get(db, contract, k.data(), k.size(), value_size), "kv_get found something");
+         check(!kv_get(contract.value, k.data(), k.size(), value_size), "kv_get found something");
       }
    }
 
-   [[eosio::action]] void setmany(name db, name contract, const std::vector<kv>& kvs) {
+   [[eosio::action]] void setmany(name contract, const std::vector<kv_t>& kvs) {
       for (auto& kv : kvs) //
-         kv_set(db, contract, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size());
+         kv_set(contract.value, kv.k.data(), kv.k.size(), kv.v.data(), kv.v.size(), contract.value);
    }
 
-   [[eosio::action]] void getdata(name db) {
+   [[eosio::action]] void getdata() {
       const std::vector<char> orig_buf(1024, '\xcc');
       std::vector<char> buf = orig_buf;
       // The buffer starts empty
-      TEST(kv_get_data(db, 0, buf.data(), 0) == 0);
+      TEST(kv_get_data(0, buf.data(), 0) == 0);
       TEST(buf == orig_buf); // unchanged
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
       TEST(buf == orig_buf); // unchanged
-      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 0) == 0);
+      TEST(kv_get_data(0xFFFFFFFFu, buf.data(), 0) == 0);
       TEST(buf == orig_buf); // unchanged
-      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 1024) == 0);
+      TEST(kv_get_data(0xFFFFFFFFu, buf.data(), 1024) == 0);
       TEST(buf == orig_buf); // unchanged
       // Add a value and load it into the temporary buffer
-      kv_set(db, get_self(), "key", 3, "value", 5);
-      TEST(kv_get_data(db, 0, nullptr, 0) == 0);
+      kv_set(get_self().value, "key", 3, "value", 5, get_self().value);
+      TEST(kv_get_data(0, nullptr, 0) == 0);
       uint32_t value_size = 0xffffffff;
-      kv_get(db, get_self(), "key", 3, value_size);
+      kv_get(get_self().value, "key", 3, value_size);
       // Test different offsets
-      TEST(kv_get_data(db, 0, nullptr, 0) == 5);
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 5);
+      TEST(kv_get_data(0, nullptr, 0) == 5);
+      TEST(kv_get_data(0, buf.data(), 1024) == 5);
       TEST(memcmp(buf.data(), "value\xcc\xcc\xcc", 8) == 0);
       buf = orig_buf;
-      TEST(kv_get_data(db, 0xFFFFFFFFu, buf.data(), 1024) == 5);
+      TEST(kv_get_data(0xFFFFFFFFu, buf.data(), 1024) == 5);
       TEST(buf == orig_buf);
-      TEST(kv_get_data(db, 1, buf.data(), 1024) == 5);
+      TEST(kv_get_data(1, buf.data(), 1024) == 5);
       TEST(memcmp(buf.data(), "alue\xcc\xcc\xcc\xcc", 8) == 0);
       buf = orig_buf;
-      TEST(kv_get_data(db, 5, buf.data(), 1024) == 5);
+      TEST(kv_get_data(5, buf.data(), 1024) == 5);
       TEST(buf == orig_buf);
-      TEST(kv_get_data(db, 4, buf.data(), 1024) == 5);
+      TEST(kv_get_data(4, buf.data(), 1024) == 5);
       TEST(memcmp(buf.data(), "e\xcc\xcc\xcc\xcc\xcc\xcc\xcc", 8) == 0);
       buf = orig_buf;
       // kv_get with missing key clears buffer
-      kv_get(db, get_self(), "", 0, value_size);
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "", 0, value_size);
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
       // kv_set clears the buffer
-      kv_get(db, get_self(), "key", 3, value_size);
-      kv_set(db, get_self(), "key2", 4, "", 0); // set another key
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
-      kv_get(db, get_self(), "key", 3, value_size);
-      kv_set(db, get_self(), "key", 3, "value", 5); // same key
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "key", 3, value_size);
+      kv_set(get_self().value, "key2", 4, "", 0, get_self().value); // set another key
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "key", 3, value_size);
+      kv_set(get_self().value, "key", 3, "value", 5, get_self().value); // same key
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
       // kv_erase clears the buffer
-      kv_get(db, get_self(), "key", 3, value_size);
-      kv_erase(db, get_self(), "", 0); // key does not exist
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
-      kv_get(db, get_self(), "key", 3, value_size);
-      kv_erase(db, get_self(), "key2", 4); // other key
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
-      kv_get(db, get_self(), "key", 3, value_size);
-      kv_erase(db, get_self(), "key", 3); // this key
-      TEST(kv_get_data(db, 0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "key", 3, value_size);
+      kv_erase(get_self().value, "", 0); // key does not exist
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "key", 3, value_size);
+      kv_erase(get_self().value, "key2", 4); // other key
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
+      kv_get(get_self().value, "key", 3, value_size);
+      kv_erase(get_self().value, "key", 3); // this key
+      TEST(kv_get_data(0, buf.data(), 1024) == 0);
    }
 
-   [[eosio::action]] void scan(name db, name contract, const std::vector<char>& prefix,
-                               const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
-      auto    itr = kv_it_create(db, contract, prefix.data(), prefix.size());
-      it_stat stat;
+   [[eosio::action]] void scan(name contract, const std::vector<char>& prefix,
+                               const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
+      auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
+      int32_t stat;
       uint32_t key_size, value_size;
       if (lower)
-         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), &key_size, &value_size);
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), key_size, value_size);
       else
-         stat = kv_it_next(itr, &key_size, &value_size);
+         stat = kv_it_next(itr, key_size, value_size);
       for (auto& exp : expected) {
          check(stat == iterator_ok, "missing kv pairs");
          check(stat == kv_it_status(itr), "status mismatch (a)");
@@ -235,22 +217,11 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             uint32_t v_size = 0xffff'ffff;
             check(kv_it_value(itr, 0, nullptr, 0, v_size) == iterator_ok && v_size == exp.v.size(),
                   "value has wrong size (d)");
-
-            { // use offset
+            {
                std::vector<char> v(v_size - offset);
                v.push_back(42);
                v.push_back(53);
-               v_size = 0xffff'ffff;
-               check(kv_it_value(itr, offset, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
-                     "value has wrong size (e)");
-               check(!memcmp(exp.v.data() + offset, v.data(), v.size() - 2), "value has wrong content (e)");
                check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
-            }
-
-            { // offset=0, truncate
-               std::vector<char> v(v_size - offset);
-               v.push_back(42);
-               v.push_back(53);
                v_size = 0xffff'ffff;
                check(kv_it_value(itr, 0, v.data(), v.size() - 2, v_size) == iterator_ok && v_size == exp.v.size(),
                      "value has wrong size (f)");
@@ -259,7 +230,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             }
          }
 
-         stat = kv_it_next(itr, &key_size, &value_size);
+         stat = kv_it_next(itr, key_size, value_size);
       }
       check(key_size == 0, "expected end to have 0 key size");
       check(value_size == 0, "expected end to have 0 value size");
@@ -269,15 +240,15 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       kv_it_destroy(itr);
    } // scan()
 
-   [[eosio::action]] void scanrev(name db, name contract, const std::vector<char>& prefix,
-                                  const std::optional<std::vector<char>>& lower, const std::vector<kv>& expected) {
-      auto    itr = kv_it_create(db, contract, prefix.data(), prefix.size());
-      it_stat stat;
+   [[eosio::action]] void scanrev(name contract, const std::vector<char>& prefix,
+                                  const std::optional<std::vector<char>>& lower, const std::vector<kv_t>& expected) {
+      auto itr = kv_it_create(contract.value, prefix.data(), prefix.size());
+      uint32_t stat;
       uint32_t key_size = 0xffff'ffff, value_size = 0xffff'ffff;
       if (lower)
-         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), &key_size, &value_size);
+         stat = kv_it_lower_bound(itr, lower->data(), lower->size(), key_size, value_size);
       else
-         stat = kv_it_prev(itr, &key_size, &value_size);
+         stat = kv_it_prev(itr, key_size, value_size);
       for (auto& exp : expected) {
          std::string message = "missing kv pairs: ";
          message.append(exp.k.data(), exp.k.size());
@@ -316,7 +287,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             check(v[v.size() - 2] == 42 && v[v.size() - 1] == 53, "buffer overrun (e)");
          }
 
-         stat = kv_it_prev(itr, &key_size, &value_size);
+         stat = kv_it_prev(itr, key_size, value_size);
       }
       check(key_size == 0, "expected end to have 0 key size");
       check(value_size == 0, "expected end to have 0 value size");
@@ -326,14 +297,14 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
       kv_it_destroy(itr);
    } // scanrev()
 
-   [[eosio::action]] void itstaterased(name db, name contract, const std::vector<char>& prefix,
+   [[eosio::action]] void itstaterased(name contract, const std::vector<char>& prefix,
                                        const std::vector<char>& k, const std::vector<char>& v,
                                        int test_id, bool insert, bool reinsert) {
-      if(insert) kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
-      auto it = kv_it_create(db, contract, prefix.data(), prefix.size());
+      if(insert) kv_set(contract.value, k.data(), k.size(), v.data(), v.size(), contract.value);
+      auto it = kv_it_create(contract.value, prefix.data(), prefix.size());
       uint32_t key_size, value_size;
-      it_stat stat = kv_it_lower_bound(it, k.data(), k.size(), &key_size, &value_size);
-      kv_erase(db, contract, k.data(), k.size());
+      uint32_t stat = kv_it_lower_bound(it, k.data(), k.size(), key_size, value_size);
+      kv_erase(contract.value, k.data(), k.size());
       check(kv_it_status(it) == iterator_erased, "iterator should be erased");
       auto check_status = [&](int test_id) {
          switch(test_id) {
@@ -350,16 +321,13 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                return;
             }
             case 2: {
-               auto it2 = kv_it_create(db, contract, prefix.data(), prefix.size());
+               auto it2 = kv_it_create(contract.value, prefix.data(), prefix.size());
                kv_it_compare(it, it2); // abort
                return;
             }
             case 3: {
-               auto it2 = kv_it_create(db, contract, prefix.data(), prefix.size());
+               auto it2 = kv_it_create(contract.value, prefix.data(), prefix.size());
                kv_it_compare(it2, it); // abort
-               return;
-            }
-            case 4: {
                kv_it_compare(it, it); // abort
                return;
             }
@@ -368,11 +336,11 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
                return;
             }
             case 6: {
-               kv_it_next(it, &key_size, &value_size); // abort
+               kv_it_next(it, key_size, value_size); // abort
                return;
             }
             case 7: {
-               kv_it_prev(it, &key_size, &value_size); // abort
+               kv_it_prev(it, key_size, value_size); // abort
                return;
             }
             case 8: {
@@ -382,13 +350,13 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
             }
             case 9: {
                // For this test there must be no other elements in range
-               check(kv_it_lower_bound(it, "", 0, &key_size, &value_size) == iterator_end, "expected end");
+               check(kv_it_lower_bound(it, "", 0, key_size, value_size) == iterator_end, "expected end");
                check(kv_it_status(it) == iterator_end, "expected end");
                return;
             }
             case 10: {
                // For this test there must be at least one other element in range
-               check(kv_it_lower_bound(it, "", 0, &key_size, &value_size) == iterator_ok, "expected an element");
+               check(kv_it_lower_bound(it, "", 0, key_size, value_size) == iterator_ok, "expected an element");
                check(kv_it_status(it) == iterator_ok, "expected an element");
                return;
             }
@@ -402,7 +370,7 @@ class [[eosio::contract("kv_test")]] kvtest : public eosio::contract {
          check_status(test_id);
          return;
       }
-      kv_set(db, contract, k.data(), k.size(), v.data(), v.size());
+      kv_set(contract.value, k.data(), k.size(), v.data(), v.size(), contract.value);
       check_status(test_id);
    } // itstaterased
 

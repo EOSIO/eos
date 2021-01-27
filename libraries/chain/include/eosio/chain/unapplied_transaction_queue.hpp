@@ -28,7 +28,7 @@ enum class trx_enum_type {
    incoming = 5 // incoming_end() needs to be updated if this changes
 };
 
-using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
+using next_func_t = std::function<void(const std::variant<fc::exception_ptr, transaction_trace_ptr>&)>;
 
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
@@ -124,8 +124,8 @@ public:
       if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
       for( const auto& receipt : bs->block->transactions ) {
-         if( receipt.trx.contains<packed_transaction>() ) {
-            const auto& pt = receipt.trx.get<packed_transaction>();
+         if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+            const auto& pt = std::get<packed_transaction>(receipt.trx);
             auto itr = idx.find( pt.id() );
             if( itr != idx.end() ) {
                if( itr->next ) {

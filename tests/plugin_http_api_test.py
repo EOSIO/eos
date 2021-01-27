@@ -55,7 +55,8 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::history_plugin",
                                                                                    "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
-                        "--contracts-console --http-validate-host=%s --verbose-http-errors ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
+                        "--contracts-console --http-validate-host=%s --verbose-http-errors "
+                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
         start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
@@ -321,6 +322,56 @@ class PluginHttpTest(unittest.TestCase):
                                                               "\"key_type\":\"i128\"",
                                                               "\"lower_bound\":\"0x0000000000000000D0F2A472A8EB6A57\"",
                                                               "\"upper_bound\":\"0xFFFFFFFFFFFFFFFFD0F2A472A8EB6A57\"")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+
+        # get_kv_table_rows with empty parameter
+        default_cmd = cmd_base + "get_kv_table_rows"
+        ret_json = Utils.runCmdReturnJson(default_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with empty content parameter
+        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
+        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with invalid parameter
+        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
+        ret_json = Utils.runCmdReturnJson(invalid_cmd)
+        self.assertEqual(ret_json["code"], 400)
+        self.assertEqual(ret_json["error"]["code"], 3200006)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"index_value\":\"pid1\"")
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid4\"",)
+        ret_json = Utils.runCmdReturnJson(valid_cmd)
+        self.assertEqual(ret_json["code"], 500)
+        # get_kv_table_rows with valid parameter
+        valid_cmd = ("%s%s '{%s,%s,%s,%s,%s,%s,%s}'") % (  default_cmd,
+                                                              self.http_post_str,
+                                                              "\"json\":true",
+                                                              "\"code\":\"cancancan345\"",
+                                                              "\"table\":\"vote\"",
+                                                              "\"index_name\":\"primarykey\"",
+                                                              "\"lower_bound\":\"pid2\"",
+                                                              "\"upper_bound\":\"pid5\"",
+                                                              "\"limit\":\"2\"")
+
         ret_json = Utils.runCmdReturnJson(valid_cmd)
         self.assertEqual(ret_json["code"], 500)
 
@@ -805,11 +856,11 @@ class PluginHttpTest(unittest.TestCase):
         # connections with empty parameter
         default_cmd = cmd_base + "connections"
         ret_str = Utils.runCmdReturnStr(default_cmd)
-        self.assertEqual(ret_str, "[]")
+        self.assertIn("\"peer\":\"localhost:9011\"", ret_str)
         # connections with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_str = Utils.runCmdReturnStr(default_cmd)
-        self.assertEqual(ret_str, "[]")
+        self.assertIn("\"peer\":\"localhost:9011\"", ret_str)
         # connections with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)
@@ -1025,23 +1076,8 @@ class PluginHttpTest(unittest.TestCase):
         # create_snapshot with empty parameter
         default_cmd = cmd_base + "create_snapshot"
         ret_json = Utils.runCmdReturnJson(default_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with empty content parameter
-        empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
-        ret_json = Utils.runCmdReturnJson(empty_content_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with invalid parameter
-        invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
-        ret_json = Utils.runCmdReturnJson(invalid_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
-        # create_snapshot with valid parameter
-        valid_cmd = default_cmd + self.http_post_str + ("'{\"content-type: application/x-www-form-urlencoded; charset=UTF-8\"}'")
-        ret_json = Utils.runCmdReturnJson(valid_cmd)
-        self.assertEqual(ret_json["code"], 500)
-        self.assertEqual(ret_json["error"]["code"], 3170000)
+        self.assertIn("head_block_id", ret_json)
+        self.assertIn("snapshot_name", ret_json)
 
         # get_scheduled_protocol_feature_activations with empty parameter
         default_cmd = cmd_base + "get_scheduled_protocol_feature_activations"

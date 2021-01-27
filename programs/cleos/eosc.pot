@@ -88,6 +88,13 @@ msgid ""
 "  eosc get code ${1}"
 msgstr ""
 
+msgid ""
+"The ABI for the code on account \"${1}\" does not specify kv_table \"${2}\".\n"
+"\n"
+"Please check the account and kv_table name, and verify that the account has the expected code using:\n"
+"  eosc get code ${1}"
+msgstr ""
+
 msgid "Error locating help text: ${code} ${what}"
 msgstr ""
 

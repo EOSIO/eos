@@ -6,6 +6,8 @@
 
 #include <set>
 
+#include <Security/Security.h>
+
 namespace eosio::secure_enclave {
 
 class secure_enclave_key {
@@ -25,12 +27,18 @@ class secure_enclave_key {
 
       ~secure_enclave_key() = default;
    private:
-      struct impl;
-      constexpr static size_t fwd_size = 128;
-      fc::fwd<impl,fwd_size> my;
+      struct impl
+      {
+        SecKeyRef key_ref = NULL;
+        fc::crypto::public_key pub_key;
+        ~impl();
+        void populate_public_key();
+      };
+      impl my;
 
       friend void delete_key(secure_enclave_key&& key);
 };
+
 
 bool hardware_supports_secure_enclave();
 bool application_signed();

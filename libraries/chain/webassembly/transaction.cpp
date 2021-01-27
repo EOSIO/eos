@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    void interface::send_inline( legacy_span<const char> data ) {

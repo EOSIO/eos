@@ -217,7 +217,7 @@ namespace eosio { namespace chain {
       const wasm_interface::vm_type wasm_runtime_time;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      fc::optional<eosvmoc_tier> eosvmoc;
+      std::optional<eosvmoc_tier> eosvmoc;
 #endif
    };
 

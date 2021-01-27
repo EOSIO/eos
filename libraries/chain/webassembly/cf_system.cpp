@@ -1,4 +1,5 @@
 #include <eosio/chain/webassembly/interface.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    inline static constexpr size_t max_assert_message = 1024;

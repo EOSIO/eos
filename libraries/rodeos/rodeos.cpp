@@ -2,6 +2,7 @@
 
 #include <b1/rodeos/callbacks/kv.hpp>
 #include <b1/rodeos/rodeos_tables.hpp>
+#include <fc/log/trace.hpp>
 
 #include <fc/log/trace.hpp>
 
@@ -212,30 +213,29 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
 void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas,
                                       std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
-   view_state.kv_ram.enable_write           = true;
-   view_state.kv_ram.bypass_receiver_check  = true;
-   view_state.kv_disk.enable_write          = true;
-   view_state.kv_disk.bypass_receiver_check = true;
-   view_state.kv_state.enable_write         = true;
-   uint32_t num                             = deltas.unpack_size();
+   view_state.kv_state.bypass_receiver_check = true; // TODO: can we enable recevier check in the future
+   view_state.kv_state.enable_write          = true;
+   uint32_t num                              = deltas.unpack_size();
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
-      auto&  delta_v0      = std::get<0>(delta);
       size_t num_processed = 0;
-      store_delta({ view_state }, delta_v0, head == 0, [&]() {
-         if (delta_v0.rows.size() > 10000 && !(num_processed % 10000)) {
-            if (shutdown())
-               throw std::runtime_error("shutting down");
-            ilog("block ${b} ${t} ${n} of ${r}",
-                 ("b", block_num)("t", delta_v0.name)("n", num_processed)("r", delta_v0.rows.size()));
-            if (head == 0) {
-               end_write(false);
-               view_state.reset();
+      std::visit(
+         [&](auto& delta_any_v) {
+         store_delta({ view_state }, delta_any_v, head == 0, [&]() {
+            if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
+               if (shutdown())
+                  throw std::runtime_error("shutting down");
+               ilog("block ${b} ${t} ${n} of ${r}",
+                    ("b", block_num)("t", delta_any_v.name)("n", num_processed)("r", delta_any_v.rows.size()));
+               if (head == 0) {
+                  end_write(false);
+                  view_state.reset();
+               }
             }
-         }
-         ++num_processed;
-      });
+            ++num_processed;
+         });
+      }, delta);
    }
 }
 
@@ -308,8 +308,7 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    snapshot.check_write(result);
    chaindb_state chaindb_state;
    db_view_state view_state{ name, *snapshot.db, *snapshot.write_session, snapshot.partition->contract_kv_prefix };
-   view_state.kv_disk.enable_write = true;
-   view_state.kv_ram.enable_write  = true;
+   view_state.kv_state.enable_write  = true;
    filter::callbacks cb{ *filter_state, chaindb_state, view_state };
    filter_state->max_console_size = 10000;
    filter_state->console.clear();
@@ -340,11 +339,17 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    } catch (...) {
       try {
          throw;
-      } catch (const std::exception& e) {
-         elog("std::exception processing filter wasm: ${e}", ("e", e.what()));
-      } catch (const fc::exception& e) {
-         elog("fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()));
-      } catch (...) { elog("unknown exception processing filter wasm"); }
+      } catch ( const std::bad_alloc& ) {
+        throw;
+      } catch ( const boost::interprocess::bad_alloc& ) {
+        throw;
+      } catch( const fc::exception& e ) {
+         elog( "fc::exception processing filter wasm: ${e}", ("e", e.to_detail_string()) );
+      } catch( const std::exception& e ) {
+         elog( "std::exception processing filter wasm: ${e}", ("e", e.what()) );
+      } catch( ... ) {
+         elog( "unknown exception processing filter wasm" );
+      }
       if (!filter_state->console.empty())
          ilog("filter ${n} console output before exception: <<<\n${c}>>>",
               ("n", name.to_string())("c", filter_state->console));

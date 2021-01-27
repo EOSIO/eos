@@ -219,6 +219,17 @@ Allows privileged contracts to set the constraints on WebAssembly code.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::blockchain_parameters, builtin_protocol_feature_spec{
+            "BLOCKCHAIN_PARAMETERS",
+            fc::variant("70787548dcea1a2c52c913a37f74ce99e6caae79110d7ca7b859936a0075b314").as<digest_type>(),
+            {}
+         } )
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: BLOCKCHAIN_PARAMETERS
+
+Allows privileged contracts to get and set subsets of blockchain parameters.
+*/
    ;
 
 
@@ -377,7 +388,7 @@ Allows privileged contracts to set the constraints on WebAssembly code.
       return recognized_t::ready;
    }
 
-   optional<digest_type> protocol_feature_set::get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
+   std::optional<digest_type> protocol_feature_set::get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
       uint32_t indx = static_cast<uint32_t>( feature_codename );
 
       if( indx >= _recognized_builtin_protocol_features.size() )

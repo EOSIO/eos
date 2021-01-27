@@ -34,11 +34,11 @@ namespace eosio {
 #define IMPORT extern "C" __attribute__((eosio_wasm_import))
 
    // clang-format off
-   IMPORT void     kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size);
-   IMPORT void     kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size);
-   IMPORT bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
-   IMPORT uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size);
-   IMPORT uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size);
+   IMPORT void     kv_erase(uint64_t contract, const char* key, uint32_t key_size);
+   IMPORT void     kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, uint64_t payer);
+   IMPORT bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
+   IMPORT uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size);
+   IMPORT uint32_t kv_it_create(uint64_t contract, const char* prefix, uint32_t size);
    IMPORT void     kv_it_destroy(uint32_t itr);
    IMPORT int32_t  kv_it_status(uint32_t itr);
    IMPORT int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
@@ -66,11 +66,11 @@ class kv_environment {
     }
 
     // clang-format off
-    void     kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size)                                       {return internal_use_do_not_use::kv_erase(db, contract, key, key_size);}
-    void     kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {return internal_use_do_not_use::kv_set(db, contract, key, key_size, value, value_size);}
-    bool     kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size)                   {return internal_use_do_not_use::kv_get(db, contract, key, key_size, value_size);}
-    uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size)                                          {return internal_use_do_not_use::kv_get_data(db, offset, data, data_size);}
-    uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t size)                                    {return internal_use_do_not_use::kv_it_create(db, contract, prefix, size);}
+    void     kv_erase(uint64_t contract, const char* key, uint32_t key_size)                                                    {return internal_use_do_not_use::kv_erase(contract, key, key_size);}
+    void     kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, uint64_t payer) {return internal_use_do_not_use::kv_set(contract, key, key_size, value, value_size, payer);}
+    bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size)                                {return internal_use_do_not_use::kv_get(contract, key, key_size, value_size);}
+    uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size)                                                       {return internal_use_do_not_use::kv_get_data(offset, data, data_size);}
+    uint32_t kv_it_create(uint64_t contract, const char* prefix, uint32_t size)                                                 {return internal_use_do_not_use::kv_it_create(contract, prefix, size);}
     void     kv_it_destroy(uint32_t itr)                                                                                        {return internal_use_do_not_use::kv_it_destroy(itr);}
     int32_t  kv_it_status(uint32_t itr)                                                                                         {return internal_use_do_not_use::kv_it_status(itr);}
     int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b)                                                                      {return internal_use_do_not_use::kv_it_compare(itr_a, itr_b);}
@@ -234,7 +234,6 @@ inline key_type make_key(T val) {
 #endif
 
 static constexpr eosio::name kv_ram = "eosio.kvram"_n;
-static constexpr eosio::name kv_disk = "eosio.kvdisk"_n;
 
 struct default_constructor_tag;
 
@@ -318,11 +317,11 @@ class kv_table {
 
          bool is_primary = index->index_name == index->tbl->primary_index_name;
          if (!is_primary) {
-            auto success = index->tbl->environment.kv_get(index->tbl->db_name, index->contract_name.value, (char*)buffer, actual_value_size, actual_data_size);
+            auto success = index->tbl->environment.kv_get(index->contract_name.value, (char*)buffer, actual_value_size, actual_data_size);
             eosio::check(success, "failure getting primary key in `value()`");
 
             void* pk_buffer = actual_data_size > detail::max_stack_buffer_size ? malloc(actual_data_size) : alloca(actual_data_size);
-            index->tbl->environment.kv_get_data(index->tbl->db_name, 0, (char*)pk_buffer, actual_data_size);
+            index->tbl->environment.kv_get_data(0, (char*)pk_buffer, actual_data_size);
 
             deserialize_buffer = pk_buffer;
             deserialize_size = actual_data_size;
@@ -364,7 +363,7 @@ class kv_table {
 
       iterator& operator--() {
          if (!itr) {
-            itr = index->tbl->environment.kv_it_create(index->tbl->db_name, index->contract_name.value, index->prefix.data(), index->prefix.size());
+            itr = index->tbl->environment.kv_it_create(index->contract_name.value, index->prefix.data(), index->prefix.size());
          }
          itr_stat = static_cast<status>(index->tbl->environment.kv_it_prev(itr));
          eosio::check(itr_stat != status::iterator_end, "decremented past the beginning");
@@ -500,7 +499,7 @@ public:
       }
 
       iterator find(const key_type& key) const {
-         uint32_t itr = tbl->environment.kv_it_create(tbl->db_name, contract_name.value, prefix.data(), prefix.size());
+         uint32_t itr = tbl->environment.kv_it_create(contract_name.value, prefix.data(), prefix.size());
          int32_t itr_stat = tbl->environment.kv_it_lower_bound(itr, key.data(), key.size());
 
          auto cmp = tbl->environment.kv_it_key_compare(itr, key.data(), key.size());
@@ -527,7 +526,7 @@ public:
 
       bool exists(const key_type& key) const {
          uint32_t value_size;
-         return tbl->environment.kv_get(tbl->db_name, contract_name.value, key.data(), key.size(), value_size);
+         return tbl->environment.kv_get(contract_name.value, key.data(), key.size(), value_size);
       }
 
       /**
@@ -543,7 +542,7 @@ public:
 
       T operator[](const key_type& key) const {
          auto opt = get(key);
-         eosio::check(opt.has_value(), __FILE__ ":" + std::to_string(__LINE__) + " Key not found in `[]`");
+         eosio::check(opt, __FILE__ ":" + std::to_string(__LINE__) + " Key not found in `[]`");
          return *opt;
       }
 
@@ -564,24 +563,24 @@ public:
          uint32_t actual_data_size;
          std::optional<T> ret_val;
 
-         auto success = tbl->environment.kv_get(tbl->db_name, contract_name.value, key.data(), key.size(), value_size);
+         auto success = tbl->environment.kv_get(contract_name.value, key.data(), key.size(), value_size);
          if (!success) {
             return ret_val;
          }
 
          void* buffer = value_size > detail::max_stack_buffer_size ? malloc(value_size) : alloca(value_size);
-         auto copy_size = tbl->environment.kv_get_data(tbl->db_name, 0, (char*)buffer, value_size);
+         auto copy_size = tbl->environment.kv_get_data(0, (char*)buffer, value_size);
 
          void* deserialize_buffer = buffer;
          size_t deserialize_size = copy_size;
 
          bool is_primary = index_name == tbl->primary_index_name;
          if (!is_primary) {
-            auto success = tbl->environment.kv_get(tbl->db_name, contract_name.value, (char*)buffer, copy_size, actual_data_size);
+            auto success = tbl->environment.kv_get(contract_name.value, (char*)buffer, copy_size, actual_data_size);
             eosio::check(success, "failure getting primary key");
 
             void* pk_buffer = actual_data_size > detail::max_stack_buffer_size ? malloc(actual_data_size) : alloca(actual_data_size);
-            auto pk_copy_size = tbl->environment.kv_get_data(tbl->db_name, 0, (char*)pk_buffer, actual_data_size);
+            auto pk_copy_size = tbl->environment.kv_get_data(0, (char*)pk_buffer, actual_data_size);
 
             deserialize_buffer = pk_buffer;
             deserialize_size = pk_copy_size;
@@ -608,7 +607,7 @@ public:
        * @return An iterator to the object with the lowest key (by this index) in the table.
        */
       iterator begin() const {
-         uint32_t itr = tbl->environment.kv_it_create(tbl->db_name, contract_name.value, prefix.data(), prefix.size());
+         uint32_t itr = tbl->environment.kv_it_create(contract_name.value, prefix.data(), prefix.size());
          int32_t itr_stat = tbl->environment.kv_it_lower_bound(itr, "", 0);
 
          return {itr, static_cast<typename iterator::status>(itr_stat), this};
@@ -636,7 +635,7 @@ public:
 
       iterator lower_bound(const key_type& k ) const {
          auto key = table_key( prefix, k );
-         uint32_t itr = tbl->environment.kv_it_create(tbl->db_name, contract_name.value, prefix.data(), prefix.size());
+         uint32_t itr = tbl->environment.kv_it_create(contract_name.value, prefix.data(), prefix.size());
          int32_t itr_stat = tbl->environment.kv_it_lower_bound(itr, key.data(), key.size());
 
          return {itr, static_cast<typename iterator::status>(itr_stat), this};
@@ -707,11 +706,11 @@ public:
       auto primary_key = primary_index->get_key(value);
       auto tbl_key = table_key(make_prefix(table_name, primary_index->index_name), primary_key);
 
-      auto primary_key_found = environment.kv_get(db_name, contract_name.value, tbl_key.data(), tbl_key.size(), value_size);
+      auto primary_key_found = environment.kv_get(contract_name.value, tbl_key.data(), tbl_key.size(), value_size);
 
       if (primary_key_found) {
          void* buffer = value_size > detail::max_stack_buffer_size ? malloc(value_size) : alloca(value_size);
-         auto copy_size = environment.kv_get_data(db_name, 0, (char*)buffer, value_size);
+         auto copy_size = environment.kv_get_data(0, (char*)buffer, value_size);
 
          detail::deserialize(old_value, buffer, copy_size);
 
@@ -722,15 +721,15 @@ public:
 
       for (const auto& idx : secondary_indices) {
          auto sec_tbl_key = table_key(make_prefix(table_name, idx->index_name), idx->get_key(value));
-         auto sec_found = environment.kv_get(db_name, contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), value_size);
+         auto sec_found = environment.kv_get(contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), value_size);
 
          if (!primary_key_found) {
             eosio::check(!sec_found, "Attempted to store an existing secondary index.");
-            environment.kv_set(db_name, contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), tbl_key.data(), tbl_key.size());
+            environment.kv_set(contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), tbl_key.data(), tbl_key.size(), contract_name.value);
          } else {
             if (sec_found) {
                void* buffer = value_size > detail::max_stack_buffer_size ? malloc(value_size) : alloca(value_size);
-               auto copy_size = environment.kv_get_data(db_name, 0, (char*)buffer, value_size);
+               auto copy_size = environment.kv_get_data(0, (char*)buffer, value_size);
 
                auto res = memcmp(buffer, tbl_key.data(), copy_size);
                eosio::check(copy_size == tbl_key.size() && res == 0, "Attempted to update an existing secondary index.");
@@ -740,8 +739,8 @@ public:
                }
             } else {
                auto old_sec_key = table_key(make_prefix(table_name, idx->index_name), idx->get_key(old_value));
-               environment.kv_erase(db_name, contract_name.value, old_sec_key.data(), old_sec_key.size());
-               environment.kv_set(db_name, contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), tbl_key.data(), tbl_key.size());
+               environment.kv_erase(contract_name.value, old_sec_key.data(), old_sec_key.size());
+               environment.kv_set(contract_name.value, sec_tbl_key.data(), sec_tbl_key.size(), tbl_key.data(), tbl_key.size(), contract_name.value);
             }
          }
 
@@ -752,7 +751,7 @@ public:
 
       detail::serialize(value, data_buffer, data_size);
 
-      environment.kv_set(db_name, contract_name.value, tbl_key.data(), tbl_key.size(), (const char*)data_buffer, data_size);
+      environment.kv_set(contract_name.value, tbl_key.data(), tbl_key.size(), (const char*)data_buffer, data_size, contract_name.value);
 
       if (data_size > detail::max_stack_buffer_size) {
          free(data_buffer);
@@ -770,7 +769,7 @@ public:
 
       auto primary_key = primary_index->get_key(value);
       auto tbl_key = table_key(make_prefix(table_name, primary_index->index_name), primary_key);
-      auto primary_key_found = environment.kv_get(db_name, contract_name.value, tbl_key.data(), tbl_key.size(), value_size);
+      auto primary_key_found = environment.kv_get(contract_name.value, tbl_key.data(), tbl_key.size(), value_size);
 
       if (!primary_key_found) {
          return;
@@ -778,10 +777,10 @@ public:
 
       for (const auto& idx : secondary_indices) {
          auto sec_tbl_key = table_key(make_prefix(table_name, idx->index_name), idx->get_key(value));
-         environment.kv_erase(db_name, contract_name.value, sec_tbl_key.data(), sec_tbl_key.size());
+         environment.kv_erase(contract_name.value, sec_tbl_key.data(), sec_tbl_key.size());
       }
 
-      environment.kv_erase(db_name, contract_name.value, tbl_key.data(), tbl_key.size());
+      environment.kv_erase(contract_name.value, tbl_key.data(), tbl_key.size());
    }
 
 protected:
@@ -886,13 +885,13 @@ public:
          uint32_t copy_size;
          uint32_t value_size;
 
-         auto success = environment.kv_get(db_name, contract_name.value, key.data(), key.size(), value_size);
+         auto success = environment.kv_get(contract_name.value, key.data(), key.size(), value_size);
 
          eosio::check(success, "tried to get a singleton that does not exist");
 
          ste.raw_original = (char*)malloc(value_size);
          ste.raw_original_size = value_size;
-         copy_size = environment.kv_get_data(db_name, 0, ste.raw_original, value_size);
+         copy_size = environment.kv_get_data(0, ste.raw_original, value_size);
 
          detail::deserialize(ste.value, ste.raw_original, copy_size);
          ste.is_cached = true;
@@ -911,11 +910,11 @@ public:
    bool exists() {
       uint32_t value_size;
 
-      return environment.kv_get(db_name, contract_name.value, key.data(), key.size(), value_size);
+      return environment.kv_get(contract_name.value, key.data(), key.size(), value_size);
    }
 
    void erase() {
-      environment.kv_erase(db_name, contract_name.value, key.data(), key.size());
+      environment.kv_erase(contract_name.value, key.data(), key.size());
       auto& ste = get_state();
       ste.is_cached = false;
       ste.is_dirty = false;
@@ -932,13 +931,12 @@ public:
          detail::serialize(ste.value, data_buffer, data_size);
 
          if (ste.raw_original_size != data_size || memcmp(ste.raw_original, data_buffer, data_size) != 0) {
-            environment.kv_set(db_name, contract_name.value, key.data(), key.size(), (const char*)data_buffer, data_size);
+            environment.kv_set(contract_name.value, key.data(), key.size(), (const char*)data_buffer, data_size, contract_name.value);
          }
       }
    }
 
 private:
-   constexpr static uint64_t db_name = static_cast<uint64_t>(DbName);
    constexpr static uint64_t singleton_name = static_cast<uint64_t>(SingletonName);
 
    eosio::name contract_name;

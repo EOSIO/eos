@@ -74,7 +74,8 @@ namespace {
       :store(store)
       {}
 
-      void append( const block_trace_v1& trace ) {
+      template <typename BlockTrace>
+      void append( const BlockTrace& trace ) {
          store->append(trace);
       }
 
@@ -356,10 +357,10 @@ struct trace_api_plugin_impl {
    using chain_extraction_t = chain_extraction_impl_type<shared_store_provider<store_provider>>;
    std::shared_ptr<chain_extraction_t> extraction;
 
-   fc::optional<scoped_connection>                            applied_transaction_connection;
-   fc::optional<scoped_connection>                            block_start_connection;
-   fc::optional<scoped_connection>                            accepted_block_connection;
-   fc::optional<scoped_connection>                            irreversible_block_connection;
+   std::optional<scoped_connection>                            applied_transaction_connection;
+   std::optional<scoped_connection>                            block_start_connection;
+   std::optional<scoped_connection>                            accepted_block_connection;
+   std::optional<scoped_connection>                            irreversible_block_connection;
 };
 
 trace_api_plugin::trace_api_plugin()

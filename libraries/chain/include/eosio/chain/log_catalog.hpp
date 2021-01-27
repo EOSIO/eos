@@ -66,10 +66,10 @@ struct log_catalog {
    static bfs::path make_abosolute_dir(const bfs::path& base_dir, bfs::path new_dir) {
       if (new_dir.is_relative())
          new_dir = base_dir / new_dir;
-      
+
       if (!bfs::is_directory(new_dir))
          bfs::create_directories(new_dir);
-      
+
       return new_dir;
    }
 
@@ -78,7 +78,7 @@ struct log_catalog {
 
       this->retained_dir = make_abosolute_dir(log_dir, retained_dir.empty() ? log_dir : retained_dir);
       if (!archive_dir.empty()) {
-         this->archive_dir  = make_abosolute_dir(log_dir, archive_dir);
+         this->archive_dir = make_abosolute_dir(log_dir, archive_dir);
       }
 
       for_each_file_in_dir_matches(this->retained_dir, std::string(name) + suffix_pattern, [this](bfs::path path) {
@@ -114,7 +114,8 @@ struct log_catalog {
    }
 
    bool index_matches_data(const bfs::path& index_path, const LogData& log) const {
-      if (!bfs::exists(index_path)) return false;
+      if (!bfs::exists(index_path))
+         return false;
 
       auto num_blocks_in_index = bfs::file_size(index_path) / sizeof(uint64_t);
       if (num_blocks_in_index != log.num_blocks())
@@ -161,7 +162,7 @@ struct log_catalog {
    std::pair<fc::datastream<const char*>, uint32_t> ro_stream_for_block(uint32_t block_num) {
       auto pos = get_block_position(block_num, mapmode::readonly);
       if (pos) {
-         return std::make_pair(log_data.ro_stream_at(*pos), log_data.version());
+         return log_data.ro_stream_at(*pos);
       }
       return {fc::datastream<const char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
@@ -169,7 +170,7 @@ struct log_catalog {
    std::pair<fc::datastream<char*>, uint32_t> rw_stream_for_block(uint32_t block_num) {
       auto pos = get_block_position(block_num, mapmode::readwrite);
       if (pos) {
-         return std::make_pair(log_data.rw_stream_at(*pos), log_data.version());
+         return log_data.rw_stream_at(*pos);
       }
       return {fc::datastream<char*>(nullptr, 0), static_cast<uint32_t>(0)};
    }
@@ -185,10 +186,10 @@ struct log_catalog {
    static void rename_if_not_exists(bfs::path old_name, bfs::path new_name) {
       if (!bfs::exists(new_name)) {
          bfs::rename(old_name, new_name);
-      }
-      else {
+      } else {
          bfs::remove(old_name);
-         wlog("${new_name} already exists, just removing ${old_name}", ("old_name", old_name.string())("new_name", new_name.string()));
+         wlog("${new_name} already exists, just removing ${old_name}",
+              ("old_name", old_name.string())("new_name", new_name.string()));
       }
    }
 
@@ -223,7 +224,7 @@ struct log_catalog {
                bfs::remove(orig_name.replace_extension("index"));
             } else {
                // move the the archive dir
-               rename_bundle(orig_name, archive_dir/orig_name.filename() );
+               rename_bundle(orig_name, archive_dir / orig_name.filename());
             }
          }
          this->collection.erase(this->collection.begin(), this->collection.begin() + items_to_erase);
@@ -233,6 +234,40 @@ struct log_catalog {
       }
       if (max_retained_files > 0)
          this->collection.emplace(start_block_num, mapped_type{end_block_num, new_path});
+   }
+
+   /// Truncate the catalog so that the log/index bundle containing the block with \c block_num
+   /// would be rename to \c new_name; the log/index bundles with blocks strictly higher
+   /// than \c block_num would be deleted, and all the renamed/removed entries would be erased
+   /// from the catalog.
+   ///
+   /// \return if nonzero, it's the starting block number for the log/index bundle being renamed.
+   uint32_t truncate(uint32_t block_num, bfs::path new_name) {
+      if (collection.empty())
+         return 0;
+
+      auto remove_files = [](typename collection_t::const_reference v) {
+         auto name = v.second.filename_base;
+         bfs::remove(name.replace_extension("log"));
+         bfs::remove(name.replace_extension("index"));
+      };
+
+      auto it = collection.upper_bound(block_num);
+
+      if (it == collection.begin() || block_num > (it - 1)->second.last_block_num) {
+         std::for_each(it, collection.end(), remove_files);
+         collection.erase(it, collection.end());
+         return 0;
+      } else {
+         auto truncate_it = --it;
+         auto name        = truncate_it->second.filename_base;
+         bfs::rename(name.replace_extension("log"), new_name.replace_extension("log"));
+         bfs::rename(name.replace_extension("index"), new_name.replace_extension("index"));
+         std::for_each(truncate_it + 1, collection.end(), remove_files);
+         auto result = truncate_it->first;
+         collection.erase(truncate_it, collection.end());
+         return result;
+      }
    }
 };
 

@@ -29,7 +29,7 @@ struct action_entry {
 };
 
 struct combine_nodes{};
-using merkle_cmd = fc::static_variant<chain::digest_type, action_entry, combine_nodes>;
+using merkle_cmd = std::variant<chain::digest_type, action_entry, combine_nodes>;
 
 struct merkle_creator_node {
    chain::checksum_type  hash;
@@ -132,10 +132,10 @@ struct compressed_proof_generator_impl {
       }
       for(const chain::transaction_receipt& r : bsp->block->transactions) {
          transaction_id_type id;
-         if(r.trx.contains<chain::transaction_id_type>())
-            id = r.trx.get<chain::transaction_id_type>();
+         if(std::holds_alternative<chain::transaction_id_type>(r.trx))
+            id = std::get<chain::transaction_id_type>(r.trx);
          else
-            id = r.trx.get<chain::packed_transaction>().id();
+            id = std::get<chain::packed_transaction>(r.trx).id();
          auto it = cached_traces.find(id);
          EOS_ASSERT(it != cached_traces.end(), chain::misc_exception, "missing trace for transaction ${id}", ("id", id));
          for(const chain::action_trace& at : it->second->action_traces)

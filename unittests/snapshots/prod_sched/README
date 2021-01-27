@@ -1,0 +1,2 @@
+snapshot_tests.cpp.diff is the patch to build blocks.log,
+snap_v2.json.gz, and snap_v2.bin.gz on release-1.8.x.

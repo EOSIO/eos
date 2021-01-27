@@ -21,7 +21,6 @@
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/public_key.hpp>
 #include <fc/io/json.hpp>
-#include <fc/optional.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/log/logger_config.hpp>
@@ -423,8 +422,8 @@ struct launcher_def {
    producer_set_def producer_set;
    string start_temp;
    string start_script;
-   fc::optional<uint32_t> max_block_cpu_usage;
-   fc::optional<uint32_t> max_transaction_cpu_usage;
+   std::optional<uint32_t> max_block_cpu_usage;
+   std::optional<uint32_t> max_transaction_cpu_usage;
    eosio::chain::genesis_state genesis_from_file;
 
    void assign_name (eosd_def &node, bool is_bios);

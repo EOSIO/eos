@@ -70,7 +70,7 @@ void state_history_log::get_entry_header(state_history_log::block_num_type block
 
 std::optional<chain::block_id_type> state_history_log::get_block_id(state_history_log::block_num_type block_num) {
    auto result = catalog.id_for_block(block_num);
-   if (!result && block_num >= _begin_block && block_num < _end_block){
+   if (!result && block_num >= _begin_block && block_num < _end_block) {
       state_history_log_header header;
       get_entry_header(block_num, header);
       return header.block_id;
@@ -126,8 +126,7 @@ void state_history_log::recover_blocks(uint64_t size) {
          break;
       pos = pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix);
       if (!(++num_found % 10000)) {
-         printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
-         fflush(stdout);
+         dlog("${num_found} blocks found, log pos = ${pos}", ("num_found", num_found)("pos", pos));
       }
    }
    read_log.flush();
@@ -187,31 +186,44 @@ state_history_log::file_position_type state_history_log::get_pos(state_history_l
 void state_history_log::truncate(state_history_log::block_num_type block_num) {
    write_log.flush();
    index.flush();
-   uint64_t num_removed = 0;
+   auto first_block_num     = catalog.empty() ? _begin_block : catalog.first_block_num();
+   auto new_begin_block_num = catalog.truncate(block_num, read_log.get_file_path());
+
+   if (new_begin_block_num > 0) {
+      // in this case, the original index/log file has been replaced from some files from the catalog, we need to
+      // reopen read_log, write_log and index.
+      index.close();
+      index.open("rb");
+      _begin_block = new_begin_block_num;
+   }
+
+   uint64_t num_removed;
    if (block_num <= _begin_block) {
-      num_removed = _end_block - _begin_block;
-      write_log.seek(0);
-      index.seek(0);
+      num_removed = _end_block - first_block_num;
       boost::filesystem::resize_file(read_log.get_file_path(), 0);
       boost::filesystem::resize_file(index.get_file_path(), 0);
-      _begin_block = _end_block = 0;
+      _begin_block = _end_block = block_num;
    } else {
       num_removed  = _end_block - block_num;
       uint64_t pos = get_pos(block_num);
-      write_log.seek(0);
-      index.seek(0);
-      boost::filesystem::resize_file(index.get_file_path(), pos);
-      boost::filesystem::resize_file(read_log.get_file_path(), (block_num - _begin_block) * sizeof(uint64_t));
+      boost::filesystem::resize_file(read_log.get_file_path(), pos);
+      boost::filesystem::resize_file(index.get_file_path(), (block_num - _begin_block) * sizeof(uint64_t));
       _end_block = block_num;
    }
-   write_log.flush();
-   index.flush();
+
+   read_log.close();
+   read_log.open("rb");
+   write_log.close();
+   write_log.open("rb+");
+   index.close();
+   index.open("a+b");
+
    ilog("fork or replay: removed ${n} blocks from ${name}.log", ("n", num_removed)("name", name));
 }
 
-state_history_log::block_num_type state_history_log::write_entry_header(const state_history_log_header& header,
-                                                                        const chain::block_id_type&     prev_id) {
-   auto block_num = chain::block_header::num_from_id(header.block_id);
+std::pair<state_history_log::block_num_type, state_history_log::file_position_type>
+state_history_log::write_entry_header(const state_history_log_header& header, const chain::block_id_type& prev_id) {
+   block_num_type block_num = chain::block_header::num_from_id(header.block_id);
    EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::state_history_exception,
               "missed a block in ${name}.log", ("name", name));
 
@@ -231,8 +243,9 @@ state_history_log::block_num_type state_history_log::write_entry_header(const st
       truncate(block_num);
    }
    write_log.seek_end(0);
+   file_position_type pos = write_log.tellp();
    write_header(header);
-   return block_num;
+   return std::make_pair(block_num, pos);
 }
 
 void state_history_log::write_entry_position(const state_history_log_header&       header,
@@ -268,8 +281,7 @@ void state_history_log::split_log() {
 
    catalog.add(_begin_block, _end_block - 1, read_log.get_file_path().parent_path(), name);
 
-   _begin_block = 0;
-   _end_block   = 0;
+   _begin_block = _end_block;
 
    write_log.open("w+b");
    read_log.open("rb");
@@ -279,28 +291,59 @@ void state_history_log::split_log() {
 state_history_traces_log::state_history_traces_log(const state_history_config& config)
     : state_history_log("trace_history", config) {}
 
-std::vector<state_history::transaction_trace> state_history_traces_log::get_traces(block_num_type block_num) {
+chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
 
-   auto [ds, _] = catalog.ro_stream_for_block(block_num);
+   auto get_traces_bin = [block_num](auto& ds, uint32_t version, std::size_t size) {
+      auto start_pos = ds.tellp();
+      try {
+         if (version == 0) {
+            return state_history::zlib_decompress(ds);
+         }
+         else {
+            std::vector<state_history::transaction_trace> traces;
+            state_history::trace_converter::unpack(ds, traces);
+            return fc::raw::pack(traces);
+         }
+      } catch (fc::exception& ex) {
+         std::vector<char> trace_data(size);
+         ds.seekp(start_pos);
+         ds.read(trace_data.data(), size);
+
+         fc::cfile output;
+         char      filename[PATH_MAX];
+         snprintf(filename, PATH_MAX, "invalid_trace_%u_v%u.bin", block_num, version);
+         output.set_file_path(filename);
+         output.open("w");
+         output.write(trace_data.data(), size);
+
+         ex.append_log(FC_LOG_MESSAGE(error,
+                                      "trace data for block ${block_num} has been written to ${filename} for debugging",
+                                      ("block_num", block_num)("filename", filename)));
+
+         throw ex;
+      }
+   };
+
+   auto [ds, version] = catalog.ro_stream_for_block(block_num);
    if (ds.remaining()) {
-      std::vector<state_history::transaction_trace> traces;
-      state_history::trace_converter::unpack(ds, traces);
-      return traces;
+      return get_traces_bin(ds, version, ds.remaining());
    }
 
    if (block_num < begin_block() || block_num >= end_block())
       return {};
    state_history_log_header header;
    get_entry_header(block_num, header);
-   std::vector<state_history::transaction_trace> traces;
-   state_history::trace_converter::unpack(read_log, traces);
-   return traces;
+   return get_traces_bin(read_log, get_ship_version(header.magic), header.payload_size);
 }
+
 
 void state_history_traces_log::prune_transactions(state_history_log::block_num_type        block_num,
                                                   std::vector<chain::transaction_id_type>& ids) {
-   auto [ds, _] = catalog.rw_stream_for_block(block_num);
+   auto [ds, version] = catalog.rw_stream_for_block(block_num);
+
    if (ds.remaining()) {
+      EOS_ASSERT(version > 0, chain::state_history_exception,
+              "The trace log version 0 does not support transaction pruning.");
       state_history::trace_converter::prune_traces(ds, ds.remaining(), ids);
       return;
    }
@@ -309,6 +352,8 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
       return;
    state_history_log_header header;
    get_entry_header(block_num, header);
+   EOS_ASSERT(get_ship_version(header.magic) > 0, chain::state_history_exception,
+              "The trace log version 0 does not support transaction pruning.");
    write_log.seek(read_log.tellp());
    state_history::trace_converter::prune_traces(write_log, header.payload_size, ids);
    write_log.flush();
@@ -346,7 +391,8 @@ chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_n
    return state_history::zlib_decompress(read_log);
 }
 
-void state_history_chain_state_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
+void state_history_chain_state_log::store(const chain::combined_database& db,
+                                          const chain::block_state_ptr&   block_state) {
    bool fresh = this->begin_block() == this->end_block();
    if (fresh)
       ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));

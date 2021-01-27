@@ -26,7 +26,7 @@ struct length_writer {
    }
 
    ~length_writer() {
-      uint32_t end_pos = strm.tellp();
+      uint64_t end_pos = strm.tellp();
       uint32_t len     = end_pos - start_pos;
       strm.seekp(start_pos - sizeof(len));
       strm.write((char*)&len, sizeof(len));
@@ -59,9 +59,13 @@ template <typename STREAM, typename T>
 void zlib_unpack(STREAM& strm, T& obj) {
    uint32_t len;
    fc::raw::unpack(strm, len);
+   auto pos = strm.tellp();
    if (len > 0) {
       fc::datastream<bio::filtering_istreambuf> decompress_strm(bio::zlib_decompressor() | bio::restrict(fc::to_source(strm), 0, len));
       fc::raw::unpack(decompress_strm, obj);
+      // zlib may add some padding at the end of the uncompressed data so that the position of `strm` wont be at the start of next entry,
+      // we need to use `seek()` to adjust the position of `strm`.
+      strm.seekp(pos + len);
    }
 }
 

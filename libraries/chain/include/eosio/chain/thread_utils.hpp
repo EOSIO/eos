@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fc/optional.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
@@ -32,7 +31,7 @@ namespace eosio { namespace chain {
 
       boost::asio::thread_pool       _thread_pool;
       boost::asio::io_context        _ioc;
-      fc::optional<ioc_work_t>       _ioc_work;
+      std::optional<ioc_work_t>      _ioc_work;
    };
 
 

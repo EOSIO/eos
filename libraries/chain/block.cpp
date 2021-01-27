@@ -23,25 +23,25 @@ namespace eosio { namespace chain {
 
    struct transaction_receipt_translator {
       bool legacy = true;
-      fc::static_variant<transaction_id_type, packed_transaction> operator()(const transaction_id_type& tid) const {
+      std::variant<transaction_id_type, packed_transaction> operator()(const transaction_id_type& tid) const {
          return tid;
       }
-      fc::static_variant<transaction_id_type, packed_transaction> operator()(const packed_transaction_v0& ptrx) const {
+      std::variant<transaction_id_type, packed_transaction> operator()(const packed_transaction_v0& ptrx) const {
          return packed_transaction(ptrx, legacy);
       }
-      fc::static_variant<transaction_id_type, packed_transaction> operator()(packed_transaction_v0&& ptrx) const {
+      std::variant<transaction_id_type, packed_transaction> operator()(packed_transaction_v0&& ptrx) const {
          return packed_transaction(std::move(ptrx), legacy);
       }
    };
 
    transaction_receipt::transaction_receipt(const transaction_receipt_v0& other, bool legacy)
      : transaction_receipt_header(static_cast<const transaction_receipt_header&>(other)),
-       trx( other.trx.visit(transaction_receipt_translator{legacy}))
+       trx(std::visit(transaction_receipt_translator{legacy}, other.trx))
    {}
 
    transaction_receipt::transaction_receipt(transaction_receipt_v0&& other, bool legacy)
      : transaction_receipt_header(std::move(static_cast<transaction_receipt_header&>(other))),
-       trx( std::move(other.trx).visit(transaction_receipt_translator{legacy}))
+       trx(std::visit(transaction_receipt_translator{legacy}, std::move(other.trx)))
    {}
 
    static flat_multimap<uint16_t, block_extension> validate_and_extract_block_extensions(const extensions_type& block_extensions) {
@@ -118,7 +118,7 @@ namespace eosio { namespace chain {
 
    std::size_t transaction_receipt::maximum_pruned_pack_size( packed_transaction::cf_compression_type segment_compression ) const {
       return fc::raw::pack_size(*static_cast<const transaction_receipt_header*>(this)) + 1 +
-         trx.visit([&](const auto& obj){ return pruned_trx_receipt_packed_size(obj, segment_compression); });
+         std::visit([&](const auto& obj){ return pruned_trx_receipt_packed_size(obj, segment_compression); }, trx);
    }
 
    std::size_t signed_block::maximum_pruned_pack_size( packed_transaction::cf_compression_type segment_compression ) const {
@@ -133,7 +133,7 @@ namespace eosio { namespace chain {
       return validate_and_extract_block_extensions( block_extensions );
    }
 
-   fc::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
+   std::optional<signed_block_v0> signed_block::to_signed_block_v0() const {
       if (prune_state != prune_state_type::complete_legacy)
          return {};
 
@@ -143,12 +143,12 @@ namespace eosio { namespace chain {
       auto visitor = overloaded{
           [](const transaction_id_type &id) -> transaction_receipt_v0::trx_type { return id; },
           [](const packed_transaction &trx) -> transaction_receipt_v0::trx_type {
-             const auto& legacy = trx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
+             const auto& legacy = std::get<packed_transaction::prunable_data_type::full_legacy>(trx.get_prunable_data().prunable_data);
              return packed_transaction_v0(trx.get_packed_transaction(), legacy.signatures, legacy.packed_context_free_data, trx.get_compression());
           }};
 
       for (const transaction_receipt &r : transactions){
-         result.transactions.emplace_back(transaction_receipt_v0{r, r.trx.visit(visitor)});
+         result.transactions.emplace_back(transaction_receipt_v0{r, std::visit(visitor, r.trx)});
       }
       return result;
    }

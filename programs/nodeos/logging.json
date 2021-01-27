@@ -15,7 +15,8 @@
             "level": "error",
             "color": "red"
           }
-        ]
+        ],
+        "flush": true
       },
       "enabled": true
     },{
@@ -33,7 +34,8 @@
             "level": "error",
             "color": "red"
           }
-        ]
+        ],
+        "flush": true
       },
       "enabled": true
     },{
@@ -129,6 +131,15 @@
       ]
     },{
       "name": "trace_api",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr",
+        "net"
+      ]
+    },{
+      "name": "blockvault_client_plugin",
       "level": "debug",
       "enabled": true,
       "additivity": false,

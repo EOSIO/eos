@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/interface.hpp>
-
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 namespace eosio { namespace chain { namespace webassembly {
    void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, uint32_t pubkeys_size ) {

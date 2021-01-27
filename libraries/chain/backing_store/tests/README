@@ -1,0 +1,23 @@
+Microbenchmarking instructions
+
+1. Run "./benchmark_kv -h" to get all options.
+2. To prepare a random key file, 
+   a). use "pwgen <key-length> <number-of-keys> -1" to generate
+       "number-of-keys" keys with "key-length", "-1" indicating
+       one key per line in a file.
+   b). use "pwgen" multile times to generate different key sized
+       files and concatenate them.
+   c). use "sort -u" to remove duplicate keys.
+   d). use "shuf" to randomize the final file.
+3. To prepare a workset file, use "shuf -n".
+4. To facilitate running a suite of benchmarking, "benchmark_kv.py"
+   is provided. You need to prepare "data" directory which
+   contains a set of key files and their workset files.
+   a). run "benchmark_kv.py" will benchmark operations
+       (get, egt_data, set, create, erase, it_create, it_next,
+        it_key_value) with all key files on rocksdb and chainkv.
+   b). a key file must end with ".keys", its workset files must
+       start with the key file's main part and end with ".ws".
+       For example, "100k_random.keys" is a key file,
+       "100k_random_100.ws" and "100k_random_500.ws" are its
+       workset files.
