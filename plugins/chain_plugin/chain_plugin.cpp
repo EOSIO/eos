@@ -29,6 +29,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/trace.hpp>
 #include <fc/variant.hpp>
 #include <fc/log/trace.hpp>
 #include <signal.h>
@@ -309,6 +310,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
          })->default_value(eosio::chain::config::default_wasm_runtime, default_wasm_runtime_str), wasm_runtime_opt.c_str()
          )
+         ("profile-account", boost::program_options::value<vector<string>>()->composing(),
+          "The name of an account whose code will be profiled")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_us / 1000),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -364,10 +367,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"irreversible\" mode: database contains state changes by only transactions in the blockchain up to the last irreversible block; transactions received via the P2P network are not relayed and transactions cannot be pushed via the chain API.\n"
           )
          ( "api-accept-transactions", bpo::value<bool>()->default_value(true), "Allow API transactions to be evaluated and relayed if valid.")
+#ifndef EOSIO_REQUIRE_FULL_VALIDATION
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+#endif
          ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
           "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
 #ifdef EOSIO_DEVELOPER
@@ -376,7 +382,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
          ("maximum-variable-signature-length", bpo::value<uint32_t>()->default_value(16384u),
           "Subjectively limit the maximum length of variable components in a variable legnth signature to this size in bytes")
-         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
          ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
           "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
           "In \"mapped\" mode database is memory mapped as a file.\n"
@@ -809,6 +814,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
+
+      LOAD_VALUE_SET( options, "profile-account", my->chain_config->profile_accounts );
 
       if(options.count("abi-serializer-max-time-ms")) {
          my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
@@ -2977,6 +2984,16 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
             }
 
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
+
             try {
                fc::variant output;
                try {
@@ -3108,6 +3125,16 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
             next(eptr);
          } else {
             auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
 
             fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
             fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());

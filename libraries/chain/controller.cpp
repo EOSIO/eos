@@ -134,6 +134,16 @@ struct pending_state {
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
+   uint32_t get_block_num()const {
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_block_header_state.block_num;
+
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::get<assembled_block>(_block_stage)._pending_block_header_state.block_num;
+
+      return std::get<completed_block>(_block_stage)._block_state->block_num;
+   }
+
    void push() {
       _db_session.push();
    }
@@ -237,7 +247,7 @@ struct controller_impl {
           : combined_database(db, cfg)), 
     blog( cfg.blog ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
+    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config, !cfg.profile_accounts.empty() ),
     resource_limits( db, [&s]() { return s.get_deep_mind_logger(); }),
     authorization( s, db ),
     protocol_features( std::move(pfs), [&s]() { return s.get_deep_mind_logger(); } ),
@@ -1383,9 +1393,10 @@ struct controller_impl {
 
       emit( self.block_start, head->block_num + 1 );
 
-      auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
-         protocol_features.popped_blocks_to( head_block_num );
-         pending.reset();
+      auto guard_pending = fc::make_scoped_exit([this](){
+         try {
+            abort_block();
+         } FC_LOG_AND_DROP()
       });
 
       if (!self.skip_db_sessions(s)) {
@@ -2052,9 +2063,11 @@ struct controller_impl {
    deque<transaction_metadata_ptr> abort_block() {
       deque<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
+         uint32_t block_num = pending->get_block_num();
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
+         emit( self.block_abort, block_num );
       }
       return applied_trxs;
    }
@@ -2351,7 +2364,9 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 }
 
 controller::~controller() {
-   my->abort_block();
+   try {
+      my->abort_block();
+   } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
@@ -2994,6 +3009,10 @@ bool controller::is_trusted_producer( const account_name& producer) const {
 
 bool controller::contracts_console()const {
    return my->conf.contracts_console;
+}
+
+bool controller::is_profiling(account_name account) const {
+   return my->conf.profile_accounts.find(account) != my->conf.profile_accounts.end();
 }
 
 chain_id_type controller::get_chain_id()const {

@@ -38,7 +38,8 @@ struct config;
 
 class code_cache_base {
    public:
-      code_cache_base(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
+      using code_finder = std::function<std::string_view(const eosio::chain::digest_type&, uint8_t)>;
+      code_cache_base(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db);
       ~code_cache_base();
 
       const int& fd() const { return _cache_fd; }
@@ -62,7 +63,7 @@ class code_cache_base {
       > code_cache_index;
       code_cache_index _cache_index;
 
-      const chainbase::database& _db;
+      code_finder _db;
 
       bfs::path _cache_file_path;
       int _cache_fd;
@@ -88,7 +89,7 @@ class code_cache_base {
 
 class code_cache_async : public code_cache_base {
    public:
-      code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
+      code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, code_finder db);
       ~code_cache_async();
 
       //If code is in cache: returns pointer & bumps to front of MRU list

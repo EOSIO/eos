@@ -31,8 +31,11 @@ import shutil
 #
 ###############################################################
 
+extraArgs=AppArgs()
+extraArgs.add_bool("--eos-vm-oc-enable", "Use OC for rodeos")
+
 # Parse command line arguments
-args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
+args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"}, extraArgs)
 Utils.Debug = args.v
 killAll=args.clean_run
 dumpErrorDetails=args.dump_error_details
@@ -41,6 +44,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 keepLogs=args.keep_logs
 stateHistoryEndpoint = "127.0.0.1:8080"
+enableOC=args.eos_vm_oc_enable
 
 loggingFile="logging.json"
 
@@ -97,7 +101,7 @@ with open(loggingFile, "w") as textFile:
         print(logging,file=textFile)
 
 class Rodeos:
-    def __init__(self, stateHistoryEndpoint, filterName, filterWasm):
+    def __init__(self, stateHistoryEndpoint, filterName, filterWasm, enableOC=False):
         self.rodeosDir = os.path.join(os.getcwd(), 'var/lib/rodeos')
         shutil.rmtree(self.rodeosDir, ignore_errors=True)
         os.makedirs(self.rodeosDir, exist_ok=True)
@@ -108,20 +112,22 @@ class Rodeos:
         self.rodeosStdout = None
         self.rodeosStderr = None
         self.keepLogs = keepLogs
+        self.OCArg=["--eos-vm-oc-enable"] if enableOC else []
 
     def __enter__(self):
         self.endpoint = "http://127.0.0.1:8880/"
         self.rodeosStdout = open(os.path.join(self.rodeosDir, "stdout.out"), "w")
         self.rodeosStderr = open(os.path.join(self.rodeosDir, "stderr.out"), "w")
         self.rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir,'rocksdb'), '--data-dir', os.path.join(self.rodeosDir,'data'),
-                               '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ],
+                               '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
                 stdout=self.rodeosStdout, 
                 stderr=self.rodeosStderr)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.rodeos is not None:
-            self.rodeos.kill()
+            self.rodeos.send_signal(signal.SIGINT)
+            self.rodeos.wait()
         if self.rodeosStdout is not None:
             self.rodeosStdout.close()
         if self.rodeosStderr is not None:
@@ -199,7 +205,7 @@ try:
     trans_from_full = producerNode.getTransaction(cfTrxId)
     assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
 
-    with Rodeos(stateHistoryEndpoint, 'test.filter', './tests/test_filter.wasm') as rodeos:
+    with Rodeos(stateHistoryEndpoint, 'test.filter', './tests/test_filter.wasm', enableOC) as rodeos:
         rodeos.waitTillReady()
         head_block_num = 0
         Utils.Print("Verify rodeos get_info endpoint works")

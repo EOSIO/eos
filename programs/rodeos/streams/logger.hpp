@@ -9,14 +9,12 @@ class logger : public stream_handler {
    std::vector<eosio::name> routes_;
 
  public:
-   logger(std::vector<eosio::name> routes) : routes_(std::move(routes)) {
-      ilog("logger initialized");
-   }
+   logger(std::vector<eosio::name> routes) : routes_(std::move(routes)) { ilog("logger initialized"); }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
-   void publish(const char* data, uint64_t data_size, const eosio::name& routing_key) override {
-      ilog("logger stream [${data_size}] >> ${data}", ("data", data)("data_size", data_size));
+   void publish(const std::vector<char>& data, const eosio::name& routing_key) override {
+      ilog("logger stream [${data_size}] >> ${data}", ("data", data)("data_size", data.size()));
    }
 };
 

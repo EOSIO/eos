@@ -38,6 +38,7 @@ const static name active_name     { "active"_n };
 const static name owner_name      { "owner"_n };
 const static name eosio_any_name  { "eosio.any"_n };
 const static name eosio_code_name { "eosio.code"_n };
+const static name eosio_state_name{ "eosio.state"_n }; // reserved for rodeos
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

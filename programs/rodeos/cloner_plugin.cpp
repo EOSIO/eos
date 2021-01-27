@@ -1,5 +1,6 @@
 #include "cloner_plugin.hpp"
 #include "ship_client.hpp"
+#include "streams/stream.hpp"
 #include "config.hpp"
 
 #include <b1/rodeos/rodeos.hpp>
@@ -35,18 +36,24 @@ using rodeos::rodeos_filter;
 struct cloner_session;
 
 struct cloner_config : ship_client::connection_config {
-   uint32_t    skip_to     = 0;
-   uint32_t    stop_before = 0;
+   uint32_t    skip_to                   = 0;
+   uint32_t    stop_before               = 0;
    bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
+   bool        profile = false;
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   eosio::chain::eosvmoc::config eosvmoc_config;
+   bool                          eosvmoc_tierup = false;
+#endif
 };
 
 struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    std::shared_ptr<cloner_config>                                           config = std::make_shared<cloner_config>();
    std::shared_ptr<cloner_session>                                          session;
    boost::asio::deadline_timer                                              timer;
-   std::function<void(const char* data, uint64_t data_size)>                streamer = {};
+   std::shared_ptr<streamer_t>                                              streamer;
 
    cloner_plugin_impl() : timer(app().get_io_service()) {}
 
@@ -78,7 +85,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm);
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, config->profile
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                                                  ,
+                                                  app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
+#endif
+         );
    }
 
    void connect(asio::io_context& ioc) {
@@ -91,8 +103,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       ilog("    head:         ${a} ${b}",
            ("a", rodeos_snapshot->head)("b", eosio::convert_to_json(rodeos_snapshot->head_id)));
       ilog("    irreversible: ${a} ${b}",
-           ("a", rodeos_snapshot->irreversible)(
-                 "b", eosio::convert_to_json(rodeos_snapshot->irreversible_id)));
+           ("a", rodeos_snapshot->irreversible)("b", eosio::convert_to_json(rodeos_snapshot->irreversible_id)));
 
       rodeos_snapshot->end_write(true);
       db->flush(true, true);
@@ -111,9 +122,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->chain_id == eosio::checksum256{})
          rodeos_snapshot->chain_id = status.chain_id;
       if (rodeos_snapshot->chain_id != status.chain_id)
-         throw std::runtime_error(
-               "database is for chain " + eosio::convert_to_json(rodeos_snapshot->chain_id) +
-               " but nodeos has chain " + eosio::convert_to_json(status.chain_id));
+         throw std::runtime_error("database is for chain " + eosio::convert_to_json(rodeos_snapshot->chain_id) +
+                                  " but nodeos has chain " + eosio::convert_to_json(status.chain_id));
       ilog("request blocks");
       connection->request_blocks(status, std::max(config->skip_to, rodeos_snapshot->head + 1), get_positions(),
                                  ship_client::request_block | ship_client::request_traces |
@@ -138,7 +148,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return result;
    }
 
-   template<typename Get_Blocks_Result>
+   template <typename Get_Blocks_Result>
    bool process_received(Get_Blocks_Result& result, eosio::input_stream bin) {
       if (!result.this_block)
          return true;
@@ -167,11 +177,15 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
 
       if (filter) {
+         if (my->streamer)
+            my->streamer->start_block(result.this_block->block_num);
          filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
             if (my->streamer) {
-               my->streamer(data, data_size);
+               my->streamer->stream_data(data, data_size);
             }
          });
+         if (my->streamer)
+            my->streamer->stop_block(result.this_block->block_num);
       }
 
       rodeos_snapshot->end_block(result, false);
@@ -234,6 +248,21 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
+   op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   op("eos-vm-oc-cache-size-mb",
+      bpo::value<uint64_t>()->default_value(eosio::chain::eosvmoc::config().cache_size / (1024u * 1024u)),
+      "Maximum size (in MiB) of the EOS VM OC code cache");
+   op("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
+      if (t == 0) {
+         elog("eos-vm-oc-compile-threads must be set to a non-zero value");
+         EOS_ASSERT(false, eosio::chain::plugin_exception, "");
+      }
+   }),
+      "Number of threads to use for EOS VM OC tier-up");
+   op("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime");
+#endif
 }
 
 void cloner_plugin::plugin_initialize(const variables_map& options) {
@@ -252,9 +281,20 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
+         my->config->profile     = options["profile-filter"].as<bool>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+      if (options.count("eos-vm-oc-cache-size-mb"))
+         my->config->eosvmoc_config.cache_size = options.at("eos-vm-oc-cache-size-mb").as<uint64_t>() * 1024u * 1024u;
+      if (options.count("eos-vm-oc-compile-threads"))
+         my->config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if (options["eos-vm-oc-enable"].as<bool>())
+         my->config->eosvmoc_tierup = true;
+#endif
+
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
@@ -277,11 +317,11 @@ void cloner_plugin::plugin_shutdown() {
    ilog("cloner_plugin stopped");
 }
 
-void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t data_size)> streamer_func) {
-   my->streamer = std::move(streamer_func);
+void cloner_plugin::handle_sighup() {
 }
 
-void cloner_plugin::handle_sighup() {
+void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {
+   my->streamer = std::move(streamer);
 }
 
 } // namespace b1

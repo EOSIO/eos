@@ -193,7 +193,7 @@ extern "C" rodeos_bool rodeos_write_deltas(rodeos_error* error, rodeos_db_snapsh
 
 extern "C" rodeos_filter* rodeos_create_filter(rodeos_error* error, uint64_t name, const char* wasm_filename) {
    return handle_exceptions(error, nullptr, [&]() -> rodeos_filter* { //
-      return std::make_unique<rodeos_filter>(eosio::name{ name }, wasm_filename).release();
+      return std::make_unique<rodeos_filter>(eosio::name{ name }, wasm_filename, false).release();
    });
 }
 
@@ -228,6 +228,7 @@ extern "C" rodeos_query_handler* rodeos_create_query_handler(rodeos_error* error
       shared_state->max_console_size = max_console_size;
       shared_state->wasm_cache_size  = wasm_cache_size;
       shared_state->max_exec_time_ms = max_exec_time_ms;
+      shared_state->max_action_return_value_size = MAX_SIZE_OF_BYTE_ARRAYS;
       shared_state->contract_dir     = contract_dir ? contract_dir : "";
       return std::make_unique<rodeos_query_handler>(partition->obj, shared_state).release();
    });
@@ -249,9 +250,9 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
+      auto                           trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
-      auto                                    thread_state = handler->state_cache.get_state();
+      auto                                    thread_state = handler->state_cache->get_state();
       eosio::ship_protocol::transaction_trace tt;
       if (snapshot->snap) {
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx,
@@ -261,14 +262,12 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
                                      true);
       }
 
-      handler->state_cache.store_state(std::move(thread_state));
-
       eosio::size_stream ss;
       eosio::to_bin(tt, ss);
       *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
-      auto free_on_except = fc::make_scoped_exit([&]{
+      auto                    free_on_except = fc::make_scoped_exit([&] {
          free(*result);
          *result = nullptr;
       });

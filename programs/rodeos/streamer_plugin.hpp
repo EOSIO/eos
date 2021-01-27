@@ -27,12 +27,9 @@ class streamer_plugin : public appbase::plugin<streamer_plugin> {
    void         plugin_initialize(const appbase::variables_map& options);
    void         plugin_startup();
    void         plugin_shutdown();
-   void         stream_data(const char* data, uint64_t data_size);
 
  private:
    std::shared_ptr<struct streamer_plugin_impl> my;
-
-   void publish_to_streams(const stream_wrapper_v0& sw);
 };
 
 } // namespace b1

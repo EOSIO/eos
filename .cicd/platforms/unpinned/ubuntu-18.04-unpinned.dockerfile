@@ -7,7 +7,7 @@ RUN apt-get update && \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev python2.7 python2.7-dev python3 python3-dev \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq && \
+    libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq rabbitmq-server && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # build cmake
@@ -17,6 +17,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
+    cd / && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \

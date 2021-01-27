@@ -4,6 +4,8 @@
 #include <b1/rodeos/rodeos_tables.hpp>
 #include <fc/log/trace.hpp>
 
+#include <fc/log/trace.hpp>
+
 namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;
@@ -194,7 +196,7 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    if (!result.block)
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
 
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
@@ -208,14 +210,12 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
-void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas, std::function<bool()> shutdown) {
+void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas,
+                                      std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
-   view_state.kv_ram.enable_write           = true;
-   view_state.kv_ram.bypass_receiver_check  = true;
-   view_state.kv_disk.enable_write          = true;
-   view_state.kv_disk.bypass_receiver_check = true;
-   view_state.kv_state.enable_write         = true;
-   uint32_t num = deltas.unpack_size();
+   view_state.kv_state.bypass_receiver_check = true; // TODO: can we enable recevier check in the future
+   view_state.kv_state.enable_write          = true;
+   uint32_t num                              = deltas.unpack_size();
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
@@ -236,31 +236,39 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
             ++num_processed;
          });
       }, delta);
+   }
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,
-                                      std::function<bool()> shutdown) {
+                                      std::function<bool()>                      shutdown) {
    check_write(result);
    if (!result.deltas)
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
    write_deltas(block_num, eosio::opaque<std::vector<ship_protocol::table_delta>>(*result.deltas), shutdown);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1& result,
-                                      std::function<bool()> shutdown) {
+                                      std::function<bool()>                      shutdown) {
    check_write(result);
    if (result.deltas.empty())
       return;
 
-   uint32_t            block_num = result.this_block->block_num;
+   uint32_t block_num = result.this_block->block_num;
    write_deltas(block_num, result.deltas, shutdown);
 }
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename) : name{ name } {
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+                             ,
+                             const boost::filesystem::path&       eosvmoc_path,
+                             const eosio::chain::eosvmoc::config& eosvmoc_config, bool eosvmoc_enable
+#endif
+                             )
+    : name{ name } {
    std::call_once(registered_filter_callbacks, filter::register_callbacks);
 
    std::ifstream wasm_file(wasm_filename, std::ios::binary);
@@ -278,6 +286,19 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename)
    backend      = std::make_unique<filter::backend_t>(code, nullptr);
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
+   if (profile) {
+      prof = std::make_unique<eosio::vm::profile_data>(wasm_filename + ".profile", *backend);
+   }
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   if (eosvmoc_enable) {
+      try {
+         filter_state->eosvmoc_tierup.emplace(
+               eosvmoc_path, eosvmoc_config, code,
+               eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+      }
+      FC_LOG_AND_RETHROW();
+   }
+#endif
 }
 
 void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::get_blocks_result_base& result,
@@ -287,16 +308,30 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    snapshot.check_write(result);
    chaindb_state chaindb_state;
    db_view_state view_state{ name, *snapshot.db, *snapshot.write_session, snapshot.partition->contract_kv_prefix };
-   view_state.kv_disk.enable_write = true;
-   view_state.kv_ram.enable_write  = true;
+   view_state.kv_state.enable_write  = true;
    filter::callbacks cb{ *filter_state, chaindb_state, view_state };
    filter_state->max_console_size = 10000;
    filter_state->console.clear();
    filter_state->input_data = bin;
    filter_state->push_data  = push_data;
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+   if (filter_state->eosvmoc_tierup) {
+      const auto* code =
+            filter_state->eosvmoc_tierup->cc.get_descriptor_for_code(filter_state->eosvmoc_tierup->hash, 0);
+      if (code) {
+         eosio::chain::eosvmoc::timer_base timer;
+         filter_state->eosvmoc_tierup->exec.execute(*code, filter_state->eosvmoc_tierup->mem, &cb, 251, 65536, &timer, 0,
+                                                    0, 0);
+         return;
+      }
+   }
+#endif
+
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {
+      eosio::vm::scoped_profile profile_runner(prof.get());
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
 
       if (!filter_state->console.empty())
@@ -324,6 +359,8 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
 
 rodeos_query_handler::rodeos_query_handler(std::shared_ptr<rodeos_db_partition>         partition,
                                            std::shared_ptr<const wasm_ql::shared_state> shared_state)
-    : partition{ partition }, shared_state{ std::move(shared_state) }, state_cache{ this->shared_state } {}
+    : partition{ partition }, shared_state{ std::move(shared_state) }, state_cache{
+         std::make_shared<wasm_ql::thread_state_cache>(this->shared_state)
+      } {}
 
 } // namespace b1::rodeos

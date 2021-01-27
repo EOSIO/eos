@@ -2,12 +2,10 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <fc/crypto/sha1.hpp>
-#include <boost/hana/string.hpp>
 
-namespace eosio { namespace chain {
-class apply_context;
-namespace webassembly {
+namespace eosio { namespace chain { namespace webassembly {
 
    class interface {
       public:
@@ -305,66 +303,6 @@ namespace webassembly {
           * @param is_priv - privileged status (true or false).
          */
          void set_privileged(account_name account, bool is_priv);
-
-         // softfloat api
-         float _eosio_f32_add(float, float) const;
-         float _eosio_f32_sub(float, float) const;
-         float _eosio_f32_div(float, float) const;
-         float _eosio_f32_mul(float, float) const;
-         float _eosio_f32_min(float, float) const;
-         float _eosio_f32_max(float, float) const;
-         float _eosio_f32_copysign(float, float) const;
-         float _eosio_f32_abs(float) const;
-         float _eosio_f32_neg(float) const;
-         float _eosio_f32_sqrt(float) const;
-         float _eosio_f32_ceil(float) const;
-         float _eosio_f32_floor(float) const;
-         float _eosio_f32_trunc(float) const;
-         float _eosio_f32_nearest(float) const;
-         bool _eosio_f32_eq(float, float) const;
-         bool _eosio_f32_ne(float, float) const;
-         bool _eosio_f32_lt(float, float) const;
-         bool _eosio_f32_le(float, float) const;
-         bool _eosio_f32_gt(float, float) const;
-         bool _eosio_f32_ge(float, float) const;
-         double _eosio_f64_add(double, double) const;
-         double _eosio_f64_sub(double, double) const;
-         double _eosio_f64_div(double, double) const;
-         double _eosio_f64_mul(double, double) const;
-         double _eosio_f64_min(double, double) const;
-         double _eosio_f64_max(double, double) const;
-         double _eosio_f64_copysign(double, double) const;
-         double _eosio_f64_abs(double) const;
-         double _eosio_f64_neg(double) const;
-         double _eosio_f64_sqrt(double) const;
-         double _eosio_f64_ceil(double) const;
-         double _eosio_f64_floor(double) const;
-         double _eosio_f64_trunc(double) const;
-         double _eosio_f64_nearest(double) const;
-         bool _eosio_f64_eq(double, double) const;
-         bool _eosio_f64_ne(double, double) const;
-         bool _eosio_f64_lt(double, double) const;
-         bool _eosio_f64_le(double, double) const;
-         bool _eosio_f64_gt(double, double) const;
-         bool _eosio_f64_ge(double, double) const;
-         double _eosio_f32_promote(float) const;
-         float _eosio_f64_demote(double) const;
-         int32_t _eosio_f32_trunc_i32s(float) const;
-         int32_t _eosio_f64_trunc_i32s(double) const;
-         uint32_t _eosio_f32_trunc_i32u(float) const;
-         uint32_t _eosio_f64_trunc_i32u(double) const;
-         int64_t _eosio_f32_trunc_i64s(float) const;
-         int64_t _eosio_f64_trunc_i64s(double) const;
-         uint64_t _eosio_f32_trunc_i64u(float) const;
-         uint64_t _eosio_f64_trunc_i64u(double) const;
-         float _eosio_i32_to_f32(int32_t) const;
-         float _eosio_i64_to_f32(int64_t) const;
-         float _eosio_ui32_to_f32(uint32_t) const;
-         float _eosio_ui64_to_f32(uint64_t) const;
-         double _eosio_i32_to_f64(int32_t) const;
-         double _eosio_i64_to_f64(int64_t) const;
-         double _eosio_ui32_to_f64(uint32_t) const;
-         double _eosio_ui64_to_f64(uint64_t) const;
 
          /**
           * Get the list of active producer names.

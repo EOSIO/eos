@@ -57,6 +57,12 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} resource_monitor_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} amqp_trx_plugin            -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} amqp_trace_plugin          -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} witness_plugin             -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} amqp_witness_plugin        -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} witness_trx_plugin         -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} amqp_compressed_proof_plugin -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} blockvault_client_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${build_id_flag}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin

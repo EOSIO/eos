@@ -82,13 +82,32 @@ public:
       boost::program_options::options_description &config_file_options
       ) override;
 
-   bool                   is_producer_key(const chain::public_key_type& key) const;
-   chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
-
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();
    void handle_sighup() override;
+
+   //
+   // external interface for other plugins use
+   //
+
+   bool                   has_producers() const;
+   bool                   is_producing_block() const;
+   bool                   is_producer_key(const chain::public_key_type& key) const;
+   chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
+   void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const;
+
+   using retry_later_function_t =
+         std::function<void(const chain::transaction_metadata_ptr& trx, const next_function<chain::transaction_trace_ptr>& next)>;
+   bool execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
+                                     next_function<chain::transaction_trace_ptr> next,
+                                     retry_later_function_t retry_later);
+   /// @return configured maximum transaction time max-transaction-time. thread-safe
+   fc::microseconds get_max_transaction_time() const;
+
+   //
+   // producer_api_plugin support
+   //
 
    void pause();
    void resume();
@@ -112,8 +131,6 @@ public:
    fc::variants get_supported_protocol_features( const get_supported_protocol_features_params& params ) const;
 
    get_account_ram_corrections_result  get_account_ram_corrections( const get_account_ram_corrections_params& params ) const;
-
-   void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const;
 
  private:
    std::shared_ptr<class producer_plugin_impl> my;

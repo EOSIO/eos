@@ -11,6 +11,11 @@ RUN yum update -y && \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
     glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \

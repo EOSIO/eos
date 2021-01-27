@@ -3,7 +3,7 @@ set -eo pipefail
 VERSION=1
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq rabbitmq postgres || :
 curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
 # install clang from source
@@ -25,5 +25,7 @@ cd ..
 sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
+# add sbin to path from rabbitmq-server
+echo "export PATH=$PATH:/usr/local/sbin" >> ~/.bash_profile
 # initialize postgres configuration files
 initdb --locale=C -E UTF-8 /usr/local/var/postgres

@@ -8,10 +8,9 @@ RUN apt-get update && \
     autotools-dev python2.7 python2.7-dev python3 \
     python3-dev python-configparser \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
-    libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg && \
+    libcurl4-gnutls-dev pkg-config patch vim-common jq gnupg rabbitmq-server && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \

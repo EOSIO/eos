@@ -209,7 +209,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
       if (req.target() == "/v1/chain/get_info") {
          auto thread_state = state_cache.get_state();
          send(ok(query_get_info(*thread_state, temp_contract_kv_prefix), "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() ==
                  "/v1/chain/get_block") { // todo: replace with /v1/chain/get_block_header. upgrade cleos.
@@ -220,7 +219,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          send(ok(query_get_block(*thread_state, temp_contract_kv_prefix,
                                  std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/get_abi") { // todo: get_raw_abi. upgrade cleos to use get_raw_abi.
          if (req.method() != http::verb::post)
@@ -230,7 +228,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          send(ok(query_get_abi(*thread_state, temp_contract_kv_prefix,
                                std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/get_required_keys") { // todo: replace with a binary endpoint?
          if (req.method() != http::verb::post)
@@ -239,7 +236,6 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          auto thread_state = state_cache.get_state();
          send(ok(query_get_required_keys(*thread_state, std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
          return;
       } else if (req.target() == "/v1/chain/send_transaction") {
          // todo: replace with /v1/chain/send_transaction2?
@@ -253,7 +249,12 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
                                         false // todo: switch to true when /v1/chain/send_transaction2
                                         ),
                  "application/json"));
-         state_cache.store_state(std::move(thread_state));
+         return;
+      } else if (req.target() == "/v1/rodeos/create_checkpoint") {
+         if (!http_config.checkpoint_dir)
+            throw std::runtime_error("Checkpoints are not enabled");
+         auto thread_state = state_cache.get_state();
+         send(ok(query_create_checkpoint(*thread_state, *http_config.checkpoint_dir), "application/json"));
          return;
       } else if (req.target().starts_with("/v1/") || http_config.static_dir.empty()) {
          // todo: redirect if /v1/?
@@ -312,6 +313,18 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          res.keep_alive(req.keep_alive());
          return send(std::move(res));
       }
+   } catch (const eosio::vm::exception& e) {
+      try {
+         // elog("query failed: ${s}", ("s", e.what()));
+         error_results err;
+         err.code       = (uint16_t)http::status::internal_server_error;
+         err.message    = "Internal Service Error";
+         err.error.name = "exception";
+         err.error.what = e.what() + std::string(": ") + e.detail();
+         return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
+      } catch (...) { //
+         return send(error(http::status::internal_server_error, "failure reporting failure\n"));
+      }
    } catch (const std::exception& e) {
       try {
          // elog("query failed: ${s}", ("s", e.what()));
@@ -320,8 +333,7 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
          err.message    = "Internal Service Error";
          err.error.name = "exception";
          err.error.what = e.what();
-         return send(error(http::status::internal_server_error, eosio::convert_to_json(err),
-                           "application/json"));
+         return send(error(http::status::internal_server_error, eosio::convert_to_json(err), "application/json"));
       } catch (...) { //
          return send(error(http::status::internal_server_error, "failure reporting failure\n"));
       }
@@ -497,6 +509,8 @@ class listener : public std::enable_shared_from_this<listener> {
        : http_config{ http_config }, shared_state{ shared_state }, ioc(ioc), acceptor(net::make_strand(ioc)),
          state_cache(std::make_shared<thread_state_cache>(shared_state)) {
 
+      state_cache->preallocate(http_config->num_threads);
+
       beast::error_code ec;
 
       // Open the acceptor
@@ -507,6 +521,7 @@ class listener : public std::enable_shared_from_this<listener> {
       }
 
       // Bind to the server address
+      acceptor.set_option(net::socket_base::reuse_address(true));
       acceptor.bind(endpoint, ec);
       if (ec) {
          fail(ec, "bind");
@@ -524,9 +539,10 @@ class listener : public std::enable_shared_from_this<listener> {
    }
 
    // Start accepting incoming connections
-   void run() {
+   bool run() {
       if (acceptor_ready)
          do_accept();
+      return acceptor_ready;
    }
 
  private:
@@ -567,7 +583,7 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
       threads.clear();
    }
 
-   void start() {
+   bool start() {
       boost::system::error_code ec;
       auto                      check_ec = [&](const char* what) {
          if (!ec)
@@ -583,13 +599,15 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
       } catch (std::exception& e) {
          throw std::runtime_error("make_address(): "s + http_config->address + ": " + e.what());
       }
-      std::make_shared<listener>(http_config, shared_state, ioc,
-                                 tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) })
-            ->run();
+      auto l = std::make_shared<listener>(http_config, shared_state, ioc,
+                                          tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) });
+      if (!l->run())
+         return false;
 
       threads.reserve(http_config->num_threads);
       for (unsigned i = 0; i < http_config->num_threads; ++i)
          threads.emplace_back([self = shared_from_this()] { self->ioc.run(); });
+      return true;
    }
 }; // server_impl
 
@@ -597,8 +615,10 @@ std::shared_ptr<http_server> http_server::create(const std::shared_ptr<const htt
                                                  const std::shared_ptr<const shared_state>& shared_state) {
    FC_ASSERT(http_config->num_threads > 0, "too few threads");
    auto server = std::make_shared<server_impl>(http_config, shared_state);
-   server->start();
-   return server;
+   if (server->start())
+      return server;
+   else
+      return nullptr;
 }
 
 } // namespace b1::rodeos::wasm_ql

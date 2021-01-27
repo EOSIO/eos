@@ -33,8 +33,8 @@
 
 namespace eosio { namespace chain {
 
-   wasm_interface::wasm_interface(vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
-     : my( new wasm_interface_impl(vm, eosvmoc_tierup, d, data_dir, eosvmoc_config) ) {}
+   wasm_interface::wasm_interface(vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, bool profile)
+     : my( new wasm_interface_impl(vm, eosvmoc_tierup, d, data_dir, eosvmoc_config, profile) ) {}
 
    wasm_interface::~wasm_interface() {}
 
@@ -94,7 +94,18 @@ namespace eosio { namespace chain {
             once_is_enough = true;
          }
          if(cd) {
-            my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, context);
+            uint64_t max_call_depth = eosio::chain::wasm_constraints::maximum_call_depth+1;
+            uint64_t max_pages = eosio::chain::wasm_constraints::maximum_linear_memory/eosio::chain::wasm_constraints::wasm_page_size;
+            if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+               const wasm_config& config = context.control.get_global_properties().wasm_configuration;
+               max_call_depth = config.max_call_depth;
+               max_pages = config.max_pages;
+            }
+            webassembly::interface iface(context);
+            webassembly::eosvmoc::timer timer{context};
+            my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, &iface, max_call_depth, max_pages,
+                                      &timer,
+                                      context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
             return;
          }
       }

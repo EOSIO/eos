@@ -114,6 +114,8 @@ namespace eosio { namespace chain {
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
             uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
+
+            flat_set<account_name>   profile_accounts;
          };
 
          enum class block_status {
@@ -305,6 +307,8 @@ namespace eosio { namespace chain {
 
          bool contracts_console()const;
 
+         bool is_profiling(account_name name) const;
+
          chain_id_type get_chain_id()const;
 
          db_read_mode get_read_mode()const;
@@ -332,6 +336,7 @@ namespace eosio { namespace chain {
          static std::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
          signal<void(uint32_t)>                        block_start; // block_num
+         signal<void(uint32_t)>                        block_abort; // block_num
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;

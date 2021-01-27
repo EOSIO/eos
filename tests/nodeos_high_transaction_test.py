@@ -32,7 +32,7 @@ extraArgs = appArgs.add(flag="--num-transactions", type=int, help="How many tota
 extraArgs = appArgs.add(flag="--max-transactions-per-second", type=int, help="How many transactions per second should be sent", default=500)
 extraArgs = appArgs.add(flag="--total-accounts", type=int, help="How many accounts should be involved in sending transfers.  Must be greater than %d" % (minTotalAccounts), default=100)
 extraArgs = appArgs.add_bool(flag="--send-duplicates", help="If identical transactions should be sent to all nodes")
-args = TestHelper.parse_args({"-p", "-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
+args = TestHelper.parse_args({"-p", "-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--amqp-address"}, applicationSpecificArgs=appArgs)
 
 Utils.Debug=args.v
 totalProducerNodes=args.p
@@ -42,6 +42,7 @@ if totalNodes<=totalProducerNodes:
 totalNonProducerNodes=totalNodes-totalProducerNodes
 maxActiveProducers=totalProducerNodes
 totalProducers=totalProducerNodes
+amqpAddr=args.amqp_address
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
@@ -80,9 +81,16 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
 
-    if cluster.launch(pnodes=totalProducerNodes,
-                      totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False, topo="ring") is False:
+    if not amqpAddr:
+        launched = cluster.launch(pnodes=totalProducerNodes,
+                                  totalNodes=totalNodes, totalProducers=totalProducers,
+                                  useBiosBootFile=False, topo="ring")
+    else:
+        launched = cluster.launch(pnodes=totalProducerNodes,
+                                  totalNodes=totalNodes, totalProducers=totalProducers,
+                                  useBiosBootFile=False, topo="ring",
+                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr))
+    if launched is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
 
@@ -265,6 +273,9 @@ try:
             toAccountIndex = accountIndex + 1 if accountIndex + 1 < args.total_accounts else 0
             toAccount = accounts[toAccountIndex]
             node = nonProdNodes[accountIndex % nonProdNodeCount]
+            if amqpAddr:
+                node.setAMQPAddress(amqpAddr)
+
             trans = None
             attempts = 0
             maxAttempts = maxTransactionAttempts if not args.send_duplicates else maxTransactionAttemptsNoSend  # for send_duplicates we are just constructing a transaction, so should never require a second attempt
