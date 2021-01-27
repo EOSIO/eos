@@ -843,6 +843,71 @@ namespace impl {
       }
 
       template<typename Resolver>
+      static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver )
+      {
+         EOS_ASSERT(vo.contains("expiration"), packed_transaction_type_exception, "Missing expiration");
+         EOS_ASSERT(vo.contains("ref_block_num"), packed_transaction_type_exception, "Missing ref_block_num");
+         EOS_ASSERT(vo.contains("ref_block_prefix"), packed_transaction_type_exception, "Missing ref_block_prefix");
+         EOS_ASSERT(vo.contains("max_net_usage_words"), packed_transaction_type_exception, "Missing max_net_usage_words");
+         EOS_ASSERT(vo.contains("max_cpu_usage_ms"), packed_transaction_type_exception, "Missing max_cpu_usage_ms");
+         EOS_ASSERT(vo.contains("delay_sec"), packed_transaction_type_exception, "Missing delay_sec");
+         EOS_ASSERT(vo.contains("context_free_actions"), packed_transaction_type_exception, "Missing context_free_actions");
+         EOS_ASSERT(vo.contains("actions"), packed_transaction_type_exception, "Missing actions");
+         from_variant(vo["expiration"], trx.expiration);
+         from_variant(vo["ref_block_num"], trx.ref_block_num);
+         from_variant(vo["ref_block_prefix"], trx.ref_block_prefix);
+         from_variant(vo["max_net_usage_words"], trx.max_net_usage_words);
+         from_variant(vo["max_cpu_usage_ms"], trx.max_cpu_usage_ms);
+         from_variant(vo["delay_sec"], trx.delay_sec);
+         from_variant(vo["context_free_actions"], trx.context_free_actions);
+         from_variant(vo["actions"], trx.actions);
+
+         // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
+         // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
+         // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transacation_extensions" was provided),
+         // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
+         if (vo.contains("deferred_transaction_generation")) {
+            deferred_transaction_generation_context deferred_transaction_generation;
+            from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
+            emplace_extension(
+               trx.transaction_extensions,
+               deferred_transaction_generation_context::extension_id(),
+               fc::raw::pack( deferred_transaction_generation )
+            );
+            // if both are present, they need to match
+            if (vo.contains("transaction_extensions")) {
+               extensions_type trx_extensions;
+               from_variant(vo["transaction_extensions"], trx_extensions);
+               EOS_ASSERT(trx.transaction_extensions == trx_extensions, packed_transaction_type_exception,
+                        "Transaction contained deferred_transaction_generation and transaction_extensions that did not match");
+            }
+         }
+         else if (vo.contains("transaction_extensions")) {
+            from_variant(vo["transaction_extensions"], trx.transaction_extensions);
+         }
+      }
+
+      template<typename Resolver>
+      static void extract( const fc::variant& v, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         auto h = ctx.enter_scope();
+         const variant_object& vo = v.get_object();
+         extract_transaction(vo, trx, resolver);
+      }
+
+      template<typename Resolver>
+      static void extract( const fc::variant& v, signed_transaction& strx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         auto h = ctx.enter_scope();
+         const variant_object& vo = v.get_object();
+         extract_transaction(vo, strx, resolver);
+         EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
+         EOS_ASSERT(vo.contains("context_free_data"), packed_transaction_type_exception, "Missing context_free_data");
+         from_variant(vo["signatures"], strx.signatures);
+         from_variant(vo["context_free_data"], strx.context_free_data);
+      }
+
+      template<typename Resolver>
       static void extract( const fc::variant& v, packed_transaction_v0& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
          auto h = ctx.enter_scope();
