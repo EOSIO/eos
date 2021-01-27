@@ -310,7 +310,7 @@ function build-clang() {
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/polly.git \
             && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/clang.git clang && cd clang \
-            && git checkout $PINNED_COMPILER_CLANG_COMMIT  && sed -i 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config \
+            && git checkout $PINNED_COMPILER_CLANG_COMMIT && sed -i 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config \
             && patch -p2 < \"$REPO_ROOT/scripts/clang-devtoolset8-support.patch\" \
             && cd tools && mkdir extra && cd extra \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/clang-tools-extra.git \
