@@ -52,7 +52,7 @@ inline char* null_terminated_ptr_impl(uint64_t ptr)
                 "mov %[Ptr],%[Scratch]\n"
                 "1:\n"                                               //start loop looking for either 0, or until we SEGV
                 "inc %[Scratch]\n"
-                "cmpb   $0,%%gs:(%[Scratch])\n"
+                "cmpb $0,%%gs:-1(%[Scratch])\n"
                 "jne 1b\n"
                 "2:\n"
                 "add %%gs:%c[linearMemoryStart], %[Ptr]\n"           //add address of linear memory 0 to ptr
