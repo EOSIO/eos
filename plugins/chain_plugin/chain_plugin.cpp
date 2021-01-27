@@ -2409,7 +2409,13 @@ void set_kv_next_key(const string& encode_type, const string& index_type, read_o
             result.next_key = result.next_key_bytes;
         }else if (encode_type == "string") {
             result.next_key = boost::algorithm::unhex(result.next_key_bytes);
-            boost::algorithm::trim_right_if( result.next_key, []( char c ){ return c == '\0'; } );
+            /// restore the string following the encoding rule from `template <typename S> to_key(std::string, S&)` in abieos to_key.hpp
+            boost::replace_all(result.next_key, "\0\1", "\0");
+            // remove trailing '\0\0'
+            auto sz = result.next_key.size();
+            if (sz >=2 && result.next_key[sz-1] == '\0' && result.next_key[sz-2] == '\0')
+               result.next_key.resize(sz-2);
+
         }else if (encode_type == "name") {
             uint64_t ull;
             convert_from_bytes(ull, result.next_key_bytes);
