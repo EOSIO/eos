@@ -47,6 +47,6 @@ for REG in ${EOSIO_REGS[@]}; do
     fi
 done
 
-DOCKER_GEN="docker rmi eos_image:$BUILD_TAG"
+DOCKER_GEN="docker rmi eosio_image:$BUILD_TAG"
 echo "Clean up base image"
 eval $DOCKER_GEN
