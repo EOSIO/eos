@@ -569,34 +569,6 @@ cat <<EOF
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - RelWithDebInfo Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - RelWithDebInfo Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
-      PLATFORM_TYPE: $PLATFORM_TYPE
-      OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "deb"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}${SKIP_DEBUG_BUILD}
-
-  - label: ":ubuntu: Ubuntu 18.04 - Debug Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Debug Build' && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-$PLATFORM_TYPE"
-      PLATFORM_TYPE: $PLATFORM_TYPE
-      OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "deb"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}${SKIP_DEBUG_BUILD}
-
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
     env:
