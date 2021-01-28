@@ -2010,58 +2010,182 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 #pragma GCC diagnostic pop
 }
 
-template <typename IntType>
-void write_integral_key(const string& str, int base, fixed_buf_stream& strm) {
-   size_t pos = 0;
-   if constexpr (std::is_unsigned_v<IntType>) {
-      uint64_t value = std::stoul(str, &pos, base);
-      if (pos == 0 || (value > std::numeric_limits<IntType>::max()))
-         throw std::invalid_argument("");
-      to_key(static_cast<IntType>(value), strm);
-   } else {
-      int64_t value = std::stol(str, &pos, base);
-      if (pos == 0 || (value > std::numeric_limits<IntType>::max() || value < std::numeric_limits<IntType>::min()))
-         throw std::invalid_argument("invalid index_value " + str);
-      to_key(static_cast<IntType>(value), strm);
+/// short_string is intended to optimize the string equality comparison where one of the operand is
+/// no greater than 8 bytes long.
+struct short_string {
+   uint64_t data = 0;
+
+   template <size_t SIZE>
+   short_string(const char (&str)[SIZE]) {
+      static_assert(SIZE <= 8, "data has to be 8 bytes or less");
+      memcpy(&data, str, SIZE);
    }
+
+   short_string(std::string str) { memcpy(&data, str.c_str(), std::min(sizeof(data), str.size())); }
+
+   bool empty() const { return data == 0; }
+
+   friend bool operator==(short_string lhs, short_string rhs) { return lhs.data == rhs.data; }
+   friend bool operator!=(short_string lhs, short_string rhs) { return lhs.data != rhs.data; }
+};
+
+template <typename Type, typename Enable = void>
+struct key_converter;
+
+inline void key_convert_assert(bool condition) {
+   // EOS_ASSERT is avoided intentionally here because EOS_ASSERT would create the fc::log_message object which is
+   // relatively expensive. The throw statement here is only used for flow control purpose, not for error reporting
+   // purpose. 
+   if (!condition)
+      throw std::invalid_argument("");
 }
 
-void assert_invalid_type(const string& index_type, int base, fixed_buf_stream& strm) {
-   throw std::invalid_argument("");
-}
-
-template <size_t SIZE>
-uint64_t to_uint64(const char (&data)[SIZE]) {
-   uint64_t result = 0;
-   memcpy(&result, data, SIZE);
+// convert unsigned integer in hex representation back to its integer representation
+template <typename UnsignedInt>
+UnsignedInt unhex(const std::string& bytes_in_hex) {
+   assert(bytes_in_hex.size() == 2 * sizeof(UnsignedInt));
+   std::array<char, sizeof(UnsignedInt)> bytes;
+   boost::algorithm::unhex(bytes_in_hex.begin(), bytes_in_hex.end(), bytes.rbegin());
+   UnsignedInt result;
+   memcpy(&result, bytes.data(), sizeof(result));
    return result;
 }
 
-/// Given a string equals to one of the value in the array [ "int8", "int16", "int32", "int64",  "uint8", "uint16",
-/// "uint32", "uint64"] returns the index of the value in the array. If the value is not found in the array, return 8.
-int to_integral_type_index(const std::string& int_type_str) {
-   uint64_t target = 0;
-   memcpy(&target, int_type_str.c_str(), std::min(sizeof(target), int_type_str.size()));
-   static const uint64_t types[] = {to_uint64("int8"),  to_uint64("int16"),  to_uint64("int32"),  to_uint64("int64"),
-                                    to_uint64("uint8"), to_uint64("uint16"), to_uint64("uint32"), to_uint64("uint64")};
+template <typename IntType>
+struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      int base = 10;
+      if (encode_type == "hex")
+         base = 16;
+      else
+         key_convert_assert(encode_type.empty() || encode_type == "dec");
 
-   return std::find(std::begin(types), std::end(types), target) - std::begin(types);
+      size_t pos = 0;
+      if constexpr (std::is_unsigned_v<IntType>) {
+         uint64_t value = std::stoul(str, &pos, base);
+         key_convert_assert(pos > 0 && value <= std::numeric_limits<IntType>::max());
+         to_key(static_cast<IntType>(value), strm);
+      } else {
+         int64_t value = std::stol(str, &pos, base);
+         key_convert_assert(pos > 0 && value <= std::numeric_limits<IntType>::max() &&
+                            value >= std::numeric_limits<IntType>::min());
+         to_key(static_cast<IntType>(value), strm);
+      }
+   }
+
+   static IntType value_from_hex(const std::string& bytes_in_hex) {
+      auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
+      if (unsigned_val > std::numeric_limits<IntType>::max()) {
+         return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
+      } else {
+         return unsigned_val + std::numeric_limits<IntType>::min();
+      }
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      IntType val = value_from_hex(bytes_in_hex);
+      if (encode_type.empty() || encode_type == "dec") {
+         return std::to_string(val);
+      } else if (encode_type == "hex") {
+         std::array<char, sizeof(IntType)> v;
+         memcpy(v.data(), &val, sizeof(val));
+         char result[2 * sizeof(IntType) + 1] = {'\0'};
+         boost::algorithm::hex(v.rbegin(), v.rend(), result);
+         return std::find_if_not(result, result + 2 * sizeof(IntType), [](char v) { return v == '0'; });
+      }
+      throw std::invalid_argument("");
+   }
+};
+
+template <typename Float>
+struct key_converter<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "dec");
+      if constexpr (sizeof(Float) == 4) {
+         to_key(std::stof(str), strm);
+      } else {
+         to_key(std::stod(str), strm);
+      }
+   }
+
+   static Float value_from_hex(const std::string& bytes_in_hex) {
+      using UInt = std::conditional_t<sizeof(Float) == 4, uint32_t, uint64_t>;
+      UInt val   = unhex<UInt>(bytes_in_hex);
+      ;
+      UInt mask    = 0;
+      UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      if (!(val & signbit)) // flip mask if val is positive
+         mask = ~mask;
+      val ^= (mask | signbit);
+      Float result;
+      memcpy(&result, &val, sizeof(val));
+      return result;
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      return std::to_string(value_from_hex(bytes_in_hex));
+   }
+};
+
+template <>
+struct key_converter<checksum256_type, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "hex");
+      checksum256_type sha{str};
+      strm.write(sha.data(), sha.data_size());
+   }
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) { return bytes_in_hex; }
+};
+
+template <>
+struct key_converter<name, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "name");
+      to_key(name(str).to_uint64_t(), strm);
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      return name(key_converter<uint64_t>::value_from_hex(bytes_in_hex)).to_string();
+   }
+};
+
+template <>
+struct key_converter<std::string, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "string");
+      to_key(str, strm);
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      std::string result = boost::algorithm::unhex(bytes_in_hex);
+      /// restore the string following the encoding rule from `template <typename S> to_key(std::string, S&)` in abieos
+      /// to_key.hpp
+      boost::replace_all(result, "\0\1", "\0");
+      // remove trailing '\0\0'
+      auto sz = result.size();
+      if (sz >= 2 && result[sz - 1] == '\0' && result[sz - 2] == '\0')
+         result.resize(sz - 2);
+      return result;
+   }
+};
+
+namespace key_helper {
+/// Caution: the order of `key_type` and `key_type_ids` should match exactly.
+using key_types = std::tuple<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                             name, checksum256_type, checksum256_type, std::string>;
+static const short_string key_type_ids[] = {"int8",   "int16",   "int32",   "int64", "uint8",  "uint16", "uint32",
+                                            "uint64", "float32", "float64", "name",  "sha256", "i256",   "string"};
+
+static_assert(sizeof(key_type_ids) / sizeof(short_string) == std::tuple_size<key_types>::value,
+              "key_type_ids and key_types must be of the same size and the order of their elements has to match");
+
+uint64_t type_string_to_function_index(short_string name) {
+   unsigned index = std::find(std::begin(key_type_ids), std::end(key_type_ids), name) - std::begin(key_type_ids);
+   key_convert_assert(index < std::tuple_size<key_types>::value);
+   return index;
 }
 
-void write_int_key(const string& index_type, int base, const string& index_value, fixed_buf_stream& strm) {
-
-   void (*write_integral_key_funs[])(const string&, int base, fixed_buf_stream&) = {
-       &write_integral_key<int8_t>,   &write_integral_key<int16_t>,  &write_integral_key<int32_t>,
-       &write_integral_key<int64_t>,  &write_integral_key<uint8_t>,  &write_integral_key<uint16_t>,
-       &write_integral_key<uint32_t>, &write_integral_key<uint64_t>, assert_invalid_type};
-   int i = to_integral_type_index(index_type);
-   return write_integral_key_funs[i](index_value, base, strm);
-}
-
-void write_key(const string& index_type, const string& encode_type, const string& index_value, fixed_buf_stream& strm) {
-   constexpr int hex_base = 16;
-   constexpr int dec_base = 10;
-
+void write_key(string index_type, string encode_type, const string& index_value, fixed_buf_stream& strm) {
    try {
       // converts arbitrary hex strings to bytes ex) "FFFEFD" to {255, 254, 253}
       if (encode_type == "bytes") {
@@ -2069,45 +2193,47 @@ void write_key(const string& index_type, const string& encode_type, const string
          return;
       }
 
-      if (encode_type == "string") {
-         to_key(index_value, strm);
+      if (index_type == "ripemd160") {
+         key_convert_assert(encode_type.empty() || encode_type == "hex");
+         checksum160_type ripem160{index_value};
+         strm.write(ripem160.data(), ripem160.data_size());
          return;
       }
 
-      if (index_type == "name") {
-         name nm(index_value);
-         to_key(nm.to_uint64_t(), strm);
-         return;
-      }
-
-      size_t pos = 0;
-      if (encode_type == "hex") {
-         if (index_type == "sha256" || index_type == "i256") {
-            checksum256_type sha{index_value};
-            strm.write(sha.data(), sha.data_size());
-         } else if (index_type == "ripemd160") {
-            checksum160_type ripem160{index_value};
-            strm.write(ripem160.data(), ripem160.data_size());
-         } else {
-            write_int_key(index_type, hex_base, index_value, strm);
-         }
-      } else if (encode_type == "dec") {
-         if (index_type == "float32") {
-            float d = convert_to_type<float>(index_value, "index_value");
-            to_key(d, strm);
-         } else if (index_type == "float64") {
-            double d = convert_to_type<double>(index_value, "index_value");
-            to_key(d, strm);
-         } else {
-            write_int_key(index_type, dec_base, index_value, strm);
-         }
-      }
+      std::apply(
+          [index_type, &index_value, encode_type, &strm](auto... t) {
+             using to_byte_fun_t         = void (*)(const string&, short_string, fixed_buf_stream&);
+             static to_byte_fun_t funs[] = {&key_converter<decltype(t)>::to_bytes...};
+             auto                 index  = type_string_to_function_index(index_type);
+             funs[index](index_value, encode_type, strm);
+          },
+          key_types{});
    } catch (...) {
-      EOS_ASSERT(false, chain::contract_table_query_exception,
-                 "Invalid index type/encode_type/Index_value: ${t}/${e}/{$v} ",
-                 ("t", index_type)("e", encode_type)("v", index_value));
+      FC_THROW_EXCEPTION(chain::contract_table_query_exception,
+                         "Incompatible index type/encode_type/Index_value: ${t}/${e}/{$v} ",
+                         ("t", index_type)("e", encode_type)("v", index_value));
    }
 }
+
+std::string read_key(string index_type, string encode_type, const string& bytes_in_hex) {
+   try {
+      if (encode_type == "bytes" || index_type == "ripemd160")
+         return bytes_in_hex;
+
+      return std::apply(
+          [index_type, bytes_in_hex, &encode_type](auto... t) {
+             using from_hex_fun_t         = std::string (*)(const string&, short_string);
+             static from_hex_fun_t funs[] = {&key_converter<decltype(t)>::from_hex...};
+             auto                    index  = type_string_to_function_index(index_type);
+             return funs[index](bytes_in_hex, encode_type);
+          },
+          key_types{});
+   } catch (...) {
+      FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ",
+                         ("t", index_type)("e", encode_type));
+   }
+}
+} // namespace key_helper
 
 constexpr uint32_t prefix_size = 17; // prefix 17bytes: status(1 byte) + table_name(8bytes) + index_name(8 bytes)
 struct kv_table_rows_context {
@@ -2166,7 +2292,7 @@ struct kv_table_rows_context {
       fixed_buf_stream  strm(full_key.data(), full_key.size());
       write_prefix(strm);
       if (maybe_key.has_value()) {
-         write_key(index_type, p.encode_type, *maybe_key, strm);
+         key_helper::write_key(index_type, p.encode_type, *maybe_key, strm);
       }
       full_key.resize(strm.pos - full_key.data());
       return full_key;
@@ -2291,8 +2417,6 @@ struct kv_reverse_range {
    void next() { --current; }
 };
 
-void set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result);
-
 template <typename Range>
 read_only::get_table_rows_result kv_get_rows(Range&& range) {
 
@@ -2308,8 +2432,7 @@ read_only::get_table_rows_result kv_get_rows(Range&& range) {
    if (!range.is_done()) {
       result.more           = true;
       result.next_key_bytes = range.current.get_key_hex_string();
-      // Set result.next_key
-      set_kv_next_key(ctx.p.encode_type, ctx.index_type, result);
+      result.next_key = key_helper::read_key(ctx.index_type, ctx.p.encode_type, result.next_key_bytes);
    }
    return result;
 }
@@ -2343,136 +2466,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::g
    else
       return kv_get_rows(kv_reverse_range(context, upper_bound, lower_bound));
 }
-
-namespace {
-    template <typename UInt, typename T>
-    UInt float_from_bytes(T& t, const std::string& next_key_bytes)  {
-        std::stringstream ss;
-        ss << std::hex << next_key_bytes;
-        UInt val;
-        ss >> val;
-        UInt mask = 0;
-        UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
-        if (!(val & signbit)) //flip mask if val is positive
-            mask = ~mask;
-        val ^=(mask | signbit);
-        return val;
-    }
-    template <typename T>
-    void convert_from_bytes( T& t, const std::string& next_key_bytes)  {
-        if constexpr (std::is_floating_point_v<T>) {
-            if constexpr (sizeof(T) == 4) {
-                uint32_t val = float_from_bytes<uint32_t>(t, next_key_bytes);
-                std::memcpy(&t, &val, sizeof(T));
-            }else {
-                static_assert(sizeof(T) == 8, "Unknown floating point type");
-                uint64_t val = float_from_bytes<uint64_t>(t, next_key_bytes);
-                std::memcpy(&t, &val, sizeof(T));
-            }
-        }else if constexpr (std::is_integral_v<T>) {
-            std::stringstream ss;
-            ss << std::hex << next_key_bytes;
-            auto unsigned_val = static_cast<std::make_unsigned_t<T>>(t);
-            ss >> unsigned_val;
-            if (unsigned_val > std::numeric_limits<T>::max()) {
-                t = unsigned_val + static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min());
-            }
-            else {
-                t = unsigned_val + std::numeric_limits<T>::min();
-            }
-        }else {
-            FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported type to convert from bytes");
-        }
-    }
-    void convert_to_hex(const int& n, string& str)  {
-        std::stringstream ss1;
-        ss1<< std::hex << std::uppercase << n;
-        ss1 >> str;
-    }
-    template<typename T>
-    void hex_from_bytes(string& next_key, const string& next_key_bytes) {
-        T val;
-        convert_from_bytes(val, next_key_bytes);
-        convert_to_hex(val, next_key);
-    }
-    template<typename T>
-    void dec_from_bytes(string& next_key, const string& next_key_bytes) {
-        T val;
-        convert_from_bytes(val, next_key_bytes);
-        next_key = std::to_string(val);
-    }
-}
-
-void set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result)  {
-    if (result.more == true) {
-        if (encode_type == "bytes") {
-            result.next_key = result.next_key_bytes;
-        }else if (encode_type == "string") {
-            result.next_key = boost::algorithm::unhex(result.next_key_bytes);
-            /// restore the string following the encoding rule from `template <typename S> to_key(std::string, S&)` in abieos to_key.hpp
-            boost::replace_all(result.next_key, "\0\1", "\0");
-            // remove trailing '\0\0'
-            auto sz = result.next_key.size();
-            if (sz >=2 && result.next_key[sz-1] == '\0' && result.next_key[sz-2] == '\0')
-               result.next_key.resize(sz-2);
-
-        }else if (encode_type == "name") {
-            uint64_t ull;
-            convert_from_bytes(ull, result.next_key_bytes);
-            name nm(ull);
-            result.next_key = nm.to_string();
-        }else if (encode_type == "hex") {
-            if (index_type == "uint64") {
-                hex_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint32") {
-                hex_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint16") {
-                hex_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint8") {
-                hex_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int64") {
-                hex_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int32") {
-                hex_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int16") {
-                hex_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int8") {
-                hex_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
-            }else if( index_type == "sha256" || index_type == "i256" ) {
-                result.next_key = result.next_key_bytes;
-            } else if( index_type == "ripemd160" ) {
-                result.next_key = result.next_key_bytes;
-            }else {
-                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-            }
-        }else if (encode_type == "dec") {
-            if (index_type == "float64") {
-                dec_from_bytes<double>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "float32") {
-                dec_from_bytes<float>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint64" ) {
-                dec_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint32") {
-                dec_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint16") {
-                dec_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint8") {
-                dec_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int64") {
-                dec_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int32") {
-                dec_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int16") {
-                dec_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int8") {
-                dec_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
-            }else {
-                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-            }
-        }
-    }
-}
-
 
 struct table_receiver
   : chain::backing_store::table_only_error_receiver<table_receiver, chain::contract_table_query_exception> {
