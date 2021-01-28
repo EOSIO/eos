@@ -101,7 +101,6 @@ if [[ "$DEBUG" == 'true' ]]; then
 fi
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-    # release build
     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
@@ -151,33 +150,6 @@ EOF
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
-EOF
-    fi
-    # debug build
-    if [[ "$PLATFORM_TYPE" == 'pinned' && "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" == "$(echo "$LATEST_UBUNTU" | jq -r '.FILE_NAME')" ]]; then
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - RelWithDebInfo Build"
-    command: "./.cicd/build.sh"
-    env:
-      CMAKE_BUILD_TYPE: "RelWithDebInfo"
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_TYPE: $PLATFORM_TYPE
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}${SKIP_DEBUG_BUILD}
-
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Debug Build"
-    command: "./.cicd/build.sh"
-    env:
-      CMAKE_BUILD_TYPE: "Debug"
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      PLATFORM_TYPE: $PLATFORM_TYPE
-    agents:
-      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}${SKIP_DEBUG_BUILD}
-
 EOF
     fi
 done
