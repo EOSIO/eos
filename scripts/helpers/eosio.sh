@@ -302,27 +302,27 @@ function build-clang() {
         if [[ ! -d $CLANG_ROOT ]]; then
             execute bash -c "cd ${TEMP_DIR} \
             && rm -rf clang8 \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
-            && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/llvm.git clang8 \
+            && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT && sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config \
             && cd tools \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/lld.git \
             && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/polly.git \
             && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang \
-            && git checkout $PINNED_COMPILER_CLANG_COMMIT \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/clang.git clang && cd clang \
+            && git checkout $PINNED_COMPILER_CLANG_COMMIT && sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config \
             && patch -p2 < \"$REPO_ROOT/scripts/clang-devtoolset8-support.patch\" \
             && cd tools && mkdir extra && cd extra \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/clang-tools-extra.git \
             && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
             && cd ../../../../projects \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/libcxx.git \
             && cd libcxx && git checkout $PINNED_COMPILER_LIBCXX_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/libcxxabi.git \
             && cd libcxxabi && git checkout $PINNED_COMPILER_LIBCXXABI_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/libunwind.git \
             && cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm-mirror/compiler-rt.git \
             && cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
             && cd ${TEMP_DIR}/clang8 \
             && mkdir build && cd build \
