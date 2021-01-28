@@ -80,15 +80,9 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add_pending_ram_usage( const account_name account, int64_t ram_delta, const storage_usage_trace& trace );
          void verify_account_ram_usage( const account_name accunt )const;
 
-         void add_pending_disk_usage( const account_name account, int64_t disk_delta, const storage_usage_trace& trace );
-         void verify_account_disk_usage( const account_name account ) const;
-
          /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
          bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
-         /// set_account_disk_limit returns true if new disk_bytes limit is more restrictive than the previously set one
-         bool set_account_disk_limit( const account_name& account, int64_t disk_bytes );
-         int64_t get_account_disk_limit( const account_name& account ) const;
 
          void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );
@@ -104,12 +98,11 @@ namespace eosio { namespace chain { namespace resource_limits {
          std::pair<int64_t, bool> get_account_net_limit( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier ) const;
 
          std::pair<account_resource_limit, bool>
-         get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const fc::optional<block_timestamp_type>& current_time={} ) const;
+         get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const std::optional<block_timestamp_type>& current_time={} ) const;
          std::pair<account_resource_limit, bool>
-         get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const fc::optional<block_timestamp_type>& current_time={} ) const;
+         get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit = config::maximum_elastic_resource_multiplier, const std::optional<block_timestamp_type>& current_time={} ) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
-         int64_t get_account_disk_usage( const account_name& name ) const;
 
       private:
          const resource_limits_object& get_account_limits( const account_name& account ) const;

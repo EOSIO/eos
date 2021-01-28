@@ -1,16 +1,12 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.2",
     "types": [],
     "structs": [
         {
             "name": "erase",
             "base": "",
             "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                },
                 {
                     "name": "contract",
                     "type": "name"
@@ -25,10 +21,6 @@
             "name": "get",
             "base": "",
             "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                },
                 {
                     "name": "contract",
                     "type": "name"
@@ -46,22 +38,12 @@
         {
             "name": "getdata",
             "base": "",
-            "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                }
-            ]
+            "fields": []
         },
         {
             "name": "itlifetime",
             "base": "",
-            "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                }
-            ]
+            "fields": []
         },
         {
             "name": "itlimit",
@@ -95,10 +77,6 @@
             "name": "itstaterased",
             "base": "",
             "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                },
                 {
                     "name": "contract",
                     "type": "name"
@@ -148,10 +126,6 @@
             "base": "",
             "fields": [
                 {
-                    "name": "db",
-                    "type": "name"
-                },
-                {
                     "name": "contract",
                     "type": "name"
                 },
@@ -173,10 +147,6 @@
             "name": "scanrev",
             "base": "",
             "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                },
                 {
                     "name": "contract",
                     "type": "name"
@@ -200,10 +170,6 @@
             "base": "",
             "fields": [
                 {
-                    "name": "db",
-                    "type": "name"
-                },
-                {
                     "name": "contract",
                     "type": "name"
                 },
@@ -214,6 +180,10 @@
                 {
                     "name": "v",
                     "type": "bytes"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
                 }
             ]
         },
@@ -221,10 +191,6 @@
             "name": "setmany",
             "base": "",
             "fields": [
-                {
-                    "name": "db",
-                    "type": "name"
-                },
                 {
                     "name": "contract",
                     "type": "name"
@@ -290,5 +256,6 @@
     ],
     "tables": [],
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "action_results": []
 }

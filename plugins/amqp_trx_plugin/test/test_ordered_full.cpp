@@ -10,10 +10,12 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/trace.hpp>
+#include <eosio/chain/name.hpp>
 
 #include <appbase/application.hpp>
 
 namespace eosio::test::detail {
+using namespace eosio::chain::literals;
 struct testit {
    uint64_t      id;
 
@@ -25,7 +27,7 @@ struct testit {
    }
 
    static action_name get_name() {
-      return N(testit);
+      return "testit"_n;
    }
 };
 }
@@ -69,7 +71,7 @@ bool verify_equal( const std::deque<packed_transaction_ptr>& trxs, const std::de
          while( j < all_blocks.size() ) {
             const auto& bs = all_blocks[j];
             if( k < bs->block->transactions.size() ) {
-               const auto& trx = bs->block->transactions[k].trx.get<packed_transaction>().get_transaction();
+               const auto& trx = std::get<packed_transaction>(bs->block->transactions[k].trx).get_transaction();
                ++k;
                return trx;
             } else {
@@ -78,7 +80,7 @@ bool verify_equal( const std::deque<packed_transaction_ptr>& trxs, const std::de
             }
          }
          BOOST_REQUIRE_MESSAGE( false, "Hit end of all_blocks" );
-         return all_blocks.at(j)->block->transactions.at(0).trx.get<packed_transaction>().get_transaction(); // avoid warning
+         return std::get<packed_transaction>(all_blocks.at(j)->block->transactions.at(0).trx).get_transaction(); // avoid warning
       };
 
       const auto& trx = next_trx();
@@ -171,9 +173,9 @@ BOOST_AUTO_TEST_CASE(order) {
          auto ptrx = make_unique_trx( chain_id );
          queue->push( ptrx,
                       [ptrx, &next_calls, &next_trx_match, &trxs](
-                            const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
-                         if( !result.contains<fc::exception_ptr>() && !result.get<chain::transaction_trace_ptr>()->except ) {
-                            if( result.get<chain::transaction_trace_ptr>()->id == ptrx->id() ) {
+                            const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result ) {
+                         if( !std::holds_alternative<fc::exception_ptr>(result) && !std::get<chain::transaction_trace_ptr>(result)->except ) {
+                            if( std::get<chain::transaction_trace_ptr>(result)->id == ptrx->id() ) {
                                trxs.push_back( ptrx );
                             } else {
                                next_trx_match = false;

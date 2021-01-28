@@ -68,3 +68,6 @@ cleos set action permission sandwichfarm eosio.system voteproducer voting -p san
 #Now can execute the transaction with the previously set permissions. 
 cleos system voteproducer approve sandwichfarm someproducer -p sandwichfarm@voting
 ```
+
+## See Also
+- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.

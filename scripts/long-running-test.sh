@@ -16,7 +16,7 @@ cd "$GIT_ROOT/build"
 if [[ -z "$TEST" ]]; then # run all serial tests
     echo "$ $RABBITMQ_SERVER_DETACHED"
     eval $RABBITMQ_SERVER_DETACHED
-    sleep 10
+    sleep 30
     # count tests
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running Long-Running Tests"
     TEST_COUNT=$(ctest -N -L 'long_running_tests' | grep -i 'Total Tests: ' | cut -d ':' -f '2' | awk '{print $1}')
@@ -37,7 +37,7 @@ else # run specific serial test
     if [[ "$(echo "$TEST" | grep -ci 'rabbit')" != '0' ]]; then
         echo "$ $RABBITMQ_SERVER_DETACHED"
         eval $RABBITMQ_SERVER_DETACHED
-        sleep 10
+        sleep 30
     fi
     # ensure test exists
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running $TEST"

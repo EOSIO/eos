@@ -76,12 +76,12 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          fc::datastream<const char*> ds( buf, s );
          fc::unsigned_int which;
          fc::raw::unpack(ds, which);
-         if( which == fc::unsigned_int(transaction_msg::tag<chain::packed_transaction_v0>::value) ) {
+         if( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction_v0>()) ) {
             chain::packed_transaction_v0 v0;
             fc::raw::unpack(ds, v0);
             auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
             handle_message( delivery_tag, std::move( ptr ) );
-         } else if ( which == fc::unsigned_int(transaction_msg::tag<chain::packed_transaction>::value) ) {
+         } else if ( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction>()) ) {
             auto ptr = std::make_shared<chain::packed_transaction>();
             fc::raw::unpack(ds, *ptr);
             handle_message( delivery_tag, std::move( ptr ) );
@@ -128,13 +128,13 @@ private:
       fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, trx](const fc::static_variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, trx](const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
             auto trx_span = fc_create_span_from_token(token, "Processed");
             fc_add_tag(trx_span, "trx_id", trx->id());
 
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
-            if( result.contains<chain::exception_ptr>() ) {
-               auto& eptr = result.get<chain::exception_ptr>();
+            if( std::holds_alternative<chain::exception_ptr>(result) ) {
+               auto& eptr = std::get<chain::exception_ptr>(result);
                if( my->trace_plug ) {
                   my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
                }
@@ -144,7 +144,7 @@ private:
                   my->amqp_trx->ack( delivery_tag );
                }
             } else {
-               auto& trace = result.get<chain::transaction_trace_ptr>();
+               auto& trace = std::get<chain::transaction_trace_ptr>(result);
                fc_add_tag(trx_span, "block_num", trace->block_num);
                fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
                fc_add_tag(trx_span, "elapsed", trace->elapsed.count());

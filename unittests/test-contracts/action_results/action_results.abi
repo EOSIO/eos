@@ -7,12 +7,62 @@
             "name": "actionresret",
             "base": "",
             "fields": []
+        },
+        {
+            "name": "ret1overlim",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "retlim",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "retmaxlim",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "retoverlim",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setliminv",
+            "base": "",
+            "fields": []
         }
     ],
     "actions": [
         {
             "name": "actionresret",
             "type": "actionresret",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "ret1overlim",
+            "type": "ret1overlim",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "retlim",
+            "type": "retlim",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "retmaxlim",
+            "type": "retmaxlim",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "retoverlim",
+            "type": "retoverlim",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setliminv",
+            "type": "setliminv",
             "ricardian_contract": ""
         }
     ],
@@ -23,6 +73,18 @@
         {
             "name": "actionresret",
             "result_type": "int32"
+        },
+        {
+            "name": "ret1overlim",
+            "result_type": "bytes"
+        },
+        {
+            "name": "retlim",
+            "result_type": "bytes"
+        },
+        {
+            "name": "retoverlim",
+            "result_type": "bytes"
         }
     ]
 }

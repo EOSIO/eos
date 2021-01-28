@@ -70,13 +70,12 @@ try:
         Print("Stand up cluster")
 
         if not amqpAddr:
-            launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap)
+            specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
+                                      1 : " --backing-store=rocksdb" }
         else:
-            launched = cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap,
-                                      specificExtraNodeosArgs={
-                                        0: "--plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr) })
-
-        if launched is False:
+            specificExtraNodeosArgs={ 0: "--backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr),
+                                      1 : " --backing-store=rocksdb" }
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -521,7 +520,7 @@ try:
     contract="currency1111"
     action="transfer"
     data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
-    data +="\"00.0051 CUR\",\"memo\":\"test\"}"
+    data +="\"00.0151 CUR\",\"memo\":\"test\"}"
     opts="--permission defproducera@active"
     trans=node.pushMessage(contract, action, data, opts, True)
     if trans is None or trans[0]:

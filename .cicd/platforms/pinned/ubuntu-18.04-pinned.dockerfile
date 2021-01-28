@@ -9,7 +9,9 @@ RUN apt-get update && \
     python3-dev python-configparser python-requests python-pip \
     autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch vim-common jq rabbitmq-server \
-    libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev
+    libtasn1-dev libnss3-dev iproute2 expect gawk socat python3-pip libseccomp-dev uuid-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
@@ -97,7 +99,20 @@ RUN git clone -b v0.5.0 https://github.com/stefanberger/swtpm && \
     cd .. && \
     rm -rf swtpm
 RUN ldconfig
-
+# install libpq, postgresql-13
+ENV TZ=America/Chicago
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt bionic-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+#build libpqxx
+RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+    cd  libpqxx-7.2.1  && \
+    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake --build build && cmake --install build && \
+    cd .. && rm -rf libpqxx-7.2.1
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
@@ -109,4 +124,6 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-RUN sudo apt-get install -y nodejs
+RUN apt-get update && apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*

@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
 
 #include <fc/scoped_exit.hpp>
 

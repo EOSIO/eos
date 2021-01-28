@@ -16,7 +16,7 @@ struct genesis_state {
 
    static const string eosio_root_key;
 
-   chain_config   initial_configuration = {
+   chain_config_v0   initial_configuration = {
       .max_block_net_usage                  = config::default_max_block_net_usage,
       .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
       .max_transaction_net_usage            = config::default_max_transaction_net_usage,

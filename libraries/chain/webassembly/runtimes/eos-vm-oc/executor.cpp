@@ -164,7 +164,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
    //prepare initial memory, mutable globals, and table data
    if(code.starting_memory_pages > 0 ) {
       uint64_t initial_page_offset = std::min(static_cast<std::size_t>(code.starting_memory_pages), mem.size_of_memory_slice_mapping()/memory::stride - 1);
-      if(initial_page_offset < code.starting_memory_pages) {
+      if(initial_page_offset < static_cast<uint64_t>(code.starting_memory_pages)) {
          mprotect(mem.full_page_memory_base() + initial_page_offset * eosio::chain::wasm_constraints::wasm_page_size,
                   (code.starting_memory_pages - initial_page_offset) * eosio::chain::wasm_constraints::wasm_page_size, PROT_READ | PROT_WRITE);
       }
@@ -231,7 +231,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
          stack.run([&]{
-            code.start.visit(overloaded {
+            std::visit(overloaded {
                [&](const no_offset&) {},
                [&](const intrinsic_ordinal& i) {
                   void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
@@ -241,7 +241,7 @@ void executor::execute(const code_descriptor& code, memory& mem, void* context, 
                   void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
                   start_func();
                }
-            });
+            }, code.start);
             apply_func(receiver, account, action);
          });
          break;

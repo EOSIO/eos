@@ -9,8 +9,6 @@
 
 namespace b1::rodeos {
 
-inline constexpr eosio::name kvram_db_id{ "eosio.kvram" };
-inline constexpr eosio::name kvdisk_db_id{ "eosio.kvdisk" };
 inline constexpr eosio::name state_db_id{ "eosio.state" };
 
 enum class kv_it_stat {
@@ -174,7 +172,7 @@ struct kv_context_rocksdb {
       return 0;
    }
 
-   int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size) {
+   int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, uint64_t payer) {
       eosio::check(enable_write && (bypass_receiver_check || eosio::name{ contract } == receiver),
                    "Can not write to this key");
       eosio::check(key_size <= limits.max_key_size, "Key too large");
@@ -218,8 +216,6 @@ struct db_view_state {
    chain_kv::database&                               database;
    const kv_database_config                          limits;
    const kv_database_config                          kv_state_limits{ 1024, std::numeric_limits<uint32_t>::max() };
-   kv_context_rocksdb                                kv_ram;
-   kv_context_rocksdb                                kv_disk;
    kv_context_rocksdb                                kv_state;
    std::vector<std::unique_ptr<kv_iterator_rocksdb>> kv_iterators;
    std::vector<size_t>                               kv_destroyed_iterators;
@@ -227,8 +223,6 @@ struct db_view_state {
    db_view_state(eosio::name receiver, chain_kv::database& database, chain_kv::write_session& write_session,
                  const std::vector<char>& contract_kv_prefix)
        : receiver{ receiver }, database{ database }, //
-         kv_ram{ database, write_session, contract_kv_prefix, kvram_db_id, receiver, limits },
-         kv_disk{ database, write_session, contract_kv_prefix, kvdisk_db_id, receiver, limits },
          kv_state{ database, write_session, contract_kv_prefix, state_db_id, receiver, kv_state_limits },
          kv_iterators(1) {}
 
@@ -243,24 +237,24 @@ template <typename Derived>
 struct db_callbacks {
    Derived& derived() { return static_cast<Derived&>(*this); }
 
-   int64_t kv_erase(uint64_t db, uint64_t contract, eosio::vm::span<const char> key) {
-      return kv_get_db(db).kv_erase(contract, key.data(), key.size());
+   int64_t kv_erase(uint64_t contract, eosio::vm::span<const char> key) {
+      return kv_get_db().kv_erase(contract, key.data(), key.size());
    }
 
-   int64_t kv_set(uint64_t db, uint64_t contract, eosio::vm::span<const char> key, eosio::vm::span<const char> value) {
-      return kv_get_db(db).kv_set(contract, key.data(), key.size(), value.data(), value.size());
+   int64_t kv_set(uint64_t contract, eosio::vm::span<const char> key, eosio::vm::span<const char> value, uint64_t payer) {
+      return kv_get_db().kv_set(contract, key.data(), key.size(), value.data(), value.size(), payer);
    }
 
-   bool kv_get(uint64_t db, uint64_t contract, eosio::vm::span<const char> key, uint32_t* value_size) {
-      return kv_get_db(db).kv_get(contract, key.data(), key.size(), *value_size);
+   bool kv_get(uint64_t contract, eosio::vm::span<const char> key, uint32_t* value_size) {
+      return kv_get_db().kv_get(contract, key.data(), key.size(), *value_size);
    }
 
-   uint32_t kv_get_data(uint64_t db, uint32_t offset, eosio::vm::span<char> data) {
-      return kv_get_db(db).kv_get_data(offset, data.data(), data.size());
+   uint32_t kv_get_data(uint32_t offset, eosio::vm::span<char> data) {
+      return kv_get_db().kv_get_data(offset, data.data(), data.size());
    }
 
-   uint32_t kv_it_create(uint64_t db, uint64_t contract, eosio::vm::span<const char> prefix) {
-      auto&    kdb = kv_get_db(db);
+   uint32_t kv_it_create(uint64_t contract, eosio::vm::span<const char> prefix) {
+      auto&    kdb = kv_get_db();
       uint32_t itr;
       if (!derived().get_db_view_state().kv_destroyed_iterators.empty()) {
          itr = derived().get_db_view_state().kv_destroyed_iterators.back();
@@ -334,14 +328,8 @@ struct db_callbacks {
             offset, dest.data(), dest.size(), *actual_size));
    }
 
-   kv_context_rocksdb& kv_get_db(uint64_t db) {
-      if (db == kvram_db_id.value)
-         return derived().get_db_view_state().kv_ram;
-      else if (db == kvdisk_db_id.value)
-         return derived().get_db_view_state().kv_disk;
-      else if (db == state_db_id.value)
-         return derived().get_db_view_state().kv_state;
-      throw std::runtime_error("Bad key-value database ID");
+   kv_context_rocksdb& kv_get_db() {
+      return derived().get_db_view_state().kv_state;
    }
 
    void kv_check_iterator(uint32_t itr) {
@@ -381,29 +369,29 @@ class kv_environment : public db_callbacks<kv_environment> {
 
    auto& get_db_view_state() { return state; }
 
-   int64_t kv_erase(uint64_t db, uint64_t contract, const char* key, uint32_t key_size) {
-      return base::kv_erase(db, contract, { key, key_size });
+   int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
+      return base::kv_erase(contract, { key, key_size });
    }
 
-   int64_t kv_set(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, const char* value,
-                  uint32_t value_size) {
-      return base::kv_set(db, contract, { key, key_size }, { value, value_size });
+   int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value,
+                  uint32_t value_size, uint64_t payer) {
+      return base::kv_set(contract, { key, key_size }, { value, value_size }, payer);
    }
 
-   void kv_set(uint64_t db, uint64_t contract, const std::vector<char>& k, const std::vector<char>& v) {
-      base::kv_set(db, contract, { k.data(), k.size() }, { v.data(), v.size() });
+   void kv_set(uint64_t contract, const std::vector<char>& k, const std::vector<char>& v, uint64_t payer) {
+      base::kv_set(contract, { k.data(), k.size() }, { v.data(), v.size() }, payer);
    }
 
-   bool kv_get(uint64_t db, uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
-      return base::kv_get(db, contract, { key, key_size }, &value_size);
+   bool kv_get( uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size) {
+      return base::kv_get(contract, { key, key_size }, &value_size);
    }
 
-   uint32_t kv_get_data(uint64_t db, uint32_t offset, char* data, uint32_t data_size) {
-      return base::kv_get_data(db, offset, { data, data_size });
+   uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size) {
+      return base::kv_get_data(offset, { data, data_size });
    }
 
-   uint32_t kv_it_create(uint64_t db, uint64_t contract, const char* prefix, uint32_t prefix_size) {
-      return base::kv_it_create(db, contract, { prefix, prefix_size });
+   uint32_t kv_it_create(uint64_t contract, const char* prefix, uint32_t prefix_size) {
+      return base::kv_it_create(contract, { prefix, prefix_size });
    }
 
    int32_t kv_it_key_compare(uint32_t itr, const char* key, uint32_t key_size) {

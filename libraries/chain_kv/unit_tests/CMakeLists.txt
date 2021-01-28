@@ -3,7 +3,8 @@ include(ExternalProject)
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 
 add_executable(chain-kv-tests ${UNIT_TESTS})
-target_link_libraries(chain-kv-tests chain_kv)
+target_link_libraries(chain-kv-tests chain_kv eosio_chain)
+target_include_directories(chain-kv-tests PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../../chain/include")
 
 enable_testing()
 

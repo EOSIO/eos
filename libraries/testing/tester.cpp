@@ -110,12 +110,12 @@ namespace eosio { namespace testing {
    protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions) {
       protocol_feature_set pfs;
 
-      map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
+      map< builtin_protocol_feature_t, std::optional<digest_type> > visited_builtins;
 
       std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
       [&pfs, &visited_builtins, &add_builtins, &custom_subjective_restrictions]
       ( builtin_protocol_feature_t codename ) -> digest_type {
-         auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+         auto res = visited_builtins.emplace( codename, std::optional<digest_type>() );
          if( !res.second ) {
             EOS_ASSERT( res.first->second, protocol_feature_exception,
                         "invariant failure: cycle found in builtin protocol feature dependencies"
@@ -150,8 +150,12 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(const setup_policy policy, db_read_mode read_mode, optional<uint32_t> genesis_max_inline_action_size, optional<uint32_t> config_max_nonprivileged_inline_action_size) {
-      auto def_conf = default_config(tempdir, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode,
+                          std::optional<uint32_t> genesis_max_inline_action_size,
+                          std::optional<uint32_t> config_max_nonprivileged_inline_action_size,
+                          std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, genesis_max_inline_action_size,
+                                     config_max_nonprivileged_inline_action_size, config_backing_store);
       def_conf.first.read_mode = read_mode;
       cfg = def_conf.first;
 
@@ -265,11 +269,11 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( std::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
@@ -287,13 +291,13 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
-          for( const auto& receipt : block_state->block->transactions ) {
-              if( receipt.trx.contains<packed_transaction>() ) {
-                  auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions[pt.get_transaction().id()] = receipt;
+          for( auto receipt : block_state->block->transactions ) {
+              if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
+                  auto &pt = std::get<packed_transaction>(receipt.trx);
+                  chain_transactions[pt.get_transaction().id()] = std::move(receipt);
               } else {
-                  auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions[id] = receipt;
+                  auto& id = std::get<transaction_id_type>(receipt.trx);
+                  chain_transactions[id] = std::move(receipt);
               }
           }
       });
@@ -313,7 +317,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( [](){}, []() { return false; } );
       });
@@ -695,7 +699,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW() }
 
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -729,7 +733,7 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v, uint32_t billed_cpu_time_us) {
       // use reqauth for a normal action, this could be anything
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -768,7 +772,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -797,7 +801,7 @@ namespace eosio { namespace testing {
 
 
    transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency, string memo ) {
-      variant pretty_trx = fc::mutable_variant_object()
+      fc::variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", currency)
@@ -966,7 +970,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->db();
-      const auto* tbl = db.template find<table_id_object, by_code_scope_table>(boost::make_tuple(code, account, N(accounts)));
+      const auto* tbl = db.template find<table_id_object, by_code_scope_table>(boost::make_tuple(code, account, "accounts"_n));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -1098,7 +1102,7 @@ namespace eosio { namespace testing {
          schedule_variant.emplace_back(e.get_abi_variant());
       }
 
-      return push_action( config::system_account_name, N(setprods), config::system_account_name,
+      return push_action( config::system_account_name, "setprods"_n, config::system_account_name,
                           fc::mutable_variant_object()("schedule", schedule_variant));
 
    }
@@ -1110,12 +1114,12 @@ namespace eosio { namespace testing {
       vector<legacy::producer_key> legacy_keys;
       legacy_keys.reserve(schedule.size());
       for (const auto &p : schedule) {
-         p.authority.visit([&legacy_keys, &p](const auto& auth){
+         std::visit([&legacy_keys, &p](const auto& auth){
             legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-         });
+         }, p.authority);
       }
 
-      return push_action( config::system_account_name, N(setprods), config::system_account_name,
+      return push_action( config::system_account_name, "setprods"_n, config::system_account_name,
                           fc::mutable_variant_object()("schedule", legacy_keys));
 
    }
@@ -1136,7 +1140,7 @@ namespace eosio { namespace testing {
 
    void base_tester::preactivate_protocol_features(const vector<digest_type> feature_digests) {
       for( const auto& feature_digest: feature_digests ) {
-         push_action( config::system_account_name, N(activate), config::system_account_name,
+         push_action( config::system_account_name, "activate"_n, config::system_account_name,
                       fc::mutable_variant_object()("feature_digest", feature_digest) );
       }
    }
@@ -1203,6 +1207,52 @@ namespace eosio { namespace testing {
                         });
 
       execute_setup_policy(policy);
+   }
+
+   validating_tester::validating_tester(const flat_set<account_name>& trusted_producers,
+                                        std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, std::optional<uint32_t>{}, std::optional<uint32_t>{}, config_backing_store);
+      init_with_trusted_producers(trusted_producers, def_conf, config_backing_store);
+   }
+
+   void validating_tester::init_with_trusted_producers(const flat_set<account_name>& trusted_producers,
+                                                       std::pair<controller::config, genesis_state> config_state,
+                                                       std::optional<backing_store_type> config_backing_store) {
+      vcfg = config_state.first;
+      if (config_backing_store) {
+         // can only have one instance of RocksDB running in the test process
+         vcfg.backing_store = alternate_type(*config_backing_store);
+      }
+      config_validator(vcfg);
+      vcfg.trusted_producers = trusted_producers;
+
+      validating_node = create_validating_node(vcfg, config_state.second, true);
+
+      init(config_state.first, config_state.second);
+      execute_setup_policy(setup_policy::full);
+   }
+
+   validating_tester::validating_tester(const fc::temp_directory& tempdir, bool use_genesis,
+                     std::optional<backing_store_type> config_backing_store) {
+      auto def_conf = default_config(tempdir, std::optional<uint32_t>{}, std::optional<uint32_t>{}, config_backing_store);
+      vcfg = def_conf.first;
+      if (config_backing_store) {
+         // can only have one instance of RocksDB running in the test process
+         vcfg.backing_store = alternate_type(*config_backing_store);
+      }
+      config_validator(vcfg);
+      validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+      if (use_genesis) {
+         init(def_conf.first, def_conf.second);
+      }
+      else {
+         init(def_conf.first);
+      }
+   }
+
+   backing_store_type validating_tester::alternate_type(backing_store_type type) {
+      return type == backing_store_type::CHAINBASE ? backing_store_type::ROCKSDB : backing_store_type::CHAINBASE;
    }
 
    bool fc_exception_code_is::operator()( const fc::exception& ex ) {

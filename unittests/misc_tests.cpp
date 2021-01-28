@@ -127,20 +127,20 @@ BOOST_AUTO_TEST_CASE(reverse_endian_tests)
 BOOST_AUTO_TEST_CASE(name_suffix_tests)
 {
    BOOST_CHECK_EQUAL( name{name_suffix(name(0))}, name{0} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(..abc.def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc..def))}, name{N(def)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def.ghi))}, name{N(ghi)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij))}, name{N(abcdefghij)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij.1))}, name{N(1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij))}, name{N(bcdefghij)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij.1))}, name{N(1)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(......a.b.c))}, name{N(c)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhi.123))}, name{N(123)} );
-   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhij.123))}, name{N(123)} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdehijklmn"_n)}, name{"abcdehijklmn"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdehijklmn1"_n)}, name{"abcdehijklmn1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("..abc.def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc..def"_n)}, name{"def"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abc.def.ghi"_n)}, name{"ghi"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abcdefghij"_n)}, name{"abcdefghij"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix(".abcdefghij.1"_n)}, name{"1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("a.bcdefghij"_n)}, name{"bcdefghij"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("a.bcdefghij.1"_n)}, name{"1"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("......a.b.c"_n)}, name{"c"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdefhi.123"_n)}, name{"123"_n} );
+   BOOST_CHECK_EQUAL( name{name_suffix("abcdefhij.123"_n)}, name{"123"_n} );
 }
 
 /// Test processing of unbalanced strings
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(variant_format_string_limited)
       for( int i = 0; i < 1024; ++i)
          b.data.push_back('b');
       variants c;
-      c.push_back(variant(a));
+      c.push_back(fc::variant(a));
       mu( "a", a );
       mu( "b", b );
       mu( "c", c );
@@ -674,7 +674,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
   std::sort(words.begin(), words.end(), std::less<string>());
 
   vector<uint64_t> uwords;
-  for(const auto w: words) {
+  for(const auto& w: words) {
     auto n = name(w.c_str());
     uwords.push_back(n.to_uint64_t());
   }
@@ -693,13 +693,21 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 } FC_LOG_AND_RETHROW() }
 
+void verify_packed_transaction_conversion(const packed_transaction_v0& original, const packed_transaction_v0_ptr final) {
+   // prunable_size and unprunable_size must be maintained
+   BOOST_CHECK_EQUAL(original.get_prunable_size(), final->get_prunable_size());
+   BOOST_CHECK_EQUAL(original.get_unprunable_size(), final->get_unprunable_size());
+   // context_free_data must be maintained
+   BOOST_REQUIRE_EQUAL(original.get_context_free_data().size(), final->get_context_free_data().size());
+   BOOST_CHECK(std::equal(original.get_context_free_data().begin(), original.get_context_free_data().end(), final->get_context_free_data().begin()));
+}
 
 BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -813,6 +821,62 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
+   // verify packed_transaction creation from packed data
+   auto packed = fc::raw::pack( static_cast<const transaction&>(pkt5.get_transaction()) );
+   packed_transaction_v0 pkt7( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt7.get_transaction().id());
+
+   packed.push_back('8'); packed.push_back('8'); // extra ignored
+   packed_transaction_v0 pkt8( packed, *pkt6.get_signatures(), pkt6.to_packed_transaction_v0()->get_packed_context_free_data(),
+                               packed_transaction_v0::compression_type::none );
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt8.get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt8.get_transaction()) ));
+   BOOST_CHECK( packed == pkt8.get_packed_transaction() ); // extra maintained
+
+   // Round trip from v0 to v1 to v0 (packed_transaction_v0 to
+   // packed_transaction_v0) with extra packed transaction and
+   // extra packed context free data
+   auto packed_context_free_data_extra = pkt6.to_packed_transaction_v0()->get_packed_context_free_data();
+   packed_context_free_data_extra.push_back('e');
+   packed_context_free_data_extra.push_back('x');
+   packed_context_free_data_extra.push_back('t');
+   packed_context_free_data_extra.push_back('r');
+   packed_context_free_data_extra.push_back('a');
+
+   packed_transaction_v0 pkt_v0_original( packed, *pkt6.get_signatures(),packed_context_free_data_extra, packed_transaction_v0::compression_type::none );
+   packed_transaction pkt_v0_to_v1(pkt_v0_original, true);
+   auto pkt_v0_final = pkt_v0_to_v1.to_packed_transaction_v0();
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt_v0_final->get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt_v0_final->get_transaction()) ));
+   BOOST_CHECK( packed == pkt_v0_final->get_packed_transaction() );
+   verify_packed_transaction_conversion(pkt_v0_original, pkt_v0_final);
+
+   // Round trip from v0 to v1 to v0 (packed_transaction_v0 to
+   // packed_transaction_v0) with empty context free data
+   signed_transaction empty_cfd_trx;
+   empty_cfd_trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
+   empty_cfd_trx.context_free_data.push_back(bytes());
+   test.set_transaction_headers(empty_cfd_trx);
+   empty_cfd_trx.sign( test.get_private_key( "eosio"_n, "active" ), test.control->get_chain_id() );
+   packed_transaction_v0 pkt_v0_empty_cfd_original(empty_cfd_trx);
+   packed_transaction pkt_v0_to_v1_empty_cfd(pkt_v0_empty_cfd_original, true);
+   auto pkt_v0_empty_cfd_final = pkt_v0_to_v1_empty_cfd.to_packed_transaction_v0();
+   verify_packed_transaction_conversion(pkt_v0_empty_cfd_original, pkt_v0_empty_cfd_final);
+
+   // Round trip from v1 to v0 to v1 (packed_transaction to packed_transaction)
+   // with extra packed transaction and extra packed context free data
+   auto pkt_v1_original {pkt_v0_to_v1};
+   auto pkt_v1_to_v0 = pkt_v1_original.to_packed_transaction_v0();
+   packed_transaction pkt_v1_final(*pkt_v1_to_v0, true);
+
+   BOOST_CHECK_EQUAL(pkt.get_transaction().id(), pkt_v1_final.get_transaction().id());
+   BOOST_CHECK( packed != fc::raw::pack( static_cast<const transaction&>(pkt_v1_final.get_transaction()) ));
+   BOOST_CHECK( packed == pkt_v1_final.get_packed_transaction() );
+   BOOST_CHECK_EQUAL(pkt_v1_original.get_prunable_size(), pkt_v1_final.get_prunable_size());
+   BOOST_CHECK_EQUAL(pkt_v1_original.get_unprunable_size(), pkt_v1_final.get_unprunable_size());
+   BOOST_REQUIRE_EQUAL(pkt_v1_original.get_context_free_data()->size(), pkt_v1_final.get_context_free_data()->size());
+   BOOST_CHECK(std::equal(pkt_v1_original.get_context_free_data()->begin(), pkt_v1_original.get_context_free_data()->end(), pkt_v1_final.get_context_free_data()->begin()));
 } FC_LOG_AND_RETHROW() }
 
 
@@ -849,7 +913,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
    testing::TESTER test;
    signed_transaction trx;
 
-   variant pretty_trx = fc::mutable_variant_object()
+   fc::variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
             ("account", "eosio")
@@ -968,10 +1032,10 @@ BOOST_AUTO_TEST_CASE(prunable_transaction_data_test) {
 BOOST_AUTO_TEST_CASE(pruned_transaction_test) {
    tester t;
    signed_transaction trx;
-   trx.context_free_actions.push_back({ {}, N(eosio), N(), bytes() });
+   trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
    trx.context_free_data.push_back(bytes());
    t.set_transaction_headers(trx);
-   trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
+   trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
 
    packed_transaction_v0 packed(trx);
    packed_transaction pruned(std::move(trx), true);
@@ -1011,11 +1075,11 @@ static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& 
 BOOST_AUTO_TEST_CASE(pruned_block_test) {
    tester t;
    signed_transaction trx;
-   trx.actions.push_back({ { permission_level{ N(eosio), N(active) } }, N(eosio), N(), bytes() } );
-   trx.context_free_actions.push_back({ {}, N(eosio), N(), bytes() });
+   trx.actions.push_back({ { permission_level{ "eosio"_n, "active"_n } }, "eosio"_n, ""_n, bytes() } );
+   trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
    trx.context_free_data.push_back(bytes());
    t.set_transaction_headers(trx);
-   trx.sign( t.get_private_key( N(eosio), "active" ), t.control->get_chain_id() );
+   trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
 
    t.push_transaction(trx);
    signed_block_ptr produced = t.produce_block();
@@ -1043,7 +1107,7 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
-   deserialized.transactions.back().trx.get<packed_transaction>().prune_all();
+   std::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
    deserialized.prune_state = signed_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());

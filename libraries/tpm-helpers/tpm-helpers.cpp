@@ -182,7 +182,7 @@ fc::crypto::public_key tpm_pub_to_pub(const TPM2B_PUBLIC* tpm_pub) {
    FC_ASSERT(tpm_pub->publicArea.unique.ecc.x.size == 32 && tpm_pub->publicArea.unique.ecc.y.size == 32, "p256 key points not expected size");
 
    fc::crypto::public_key key;
-   char serialized_public_key[1 + sizeof(fc::crypto::r1::public_key_data)] = {fc::crypto::public_key::storage_type::position<fc::crypto::r1::public_key_shim>()};
+   char serialized_public_key[1 + sizeof(fc::crypto::r1::public_key_data)] = {fc::get_index<fc::crypto::public_key::storage_type, fc::crypto::r1::public_key_shim>()};
    memcpy(serialized_public_key + 2, tpm_pub->publicArea.unique.ecc.x.buffer, 32);
    serialized_public_key[1] = 0x02u + (tpm_pub->publicArea.unique.ecc.y.buffer[31] & 1u);
 
@@ -298,10 +298,10 @@ fc::crypto::signature tpm_key::sign(const fc::sha256& digest) {
    FC_ASSERT(BN_bin2bn(sig->signature.ecdsa.signatureR.buffer,32,r) && BN_bin2bn(sig->signature.ecdsa.signatureS.buffer,32,s), "Failed to BN_bin2bn");
    FC_ASSERT(ECDSA_SIG_set0(sslsig, r, s), "Failed to ECDSA_SIG_set0");
 
-   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::crypto::signature::storage_type::position<fc::crypto::r1::signature_shim>()};
+   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::get_index<fc::crypto::signature::storage_type, fc::crypto::r1::signature_shim>()};
 
    fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature*)(serialized_signature + 1);
-   *compact_sig = fc::crypto::r1::signature_from_ecdsa(my->sslkey, my->pubkey._storage.get<fc::crypto::r1::public_key_shim>()._data, sslsig, digest);
+   *compact_sig = fc::crypto::r1::signature_from_ecdsa(my->sslkey, std::get<fc::crypto::r1::public_key_shim>(my->pubkey._storage)._data, sslsig, digest);
 
    fc::crypto::signature final_signature;
    fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));

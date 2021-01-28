@@ -21,11 +21,11 @@ using namespace eosio::testing;
 BOOST_AUTO_TEST_SUITE(auth_tests)
 
 BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
-   create_accounts( {N(alice)} );
+   create_accounts( {"alice"_n} );
    produce_block();
 
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(alice), config::active_name}}, {} ), unsatisfied_authorization );
-   auto trace = push_reqauth(N(alice), "owner");
+   BOOST_REQUIRE_THROW( push_reqauth( "alice"_n, {permission_level{"alice"_n, config::active_name}}, {} ), unsatisfied_authorization );
+   auto trace = push_reqauth("alice"_n, "owner");
 
    produce_block();
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
@@ -34,11 +34,11 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
 
 BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, TESTER ) { try {
     produce_block();
-    create_account(N(alice), config::system_account_name, true);
+    create_account("alice"_n, config::system_account_name, true);
     produce_block();
 
-    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), unsatisfied_authorization); // without multisig
-    auto trace = push_reqauth(N(alice), "owner", true); // with multisig
+    BOOST_REQUIRE_THROW(push_reqauth("alice"_n, "owner"), unsatisfied_authorization); // without multisig
+    auto trace = push_reqauth("alice"_n, "owner", true); // with multisig
 
     produce_block();
     BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
@@ -46,11 +46,11 @@ BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, TESTER ) { try {
  } FC_LOG_AND_RETHROW() } /// missing_multi_sigs
 
 BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
-   create_accounts( {N(alice), N(bob)} );
+   create_accounts( {"alice"_n, "bob"_n} );
    produce_block();
 
    /// action not provided from authority
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), missing_auth_exception);
+   BOOST_REQUIRE_THROW( push_reqauth( "alice"_n, {permission_level{"bob"_n, config::active_name}}, { get_private_key("bob"_n, "active") } ), missing_auth_exception);
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
@@ -59,32 +59,32 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
  *  of another account by updating the active authority.
  */
 BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
-   create_accounts( {N(alice),N(bob)});
+   create_accounts( {"alice"_n,"bob"_n});
    produce_block();
 
    auto delegated_auth = authority( 1, {},
                           {
-                            { .permission = {N(bob),config::active_name}, .weight = 1}
+                            { .permission = {"bob"_n,config::active_name}, .weight = 1}
                           });
 
-   auto original_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   auto original_auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
    wdump((original_auth));
 
-   set_authority( N(alice), config::active_name,  delegated_auth );
+   set_authority( "alice"_n, config::active_name,  delegated_auth );
 
-   auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
    wdump((new_auth));
    BOOST_CHECK_EQUAL((new_auth == delegated_auth), true);
 
    produce_block();
    produce_block();
 
-   auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({"alice"_n, config::active_name}).auth);
    wdump((auth));
    BOOST_CHECK_EQUAL((new_auth == auth), true);
 
    /// execute nonce from alice signed by bob
-   auto trace = push_reqauth(N(alice), {permission_level{N(alice), config::active_name}}, { get_private_key(N(bob), "active") } );
+   auto trace = push_reqauth("alice"_n, {permission_level{"alice"_n, config::active_name}}, { get_private_key("bob"_n, "active") } );
 
    produce_block();
    //todoBOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
@@ -239,11 +239,11 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    chain.set_authority(name("alice"), name("scud"), scud_pub_key, name("spending"));
 
    // Send req auth action with alice's spending key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key }), irrelevant_auth_exception);
+   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key }), irrelevant_auth_exception);
    // Link authority for eosio reqauth action with alice's spending key
    chain.link_authority(name("alice"), name("eosio"), name("spending"), name("reqauth"));
    // Now, req auth action with alice's spending key should succeed
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key });
 
    chain.produce_block();
 
@@ -253,18 +253,18 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    // Unlink alice with eosio reqauth
    chain.unlink_authority(name("alice"), name("eosio"), name("reqauth"));
    // Now, req auth action with alice's spending key should fail
-   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key }), irrelevant_auth_exception);
+   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key }), irrelevant_auth_exception);
 
    chain.produce_block();
 
    // Send req auth action with scud key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{N(alice), name("scud")} }, { scud_priv_key }), irrelevant_auth_exception);
+   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("scud")} }, { scud_priv_key }), irrelevant_auth_exception);
    // Link authority for any eosio action with alice's scud key
    chain.link_authority(name("alice"), name("eosio"), name("scud"));
    // Now, req auth action with alice's scud key should succeed
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("scud")} }, { scud_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("scud")} }, { scud_priv_key });
    // req auth action with alice's spending key should also be fine, since it is the parent of alice's scud key
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key });
 
 } FC_LOG_AND_RETHROW() }
 
@@ -281,16 +281,16 @@ BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
    chain.set_authority(name("alice"), name("first"), first_pub_key, name("active"));
 
    chain.link_authority(name("alice"), name("eosio"), name("first"), name("reqauth"));
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("first")} }, { first_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("first")} }, { first_priv_key });
 
    chain.produce_blocks(13); // Wait at least 6 seconds for first push_reqauth transaction to expire.
 
    // Update "first" auth public key
    chain.set_authority(name("alice"), name("first"), second_pub_key, name("active"));
    // Authority updated, using previous "first" auth should fail on linked auth
-   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{N(alice), name("first")} }, { first_priv_key }), unsatisfied_authorization);
+   BOOST_CHECK_THROW(chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("first")} }, { first_priv_key }), unsatisfied_authorization);
    // Using updated authority, should succeed
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("first")} }, { second_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("first")} }, { second_priv_key });
 
 } FC_LOG_AND_RETHROW() }
 
@@ -347,21 +347,21 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
    chain.set_authority(name("bob"), name("spending"), bob_spending_pub_key, name("active"));
 
    /// this should fail because spending is not active which is default for reqauth
-   BOOST_REQUIRE_THROW( chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key }),
+   BOOST_REQUIRE_THROW( chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key }),
                         irrelevant_auth_exception );
 
    chain.produce_block();
 
-   //test.push_reqauth( N(alice), { permission_level{N(alice),"spending"} }, { spending_priv_key });
+   //test.push_reqauth( "alice"_n, { permission_level{"alice"_n,"spending"} }, { spending_priv_key });
 
    chain.link_authority( name("alice"), name("eosio"), name("eosio.any"), name("reqauth") );
    chain.link_authority( name("bob"), name("eosio"), name("eosio.any"), name("reqauth") );
 
    /// this should succeed because eosio::reqauth is linked to any permission
-   chain.push_reqauth(name("alice"), { permission_level{N(alice), name("spending")} }, { spending_priv_key });
+   chain.push_reqauth(name("alice"), { permission_level{"alice"_n, name("spending")} }, { spending_priv_key });
 
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
-   BOOST_REQUIRE_THROW( chain.push_reqauth(name("alice"), { permission_level{N(bob), name("spending")} }, { spending_priv_key }),
+   BOOST_REQUIRE_THROW( chain.push_reqauth(name("alice"), { permission_level{"bob"_n, name("spending")} }, { spending_priv_key }),
                         missing_auth_exception );
 
 
@@ -377,9 +377,9 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N(bill1);
-   account_name acc2 = N(bill2);
-   account_name acc1a = N(bill1a);
+   account_name acc1 = "bill1"_n;
+   account_name acc2 = "bill2"_n;
+   account_name acc1a = "bill1a"_n;
 
    chain.create_account(acc1);
    chain.create_account(acc1a);
@@ -435,10 +435,10 @@ try {
 
    chain.produce_block();
 
-   account_name acc1 = N(acc1);
-   account_name acc2 = N(acc2);
-   account_name acc3 = N(acc3);
-   account_name acc4 = N(acc4);
+   account_name acc1 = "acc1"_n;
+   account_name acc2 = "acc2"_n;
+   account_name acc3 = "acc3"_n;
+   account_name acc4 = "acc4"_n;
 
    chain.create_account(acc1);
    chain.produce_block();
@@ -482,15 +482,15 @@ try {
 BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
    TESTER chain;
 
-   const auto& tester_account = N(tester);
+   const auto& tester_account = "tester"_n;
    std::vector<transaction_id_type> ids;
 
    chain.produce_blocks();
-   chain.create_account(N(currency));
+   chain.create_account("currency"_n);
 
    chain.produce_blocks();
-   chain.create_account(N(tester));
-   chain.create_account(N(tester2));
+   chain.create_account("tester"_n);
+   chain.create_account("tester2"_n);
    chain.produce_blocks();
 
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()

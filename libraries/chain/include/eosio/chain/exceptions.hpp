@@ -125,7 +125,7 @@
        { if( code() == CODE ) throw *this;\
          else fc::exception::dynamic_rethrow_exception(); \
        } \
-       fc::optional<uint64_t> error_code; \
+       std::optional<uint64_t> error_code; \
    };
 
 namespace eosio { namespace chain {
@@ -310,7 +310,11 @@ namespace eosio { namespace chain {
                                     3050011, "eosio_assert_code assertion failure uses restricted error code value" )
       FC_DECLARE_DERIVED_EXCEPTION( inline_action_too_big_nonprivileged, action_validate_exception,
                                     3050012, "Inline action exceeds maximum size limit for a non-privileged account" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( unauthorized_disk_usage_increase, action_validate_exception,
+                                    3050013, "Action attempts to increase disk usage of account without authorization" )
+      FC_DECLARE_DERIVED_EXCEPTION( action_return_value_exception, action_validate_exception,
+                                    3050014, "action return value size too big" )
+      
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
 
@@ -324,6 +328,16 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_database_version_exception, database_exception,
                                     3060005, "Database is an unknown or unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_revision_mismatch_exception, database_exception,
+                                    3060006, "Chainbase and chain-kv databases are at different revisions" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
+                                    3060007, "Cannot change backing store when existing state has already stored data in a different backing store; use resync, replay, or snapshot to move these to the new backing store" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_rocksdb_bad_value_size_exception, database_exception,
+                                    3060008, "The size of value returned from RocksDB is less than payer's size" )
+      FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
+                                    3060009, "Retrieved composite key from key/value store that was formatted incorrectly" )
+      FC_DECLARE_DERIVED_EXCEPTION( db_rocksdb_invalid_operation_exception, database_exception,
+                                    3060010, "Requested operation not valid for database state." )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
@@ -522,6 +536,8 @@ namespace eosio { namespace chain {
                                     3015016, "ABI has an unsupported version" )
       FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_results_def_exception,  abi_exception,
                                     3015017, "Duplicate action results definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION(duplicate_abi_kv_table_def_exception, abi_exception,
+                                   3015018, "Duplicate kv_table definition in the ABI")
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -555,6 +571,8 @@ namespace eosio { namespace chain {
                                     3160014, "Unknown kv_parameters version" )
       FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
                                     3160015, "Unknown wasm_config version" )
+      FC_DECLARE_DERIVED_EXCEPTION( config_parse_error,                   contract_exception,
+                                    3160015, "Parsing config error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
@@ -580,6 +598,8 @@ namespace eosio { namespace chain {
                                     3170011, "The signer returned no valid block signatures" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_multiple_block_signatures,  producer_exception,
                                     3170012, "The signer returned multiple signatures but that is not supported" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_validation_error,  producer_exception,
+                                    3170013, "Block Validation Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
@@ -634,6 +654,8 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_decompress_exception,   snapshot_exception,
+                                    3240002, "Snapshot decompress error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
                                  3250000, "Protocol feature exception" )

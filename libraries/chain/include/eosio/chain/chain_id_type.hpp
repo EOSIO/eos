@@ -2,8 +2,6 @@
 
 #include <fc/crypto/sha256.hpp>
 
-struct hello;
-
 namespace eosio {
 
    class net_plugin_impl;
@@ -19,6 +17,7 @@ namespace chain {
 
    namespace legacy {
       struct snapshot_global_property_object_v3;
+      struct snapshot_global_property_object_v4;
    }
 
    struct chain_id_type : public fc::sha256 {
@@ -59,6 +58,7 @@ namespace chain {
          friend class global_property_object;
          friend struct snapshot_global_property_object;
          friend struct legacy::snapshot_global_property_object_v3;
+         friend struct legacy::snapshot_global_property_object_v4;
    };
 
 } }  // namespace eosio::chain

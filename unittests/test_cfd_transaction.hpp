@@ -2,8 +2,14 @@
 #include <eosio/testing/tester.hpp>
 
 struct dummy_action {
-   static eosio::chain::name get_name() { return N(dummyaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
+   static eosio::chain::name get_name() {
+      using namespace eosio::chain::literals;
+      return "dummyaction"_n;
+   }
+   static eosio::chain::name get_account() {
+      using namespace eosio::chain::literals;
+      return "testapi"_n;
+   }
 
    char     a; // 1
    uint64_t b; // 8
@@ -11,8 +17,14 @@ struct dummy_action {
 };
 
 struct cf_action {
-   static eosio::chain::name get_name() { return N(cfaction); }
-   static eosio::chain::name get_account() { return N(testapi); }
+   static eosio::chain::name get_name() {
+      using namespace eosio::chain::literals;
+      return "cfaction"_n;
+   }
+   static eosio::chain::name get_account() {
+      using namespace eosio::chain::literals;
+      return "testapi"_n;
+   }
 
    uint32_t payload = 100;
    uint32_t cfd_idx = 0; // context free data index

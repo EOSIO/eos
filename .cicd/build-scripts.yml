@@ -21,7 +21,18 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
-    
+
+  - label: ":centos: CentOS 8 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
   - label: ":darwin: macOS 10.14 - Build Pinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
@@ -101,7 +112,20 @@ steps:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
 
-
+  - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:20.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
@@ -118,6 +142,17 @@ steps:
     plugins:
       - docker#v3.3.0:
           image: "centos:7.7.1908"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+
+  - label: ":centos: CentOS 8 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
           always-pull: true
     agents:
       queue: "automation-eks-eos-builder-fleet"
@@ -188,5 +223,20 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+
+  - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:20.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
+      - "apt update && apt upgrade -y && apt install -y git g++"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
