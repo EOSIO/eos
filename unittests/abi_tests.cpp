@@ -3576,6 +3576,24 @@ BOOST_AUTO_TEST_CASE(transaction_extensions_tests)
    chain::transaction txn_clone3;
    abi_serializer::from_variant(mvo["test"], txn_clone3, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(txn_clone3.transaction_extensions.size(), 1);
+
+   // empty the transaction_extensions, so that the data is not consistent
+   auto txn_no_ext = populate<chain::transaction>();
+   txn_no_ext.transaction_extensions.clear();
+   fc::variant direct_txn_no_ext(txn_no_ext);
+   const auto trans_ext_empty = direct_txn_no_ext["transaction_extensions"].get_array();
+   mvo_txn["transaction_extensions"] = trans_ext_empty;
+   mvo["test"] = mvo_txn;
+   const std::string incompatible_ext_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   std::cerr << incompatible_ext_as_string << "\n";
+   // verifying both are present
+   BOOST_REQUIRE(incompatible_ext_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(incompatible_ext_as_string.find("transaction_extensions") != string::npos);
+   chain::transaction txn_clone4;
+   using eosio::testing::fc_exception_message_starts_with;
+   BOOST_CHECK_EXCEPTION( abi_serializer::from_variant(mvo["test"], txn_clone4, get_resolver(), abi_serializer::create_yield_function( max_serialization_time )),
+                          packed_transaction_type_exception,
+                          fc_exception_message_starts_with("Transaction contained deferred_transaction_generation and transaction_extensions that did not match") );
 }
 
 BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
@@ -3632,6 +3650,24 @@ BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
    chain::signed_transaction txn_clone3;
    abi_serializer::from_variant(mvo["test"], txn_clone3, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(txn_clone3.transaction_extensions.size(), 1);
+
+   // empty the transaction_extensions, so that the data is not consistent
+   auto txn_no_ext = populate<chain::signed_transaction>();
+   txn_no_ext.transaction_extensions.clear();
+   fc::variant direct_txn_no_ext(txn_no_ext);
+   const auto trans_ext_empty = direct_txn_no_ext["transaction_extensions"].get_array();
+   mvo_txn["transaction_extensions"] = trans_ext_empty;
+   mvo["test"] = mvo_txn;
+   const std::string incompatible_ext_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   std::cerr << incompatible_ext_as_string << "\n";
+   // verifying both are present
+   BOOST_REQUIRE(incompatible_ext_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(incompatible_ext_as_string.find("transaction_extensions") != string::npos);
+   chain::signed_transaction txn_clone4;
+   using eosio::testing::fc_exception_message_starts_with;
+   BOOST_CHECK_EXCEPTION( abi_serializer::from_variant(mvo["test"], txn_clone4, get_resolver(), abi_serializer::create_yield_function( max_serialization_time )),
+                          packed_transaction_type_exception,
+                          fc_exception_message_starts_with("Transaction contained deferred_transaction_generation and transaction_extensions that did not match") );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
