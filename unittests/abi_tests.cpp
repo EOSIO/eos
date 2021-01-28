@@ -3531,11 +3531,16 @@ BOOST_AUTO_TEST_CASE(transaction_extensions_tests)
 {
    auto txn = populate<chain::transaction>();
 
+   // create a variant from txn
    mutable_variant_object mvo;
    eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
    auto abi = eosio_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
    eosio::chain::impl::abi_to_variant::add(mvo, "test", txn, get_resolver(abi), ctx);
    const std::string mvo_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   // since this ends up using abi_serializer::add, we will have deferred_transaction_generation
+   BOOST_REQUIRE(mvo_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(mvo_as_string.find("transaction_extensions") == string::npos);
+   // create a clone of the original txn
    chain::transaction txn_clone;
    abi_serializer::from_variant(mvo["test"], txn_clone, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(txn_clone.transaction_extensions.size(), 1);
@@ -3543,7 +3548,34 @@ BOOST_AUTO_TEST_CASE(transaction_extensions_tests)
    mutable_variant_object mvo2;
    eosio::chain::impl::abi_to_variant::add(mvo2, "test", txn_clone, get_resolver(abi), ctx);
    const std::string mvo2_as_string = fc::json::to_string(mvo2, fc::time_point::now() + max_serialization_time);
+   // verify that the variant created from the original txn and the variant from the clone match
    BOOST_REQUIRE_EQUAL(mvo_as_string, mvo2_as_string);
+
+   // create variant directly
+   fc::variant direct_var(txn);
+   const std::string direct_var_as_string = fc::json::to_string(direct_var, fc::time_point::now() + max_serialization_time);
+   // since this ends up using FC_REFLECT, we will have transaction_extensions
+   BOOST_REQUIRE(direct_var_as_string.find("deferred_transaction_generation") == string::npos);
+   BOOST_REQUIRE(direct_var_as_string.find("transaction_extensions") != string::npos);
+   const auto trans_ext = direct_var["transaction_extensions"].get_array();
+   chain::transaction txn_clone2;
+   abi_serializer::from_variant(direct_var, txn_clone2, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
+   mutable_variant_object mvo3;
+   eosio::chain::impl::abi_to_variant::add(mvo3, "test", txn_clone2, get_resolver(abi), ctx);
+   const std::string mvo3_as_string = fc::json::to_string(mvo3, fc::time_point::now() + max_serialization_time);
+   BOOST_REQUIRE_EQUAL(mvo_as_string, mvo3_as_string);
+
+   // add "transaction_extensions" to mvo, so it contains redundant (but identical) extensions data
+   mutable_variant_object mvo_txn(mvo["test"]);
+   mvo_txn["transaction_extensions"] = trans_ext;
+   mvo["test"] = mvo_txn;
+   const std::string redundant_ext_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   // verifying both are present
+   BOOST_REQUIRE(redundant_ext_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(redundant_ext_as_string.find("transaction_extensions") != string::npos);
+   chain::transaction txn_clone3;
+   abi_serializer::from_variant(mvo["test"], txn_clone3, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
+   BOOST_REQUIRE_EQUAL(txn_clone3.transaction_extensions.size(), 1);
 }
 
 BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
@@ -3555,11 +3587,16 @@ BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
    txn.context_free_data.push_back(bytes{ 10, 'a' });
    txn.context_free_data.push_back(bytes{ 20, 'b' });
 
+   // create a variant from txn
    mutable_variant_object mvo;
    eosio::chain::impl::abi_traverse_context ctx(abi_serializer::create_yield_function(max_serialization_time));
    auto abi = eosio_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
    eosio::chain::impl::abi_to_variant::add(mvo, "test", txn, get_resolver(abi), ctx);
    const std::string mvo_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   // since this ends up using abi_serializer::add, we will have deferred_transaction_generation
+   BOOST_REQUIRE(mvo_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(mvo_as_string.find("transaction_extensions") == string::npos);
+   // create a clone of the original txn
    chain::signed_transaction txn_clone;
    abi_serializer::from_variant(mvo["test"], txn_clone, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
    BOOST_REQUIRE_EQUAL(txn_clone.transaction_extensions.size(), 1);
@@ -3567,7 +3604,34 @@ BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
    mutable_variant_object mvo2;
    eosio::chain::impl::abi_to_variant::add(mvo2, "test", txn_clone, get_resolver(abi), ctx);
    const std::string mvo2_as_string = fc::json::to_string(mvo2, fc::time_point::now() + max_serialization_time);
+   // verify that the variant created from the original txn and the variant from the clone match
    BOOST_REQUIRE_EQUAL(mvo_as_string, mvo2_as_string);
+
+   // create variant directly
+   fc::variant direct_var(txn);
+   const std::string direct_var_as_string = fc::json::to_string(direct_var, fc::time_point::now() + max_serialization_time);
+   // since this ends up using FC_REFLECT, we will have transaction_extensions
+   BOOST_REQUIRE(direct_var_as_string.find("deferred_transaction_generation") == string::npos);
+   BOOST_REQUIRE(direct_var_as_string.find("transaction_extensions") != string::npos);
+   const auto trans_ext = direct_var["transaction_extensions"].get_array();
+   chain::signed_transaction txn_clone2;
+   abi_serializer::from_variant(direct_var, txn_clone2, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
+   mutable_variant_object mvo3;
+   eosio::chain::impl::abi_to_variant::add(mvo3, "test", txn_clone2, get_resolver(abi), ctx);
+   const std::string mvo3_as_string = fc::json::to_string(mvo3, fc::time_point::now() + max_serialization_time);
+   BOOST_REQUIRE_EQUAL(mvo_as_string, mvo3_as_string);
+
+   // add "transaction_extensions" to mvo, so it contains redundant (but identical) extensions data
+   mutable_variant_object mvo_txn(mvo["test"]);
+   mvo_txn["transaction_extensions"] = trans_ext;
+   mvo["test"] = mvo_txn;
+   const std::string redundant_ext_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+   // verifying both are present
+   BOOST_REQUIRE(redundant_ext_as_string.find("deferred_transaction_generation") != string::npos);
+   BOOST_REQUIRE(redundant_ext_as_string.find("transaction_extensions") != string::npos);
+   chain::signed_transaction txn_clone3;
+   abi_serializer::from_variant(mvo["test"], txn_clone3, get_resolver(), abi_serializer::create_yield_function( max_serialization_time ));
+   BOOST_REQUIRE_EQUAL(txn_clone3.transaction_extensions.size(), 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
