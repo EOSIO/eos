@@ -91,7 +91,7 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # build steps
-[[ -z "$CMAKE_BUILD_TYPE" ]] && export CMAKE_BUILD_TYPE='Release'
+[[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
 export LATEST_UBUNTU="$(echo "$PLATFORMS_JSON_ARRAY" | jq -c 'map(select(.PLATFORM_NAME == "ubuntu")) | sort_by(.VERSION_MAJOR) | .[-1]')" # isolate latest ubuntu from array
 if [[ "$DEBUG" == 'true' ]]; then
     echo '# PLATFORMS_JSON_ARRAY'
@@ -107,7 +107,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command: "./.cicd/build.sh"
     env:
-      CMAKE_BUILD_TYPE: $CMAKE_BUILD_TYPE
+      DCMAKE_BUILD_TYPE: $DCMAKE_BUILD_TYPE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
@@ -141,7 +141,7 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
-      CMAKE_BUILD_TYPE: $CMAKE_BUILD_TYPE
+      DCMAKE_BUILD_TYPE: $DCMAKE_BUILD_TYPE
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
@@ -173,7 +173,7 @@ cat <<EOF
 EOF
 # tests
 IFS=$oIFS
-if [[ "$CMAKE_BUILD_TYPE" != 'Debug' ]]; then
+if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
   for ROUND in $(seq 1 $ROUNDS); do
       IFS=$''
       echo "    # round $ROUND of $ROUNDS"
