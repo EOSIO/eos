@@ -139,6 +139,11 @@ namespace eosio { namespace chain {
          actual_size = current->kv_value.size();
          return kv_it_stat::iterator_ok;
       }
+
+      std::optional<name> kv_it_payer() override {
+         if (!current) return {};
+         return current->payer;
+      }                              
    }; // kv_iterator_chainbase
 
    template<typename Resource_manager>

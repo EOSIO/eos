@@ -37,14 +37,24 @@ using namespace fc;
 BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
 
    eosio::chain_apis::read_only::get_table_rows_result result;
-   auto chk_result = [&](int row, int data) {
+   auto chk_result = [&](int row, int data, bool show_payer = false) {
       char bar[5] = {'b', 'o', 'b', 'a', 0};
       bar[3] += data - 1; // 'a' + data - 1
 
+      auto& row_value = result.rows[row];
+      auto check_row_value_data = [&data, &bar](const auto& v) {
+         BOOST_CHECK_EQUAL(bar, v["primary_key"].as_string());
+         BOOST_CHECK_EQUAL(bar, v["bar"]);
+         BOOST_CHECK_EQUAL(std::to_string(data), v["foo"].as_string());
+      };
 
-      BOOST_REQUIRE_EQUAL(bar, result.rows[row]["primary_key"].as_string());
-      BOOST_REQUIRE_EQUAL(bar, result.rows[row]["bar"]);
-      BOOST_REQUIRE_EQUAL(std::to_string(data), result.rows[row]["foo"].as_string());
+      if (show_payer) {
+         BOOST_CHECK_EQUAL(row_value["payer"].as_string(), "kvtable");
+         check_row_value_data(row_value["data"]);
+      }
+      else {
+         check_row_value_data(row_value);
+      }
    };
 
    produce_blocks(2);
@@ -83,6 +93,12 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
    chk_result(0, 1);
 
+   p.show_payer = true;
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   chk_result(0, 1, p.show_payer);
+
+   p.show_payer = false;
    p.reverse = true;
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
@@ -105,15 +121,16 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
+   p.show_payer = true;
    p.index_value = {};
    p.lower_bound = "bobb";
    p.upper_bound = "bobe";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(4u, result.rows.size());
-   chk_result(0, 2);
-   chk_result(1, 3);
-   chk_result(2, 4);
-   chk_result(3, 5);
+   chk_result(0, 2, p.show_payer);
+   chk_result(1, 3, p.show_payer);
+   chk_result(2, 4, p.show_payer);
+   chk_result(3, 5, p.show_payer);
 
    p.index_value = "boba";
    p.lower_bound = "bobb";
@@ -130,6 +147,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    p.upper_bound = "bobb";
    BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), contract_table_query_exception);
 
+   p.show_payer = false;
    p.lower_bound = "aaaa";
    p.upper_bound = {};
    result = plugin.read_only::get_kv_table_rows(p);

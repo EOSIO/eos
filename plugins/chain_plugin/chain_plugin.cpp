@@ -2357,6 +2357,17 @@ struct kv_iterator_ex {
    }
 
    /// @pre ! is_end()
+   fc::variant get_value_and_maybe_payer_var(fc::time_point cur_time) const {
+      fc::variant result = get_value_var(cur_time);
+      if (context.p.show_payer) {
+         auto maybe_payer = base->kv_it_payer();
+         std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
+         return fc::mutable_variant_object("data", std::move(result))("payer", payer);
+      }
+      return result;
+   }
+
+   /// @pre ! is_end()
    std::string get_key_hex_string() const {
       auto        row_key = get_key();
       std::string result;
@@ -2425,7 +2436,7 @@ read_only::get_table_rows_result kv_get_rows(Range&& range) {
    auto                             cur_time = fc::time_point::now();
    for (unsigned count = 0; count < ctx.p.limit && cur_time < ctx.end_time && !range.is_done();
         ++count, cur_time = fc::time_point::now()) {
-      result.rows.emplace_back(range.current.get_value_var(cur_time));
+      result.rows.emplace_back(range.current.get_value_and_maybe_payer_var(cur_time));
       range.next();
    }
 
@@ -2447,7 +2458,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::g
       read_only::get_table_rows_result result;
       kv_iterator_ex                   itr(context, context.get_full_key(p.index_value));
       if (!itr.is_end())
-         result.rows.emplace_back(itr.get_value_var(fc::time_point::now()));
+         result.rows.emplace_back(itr.get_value_and_maybe_payer_var(fc::time_point::now()));
       return result;
    }
 
