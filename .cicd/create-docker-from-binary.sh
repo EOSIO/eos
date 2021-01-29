@@ -21,7 +21,7 @@ echo ":docker::build: Building image..."
 DOCKERHUB_REGISTRY="docker.io/eosio/eosio"
 
 BUILD_TAG=${BUILDKITE_BUILD_NUMBER:-latest}
-DOCKER_BUILD_GEN="docker build -t eos_image:$BUILD_TAG -f ./docker/dockerfile ."
+DOCKER_BUILD_GEN="docker build -t eosio_image:$BUILD_TAG -f ./docker/dockerfile ."
 echo "$ $DOCKER_BUILD_GEN"
 eval $DOCKER_BUILD_GEN
 
