@@ -845,6 +845,11 @@ namespace impl {
       template<typename Resolver>
       static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver )
       {
+         std::cerr << "content {\n";
+         for (const auto in : vo) {
+            std::cerr << in.key() << "\n";
+         }
+         std::cerr << "}\n";
          EOS_ASSERT(vo.contains("expiration"), packed_transaction_type_exception, "Missing expiration");
          EOS_ASSERT(vo.contains("ref_block_num"), packed_transaction_type_exception, "Missing ref_block_num");
          EOS_ASSERT(vo.contains("ref_block_prefix"), packed_transaction_type_exception, "Missing ref_block_prefix");
@@ -864,9 +869,10 @@ namespace impl {
 
          // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
          // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
-         // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transacation_extensions" was provided),
+         // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
          // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
          if (vo.contains("deferred_transaction_generation")) {
+            std::cerr << "has deferred_transaction_generation\n";
             deferred_transaction_generation_context deferred_transaction_generation;
             from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
             emplace_extension(
@@ -876,6 +882,7 @@ namespace impl {
             );
             // if both are present, they need to match
             if (vo.contains("transaction_extensions")) {
+               std::cerr << "also has transaction_extensions\n";
                extensions_type trx_extensions;
                from_variant(vo["transaction_extensions"], trx_extensions);
                EOS_ASSERT(trx.transaction_extensions == trx_extensions, packed_transaction_type_exception,
@@ -883,6 +890,7 @@ namespace impl {
             }
          }
          else if (vo.contains("transaction_extensions")) {
+            std::cerr << "has transaction_extensions\n";
             from_variant(vo["transaction_extensions"], trx.transaction_extensions);
          }
       }
