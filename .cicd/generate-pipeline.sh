@@ -13,6 +13,7 @@ if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
+[[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-debug-build' ]] && export SKIP_UBUNTU_18_04='false'
 # Determine which dockerfiles/scripts to use for the pipeline.
 if [[ $PINNED == false ]]; then
     export PLATFORM_TYPE="unpinned"
