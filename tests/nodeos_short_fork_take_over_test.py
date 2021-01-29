@@ -250,7 +250,9 @@ try:
     Print("Tracking block producers from %d till divergence or %d. Head block is %d and lowest LIB is %d" % (preKillBlockNum, lastBlockNum, headBlockNum, libNumAroundDivergence))
     transitionCount=0
     missedTransitionBlock=None
-    for blockNum in range(preKillBlockNum,lastBlockNum):
+    #range is half closed, but forking can happen at lastBlockNum;
+    #that's why lastBlockNum + 1
+    for blockNum in range(preKillBlockNum,lastBlockNum + 1):
         #avoiding getting LIB until my current block passes the head from the last time I checked
         if blockNum>headBlockNum:
             (headBlockNum, libNumAroundDivergence)=getMinHeadAndLib(prodNodes)
@@ -313,7 +315,7 @@ try:
 
     Print("Tracking the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other, from block %d to %d" % (killBlockNum, lastBlockNum))
 
-    for blockNum in range(killBlockNum,lastBlockNum + 1):
+    for blockNum in range(killBlockNum,lastBlockNum):
         blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
         blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
         blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
