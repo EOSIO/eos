@@ -154,6 +154,7 @@ EOF
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
+
 EOF
     fi
 done
@@ -277,6 +278,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
+
 EOF
                 fi
                 echo
@@ -332,6 +334,7 @@ EOF
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
+
 EOF
                 fi
                 echo
