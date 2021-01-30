@@ -425,7 +425,7 @@ EOF
     done
     # Execute multiversion test
     if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
-            cat <<EOF
+        cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command: 
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
