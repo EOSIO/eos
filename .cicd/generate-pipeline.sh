@@ -57,11 +57,11 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
-    export PLATFORM_NAME_SKIP_SUFFIX="${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
+    export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
-        "PLATFORM_NAME_SKIP_SUFFIX": env.PLATFORM_NAME_SKIP_SUFFIX,
+        "PLATFORM_SKIP_VAR": env.PLATFORM_SKIP_VAR,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
         "VERSION_MINOR": env.VERSION_MINOR,
@@ -116,7 +116,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
 
 EOF
     else
@@ -153,7 +153,7 @@ EOF
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
 EOF
     fi
 done
@@ -196,7 +196,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-10}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
 
 EOF
             else
@@ -223,7 +223,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
 
 EOF
             fi
@@ -249,7 +249,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
 
 EOF
                 else
@@ -276,8 +276,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_SERIAL_TESTS}
-
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
 EOF
                 fi
                 echo
@@ -305,7 +304,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
                 else
@@ -332,8 +331,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_SKIP_SUFFIX)")${SKIP_LONG_RUNNING_TESTS:-true}
-
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
                 fi
                 echo
