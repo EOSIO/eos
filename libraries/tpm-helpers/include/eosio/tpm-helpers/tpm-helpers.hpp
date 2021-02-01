@@ -26,8 +26,17 @@ private:
    fc::fwd<impl,fwd_size> my;
 };
 
+struct attested_key {
+   fc::crypto::public_key pub_key;
+   fc::blob public_area;
+   fc::blob creation_certification;
+   fc::crypto::signature certification_signature;
+};
+
 boost::container::flat_set<fc::crypto::public_key> get_all_persistent_keys(const std::string& tcti);
 fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs);
+attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, uint32_t certifying_key_handle);
+fc::crypto::public_key verify_attestation(const attested_key& ak, const std::map<unsigned, fc::sha256>& pcr_policy = std::map<unsigned, fc::sha256>());
 
 class nv_data {
 public:
@@ -63,3 +72,5 @@ private:
 };
 
 }
+
+FC_REFLECT(eosio::tpm::attested_key, (pub_key)(public_area)(creation_certification)(certification_signature));
