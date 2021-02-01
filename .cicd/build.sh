@@ -3,7 +3,8 @@ set -eo pipefail
 [[ "$ENABLE_INSTALL" == 'true' ]] || echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 mkdir -p "$BUILD_DIR"
-CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"Release\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\""
+[[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE=\"$DCMAKE_BUILD_TYPE\" -DENABLE_MULTIVERSION_PROTOCOL_TEST=\"true\""
 if [[ "$(uname)" == 'Darwin' && "$FORCE_LINUX" != 'true' ]]; then
     # You can't use chained commands in execute
     if [[ "$GITHUB_ACTIONS" == 'true' ]]; then
