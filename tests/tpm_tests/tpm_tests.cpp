@@ -369,6 +369,70 @@ BOOST_AUTO_TEST_CASE(externally_create_pcr) try {
 
 } FC_LOG_AND_RETHROW();
 
+BOOST_AUTO_TEST_CASE(basic_attest) try {
+   swtpm tpm;
+
+   fc::crypto::public_key ak = create_key(tpm.tcti(), {});
+   const uint32_t ak_handle = 0x81000000u;  //first owner owned persistent handle
+
+   attested_key new_key = create_key_attested(tpm.tcti(), {}, ak_handle);
+   BOOST_CHECK_EQUAL(ak, verify_attestation(new_key));
+
+   //key was created with no policy; so verifying with a policy must fail
+   const std::map<unsigned, fc::sha256>& pcr_policy = {{0u, {}}};
+   BOOST_CHECK_THROW(verify_attestation(new_key, pcr_policy), fc::exception);
+} FC_LOG_AND_RETHROW();
+
+BOOST_AUTO_TEST_CASE(basic_attest_with_policy) try {
+   swtpm tpm;
+
+   fc::crypto::public_key ak = create_key(tpm.tcti(), {});
+   const uint32_t ak_handle = 0x81000000u;  //first owner owned persistent handle
+
+   attested_key new_key = create_key_attested(tpm.tcti(), {0u, 7u}, ak_handle);
+
+   BOOST_CHECK_THROW(verify_attestation(new_key), fc::exception);
+
+   //default PCR values in a TPM are 0x0000...
+   const std::map<unsigned, fc::sha256>& pcr_policy = {{0u, fc::sha256()}, {7u, fc::sha256()}};
+   BOOST_CHECK_EQUAL(ak, verify_attestation(new_key, pcr_policy));
+
+   const std::map<unsigned, fc::sha256>& wrong_pcr_hash = {{0u, fc::sha256::hash(std::string("banana"))}, {7u, fc::sha256()}};
+   BOOST_CHECK_THROW(verify_attestation(new_key, wrong_pcr_hash), fc::exception);
+
+   const std::map<unsigned, fc::sha256>& wrong_pcrs_policy = {{2u, fc::sha256()}, {7u, fc::sha256()}};
+   BOOST_CHECK_THROW(verify_attestation(new_key, wrong_pcrs_policy), fc::exception);
+} FC_LOG_AND_RETHROW();
+
+BOOST_AUTO_TEST_CASE(test_attest_checks) try {
+   swtpm tpm;
+
+   fc::crypto::public_key ak = create_key(tpm.tcti(), {});
+   const uint32_t ak_handle = 0x81000000u;  //first owner owned persistent handle
+
+   attested_key new_key = create_key_attested(tpm.tcti(), {}, ak_handle);
+   BOOST_CHECK_EQUAL(ak, verify_attestation(new_key));
+
+   attested_key damaged_attested_key;
+
+   damaged_attested_key = new_key;
+   damaged_attested_key.pub_key = fc::crypto::public_key();
+   BOOST_CHECK_THROW(verify_attestation(damaged_attested_key), fc::exception);
+
+   damaged_attested_key = new_key;
+   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::get_index<fc::crypto::signature::storage_type, fc::crypto::r1::signature_shim>(), 0x27};
+   damaged_attested_key.certification_signature = fc::raw::unpack<fc::crypto::signature>(serialized_signature, sizeof(serialized_signature));
+   BOOST_CHECK_THROW(verify_attestation(damaged_attested_key), fc::exception);
+
+   damaged_attested_key = new_key;
+   damaged_attested_key.public_area.data[4]++;
+   BOOST_CHECK_THROW(verify_attestation(damaged_attested_key), fc::exception);
+
+   damaged_attested_key = new_key;
+   damaged_attested_key.creation_certification.data[4]++;
+   BOOST_CHECK_THROW(verify_attestation(damaged_attested_key), fc::exception);
+} FC_LOG_AND_RETHROW();
+
 BOOST_AUTO_TEST_CASE(basic_nv) try {
    swtpm tpm;
 

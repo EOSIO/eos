@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include <fc/io/json.hpp>
+
 #include <eosio/tpm-helpers/tpm-helpers.hpp>
 
 namespace bpo = boost::program_options;
@@ -12,6 +14,7 @@ int main(int argc, char** argv) {
    bool help = false, list = false, create = false;
    std::string tcti;
    std::vector<unsigned> pcrs;
+   uint32_t attest_handle = 0;
 
    cli.add_options()
       ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
@@ -23,6 +26,10 @@ int main(int argc, char** argv) {
       ("pcr,p", bpo::value<std::vector<unsigned>>()->composing()->notifier([&](const std::vector<unsigned>& p) {
          pcrs = p;
       }), "Add a PCR value to the policy of the created key. May be specified multiple times.")
+      ("attest,a", bpo::value<std::string>()->notifier([&](const std::string& a) {
+         attest_handle = strtol(a.c_str(), NULL, 0);
+         FC_ASSERT(attest_handle, "Attest handle argument is not an integer");
+      }), "Certify creation of the new key via key with given TPM handle")
       ;
    bpo::variables_map varmap;
    try {
@@ -47,8 +54,10 @@ int main(int argc, char** argv) {
    }
 
    try {
-      if(create)
+      if(create && !attest_handle)
          std::cout << eosio::tpm::create_key(tcti, pcrs).to_string() << std::endl;
+      else if(create)
+         std::cout << fc::json::to_pretty_string(eosio::tpm::create_key_attested(tcti, pcrs, attest_handle)) << std::endl;
 
       if(list)
          for(const auto& k : eosio::tpm::get_all_persistent_keys(tcti))

@@ -275,6 +275,26 @@ tpm_key::tpm_key(const std::string& tcti, const fc::crypto::public_key& pubkey, 
 
 tpm_key::~tpm_key() = default;
 
+static fc::crypto::signature tpm_signature_to_fc_signature(const fc::ec_key& sslkey, const fc::crypto::public_key& pub_key, const fc::sha256& digest, const TPMT_SIGNATURE* sig) {
+   FC_ASSERT(sig->signature.ecdsa.signatureR.size == 32 && sig->signature.ecdsa.signatureS.size == 32, "Signature size from TPM not as expected");
+
+   fc::ecdsa_sig sslsig = ECDSA_SIG_new();
+   FC_ASSERT(sslsig.obj, "Failed to ECDSA_SIG_new");
+   BIGNUM *r = BN_new(), *s = BN_new();
+   FC_ASSERT(BN_bin2bn(sig->signature.ecdsa.signatureR.buffer,32,r) && BN_bin2bn(sig->signature.ecdsa.signatureS.buffer,32,s), "Failed to BN_bin2bn");
+   FC_ASSERT(ECDSA_SIG_set0(sslsig, r, s), "Failed to ECDSA_SIG_set0");
+
+   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::get_index<fc::crypto::signature::storage_type, fc::crypto::r1::signature_shim>()};
+
+   fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature*)(serialized_signature + 1);
+   *compact_sig = fc::crypto::r1::signature_from_ecdsa(sslkey, std::get<fc::crypto::r1::public_key_shim>(pub_key._storage)._data, sslsig, digest);
+
+   fc::crypto::signature final_signature;
+   fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
+   fc::raw::unpack(ds, final_signature);
+   return final_signature;
+}
+
 fc::crypto::signature tpm_key::sign(const fc::sha256& digest) {
    TPM2B_DIGEST d = {sizeof(fc::sha256)};
    memcpy(d.buffer, digest.data(), sizeof(fc::sha256));
@@ -290,23 +310,8 @@ fc::crypto::signature tpm_key::sign(const fc::sha256& digest) {
    TSS2_RC rc = Esys_Sign(my->esys_ctx.ctx(), my->key_object, session ? session->session() : ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &d, &scheme, &validation, &sig);
    FC_ASSERT(!rc, "Failed TPM sign on key ${k}: ${m}", ("k", my->pubkey)("m", Tss2_RC_Decode(rc)));
    auto cleanup_sig = fc::make_scoped_exit([&]() {free(sig);});
-   FC_ASSERT(sig->signature.ecdsa.signatureR.size == 32 && sig->signature.ecdsa.signatureS.size == 32, "Signature size from TPM not as expected");
 
-   fc::ecdsa_sig sslsig = ECDSA_SIG_new();
-   FC_ASSERT(sslsig.obj, "Failed to ECDSA_SIG_new");
-   BIGNUM *r = BN_new(), *s = BN_new();
-   FC_ASSERT(BN_bin2bn(sig->signature.ecdsa.signatureR.buffer,32,r) && BN_bin2bn(sig->signature.ecdsa.signatureS.buffer,32,s), "Failed to BN_bin2bn");
-   FC_ASSERT(ECDSA_SIG_set0(sslsig, r, s), "Failed to ECDSA_SIG_set0");
-
-   char serialized_signature[sizeof(fc::crypto::r1::compact_signature) + 1] = {fc::get_index<fc::crypto::signature::storage_type, fc::crypto::r1::signature_shim>()};
-
-   fc::crypto::r1::compact_signature* compact_sig = (fc::crypto::r1::compact_signature*)(serialized_signature + 1);
-   *compact_sig = fc::crypto::r1::signature_from_ecdsa(my->sslkey, std::get<fc::crypto::r1::public_key_shim>(my->pubkey._storage)._data, sslsig, digest);
-
-   fc::crypto::signature final_signature;
-   fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
-   fc::raw::unpack(ds, final_signature);
-   return final_signature;
+   return tpm_signature_to_fc_signature(my->sslkey, my->pubkey, digest, sig);
 }
 
 boost::container::flat_set<fc::crypto::public_key> get_all_persistent_keys(const std::string& tcti) {
@@ -317,23 +322,27 @@ boost::container::flat_set<fc::crypto::public_key> get_all_persistent_keys(const
    return keys;
 }
 
-
-fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs) {
+attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, uint32_t certifying_key_handle) {
    esys_context esys_ctx(tcti);
+   attested_key returned_key;
 
    TSS2_RC rc;
-   TPM2B_SENSITIVE_CREATE empty_sensitive_create = {};
-   TPM2B_DATA data = {};
-   TPML_PCR_SELECTION pcr_selection = {};
+   const TPM2B_SENSITIVE_CREATE empty_sensitive_create = {};
+   const TPM2B_DATA empty_data = {};
+   const TPML_PCR_SELECTION empty_pcr_selection = {};
 
    ESYS_TR primary_handle;
    ESYS_TR created_handle;
-   TPM2B_PUBLIC* created_pub;
+
+   TPM2B_PUBLIC* created_pub = nullptr;
+   TPM2B_DIGEST* creation_hash = nullptr;
+   TPMT_TK_CREATION* creation_ticket = nullptr;
+   auto cleanup_stuff = fc::make_scoped_exit([&]() {free(created_pub); free(creation_hash); free(creation_ticket);});
 
    TPM2B_PUBLIC key_creation_template = ecc_key_template;
 
    rc = Esys_CreatePrimary(esys_ctx.ctx(), ESYS_TR_RH_OWNER, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                                   &empty_sensitive_create, &primary_template, &data, &pcr_selection,
+                                   &empty_sensitive_create, &primary_template, &empty_data, &empty_pcr_selection,
                                    &primary_handle, NULL, NULL, NULL, NULL);
    FC_ASSERT(!rc, "Failed to create TPM primary key: ${m}", ("m", Tss2_RC_Decode(rc)));
 
@@ -347,18 +356,63 @@ fc::crypto::public_key create_key(const std::string& tcti, const std::vector<uns
          key_creation_template.publicArea.objectAttributes &= ~TPMA_OBJECT_USERWITHAUTH;
       }
 
-      size_t offset = 0;
-      TPM2B_TEMPLATE templ;
-      rc = Tss2_MU_TPMT_PUBLIC_Marshal(&key_creation_template.publicArea, templ.buffer, sizeof(templ.buffer), &offset);
-      FC_ASSERT(!rc, "Failed to serialize public template: ${m}", ("m", Tss2_RC_Decode(rc)));
-      templ.size = offset;
-
-      rc = Esys_CreateLoaded(esys_ctx.ctx(), primary_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                             &empty_sensitive_create, &templ, &created_handle, NULL, &created_pub);
+      TPM2B_PRIVATE* created_priv;
+      rc = Esys_Create(esys_ctx.ctx(), primary_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &empty_sensitive_create,
+                       &key_creation_template, &empty_data, &empty_pcr_selection, &created_priv, &created_pub, NULL, &creation_hash, &creation_ticket);
       FC_ASSERT(!rc, "Failed to create key: ${m}", ("m", Tss2_RC_Decode(rc)));
+
+      auto cleanup_created_priv = fc::make_scoped_exit([&]() {free(created_priv);});
+
+      rc = Esys_Load(esys_ctx.ctx(), primary_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, created_priv, created_pub, &created_handle);
+      FC_ASSERT(!rc, "Failed to load created key: ${m}", ("m", Tss2_RC_Decode(rc)));
    }
-   auto cleanup_created_pub = fc::make_scoped_exit([&]() {free(created_pub);});
+
    auto cleanup_created_handle = fc::make_scoped_exit([&]() {Esys_FlushContext(esys_ctx.ctx(), created_handle);});
+
+   returned_key.pub_key = tpm_pub_to_pub(created_pub);
+
+   if(certifying_key_handle) {
+      //The marshal code for TPM2B types always prepends a 2byte size header. Eliminate this from the returned vector as
+      // it's duplicate information. Besides, hashes do not include this header.
+      returned_key.public_area.data.resize(created_pub->size+sizeof(uint16_t));
+      rc = Tss2_MU_TPM2B_PUBLIC_Marshal(created_pub, (uint8_t*)returned_key.public_area.data.data(), returned_key.public_area.data.size(), NULL);
+      FC_ASSERT(!rc, "Failed to serialize created public area: ${m}", ("m", Tss2_RC_Decode(rc)));
+      FC_ASSERT(returned_key.public_area.data.size() > 2, "Unexpected public area size");
+      returned_key.public_area.data.erase(returned_key.public_area.data.begin(), returned_key.public_area.data.begin()+2);
+
+      ESYS_TR certifying_key;
+      rc = Esys_TR_FromTPMPublic(esys_ctx.ctx(), certifying_key_handle, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &certifying_key);
+      FC_ASSERT(!rc, "Failed to get handle to key performing attestation: ${m}", ("m", Tss2_RC_Decode(rc)));
+      auto cleanup_certifying_object = fc::make_scoped_exit([&]() {Esys_TR_Close(esys_ctx.ctx(), &certifying_key);});
+
+      TPM2B_PUBLIC* certifying_pub = nullptr;
+      auto cleanup_pub = fc::make_scoped_exit([&]() {free(certifying_pub);});
+      rc = Esys_ReadPublic(esys_ctx.ctx(), certifying_key, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &certifying_pub, NULL, NULL);
+      FC_ASSERT(!rc, "Failed to get information about key performing attestation: ${m}", ("m", Tss2_RC_Decode(rc)));
+      fc::crypto::public_key certifying_public_key = tpm_pub_to_pub(certifying_pub);
+
+      TPMT_SIG_SCHEME scheme = {TPM2_ALG_ECDSA};
+      scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
+
+      TPM2B_ATTEST* certification_info;
+      TPMT_SIGNATURE* certification_signature;
+      rc = Esys_CertifyCreation(esys_ctx.ctx(), certifying_key, created_handle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
+                                &empty_data, creation_hash, &scheme, creation_ticket, &certification_info, &certification_signature);
+      FC_ASSERT(!rc, "Failed to attest: ${m}", ("m", Tss2_RC_Decode(rc)));
+      auto cleanup_certification_objs = fc::make_scoped_exit([&]() {free(certification_info); free(certification_signature);});
+
+      returned_key.creation_certification.data.resize(certification_info->size+sizeof(uint16_t));
+      rc = Tss2_MU_TPM2B_ATTEST_Marshal(certification_info, (uint8_t*)returned_key.creation_certification.data.data(), returned_key.creation_certification.data.size(), NULL);
+      FC_ASSERT(!rc, "Failed to serialize attestation: ${m}", ("m", Tss2_RC_Decode(rc)));
+      FC_ASSERT(returned_key.creation_certification.data.size() > 2, "Unexpected public area size");
+      returned_key.creation_certification.data.erase(returned_key.creation_certification.data.begin(), returned_key.creation_certification.data.begin()+2);
+
+
+      returned_key.certification_signature = tpm_signature_to_fc_signature(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1),
+                                                                           certifying_public_key,
+                                                                           fc::sha256::hash(returned_key.creation_certification.data.data(), returned_key.creation_certification.data.size()),
+                                                                           certification_signature);
+   }
 
    std::set<TPM2_HANDLE> currrent_persistent_handles = persistent_handles(esys_ctx);
    TPMI_DH_PERSISTENT persistent_handle_id = TPM2_PERSISTENT_FIRST;
@@ -374,7 +428,77 @@ fc::crypto::public_key create_key(const std::string& tcti, const std::vector<uns
    FC_ASSERT(!rc, "Failed to persist TPM key: ${m}", ("m", Tss2_RC_Decode(rc)));
    Esys_TR_Close(esys_ctx.ctx(), &persistent_handle);
 
-   return tpm_pub_to_pub(created_pub);
+   return returned_key;
+}
+
+fc::crypto::public_key create_key(const std::string& tcti, const std::vector<unsigned>& pcrs) {
+   return create_key_attested(tcti, pcrs, 0).pub_key;
+}
+
+fc::crypto::public_key verify_attestation(const attested_key& ak, const std::map<unsigned, fc::sha256>& pcr_policy) {
+   TSS2_RC rc;
+   TPM2B_PUBLIC public_area = {0};
+   TPM2B_ATTEST attest = {0};
+   TPMS_ATTEST tpms_attest = {0};
+
+   std::vector<char> public_area_bytes = ak.public_area.data;
+   public_area_bytes.insert(public_area_bytes.begin(), 2, 0);
+   *((uint16_t*)public_area_bytes.data()) = htons(ak.public_area.data.size());
+   rc = Tss2_MU_TPM2B_PUBLIC_Unmarshal((const uint8_t*)public_area_bytes.data(), public_area_bytes.size(), NULL, &public_area);
+   FC_ASSERT(!rc, "Failed to deserialize public area: ${m}", ("m", Tss2_RC_Decode(rc)));
+
+   std::vector<char> creation_certification_bytes = ak.creation_certification.data;
+   creation_certification_bytes.insert(creation_certification_bytes.begin(), 2, 0);
+   *((uint16_t*)creation_certification_bytes.data()) = htons(ak.creation_certification.data.size());
+   rc = Tss2_MU_TPM2B_ATTEST_Unmarshal((const uint8_t*)creation_certification_bytes.data(), creation_certification_bytes.size(), NULL, &attest);
+   FC_ASSERT(!rc, "Failed to deserialize attest structure: ${m}", ("m", Tss2_RC_Decode(rc)));
+
+   rc = Tss2_MU_TPMS_ATTEST_Unmarshal(attest.attestationData, attest.size, NULL, &tpms_attest);
+   FC_ASSERT(!rc, "Failed to deserialize tpms attest structure: ${m}", ("m", Tss2_RC_Decode(rc)));
+
+   //ensure that the public key inside the public area matches the eos PUB_ key
+   fc::crypto::public_key attested_key = tpm_pub_to_pub(&public_area);
+   FC_ASSERT(ak.pub_key == attested_key, "Attested key ${a} does not match ${k} in json", ("a", attested_key)("k", ak.pub_key));
+
+   //verify a few obvious things about the attest statement
+   FC_ASSERT(tpms_attest.type == TPM2_ST_ATTEST_CREATION, "attestation is not a creation certification");
+   FC_ASSERT(tpms_attest.attested.creation.objectName.size == sizeof(fc::sha256)+sizeof(uint16_t), "public name is not expected size");
+   FC_ASSERT(tpms_attest.attested.creation.objectName.name[0] == 0x00 &&
+             tpms_attest.attested.creation.objectName.name[1] == TPM2_ALG_SHA256, "public name isn't sha256 based");
+
+   //ensure that the name (which is hash over public area) in the attest statement matches given name blob
+   FC_ASSERT(*((fc::sha256*)(tpms_attest.attested.creation.objectName.name+sizeof(uint16_t))) ==
+               fc::sha256::hash(ak.public_area.data.data(), ak.public_area.data.size()), "Public name hash does not match that in certification");
+
+   const fc::sha256* const auth_policy_digest = (fc::sha256*)public_area.publicArea.authPolicy.buffer;
+
+   //ensure the policy digest is expected if PCR values have been specified
+   if(pcr_policy.size()) {
+      fc::sha256::encoder pcr_hash_encoder;
+      for(const auto& pcr_entry : pcr_policy)
+         fc::raw::pack(pcr_hash_encoder, pcr_entry.second);
+
+      fc::sha256::encoder policy_hash_encoder;
+      fc::raw::pack(policy_hash_encoder, fc::sha256());
+      fc::raw::pack(policy_hash_encoder, (uint32_t)htonl(TPM2_CC_PolicyPCR));
+
+      std::vector<unsigned> pcrs;
+      boost::copy(pcr_policy | boost::adaptors::map_keys, std::inserter(pcrs, pcrs.end()));
+      TPML_PCR_SELECTION pcr_selection = pcr_selection_for_pcrs(pcrs);
+      char buff[512];
+      size_t off = 0;
+      Tss2_MU_TPML_PCR_SELECTION_Marshal(&pcr_selection, (uint8_t*)buff, sizeof(buff), &off);
+      policy_hash_encoder.write(buff, off);
+
+      fc::raw::pack(policy_hash_encoder, pcr_hash_encoder.result());
+
+      FC_ASSERT(policy_hash_encoder.result() == *auth_policy_digest, "policy digest not expected given specified PCR values");
+   }
+   else
+      FC_ASSERT(fc::sha256() == *auth_policy_digest, "Key has non-zero policy when zero policy expected");
+
+   const fc::sha256 attest_hash = fc::sha256::hash(ak.creation_certification.data.data(), ak.creation_certification.data.size());
+   return fc::crypto::public_key(ak.certification_signature, attest_hash);
 }
 
 struct nv_data::impl {
