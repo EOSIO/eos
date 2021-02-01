@@ -6,11 +6,10 @@ export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
-
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
-  PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
-  export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
+    PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
+    export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
 # Determine which dockerfiles/scripts to use for the pipeline.
 if [[ $PINNED == false ]]; then
@@ -60,19 +59,21 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . "$HELPERS_DIR/file-hash.sh" "$CICD_DIR/platforms/$PLATFORM_TYPE/$FILE" # returns HASHED_IMAGE_TAG, etc
+    export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     # Anka Template and Tags
     export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
     if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
-      export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
+        export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
-      export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
+        export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
     else # Linux
-      export ANKA_TAG_BASE=''
-      export ANKA_TEMPLATE_NAME=''
+        export ANKA_TAG_BASE=''
+        export ANKA_TEMPLATE_NAME=''
     fi
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
         "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
+        "PLATFORM_SKIP_VAR": env.PLATFORM_SKIP_VAR,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
         "VERSION_MINOR": env.VERSION_MINOR,
@@ -107,6 +108,15 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # build steps
+[[ -z "$DCMAKE_BUILD_TYPE" ]] && export DCMAKE_BUILD_TYPE='Release'
+export LATEST_UBUNTU="$(echo "$PLATFORMS_JSON_ARRAY" | jq -c 'map(select(.PLATFORM_NAME == "ubuntu")) | sort_by(.VERSION_MAJOR) | .[-1]')" # isolate latest ubuntu from array
+if [[ "$DEBUG" == 'true' ]]; then
+    echo '# PLATFORMS_JSON_ARRAY'
+    echo "# $(echo "$PLATFORMS_JSON_ARRAY" | jq -c '.')"
+    echo '# LATEST_UBUNTU'
+    echo "# $(echo "$LATEST_UBUNTU" | jq -c '.')"
+    echo ''
+fi
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
@@ -114,12 +124,13 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command: "./.cicd/build.sh"
     env:
+      DCMAKE_BUILD_TYPE: $DCMAKE_BUILD_TYPE
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
 
 EOF
     else
@@ -147,6 +158,7 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     env:
+      DCMAKE_BUILD_TYPE: $DCMAKE_BUILD_TYPE
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -157,7 +169,8 @@ EOF
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
+
 EOF
     fi
 done
@@ -178,14 +191,15 @@ cat <<EOF
 EOF
 # tests
 IFS=$oIFS
-for ROUND in $(seq 1 $ROUNDS); do
-    IFS=$''
-    echo "    # round $ROUND of $ROUNDS"
-    # parallel tests
-    echo '    # parallel tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            cat <<EOF
+if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
+    for ROUND in $(seq 1 $ROUNDS); do
+        IFS=$''
+        echo "    # round $ROUND of $ROUNDS"
+        # parallel tests
+        echo '    # parallel tests'
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+                cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
@@ -199,11 +213,11 @@ for ROUND in $(seq 1 $ROUNDS); do
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
 
 EOF
-        else
-            cat <<EOF
+            else
+                cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -228,17 +242,17 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
 
 EOF
-        fi
-    echo
-    done
-    # wasm spec tests
-    echo '    # wasm spec tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-            cat <<EOF
+            fi
+        echo
+        done
+        # wasm spec tests
+        echo '    # wasm spec tests'
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+                cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
@@ -252,11 +266,11 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-30}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_WASM_SPEC_TESTS}
 
 EOF
-        else
-            cat <<EOF
+            else
+                cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -281,20 +295,20 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_WASM_SPEC_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_WASM_SPEC_TESTS}
 
 EOF
-        fi
-    echo
-    done
-    # serial tests
-    echo '    # serial tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        IFS=$oIFS
-        SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
-        for TEST_NAME in $SERIAL_TESTS; do
-            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                cat <<EOF
+            fi
+        echo
+        done
+        # serial tests
+        echo '    # serial tests'
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+            IFS=$oIFS
+            SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
+            for TEST_NAME in $SERIAL_TESTS; do
+                if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+                    cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
@@ -308,11 +322,11 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
 
 EOF
-            else
-                cat <<EOF
+                else
+                    cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -337,21 +351,22 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
+
 EOF
-            fi
-            echo
+                fi
+                echo
+            done
+            IFS=$nIFS
         done
-        IFS=$nIFS
-    done
-    # long-running tests
-    echo '    # long-running tests'
-    echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-        IFS=$oIFS
-        LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
-        for TEST_NAME in $LR_TESTS; do
-            if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-                cat <<EOF
+        # long-running tests
+        echo '    # long-running tests'
+        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+            IFS=$oIFS
+            LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
+            for TEST_NAME in $LR_TESTS; do
+                if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+                    cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
@@ -365,11 +380,11 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
-            else
-                cat <<EOF
+                else
+                    cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -394,21 +409,22 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
+
 EOF
-            fi
-            echo
+                fi
+                echo
+            done
+            IFS=$nIFS
         done
-        IFS=$nIFS
+        IFS=$oIFS
+        if [[ "$ROUND" != "$ROUNDS" ]]; then
+            echo '  - wait'
+            echo ''
+        fi
     done
-    IFS=$oIFS
-    if [[ "$ROUND" != "$ROUNDS" ]]; then
-        echo '  - wait'
-        echo ''
-    fi
-done
-# Execute multiversion test
-if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+    # Execute multiversion test
+    if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
         cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command:
@@ -423,11 +439,11 @@ if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
 
 EOF
-fi
-# trigger eosio-lrt post pr
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
-    if ( [[ ! $PINNED == false ]] ); then
-        cat <<EOF
+    fi
+    # trigger eosio-lrt post pr
+    if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
+        if ( [[ ! $PINNED == false ]] ); then
+            cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
     async: true
@@ -445,11 +461,11 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         PINNED: "${PINNED}"
 
 EOF
+        fi
     fi
-fi
-# trigger eosio-sync-from-genesis for every build
-if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
-    cat <<EOF
+    # trigger eosio-sync-from-genesis for every build
+    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+        cat <<EOF
   - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
     async: false
@@ -466,10 +482,10 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
         TIMEOUT: "${TIMEOUT}"
 
 EOF
-fi
-# trigger eosio-resume-from-state for every build
-if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
-    cat <<EOF
+    fi
+    # trigger eosio-resume-from-state for every build
+    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+        cat <<EOF
   - label: ":outbox_tray: Resume from State Test"
     trigger: "eosio-resume-from-state"
     async: false
@@ -486,6 +502,7 @@ if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}$
         TIMEOUT: "${TIMEOUT}"
 
 EOF
+    fi
 fi
 # pipeline tail
 cat <<EOF
@@ -663,6 +680,5 @@ cat <<EOF
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
     timeout: ${TIMEOUT:-10}
-
 EOF
 IFS=$oIFS
