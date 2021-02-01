@@ -845,27 +845,30 @@ namespace impl {
       template<typename Resolver>
       static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver )
       {
-         std::cerr << "content {\n";
-         for (const auto in : vo) {
-            std::cerr << in.key() << "\n";
-         }
-         std::cerr << "}\n";
-         EOS_ASSERT(vo.contains("expiration"), packed_transaction_type_exception, "Missing expiration");
-         EOS_ASSERT(vo.contains("ref_block_num"), packed_transaction_type_exception, "Missing ref_block_num");
-         EOS_ASSERT(vo.contains("ref_block_prefix"), packed_transaction_type_exception, "Missing ref_block_prefix");
-         EOS_ASSERT(vo.contains("max_net_usage_words"), packed_transaction_type_exception, "Missing max_net_usage_words");
-         EOS_ASSERT(vo.contains("max_cpu_usage_ms"), packed_transaction_type_exception, "Missing max_cpu_usage_ms");
-         EOS_ASSERT(vo.contains("delay_sec"), packed_transaction_type_exception, "Missing delay_sec");
-         EOS_ASSERT(vo.contains("context_free_actions"), packed_transaction_type_exception, "Missing context_free_actions");
-         EOS_ASSERT(vo.contains("actions"), packed_transaction_type_exception, "Missing actions");
-         from_variant(vo["expiration"], trx.expiration);
-         from_variant(vo["ref_block_num"], trx.ref_block_num);
-         from_variant(vo["ref_block_prefix"], trx.ref_block_prefix);
-         from_variant(vo["max_net_usage_words"], trx.max_net_usage_words);
-         from_variant(vo["max_cpu_usage_ms"], trx.max_cpu_usage_ms);
-         from_variant(vo["delay_sec"], trx.delay_sec);
-         from_variant(vo["context_free_actions"], trx.context_free_actions);
-         from_variant(vo["actions"], trx.actions);
+	 if (vo.contains("expiration")) {
+            from_variant(vo["expiration"], trx.expiration);
+	 }
+	 if (vo.contains("ref_block_num")) {
+            from_variant(vo["ref_block_num"], trx.ref_block_num);
+	 }
+	 if (vo.contains("ref_block_prefix")) {
+            from_variant(vo["ref_block_prefix"], trx.ref_block_prefix);
+	 }
+	 if (vo.contains("max_net_usage_words")) {
+            from_variant(vo["max_net_usage_words"], trx.max_net_usage_words);
+	 }
+	 if (vo.contains("max_cpu_usage_ms")) {
+            from_variant(vo["max_cpu_usage_ms"], trx.max_cpu_usage_ms);
+	 }
+	 if (vo.contains("delay_sec")) {
+            from_variant(vo["delay_sec"], trx.delay_sec);
+	 }
+	 if (vo.contains("context_free_actions")) {
+            from_variant(vo["context_free_actions"], trx.context_free_actions);
+	 }
+	 if (vo.contains("actions")) {
+            from_variant(vo["actions"], trx.actions);
+	 }
 
          // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
          // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
@@ -909,10 +912,12 @@ namespace impl {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          extract_transaction(vo, strx, resolver);
-         EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
-         EOS_ASSERT(vo.contains("context_free_data"), packed_transaction_type_exception, "Missing context_free_data");
-         from_variant(vo["signatures"], strx.signatures);
-         from_variant(vo["context_free_data"], strx.context_free_data);
+	 if (vo.contains("signatures")) {
+            from_variant(vo["signatures"], strx.signatures);
+	 }
+	 if (vo.contains("context_free_data")) {
+            from_variant(vo["context_free_data"], strx.context_free_data);
+	 }
       }
 
       template<typename Resolver>
