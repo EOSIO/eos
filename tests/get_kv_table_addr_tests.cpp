@@ -28,13 +28,11 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
+BOOST_AUTO_TEST_SUITE(get_kv_table_addr_tests)
+
 using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
-
-BOOST_AUTO_TEST_SUITE(get_kv_table_addr_tests)
-
 
 BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    eosio::chain_apis::read_only::get_table_rows_result result;
@@ -111,8 +109,8 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    p.index_name = "accname"_n;
    p.index_value = "john";
    p.encode_type = "name";
-   p.lower_bound = "";
-   p.upper_bound = "";
+   p.lower_bound = {};
+   p.upper_bound = {};
    p.json = true;
    p.reverse = false;
    result = plugin.read_only::get_kv_table_rows(p);
@@ -120,10 +118,10 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(0, 2);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
    p.lower_bound = "aaa";
-   p.upper_bound = "";
+   p.upper_bound = {};
    p.reverse = false;
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(4u, result.rows.size());
@@ -133,10 +131,10 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(3, 4);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
    p.lower_bound = "john";
-   p.upper_bound = "";
+   p.upper_bound = {};
    p.reverse = false;
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(3u, result.rows.size());
@@ -145,7 +143,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(2, 4);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
    p.lower_bound = "john";
    p.upper_bound = "lois";
@@ -155,9 +153,9 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(0, 2);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
-   p.lower_bound = "";
+   p.lower_bound = {};
    p.upper_bound = "steve";
    p.reverse = true;
    result = plugin.read_only::get_kv_table_rows(p);
@@ -168,7 +166,7 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(3, 1);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
    p.lower_bound = "john";
    p.upper_bound = "steve";
@@ -179,16 +177,16 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    chk_result(1, 3);
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
-   p.lower_bound = "";
+   p.lower_bound = {};
    p.upper_bound = "aaaa";
    p.reverse = true;
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
    p.lower_bound = "steve";
    p.upper_bound = "john";
@@ -197,9 +195,9 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
    p.index_name = "accname"_n;
-   p.index_value = "";
+   p.index_value = {};
    p.encode_type = "name";
-   p.lower_bound = "";
+   p.lower_bound = {};
    p.upper_bound = "john";
    p.reverse = true;
    result = plugin.read_only::get_kv_table_rows(p);
