@@ -843,32 +843,32 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver )
+      static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
       {
-	 if (vo.contains("expiration")) {
+         if (vo.contains("expiration")) {
             from_variant(vo["expiration"], trx.expiration);
-	 }
-	 if (vo.contains("ref_block_num")) {
+         }
+         if (vo.contains("ref_block_num")) {
             from_variant(vo["ref_block_num"], trx.ref_block_num);
-	 }
-	 if (vo.contains("ref_block_prefix")) {
+         }
+         if (vo.contains("ref_block_prefix")) {
             from_variant(vo["ref_block_prefix"], trx.ref_block_prefix);
-	 }
-	 if (vo.contains("max_net_usage_words")) {
+         }
+         if (vo.contains("max_net_usage_words")) {
             from_variant(vo["max_net_usage_words"], trx.max_net_usage_words);
-	 }
-	 if (vo.contains("max_cpu_usage_ms")) {
+         }
+         if (vo.contains("max_cpu_usage_ms")) {
             from_variant(vo["max_cpu_usage_ms"], trx.max_cpu_usage_ms);
-	 }
-	 if (vo.contains("delay_sec")) {
+         }
+         if (vo.contains("delay_sec")) {
             from_variant(vo["delay_sec"], trx.delay_sec);
-	 }
-	 if (vo.contains("context_free_actions")) {
-            from_variant(vo["context_free_actions"], trx.context_free_actions);
-	 }
-	 if (vo.contains("actions")) {
-            from_variant(vo["actions"], trx.actions);
-	 }
+         }
+         if (vo.contains("context_free_actions")) {
+            extract(vo["context_free_actions"], trx.context_free_actions, resolver, ctx);
+         }
+         if (vo.contains("actions")) {
+            extract(vo["actions"], trx.actions, resolver, ctx);
+         }
 
          // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
          // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
@@ -903,7 +903,7 @@ namespace impl {
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
-         extract_transaction(vo, trx, resolver);
+         extract_transaction(vo, trx, resolver, ctx);
       }
 
       template<typename Resolver>
@@ -911,13 +911,13 @@ namespace impl {
       {
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
-         extract_transaction(vo, strx, resolver);
-	 if (vo.contains("signatures")) {
+         extract_transaction(vo, strx, resolver, ctx);
+         if (vo.contains("signatures")) {
             from_variant(vo["signatures"], strx.signatures);
-	 }
-	 if (vo.contains("context_free_data")) {
+         }
+         if (vo.contains("context_free_data")) {
             from_variant(vo["context_free_data"], strx.context_free_data);
-	 }
+         }
       }
 
       template<typename Resolver>
