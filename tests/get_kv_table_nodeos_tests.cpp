@@ -227,12 +227,12 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
 
    p.lower_bound = "bobc";
    p.upper_bound = "";
-   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), chain::contract_table_query_exception);
+   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), contract_table_query_exception);
 
    p.reverse = false;
    p.lower_bound = "";
    p.upper_bound = "bobz";
-   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), chain::contract_table_query_exception);
+   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), contract_table_query_exception);
 
    p.reverse = true;
    p.lower_bound = "bobj";
