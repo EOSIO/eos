@@ -28,15 +28,6 @@ int main(int argc, char** argv) {
          pcrs = p;
       }), "Expect a given PCR's sha256 to be present in the policy of the created key. May be specified multiple times. "
           "Format is pcr:hash, for example 7:12ab4s...")
-#if 0
-      ("pcr,p", bpo::value<std::vector<unsigned>>()->composing()->notifier([&](const std::vector<unsigned>& p) {
-         pcrs = p;
-      }), "Add a PCR value to the policy of the created key. May be specified multiple times.")
-      ("attest,a", bpo::value<std::string>()->notifier([&](const std::string& a) {
-         attest_handle = strtol(a.c_str(), NULL, 0);
-         FC_ASSERT(attest_handle, "Attest handle argument is not an integer");
-      }), "Certify creation of the new key via key with given TPM handle")
-#endif
       ;
    bpo::variables_map varmap;
    try {
