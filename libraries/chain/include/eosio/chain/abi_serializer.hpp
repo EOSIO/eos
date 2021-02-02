@@ -901,6 +901,7 @@ namespace impl {
       template<typename Resolver>
       static void extract( const fc::variant& v, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
       {
+         static_assert(fc::reflector<transaction>::total_member_count == 9);
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          extract_transaction(vo, trx, resolver, ctx);
@@ -909,6 +910,7 @@ namespace impl {
       template<typename Resolver>
       static void extract( const fc::variant& v, signed_transaction& strx, Resolver resolver, abi_traverse_context& ctx )
       {
+         static_assert(fc::reflector<signed_transaction>::total_member_count == 11);
          auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          extract_transaction(vo, strx, resolver, ctx);
