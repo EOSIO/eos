@@ -147,7 +147,7 @@ namespace eosio {
 
    private:
       constexpr static auto stage_str( stages s );
-      void set_state( stages s );
+      bool set_state( stages s );
       bool is_sync_required( uint32_t fork_head_block_num );
       void request_next_chunk( std::unique_lock<std::mutex> g_sync, const connection_ptr& conn = connection_ptr() );
       void start_sync( const connection_ptr& c, uint32_t target );
@@ -1372,12 +1372,13 @@ namespace eosio {
     }
   }
 
-   void sync_manager::set_state(stages newstate) {
+   bool sync_manager::set_state(stages newstate) {
       if( sync_state == newstate ) {
-         return;
+         return false;
       }
       fc_ilog( logger, "old state ${os} becoming ${ns}", ("os", stage_str( sync_state ))( "ns", stage_str( newstate ) ) );
       sync_state = newstate;
+      return true;
    }
 
    void sync_manager::sync_reset_lib_num(const connection_ptr& c) {
@@ -1808,7 +1809,9 @@ namespace eosio {
          } );
 
          if( set_state_to_head_catchup ) {
-            set_state( head_catchup );
+            if( set_state( head_catchup ) ) {
+                send_handshakes();
+            }
          } else {
             set_state( in_sync );
             send_handshakes();
