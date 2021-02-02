@@ -2239,10 +2239,10 @@ constexpr uint32_t prefix_size = 17; // prefix 17bytes: status(1 byte) + table_n
 struct kv_table_rows_context {
    std::unique_ptr<eosio::chain::kv_context>  kv_context;
    const read_only::get_kv_table_rows_params& p;
+   abi_serializer::yield_function_t           yield_function;                            
    abi_def                                    abi;
    abi_serializer                             abis;
    std::string                                index_type;
-   fc::time_point                             end_time;
    bool                                       shorten_abi_errors;
    bool                                       is_primary_idx;
 
@@ -2252,6 +2252,7 @@ struct kv_table_rows_context {
              param.code, {},
              db.get_global_properties().kv_configuration)) // To do: provide kv_resource_manmager to create_kv_context
        , p(param)
+       , yield_function(abi_serializer::create_yield_function(abi_serializer_max_time))
        , abi(eosio::chain_apis::get_abi(db, param.code))
        , shorten_abi_errors(shorten_error) {
 
@@ -2271,8 +2272,7 @@ struct kv_table_rows_context {
                  ("t", p.table)("i", p.index_name));
 
       index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
-      abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
-      end_time = fc::time_point::now() + fc::microseconds(1000 * 10);
+      abis.set_abi(abi, yield_function);
    }
 
    bool point_query() const { return p.index_value.has_value(); }
@@ -2342,13 +2342,12 @@ struct kv_iterator_ex {
    }
 
    /// @pre ! is_end()
-   fc::variant get_value_var(fc::time_point cur_time) const {
+   fc::variant get_value_var() const {
       std::vector<char> row_value = get_value();
       if (context.p.json) {
-         auto time_left = context.end_time - cur_time;
          try {
             return context.abis.binary_to_variant(context.p.table.to_string(), row_value,
-                                                  abi_serializer::create_yield_function(time_left),
+                                                  context.yield_function,
                                                   context.shorten_abi_errors);
          } catch (fc::exception& e) {
          }
@@ -2357,8 +2356,8 @@ struct kv_iterator_ex {
    }
 
    /// @pre ! is_end()
-   fc::variant get_value_and_maybe_payer_var(fc::time_point cur_time) const {
-      fc::variant result = get_value_var(cur_time);
+   fc::variant get_value_and_maybe_payer_var() const {
+      fc::variant result = get_value_var();
       if (context.p.show_payer) {
          auto maybe_payer = base->kv_it_payer();
          std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
@@ -2437,10 +2436,9 @@ read_only::get_table_rows_result kv_get_rows(Range&& range) {
 
    read_only::get_table_rows_result result;
    auto&                            ctx      = range.current.context;
-   auto                             cur_time = fc::time_point::now();
-   for (unsigned count = 0; count < ctx.p.limit && cur_time < ctx.end_time && !range.is_done();
-        ++count, cur_time = fc::time_point::now()) {
-      result.rows.emplace_back(range.current.get_value_and_maybe_payer_var(cur_time));
+   for (unsigned count = 0; count < ctx.p.limit && !range.is_done();
+        ++count) {
+      result.rows.emplace_back(range.current.get_value_and_maybe_payer_var());
       range.next();
    }
 
