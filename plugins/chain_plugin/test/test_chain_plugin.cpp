@@ -207,13 +207,13 @@ public:
        {
            const auto& accnt = control->db().get<account_object,by_name>( "eosio.token"_n );
            abi_def abi;
-           BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+           BOOST_CHECK_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
            token_abi_ser.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
        }
 
        create_currency( "eosio.token"_n, config::system_account_name, core_from_string("10000000000.0000") );
        issue(config::system_account_name,      core_from_string("1000000000.0000"));
-       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( name("eosio") ) );
+       BOOST_CHECK_EQUAL( core_from_string("1000000000.0000"), get_balance( name("eosio") ) );
 
        set_code( config::system_account_name, contracts::eosio_system_wasm() );
        set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
@@ -226,7 +226,7 @@ public:
        {
            const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
            abi_def abi;
-           BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+           BOOST_CHECK_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
            abi_ser.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
        }
 
@@ -287,7 +287,7 @@ public:
                 ("url", "" )
                 ("location", 0 )
         );
-        BOOST_REQUIRE_EQUAL( success(), r);
+        BOOST_CHECK_EQUAL( success(), r);
         return r;
     }
 
@@ -307,7 +307,7 @@ public:
     vector<name> active_and_vote_producers() {
         //stake more than 15% of total EOS supply to activate chain
         transfer( name("eosio"), name("alice1111111"), core_from_string("650000000.0000"), name("eosio") );
-        BOOST_REQUIRE_EQUAL( success(), stake( name("alice1111111"), name("alice1111111"), core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
+        BOOST_CHECK_EQUAL( success(), stake( name("alice1111111"), name("alice1111111"), core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
 
         // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
         std::vector<account_name> producer_names;
@@ -320,7 +320,7 @@ public:
             setup_producer_accounts(producer_names);
             for (const auto& p: producer_names) {
 
-                BOOST_REQUIRE_EQUAL( success(), regproducer(p) );
+                BOOST_CHECK_EQUAL( success(), regproducer(p) );
             }
         }
         produce_blocks( 250);
@@ -335,14 +335,14 @@ public:
                                     }
                 ))
         );
-        BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace_auth->receipt->status);
+        BOOST_CHECK_EQUAL(transaction_receipt::executed, trace_auth->receipt->status);
 
         //vote for producers
         {
             transfer( config::system_account_name, name("alice1111111"), core_from_string("100000000.0000"), config::system_account_name );
-            BOOST_REQUIRE_EQUAL(success(), stake( name("alice1111111"), core_from_string("30000000.0000"), core_from_string("30000000.0000") ) );
-            BOOST_REQUIRE_EQUAL(success(), buyram( name("alice1111111"), name("alice1111111"), core_from_string("30000000.0000") ) );
-            BOOST_REQUIRE_EQUAL(success(), push_action("alice1111111"_n, "voteproducer"_n, mvo()
+            BOOST_CHECK_EQUAL(success(), stake( name("alice1111111"), core_from_string("30000000.0000"), core_from_string("30000000.0000") ) );
+            BOOST_CHECK_EQUAL(success(), buyram( name("alice1111111"), name("alice1111111"), core_from_string("30000000.0000") ) );
+            BOOST_CHECK_EQUAL(success(), push_action("alice1111111"_n, "voteproducer"_n, mvo()
                     ("voter",  "alice1111111")
                     ("proxy", name(0).to_string())
                     ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
@@ -352,8 +352,8 @@ public:
         produce_blocks( 250 );
 
         auto producer_keys = control->head_block_state()->active_schedule.producers;
-        BOOST_REQUIRE_EQUAL( 21, producer_keys.size() );
-        BOOST_REQUIRE_EQUAL( name("defproducera"), producer_keys[0].producer_name );
+        BOOST_CHECK_EQUAL( 21, producer_keys.size() );
+        BOOST_CHECK_EQUAL( name("defproducera"), producer_keys[0].producer_name );
 
         return producer_names;
     }
@@ -376,17 +376,15 @@ BOOST_FIXTURE_TEST_CASE(account_results_total_resources_test, chain_plugin_teste
     produce_blocks(10);
     setup_system_accounts();
     produce_blocks();
-    const asset nstake = core_from_string("1.0000");
-    const asset cstake = core_from_string("2.0000");
     create_account_with_resources("alice1111111"_n, config::system_account_name);
     //stake more than 15% of total EOS supply to activate chain
     transfer( name("eosio"), name("alice1111111"), core_from_string("650000000.0000"), name("eosio") );
 
     read_only::get_account_results results = get_account_info(name("alice1111111"));
-    BOOST_TEST_REQUIRE(results.total_resources.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("10.0000"), results.total_resources["net_weight"].as<asset>());
-    BOOST_REQUIRE_EQUAL(core_from_string("10.0000"), results.total_resources["cpu_weight"].as<asset>());
-    BOOST_REQUIRE_EQUAL(results.total_resources["ram_bytes"].as_int64() > 0, true);
+    BOOST_CHECK(results.total_resources.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("10.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("10.0000"), results.total_resources["cpu_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(results.total_resources["ram_bytes"].as_int64() > 0, true);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -398,25 +396,25 @@ BOOST_FIXTURE_TEST_CASE(account_results_self_delegated_bandwidth_test, chain_plu
     const asset nstake = core_from_string("1.0000");
     const asset cstake = core_from_string("2.0000");
     create_account_with_resources("alice1111111"_n, config::system_account_name, core_from_string("1.0000"), false);
-    BOOST_REQUIRE_EQUAL(success(), stake(config::system_account_name, name("alice1111111"), nstake, cstake));
+    BOOST_CHECK_EQUAL(success(), stake(config::system_account_name, name("alice1111111"), nstake, cstake));
 
     read_only::get_account_results results = get_account_info(name("alice1111111"));
-    BOOST_TEST_REQUIRE(results.total_resources.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("11.0000"), results.total_resources["net_weight"].as<asset>());
-    BOOST_REQUIRE_EQUAL(core_from_string("12.0000"), results.total_resources["cpu_weight"].as<asset>());
+    BOOST_CHECK(results.total_resources.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("11.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("12.0000"), results.total_resources["cpu_weight"].as<asset>());
 
     //self delegate bandwidth
     transfer( name("eosio"), name("alice1111111"), core_from_string("650000000.0000"), name("eosio") );
-    BOOST_REQUIRE_EQUAL(success(), stake(name("alice1111111"), name("alice1111111"), nstake, cstake));
+    BOOST_CHECK_EQUAL(success(), stake(name("alice1111111"), name("alice1111111"), nstake, cstake));
 
     results = get_account_info(name("alice1111111"));
-    BOOST_TEST_REQUIRE(results.self_delegated_bandwidth.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("1.0000"), results.self_delegated_bandwidth["net_weight"].as<asset>());
-    BOOST_REQUIRE_EQUAL(core_from_string("2.0000"), results.self_delegated_bandwidth["cpu_weight"].as<asset>());
+    BOOST_CHECK(results.self_delegated_bandwidth.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("1.0000"), results.self_delegated_bandwidth["net_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("2.0000"), results.self_delegated_bandwidth["cpu_weight"].as<asset>());
 
-    BOOST_TEST_REQUIRE(results.total_resources.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("12.0000"), results.total_resources["net_weight"].as<asset>());
-    BOOST_REQUIRE_EQUAL(core_from_string("14.0000"), results.total_resources["cpu_weight"].as<asset>());
+    BOOST_CHECK(results.total_resources.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("12.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("14.0000"), results.total_resources["cpu_weight"].as<asset>());
 
 } FC_LOG_AND_RETHROW() }
 
@@ -430,8 +428,8 @@ BOOST_FIXTURE_TEST_CASE(account_results_refund_request_test, chain_plugin_tester
     regproducer("producer1111"_n);
 
     read_only::get_account_results results = get_account_info(name("producer1111"));
-    BOOST_TEST_REQUIRE(results.total_resources.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("80.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK(results.total_resources.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("80.0000"), results.total_resources["net_weight"].as<asset>());
 
     //cross 15 percent threshold
     {
@@ -464,14 +462,14 @@ BOOST_FIXTURE_TEST_CASE(account_results_refund_request_test, chain_plugin_tester
     }
 
     results = get_account_info(name("producer1111"));
-    BOOST_REQUIRE_EQUAL(core_from_string("150000080.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("150000080.0000"), results.total_resources["net_weight"].as<asset>());
 
-    BOOST_REQUIRE_EQUAL(success(), unstake(name("producer1111"),name("producer1111"), core_from_string("150000000.0000"), core_from_string("0.0000")));
+    BOOST_CHECK_EQUAL(success(), unstake(name("producer1111"),name("producer1111"), core_from_string("150000000.0000"), core_from_string("0.0000")));
     results = get_account_info(name("producer1111"));
-    BOOST_TEST_REQUIRE(results.total_resources.get_type() != fc::variant::type_id::null_type);
-    BOOST_TEST_REQUIRE(results.refund_request.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("150000000.0000"), results.refund_request["net_amount"].as<asset>());
-    BOOST_REQUIRE_EQUAL(core_from_string("80.0000"), results.total_resources["net_weight"].as<asset>());
+    BOOST_CHECK(results.total_resources.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK(results.refund_request.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("150000000.0000"), results.refund_request["net_amount"].as<asset>());
+    BOOST_CHECK_EQUAL(core_from_string("80.0000"), results.total_resources["net_weight"].as<asset>());
 
 
 } FC_LOG_AND_RETHROW() }
@@ -486,8 +484,8 @@ BOOST_FIXTURE_TEST_CASE(account_results_voter_info_test, chain_plugin_tester) { 
     active_and_vote_producers();
     read_only::get_account_results results = get_account_info(name("alice1111111"));
 
-    BOOST_TEST_REQUIRE(results.voter_info.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(21, results.voter_info["producers"].size());
+    BOOST_CHECK(results.voter_info.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(21, results.voter_info["producers"].size());
 
 } FC_LOG_AND_RETHROW() }
 
@@ -501,12 +499,12 @@ BOOST_FIXTURE_TEST_CASE(account_results_rex_info_test, chain_plugin_tester) { tr
     //stake more than 15% of total EOS supply to activate chain
     transfer( name("eosio"), name("alice1111111"), core_from_string("650000000.0000"), name("eosio") );
     deposit(name("alice1111111"), core_from_string("1000.0000"));
-    BOOST_REQUIRE_EQUAL( success(), buyrex(name("alice1111111"), core_from_string("100.0000")) );
+    BOOST_CHECK_EQUAL( success(), buyrex(name("alice1111111"), core_from_string("100.0000")) );
 
     read_only::get_account_results results = get_account_info(name("alice1111111"));
-    BOOST_TEST_REQUIRE(results.rex_info.get_type() != fc::variant::type_id::null_type);
-    BOOST_REQUIRE_EQUAL(core_from_string("100.0000"), results.rex_info["vote_stake"].as<asset>());
-    //BOOST_REQUIRE_EQUAL(0, results.rex_info["matured_rex"]);
+    BOOST_CHECK(results.rex_info.get_type() != fc::variant::type_id::null_type);
+    BOOST_CHECK_EQUAL(core_from_string("100.0000"), results.rex_info["vote_stake"].as<asset>());
+    //BOOST_CHECK_EQUAL(0, results.rex_info["matured_rex"]);
 
 } FC_LOG_AND_RETHROW() }
 
