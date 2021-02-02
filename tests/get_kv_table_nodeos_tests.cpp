@@ -117,6 +117,11 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_nodeos_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(1u, result.rows.size());
    chk_result(0, 10);
 
+   p.encode_type = "name";
+   p.index_value = "bob";
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
+
    p.index_value = "bobx";
    result = plugin.read_only::get_kv_table_rows(p);
    BOOST_REQUIRE_EQUAL(0u, result.rows.size());

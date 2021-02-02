@@ -2386,6 +2386,10 @@ struct kv_iterator_ex {
       status = base->kv_it_prev(&key_size, &value_size);
       return *this;
    }
+
+   int key_compare(const std::vector<char>& key) const {
+      return base->kv_it_key_compare(key.data(), key.size());
+   }
 };
 
 struct kv_forward_range {
@@ -2399,7 +2403,7 @@ struct kv_forward_range {
 
    bool is_done() const {
       return current.is_end() ||
-             (last_key.size() > prefix_size && current.base->kv_it_key_compare(last_key.data(), last_key.size()) > 0);
+             (last_key.size() > prefix_size && current.key_compare(last_key) > 0);
    }
 
    void next() { ++current; }
@@ -2416,13 +2420,13 @@ struct kv_reverse_range {
       if (first_key.size() == prefix_size) {
          current.status = current.base->kv_it_move_to_end();
       }
-      if (current.is_end() || current.base->kv_it_key_compare(first_key.data(), first_key.size()) != 0)
+      if (current.is_end() || current.key_compare(first_key) != 0)
          --current;
    }
 
    bool is_done() const {
       return current.is_end() ||
-             (last_key.size() > prefix_size && current.base->kv_it_key_compare(last_key.data(), last_key.size()) < 0);
+             (last_key.size() > prefix_size && current.key_compare(last_key) < 0);
    }
 
    void next() { --current; }
@@ -2456,9 +2460,11 @@ read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::g
       EOS_ASSERT(!p.lower_bound && !p.upper_bound, chain::contract_table_query_exception,
                  "specify both index_value and ranges (i.e. lower_bound/upper_bound) is not allowed");
       read_only::get_table_rows_result result;
-      kv_iterator_ex                   itr(context, context.get_full_key(p.index_value));
-      if (!itr.is_end())
-         result.rows.emplace_back(itr.get_value_and_maybe_payer_var(fc::time_point::now()));
+      auto full_key = context.get_full_key(p.index_value);
+      kv_iterator_ex                   itr(context, full_key);
+      if (!itr.is_end() && itr.key_compare(full_key) == 0) {
+         result.rows.emplace_back(itr.get_value_and_maybe_payer_var());
+      }
       return result;
    }
 
