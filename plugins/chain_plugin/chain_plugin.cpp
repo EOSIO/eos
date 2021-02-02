@@ -2111,7 +2111,7 @@ struct key_converter<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
    static Float value_from_hex(const std::string& bytes_in_hex) {
       using UInt = std::conditional_t<sizeof(Float) == 4, uint32_t, uint64_t>;
       UInt val   = unhex<UInt>(bytes_in_hex);
-      ;
+
       UInt mask    = 0;
       UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
       if (!(val & signbit)) // flip mask if val is positive
@@ -2464,13 +2464,6 @@ read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::g
 
    auto lower_bound = context.get_full_key(p.lower_bound);
    auto upper_bound = context.get_full_key(p.upper_bound);
-
-   EOS_ASSERT((!p.lower_bound || !p.upper_bound ||
-               std::lexicographical_compare(lower_bound.begin() + prefix_size, lower_bound.end(),
-                                            upper_bound.begin() + prefix_size, upper_bound.end(),
-                                            [](char a, char b) { return (unsigned char)a < (unsigned char)b; })),
-              chain::contract_table_query_exception, "the lower bound ${lb} is not less than the upper bound ${ub}",
-              ("lb", p.lower_bound)("ub", p.upper_bound));
 
    if (context.p.reverse == false)
       return kv_get_rows(kv_forward_range(context, lower_bound, upper_bound));
