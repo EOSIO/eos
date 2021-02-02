@@ -191,7 +191,8 @@ BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    p.lower_bound = "steve";
    p.upper_bound = "john";
    p.reverse = true;
-   BOOST_CHECK_THROW(plugin.read_only::get_kv_table_rows(p), contract_table_query_exception);
+   result = plugin.read_only::get_kv_table_rows(p);
+   BOOST_REQUIRE_EQUAL(0u, result.rows.size());
 
    p.index_name = "accname"_n;
    p.index_value = {};
