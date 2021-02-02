@@ -71,22 +71,9 @@ public:
                           ("transfer", 0 )
       );
     }
-    action_result stake( std::string_view from, std::string_view to, const asset& net, const asset& cpu ) {
-      return stake( account_name(from), account_name(to), net, cpu );
-    }
 
     action_result stake( const account_name& acnt, const asset& net, const asset& cpu ) {
       return stake( acnt, acnt, net, cpu );
-    }
-    action_result stake( std::string_view acnt, const asset& net, const asset& cpu ) {
-      return stake( account_name(acnt), net, cpu );
-    }
-
-    action_result vote( const account_name& voter, const std::vector<account_name>& producers, const account_name& proxy = name(0) ) {
-      return push_action(voter, "voteproducer"_n, mvo()
-                         ("voter",     voter)
-                         ("proxy",     proxy)
-                         ("producers", producers));
     }
 
     asset get_balance( const account_name& act ) {
