@@ -178,7 +178,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       EOS_ASSERT( !old_key_value.value, db_rocksdb_invalid_operation_exception, "db_store_i64 called with pre-existing key");
 
-      primary_lookup.add_table_if_needed(old_key_value.full_key, payer);
+      primary_lookup.add_table_if_needed(scope_name, table_name, payer);
 
       const payer_payload pp{payer, value, value_size};
       set_value(old_key_value.full_key, pp);
@@ -200,7 +200,9 @@ namespace eosio { namespace chain { namespace backing_store {
 
       const unique_table t { receiver, scope_name, table_name };
       const auto table_ei = primary_iter_store.cache_table(t);
-      return primary_iter_store.add(primary_key_iter(table_ei, id, payer));
+      const auto iterator = primary_iter_store.add(primary_key_iter(table_ei, id, payer));
+      primary_iter_store.set_value(iterator, pp.value, pp.value_size);
+      return iterator;
    }
 
    void db_context_rocksdb::db_update_i64(int32_t itr, account_name payer, const char* value , size_t value_size) {
@@ -252,6 +254,7 @@ namespace eosio { namespace chain { namespace backing_store {
          table_store.table, old_payer, payer, name(key_store.primary),
          old_key_value.value->data(), old_key_value.value->size(), value, value_size);
       }
+      primary_iter_store.set_value(itr, value, value_size);
    }
 
    void db_context_rocksdb::db_remove_i64(int32_t itr) {
@@ -288,19 +291,12 @@ namespace eosio { namespace chain { namespace backing_store {
 
    int32_t db_context_rocksdb::db_get_i64(int32_t itr, char* value , size_t value_size) {
       const auto& key_store = primary_iter_store.get(itr);
-      const auto& table_store = primary_iter_store.get_table(key_store);
-      const auto old_key_value = get_primary_key_value(table_store.contract, table_store.scope, table_store.table, key_store.primary);
-
-      EOS_ASSERT( old_key_value.value, db_rocksdb_invalid_operation_exception,
-                  "invariant failure in db_get_i64, iter store found to update but nothing in database");
-      payer_payload pp {*old_key_value.value};
-      const char* const actual_value = pp.value;
-      const size_t actual_size = pp.value_size;
+      const auto actual_size = key_store.value->size();
       if (value_size == 0) {
          return actual_size;
       }
       const size_t copy_size = std::min<size_t>(value_size, actual_size);
-      memcpy( value, actual_value, copy_size );
+      memcpy( value, key_store.value->data(), copy_size );
       return copy_size;
    }
 
@@ -682,9 +678,12 @@ namespace eosio { namespace chain { namespace backing_store {
                   "invariant failure in ${func}, iter store found to update but no primary keys in database",
                   ("func", calling_func));
 
-      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
+      payer_payload pp(*(*session_iter).second);
+      const account_name found_payer = pp.payer;
 
-      return primary_iter_store.add(primary_key_iter(table_ei, found_key, found_payer));
+      const auto next_itr = primary_iter_store.add(primary_key_iter(table_ei, found_key, found_payer));
+      primary_iter_store.set_value(next_itr, pp.value, pp.value_size);
+      return next_itr;
    }
 
    // returns the exact iterator and the bounding key (type)
@@ -741,7 +740,8 @@ namespace eosio { namespace chain { namespace backing_store {
          primary_key = id;
       }
 
-      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
+      payer_payload pp(*(*session_iter).second);
+      const account_name found_payer = pp.payer;
       if (!primary_key) {
          uint64_t key = 0;
          const auto valid = db_key_value_format::get_primary_key((*session_iter).first, desired_type_prefix, key);
@@ -750,7 +750,9 @@ namespace eosio { namespace chain { namespace backing_store {
          primary_key = key;
       }
 
-      return primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
+      const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
+      primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+      return store_itr;
    }
 
    std::unique_ptr<db_context> create_db_rocksdb_context(apply_context& context, name receiver,
