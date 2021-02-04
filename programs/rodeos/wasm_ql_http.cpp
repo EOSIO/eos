@@ -517,7 +517,13 @@ struct unix_http_session : public http_session<unix_http_session>, public std::e
                     const std::shared_ptr<thread_state_cache>& state_cache, unixs::socket&& socket) :
        http_session<unix_http_session>(http_config, shared_state, state_cache), stream(std::move(socket)) {}
 
-   beast::basic_stream<unixs, boost::asio::any_io_executor, beast::unlimited_rate_policy> stream;
+   beast::basic_stream<unixs,
+#if BOOST_VERSION >= 107400
+                       boost::asio::any_io_executor,
+#else
+                       boost::asio::executor,
+#endif
+                       beast::unlimited_rate_policy> stream;
 };
 #endif
 
