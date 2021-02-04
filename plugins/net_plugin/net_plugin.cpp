@@ -422,8 +422,9 @@ namespace eosio {
    constexpr uint16_t proto_block_id_notify = 2;     // reserved. feature was removed. next net_version should be 3
    constexpr uint16_t proto_pruned_types = 3;        // supports new signed_block & packed_transaction types
    constexpr uint16_t heartbeat_interval = 4;        // supports configurable heartbeat interval
+   constexpr uint16_t dup_goaway_resolution = 5;     // support peer address based duplicate connection resolution
 
-   constexpr uint16_t net_version = heartbeat_interval;
+   constexpr uint16_t net_version = dup_goaway_resolution;
 
    /**
     * Index by start_block_num
@@ -2841,18 +2842,26 @@ namespace eosio {
                if(check.get() == this)
                   continue;
                if(check->connected() && check->peer_name() == msg.p2p_address) {
-                  // It's possible that both peers could arrive here at relatively the same time, so
-                  // we need to avoid the case where they would both tell a different connection to go away.
-                  // Using the sum of the initial handshake times of the two connections, we will
-                  // arbitrarily (but consistently between the two peers) keep one of them.
-                  std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-                  auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
-                  g_check_conn.unlock();
-                  g_conn.lock();
-                  auto c_time = last_handshake_sent.time;
-                  g_conn.unlock();
-                  if (msg.time + c_time <= check_time)
-                     continue;
+                  if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
+                     // It's possible that both peers could arrive here at relatively the same time, so
+                     // we need to avoid the case where they would both tell a different connection to go away.
+                     // Using the sum of the initial handshake times of the two connections, we will
+                     // arbitrarily (but consistently between the two peers) keep one of them.
+                  
+                     std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
+                     auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
+                     g_check_conn.unlock();
+                     g_conn.lock();
+                     auto c_time = last_handshake_sent.time;
+                     g_conn.unlock();
+                     if (msg.time + c_time <= check_time)
+                        continue;
+                  }
+                  else if (my_impl->p2p_address < msg.p2p_address) {
+                     // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
+                     // so there is no chance for both connections to be closed
+                     continue; 
+                  }
 
                   g_cnts.unlock();
                   fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
