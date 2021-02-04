@@ -4,8 +4,8 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
-BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
-BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
+BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-beta-fleet'
+BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-beta-fleet'
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
     PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
