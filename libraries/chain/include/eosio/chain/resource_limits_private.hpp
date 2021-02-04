@@ -146,8 +146,7 @@ namespace eosio { namespace chain { namespace resource_limits {
           * return the extended value at a current or future ordinal
           */
          uint64_t value_ex_at( uint32_t ordinal, uint32_t window_size ) const {
-            if( last_ordinal != ordinal ) {
-               EOS_ASSERT( ordinal > last_ordinal, resource_limit_exception, "new ordinal cannot be less than the previous ordinal" );
+            if( last_ordinal < ordinal ) {
                if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
                   const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size
                   const auto decay = make_ratio(
@@ -177,7 +176,7 @@ namespace eosio { namespace chain { namespace resource_limits {
             EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
 
             uint128_t units_ex = (uint128_t)units * Precision;
-            if (last_ordinal != ordinal) {
+            if (last_ordinal < ordinal) {
                value_ex = value_ex_at(ordinal, window_size);
                last_ordinal = ordinal;
             }
