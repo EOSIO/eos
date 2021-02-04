@@ -13,6 +13,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
@@ -39,6 +40,9 @@ namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http  = beast::http;          // from <boost/beast/http.hpp>
 namespace net   = boost::asio;          // from <boost/asio.hpp>
 using tcp       = boost::asio::ip::tcp; // from <boost/asio/ip/tcp.hpp>
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+using unixs     = boost::asio::local::stream_protocol; // from <boost/asio/local/stream_protocol.hpp>
+#endif
 
 using namespace std::literals;
 
@@ -344,7 +348,8 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
 } // handle_request
 
 // Handles an HTTP server connection
-class http_session : public std::enable_shared_from_this<http_session> {
+template <typename SessionType>
+class http_session {
    // This queue is used for HTTP pipelining.
    class queue {
       enum {
@@ -394,8 +399,8 @@ class http_session : public std::enable_shared_from_this<http_session> {
 
             void operator()() {
                http::async_write(
-                     self.stream, msg,
-                     beast::bind_front_handler(&http_session::on_write, self.shared_from_this(), msg.need_eof()));
+                     self.derived_session().stream, msg,
+                     beast::bind_front_handler(&http_session::on_write, self.derived_session().shared_from_this(), msg.need_eof()));
             }
          };
 
@@ -408,7 +413,6 @@ class http_session : public std::enable_shared_from_this<http_session> {
       }
    };
 
-   beast::tcp_stream                            stream;
    beast::flat_buffer                           buffer;
    std::shared_ptr<const wasm_ql::http_config>  http_config;
    std::shared_ptr<const wasm_ql::shared_state> shared_state;
@@ -423,14 +427,18 @@ class http_session : public std::enable_shared_from_this<http_session> {
    // Take ownership of the socket
    http_session(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
                 const std::shared_ptr<const wasm_ql::shared_state>& shared_state,
-                const std::shared_ptr<thread_state_cache>& state_cache, tcp::socket&& socket)
-       : stream(std::move(socket)), http_config(http_config), shared_state(shared_state), state_cache(state_cache),
+                const std::shared_ptr<thread_state_cache>& state_cache)
+       : http_config(http_config), shared_state(shared_state), state_cache(state_cache),
          queue_(*this) {}
 
    // Start the session
    void run() { do_read(); }
 
  private:
+   SessionType& derived_session() {
+      return static_cast<SessionType&>(*this);
+   }
+
    void do_read() {
       // Construct a new parser for each message
       parser.emplace();
@@ -441,10 +449,10 @@ class http_session : public std::enable_shared_from_this<http_session> {
       parser->body_limit(http_config->max_request_size);
 
       // Set the timeout.
-      stream.expires_after(std::chrono::milliseconds(http_config->idle_timeout_ms));
+      derived_session().stream.expires_after(std::chrono::milliseconds(http_config->idle_timeout_ms));
 
       // Read a request using the parser-oriented interface
-      http::async_read(stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, shared_from_this()));
+      http::async_read(derived_session().stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, derived_session().shared_from_this()));
    }
 
    void on_read(beast::error_code ec, std::size_t bytes_transferred) {
@@ -487,30 +495,91 @@ class http_session : public std::enable_shared_from_this<http_session> {
    void do_close() {
       // Send a TCP shutdown
       beast::error_code ec;
-      stream.socket().shutdown(tcp::socket::shutdown_send, ec);
+      derived_session().stream.socket().shutdown(tcp::socket::shutdown_send, ec);
 
       // At this point the connection is closed gracefully
    }
 }; // http_session
+
+struct tcp_http_session : public http_session<tcp_http_session>, public std::enable_shared_from_this<tcp_http_session> {
+   tcp_http_session(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
+                    const std::shared_ptr<const wasm_ql::shared_state>& shared_state,
+                    const std::shared_ptr<thread_state_cache>& state_cache, tcp::socket&& socket) :
+       http_session<tcp_http_session>(http_config, shared_state, state_cache), stream(std::move(socket)) {}
+
+   beast::tcp_stream stream;
+};
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+struct unix_http_session : public http_session<unix_http_session>, public std::enable_shared_from_this<unix_http_session> {
+   unix_http_session(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
+                    const std::shared_ptr<const wasm_ql::shared_state>& shared_state,
+                    const std::shared_ptr<thread_state_cache>& state_cache, unixs::socket&& socket) :
+       http_session<unix_http_session>(http_config, shared_state, state_cache), stream(std::move(socket)) {}
+
+   beast::basic_stream<unixs, boost::asio::any_io_executor, beast::unlimited_rate_policy> stream;
+};
+#endif
 
 // Accepts incoming connections and launches the sessions
 class listener : public std::enable_shared_from_this<listener> {
    std::shared_ptr<const wasm_ql::http_config>  http_config;
    std::shared_ptr<const wasm_ql::shared_state> shared_state;
    net::io_context&                             ioc;
-   tcp::acceptor                                acceptor;
+   tcp::acceptor                                tcp_acceptor;
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   unixs::acceptor                              unix_acceptor;
+#endif
    bool                                         acceptor_ready = false;
    std::shared_ptr<thread_state_cache>          state_cache;
 
  public:
    listener(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
-            const std::shared_ptr<const wasm_ql::shared_state>& shared_state, net::io_context& ioc,
-            tcp::endpoint endpoint)
-       : http_config{ http_config }, shared_state{ shared_state }, ioc(ioc), acceptor(net::make_strand(ioc)),
+            const std::shared_ptr<const wasm_ql::shared_state>& shared_state, net::io_context& ioc)
+       : http_config{ http_config }, shared_state{ shared_state }, ioc(ioc), tcp_acceptor(net::make_strand(ioc)),
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+         unix_acceptor(net::make_strand(ioc)),
+#endif
          state_cache(std::make_shared<thread_state_cache>(shared_state)) {
 
       state_cache->preallocate(http_config->num_threads);
 
+      if(http_config->address.size()) {
+         boost::asio::ip::address a;
+         try {
+            a = net::ip::make_address(http_config->address);
+         } catch (std::exception& e) {
+            throw std::runtime_error("make_address(): "s + http_config->address + ": " + e.what());
+         }
+
+         start_listen(tcp_acceptor, tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) });
+      }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+      if(http_config->unix_path.size()) {
+         //take a sniff and see if anything is already listening at the given socket path, or if the socket path exists
+         // but nothing is listening
+         boost::system::error_code test_ec;
+         unixs::socket test_socket(ioc);
+         test_socket.connect(http_config->unix_path.c_str(), test_ec);
+
+         //looks like a service is already running on that socket, don't touch it... fail out
+         if(test_ec == boost::system::errc::success)
+            FC_ASSERT(false, "wasmql http unix socket is in use");
+         //socket exists but no one home, go ahead and remove it and continue on
+         else if(test_ec == boost::system::errc::connection_refused)
+            ::unlink(http_config->unix_path.c_str());
+         else if(test_ec != boost::system::errc::no_such_file_or_directory)
+            FC_ASSERT(false, "unexpected failure when probing existing wasmql http unix socket: ${e}", ("e", test_ec.message()));
+
+         start_listen(unix_acceptor, unixs::endpoint(http_config->unix_path));
+      }
+#endif
+
+      acceptor_ready = true;
+   }
+
+   template <typename Acceptor, typename Endpoint>
+   void start_listen(Acceptor& acceptor, const Endpoint& endpoint) {
       beast::error_code ec;
 
       // Open the acceptor
@@ -534,33 +603,41 @@ class listener : public std::enable_shared_from_this<listener> {
          fail(ec, "listen");
          return;
       }
-
-      acceptor_ready = true;
    }
 
    // Start accepting incoming connections
    bool run() {
-      if (acceptor_ready)
-         do_accept();
+      if (!acceptor_ready)
+         return acceptor_ready;
+      if (tcp_acceptor.is_open())
+         do_accept(tcp_acceptor);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+      if (unix_acceptor.is_open())
+         do_accept(unix_acceptor);
+#endif
       return acceptor_ready;
    }
 
  private:
-   void do_accept() {
+   template<typename Acceptor>
+   void do_accept(Acceptor& acceptor) {
       // The new connection gets its own strand
-      acceptor.async_accept(net::make_strand(ioc), beast::bind_front_handler(&listener::on_accept, shared_from_this()));
-   }
+      acceptor.async_accept(net::make_strand(ioc), beast::bind_front_handler([&acceptor, self = shared_from_this(), this](beast::error_code ec, auto socket) mutable {
+         if (ec) {
+            fail(ec, "accept");
+         } else {
+            // Create the http session and run it
+            if constexpr (std::is_same_v<Acceptor, tcp::acceptor>)
+               std::make_shared<tcp_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+            else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>)
+               std::make_shared<unix_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
+#endif
+         }
 
-   void on_accept(beast::error_code ec, tcp::socket socket) {
-      if (ec) {
-         fail(ec, "accept");
-      } else {
-         // Create the http session and run it
-         std::make_shared<http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
-      }
-
-      // Accept another connection
-      do_accept();
+         // Accept another connection
+         do_accept(acceptor);
+      }));
    }
 }; // listener
 
@@ -569,7 +646,6 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
    std::shared_ptr<const wasm_ql::http_config>  http_config  = {};
    std::shared_ptr<const wasm_ql::shared_state> shared_state = {};
    std::vector<std::thread>                     threads      = {};
-   std::unique_ptr<tcp::acceptor>               acceptor     = {};
 
    server_impl(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
                const std::shared_ptr<const wasm_ql::shared_state>& shared_state)
@@ -592,15 +668,7 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
          FC_ASSERT(false, "unable to open listen socket");
       };
 
-      ilog("listen on ${a}:${p}", ("a", http_config->address)("p", http_config->port));
-      boost::asio::ip::address a;
-      try {
-         a = net::ip::make_address(http_config->address);
-      } catch (std::exception& e) {
-         throw std::runtime_error("make_address(): "s + http_config->address + ": " + e.what());
-      }
-      auto l = std::make_shared<listener>(http_config, shared_state, ioc,
-                                          tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) });
+      auto l = std::make_shared<listener>(http_config, shared_state, ioc);
       if (!l->run())
          return false;
 
