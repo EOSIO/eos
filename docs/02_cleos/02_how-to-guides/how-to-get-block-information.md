@@ -19,13 +19,13 @@ Make sure to meet the following requirements:
 
 Perform the step below:
 
-Retrieve full information about a block:
+Retrieve full or partial information about a block:
 
 ```sh
-cleos get block <block_number_or_id>
+cleos get block [--info] <block_number_or_id>
 ```
 
-Where `block_number_or_id` is the specified block number or block ID.
+Where `block_number_or_id` is the specified block number or block ID and `--info` is an optional parameter to retrieve a partial subset of the block information.
 
 Some examples are provided below:
 
@@ -78,3 +78,29 @@ cleos -u https://api.testnet.eos.io get block 02e1c7888a92206573ae38d00e09366c7b
   "ref_block_prefix": 3493375603
 }
 ```
+
+* Query the local chain to retrieve partial block information about block number `1`:
+
+**Example Output**
+
+```sh
+cleos get block --info 1
+```
+```json
+{
+  "block_num": 1,
+  "ref_block_num": 1,
+  "id": "0000000130d70e94e0022fd2fa035cabb9e542c34ea27f572ac90b5a7aa3d891",
+  "timestamp": "2018-03-02T12:00:00.000",
+  "producer": "",
+  "confirmed": 1,
+  "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+  "transaction_mroot": "0000000000000000000000000000000000000000000000000000000000000000",
+  "action_mroot": "0000000000000000000000000000000000000000000000000000000000000000",
+  "schedule_version": 0,
+  "producer_signature": "SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne",
+  "ref_block_prefix": 3526296288
+}
+```
+
+Note that the partial block information excludes the variable fields `new_producers`, `header_extensions`, `transactions`, or `block_extensions`.
