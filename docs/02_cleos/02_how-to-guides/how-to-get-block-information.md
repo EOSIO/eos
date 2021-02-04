@@ -12,8 +12,8 @@ Make sure to meet the following requirements:
 [[info | Note]]
 | `cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install `cleos`.
 
-* Understand what a [block](https://developers.eos.io/welcome/latest/glossary/index/#block) is and its role in the blockchain.
-* Understand the [block lifecycle](https://developers.eos.io/welcome/latest/protocol-guides/consensus_protocol/#5-block-lifecycle) in the EOSIO consensus protocol.
+* Understand what a [block](https://developers.eos.io/welcome/v2.1/glossary/index/#block) is and its role in the blockchain.
+* Understand the [block lifecycle](https://developers.eos.io/welcome/v2.1/protocol-guides/consensus_protocol/#5-block-lifecycle) in the EOSIO consensus protocol.
 
 ## Steps
 
