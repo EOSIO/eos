@@ -48,8 +48,8 @@ private:
       uint64_t              pending_cpu_us;        // tracked cpu us for transactions that may still succeed in a block
       decaying_accumulator  expired_accumulator;   // accumulator used to account for transactions that have expired
 
-      bool empty(uint32_t block_num) {
-         return pending_cpu_us == 0 && expired_accumulator.value_at(block_num, expired_accumulator_average_window) == 0;
+      bool empty(uint32_t time_ordinal) {
+         return pending_cpu_us == 0 && expired_accumulator.value_at(time_ordinal, expired_accumulator_average_window) == 0;
       }
    };
 
@@ -62,43 +62,50 @@ private:
    block_subjective_bill_cache               _block_subjective_bill_cache;
 
 private:
-   void remove_subjective_billing( const trx_cache_entry& entry, uint32_t block_num ) {
+   uint32_t time_ordinal_for( const fc::time_point& t ) const {
+      auto ordinal = t.time_since_epoch().count() / (1000U * (uint64_t)subjective_time_interval_ms);
+      EOS_ASSERT(ordinal <= std::numeric_limits<uint32_t>::max(), chain::tx_resource_exhaustion, "overflow of quantized time in subjective billing");
+      return ordinal;
+   }
+
+   void remove_subjective_billing( const trx_cache_entry& entry, uint32_t time_ordinal ) {
       auto aitr = _account_subjective_bill_cache.find( entry.account );
       if( aitr != _account_subjective_bill_cache.end() ) {
          aitr->second.pending_cpu_us -= entry.subjective_cpu_bill;
          EOS_ASSERT( aitr->second.pending_cpu_us >= 0, chain::tx_resource_exhaustion,
                      "Logic error in subjective account billing ${a}", ("a", entry.account) );
-         if( aitr->second.empty(block_num) ) _account_subjective_bill_cache.erase( aitr );
+         if( aitr->second.empty(time_ordinal) ) _account_subjective_bill_cache.erase( aitr );
       }
    }
 
-   void transition_to_expired( const trx_cache_entry& entry, uint32_t block_num ) {
+   void transition_to_expired( const trx_cache_entry& entry, uint32_t time_ordinal ) {
       auto aitr = _account_subjective_bill_cache.find( entry.account );
       if( aitr != _account_subjective_bill_cache.end() ) {
          aitr->second.pending_cpu_us -= entry.subjective_cpu_bill;
-         aitr->second.expired_accumulator.add(entry.subjective_cpu_bill, block_num, expired_accumulator_average_window);
+         aitr->second.expired_accumulator.add(entry.subjective_cpu_bill, time_ordinal, expired_accumulator_average_window);
       }
    }
 
-   void remove_subjective_billing( const block_state_ptr& bsp ) {
+   void remove_subjective_billing( const block_state_ptr& bsp, uint32_t time_ordinal ) {
       if( !_trx_cache_index.empty() ) {
          for( const auto& receipt : bsp->block->transactions ) {
             if( std::holds_alternative<packed_transaction>(receipt.trx) ) {
                const auto& pt = std::get<packed_transaction>(receipt.trx);
-               remove_subjective_billing( pt.id(), bsp->block_num );
+               remove_subjective_billing( pt.id(), time_ordinal );
             }
          }
       }
    }
 
 public: // public for tests
-   static constexpr uint32_t expired_accumulator_average_window = config::account_cpu_usage_average_window_ms / config::block_interval_ms;
+   static constexpr uint32_t subjective_time_interval_ms = 5'000;
+   static constexpr uint32_t expired_accumulator_average_window = config::account_cpu_usage_average_window_ms / subjective_time_interval_ms;
 
-   void remove_subjective_billing( const transaction_id_type& trx_id, uint32_t block_num ) {
+   void remove_subjective_billing( const transaction_id_type& trx_id, uint32_t time_ordinal ) {
       auto& idx = _trx_cache_index.get<by_id>();
       auto itr = idx.find( trx_id );
       if( itr != idx.end() ) {
-         remove_subjective_billing( *itr, block_num );
+         remove_subjective_billing( *itr, time_ordinal );
          idx.erase( itr );
       }
    }
@@ -126,16 +133,18 @@ public:
       }
    }
 
-   void subjective_bill_failure( const account_name& first_auth, const fc::microseconds& elapsed, uint32_t block_num )
+   void subjective_bill_failure( const account_name& first_auth, const fc::microseconds& elapsed, const fc::time_point& now )
    {
       if( !_disabled ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
-         _account_subjective_bill_cache[first_auth].expired_accumulator.add(bill, block_num, expired_accumulator_average_window);
+         const auto time_ordinal = time_ordinal_for(now);
+         _account_subjective_bill_cache[first_auth].expired_accumulator.add(bill, time_ordinal, expired_accumulator_average_window);
       }
    }
 
-   uint32_t get_subjective_bill( const account_name& first_auth, uint32_t block_num ) const {
+   uint32_t get_subjective_bill( const account_name& first_auth, const fc::time_point& now ) const {
       if( _disabled ) return 0;
+      const auto time_ordinal = time_ordinal_for(now);
       const subjective_billing_info* sub_bill_info = nullptr;
       auto aitr = _account_subjective_bill_cache.find( first_auth );
       if( aitr != _account_subjective_bill_cache.end() ) {
@@ -149,7 +158,7 @@ public:
 
       if (sub_bill_info) {
          EOS_ASSERT(sub_bill_info->pending_cpu_us >= in_block_pending_cpu_us, chain::tx_resource_exhaustion, "Logic error subjective billing ${a}", ("a", first_auth) );
-         uint32_t sub_bill = sub_bill_info->pending_cpu_us - in_block_pending_cpu_us + sub_bill_info->expired_accumulator.value_at(block_num, expired_accumulator_average_window );
+         uint32_t sub_bill = sub_bill_info->pending_cpu_us - in_block_pending_cpu_us + sub_bill_info->expired_accumulator.value_at(time_ordinal, expired_accumulator_average_window );
          return sub_bill;
       } else {
          return 0;
@@ -160,15 +169,17 @@ public:
       _block_subjective_bill_cache.clear();
    }
 
-   void on_block( const block_state_ptr& bsp ) {
+   void on_block( const block_state_ptr& bsp, const fc::time_point& now ) {
       if( bsp == nullptr ) return;
-      remove_subjective_billing( bsp );
+      const auto time_ordinal = time_ordinal_for(now);
+      remove_subjective_billing( bsp, time_ordinal );
    }
 
-   bool remove_expired( fc::logger& log, const fc::time_point& pending_block_time, uint32_t pending_block_num, const fc::time_point& deadline ) {
+   bool remove_expired( fc::logger& log, const fc::time_point& pending_block_time, const fc::time_point& now, const fc::time_point& deadline ) {
       bool exhausted = false;
       auto& idx = _trx_cache_index.get<by_expiry>();
       if( !idx.empty() ) {
+         const auto time_ordinal = time_ordinal_for(now);
          const auto orig_count = _trx_cache_index.size();
          uint32_t num_expired = 0;
 
@@ -179,7 +190,7 @@ public:
             }
             auto b = idx.begin();
             if( b->expiry > pending_block_time ) break;
-            transition_to_expired( *b, pending_block_num );
+            transition_to_expired( *b, time_ordinal );
             idx.erase( b );
             num_expired++;
          }

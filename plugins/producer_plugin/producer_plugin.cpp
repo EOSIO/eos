@@ -247,7 +247,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_block( const block_state_ptr& bsp ) {
          auto before = _unapplied_transactions.size();
          _unapplied_transactions.clear_applied( bsp );
-         _subjective_billing.on_block( bsp );
+         _subjective_billing.on_block( bsp, fc::time_point::now() );
          fc_dlog( _log, "Removed applied transactions before: ${before}, after: ${after}",
                   ("before", before)("after", _unapplied_transactions.size()) );
       }
@@ -536,7 +536,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto first_auth = trx->packed_trx()->get_transaction().first_authorizer();
             uint32_t sub_bill = 0;
             if( _pending_block_mode != pending_block_mode::producing)
-               sub_bill = _subjective_billing.get_subjective_bill( first_auth, chain.head_block_num() + 1 );
+               sub_bill = _subjective_billing.get_subjective_bill( first_auth, fc::time_point::now() );
 
             auto trace = chain.push_transaction( trx, deadline, trx->billed_cpu_time_us, false, sub_bill );
             if( trace->except ) {
@@ -553,7 +553,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   }
                   exhausted = block_is_exhausted();
                } else {
-                  _subjective_billing.subjective_bill_failure( first_auth, trace->elapsed, chain.head_block_num() + 1 );
+                  _subjective_billing.subjective_bill_failure( first_auth, trace->elapsed, fc::time_point::now() );
                   auto e_ptr = trace->except->dynamic_copy_exception();
                   send_response( e_ptr );
                }
@@ -1586,7 +1586,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             return start_block_result::exhausted;
          if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
             return start_block_result::exhausted;
-         if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), chain.head_block_num() + 1, preprocess_deadline ) )
+         if( !_subjective_billing.remove_expired( _log, chain.pending_block_time(), fc::time_point::now(), preprocess_deadline ) )
             return start_block_result::exhausted;
 
          // limit execution of pending incoming to once per block
@@ -1836,7 +1836,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                               ("c", trace->except->code())("p", prev_billed_cpu_time_us)
                               ("r", fc::time_point::now() - start)("id", trx->id()) );
                      account_fails.add( first_auth, failure_code );
-                     _subjective_billing.subjective_bill_failure( first_auth, trace->elapsed, chain.head_block_num() + 1 );
+                     _subjective_billing.subjective_bill_failure( first_auth, trace->elapsed, fc::time_point::now() );
                   }
                   ++num_failed;
                   if( itr->next ) itr->next( trace );
@@ -2143,7 +2143,7 @@ bool producer_plugin_impl::maybe_produce_block() {
    try {
       produce_block();
       return true;
-   } 
+   }
    catch(block_validation_error&) {
       reason = "block vault rejected block, waiting on external block to continue";
    }
@@ -2257,7 +2257,7 @@ void producer_plugin_impl::produce_block() {
          _block_vault_resync.schedule();
          EOS_ASSERT(false, block_validation_error, "Block rejected by block vault");
       }
-      
+
    }
 
    chain.commit_block();
