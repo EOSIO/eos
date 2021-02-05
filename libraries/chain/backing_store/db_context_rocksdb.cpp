@@ -365,7 +365,40 @@ namespace eosio { namespace chain { namespace backing_store {
    }
 
    int32_t db_context_rocksdb::db_find_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
-      return find_i64(name{code}, name{scope}, name{table}, id, comp::equals);
+      const name code_name {code};
+      const name scope_name {scope};
+      const name table_name {table};
+      const unique_table t { code_name, scope_name, table_name };
+      const auto table_ei = primary_iter_store.cache_table(t);
+
+      // check if this key is already in the cache
+      const auto find_store_itr = primary_iter_store.find(primary_key_iter(table_ei, id, name{}));
+      if (find_store_itr != primary_iter_store.invalid_iterator()) {
+         // already in store, and value cache is set
+         return find_store_itr;
+      }
+
+      key_bundle primary_key { db_key_value_format::create_primary_key(scope_name, table_name, id), code_name };
+      auto value = current_session.read(primary_key.full_key);
+      if (!value) {
+         // check if there is a table key to determine if we can return an end iterator
+         key_bundle table_key {db_key_value_format::create_table_key(scope_name, table_name), code_name };
+         auto table_value = current_session.read(table_key.full_key);
+         if (!table_value) {
+            return table_ei;
+         }
+         else {
+            // since no table entry found the table is empty
+            return primary_iter_store.invalid_iterator();
+         }
+      }
+
+      payer_payload pp(*value);
+      const account_name found_payer = pp.payer;
+
+      const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, id, found_payer));
+      primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+      return store_itr;
    }
 
    int32_t db_context_rocksdb::db_lowerbound_i64(uint64_t code, uint64_t scope, uint64_t table, uint64_t id) {
@@ -697,7 +730,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
    int32_t db_context_rocksdb::find_i64(name code, name scope, name table, uint64_t id, comp comparison) {
       // expanding the "in-play" iterator space to include every key type for that table, to ensure we know if
-      // the key is not found, that there is anything in the table at all (and thus can return an end iterator
+      // the key is not found, that there is anything in the table at all (and thus can return an end iterator)
       // or if an invalid iterator needs to be returned
       prefix_bundle primary_and_prefix_keys { db_key_value_format::create_primary_key(scope, table, id),
                                               end_of_prefix::pre_type, code };
@@ -719,10 +752,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       std::optional<uint64_t> primary_key;
       if (!primary_lookup.match(primary_and_prefix_keys.full_key, (*session_iter).first)) {
-         if (comparison == comp::equals) {
-            return table_ei;
-         }
-         else if (!primary_lookup.match_prefix(desired_type_prefix, (*session_iter).first)) {
+         if (!primary_lookup.match_prefix(desired_type_prefix, (*session_iter).first)) {
             return table_ei;
          }
       }
