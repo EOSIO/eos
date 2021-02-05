@@ -116,7 +116,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
 
 EOF
     else
@@ -153,7 +153,7 @@ EOF
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_BUILD}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
 
 EOF
     fi
@@ -197,7 +197,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-10}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_UNIT_TESTS}
 
 EOF
             else
@@ -224,7 +224,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_UNIT_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_UNIT_TESTS}
 
 EOF
             fi
@@ -250,7 +250,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-20}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
                 else
@@ -277,7 +277,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-60}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_SERIAL_TESTS}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_SERIAL_TESTS}
 
 EOF
                 fi
@@ -306,7 +306,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
                 else
@@ -333,7 +333,7 @@ EOF
       manual:
         permit_on_passed: true
     timeout: ${TIMEOUT:-180}
-    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.]')${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
                 fi
