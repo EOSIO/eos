@@ -150,11 +150,11 @@ namespace eosio { namespace chain { namespace resource_limits {
                if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
                   const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size
                   const auto decay = make_ratio(
-                          (uint64_t)window_size - delta,
-                          (uint64_t)window_size
+                          (uint128_t)window_size - delta,
+                          (uint128_t)window_size
                   );
 
-                  return value_ex * decay;
+                  return downgrade_cast<uint64_t>((uint128_t)value_ex * decay);
                } else {
                   return 0;
                }
