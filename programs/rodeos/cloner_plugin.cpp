@@ -77,10 +77,10 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    std::shared_ptr<rodeos_db_partition> partition =
          std::make_shared<rodeos_db_partition>(db, std::vector<char>{}); // todo: prefix
 
-   std::optional<rodeos_db_snapshot>        rodeos_snapshot;
-   std::shared_ptr<ship_client::connection> connection;
-   bool                                     reported_block = false;
-   std::unique_ptr<rodeos_filter>           filter         = {}; // todo: remove
+   std::optional<rodeos_db_snapshot>             rodeos_snapshot;
+   std::shared_ptr<ship_client::connection_base> connection;
+   bool                                          reported_block = false;
+   std::unique_ptr<rodeos_filter>                filter         = {}; // todo: remove
 
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
@@ -108,7 +108,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->end_write(true);
       db->flush(true, true);
 
-      connection = std::make_shared<ship_client::connection>(ioc, *config, shared_from_this());
+      connection = ship_client::make_connection(ioc, *config, shared_from_this());
       connection->connect();
    }
 
@@ -235,6 +235,10 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    auto clop = cli.add_options();
    op("clone-connect-to,f", bpo::value<std::string>()->default_value("127.0.0.1:8080"),
       "State-history endpoint to connect to (nodeos)");
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   op("clone-unix-connect-to,u", bpo::value<std::string>(),
+      "State-history unix path to connect to (nodeos). Takes precedence over tcp endpoint if specified");
+#endif
    clop("clone-skip-to,k", bpo::value<uint32_t>(), "Skip blocks before [arg]");
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
    op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
@@ -267,14 +271,24 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
 
 void cloner_plugin::plugin_initialize(const variables_map& options) {
    try {
-      auto endpoint = options.at("clone-connect-to").as<std::string>();
-      if (endpoint.find(':') == std::string::npos)
-         throw std::runtime_error("invalid endpoint: " + endpoint);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+      if(options.count("clone-unix-connect-to")) {
+         boost::filesystem::path sock_path = options.at("clone-unix-connect-to").as<string>();
+         if (sock_path.is_relative())
+            sock_path = app().data_dir() / sock_path;
+         my->config->connection_config = ship_client::unix_connection_config{sock_path.generic_string()};
+      }
+      else
+#endif
+      {
+         auto endpoint = options.at("clone-connect-to").as<std::string>();
+         if (endpoint.find(':') == std::string::npos)
+            throw std::runtime_error("invalid endpoint: " + endpoint);
 
-      auto port               = endpoint.substr(endpoint.find(':') + 1, endpoint.size());
-      auto host               = endpoint.substr(0, endpoint.find(':'));
-      my->config->host        = host;
-      my->config->port        = port;
+         auto port               = endpoint.substr(endpoint.find(':') + 1, endpoint.size());
+         auto host               = endpoint.substr(0, endpoint.find(':'));
+         my->config->connection_config = ship_client::tcp_connection_config{host, port};
+      }
       my->config->skip_to     = options.count("clone-skip-to") ? options["clone-skip-to"].as<uint32_t>() : 0;
       my->config->stop_before = options.count("clone-stop") ? options["clone-stop"].as<uint32_t>() : 0;
       my->config->exit_on_filter_wasm_error = options["clone-exit-on-filter-wasm-error"].as<bool>();

@@ -12,6 +12,7 @@ struct http_config {
    std::string                            static_dir       = {};
    std::string                            address          = {};
    std::string                            port             = {};
+   std::string                            unix_path        = {};
    std::optional<boost::filesystem::path> checkpoint_dir   = {};
 };
 

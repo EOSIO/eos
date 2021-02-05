@@ -74,6 +74,9 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
    auto op = cfg.add_options();
    op("wql-threads", bpo::value<int>()->default_value(8), "Number of threads to process requests");
    op("wql-listen", bpo::value<std::string>()->default_value("127.0.0.1:8880"), "Endpoint to listen on");
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   op("wql-unix-listen", bpo::value<std::string>(), "Unix socket path to listen on");
+#endif
    op("wql-retries", bpo::value<uint32_t>()->default_value(0xffff'ffff),
       "Number of times to retry binding to --wql-listen. Each retry is approx 1 second apart. Set to 0 to prevent "
       "retries.");
@@ -95,10 +98,6 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
 
 void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
    try {
-      auto ip_port = options.at("wql-listen").as<std::string>();
-      if (ip_port.find(':') == std::string::npos)
-         throw std::runtime_error("invalid --wql-listen value: " + ip_port);
-
       auto http_config  = std::make_shared<wasm_ql::http_config>();
       auto shared_state = std::make_shared<wasm_ql::shared_state>(app().find_plugin<rocksdb_plugin>()->get_db());
       my->http_config   = http_config;
@@ -106,8 +105,17 @@ void wasm_ql_plugin::plugin_initialize(const variables_map& options) {
 
       my->max_retries                = options.at("wql-retries").as<uint32_t>();
       http_config->num_threads       = options.at("wql-threads").as<int>();
-      http_config->port              = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
-      http_config->address           = ip_port.substr(0, ip_port.find(':'));
+
+      auto ip_port = options.at("wql-listen").as<std::string>();
+      if(ip_port.size()) {
+         if (ip_port.find(':') == std::string::npos)
+            throw std::runtime_error("invalid --wql-listen value: " + ip_port);
+         http_config->port              = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
+         http_config->address           = ip_port.substr(0, ip_port.find(':'));
+      }
+      if(options.count("wql-unix-listen"))
+         http_config->unix_path = options.at("wql-unix-listen").as<std::string>();
+
       shared_state->max_pages        = options.at("wql-query-mem").as<uint32_t>() * 16;
       shared_state->max_console_size = options.at("wql-console-size").as<uint32_t>();
       shared_state->wasm_cache_size  = options.at("wql-wasm-cache-size").as<uint32_t>();
