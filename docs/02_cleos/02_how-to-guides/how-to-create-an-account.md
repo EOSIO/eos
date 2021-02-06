@@ -9,7 +9,7 @@ Create a new EOSIO blockchain account
 | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
 
 * Acquire functional understanding of the following:
-  * [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions)
+  * [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
   * Asymmetric cryptography (public and private keypair) 
 
 * Created an Owner and an Active key pair

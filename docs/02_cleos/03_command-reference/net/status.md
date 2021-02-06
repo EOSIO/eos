@@ -28,4 +28,4 @@ Given, a valid, existing `hostname:port` parameter the above command returns a j
 }
 ```
 
-The `last_handshake` structure is explained in detail in the [Network Peer Protocol](https://developers.eos.io/welcome/latest/protocol/network_peer_protocol#421-handshake-message) documentation section.
+The `last_handshake` structure is explained in detail in the [Network Peer Protocol](https://developers.eos.io/welcome/v2.1/protocol/network_peer_protocol#421-handshake-message) documentation section.

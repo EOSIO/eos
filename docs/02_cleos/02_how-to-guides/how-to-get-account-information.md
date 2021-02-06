@@ -9,7 +9,7 @@ Query infomation of an EOSIO account
 [[info | Note]]
 | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
 
-* Acquire functional understanding of [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions)
+* Acquire functional understanding of [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
 
 
 ## Steps
