@@ -349,6 +349,13 @@ namespace LLVMJIT
 				"eosvmoc_internal.div0_or_overflow",FunctionType::get(),{});
 		}
 
+		//llvm11 removed inferring the function type automatically, plumb CreateCalls through here as done for 10 & earlier
+		llvm::CallInst* createCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args) {
+			auto* PTy = llvm::cast<llvm::PointerType>(Callee->getType());
+			auto* FTy = llvm::cast<llvm::FunctionType>(PTy->getElementType());
+			return irBuilder.CreateCall(FTy, Callee, Args);
+		}
+
 		llvm::Value* getLLVMIntrinsic(const std::initializer_list<llvm::Type*>& argTypes,llvm::Intrinsic::ID id)
 		{
 			return llvm::Intrinsic::getDeclaration(moduleContext.llvmModule,id,llvm::ArrayRef<llvm::Type*>(argTypes.begin(),argTypes.end()));
@@ -360,7 +367,7 @@ namespace LLVMJIT
 			const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(intrinsicName);
 			llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8), llvmI64Type->getPointerTo(256)) );
 			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
-			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
+			return createCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
 		}
 
 		// A helper function to emit a conditional call to a non-returning intrinsic function.
@@ -711,7 +718,7 @@ namespace LLVMJIT
 			popMultiple(llvmArgs,calleeType->parameters.size());
 
 			// Call the function.
-			auto result = irBuilder.CreateCall(callee,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+			auto result = createCall(callee,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
 			if(isExit) {
 				irBuilder.CreateUnreachable();
 				enterUnreachable();
@@ -763,7 +770,7 @@ namespace LLVMJIT
 				llvm::Value* running_code_start = irBuilder.CreateLoad(emitLiteralPointer((void*)OFFSET_OF_CONTROL_BLOCK_MEMBER(running_code_base), llvmI64Type->getPointerTo(256)));
 				llvm::Value* offset_from_start = irBuilder.CreateAdd(running_code_start, functionInfo);
 				llvm::Value* ptr_cast = irBuilder.CreateIntToPtr(offset_from_start, functionPointerType);
-				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+				auto result = createCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
 
 				// Push the result on the operand stack.
 				if(calleeType->ret != ResultType::none) { push(result); }
@@ -800,7 +807,7 @@ namespace LLVMJIT
 				PN->addIncoming(offset_from_start, is_code_offset_block);
 
 				llvm::Value* ptr_cast = irBuilder.CreateIntToPtr(PN, functionPointerType);
-				auto result = irBuilder.CreateCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+				auto result = createCall(ptr_cast,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
 
 				// Push the result on the operand stack.
 				if(calleeType->ret != ResultType::none) { push(result); }
@@ -915,8 +922,10 @@ namespace LLVMJIT
 
 #if LLVM_VERSION_MAJOR < 10
    #define LOAD_STORE_ALIGNMENT_PARAM 1
-#else
+#elif LLVM_VERSION_MAJOR == 10
    #define LOAD_STORE_ALIGNMENT_PARAM llvm::MaybeAlign(1)
+#else
+   #define LOAD_STORE_ALIGNMENT_PARAM llvm::Align(1)
 #endif
 
 		EMIT_LOAD_OP(i32,load8_s,llvmI8Type,0,irBuilder.CreateSExt,LOAD_STORE_ALIGNMENT_PARAM)  EMIT_LOAD_OP(i32,load8_u,llvmI8Type,0,irBuilder.CreateZExt,LOAD_STORE_ALIGNMENT_PARAM)
@@ -1087,9 +1096,9 @@ namespace LLVMJIT
 		EMIT_INT_BINARY_OP(ge_u, coerceBoolToI32(irBuilder.CreateICmpUGE(left, right)))
 #endif
 
-		EMIT_INT_UNARY_OP(clz,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctlz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
-		EMIT_INT_UNARY_OP(ctz,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::cttz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
-		EMIT_INT_UNARY_OP(popcnt,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctpop),llvm::ArrayRef<llvm::Value*>({operand})))
+		EMIT_INT_UNARY_OP(clz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctlz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
+		EMIT_INT_UNARY_OP(ctz,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::cttz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
+		EMIT_INT_UNARY_OP(popcnt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctpop),llvm::ArrayRef<llvm::Value*>({operand})))
 		EMIT_INT_UNARY_OP(eqz,coerceBoolToI32(irBuilder.CreateICmpEQ(operand,typedZeroConstants[(Uptr)type])))
 
 		//
@@ -1100,11 +1109,11 @@ namespace LLVMJIT
 		EMIT_FP_BINARY_OP(sub,irBuilder.CreateFSub(left,right))
 		EMIT_FP_BINARY_OP(mul,irBuilder.CreateFMul(left,right))
 		EMIT_FP_BINARY_OP(div,irBuilder.CreateFDiv(left,right))
-		EMIT_FP_BINARY_OP(copysign,irBuilder.CreateCall(getLLVMIntrinsic({left->getType()},llvm::Intrinsic::copysign),llvm::ArrayRef<llvm::Value*>({left,right})))
+		EMIT_FP_BINARY_OP(copysign,createCall(getLLVMIntrinsic({left->getType()},llvm::Intrinsic::copysign),llvm::ArrayRef<llvm::Value*>({left,right})))
 
 		EMIT_FP_UNARY_OP(neg,irBuilder.CreateFNeg(operand))
-		EMIT_FP_UNARY_OP(abs,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::fabs),llvm::ArrayRef<llvm::Value*>({operand})))
-		EMIT_FP_UNARY_OP(sqrt,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::sqrt),llvm::ArrayRef<llvm::Value*>({operand})))
+		EMIT_FP_UNARY_OP(abs,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::fabs),llvm::ArrayRef<llvm::Value*>({operand})))
+		EMIT_FP_UNARY_OP(sqrt,createCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::sqrt),llvm::ArrayRef<llvm::Value*>({operand})))
 
 		EMIT_FP_BINARY_OP(eq,coerceBoolToI32(irBuilder.CreateFCmpOEQ(left,right)))
 		EMIT_FP_BINARY_OP(ne,coerceBoolToI32(irBuilder.CreateFCmpUNE(left,right)))

@@ -138,6 +138,19 @@ execute cd $REPO_ROOT
 # Submodules need to be up to date
 ensure-submodules-up-to-date
 
+# Try using oob cmake if possible so as to save building time
+if [[ $ARCH == "Linux"  ]]; then
+   if [[ ${NAME} == "Ubuntu" ]]; then
+      if [[  -z $(command -v cmake 2>/dev/null)    ]] ; then
+         if [[ ${VERSION_ID} == "18.04"  ||   ${VERSION_ID} == "20.04" ]]; then
+            install-package cmake
+         fi
+      fi
+   elif [[ ${NAME} == "CentOS Linux" && "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]] || [[ ${NAME} == "Amazon Linux" ]] ; then
+      install-package cmake3
+   fi
+fi
+
 # Check if cmake already exists
 ( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null) && export CMAKE_CURRENT_VERSION=$($CMAKE --version | grep -E "cmake version[[:blank:]]*" | sed 's/.*cmake version //g')
 # If it exists, check that it's > required version + 

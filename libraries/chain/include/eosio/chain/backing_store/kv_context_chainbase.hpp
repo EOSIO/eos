@@ -56,6 +56,7 @@ namespace eosio { namespace chain {
       int32_t kv_it_compare(const kv_iterator& rhs) override {
          EOS_ASSERT(rhs.is_kv_chainbase_context_iterator(), kv_bad_iter, "Incompatible key-value iterators");
          auto& r = static_cast<const kv_iterator_chainbase&>(rhs);
+         
          EOS_ASSERT(contract == r.contract, kv_bad_iter, "Incompatible key-value iterators");
          EOS_ASSERT(!current || !tracker.is_removed(*current), kv_bad_iter, "Iterator to erased element");
          EOS_ASSERT(!r.current || !tracker.is_removed(*r.current), kv_bad_iter, "Iterator to erased element");
@@ -69,6 +70,7 @@ namespace eosio { namespace chain {
          if (!current) {
             return 1;
          }
+         
          return compare_blob(current->kv_key, r.current->kv_key);
       }
 
@@ -137,6 +139,11 @@ namespace eosio { namespace chain {
          actual_size = current->kv_value.size();
          return kv_it_stat::iterator_ok;
       }
+
+      std::optional<name> kv_it_payer() override {
+         if (!current) return {};
+         return current->payer;
+      }                              
    }; // kv_iterator_chainbase
 
    template<typename Resource_manager>

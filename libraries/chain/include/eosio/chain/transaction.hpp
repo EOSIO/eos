@@ -211,7 +211,13 @@ namespace eosio { namespace chain {
 
          struct none {
             digest_type                     digest;
+
             digest_type                     prunable_digest() const;
+
+            friend bool operator==(const none& lhs, const none& rhs) {
+               return lhs.digest == rhs.digest;
+            }
+            friend bool operator!=(const none& lhs, const none& rhs) { return !(lhs == rhs); }
          };
 
          using segment_type = std::variant<digest_type, bytes>;
@@ -219,26 +225,52 @@ namespace eosio { namespace chain {
          struct partial {
             std::vector<signature_type>     signatures;
             std::vector<segment_type>       context_free_segments;
+
             digest_type                     prunable_digest() const;
+
+            friend bool operator==(const partial& lhs, const partial& rhs) {
+               return std::tie( lhs.signatures, lhs.context_free_segments ) ==
+                      std::tie( rhs.signatures, rhs.context_free_segments );
+            }
+            friend bool operator!=(const partial& lhs, const partial& rhs) { return !(lhs == rhs); }
          };
 
          struct full {
             std::vector<signature_type>     signatures;
             std::vector<bytes>              context_free_segments;
+
             digest_type                     prunable_digest() const;
+
+            friend bool operator==(const full& lhs, const full& rhs) {
+               return std::tie( lhs.signatures, lhs.context_free_segments ) ==
+                      std::tie( rhs.signatures, rhs.context_free_segments );
+            }
+            friend bool operator!=(const full& lhs, const full& rhs) { return !(lhs == rhs); }
          };
 
          struct full_legacy {
             std::vector<signature_type>     signatures;
             bytes                           packed_context_free_data;
             vector<bytes>                   context_free_segments;
+
             digest_type                     prunable_digest() const;
+
+            friend bool operator==(const full_legacy& lhs, const full_legacy& rhs) {
+               return std::tie( lhs.signatures, lhs.packed_context_free_data, lhs.context_free_segments ) ==
+                      std::tie( rhs.signatures, rhs.packed_context_free_data, rhs.context_free_segments );
+            }
+            friend bool operator!=(const full_legacy& lhs, const full_legacy& rhs) { return !(lhs == rhs); }
          };
 
          using prunable_data_t = std::variant< full_legacy,
                                                none,
                                                partial,
                                                full >;
+
+         friend bool operator==(const prunable_data_type& lhs, const prunable_data_type& rhs) {
+            return lhs.prunable_data == rhs.prunable_data;
+         }
+         friend bool operator!=(const prunable_data_type& lhs, const prunable_data_type& rhs) { return !(lhs == rhs); }
 
          prunable_data_type prune_all() const;
          digest_type digest() const;
@@ -264,6 +296,12 @@ namespace eosio { namespace chain {
       explicit packed_transaction(signed_transaction t, bool legacy, compression_type _compression = compression_type::none);
 
       packed_transaction_v0_ptr to_packed_transaction_v0() const;
+
+      friend bool operator==(const packed_transaction& lhs, const packed_transaction& rhs) {
+         return std::tie(lhs.compression, lhs.prunable_data, lhs.packed_trx) ==
+                std::tie(rhs.compression, rhs.prunable_data, rhs.packed_trx);
+      }
+      friend bool operator!=(const packed_transaction& lhs, const packed_transaction& rhs) { return !(lhs == rhs); }
 
       uint32_t get_unprunable_size()const;
       uint32_t get_prunable_size()const;

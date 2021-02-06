@@ -47,14 +47,14 @@ namespace eosio { namespace chain {
       constexpr static int nbytes_with_chain_id = // the bytes count when the preamble contains chain_id
           sizeof(version) + sizeof(first_block_num) + sizeof(chain_id_type) + sizeof(block_log::npos);
 
-      void read_from(fc::datastream<const char*>& ds) {
+      void read_from(fc::datastream<const char*>& ds, const fc::path& log_path) {
         ds.read((char*)&version, sizeof(version));
          EOS_ASSERT(version > 0, block_log_exception, "Block log was not setup properly");
          EOS_ASSERT(
              block_log::is_supported_version(version), block_log_unsupported_version,
              "Unsupported version of block log. Block log version is ${version} while code supports version(s) "
-             "[${min},${max}]",
-             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version));
+             "[${min},${max}], log file: ${log}",
+             ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version)("log", log_path.generic_string()));
 
          first_block_num = 1;
          if (version != initial_version) {
@@ -288,7 +288,7 @@ namespace eosio { namespace chain {
            file.close();
         file.open(path.string(), mode);
         fc::datastream<const char*> ds(this->data(), this->size());
-        preamble.read_from(ds);
+        preamble.read_from(ds, path);
         first_block_pos = ds.tellp();
         return ds;
       }

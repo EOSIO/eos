@@ -58,7 +58,8 @@ class PluginHttpTest(unittest.TestCase):
                                                                                    "eosio::history_plugin",
                                                                                    "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
-                        "--contracts-console --http-validate-host=%s --verbose-http-errors ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
+                        "--contracts-console --http-validate-host=%s --verbose-http-errors "
+                        "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
         start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
@@ -930,11 +931,11 @@ class PluginHttpTest(unittest.TestCase):
         # connections with empty parameter
         default_cmd = cmd_base + "connections"
         ret_str = Utils.runCmdReturnStr(default_cmd)
-        self.assertEqual(ret_str, "[]")
+        self.assertIn("\"peer\":\"localhost:9011\"", ret_str)
         # connections with empty content parameter
         empty_content_cmd = default_cmd + self.http_post_str + self.empty_content_str
         ret_str = Utils.runCmdReturnStr(default_cmd)
-        self.assertEqual(ret_str, "[]")
+        self.assertIn("\"peer\":\"localhost:9011\"", ret_str)
         # connections with invalid parameter
         invalid_cmd = default_cmd + self.http_post_str + self.http_post_invalid_param
         ret_json = Utils.runCmdReturnJson(invalid_cmd)

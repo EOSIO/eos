@@ -565,6 +565,7 @@ namespace chain { namespace backing_store { namespace db_key_value_format {
 
    eosio::session::shared_bytes create_full_primary_key(name code, name scope, name table, uint64_t primary_key);
    eosio::session::shared_bytes create_full_prefix_key(name code, name scope, name table, std::optional<key_type> kt = std::optional<key_type>{});
+   eosio::session::shared_bytes create_full_primary_key(const eosio::session::shared_bytes& prefix, uint64_t primary_key);
 
    template<typename Key>
    eosio::session::shared_bytes create_full_secondary_key(name code, name scope, name table, const Key& sec_key, uint64_t primary_key) {

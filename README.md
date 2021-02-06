@@ -40,6 +40,7 @@ EOSIO currently supports the following operating systems:
 4. Ubuntu 18.04
 4. Ubuntu 20.04
 5. MacOS 10.14 (Mojave)
+6. MacOS 10.15 (Catalina)
 
 ---
 
@@ -128,7 +129,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started) walkthrough.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started-guide) walkthrough.
 
 ## Contributing
 
