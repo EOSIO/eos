@@ -77,7 +77,7 @@ namespace eosio { namespace chain {
          static const uint32_t min_supported_version;
          static const uint32_t max_supported_version;
 
-         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX );
+         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = UINT32_MAX, const char* reversible_block_dir_name="" );
 
          static std::optional<genesis_state> extract_genesis_state( const fc::path& data_dir );
 
