@@ -1,6 +1,7 @@
 #include <memory>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/config.hpp>
 
 #include <eosio/state_history/log.hpp>
@@ -83,6 +84,29 @@ void blocklog::read_log() {
       first_block = block_logger.first_block_num();
    }
 
+   eosio::chain::branch_type fork_db_branch;
+   if( fc::exists( blocks_dir / config::reversible_blocks_dir_name / config::forkdb_filename ) ) {
+      ilog( "opening fork_db" );
+      fork_database fork_db( blocks_dir / config::reversible_blocks_dir_name );
+
+      fork_db.open( []( block_timestamp_type timestamp,
+                        const flat_set<digest_type>& cur_features,
+                        const vector<digest_type>& new_features ) {}
+      );
+
+      fork_db_branch = fork_db.fetch_branch( fork_db.head()->id );
+      if( fork_db_branch.empty() ) {
+         elog( "no blocks available in reversible block database: only block_log blocks are available" );
+      } else {
+         auto first = fork_db_branch.rbegin();
+         auto last = fork_db_branch.rend() - 1;
+         ilog( "existing reversible fork_db block num ${first} through block num ${last} ",
+               ("first", (*first)->block_num)( "last", (*last)->block_num ) );
+         EOS_ASSERT( end->block_num() + 1 == (*first)->block_num, block_log_exception,
+                     "fork_db does not start at end of block log" );
+      }
+   }
+
    std::ofstream output_blocks;
    std::ostream* out;
    if (!output_file.empty()) {
@@ -129,6 +153,17 @@ void blocklog::read_log() {
       print_block(sb);
       ++block_num;
       contains_obj = true;
+   }
+
+   if( !fork_db_branch.empty() ) {
+      for( auto bitr = fork_db_branch.rbegin(); bitr != fork_db_branch.rend() && block_num <= last_block; ++bitr ) {
+         if (as_json_array && contains_obj)
+            *out << ",";
+         auto next = (*bitr)->block;
+         print_block(next);
+         ++block_num;
+         contains_obj = true;
+      }
    }
 
    if (as_json_array)
