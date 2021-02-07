@@ -422,8 +422,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print build environment information to console as JSON and exit")
          ("extract-build-info", bpo::value<bfs::path>(),
           "extract build environment information as JSON, write into specified file, and exit")
-         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
-          "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any validation checks while replaying blocks (useful for replaying blocks from untrusted source)")
          ("disable-replay-opts", bpo::bool_switch()->default_value(false),
@@ -438,10 +436,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
          ("terminate-at-block", bpo::value<uint32_t>()->default_value(0),
           "terminate after reaching this block number (if set to a non-zero number)")
-         ("import-reversible-blocks", bpo::value<bfs::path>(),
-          "replace reversible block database with blocks imported from specified file and then exit")
-         ("export-reversible-blocks", bpo::value<bfs::path>(),
-           "export reversible block database in portable format into specified file and then exit")
          ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
          ;
 
@@ -970,7 +964,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          eosio::chain::combined_database::destroy( my->chain_config->state_dir );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
-         wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
+         wlog( "The --truncate-at-block option can only be used with --hard-replay-blockchain." );
       }
 
       std::optional<chain_id_type> chain_id;
