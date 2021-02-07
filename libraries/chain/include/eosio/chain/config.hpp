@@ -13,6 +13,7 @@ const static auto default_blocks_dir_name    = "blocks";
 const static auto default_blocks_archive_dir_name  = "archive";
 const static auto default_blocks_log_stride        = UINT32_MAX;
 const static auto default_max_retained_block_files = 10;
+const static auto reversible_blocks_dir_name       = "reversible";
 
 const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "fork_db.dat";

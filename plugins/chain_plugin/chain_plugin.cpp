@@ -8,10 +8,8 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
@@ -27,6 +25,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -188,7 +188,6 @@ public:
    bool                             api_accept_transactions = true;
    bool                             account_queries_enabled = false;
 
-   std::optional<fork_database>      fork_db;
    std::optional<controller::config> chain_config;
    std::optional<controller>         chain;
    std::optional<genesis_state>      genesis;
@@ -686,28 +685,36 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    return pfs;
 }
 
+namespace {
+  // This can be removed when versions of eosio that support reversible chainbase state file no longer supported.
+  void upgrade_from_reversible_to_fork_db(chain_plugin_impl* my) {
+     namespace bfs = boost::filesystem;
+     bfs::path old_fork_db = my->chain_config->state_dir / config::forkdb_filename;
+     bfs::path new_fork_db = my->blocks_dir / config::reversible_blocks_dir_name / config::forkdb_filename;
+     if( bfs::exists( old_fork_db ) && bfs::is_regular_file( old_fork_db ) ) {
+        bool copy_file = false;
+        if( bfs::exists( new_fork_db ) && bfs::is_regular_file( new_fork_db ) ) {
+           if( bfs::last_write_time( old_fork_db ) > bfs::last_write_time( new_fork_db ) ) {
+              copy_file = true;
+           }
+        } else {
+           copy_file = true;
+           bfs::create_directories( my->blocks_dir / config::reversible_blocks_dir_name );
+        }
+        if( copy_file ) {
+           fc::rename( old_fork_db, new_fork_db );
+        } else {
+           fc::remove( old_fork_db );
+        }
+     }
+  }
+}
+
 void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
-
-         /* TODO: attempt to recover from forkdb ?
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-            }
-         }
-         */
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
@@ -946,21 +953,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
-      if( options.count("export-reversible-blocks") ) {
-         /* TODO: any need for this?
-         auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
-
-         if( p.is_relative()) {
-            p = bfs::current_path() / p;
-         }
-
-         if( export_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name, p ) )
-            ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-         else
-            ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-         */
-         EOS_THROW( node_management_success, "exported reversible blocks" );
-      }
+      // move fork_db to new location
+      upgrade_from_reversible_to_fork_db( my.get() );
 
       if( options.at( "delete-all-blocks" ).as<bool>()) {
          ilog( "Deleting state database and blocks" );
@@ -975,42 +969,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          eosio::chain::combined_database::destroy( my->chain_config->state_dir );
-         if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-            /* TODO: Don't see a use for this.
-            if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size )) {
-               ilog( "Reversible blocks database was not corrupted." );
-            }
-            */
-         }
-      } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-         /* TODO: Do we need this for fork database ?
-         if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                         my->chain_config->reversible_cache_size,
-                                         std::optional<fc::path>(),
-                                         options.at( "truncate-at-block" ).as<uint32_t>())) {
-            ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
-         } else {
-            ilog( "Exiting after fixing reversible blocks database..." );
-         }
-         */
-         EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
-      } else if( options.count("import-reversible-blocks") ) {
-         /* TODO: Any need for this?
-         auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
-         ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
-         fc::remove_all( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name );
-
-         import_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name,
-                                   my->chain_config->reversible_cache_size, reversible_blocks_file );
-         */
-         EOS_THROW( node_management_success, "imported reversible blocks" );
-      }
-
-      if( options.count("import-reversible-blocks") ) {
-         wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
       std::optional<chain_id_type> chain_id;
@@ -1427,217 +1387,6 @@ bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_ty
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
    my->incoming_transaction_async_method(trx, false, std::move(next));
-}
-
-bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              std::optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
-   try {
-      chainbase::database reversible( db_dir, database::read_only); // Test if dirty
-      // If it reaches here, then the reversible database is not dirty
-
-      if( truncate_at_block == 0 )
-         return false;
-
-      reversible.add_index<reversible_block_index>();
-      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-
-      auto itr = ubi.rbegin();
-      if( itr != ubi.rend() && itr->blocknum <= truncate_at_block )
-         return false; // Because we are not going to be truncating the reversible database at all.
-   } catch( const std::runtime_error& ) {
-   } catch( ... ) {
-      throw;
-   }
-   // Reversible block database is dirty (or incompatible). So back it up (unless already moved) and then create a new one.
-
-   auto reversible_dir = fc::canonical( db_dir );
-   if( reversible_dir.filename().generic_string() == "." ) {
-      reversible_dir = reversible_dir.parent_path();
-   }
-   fc::path backup_dir;
-
-   auto now = fc::time_point::now();
-
-   if( new_db_dir ) {
-      backup_dir = reversible_dir;
-      reversible_dir = *new_db_dir;
-   } else {
-      auto reversible_dir_name = reversible_dir.filename().generic_string();
-      EOS_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
-      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
-
-      EOS_ASSERT( !fc::exists(backup_dir),
-                  reversible_blocks_backup_dir_exist,
-                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
-                 ("backup_dir", backup_dir) );
-
-      fc::rename( reversible_dir, backup_dir );
-      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
-   }
-
-   fc::create_directories( reversible_dir );
-
-   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
-
-   std::optional<chainbase::database> old_reversible;
-
-   try {
-      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
-   } catch (const std::runtime_error &) {
-      // since we are allowing for dirty, it must be incompatible
-      ilog( "Did not recover any reversible blocks since reversible database incompatible");
-      return true;
-   }
-
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
-                           std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   old_reversible->add_index<reversible_block_index>();
-   new_reversible.add_index<reversible_block_index>();
-   const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   if( truncate_at_block > 0 && start > truncate_at_block ) {
-      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
-      return true;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = itr->blocknum;
-            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
-         });
-         end = itr->blocknum;
-         ++num;
-         if( end == truncate_at_block )
-            break;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( end == truncate_at_block )
-      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
-
-   if( num == 0 )
-      ilog( "There were no recoverable blocks in the reversible block database" );
-   else if( num == 1 )
-      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return true;
-}
-
-bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
-                                             uint32_t cache_size,
-                                             const fc::path& reversible_blocks_file ) {
-   std::fstream         reversible_blocks;
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
-
-   reversible_blocks.seekg( 0, std::ios::end );
-   auto end_pos = reversible_blocks.tellg();
-   reversible_blocks.seekg( 0 );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   new_reversible.add_index<reversible_block_index>();
-   try {
-      while( reversible_blocks.tellg() < end_pos ) {
-         signed_block_v0 tmp;
-         fc::raw::unpack(reversible_blocks, tmp);
-         num = tmp.block_num();
-
-         if( start == 0 ) {
-            start = num;
-         } else {
-            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
-                        "gap in reversible block database between ${end} and ${num}",
-                        ("end", end)("num", num)
-                      );
-         }
-
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(std::move(tmp), true) );
-         });
-         end = num;
-      }
-   } catch( gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-      FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
-   } catch( ... ) {}
-
-   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
-
-   if( num == 0 || end != num )
-      return false;
-
-   return true;
-}
-
-bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
-                                             const fc::path& reversible_blocks_file ) {
-   chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   reversible.add_index<reversible_block_index>();
-   const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         signed_block tmp;
-         fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
-         fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         const auto v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
-         auto packed_v0 = fc::raw::pack(*v0);
-         reversible_blocks.write( packed_v0.data(), packed_v0.size() );
-         end = itr->blocknum;
-         ++num;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( num == 0 ) {
-      ilog( "There were no recoverable blocks in the reversible block database" );
-      return false;
-   }
-   else if( num == 1 )
-      ilog( "Exported 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Exported ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return (end >= start) && ((end - start + 1) == num);
 }
 
 controller& chain_plugin::chain() { return *my->chain; }

@@ -22,7 +22,6 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/controller.hpp>
