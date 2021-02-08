@@ -551,7 +551,7 @@ namespace eosio {
       /// @param[in] window_size          The time, in microseconds, of the rejected block window
       /// @param[in] max_rejected_windows The max consecutive number of rejected block windows
       /// @note   Copy ctor is not allowed
-      block_status_monitor(fc::microseconds window_size = fc::microseconds(2*1000*1000),
+      explicit block_status_monitor(fc::microseconds window_size = fc::microseconds(2*1000),
             uint32_t max_rejected_windows = 13) :
          window_size_(window_size) {}
       block_status_monitor( const block_status_monitor& ) = delete;
