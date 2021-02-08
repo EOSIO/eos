@@ -539,7 +539,8 @@ namespace eosio {
    /// time windows (rbws).
    class block_status_monitor {
    private:
-      fc::microseconds window_size_{2*1000*1000};  ///< rbw time interval (2ms)
+      bool in_accepted_state_ {true};              ///< indicates of accepted(true) or rejected(false) state
+      fc::microseconds window_size_{2*1000};       ///< rbw time interval (2ms)
       fc::time_point   window_start_;              ///< The start of the recent rbw (0 implies not started)
       uint32_t         events_{0};                 ///< The number of consecutive rbws
       const uint32_t   max_consecutive_rejected_windows_{13};
@@ -570,10 +571,6 @@ namespace eosio {
       block_status_monitor& operator=( const block_status_monitor& ) = delete;
       block_status_monitor& operator=( block_status_monitor&& ) = delete;
    };
-   void block_status_monitor::reset() {
-      events_ = 0;
-      window_start_ = fc::time_point();
-   }
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
@@ -1553,37 +1550,37 @@ namespace eosio {
    }
 
    //-----------------------------------------------------------
+   void block_status_monitor::reset() {
+      in_accepted_state_ = true;
+      events_ = 0;
+   }
+
    void block_status_monitor::accepted() {
-      if( window_start_ != fc::time_point() ) {
-         window_start_ = fc::time_point();
-         events_ = 0;
+      if(in_accepted_state_) {
+         return;
       }
+      in_accepted_state_ = true;
+      events_ = 0;
    }
 
    void block_status_monitor::rejected() {
       const auto now = fc::time_point::now();
-      // if starting a new window
-      if( window_start_ == fc::time_point() ) {
+
+      // in rejected state
+      if(!in_accepted_state_) {
+         const auto elapsed = now - window_start_;
+         if( elapsed < window_size_ ) {
+            return;
+         }
+         ++events_;
          window_start_ = now;
          return;
       }
 
-      // if window time has not elapsed
-      const auto elapsed = now - window_start_;
-      if( elapsed < window_size_ ) {
-         return;
-      }
-
-      // if window time exactly expired
-      ++events_;
-      if( elapsed == window_size_ ) {
-         window_start_ = fc::time_point();
-      }
-
-      // window time exceeded
-      else {
-         window_start_ = now;
-      }
+      // switching to rejected state
+      in_accepted_state_ = false;
+      window_start_ = now;
+      events_ = 0;
    }
    //-----------------------------------------------------------
 
@@ -2010,9 +2007,9 @@ namespace eosio {
          c->close( false, true );
          return;
       }
+      c->block_status_monitor_.accepted();
       sync_update_expected( c, blk_id, blk_num, blk_applied );
       std::unique_lock<std::mutex> g_sync( sync_mtx );
-      c->block_status_monitor_.accepted();
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == head_catchup ) {
