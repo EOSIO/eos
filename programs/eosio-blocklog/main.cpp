@@ -52,6 +52,8 @@ struct blocklog {
    bool                             smoke_test = false;
    bool                             prune_transactions = false;
    bool                             help               = false;
+   bool                             extract_blocklog   = false;
+   uint32_t                         blocklog_split_stride   = 0;
 };
 
 struct report_time {
@@ -201,6 +203,13 @@ void blocklog::set_program_options(options_description& cli)
          ("transaction,t", bpo::value<std::vector<std::string> >()->multitoken(), "The transaction id to be pruned")
          ("prune-transactions", bpo::bool_switch(&prune_transactions)->default_value(false),
           "Prune the context free data and signatures from specified transactions of specified block-num.")
+         ("output-dir", bpo::value<bfs::path>()->default_value("."),
+          "the output location for 'split-blocklog' or 'extract-blocklog'.")
+         ("split-blocklog", bpo::value<uint32_t>(&blocklog_split_stride)->default_value(0),
+          "split the block log file based on the stride and store the result in the specified 'output-dir'.")
+         ("extract-blocklog", bpo::bool_switch(&extract_blocklog)->default_value(false),
+          "Extract blocks from blocks.log and blocks.index and keep the original." 
+          " Must give 'blocks-dir','output-dir', 'first and 'last'.")
          ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
          ;
 }
@@ -296,16 +305,24 @@ int main(int argc, char** argv) {
       variables_map vmap;
       bpo::store(bpo::parse_command_line(argc, argv, cli), vmap);
       bpo::notify(vmap);
+
       if (blog.help) {
          cli.print(std::cerr);
          return 0;
       }
+
+      const auto  blocks_dir = vmap["blocks-dir"].as<bfs::path>();
+      if (!block_log::exists(blocks_dir)) {
+         std::cerr << "The specified blocks-dir must contain blocks.log and blocks.index files";
+         return -1;
+      }
+
       if (blog.smoke_test) {
-         smoke_test(vmap.at("blocks-dir").as<bfs::path>());
+         smoke_test(blocks_dir);
          return 0;
       }
       if (blog.fix_irreversible_blocks) {
-          fix_irreversible_blocks(vmap.at("blocks-dir").as<bfs::path>());
+          fix_irreversible_blocks(blocks_dir);
           return 0;
       }
       if (blog.trim_log) {
@@ -314,17 +331,16 @@ int main(int argc, char** argv) {
             return -1;
          }
          if (blog.last_block != std::numeric_limits<uint32_t>::max()) {
-            if (trim_blocklog_end(vmap.at("blocks-dir").as<bfs::path>(), blog.last_block) != 0)
+            if (trim_blocklog_end(blocks_dir, blog.last_block) != 0)
                return -1;
          }
          if (blog.first_block != 0) {
-            if (!trim_blocklog_front(vmap.at("blocks-dir").as<bfs::path>(), blog.first_block))
+            if (!trim_blocklog_front(blocks_dir, blog.first_block))
                return -1;
          }
          return 0;
       }
       if (blog.make_index) {
-         const bfs::path blocks_dir = vmap.at("blocks-dir").as<bfs::path>();
          bfs::path out_file = blocks_dir / "blocks.index";
          const bfs::path block_file = blocks_dir / "blocks.log";
 
@@ -339,8 +355,9 @@ int main(int argc, char** argv) {
          rt.report();
          return 0;
       }
+      
+
       if (blog.prune_transactions) {
-         const auto  blocks_dir        = vmap["blocks-dir"].as<bfs::path>();
          const auto  state_history_dir = vmap["state-history-dir"].as<bfs::path>();
          const auto  block_num         = vmap["block-num"].as<uint32_t>();
          const auto  ids               = vmap.count("transaction") ? vmap["transaction"].as<std::vector<string>>() : std::vector<string>{};
@@ -350,7 +367,25 @@ int main(int argc, char** argv) {
          rt.report();
          return ret;
       }
-      //else print blocks.log as JSON
+
+      const auto output_dir = vmap["output-dir"].as<bfs::path>();
+
+      if (blog.blocklog_split_stride != 0) {
+         
+         block_log::split_blocklog(blocks_dir, output_dir, blog.blocklog_split_stride);
+         return 0;
+      }
+
+      if (blog.extract_blocklog) {
+         if (blog.first_block == 0 && blog.last_block == std::numeric_limits<uint32_t>::max()) {
+            std::cerr << "extract_blocklog does nothing unless specify first and/or last block.";
+            return -1;
+         }
+         block_log::extract_blocklog(blocks_dir, output_dir, blog.first_block, blog.last_block-blog.first_block+1);
+         return 0;
+      } 
+
+      // else print blocks.log as JSON
       blog.initialize(vmap);
       blog.read_log();
    } catch( const fc::exception& e ) {
