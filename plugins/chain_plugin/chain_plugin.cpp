@@ -2275,7 +2275,7 @@ struct kv_table_rows_context {
       abis.set_abi(abi, yield_function);
    }
 
-   bool point_query() const { return p.index_value.has_value(); }
+   bool point_query() const { return p.index_value.size(); }
 
    void write_prefix(fixed_buf_stream& strm) const {
       strm.write('\1');
@@ -2283,17 +2283,15 @@ struct kv_table_rows_context {
       to_key(p.index_name.to_uint64_t(), strm);
    }
 
-   std::vector<char> get_full_key(const std::optional<string>& maybe_key) const {
+   std::vector<char> get_full_key(string key) const {
       // the max possible encoded_key_byte_count occurs when the encoded type is string and when all characters 
       // in the string is '\0'
-      const size_t max_encoded_key_byte_count =
-          maybe_key.has_value() ? std::max(sizeof(uint64_t), 2 * maybe_key->size() + 1) : 0;
+      const size_t max_encoded_key_byte_count = std::max(sizeof(uint64_t), 2 * key.size() + 1);
       std::vector<char> full_key(prefix_size + max_encoded_key_byte_count);
       fixed_buf_stream  strm(full_key.data(), full_key.size());
       write_prefix(strm);
-      if (maybe_key.has_value()) {
-         key_helper::write_key(index_type, p.encode_type, *maybe_key, strm);
-      }
+      if (key.size())
+         key_helper::write_key(index_type, p.encode_type, key, strm);
       full_key.resize(strm.pos - full_key.data());
       return full_key;
    }
@@ -2455,7 +2453,7 @@ read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::g
    kv_table_rows_context context{db, p, abi_serializer_max_time, shorten_abi_errors};
 
    if (context.point_query()) {
-      EOS_ASSERT(!p.lower_bound && !p.upper_bound, chain::contract_table_query_exception,
+      EOS_ASSERT(p.lower_bound.empty() && p.upper_bound.empty(), chain::contract_table_query_exception,
                  "specify both index_value and ranges (i.e. lower_bound/upper_bound) is not allowed");
       read_only::get_table_rows_result result;
       auto full_key = context.get_full_key(p.index_value);
