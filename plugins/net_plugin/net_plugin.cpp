@@ -1970,10 +1970,10 @@ namespace eosio {
 
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
-      std::unique_lock<std::mutex> g( sync_mtx );
       c->block_status_monitor_.rejected();
       if( c->block_status_monitor_.max_events_violated()) {
          fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)("p", c->peer_name()) );
+         std::unique_lock<std::mutex> g( sync_mtx );
          sync_last_requested_num = 0;
          sync_source.reset();
          g.unlock();
