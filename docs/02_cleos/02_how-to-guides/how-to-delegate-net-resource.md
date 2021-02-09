@@ -1,33 +1,46 @@
 ## Goal
 
-Delegate resource for an account or application
+Delegate network bandwidth for an account or application.
 
 ## Before you begin
 
-* Install the currently supported version of `cleos`
+Make sure you meet the following requirements:
 
-* Ensure the reference system contracts from `eosio.contracts` repository is deployed and used to manage system resources
+* Familiarize with the [`cleos system delegatebw`](../03_command-reference/system/system-delegatebw.md) command and its parameters.
+* Install the currently supported version of `cleos`.
 
-* Understand the following:
-  * What is an account
-  * What is network bandwidth
-  * What is CPU bandwidth
+[[info | Note]]
+| `cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install `cleos`.
 
-
+* Ensure the reference system contracts from [`eosio.contracts`](https://github.com/EOSIO/eosio.contracts) repository is deployed and used to manage system resources.
+* Understand what an [account](https://developers.eos.io/welcome/latest/glossary/index/#account) is and its role in the blockchain.
+* Understand [NET bandwidth](https://developers.eos.io/welcome/latest/glossary/index/#net) in an EOSIO blockchain.
+* Understand [CPU bandwidth](https://developers.eos.io/welcome/latest/glossary/index/#cpu) in an EOSIO blockchain.
 
 ## Steps
 
-Delegate 0.01 SYS network bandwidth from `bob` to `alice`
+Perform the step below:
+
+Delegate CPU bandwidth from a source account to a receiver account:
+
+```sh
+cleos system delegatebw <from> <receiver> <stake_net_quantity> <stake_cpu_quantity>
+```
+
+Where `from` is the account to delegate bandwidth from, `receiver` is the account to receive the delegated bandwidth, and `stake_net_quantity` and/or `stake_cpu_quantity` is the amount of tokens to stake for network (NET) bandwidth and/or CPU bandwidth, respectively.
+
+Some examples are provided below:
+
+* Delegate 0.01 SYS network bandwidth from `bob` to `alice`:
+
+**Example Output**
 
 ```sh
 cleos system delegatebw bob alice "0.01 SYS" "0 SYS"
 ```
-
-You should see something below:
-
-```console
+```json
 executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd18e3ae  192 bytes  503 us
-#         eosio <= eosio::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.0100 SYS","stake_cpu_quanti...
+#         eosio <= eosio::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.0100 SYS","stake_cpu_quantity":"0.0000 SYS"...
 #   eosio.token <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.0010 SYS","memo":"stake bandwidth"}
 #  bob <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.0010 SYS","memo":"stake bandwidth"}
 #   eosio.stake <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.0010 SYS","memo":"stake bandwidth"}
