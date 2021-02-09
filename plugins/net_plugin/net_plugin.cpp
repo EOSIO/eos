@@ -560,7 +560,7 @@ namespace eosio {
       /// reset to initial state
       void reset();
       /// called when a block is accepted (sync_recv_block)
-      void accepted();
+      void accepted() { reset(); }
       /// called when a block is rejected
       void rejected();
       /// returns number of consecutive rbws
@@ -1551,14 +1551,6 @@ namespace eosio {
 
    //-----------------------------------------------------------
    void block_status_monitor::reset() {
-      in_accepted_state_ = true;
-      events_ = 0;
-   }
-
-   void block_status_monitor::accepted() {
-      if(in_accepted_state_) {
-         return;
-      }
       in_accepted_state_ = true;
       events_ = 0;
    }
