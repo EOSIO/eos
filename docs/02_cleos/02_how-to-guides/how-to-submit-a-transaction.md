@@ -7,12 +7,14 @@ Push a transaction
 * Install the currently supported version of `cleos`
 
 * Understand the following:
-  * What is a transaction
-  * How to generate a valid transaction JSON
+  * What is a [transaction](https://developers.eos.io/welcome/latest/glossary/index/#transaction).
+  * How to generate a valid transaction JSON.
+    * Consult [cleos push transaction reference](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/push/push-transaction), and pay attention to option `-d` and `-j`.
+    * Consult [push transaction operation](https://developers.eos.io/manuals/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index#operation/push_transactions) for chain api plug-in, and pay attention to the payload definition.
 
 ## Steps
 
-* Create a JSON snippet contains a valid transaction such as the following:
+* Create a JSON snippet which contains a valid transaction such as the following:
 
 ```JSON
 {
@@ -42,9 +44,9 @@ Push a transaction
 * You can also create a JSON snippet that uses clear text JSON for `data` field.
 
 [[info]]
-| Be aware that if a clear text `data` field is used, cleos need to fetch copies of required ABIs using `nodeos` API. That operation has a performance overhead on `nodeos`
+| Be aware that if a clear text `data` field is used, `cleos` needs to fetch copies of required ABIs using `nodeos` API. This operation has a performance overhead on `nodeos`. If you pass encoded hex `data`, no other parameters are needed.
 
-```JSON
+```json
 {
   "expiration": "2019-08-01T07:15:49",
   "ref_block_num": 34881,
@@ -74,18 +76,14 @@ Push a transaction
 }
 ```
 
-* Execute the following command:
+* Execute the following command to send a transaction stored in `TRX_FILE.json` file:
 
 ```sh
 cleos push transaction TRX_FILE.json
 ```
 
-* Submit a transaction from a JSON:
+* Execute the following command to send a transaction using the json content directly:
 
 ```sh
-cleos push transaction JSON
+cleos push transaction '{"expiration": "2019-08-01T07:15:49", "ref_block_num": 34881,"ref_block_prefix": 2972818865,"max_net_usage_words": 0,"max_cpu_usage_ms": 0,"delay_sec": 0,"context_free_actions": [],"actions": [{"account": "eosio.token","name": "transfer","authorization": [{"actor": "han","permission": "active"}],"data": {"from": "han","to": "eosio","quantity": "0.0001 SYS","memo": "m"}}],"transaction_extensions": [],"context_free_data": []}'
 ```
-
-<!---
-Link to Push Action API
--->
