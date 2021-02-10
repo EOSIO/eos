@@ -418,28 +418,27 @@ EOF
             IFS=$nIFS
         done
         IFS=$oIFS
+        if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+            cat <<EOF
+      - label: ":pipeline: Multiversion Test"
+        command:
+          - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
+          - ./.cicd/test.sh .cicd/multiversion.sh
+        env:
+          IMAGE_TAG: "ubuntu-18.04-pinned"
+          PLATFORM_TYPE: "pinned"
+        agents:
+          queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+        timeout: ${TIMEOUT:-30}
+        skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
+EOF
+    fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
             echo '  - wait'
             echo ''
         fi
     done
-    # Execute multiversion test
-    if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
-        cat <<EOF
-  - label: ":pipeline: Multiversion Test"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
-      - ./.cicd/test.sh .cicd/multiversion.sh
-    env:
-      IMAGE_TAG: "ubuntu-18.04-pinned"
-      PLATFORM_TYPE: "pinned"
-    agents:
-      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
-
-EOF
-    fi
+    
     # trigger eosio-lrt post pr
     if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
