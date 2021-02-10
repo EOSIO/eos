@@ -13,28 +13,17 @@ import os
 from os.path import join, exists
 from datetime import datetime
 
+import multiprocessing
+core_num = multiprocessing.cpu_count()
+
+
+Utils.Print("### BEGIN multiversion test ###")
 ###############################################################
 # nodeos_multiple_version_protocol_feature_test
 #
 # Test for verifying that older versions of nodeos can work with newer versions of nodeos.
 #
 ###############################################################
-
-# Parse command line arguments
-args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running",
-                              "--keep-logs", "--alternate-version-labels-file"})
-Utils.Debug=args.v
-killAll=args.clean_run
-dumpErrorDetails=args.dump_error_details
-dontKill=args.leave_running
-killEosInstances=not dontKill
-killWallet=not dontKill
-keepLogs=args.keep_logs
-alternateVersionLabelsFile=args.alternate_version_labels_file
-
-walletMgr=WalletMgr(True)
-cluster=Cluster(walletd=True)
-cluster.setWalletMgr(walletMgr)
 
 def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
     if not node.killed:
@@ -45,9 +34,14 @@ def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
 
 def shouldNodeContainPreactivateFeature(node):
     preactivateFeatureDigest = node.getSupportedProtocolFeatureDict()["PREACTIVATE_FEATURE"]["feature_digest"]
-    assert preactivateFeatureDigest
+    assert preactivateFeatureDigest, "preactivateFeatureDigest should not be empty"
+    Utils.Print("preactivateFeatureDigest: {}".format(preactivateFeatureDigest))
     blockHeaderState = node.getLatestBlockHeaderState()
+    assert blockHeaderState, "blockHeaderState should not be empty"
     activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
+    Utils.Print("activatedProtocolFeatures size: {}".format(len(activatedProtocolFeatures)))
+    for f in activatedProtocolFeatures:
+        Utils.Print("activatedProtocolFeature: {}".format(f))
     return preactivateFeatureDigest in activatedProtocolFeatures
 
 def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
@@ -77,133 +71,183 @@ def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
         return node.getIrreversibleBlockNum() >= blockNum
     return Utils.waitForTruth(hasBlockBecomeIrr, timeout)
 
-# List to contain the test result message
-testSuccessful = False
-try:
-    TestHelper.printSystemInfo("BEGIN")
-    cluster.killall(allInstances=killAll)
-    cluster.cleanup()
+def pauseBlockProductions(allNodes):
+    for node in allNodes:
+        if not node.killed: 
+            Utils.Print("** before node pause, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
+            node.processCurlCmd("producer", "pause", "")
+            Utils.Print("** after node pause, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
+    time.sleep(2) # Wait for some time to ensure all blocks are propagated
 
-    # Create a cluster of 4 nodes, each node has 1 producer. The first 3 nodes use the latest vesion,
-    # While the 4th node use the version that doesn't support protocol feature activation (i.e. 1.7.0)
-    associatedNodeLabels = {
-        "3": "170"
-    }
-    Utils.Print("Alternate Version Labels File is {}".format(alternateVersionLabelsFile))
-    assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
-    # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
-    # avoid dropping late blocks
-    assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
-                          useBiosBootFile=False,
-                          specificExtraNodeosArgs={
-                             0:"--http-max-response-time-ms 990000",
-                             1:"--http-max-response-time-ms 990000",
-                             2:"--http-max-response-time-ms 990000",
-                             3:"--last-block-time-offset-us -200000"},
-                          onlySetProds=True,
-                          pfSetupPolicy=PFSetupPolicy.NONE,
-                          alternateVersionLabelsFile=alternateVersionLabelsFile,
-                          associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
 
-    newNodeIds = [0, 1, 2]
-    oldNodeId = 3
-    newNodes = list(map(lambda id: cluster.getNode(id), newNodeIds))
-    oldNode = cluster.getNode(oldNodeId)
-    allNodes = [*newNodes, oldNode]
+def resumeBlockProductions(allNodes):
+    for node in allNodes:
+        if not node.killed: 
+            Utils.Print("** before node resume, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
+            node.processCurlCmd("producer", "resume", "")
+            Utils.Print("** after node resume, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
 
-    def pauseBlockProductions():
-        for node in allNodes:
-            if not node.killed: node.processCurlCmd("producer", "pause", "")
+def areNodesInSync(nodes:[Node]):
+    Utils.Print("*** CHECK areNodesInSync")
+    # Pause all block production to ensure the head is not moving
+    #pauseBlockProductions()
+    #time.sleep(2) # Wait for some time to ensure all blocks are propagated
+    headBlockIds = []
+    for node in nodes:
+        headBlockId = node.getInfo()["head_block_id"]
+        headBlockIds.append(headBlockId)
+    #resumeBlockProductions()
+    for hbi in headBlockIds:
+        Utils.Print("* headbBockId: {} *".format(hbi))
+    return len(set(headBlockIds)) == 1
 
-    def resumeBlockProductions():
-        for node in allNodes:
-            if not node.killed: node.processCurlCmd("producer", "resume", "")
+def main():
+    # Parse command line arguments
+    args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running",
+                                "--keep-logs", "--alternate-version-labels-file"})
+    Utils.Debug=args.v
+    killAll=args.clean_run
+    dumpErrorDetails=args.dump_error_details
+    dontKill=args.leave_running
+    killEosInstances=not dontKill
+    killWallet=not dontKill
+    keepLogs=args.keep_logs
+    alternateVersionLabelsFile=args.alternate_version_labels_file
 
-    def areNodesInSync(nodes:[Node]):
-        # Pause all block production to ensure the head is not moving
-        pauseBlockProductions()
-        time.sleep(2) # Wait for some time to ensure all blocks are propagated
-        headBlockIds = []
-        for node in nodes:
-            headBlockId = node.getInfo()["head_block_id"]
-            headBlockIds.append(headBlockId)
-        resumeBlockProductions()
-        return len(set(headBlockIds)) == 1
+    walletMgr=WalletMgr(True)
+    cluster=Cluster(walletd=True)
+    cluster.setWalletMgr(walletMgr)
 
-    # Before everything starts, all nodes (new version and old version) should be in sync
-    assert areNodesInSync(allNodes), "Nodes are not in sync before preactivation"
+    # List to contain the test result message
+    testSuccessful = False
+    try:
+        TestHelper.printSystemInfo("BEGIN")
+        cluster.killall(allInstances=killAll)
+        cluster.cleanup()
 
-    # First, we are going to test the case where:
-    # - 1st node has valid earliest_allowed_activation_time
-    # - While 2nd and 3rd node have invalid earliest_allowed_activation_time
-    # Producer in the 1st node is going to activate PREACTIVATE_FEATURE during his turn
-    # Immediately, in the next block PREACTIVATE_FEATURE should be active in 1st node, but not on 2nd and 3rd
-    # Therefore, 1st node will be out of sync with 2nd, 3rd, and 4th node
-    # After a round has passed though, 1st node will realize he's in minority fork and then join the other nodes
-    # Hence, the PREACTIVATE_FEATURE that was previously activated will be dropped and all of the nodes should be in sync
-    setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
-    setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
+        # Create a cluster of 4 nodes, each node has 1 producer. The first 3 nodes use the latest vesion,
+        # While the 4th node use the version that doesn't support protocol feature activation (i.e. 1.7.0)
+        associatedNodeLabels = {
+            "3": "170"
+        }
+        Utils.Print("Alternate Version Labels File is {}".format(alternateVersionLabelsFile))
+        assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
+        # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
+        # avoid dropping late blocks
+        assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
+                            extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                            useBiosBootFile=False,
+                            specificExtraNodeosArgs={
+                                0:"--http-max-response-time-ms 990000",
+                                1:"--http-max-response-time-ms 990000",
+                                2:"--http-max-response-time-ms 990000",
+                                3:"--last-block-time-offset-us -200000"},
+                            onlySetProds=True,
+                            pfSetupPolicy=PFSetupPolicy.NONE,
+                            alternateVersionLabelsFile=alternateVersionLabelsFile,
+                            associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
 
-    waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
-    newNodes[0].activatePreactivateFeature()
-    assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
-    assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
-           "2nd and 3rd node should not contain PREACTIVATE FEATURE"
-    assert areNodesInSync([newNodes[1], newNodes[2], oldNode]), "2nd, 3rd and 4th node should be in sync"
-    assert not areNodesInSync(allNodes), "1st node should be out of sync with the rest nodes"
+        newNodeIds = [0, 1, 2]
+        oldNodeId = 3
+        newNodes = list(map(lambda id: cluster.getNode(id), newNodeIds))
+        oldNode = cluster.getNode(oldNodeId)
+        allNodes = [*newNodes, oldNode]
 
-    waitForOneRound()
+        Utils.Print("+++ Nodes are in sync before preactivation +++")
+        # Before everything starts, all nodes (new version and old version) should be in sync
+        pauseBlockProductions(allNodes)
+        assert areNodesInSync(allNodes), "Nodes are not in sync before preactivation"
+        resumeBlockProductions(allNodes)
 
-    assert not shouldNodeContainPreactivateFeature(newNodes[0]), "PREACTIVATE_FEATURE should be dropped"
-    assert areNodesInSync(allNodes), "All nodes should be in sync"
+        # First, we are going to test the case where:
+        # - 1st node has valid earliest_allowed_activation_time
+        # - While 2nd and 3rd node have invalid earliest_allowed_activation_time
+        # Producer in the 1st node is going to activate PREACTIVATE_FEATURE during his turn
+        # Immediately, in the next block PREACTIVATE_FEATURE should be active in 1st node, but not on 2nd and 3rd
+        # Therefore, 1st node will be out of sync with 2nd, 3rd, and 4th node
+        # After a round has passed though, 1st node will realize he's in minority fork and then join the other nodes
+        # Hence, the PREACTIVATE_FEATURE that was previously activated will be dropped and all of the nodes should be in sync
 
-    # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
-    # Once the 1st node activate PREACTIVATE_FEATURE, all of them should have PREACTIVATE_FEATURE activated in the next block
-    # They will be in sync and their LIB will advance since they control > 2/3 of the producers
-    # Also the LIB should be able to advance past the block that contains PREACTIVATE_FEATURE
-    # However, the 4th node will be out of sync with them, and its LIB will stuck
-    setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", True)
-    setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", True)
+        Utils.Print("+++ 1st Node should contain PREACTIVATE FEATURE +++")
+        setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
+        setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
 
-    waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
-    libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
-    newNodes[0].activatePreactivateFeature()
+        waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
+        newNodes[0].activatePreactivateFeature()
+        assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
+        assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
+            "2nd and 3rd node should not contain PREACTIVATE FEATURE"
+        Utils.Print("+++ 2nd, 3rd and 4th node should be in sync +++")
+        pauseBlockProductions(allNodes)
+        assert areNodesInSync([newNodes[1], newNodes[2], oldNode]), "2nd, 3rd and 4th node should be in sync"
+        Utils.Print("+++ 1st node should be out of sync with the rest nodes +++")
+        assert not areNodesInSync(allNodes), "1st node should be out of sync with the rest nodes"
+        resumeBlockProductions(allNodes)
 
-    assert areNodesInSync(newNodes), "New nodes should be in sync"
-    assert not areNodesInSync(allNodes), "Nodes should not be in sync after preactivation"
-    for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
+        waitForOneRound()
 
-    activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
-    assert waitUntilBlockBecomeIrr(newNodes[0], activatedBlockNum), \
-           "1st node LIB should be able to advance past the block that contains PREACTIVATE_FEATURE"
-    assert newNodes[1].getIrreversibleBlockNum() >= activatedBlockNum and \
-           newNodes[2].getIrreversibleBlockNum() >= activatedBlockNum, \
-           "2nd and 3rd node LIB should also be able to advance past the block that contains PREACTIVATE_FEATURE"
-    assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
-           "4th node LIB should stuck on LIB before PREACTIVATE_FEATURE is activated"
+        assert not shouldNodeContainPreactivateFeature(newNodes[0]), "PREACTIVATE_FEATURE should be dropped"
 
-    # Restart old node with newest version
-    # Before we are migrating to new version, use --export-reversible-blocks as the old version
-    # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
-    # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
-    # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
-    portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
-    oldNode.kill(signal.SIGTERM)
-    # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
-    oldNode.relaunch(chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
-    oldNode.relaunch(chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
-    os.remove(portableRevBlkPath)
+        pauseBlockProductions(allNodes)
+        assert areNodesInSync(allNodes), "All nodes should be in sync"
+        resumeBlockProductions(allNodes)
 
-    restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
-    time.sleep(2) # Give some time to replay
+        # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
+        # Once the 1st node activate PREACTIVATE_FEATURE, all of them should have PREACTIVATE_FEATURE activated in the next block
+        # They will be in sync and their LIB will advance since they control > 2/3 of the producers
+        # Also the LIB should be able to advance past the block that contains PREACTIVATE_FEATURE
+        # However, the 4th node will be out of sync with them, and its LIB will stuck
+        setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", True)
+        setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", True)
 
-    assert areNodesInSync(allNodes), "All nodes should be in sync"
-    assert shouldNodeContainPreactivateFeature(oldNode), "4th node should contain PREACTIVATE_FEATURE"
+        waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
+        libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
+        newNodes[0].activatePreactivateFeature()
 
-    testSuccessful = True
-finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+        pauseBlockProductions(allNodes)
+        assert areNodesInSync(newNodes), "New nodes should be in sync"
+        assert not areNodesInSync(allNodes), "Nodes should not be in sync after preactivation"
+        resumeBlockProductions(allNodes)
 
-exitCode = 0 if testSuccessful else 1
-exit(exitCode)
+        for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
+
+        activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
+        assert waitUntilBlockBecomeIrr(newNodes[0], activatedBlockNum), \
+            "1st node LIB should be able to advance past the block that contains PREACTIVATE_FEATURE"
+        assert newNodes[1].getIrreversibleBlockNum() >= activatedBlockNum and \
+            newNodes[2].getIrreversibleBlockNum() >= activatedBlockNum, \
+            "2nd and 3rd node LIB should also be able to advance past the block that contains PREACTIVATE_FEATURE"
+        assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
+            "4th node LIB should stuck on LIB before PREACTIVATE_FEATURE is activated"
+
+        # Restart old node with newest version
+        # Before we are migrating to new version, use --export-reversible-blocks as the old version
+        # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
+        # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
+        # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
+        portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
+        oldNode.kill(signal.SIGTERM)
+        # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
+        oldNode.relaunch(chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
+        oldNode.relaunch(chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
+        os.remove(portableRevBlkPath)
+
+        restartNode(oldNode, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
+        time.sleep(2) # Give some time to replay
+
+        pauseBlockProductions(allNodes)
+        assert areNodesInSync(allNodes), "All nodes should be in sync"
+        resumeBlockProductions(allNodes)
+        assert shouldNodeContainPreactivateFeature(oldNode), "4th node should contain PREACTIVATE_FEATURE"
+
+        testSuccessful = True
+    finally:
+        TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+
+    Utils.Print("### END multiversion test ###")
+
+    exitCode = 0 if testSuccessful else 1
+    exit(exitCode)
+
+if __name__ == "__main__":
+    main()
