@@ -381,7 +381,7 @@ namespace eosio { namespace chain { namespace backing_store {
          // check if there is a table key to determine if we can return an end iterator
          key_bundle table_key {db_key_value_format::create_table_key(scope_name, table_name), code_name };
          auto table_value = current_session.read(table_key.full_key);
-         if (!table_value) {
+         if (table_value) {
             return table_ei;
          }
          else {
