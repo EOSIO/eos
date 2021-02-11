@@ -44,7 +44,7 @@ Push a transaction
 * You can also create a JSON snippet that uses clear text JSON for `data` field.
 
 [[info]]
-| Be aware that if a clear text `data` field is used, `cleos` needs to fetch copies of required ABIs using `nodeos` API. This operation has a performance overhead on `nodeos`. If you pass encoded hex `data`, no other parameters are needed.
+| Be aware that if a clear text `data` field is used, `cleos` needs to fetch the required ABI using `nodeos` API. This operation has a performance overhead on `nodeos`. On the other if hex data is used in the `data` field than the ABI fetching is not done anymore and thus the command execution by cleos is faster.
 
 ```json
 {
