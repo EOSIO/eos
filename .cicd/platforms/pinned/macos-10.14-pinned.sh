@@ -29,4 +29,5 @@ cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" 
 # add sbin to path from rabbitmq-server
 echo "export PATH=$PATH:/usr/local/sbin" >> ~/.bash_profile
 # initialize postgres configuration files
+sudo rm -rf /usr/local/var/postgres
 initdb --locale=C -E UTF-8 /usr/local/var/postgres
