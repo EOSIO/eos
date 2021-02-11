@@ -17,7 +17,8 @@ RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.
 RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
     yum install -y rabbitmq-server
 # upgrade pip installation
-RUN pip install --upgrade pip
+RUN . /opt/rh/rh-python36/enable && \
+    pip install --upgrade pip
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \
