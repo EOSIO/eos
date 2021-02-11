@@ -25,4 +25,5 @@ sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
 # initialize postgres configuration files
+sudo rm -rf /usr/local/var/postgres
 initdb --locale=C -E UTF-8 /usr/local/var/postgres
