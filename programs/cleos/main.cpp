@@ -2241,11 +2241,10 @@ struct activate_subcommand {
             data =  "[\"" + feature_digest + "\"]";
          } else {
             std::cout << "Can't find system feature : " << feature_name_str << std::endl;
+            return;
          }
          fc::variant action_args_var;
-         if( !data.empty() ) {
-            action_args_var = json_from_file_or_string(data, fc::json::parse_type::relaxed_parser);
-         }
+         action_args_var = json_from_file_or_string(data, fc::json::parse_type::relaxed_parser);
          auto accountPermissions = get_account_permissions(permissions);
          send_actions({chain::action{accountPermissions, name(contract_account), name(action),
                                      variant_to_bin( name(contract_account), name(action), action_args_var ) }}, signing_keys_opt.get_keys());
