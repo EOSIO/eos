@@ -138,19 +138,20 @@ try:
             headBlockIds.append(hb["head_block_id"])
             Utils.Print("node {}, head block id: {}, num: {}".format(node.nodeId, hb["head_block_id"], hb["head_block_num"]))
         assert len(set(headBlockNums)) == len(set(headBlockIds)), "Different block IDs have the same block numbers, thus nodes are not in sync"
-        def nodeHasBlocks(node, blockIds, blockNums):
-            for blkNum, blkId in zip(blockNums, blockIds):
-                assert node.waitForBlock(blkNum, timeout=3) != None, "Expected to find block {}, but only reached {}".format(blkNum, node.getInfo()["head_block_num"])
-                if node.getBlock(blkNum) is None:
-                    Utils.Print("node {} cannot get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
-                    return False
-            return True
         # Check if each node has head blocks from other producers
         inSync = True
-        for node in nodes:
-            if not nodeHasBlocks(node, headBlockIds, headBlockNums): 
-                inSync = False
-                break
+        if len(set(headBlockNums)) != 1:
+            def nodeHasBlocks(node, blockIds, blockNums):
+                for blkNum, blkId in zip(blockNums, blockIds):
+                    assert node.waitForBlock(blkNum, timeout=3) != None, "Expected to find block {}, but only reached {}".format(blkNum, node.getInfo()["head_block_num"])
+                    if node.getBlock(blkNum) is None:
+                        Utils.Print("node {} cannot get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
+                        return False
+                return True
+            for node in nodes:
+                if not nodeHasBlocks(node, headBlockIds, headBlockNums): 
+                    inSync = False
+                    break
 
         if resumeAll:
             resumeBlockProductions()
@@ -205,8 +206,8 @@ try:
     libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
     newNodes[0].activatePreactivateFeature()
 
-    assert areNodesInSync(newNodes), "New nodes should be in sync"
-    assert not areNodesInSync(allNodes), "Nodes should not be in sync after preactivation"
+    assert areNodesInSync(newNodes, pauseAll=True, resumeAll=False), "New nodes should be in sync"
+    assert not areNodesInSync(allNodes, pauseAll=False, resumeAll=True), "Nodes should not be in sync after preactivation"
     for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
 
     activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
