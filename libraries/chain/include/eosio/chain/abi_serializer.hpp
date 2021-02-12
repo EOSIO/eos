@@ -557,17 +557,9 @@ namespace impl {
          out(name, std::move(mvo));
       }
 
-      /**
-       * overload of to_variant_object for transaction
-       *
-       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
-       */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      static void add_transaction( mutable_variant_object& mvo, const transaction& trx, Resolver resolver, abi_traverse_context& ctx  )
       {
-         static_assert(fc::reflector<transaction>::total_member_count == 9);
-         auto h = ctx.enter_scope();
-         mutable_variant_object mvo;
          mvo("expiration", trx.expiration);
          mvo("ref_block_num", trx.ref_block_num);
          mvo("ref_block_prefix", trx.ref_block_prefix);
@@ -583,6 +575,38 @@ namespace impl {
             const auto& deferred_transaction_generation = std::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
+      }
+
+      /**
+       * overload of to_variant_object for transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<transaction>::total_member_count == 9);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         add_transaction(mvo, trx, resolver, ctx);
+
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for signed_transaction
+       *
+       * This matches the FC_REFLECT for this type, but this is provided to allow extracting the contents of trx.transaction_extensions
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const signed_transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_transaction>::total_member_count == 11);
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         add_transaction(mvo, trx, resolver, ctx);
+         mvo("signatures", trx.signatures);
+         mvo("context_free_data", trx.context_free_data);
 
          out(name, std::move(mvo));
       }
@@ -816,6 +840,86 @@ namespace impl {
 
          EOS_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                     "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
+      }
+
+      template<typename Resolver>
+      static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         if (vo.contains("expiration")) {
+            from_variant(vo["expiration"], trx.expiration);
+         }
+         if (vo.contains("ref_block_num")) {
+            from_variant(vo["ref_block_num"], trx.ref_block_num);
+         }
+         if (vo.contains("ref_block_prefix")) {
+            from_variant(vo["ref_block_prefix"], trx.ref_block_prefix);
+         }
+         if (vo.contains("max_net_usage_words")) {
+            from_variant(vo["max_net_usage_words"], trx.max_net_usage_words);
+         }
+         if (vo.contains("max_cpu_usage_ms")) {
+            from_variant(vo["max_cpu_usage_ms"], trx.max_cpu_usage_ms);
+         }
+         if (vo.contains("delay_sec")) {
+            from_variant(vo["delay_sec"], trx.delay_sec);
+         }
+         if (vo.contains("context_free_actions")) {
+            extract(vo["context_free_actions"], trx.context_free_actions, resolver, ctx);
+         }
+         if (vo.contains("actions")) {
+            extract(vo["actions"], trx.actions, resolver, ctx);
+         }
+
+         // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
+         // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
+         // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
+         // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
+         if (vo.contains("deferred_transaction_generation")) {
+            std::cerr << "has deferred_transaction_generation\n";
+            deferred_transaction_generation_context deferred_transaction_generation;
+            from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
+            emplace_extension(
+               trx.transaction_extensions,
+               deferred_transaction_generation_context::extension_id(),
+               fc::raw::pack( deferred_transaction_generation )
+            );
+            // if both are present, they need to match
+            if (vo.contains("transaction_extensions")) {
+               std::cerr << "also has transaction_extensions\n";
+               extensions_type trx_extensions;
+               from_variant(vo["transaction_extensions"], trx_extensions);
+               EOS_ASSERT(trx.transaction_extensions == trx_extensions, packed_transaction_type_exception,
+                        "Transaction contained deferred_transaction_generation and transaction_extensions that did not match");
+            }
+         }
+         else if (vo.contains("transaction_extensions")) {
+            std::cerr << "has transaction_extensions\n";
+            from_variant(vo["transaction_extensions"], trx.transaction_extensions);
+         }
+      }
+
+      template<typename Resolver>
+      static void extract( const fc::variant& v, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<transaction>::total_member_count == 9);
+         auto h = ctx.enter_scope();
+         const variant_object& vo = v.get_object();
+         extract_transaction(vo, trx, resolver, ctx);
+      }
+
+      template<typename Resolver>
+      static void extract( const fc::variant& v, signed_transaction& strx, Resolver resolver, abi_traverse_context& ctx )
+      {
+         static_assert(fc::reflector<signed_transaction>::total_member_count == 11);
+         auto h = ctx.enter_scope();
+         const variant_object& vo = v.get_object();
+         extract_transaction(vo, strx, resolver, ctx);
+         if (vo.contains("signatures")) {
+            from_variant(vo["signatures"], strx.signatures);
+         }
+         if (vo.contains("context_free_data")) {
+            from_variant(vo["context_free_data"], strx.context_free_data);
+         }
       }
 
       template<typename Resolver>
