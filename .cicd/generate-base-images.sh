@@ -6,7 +6,7 @@ set -eo pipefail
 echo '--- :docker: Build or Pull Base Image :minidisc:'
 echo "Looking for '$HASHED_IMAGE_TAG' container in our registries."
 export EXISTS_DOCKER_HUB='false'
-export EXISTS_ECR='false'
+export EXISTS_MIRROR='false'
 MANIFEST_COMMAND="docker manifest inspect '${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$HASHED_IMAGE_TAG'"
 echo "$ $MANIFEST_COMMAND"
 set +e
@@ -17,11 +17,11 @@ if [[ "$MANIFEST_INSPECT_EXIT_STATUS" == '0' ]]; then
     if [[ "$(echo "$REGISTRY" | grep -icP 'docker[.]io/')" != '0' ]]; then
         export EXISTS_DOCKER_HUB='true'
     else
-        export EXISTS_ECR='true'
+        export EXISTS_MIRROR='true'
     fi
 fi
 # pull and copy as-necessary
-if [[ "$EXISTS_ECR" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
+if [[ "$EXISTS_MIRROR" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
     DOCKER_PULL_COMMAND="docker pull '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
@@ -42,7 +42,7 @@ elif [[ "$EXISTS_DOCKER_HUB" == 'true' ]]; then
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
-    if [[ "$EXISTS_ECR" == 'false' && ! -z "$MIRROR_REGISTRY" ]]; then
+    if [[ "$EXISTS_MIRROR" == 'false' && ! -z "$MIRROR_REGISTRY" ]]; then
         # tag
         DOCKER_TAG_COMMAND="docker tag '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG' '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
@@ -51,11 +51,11 @@ elif [[ "$EXISTS_DOCKER_HUB" == 'true' ]]; then
         DOCKER_PUSH_COMMAND="docker push '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_PUSH_COMMAND"
         eval $DOCKER_PUSH_COMMAND
-        export EXISTS_ECR='true'
+        export EXISTS_MIRROR='true'
     fi
 fi
 # esplain yerself
-if [[ "$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_ECR" == 'false' ]]; then
+if [[ "$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_MIRROR" == 'false' ]]; then
     echo 'Building base image from scratch.'
 elif [[ "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then
     echo "OVERWRITE_BASE_IMAGE is set to 'true', building from scratch and pushing to docker registries."
@@ -63,7 +63,7 @@ elif [[ "$FORCE_BASE_IMAGE" == 'true' ]]; then
     echo "FORCE_BASE_IMAGE is set to 'true', building from scratch and NOT pushing to docker registries."
 fi
 # build, if neccessary
-if [[ ("$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_ECR" == 'false') || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
+if [[ ("$EXISTS_DOCKER_HUB" == 'false' && "$EXISTS_MIRROR" == 'false') || "$FORCE_BASE_IMAGE" == 'true' || "$OVERWRITE_BASE_IMAGE" == 'true' ]]; then # if we cannot pull the image, we build and push it first
     export DOCKER_BUILD_COMMAND="docker build --no-cache -t 'ci:$HASHED_IMAGE_TAG' -f '$CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile' ."
     echo "$ $DOCKER_BUILD_COMMAND"
     eval $DOCKER_BUILD_COMMAND
