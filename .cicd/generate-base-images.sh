@@ -21,7 +21,7 @@ if [[ "$MANIFEST_INSPECT_EXIT_STATUS" == '0' ]]; then
     fi
 fi
 # pull and copy as-necessary
-if [[ "$EXISTS_ECR" == 'true' ]]; then
+if [[ "$EXISTS_ECR" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
     DOCKER_PULL_COMMAND="docker pull '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
@@ -37,12 +37,12 @@ if [[ "$EXISTS_ECR" == 'true' ]]; then
         eval $DOCKER_PUSH_COMMAND
         export EXISTS_DOCKER_HUB='true'
     fi
-elif [[ "$EXISTS_DOCKER_HUB" == 'true' && ! -z "$MIRROR_REGISTRY" ]]; then
+elif [[ "$EXISTS_DOCKER_HUB" == 'true' ]]; then
     DOCKER_PULL_COMMAND="docker pull '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG'"
     echo "$ $DOCKER_PULL_COMMAND"
     eval $DOCKER_PULL_COMMAND
     # copy, if necessary
-    if [[ "$EXISTS_DOCKER_HUB" == 'false' ]]; then
+    if [[ "$EXISTS_ECR" == 'false' && ! -z "$MIRROR_REGISTRY" ]]; then
         # tag
         DOCKER_TAG_COMMAND="docker tag '$DOCKERHUB_CI_REGISTRY:$HASHED_IMAGE_TAG' '$MIRROR_REGISTRY:$HASHED_IMAGE_TAG'"
         echo "$ $DOCKER_TAG_COMMAND"
