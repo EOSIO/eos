@@ -128,26 +128,30 @@ try:
         if pauseAll:
             pauseBlockProductions()
             time.sleep(2) # Wait for some time to ensure all blocks are propagated
-        # Get current head block number for each producer
-        headBlockNums = set()
+
+        # Get current head block number and IDs for each producer
+        headBlockNums = []
+        headBlockIds = []
         for node in nodes:
-            hbn = node.getInfo()["head_block_num"]
-            headBlockNums.add(hbn)
-            Utils.Print("node {}, hbn: {}".format(node.nodeId, hbn))
+            hb = node.getInfo()
+            headBlockNums.append(hb["head_block_num"])
+            headBlockIds.append(hb["head_block_id"])
+            Utils.Print("node {}, head block id: {}, num: {}".format(node.nodeId, hb["head_block_id"], hb["head_block_num"]))
+        assert len(set(headBlockNums)) == len(set(headBlockIds)), "Different block IDs have the same block numbers, thus nodes are not in sync"
+        def nodeHasBlocks(node, blockIds, blockNums):
+            for blkNum, blkId in zip(blockNums, blockIds):
+                assert node.waitForBlock(blkNum, timeout=3) != None, "Expected to find block {}, but only reached {}".format(blkNum, node.getInfo()["head_block_num"])
+                if node.getBlock(blkNum) is None:
+                    Utils.Print("node {} cannot get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
+                    return False
+            return True
+        # Check if each node has head blocks from other producers
         inSync = True
-        if len(headBlockNums) != 1:
-            def nodeHasBlocks(node, blockNums):
-                for bn in blockNums:
-                    if node.getBlock(bn) is None:
-                        Utils.Print("node {} cannot get block {}".format(node.nodeId, bn))
-                        return False
-                return True
-            # Wait 1 second, then check if all nodes have previously saved head blocks of other producers
-            time.sleep(1)
-            for node in nodes:
-                if not nodeHasBlocks(node, headBlockNums): 
-                    inSync = False
-                    break
+        for node in nodes:
+            if not nodeHasBlocks(node, headBlockIds, headBlockNums): 
+                inSync = False
+                break
+
         if resumeAll:
             resumeBlockProductions()
         return inSync
@@ -181,8 +185,8 @@ try:
     assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
         "2nd and 3rd node should not contain PREACTIVATE FEATURE"
     Utils.Print("+++ 2nd, 3rd and 4th node should be in sync, and 1st node should be out of sync +++")
-    assert areNodesInSync([newNodes[1], newNodes[2], oldNode], resumeAll=False), "2nd, 3rd and 4th node should be in sync"
-    assert not areNodesInSync(allNodes, pauseAll=False), "+++ 1st node should be out of sync with the rest nodes +++"
+    assert areNodesInSync([newNodes[1], newNodes[2], oldNode], pauseAll=True, resumeAll=False), "2nd, 3rd and 4th node should be in sync"
+    assert not areNodesInSync(allNodes, pauseAll=False, resumeAll=True), "+++ 1st node should be out of sync with the rest nodes +++"
 
     waitForOneRound()
 
