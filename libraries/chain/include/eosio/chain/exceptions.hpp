@@ -430,6 +430,8 @@ namespace eosio { namespace chain {
                                     3100010, "JSON parse exception" )
       FC_DECLARE_DERIVED_EXCEPTION( sig_variable_size_limit_exception,      misc_exception,
                                     3100011, "Variable length component of signature too large" )
+      FC_DECLARE_DERIVED_EXCEPTION( disallowed_chain_id_exception,          misc_exception,
+                                    3100012, "Compile time required chain id doesn't match runtime chain id" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception, chain_exception,
