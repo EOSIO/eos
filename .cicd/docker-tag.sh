@@ -9,23 +9,17 @@ echo '$ echo ${#CONTRACT_REGISTRIES[*]} # array length'
 echo ${#CONTRACT_REGISTRIES[*]}
 echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
 echo ${CONTRACT_REGISTRIES[*]}
+export IMAGE="${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
-for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
-    if [[ ! -z "$REGISTRY" ]]; then
-        echo "Pulling from '$REGISTRY'."
-        IMAGE="$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
-        DOCKER_PULL_COMMAND="docker pull '$IMAGE'"
-        echo "$ $DOCKER_PULL_COMMAND"
-        eval $DOCKER_PULL_COMMAND
-    fi
-done
+DOCKER_PULL_COMMAND="docker pull '$IMAGE'"
+echo "$ $DOCKER_PULL_COMMAND"
+eval $DOCKER_PULL_COMMAND
 # tag
 echo '+++ :label: Tagging Container(s)'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Tagging for registry $REGISTRY."
-        IMAGE="$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
         DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
