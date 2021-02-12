@@ -50,15 +50,15 @@ echo '--- :put_litter_in_its_place: Cleaning Up'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Cleaning up from $REGISTRY."
-        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
         if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
-            DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+            DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG' || :"
             echo "$ $DOCKER_RMI_COMMAND"
             eval $DOCKER_RMI_COMMAND
         fi
-        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE'"
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
     fi
