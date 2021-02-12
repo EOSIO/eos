@@ -352,10 +352,10 @@ public:
         name                   code;                  // name of contract
         name                   table;                 // name of kv table,
         name                   index_name;            // name of index index
-        string                 encode_type = "bytes"; // "bytes" : binary values in index_value/lower_bound/upper_bound
-        std::optional<string>  index_value;           // index value for point query.  If this is set, it is processed as a point query
-        std::optional<string>  lower_bound;           // lower bound value of index of index_name. If index_value is not set and lower_bound is not set, return from the beginning of range in the prefix
-        std::optional<string>  upper_bound;           // upper bound value of index of index_name, If index_value is not set and upper_bound is not set, It is set to the beginning of the next prefix range.
+        string                 encode_type;           // encoded type for values in index_value/lower_bound/upper_bound
+        string                 index_value;           // index value for point query.  If this is set, it is processed as a point query
+        string                 lower_bound;           // lower bound value of index of index_name. If index_value is not set and lower_bound is not set, return from the beginning of range in the prefix
+        string                 upper_bound;           // upper bound value of index of index_name, If index_value is not set and upper_bound is not set, It is set to the beginning of the next prefix range.
         uint32_t               limit = 10;            // max number of rows
         bool                   reverse = false;       // if true output rows in reverse order
         bool                   show_payer = false;
