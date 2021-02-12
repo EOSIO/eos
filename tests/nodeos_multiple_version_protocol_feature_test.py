@@ -13,7 +13,6 @@ import os
 from os.path import join, exists
 from datetime import datetime
 
-Utils.Print("### BEGIN multiversion test ###")
 ###############################################################
 # nodeos_multiple_version_protocol_feature_test
 #
@@ -47,26 +46,20 @@ def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
 def shouldNodeContainPreactivateFeature(node):
     preactivateFeatureDigest = node.getSupportedProtocolFeatureDict()["PREACTIVATE_FEATURE"]["feature_digest"]
     assert preactivateFeatureDigest, "preactivateFeatureDigest should not be empty"
-    Utils.Print("preactivateFeatureDigest: {}".format(preactivateFeatureDigest))
     blockHeaderState = node.getLatestBlockHeaderState()
     assert blockHeaderState, "blockHeaderState should not be empty"
     activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
-    Utils.Print("activatedProtocolFeatures size: {}".format(len(activatedProtocolFeatures)))
-    for f in activatedProtocolFeatures:
-        Utils.Print("activatedProtocolFeature: {}".format(f))
     return preactivateFeatureDigest in activatedProtocolFeatures
 
-waitUntilBeginningOfProdTurn_head = 0
+beginningOfProdTurn_head = 0
 def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
     def isDesiredProdTurn():
-        #headBlockNum = node.getHeadBlockNum()
-        waitUntilBeginningOfProdTurn_head = node.getHeadBlockNum()
-        res =  node.getBlock(waitUntilBeginningOfProdTurn_head)["producer"] == producerName and \
-               node.getBlock(waitUntilBeginningOfProdTurn_head-1)["producer"] != producerName
+        beginningOfProdTurn_head = node.getHeadBlockNum()
+        res =  node.getBlock(beginningOfProdTurn_head)["producer"] == producerName and \
+               node.getBlock(beginningOfProdTurn_head-1)["producer"] != producerName
         return res
-    #Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
     ret = Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
-    assert ret != None, "Expected producer to arrive within 19 seconds (3 other producers)"
+    assert ret != None, "Expected producer to arrive within 19 seconds (with 3 other producers)"
 
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
@@ -124,53 +117,40 @@ try:
 
     def pauseBlockProductions():
         for node in allNodes:
-            if not node.killed: 
-                Utils.Print("** before node pause, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
-                node.processCurlCmd("producer", "pause", "")
-                Utils.Print("** after node pause, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
+            if not node.killed: node.processCurlCmd("producer", "pause", "")
 
     def resumeBlockProductions():
         for node in allNodes:
-            if not node.killed: 
-                Utils.Print("** before node resume, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
-                node.processCurlCmd("producer", "resume", "")
-                Utils.Print("** after node resume, hbi {}, head# {} **".format(node.getInfo()["head_block_id"], node.getHeadBlockNum()))
+            if not node.killed: node.processCurlCmd("producer", "resume", "")
 
     def areNodesInSync(nodes:[Node], pauseAll=True, resumeAll=True):
-        Utils.Print("*** CHECK areNodesInSync")
         # Pause all block production to ensure the head is not moving
         if pauseAll:
             pauseBlockProductions()
             time.sleep(2) # Wait for some time to ensure all blocks are propagated
-
-        # Get all current head block IDs for each producer
-        #headBlockIds = []
-        headBlockNums = []
+        # Get current head block number for each producer
+        headBlockNums = set()
         for node in nodes:
-            #headBlockId = node.getInfo()["head_block_id"]
-            #headBlockIds.append(headBlockId)
-            #headBlockDict[node.nodeId] = node.getInfo()["head_block_num"]
-            headBlockNums.append(node.getInfo()["head_block_num"])
-
-        # for hbi in headBlockIds:
-        #     Utils.Print("* headbBockId: {} *".format(hbi))
-        for hbn in headBlockNums:
-            Utils.Print("* headbBockNum: {} *".format(hbn))
-
-        if resumeAll:
-            resumeBlockProductions()
-
-        # Wait 1 second, then check if all nodes have previous head blocks by other producers
-        if len(set(headBlockNums)) != 1:
+            hbn = node.getInfo()["head_block_num"]
+            headBlockNums.add(hbn)
+            Utils.Print("node {}, hbn: {}".format(node.nodeId, hbn))
+        inSync = True
+        if len(headBlockNums) != 1:
+            def nodeHasBlocks(node, blockNums):
+                for bn in blockNums:
+                    if node.getBlock(bn) is None:
+                        Utils.Print("node {} cannot get block {}".format(node.nodeId, bn))
+                        return False
+                return True
+            # Wait 1 second, then check if all nodes have previously saved head blocks of other producers
             time.sleep(1)
             for node in nodes:
-                for hbn in set(headBlockNums):
-                    if not node.getBlock(hbn):
-                        Utils.Print("node {} should contain block {}".format(node.nodeId, hbn))
-                        return False
-        
-        #return len(set(headBlockIds)) == 1
-        return True
+                if not nodeHasBlocks(node, headBlockNums): 
+                    inSync = False
+                    break
+        if resumeAll:
+            resumeBlockProductions()
+        return inSync
 
     Utils.Print("+++ Nodes are in sync before preactivation +++")
     # Before everything starts, all nodes (new version and old version) should be in sync
@@ -184,26 +164,24 @@ try:
     # Therefore, 1st node will be out of sync with 2nd, 3rd, and 4th node
     # After a round has passed though, 1st node will realize he's in minority fork and then join the other nodes
     # Hence, the PREACTIVATE_FEATURE that was previously activated will be dropped and all of the nodes should be in sync
-
     Utils.Print("+++ 1st Node should contain PREACTIVATE FEATURE +++")
     setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
     setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
 
     waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
-    #newNodes[0].activatePreactivateFeature()
+    # Retry activatePreactivateFeature for the 1st node after it enters production window
     for i in range(3):
         newNodes[0].activatePreactivateFeature()
         if shouldNodeContainPreactivateFeature(newNodes[0]):
             break
-        diff =newNodes[0].getInfo()["head_block_num"] - waitUntilBeginningOfProdTurn_head
+        diff = newNodes[0].getInfo()["head_block_num"] - beginningOfProdTurn_head
         assert diff >= 12, "1st node should contain PREACTIVATE FEATURE since we set it during its production window"
 
     assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
     assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
         "2nd and 3rd node should not contain PREACTIVATE FEATURE"
-    Utils.Print("+++ 2nd, 3rd and 4th node should be in sync +++")
+    Utils.Print("+++ 2nd, 3rd and 4th node should be in sync, and 1st node should be out of sync +++")
     assert areNodesInSync([newNodes[1], newNodes[2], oldNode], resumeAll=False), "2nd, 3rd and 4th node should be in sync"
-    Utils.Print("+++ 1st node should be out of sync with the rest nodes +++")
     assert not areNodesInSync(allNodes, pauseAll=False), "+++ 1st node should be out of sync with the rest nodes +++"
 
     waitForOneRound()
@@ -257,8 +235,6 @@ try:
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
-
-Utils.Print("### END multiversion test ###")
 
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)
