@@ -2,8 +2,9 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq postgres || :
-curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq libpq postgres || :
+# libpqxx 7.3+ installations on mojave try to import libs not present in the sdk. pin to libpqxx 7.2.1 instead.
+curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/d14398187084e1d3fd1763ec13cea1044946a51f/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
