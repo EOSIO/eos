@@ -9,23 +9,17 @@ echo '$ echo ${#CONTRACT_REGISTRIES[*]} # array length'
 echo ${#CONTRACT_REGISTRIES[*]}
 echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
 echo ${CONTRACT_REGISTRIES[*]}
+export IMAGE="${MIRROR_REGISTRY:-$DOCKERHUB_CI_REGISTRY}:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
 # pull
 echo '+++ :arrow_down: Pulling Container(s)'
-for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
-    if [[ ! -z "$REGISTRY" ]]; then
-        echo "Pulling from '$REGISTRY'."
-        IMAGE="$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
-        DOCKER_PULL_COMMAND="docker pull '$IMAGE'"
-        echo "$ $DOCKER_PULL_COMMAND"
-        eval $DOCKER_PULL_COMMAND
-    fi
-done
+DOCKER_PULL_COMMAND="docker pull '$IMAGE'"
+echo "$ $DOCKER_PULL_COMMAND"
+eval $DOCKER_PULL_COMMAND
 # tag
 echo '+++ :label: Tagging Container(s)'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Tagging for registry $REGISTRY."
-        IMAGE="$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE"
         DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
@@ -56,15 +50,18 @@ echo '--- :put_litter_in_its_place: Cleaning Up'
 for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
     if [[ ! -z "$REGISTRY" ]]; then
         echo "Cleaning up from $REGISTRY."
-        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_BRANCH' || :"
+        echo "$ $DOCKER_RMI_COMMAND"
+        eval $DOCKER_RMI_COMMAND
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
         if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
-            DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
+            DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG' || :"
             echo "$ $DOCKER_RMI_COMMAND"
             eval $DOCKER_RMI_COMMAND
         fi
-        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE'"
+        DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT-$PLATFORM_TYPE' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
     fi
