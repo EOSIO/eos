@@ -74,6 +74,9 @@ fc::logger       _trx_successful_trace_log;
 const fc::string trx_failed_trace_logger_name("transaction_failure_tracing");
 fc::logger       _trx_failed_trace_log;
 
+const fc::string trx_trace_dump_logger_name("transaction_trace_dump");
+fc::logger       _trx_trace_dump_log;
+
 namespace eosio {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
@@ -500,6 +503,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("a", trx->packed_trx()->get_transaction().first_authorizer())
                           ("why",except_ptr->what()));
                }
+
+               //Dump transaction trace
+               fc_dlog(_trx_trace_dump_log, "[TRX_TRACE][REJECTING tx] ${entire_trace}",
+                        ("entire_trace", fc::json::to_pretty_string(response)));
+
             } else {
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}, auth: ${a}",
@@ -512,6 +520,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().first_authorizer()));
                }
+
+               //Dump transaction trace
+               fc_dlog(_trx_trace_dump_log, "[TRX_TRACE][ACCEPTING tx] ${entire_trace}",
+                        ("entire_trace", fc::json::to_pretty_string(response)));
+
             }
          };
       }
@@ -1059,6 +1072,7 @@ void producer_plugin::handle_sighup() {
    fc::logger::update( logger_name, _log );
    fc::logger::update(trx_successful_trace_logger_name, _trx_successful_trace_log);
    fc::logger::update(trx_failed_trace_logger_name, _trx_failed_trace_log);
+   fc::logger::update(trx_trace_dump_logger_name, _trx_trace_dump_log);
 }
 
 void producer_plugin::pause() {
