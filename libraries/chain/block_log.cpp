@@ -1086,8 +1086,8 @@ namespace eosio { namespace chain {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 
-   void extract_blocklog_i(block_log_bundle& log_bundle, fc::path new_block_filename, fc::path new_index_filename, uint32_t first_block_num,
-                           uint32_t num_blocks) {
+   void extract_blocklog_i(block_log_bundle& log_bundle, fc::path new_block_filename, fc::path new_index_filename,
+                           uint32_t first_block_num, uint32_t num_blocks) {
 
       auto position_for_block = [&log_bundle](uint64_t block_num) {
          uint64_t block_order = block_num - log_bundle.log_data.first_block_num();
@@ -1118,13 +1118,13 @@ namespace eosio { namespace chain {
       }
 
       fc::datastream<char*> ds(new_block_file.data(), new_block_file.size());
-      block_log_preamble preamble;
+      block_log_preamble    preamble;
       // version 4 or above have different log entry format; therefore version 1 to 3 can only be upgrade up to version
       // 3 format.
       preamble.version = log_bundle.log_data.version() < pruned_transaction_version ? genesis_state_or_chain_id_version
                                                                                     : block_log::max_supported_version;
       preamble.first_block_num = first_block_num;
-      preamble.chain_context = log_bundle.log_data.chain_id();
+      preamble.chain_context   = log_bundle.log_data.chain_id();
       preamble.write_to(ds);
       ds.write(log_bundle.log_data.data() + first_kept_block_pos, last_block_pos - first_kept_block_pos);
 
@@ -1234,16 +1234,18 @@ namespace eosio { namespace chain {
       return std::make_pair(new_block_filename, new_index_filename);
    }
 
-   void block_log::extract_blocklog(const fc::path& log_filename, const fc::path& index_filename, const fc::path& dest_dir, uint32_t start_block_num,
-                                    uint32_t num_blocks) {
+   void block_log::extract_blocklog(const fc::path& log_filename, const fc::path& index_filename,
+                                    const fc::path& dest_dir, uint32_t start_block_num, uint32_t num_blocks) {
 
       block_log_bundle log_bundle(log_filename, index_filename);
 
       EOS_ASSERT(start_block_num >= log_bundle.log_data.first_block_num(), block_log_exception,
-         "The first available block is block ${first_block}.", ("first_block", log_bundle.log_data.first_block_num()));
-         
-      EOS_ASSERT(start_block_num + num_blocks -1 <= log_bundle.log_data.last_block_num(), block_log_exception,
-         "The last available block is block ${last_block}.", ("last_block", log_bundle.log_data.last_block_num()));
+                 "The first available block is block ${first_block}.",
+                 ("first_block", log_bundle.log_data.first_block_num()));
+
+      EOS_ASSERT(start_block_num + num_blocks - 1 <= log_bundle.log_data.last_block_num(), block_log_exception,
+                 "The last available block is block ${last_block}.",
+                 ("last_block", log_bundle.log_data.last_block_num()));
 
       if (!fc::exists(dest_dir))
          fc::create_directories(dest_dir);
@@ -1262,14 +1264,14 @@ namespace eosio { namespace chain {
       if (!fc::exists(dest_dir))
          fc::create_directories(dest_dir);
 
-      for (uint32_t i = (first_block_num - 1) / stride;
-           i < (last_block_num + stride - 1)/stride; ++i) {
+      for (uint32_t i = (first_block_num - 1) / stride; i < (last_block_num + stride - 1) / stride; ++i) {
          uint32_t start_block_num = std::max(i * stride + 1, first_block_num);
-         uint32_t num_blocks = std::min( (i+1)*stride, last_block_num) - start_block_num + 1;
+         uint32_t num_blocks      = std::min((i + 1) * stride, last_block_num) - start_block_num + 1;
 
          auto [new_block_filename, new_index_filename] = blocklog_files(dest_dir, start_block_num, num_blocks);
 
          extract_blocklog_i(log_bundle, new_block_filename, new_index_filename, start_block_num, num_blocks);
       }
    }
-}} /// eosio::chain
+   } // namespace chain
+   } // namespace eosio
