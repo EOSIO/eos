@@ -398,9 +398,7 @@ namespace eosio { namespace chain {
       block_log_data  log_data;
       block_log_index log_index;
 
-      block_log_bundle(fc::path block_dir) {
-         block_file_name = block_dir / "blocks.log";
-         index_file_name = block_dir / "blocks.index";
+      block_log_bundle(fc::path block_file_name, fc::path index_file_name) {
 
          log_data.open(block_file_name);
          log_index.open(index_file_name);
@@ -412,6 +410,9 @@ namespace eosio { namespace chain {
              log_num_blocks == index_num_blocks, block_log_exception,
              "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} indicated by ${index_file_name}",
              ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)("index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
+      }
+
+      block_log_bundle(fc::path block_dir) : block_log_bundle(block_dir / "blocks.log", block_dir / "blocks.index") {
       }
    };
 
@@ -1233,10 +1234,10 @@ namespace eosio { namespace chain {
       return std::make_pair(new_block_filename, new_index_filename);
    }
 
-   void block_log::extract_blocklog(const fc::path& block_dir, const fc::path& dest_dir, uint32_t start_block_num,
+   void block_log::extract_blocklog(const fc::path& log_filename, const fc::path& index_filename, const fc::path& dest_dir, uint32_t start_block_num,
                                     uint32_t num_blocks) {
 
-      block_log_bundle log_bundle(block_dir);
+      block_log_bundle log_bundle(log_filename, index_filename);
 
       EOS_ASSERT(start_block_num >= log_bundle.log_data.first_block_num(), block_log_exception,
          "The first available block is block ${first_block}.", ("first_block", log_bundle.log_data.first_block_num()));
@@ -1261,10 +1262,10 @@ namespace eosio { namespace chain {
       if (!fc::exists(dest_dir))
          fc::create_directories(dest_dir);
 
-      for (uint32_t i = first_block_num / stride;
-           i < last_block_num / stride + 1; ++i) {
+      for (uint32_t i = (first_block_num - 1) / stride;
+           i < (last_block_num + stride - 1)/stride; ++i) {
          uint32_t start_block_num = std::max(i * stride + 1, first_block_num);
-         uint32_t num_blocks = std::min(stride, last_block_num - start_block_num + 1);
+         uint32_t num_blocks = std::min( (i+1)*stride, last_block_num) - start_block_num + 1;
 
          auto [new_block_filename, new_index_filename] = blocklog_files(dest_dir, start_block_num, num_blocks);
 

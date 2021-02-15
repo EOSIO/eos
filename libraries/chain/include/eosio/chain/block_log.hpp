@@ -103,8 +103,8 @@ namespace eosio { namespace chain {
           */
          static void smoke_test(fc::path block_dir, uint32_t n);
 
-         static void extract_blocklog(const fc::path& block_dir, const fc::path& dest_dir, uint32_t start_block,
-                                      uint32_t num_blocks);
+         static void extract_blocklog(const fc::path& log_filename, const fc::path& index_filename,
+                                      const fc::path& dest_dir, uint32_t start_block, uint32_t num_blocks);
          static void split_blocklog(const fc::path& block_dir, const fc::path& dest_dir, uint32_t stride);
 
        private:
