@@ -398,7 +398,9 @@ namespace eosio { namespace chain {
       block_log_data  log_data;
       block_log_index log_index;
 
-      block_log_bundle(fc::path block_file_name, fc::path index_file_name) {
+      block_log_bundle(fc::path block_file, fc::path index_file)
+          : block_file_name(block_file)
+          , index_file_name(index_file) {
 
          log_data.open(block_file_name);
          log_index.open(index_file_name);
@@ -406,10 +408,11 @@ namespace eosio { namespace chain {
          uint32_t log_num_blocks   = log_data.num_blocks();
          uint32_t index_num_blocks = log_index.num_blocks();
 
-         EOS_ASSERT(
-             log_num_blocks == index_num_blocks, block_log_exception,
-             "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} indicated by ${index_file_name}",
-             ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)("index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
+         EOS_ASSERT(log_num_blocks == index_num_blocks, block_log_exception,
+                    "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} "
+                    "indicated by ${index_file_name}",
+                    ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)(
+                        "index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
       }
 
       block_log_bundle(fc::path block_dir) : block_log_bundle(block_dir / "blocks.log", block_dir / "blocks.index") {
