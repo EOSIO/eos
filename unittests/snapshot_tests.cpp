@@ -590,12 +590,24 @@ static const char kv_snapshot_wast[] = R"=====(
   (func $kv_get (import "env" "kv_get") (param i64 i32 i32 i32) (result i32))
   (func $kv_get_data (import "env" "kv_get_data") (param i32 i32 i32) (result i32))
   (func $kv_set (import "env" "kv_set") (param i64 i32 i32 i32 i32 i64) (result i64))
+  (func $kv_erase (import "env" "kv_erase") (param i64 i32 i32) (result i64))
   (memory 1)
   (func (export "apply") (param i64 i64 i64)
     (drop (call $kv_get (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
     (drop (call $kv_get_data (i32.const 0) (i32.const 0) (i32.const 8)))
     (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
     (drop (call $kv_set (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8) (get_local 0)))
+    (i64.store (i32.const 24) (i64.const 1111)) ;; initialize @24 to a key 1111
+    (i64.store (i32.const 32) (i64.const 1000000)) ;; initialize @32 to a value 1000000
+    (drop (call $kv_set (get_local 0) (i32.const 24) (i32.const 8) (i32.const 32) (i32.const 8) (get_local 0))) ;; set key-value pair (1111, 1000000) to  KV table
+    (drop (call $kv_get (get_local 0) (i32.const 24) (i32.const 8) (i32.const 40))) ;; retrieve 1111 from KV table and save value size to @40
+    (drop (call $kv_get_data (i32.const 0) (i32.const 48) (i32.const 8))) ;; get the data and save it to @48
+    (i64.store (i32.const 56) (i64.const 2222)) ;; initialize @56 to a key 2222
+    (i64.store (i32.const 64) (i64.const 65535)) ;; initialize @64 to a value FFFF
+    (drop (call $kv_set (get_local 0) (i32.const 56) (i32.const 8) (i32.const 64) (i32.const 8) (get_local 0))) ;; set (2222, FFFF) to KV table
+    (drop (call $kv_get (get_local 0) (i32.const 56) (i32.const 8) (i32.const 72))) ;; retrieve 2222 from KV table and save value size to @72
+    (drop (call $kv_get_data (i32.const 0) (i32.const 80) (i32.const 8))) ;; get the data and save it to @80
+    (drop (call $kv_erase (get_local 0) (i32.const 24) (i32.const 8) )) ;; erase key 1111
   )
 )
 )=====";
@@ -690,8 +702,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 
             // produce block
             auto new_block = chain.produce_block();
-
-#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
 
             // undo the auto-pending from tester
             chain.control->abort_block();
