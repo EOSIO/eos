@@ -18,7 +18,7 @@ else
     export PLATFORM_TYPE="pinned"
 fi
 # skip big sur by default for now.
-export SKIP_MACOS_11=${SKIP_MACOS_11:-false}
+export SKIP_MACOS_11=${SKIP_MACOS_11:-true}
 for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
@@ -673,7 +673,7 @@ cat <<EOF
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+    skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
