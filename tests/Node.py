@@ -221,12 +221,16 @@ class Node(object):
                 raise
 
     # pylint: disable=too-many-branches
-    def getBlock(self, blockNum, silentErrors=False, exitOnError=False):
+    def getBlock(self, blockNumOrId, silentErrors=False, exitOnError=False):
         """Given a blockId will return block details."""
-        assert(isinstance(blockNum, int))
+        assert(isinstance(blockNumOrId, int) or isinstance(blockNumOrId, str))
         cmdDesc="get block"
-        cmd="%s %d" % (cmdDesc, blockNum)
-        msg="(block number=%s)" % (blockNum);
+        if isinstance(blockNumOrId, int):
+            cmd="%s %d" % (cmdDesc, blockNumOrId)
+            msg="(block number=%s)" % (blockNumOrId)
+        else:
+            cmd="%s %s" % (cmdDesc, blockNumOrId)
+            msg="(block id=%s)" % (blockNumOrId)
         return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
     def isBlockPresent(self, blockNum, blockType=BlockType.head):

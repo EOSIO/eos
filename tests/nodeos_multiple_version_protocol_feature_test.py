@@ -51,12 +51,12 @@ def shouldNodeContainPreactivateFeature(node):
     activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
     return preactivateFeatureDigest in activatedProtocolFeatures
 
-beginningOfProdTurn_head = 0
+beginningOfProdTurnHead = 0
 def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
     def isDesiredProdTurn():
-        beginningOfProdTurn_head = node.getHeadBlockNum()
-        res =  node.getBlock(beginningOfProdTurn_head)["producer"] == producerName and \
-               node.getBlock(beginningOfProdTurn_head-1)["producer"] != producerName
+        beginningOfProdTurnHead = node.getHeadBlockNum()
+        res =  node.getBlock(beginningOfProdTurnHead)["producer"] == producerName and \
+               node.getBlock(beginningOfProdTurnHead-1)["producer"] != producerName
         return res
     ret = Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
     assert ret != None, "Expected producer to arrive within 19 seconds (with 3 other producers)"
@@ -97,17 +97,17 @@ try:
     # version 1.7 did not provide a default value for "--last-block-time-offset-us" so this is needed to
     # avoid dropping late blocks
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                        extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
-                        useBiosBootFile=False,
-                        specificExtraNodeosArgs={
-                            0:"--http-max-response-time-ms 990000",
-                            1:"--http-max-response-time-ms 990000",
-                            2:"--http-max-response-time-ms 990000",
-                            3:"--last-block-time-offset-us -200000"},
-                        onlySetProds=True,
-                        pfSetupPolicy=PFSetupPolicy.NONE,
-                        alternateVersionLabelsFile=alternateVersionLabelsFile,
-                        associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                          useBiosBootFile=False,
+                          specificExtraNodeosArgs={
+                             0:"--http-max-response-time-ms 990000",
+                             1:"--http-max-response-time-ms 990000",
+                             2:"--http-max-response-time-ms 990000",
+                             3:"--last-block-time-offset-us -200000"},
+                          onlySetProds=True,
+                          pfSetupPolicy=PFSetupPolicy.NONE,
+                          alternateVersionLabelsFile=alternateVersionLabelsFile,
+                          associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
 
     newNodeIds = [0, 1, 2]
     oldNodeId = 3
@@ -142,10 +142,10 @@ try:
         inSync = True
         if len(set(headBlockNums)) != 1:
             def nodeHasBlocks(node, blockIds, blockNums):
-                for blkNum, blkId in zip(blockNums, blockIds):
+                for blkId, blkNum in zip(blockIds, blockNums):
                     assert node.waitForBlock(blkNum, timeout=3) != None, "Expected to find block {}, but only reached {}".format(blkNum, node.getInfo()["head_block_num"])
-                    if node.getBlock(blkNum) is None:
-                        Utils.Print("node {} cannot get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
+                    if node.getBlock(blkId) is None:
+                        Utils.Print("node {} does not get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
                         return False
                 return True
             for node in nodes:
@@ -173,13 +173,14 @@ try:
     setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", False)
     setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", False)
 
-    waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
-    # Retry activatePreactivateFeature for the 1st node after it enters production window
     for i in range(3):
+        Utils.Print("1st node tries activatePreactivateFeature time(s): {}".format(i+1))
+        # 1st node waits for the start of the production turn each time it tries activatePreactivateFeature()
+        waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
         newNodes[0].activatePreactivateFeature()
         if shouldNodeContainPreactivateFeature(newNodes[0]):
             break
-        diff = newNodes[0].getInfo()["head_block_num"] - beginningOfProdTurn_head
+        diff = newNodes[0].getInfo()["head_block_num"] - beginningOfProdTurnHead
         assert diff >= 12, "1st node should contain PREACTIVATE FEATURE since we set it during its production window"
 
     assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
@@ -212,12 +213,12 @@ try:
 
     activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
     assert waitUntilBlockBecomeIrr(newNodes[0], activatedBlockNum), \
-        "1st node LIB should be able to advance past the block that contains PREACTIVATE_FEATURE"
+           "1st node LIB should be able to advance past the block that contains PREACTIVATE_FEATURE"
     assert newNodes[1].getIrreversibleBlockNum() >= activatedBlockNum and \
-        newNodes[2].getIrreversibleBlockNum() >= activatedBlockNum, \
-        "2nd and 3rd node LIB should also be able to advance past the block that contains PREACTIVATE_FEATURE"
+           newNodes[2].getIrreversibleBlockNum() >= activatedBlockNum, \
+           "2nd and 3rd node LIB should also be able to advance past the block that contains PREACTIVATE_FEATURE"
     assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
-        "4th node LIB should stuck on LIB before PREACTIVATE_FEATURE is activated"
+           "4th node LIB should be stuck on LIB before PREACTIVATE_FEATURE is activated"
 
     # Restart old node with newest version
     # Before we are migrating to new version, use --export-reversible-blocks as the old version
