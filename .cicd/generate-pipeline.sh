@@ -17,6 +17,8 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
+# skip big sur by default for now.
+export SKIP_MACOS_11=${SKIP_MACOS_11:-false}
 for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
