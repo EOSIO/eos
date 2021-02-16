@@ -145,7 +145,7 @@ try:
                 for blkId, blkNum in zip(blockIds, blockNums):
                     assert node.waitForBlock(blkNum, timeout=3) != None, "Expected to find block {}, but only reached {}".format(blkNum, node.getInfo()["head_block_num"])
                     if node.getBlock(blkId) is None:
-                        Utils.Print("node {} does not get block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
+                        Utils.Print("node {} does not have block Id: {} (num: {})".format(node.nodeId, blkId, blkNum))
                         return False
                 return True
             for node in nodes:
