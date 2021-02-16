@@ -304,7 +304,7 @@ function ensure-libpq-and-libpqxx() {
 
     if [[ $ARCH == "Darwin" ]] && [ ! -f "/usr/local/lib/pkgconfig/libpqxx.pc" ]; then
         if $PIN_COMPILER; then
-            curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
+            curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/d14398187084e1d3fd1763ec13cea1044946a51f/Formula/libpqxx.rb
             brew install -f ./libpqxx.rb && rm ./libpqxx.rb
         else
             brew install libpq libpqxx
