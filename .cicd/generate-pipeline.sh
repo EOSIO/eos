@@ -422,14 +422,8 @@ EOF
             IFS=$nIFS
         done
         IFS=$oIFS
-        if [[ "$ROUND" != "$ROUNDS" ]]; then
-            echo '  - wait'
-            echo ''
-        fi
-    done
-    # Execute multiversion test
-    if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
-        cat <<EOF
+        if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+            cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
@@ -444,6 +438,12 @@ EOF
 
 EOF
     fi
+        if [[ "$ROUND" != "$ROUNDS" ]]; then
+            echo '  - wait'
+            echo ''
+        fi
+    done
+    
     # trigger eosio-lrt post pr
     if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
