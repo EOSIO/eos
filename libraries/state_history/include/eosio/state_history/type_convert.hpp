@@ -1,7 +1,7 @@
 #pragma once
 
-#include <eosio/state_history/types.hpp>
 #include <eosio/ship_protocol.hpp>
+#include <eosio/state_history/types.hpp>
 #include <eosio/chain_types.hpp>
 
 namespace eosio {
@@ -23,15 +23,15 @@ eosio::checksum256 convert(const eosio::chain::checksum_type& obj) {
    return eosio::checksum256(bytes);
 }
 
-chain_types::account_delta convert(const eosio::chain::account_delta& obj) {
-   chain_types::account_delta result;
+eosio::ship_protocol::account_delta convert(const eosio::chain::account_delta& obj) {
+   eosio::ship_protocol::account_delta result;
    result.account.value = to_uint64_t(obj.account);
    result.delta         = obj.delta;
    return result;
 }
 
-chain_types::action_receipt_v0 convert(const eosio::chain::action_receipt& obj) {
-   chain_types::action_receipt_v0 result;
+eosio::ship_protocol::action_receipt_v0 convert(const eosio::chain::action_receipt& obj) {
+   eosio::ship_protocol::action_receipt_v0 result;
    result.receiver.value  = to_uint64_t(obj.receiver);
    result.act_digest      = convert(obj.act_digest);
    result.global_sequence = obj.global_sequence;
@@ -43,8 +43,8 @@ chain_types::action_receipt_v0 convert(const eosio::chain::action_receipt& obj) 
    return result;
 }
 
-chain_types::action convert(const eosio::chain::action& obj) {
-   chain_types::action result;
+eosio::ship_protocol::action convert(const eosio::chain::action& obj) {
+   eosio::ship_protocol::action result;
    result.account.value = to_uint64_t(obj.account);
    result.name.value    = to_uint64_t(obj.name);
    for (auto& auth : obj.authorization)
@@ -54,8 +54,8 @@ chain_types::action convert(const eosio::chain::action& obj) {
    return result;
 }
 
-chain_types::action_trace_v1 convert(const eosio::chain::action_trace& obj) {
-   chain_types::action_trace_v1 result;
+eosio::ship_protocol::action_trace_v1 convert(const eosio::chain::action_trace& obj) {
+   eosio::ship_protocol::action_trace_v1 result;
    result.action_ordinal.value         = obj.action_ordinal.value;
    result.creator_action_ordinal.value = obj.creator_action_ordinal.value;
    if (obj.receipt)
@@ -75,15 +75,15 @@ chain_types::action_trace_v1 convert(const eosio::chain::action_trace& obj) {
    return result;
 }
 
-chain_types::transaction_trace_v0 convert(const eosio::chain::transaction_trace& obj) {
-   chain_types::transaction_trace_v0 result{};
+eosio::ship_protocol::transaction_trace_v0 convert(const eosio::chain::transaction_trace& obj) {
+   eosio::ship_protocol::transaction_trace_v0 result{};
    result.id = convert(obj.id);
    if (obj.receipt) {
-      result.status          = (chain_types::transaction_status)obj.receipt->status.value;
+      result.status          = (eosio::ship_protocol::transaction_status)obj.receipt->status.value;
       result.cpu_usage_us    = obj.receipt->cpu_usage_us;
       result.net_usage_words = obj.receipt->net_usage_words.value;
    } else {
-      result.status = chain_types::transaction_status::hard_fail;
+      result.status = eosio::ship_protocol::transaction_status::hard_fail;
    }
    result.elapsed   = obj.elapsed.count();
    result.net_usage = obj.net_usage;
