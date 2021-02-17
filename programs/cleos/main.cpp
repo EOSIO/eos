@@ -3027,15 +3027,23 @@ int main( int argc, char** argv ) {
 
    // get accounts
    string public_key_str;
+   bool getAccounts_legacy;
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"));
    getAccounts->add_option("public_key", public_key_str, localized("The public key to retrieve accounts for"))->required();
+   getAccounts->add_flag("--legacy", getAccounts_legacy, localized("Use the old deprecated '/v1/history/get_key_accounts' endpoint.") );
    getAccounts->callback([&] {
       public_key_type public_key;
       try {
          public_key = public_key_type(public_key_str);
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
-      auto arg = fc::mutable_variant_object( "public_key", public_key);
-      std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
+
+	  if (getAccounts_legacy) {
+	     auto arg = fc::mutable_variant_object( "public_key", public_key);
+		 std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
+	  } else {
+		 auto arg = fc::mutable_variant_object("keys", fc::variants{fc::variant(public_key)});
+		 std::cout << fc::json::to_pretty_string(call(get_get_accounts_by_authorizers_func, arg)) << std::endl;
+	  }
    });
 
 
