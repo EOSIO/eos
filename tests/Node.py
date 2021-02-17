@@ -225,12 +225,9 @@ class Node(object):
         """Given a blockId will return block details."""
         assert(isinstance(blockNumOrId, int) or isinstance(blockNumOrId, str))
         cmdDesc="get block"
-        if isinstance(blockNumOrId, int):
-            cmd="%s %d" % (cmdDesc, blockNumOrId)
-            msg="(block number=%s)" % (blockNumOrId)
-        else:
-            cmd="%s %s" % (cmdDesc, blockNumOrId)
-            msg="(block id=%s)" % (blockNumOrId)
+        numOrId="number" if isinstance(blockNumOrId, int) else "id"
+        cmd="%s %s" % (cmdDesc, blockNumOrId)
+        msg="(block %s=%s)" % (numOrId, blockNumOrId)
         return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
     def isBlockPresent(self, blockNum, blockType=BlockType.head):
