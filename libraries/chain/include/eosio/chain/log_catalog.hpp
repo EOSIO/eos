@@ -63,6 +63,12 @@ struct log_catalog {
       return collection.begin()->first;
    }
 
+   uint32_t last_block_num() const {
+      if (empty())
+         return 0;
+      return collection.rbegin()->second.last_block_num;
+   }
+
    static bfs::path make_abosolute_dir(const bfs::path& base_dir, bfs::path new_dir) {
       if (new_dir.is_relative())
          new_dir = base_dir / new_dir;
