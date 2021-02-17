@@ -39,10 +39,12 @@ for REG in ${EOSIO_REGS[@]}; do
     eval $CLEAN_IMAGE_COMMIT 
     eval $CLEAN_IMAGE_BRANCH
     if [[ ! -z "$SANITIZED_TAG" ]]; then
-        DOCKER_TAG="docker tag eosio_image $REG:$SANITIZED_TAG"
+        DOCKER_TAG="docker tag eosio_image:$BUILD_TAG $REG:$SANITIZED_TAG"
+        DOCKER_PUSH_TAG="docker push $REG:$SANITIZED_TAG"
         DOCKER_REM="docker rmi $REG:$SANITIZED_TAG"
         echo -e "$ \n Tagging Image: \n$DOCKER_TAG \n Cleaning Up: \n$DOCKER_REM"
-        eval $DOCKER_TAG 
+        eval $DOCKER_TAG
+        eval $DOCKER_PUSH_TAG
         eval $DOCKER_REM
     fi
 done
