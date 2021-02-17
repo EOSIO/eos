@@ -258,7 +258,8 @@ namespace eosio { namespace client { namespace http {
       response_result = fc::json::from_string(re);
    } catch(...) {
       // re reported below if print_response requested
-      std::cerr << "Error happens, below is the message received from server:" << std::endl << re << std::endl;
+      std::cerr << "Error happens, below is the message received from server:" << std::endl;
+      print_response = true;
    }
 
    if( print_response ) {
