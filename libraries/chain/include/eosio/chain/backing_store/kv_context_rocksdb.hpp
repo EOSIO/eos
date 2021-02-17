@@ -294,6 +294,17 @@ namespace eosio { namespace chain {
          }
       }
 
+      std::optional<name> kv_it_payer() override {
+         EOS_ASSERT(!kv_current.deleted(), kv_bad_iter, "Iterator to erased element");
+         if (kv_it_status() == kv_it_stat::iterator_ok) {
+            const auto& value = (*kv_current).second;
+            if (value) {
+               return backing_store::payer_payload(*value).payer;
+            }
+         }
+         return {};
+      }
+
     private:
       kv_it_stat get_current_key_value_sizes(uint32_t* found_key_size, uint32_t* found_value_size) {
          auto status = kv_it_status();

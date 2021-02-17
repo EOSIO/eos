@@ -70,4 +70,4 @@ cleos system voteproducer approve sandwichfarm someproducer -p sandwichfarm@voti
 ```
 
 ## See Also
-- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.
+- [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.

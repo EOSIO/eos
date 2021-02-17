@@ -364,7 +364,7 @@ namespace LLVMJIT
 		// Emits a call to a WAVM intrinsic function.
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
-                        const std::size_t io = eosio::chain::eosvmoc::get_intrinsic_ordinal(intrinsicName);
+         const std::size_t io = eosio::chain::eosvmoc::get_intrinsic_ordinal(intrinsicName);
 			llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-io*8), llvmI64Type->getPointerTo(256)) );
 			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(intrinsicType)->getPointerTo());
 			return createCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));

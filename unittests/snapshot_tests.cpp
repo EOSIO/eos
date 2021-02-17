@@ -183,16 +183,25 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
    fc::temp_directory temp_dir;
    tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
 
-   chain.create_account("snapshot"_n);
+   // Create 2 accounts
+   chain.create_accounts({"snapshot"_n, "snapshot1"_n});
+
+   // Set code and increment the first account
    chain.produce_blocks(1);
    chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
    chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
-
-#warning add a snapshot2 account and send the action against it as well, so that we are actually walking through more than just one contract's data'
-
-   // increment the test contract
    chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+         ( "value", 1 )
+   );
+
+   // Set code and increment the second account
+   chain.produce_blocks(1);
+   chain.set_code("snapshot1"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot1"_n, contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   // increment the test contract
+   chain.push_action("snapshot1"_n, "increment"_n, "snapshot1"_n, mutable_variant_object()
          ( "value", 1 )
    );
 
@@ -216,6 +225,9 @@ void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
 
       // increment the test contract
       chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+         ( "value", 1 )
+      );
+      chain.push_action("snapshot1"_n, "increment"_n, "snapshot1"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
