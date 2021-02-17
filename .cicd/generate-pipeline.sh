@@ -17,6 +17,8 @@ if [[ $PINNED == false ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
+# skip big sur by default for now.
+export SKIP_MACOS_11=${SKIP_MACOS_11:-true}
 for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
@@ -66,6 +68,8 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
     elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
         export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
+    elif [[ $FILE_NAME =~ 'macos-11' ]]; then
+        export ANKA_TEMPLATE_NAME='11.2.1_6C_14G_80G'
     else # Linux
         export ANKA_TAG_BASE=''
         export ANKA_TEMPLATE_NAME=''
@@ -140,7 +144,7 @@ EOF
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && ./.cicd/build.sh"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -224,7 +228,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -277,7 +281,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/wasm-spec-test.sh"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -333,7 +337,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -391,7 +395,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
@@ -605,7 +609,7 @@ cat <<EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.6_6C_14G_80G
@@ -629,7 +633,7 @@ cat <<EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.15 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
-      - EOSIO/anka#v0.6.1:
+      - EOSIO/anka#v0.7.0:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.15.5_6C_14G_80G
@@ -646,6 +650,30 @@ cat <<EOF
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+  - label: ":darwin: macOS 11 - Package Builder"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.15 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package.sh"
+    plugins:
+      - EOSIO/anka#v0.7.0:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 11.2.0_6C_16G_64G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-30}
+    skip: ${SKIP_MACOS_11}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: Docker - Label Container with Git Branch and Git Tag"
     command: .cicd/docker-tag.sh
