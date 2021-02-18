@@ -3505,16 +3505,13 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 fc::variant read_only::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& trace_ptr )const {
 
-   fc::variant pretty_output;
-   try {
-      abi_serializer::to_variant(trace_ptr, pretty_output,
-                                 make_resolver(this, abi_serializer::create_yield_function(abi_serializer_max_time)),
-                                 abi_serializer::create_yield_function(abi_serializer_max_time));
-   }catch(const fc::exception& e){
-      wlog("problem encountered while expanding transaction trace via the abi serializer:\n${details}",
-           ("details",e.to_detail_string()));
-   }
-   return pretty_output;
+    fc::variant pretty_output;
+    try {
+        abi_serializer::to_variant(trace_ptr, pretty_output,
+                                   make_resolver(this, abi_serializer::create_yield_function(abi_serializer_max_time)),
+                                   abi_serializer::create_yield_function(abi_serializer_max_time));
+    }EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction trace")
+    return pretty_output;
 }
 
 read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
