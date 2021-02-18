@@ -515,9 +515,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto send_response = [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
 
-            auto& cp = app().get_plugin<chain_plugin>();
-            auto ro_api = cp.get_read_only_api();
-            auto entire_trace = ro_api.get_entire_trx_trace(response);
+            auto entire_trace = chain_plug->get_entire_trx_trace(response);
 
             if (std::holds_alternative<fc::exception_ptr>(response)) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));

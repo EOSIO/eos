@@ -308,8 +308,6 @@ public:
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
-   fc::variant get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr )const;
-
    using get_transaction_id_params = transaction;
    using get_transaction_id_result = transaction_id_type;
 
@@ -1071,6 +1069,8 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   fc::variant get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr ) const;
 
 private:
    static void log_guard_exception(const chain::guard_exception& e);

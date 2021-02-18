@@ -1690,7 +1690,6 @@ bool chain_plugin::account_queries_enabled() const {
    return my->account_queries_enabled;
 }
 
-
 namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
@@ -3430,17 +3429,6 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
    return result;
 }
 
-fc::variant read_only::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr )const {
-
-    fc::variant pretty_output;
-    try {
-        abi_serializer::to_variant(tracePtr, pretty_output,
-                                   make_resolver(this, abi_serializer::create_yield_function(abi_serializer_max_time)),
-                                   abi_serializer::create_yield_function(abi_serializer_max_time));
-    }EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction trace")
-    return pretty_output;
-}
-
 read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
    return params.id();
 }
@@ -3497,6 +3485,19 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
 }
 
 } // namespace chain_apis
+
+fc::variant chain_plugin::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr )const {
+
+    fc::variant pretty_output;
+    auto ro_api = get_read_only_api();
+    try {
+        abi_serializer::to_variant(tracePtr, pretty_output,
+                                   chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+    }EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction trace")
+    return pretty_output;
+}
+
 } // namespace eosio
 
 FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )
