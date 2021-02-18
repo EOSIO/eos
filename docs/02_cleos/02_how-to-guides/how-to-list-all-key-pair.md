@@ -37,7 +37,7 @@ cleos wallet unlock
 cleos wallet unlock
 password:
 ```
-3.Enter the generated key (password) when you created the existing wallet:
+3. Enter the generated key (password) when you created the existing wallet:
 ```sh
 cleos wallet private_keys
 password:
@@ -53,7 +53,7 @@ cleos wallet keys
   "EOS5VCUBtxS83ZKqVcWtDBF4473P9HyrvnCM9NBc4Upk1C387qmF3"
 ]
 ```
-5.List all private keys withing an existing wallet:
+5. List all private keys withing an existing wallet:
 ```sh
 cleos wallet private_keys
 ```
