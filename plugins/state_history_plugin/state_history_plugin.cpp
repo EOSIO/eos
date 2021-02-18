@@ -16,9 +16,7 @@
 #include <boost/signals2/connection.hpp>
 
 using tcp    = boost::asio::ip::tcp;
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 using unixs  = boost::asio::local::stream_protocol;
-#endif
 namespace ws = boost::beast::websocket;
 
 extern const char* const state_history_plugin_abi;
@@ -57,10 +55,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    string                                                     endpoint_address;
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    string                                                     unix_path;
    std::unique_ptr<unixs::acceptor>                           unix_acceptor;
-#endif
 
    std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
       std::optional<chain::block_id_type> result;
@@ -394,7 +390,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       std::unique_ptr<ws::stream<tcp::socket>> socket_stream;
    };
 
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    struct unix_session : session<unix_session>, std::enable_shared_from_this<unix_session> {
       unix_session(std::shared_ptr<state_history_plugin_impl> plugin) : session<unix_session>(plugin) {}
 
@@ -405,7 +400,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       std::unique_ptr<ws::stream<unixs::socket>> socket_stream;
    };
-#endif
 
    std::map<session_base*, std::shared_ptr<session_base>> sessions;
 
@@ -433,7 +427,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       do_accept(*acceptor);
    }
 
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    void unix_listen() {
       boost::system::error_code ec;
 
@@ -472,7 +465,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       check_ec("listen");
       do_accept(*unix_acceptor);
    }
-#endif
 
    template <typename Acceptor>
    void do_accept(Acceptor& acceptor) {
@@ -490,14 +482,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                auto s            = std::make_shared<tcp_session>(self);
                sessions[s.get()] = s;
                s->start(std::move(*socket));
-            }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-            else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>) {
+            } else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>) {
                auto s            = std::make_shared<unix_session>(self);
                sessions[s.get()] = s;
                s->start(std::move(*socket));
             }
-#endif
          });
          catch_and_log([&] { do_accept(acceptor); });
       });
@@ -556,12 +545,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    ~state_history_plugin_impl() {
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       boost::system::error_code ec;
       if (unix_acceptor)
          if(const auto ep = unix_acceptor->local_endpoint(ec); !ec)
             ::unlink(ep.path().c_str());
-#endif
    }
 
 };   // state_history_plugin_impl
@@ -597,10 +584,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
    options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
            "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
            "your internal network.");
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    options("state-history-unix-socket-path", bpo::value<string>(),
            "the path (relative to data-dir) to create a unix socket upon which to listen for incoming connections.");
-#endif
    options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
            "enable debug mode for trace history");
    options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
@@ -649,14 +634,12 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          idump((ip_port)(host)(port));
       }
 
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if (options.count("state-history-unix-socket-path")) {
          boost::filesystem::path sock_path = options.at("state-history-unix-socket-path").as<string>();
          if (sock_path.is_relative())
             sock_path = app().data_dir() / sock_path;
          my->unix_path = sock_path.generic_string();
       }
-#endif
 
       if (options.at("delete-state-history").as<bool>()) {
          fc_ilog(_log, "Deleting state history");
@@ -689,10 +672,8 @@ void state_history_plugin::plugin_startup() {
    handle_sighup(); // setup logging
    if (my->endpoint_address.size())
       my->listen();
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    if (my->unix_path.size())
       my->unix_listen();
-#endif
 }
 
 void state_history_plugin::plugin_shutdown() {
