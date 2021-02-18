@@ -644,6 +644,14 @@ BOOST_AUTO_TEST_CASE(test_split_log_util2) {
    BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.index" ));
    BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.index" ));
+
+   bfs::remove(blocks_dir/"blocks.log");
+   bfs::remove(blocks_dir/"blocks.index");
+
+   block_log blog({.log_dir = blocks_dir, .retained_dir = retained_dir });
+   
+   BOOST_CHECK(blog.version() != 0);
+   BOOST_CHECK(blog.head().get());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

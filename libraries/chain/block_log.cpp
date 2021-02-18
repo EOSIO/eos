@@ -611,6 +611,12 @@ namespace eosio { namespace chain {
       const auto log_size   = fc::file_size(block_file.get_file_path());
       const auto index_size = fc::file_size(index_file.get_file_path());
 
+      if (log_size == 0 && !catalog.empty()) {
+         this->reset(catalog.last_block_num() + 1, catalog.verifier.chain_id);
+         this->head = read_block_by_num(catalog.last_block_num());
+         return;
+      }
+
       if (log_size) {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
