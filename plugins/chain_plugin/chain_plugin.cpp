@@ -3418,7 +3418,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 }
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
-   transaction pretty_input;
+    transaction pretty_input;
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3428,6 +3428,20 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;
+}
+
+fc::variant read_only::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr )const {
+
+    fc::variant pretty_output;
+    try {
+        abi_serializer::to_variant(tracePtr, pretty_output,
+                                   make_resolver(this, abi_serializer::create_yield_function(abi_serializer_max_time)),
+                                   abi_serializer::create_yield_function(abi_serializer_max_time));
+    }catch(const fc::exception& e){
+        wlog("problem encountered while expanding transaction trace via the abi serializer:\n${details}",
+                     ("details",e.to_detail_string()));
+    }
+    return pretty_output;
 }
 
 read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
