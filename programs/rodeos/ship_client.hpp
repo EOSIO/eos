@@ -67,9 +67,7 @@ struct connection : connection_base {
    using error_code  = boost::system::error_code;
    using flat_buffer = boost::beast::flat_buffer;
    using tcp         = boost::asio::ip::tcp;
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    using unixs       = boost::asio::local::stream_protocol;
-#endif
    using abi_type    = eosio::abi_type;
 
    std::shared_ptr<connection_callbacks>        callbacks;
@@ -240,7 +238,6 @@ struct tcp_connection : connection<tcp_connection>, std::enable_shared_from_this
    boost::beast::websocket::stream<tcp::socket> stream;
 };
 
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 struct unix_connection : connection<unix_connection>, std::enable_shared_from_this<unix_connection> {
    unix_connection(boost::asio::io_context& ioc, const unix_connection_config& config, std::shared_ptr<connection_callbacks> callbacks) :
      connection<unix_connection>(callbacks), config(config), stream(ioc) {}
@@ -257,7 +254,6 @@ struct unix_connection : connection<unix_connection>, std::enable_shared_from_th
    unix_connection_config                         config;
    boost::beast::websocket::stream<unixs::socket> stream;
 };
-#endif
 
 std::shared_ptr<connection_base> make_connection(boost::asio::io_context& ioc, const connection_config& config,
                                                  std::shared_ptr<connection_callbacks> callbacks) {
@@ -266,11 +262,7 @@ std::shared_ptr<connection_base> make_connection(boost::asio::io_context& ioc, c
          return std::make_shared<tcp_connection>(ioc, c, callbacks);
       },
       [&](const unix_connection_config& c) -> std::shared_ptr<connection_base> {
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
          return std::make_shared<unix_connection>(ioc, c, callbacks);
-#else
-         return nullptr;
-#endif
       }
    }, config.connection_config);
 }

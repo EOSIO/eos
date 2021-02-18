@@ -235,10 +235,8 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    auto clop = cli.add_options();
    op("clone-connect-to,f", bpo::value<std::string>()->default_value("127.0.0.1:8080"),
       "State-history endpoint to connect to (nodeos)");
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    op("clone-unix-connect-to,u", bpo::value<std::string>(),
       "State-history unix path to connect to (nodeos). Takes precedence over tcp endpoint if specified");
-#endif
    clop("clone-skip-to,k", bpo::value<uint32_t>(), "Skip blocks before [arg]");
    clop("clone-stop,x", bpo::value<uint32_t>(), "Stop before block [arg]");
    op("clone-exit-on-filter-wasm-error", bpo::bool_switch()->default_value(false),
@@ -271,16 +269,13 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
 
 void cloner_plugin::plugin_initialize(const variables_map& options) {
    try {
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if(options.count("clone-unix-connect-to")) {
          boost::filesystem::path sock_path = options.at("clone-unix-connect-to").as<string>();
          if (sock_path.is_relative())
             sock_path = app().data_dir() / sock_path;
          my->config->connection_config = ship_client::unix_connection_config{sock_path.generic_string()};
       }
-      else
-#endif
-      {
+      else {
          auto endpoint = options.at("clone-connect-to").as<std::string>();
          if (endpoint.find(':') == std::string::npos)
             throw std::runtime_error("invalid endpoint: " + endpoint);
