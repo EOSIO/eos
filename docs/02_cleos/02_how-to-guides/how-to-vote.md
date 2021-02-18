@@ -10,7 +10,7 @@ Vote for a block producer
 
 * Understand the following:
   * What is a [block producer](https://developers.eos.io/welcome/v2.1/protocol-guides/consensus_protocol/#11-block-producers).
-  * How does [voting](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/vote) works.
+  * How does [voting](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/vote) work.
 
 * Unlock your wallet
 

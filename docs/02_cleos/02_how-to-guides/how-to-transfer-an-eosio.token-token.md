@@ -6,7 +6,7 @@ Transfer token created by `eosio.token` contract
 
 * Install the currently supported version of `cleos`.
 
-* `eosio.token` contract is deployed on the network which you are connected to.
+* `eosio.token` contract is deployed on the network you are connected to.
 
 * Understand the following:
   * What is a [transaction](https://developers.eos.io/welcome/latest/glossary/index/#transaction).
