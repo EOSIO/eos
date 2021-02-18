@@ -521,7 +521,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
             if (std::holds_alternative<fc::exception_ptr>(response)) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
-                if (_pending_block_mode == pending_block_mode::producing) {
+               if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())

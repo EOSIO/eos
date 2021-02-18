@@ -3418,7 +3418,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 }
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
-    transaction pretty_input;
+   transaction pretty_input;
    auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
