@@ -9,10 +9,10 @@ Stake resources, NET and/or CPU, for your account.
 * Ensure the [reference system contracts](https://developers.eos.io/manuals/eosio.contracts/v1.9/build-and-deploy) are deployed and used to manage system resources.
 
 * Understand the following:
-  * What is an [account](https://developers.eos.io/welcome/latest/glossary/index/#account).
-  * What is [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/net).
-  * What is [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/cpu).
-  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+  * What is an [account](https://developers.eos.io/welcome/v2.1/glossary/index/#account).
+  * What is [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/net).
+  * What is [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/cpu).
+  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/system/system-delegatebw).
 
 ## Steps
 
