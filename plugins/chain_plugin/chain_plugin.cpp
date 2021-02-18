@@ -3437,10 +3437,7 @@ fc::variant read_only::get_entire_trx_trace(const std::variant<fc::exception_ptr
         abi_serializer::to_variant(tracePtr, pretty_output,
                                    make_resolver(this, abi_serializer::create_yield_function(abi_serializer_max_time)),
                                    abi_serializer::create_yield_function(abi_serializer_max_time));
-    }catch(const fc::exception& e){
-        wlog("problem encountered while expanding transaction trace via the abi serializer:\n${details}",
-                     ("details",e.to_detail_string()));
-    }
+    }EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction trace")
     return pretty_output;
 }
 
