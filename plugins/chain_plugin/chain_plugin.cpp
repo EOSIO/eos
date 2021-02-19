@@ -3486,12 +3486,12 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
 
 } // namespace chain_apis
 
-fc::variant chain_plugin::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr>& tracePtr )const {
+fc::variant chain_plugin::get_entire_trx_trace(const std::variant<std::shared_ptr<transaction>, transaction_trace_ptr>& obj )const {
 
     fc::variant pretty_output;
     auto ro_api = get_read_only_api();
     try {
-        abi_serializer::to_variant(tracePtr, pretty_output,
+        abi_serializer::to_variant(obj, pretty_output,
                                    chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
                                    abi_serializer::create_yield_function(get_abi_serializer_max_time()));
     }EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction trace")

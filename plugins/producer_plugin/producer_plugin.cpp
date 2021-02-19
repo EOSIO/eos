@@ -476,22 +476,24 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto trx_id = trx->id();
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
-                                                          next{std::move(next)}, trx{std::move(trx)}, trx_id]() mutable {
+                                                          next{std::move(next)}, &trx, trx_id]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}, trx_id]() mutable {
-                  auto exception_handler = [&next, &trx, trx_id](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, &trx, trx_id]() mutable {
+                  auto exception_handler = [self, &next, &trx, trx_id](fc::exception_ptr ex) {
                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                             ("txid", trx_id)("why",ex->what()));
                      next(ex);
 
-                    //Dump failed transaction if logger `_trx_trace_dump_log` is enabled
-                    fc::variant entire_trx = fc::mutable_variant_object()("transaction", *trx);
-                    fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx: ${txid} : ${why}] \n${entire_trace} ",
-                            ("txid", trx_id)
-                            ("why",ex->what())
-                            ("entire_trace", fc::json::to_pretty_string(entire_trx)));
-
+                    if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                        //Dump transaction
+                        std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(trx->get_transaction());
+                        auto entire_trx = self->chain_plug->get_entire_trx_trace(transaction_ptr);
+                        fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx: ${txid} : ${why}]: \n${entire_trx} ",
+                                ("txid", trx_id)
+                                ("why",ex->what())
+                                ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+                    }
                   };
                   try {
                      auto result = future.get();
@@ -515,8 +517,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto send_response = [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
 
-            auto entire_trace = chain_plug->get_entire_trx_trace(response);
-
             if (std::holds_alternative<fc::exception_ptr>(response)) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
@@ -526,25 +526,29 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("txid", trx->id())
                         ("why",std::get<fc::exception_ptr>(response)->what()));
 
-                  //Dump transaction trace if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why}] \n${entire_trace} ",
-                          ("block_num", chain.head_block_num() + 1)
-                          ("prod", get_pending_block_producer())
-                          ("txid", trx->id())
-                          ("why",std::get<fc::exception_ptr>(response)->what())
-                          ("entire_trace", fc::json::to_pretty_string(entire_trace)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      //Dump transaction trace
+                      auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why}]: \n${entire_trace} ",
+                              ("block_num", chain.head_block_num() + 1)
+                              ("prod", get_pending_block_producer())
+                              ("txid", trx->id())
+                              ("why",std::get<fc::exception_ptr>(response)->what())
+                              ("entire_trace", fc::json::to_pretty_string(entire_trace)));
+                  }
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
                           ("why",std::get<fc::exception_ptr>(response)->what()));
 
-                  //Dump transaction trace if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx: ${txid} : ${why}] \n${entire_trace}",
-                          ("txid", trx->id())
-                          ("why",std::get<fc::exception_ptr>(response)->what())
-                          ("entire_trace", fc::json::to_pretty_string(entire_trace)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      //Dump transaction trace
+                      auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx: ${txid} : ${why}]: \n${entire_trace}",
+                              ("txid", trx->id())
+                              ("why",std::get<fc::exception_ptr>(response)->what())
+                              ("entire_trace", fc::json::to_pretty_string(entire_trace)));
+                  }
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
@@ -554,22 +558,26 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                           ("prod", get_pending_block_producer())
                           ("txid", trx->id()));
 
-                  //Dump transaction trace if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}] \n${entire_trace}",
-                          ("block_num", chain.head_block_num() + 1)
-                          ("prod", get_pending_block_producer())
-                          ("txid", trx->id())
-                          ("entire_trace", fc::json::to_pretty_string(entire_trace)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      //Dump transaction trace
+                      auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}]: \n${entire_trace}",
+                              ("block_num", chain.head_block_num() + 1)
+                              ("prod", get_pending_block_producer())
+                              ("txid", trx->id())
+                              ("entire_trace", fc::json::to_pretty_string(entire_trace)));
+                  }
                } else {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
                           ("txid", trx->id()));
 
-                  //Dump transaction trace if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is ACCEPTING tx: ${txid}] \n${entire_trace}",
-                           ("txid", trx->id())
-                           ("entire_trace", fc::json::to_pretty_string(entire_trace)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      //Dump transaction trace
+                      auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is ACCEPTING tx: ${txid}]: \n${entire_trace}",
+                              ("txid", trx->id())
+                              ("entire_trace", fc::json::to_pretty_string(entire_trace)));
+                  }
                }
             }
          };
@@ -1704,9 +1712,6 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                   [this, &num_expired_persistent, &num_expired_other, pbm = _pending_block_mode,
                    &chain, has_producers = !_producers.empty()]( const transaction_id_type& txid, trx_enum_type trx_type ) {
 
-            auto trx = this->_unapplied_transactions.get_trx(txid);
-            fc::variant entire_trx = fc::mutable_variant_object()("transaction", trx->packed_trx()->get_transaction());
-
             if( trx_type == trx_enum_type::persisted ) {
                if( pbm == pending_block_mode::producing ) {
                   fc_dlog(_trx_failed_trace_log,
@@ -1714,21 +1719,28 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                            ("block_num", chain.head_block_num() + 1)("txid", txid)
                            ("prod", chain.is_building_block() ? chain.pending_block_producer() : name()) );
 
-                  // Dump failed transaction if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log,
-                           "[TRX_TRACE] [Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}] \n${entire_trace}",
-                           ("block_num", chain.head_block_num() + 1)
-                           ("txid", txid)
-                           ("prod", chain.is_building_block() ? chain.pending_block_producer() : name())
-                           ("entire_trace", fc::json::to_pretty_string(entire_trx)));
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      // Dump transaction
+                      std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
+                      auto entire_trx = chain_plug->get_entire_trx_trace(transaction_ptr);
 
+                      fc_dlog(_trx_trace_dump_log,
+                              "[TRX_TRACE] [Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}]: \n${entire_trx}",
+                              ("block_num", chain.head_block_num() + 1)
+                              ("txid", txid)
+                              ("prod", chain.is_building_block() ? chain.pending_block_producer() : name())
+                              ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+                  }
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
 
-                  // Dump failed transaction if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is EXPIRING PERSISTED tx] \n${entire_trace}",
-                           ("entire_trace", fc::json::to_pretty_string(entire_trx)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      // Dump transaction
+                      std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
+                      auto entire_trx = chain_plug->get_entire_trx_trace(transaction_ptr);
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is EXPIRING PERSISTED tx]: \n${entire_trx}",
+                              ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+                  }
                }
                ++num_expired_persistent;
             } else {
@@ -1737,10 +1749,13 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                         "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                         ("txid", txid));
 
-                  // Dump failed transaction if logger `_trx_trace_dump_log` is enabled
-                  fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED] \n${entire_trace}",
-                          ("entire_trace", fc::json::to_pretty_string(entire_trx)));
-
+                  if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+                      // Dump transaction
+                      std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
+                      auto entire_trx = chain_plug->get_entire_trx_trace(transaction_ptr);
+                      fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED]: \n${entire_trx}",
+                              ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+                  }
                }
                ++num_expired_other;
             }
@@ -2345,12 +2360,14 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
            ("txid", trx_id)("why", reason));
 
-   // Dump failed transaction if logger `_trx_trace_dump_log` is enabled
-   auto trx = my->_unapplied_transactions.get_trx(trx_id);
-   fc::variant entire_trx = fc::mutable_variant_object()("transaction", trx->packed_trx()->get_transaction());
-   fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx:} : ${why}] \n${entire_trx}",
-           ("why", fc::json::to_pretty_string(reason))
-           ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
+       // Dump transaction
+       std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(my->_unapplied_transactions.get_trx(trx_id)->packed_trx()->get_transaction());
+       auto entire_trx = my->chain_plug->get_entire_trx_trace(transaction_ptr);
+       fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx:} : ${why}]: \n${entire_trx}",
+               ("why", fc::json::to_pretty_string(reason))
+               ("entire_trx", fc::json::to_pretty_string(entire_trx)));
+   }
 }
 
 } // namespace eosio
