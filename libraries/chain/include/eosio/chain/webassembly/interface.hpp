@@ -1668,7 +1668,7 @@ namespace webassembly {
           * @param offset - position from where to start reading the value from the temporary buffer.
           * @param[out] data - span where the result value will be stored.
           *
-          * @return number of bytes written in data.
+          * @return amount of data in the temporary buffer.
           */
          uint32_t kv_get_data(uint32_t offset, span<char> data);
 
