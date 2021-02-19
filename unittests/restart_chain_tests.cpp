@@ -621,10 +621,9 @@ BOOST_AUTO_TEST_CASE(test_trim_blocklog_front_v3) {
    trim_blocklog_front(3);
 }
 
-BOOST_AUTO_TEST_CASE(test_split_log_util2) {
+BOOST_AUTO_TEST_CASE(test_blocklog_split_then_merge) {
    namespace bfs = boost::filesystem;
    
-
    tester chain;
    chain.produce_blocks(160);
    chain.close();
@@ -651,7 +650,32 @@ BOOST_AUTO_TEST_CASE(test_split_log_util2) {
    block_log blog({.log_dir = blocks_dir, .retained_dir = retained_dir });
    
    BOOST_CHECK(blog.version() != 0);
-   BOOST_CHECK(blog.head().get());
+   BOOST_CHECK_EQUAL(blog.head()->block_num(), 150);
+
+   // test blocklog merge
+   fc::temp_directory dest_dir;
+   BOOST_CHECK_NO_THROW(block_log::merge_blocklogs(retained_dir, dest_dir.path()));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-150.log" ));
+
+   if (bfs::exists( dest_dir.path() / "blocks-50-150.log" )) {
+      bfs::rename(dest_dir.path() / "blocks-50-150.log", dest_dir.path() / "blocks.log");
+      bfs::rename(dest_dir.path() / "blocks-50-150.index", dest_dir.path() / "blocks.index");
+      BOOST_CHECK_NO_THROW(block_log::smoke_test(dest_dir.path(), 1));
+   }
+
+   bfs::remove(dest_dir.path() / "blocks.log");
+
+   // test blocklog merge with gap
+   bfs::remove(retained_dir / "blocks-51-100.log");
+   bfs::remove(retained_dir / "blocks-51-100.index");
+
+   BOOST_CHECK_NO_THROW(block_log::merge_blocklogs(retained_dir, dest_dir.path()));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-50.log" ));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-50-50.index" ));
+
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( dest_dir.path() / "blocks-101-150.index" ));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
