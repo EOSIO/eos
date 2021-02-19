@@ -436,6 +436,16 @@ EOF
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
 
+  - label: ":chains: Docker-compose Based Multiversion Sync Test"
+    command:
+      - cd tests/docker-based/multiversion-sync && docker-compose up --exit-code-from bootstrap
+    env:
+      BUILD_IMAGE: "${MIRROR_REGISTRY}:base-ubuntu-18.04-\${BUILDKITE_COMMIT}"
+    agents:
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}${SKIP_MULTIVERSION_TEST}
+    timeout: ${TIMEOUT:-180}
+
 EOF
     fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
