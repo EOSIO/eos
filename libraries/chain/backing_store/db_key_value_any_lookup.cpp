@@ -15,18 +15,13 @@ namespace eosio { namespace chain { namespace backing_store {
 
    const eosio::session::shared_bytes db_key_value_any_lookup::useless_value = make_useless_value();
 
-   void db_key_value_any_lookup::add_table_if_needed(const shared_bytes& key, account_name payer) {
-      auto table_key = db_key_value_format::create_full_key_prefix(key, end_of_prefix::pre_type);
-      auto session_iter = current_session.lower_bound(table_key);
-      if (!match_prefix(table_key, session_iter)) {
-         // need to add the key_type::table to the end
-         table_key = db_key_value_format::create_table_key(table_key);
-         const auto legacy_key = db_key_value_format::extract_legacy_key(table_key);
-         const auto extracted_data = db_key_value_format::get_prefix_thru_key_type(legacy_key);
+   void db_key_value_any_lookup::add_table_if_needed(name scope, name table, account_name payer) {
+      auto legacy_table_key = db_key_value_format::create_table_key(scope, table);
+      auto table_key = db_key_value_format::create_full_key(legacy_table_key, parent.receiver);
+      const auto key_value = current_session.read(table_key);
+      if (!key_value) {
          std::string event_id;
          apply_context& context = parent.context;
-         const auto& scope = std::get<0>(extracted_data);
-         const auto& table = std::get<1>(extracted_data);
          auto dm_logger = context.control.get_deep_mind_logger();
          if (dm_logger != nullptr) {
             event_id = db_context::table_event(parent.receiver, scope, table);
