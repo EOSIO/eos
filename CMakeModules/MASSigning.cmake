@@ -1,22 +1,20 @@
 macro(mas_sign target)
 
-#example values:
-# MAS_CERT_FINGERPRINT=C5139C2C4D7FA071EFBFD86CE44B652631C9376A
-# MAS_BASE_APPID=5A4683969Z.com.example.         <<note the trailing period on this
-# MAS_PROVISIONING_PROFILE="/Users/spoon/Library/MobileDevice/Provisioning Profiles/b1d57761-e5b8-4e58-b412-f1cd0f1924a1.provisionprofile"
-# MAS_KEYCHAIN_GROUP=5A4683969Z.com.example.keyz
-#Given the above, the executable will be signed via the certificate in the keystore matching the fingerprint and bundled with the
-# specified provisioning profile. The appid will the base plus the name of the target, 5A4683969Z.com.example.keosd for example. And
-# the entitlements file will have a keychain sharing group of 5A4683969Z.com.example.keyz
-
-if(APPLE AND MAS_CERT_FINGERPRINT AND MAS_BASE_APPID AND MAS_PROVISIONING_PROFILE AND MAS_KEYCHAIN_GROUP)
-
+# src="/component---src-pages-index-js-f0da95d6d7b08bb96fce.js" async=""></script>
+    <script src="/d4ad233efeb1d959420253442063e6db7488fdeb
+-
+37bcdced5e74661c2914.js" async=""></script>
+    <script src="/c1ad2f8c0c61fa8d2f6cc63e0113f477dce42422-d1cef2137605e5cd471f.js" async=""></script>
+    <script src="/29107295-df9218879259bcf47647.js" async=""></script>
+    <script src="/styles-503b3015a8b38c118cb7.js" async=""></script>
+    <script src="/app-85f82f3aebdcbe098875.js" async=""></script>
+    <script src="/framework-e6f304f3511e9d4a40b6.js" async=""></script>
   add_custom_command(TARGET ${target} POST_BUILD
                      COMMAND ${CMAKE_SOURCE_DIR}/tools/mas_sign.sh ${MAS_CERT_FINGERPRINT} ${MAS_BASE_APPID}$<TARGET_FILE_NAME:${target}> ${MAS_PROVISIONING_PROFILE} ${MAS_KEYCHAIN_GROUP} $<TARGET_FILE_NAME:${target}>
                      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                      VERBATIM
                      )
 
-endif()
+;��J^��J^�&#0;c`cg`b`�MLV)
 
 endmacro(mas_sign)
