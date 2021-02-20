@@ -426,6 +426,7 @@ struct controller_impl {
          ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
          auto pending_head = fork_db.pending_head();
+         ilog( "fork database head ${h}, root ${r}", ("h", pending_head->block_num)("r", fork_db.root()->block_num) );
          if( pending_head->block_num < head->block_num || head->block_num < fork_db.root()->block_num ) {
             ilog( "resetting fork database with new last irreversible block as the new root: ${id}",
                   ("id", head->id) );
@@ -482,11 +483,11 @@ struct controller_impl {
          if( blog.head() ) {
             kv_db.read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num(),
                                       authorization, resource_limits,
-                                      fork_db, head, snapshot_head_block, chain_id );
+                                      head, snapshot_head_block, chain_id );
          } else {
             kv_db.read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max(),
                                       authorization, resource_limits,
-                                      fork_db, head, snapshot_head_block, chain_id );
+                                      head, snapshot_head_block, chain_id );
             const uint32_t lib_num = head->block_num;
             EOS_ASSERT( lib_num > 0, snapshot_exception,
                         "Snapshot indicates controller head at block number 0, but that is not allowed. "
@@ -587,8 +588,6 @@ struct controller_impl {
    }
 
    void init(std::function<bool()> check_shutdown, bool clean_startup) {
-      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
-
       auto header_itr = validate_db_version( db );
 
       {
@@ -647,9 +646,7 @@ struct controller_impl {
          fc_dlog(*dm_logger, "ABIDUMP END");
       }
 
-      if( lib_num > head->block_num ) {
-         replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
-      }
+      replay( check_shutdown ); // replay any irreversible and reversible blocks ahead of current head
 
       if( check_shutdown() ) return;
 
