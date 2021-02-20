@@ -416,15 +416,20 @@ struct controller_impl {
    }
 
    void replay(std::function<bool()> check_shutdown) {
+      if( !blog.head() && !fork_db.root() ) {
+         fork_db.reset( *head );
+         return;
+      }
+
       auto blog_head = blog.head();
-      auto blog_head_time = blog_head->timestamp.to_time_point();
+      auto blog_head_time = blog_head ? blog_head->timestamp.to_time_point() : fork_db.root()->header.timestamp.to_time_point();
       replay_head_time = blog_head_time;
       auto start_block_num = head->block_num + 1;
       auto start = fc::time_point::now();
 
       std::exception_ptr except_ptr;
 
-      if( start_block_num <= blog_head->block_num() ) {
+      if( blog_head && start_block_num <= blog_head->block_num() ) {
          ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
                ("s", start_block_num)("n", blog_head->block_num()) );
          try {
@@ -442,18 +447,20 @@ struct controller_impl {
          ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
          auto pending_head = fork_db.pending_head();
-         ilog( "fork database head ${h}, root ${r}", ("h", pending_head->block_num)("r", fork_db.root()->block_num) );
-         if( pending_head->block_num < head->block_num || head->block_num < fork_db.root()->block_num ) {
-            ilog( "resetting fork database with new last irreversible block as the new root: ${id}",
-                  ("id", head->id) );
-            fork_db.reset( *head );
-         } else if( head->block_num != fork_db.root()->block_num ) {
-            auto new_root = fork_db.search_on_branch( pending_head->id, head->block_num );
-            EOS_ASSERT( new_root, fork_database_exception, "unexpected error: could not find new LIB in fork database" );
-            ilog( "advancing fork database root to new last irreversible block within existing fork database: ${id}",
-                  ("id", new_root->id) );
-            fork_db.mark_valid( new_root );
-            fork_db.advance_root( new_root->id );
+         if( pending_head ) {
+            ilog( "fork database head ${h}, root ${r}", ("h", pending_head->block_num)( "r", fork_db.root()->block_num ) );
+            if( pending_head->block_num < head->block_num || head->block_num < fork_db.root()->block_num ) {
+               ilog( "resetting fork database with new last irreversible block as the new root: ${id}", ("id", head->id) );
+               fork_db.reset( *head );
+            } else if( head->block_num != fork_db.root()->block_num ) {
+               auto new_root = fork_db.search_on_branch( pending_head->id, head->block_num );
+               EOS_ASSERT( new_root, fork_database_exception,
+                           "unexpected error: could not find new LIB in fork database" );
+               ilog( "advancing fork database root to new last irreversible block within existing fork database: ${id}",
+                     ("id", new_root->id) );
+               fork_db.mark_valid( new_root );
+               fork_db.advance_root( new_root->id );
+            }
          }
 
          // if the irreverible log is played without undo sessions enabled, we need to sync the
@@ -464,7 +471,7 @@ struct controller_impl {
          ilog( "no irreversible blocks need to be replayed" );
       }
 
-      if( !except_ptr && !check_shutdown() ) {
+      if( !except_ptr && !check_shutdown() && fork_db.head() ) {
          auto head_block_num = head->block_num;
          auto branch = fork_db.fetch_branch( fork_db.head()->id );
          int rev = 0;
@@ -475,6 +482,10 @@ struct controller_impl {
             replay_push_block( (*i)->block, controller::block_status::validated );
          }
          ilog( "${n} reversible blocks replayed", ("n",rev) );
+      }
+
+      if( !fork_db.head() ) {
+         fork_db.reset( *head );
       }
 
       auto end = fc::time_point::now();
@@ -628,10 +639,7 @@ struct controller_impl {
 
       kv_db.check_backing_store_setting( clean_startup );
 
-      // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
-      // Furthermore, fork_db.root()->block_num <= lib_num.
-      // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
-
+      // At this point head != nullptr
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
                   "fork database head (${head}) is inconsistent with state (${db})",
                   ("db",db.revision())("head",head->block_num) );
@@ -671,6 +679,10 @@ struct controller_impl {
 
       if( check_shutdown() ) return;
 
+      // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
+      // Furthermore, fork_db.root()->block_num <= lib_num.
+      // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
+
       if( read_mode != db_read_mode::IRREVERSIBLE
           && fork_db.pending_head()->id != fork_db.head()->id
           && fork_db.head()->id == fork_db.root()->id
@@ -704,7 +716,7 @@ struct controller_impl {
    sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
-      kv_db.add_to_snapshot(hash_writer, *fork_db.head(), authorization, resource_limits);
+      kv_db.add_to_snapshot(hash_writer, *head, authorization, resource_limits);
       hash_writer->finalize();
 
       return enc.result();
