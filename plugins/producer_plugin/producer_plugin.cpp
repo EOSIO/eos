@@ -478,6 +478,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
                                                           next{std::move(next)}, trx_id]() mutable {
             if( future.valid() ) {
+               future.wait();
                app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx_id]() mutable {
                   auto exception_handler = [self, &next, trx_id](fc::exception_ptr ex) {
                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
@@ -485,8 +486,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      next(ex);
 
                     if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                        //Dump transaction
                         if (self->_unapplied_transactions.get_trx(trx_id)) {
+                            //Dump transaction
                             std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(self->_unapplied_transactions.get_trx(trx_id)->packed_trx()->get_transaction());
                             auto entire_trx = self->chain_plug->get_entire_trx_trace(transaction_ptr);
                             fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] [Speculative execution is REJECTING tx: ${txid} : ${why}]: \n${entire_trx} ",
