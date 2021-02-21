@@ -3484,26 +3484,29 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
 
 } // namespace chain_apis
 
-fc::variant chain_plugin::get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr, std::shared_ptr<transaction>>& obj)const {
+fc::variant chain_plugin::get_entire_trx_trace(const transaction_trace_ptr& trx_trace )const {
 
     fc::variant pretty_output;
     auto ro_api = get_read_only_api();
     try {
-        if (std::holds_alternative<fc::exception_ptr>(obj)) {
-            abi_serializer::to_variant(std::get<fc::exception_ptr>(obj), pretty_output,
-                                       chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                       abi_serializer::create_yield_function(get_abi_serializer_max_time()));
-        }else if (std::holds_alternative<transaction_trace_ptr>(obj)) {
-            abi_serializer::to_variant(std::get<transaction_trace_ptr>(obj), pretty_output,
-                                       chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                       abi_serializer::create_yield_function(get_abi_serializer_max_time()));
-        }else {
-            abi_serializer::to_variant(std::get<std::shared_ptr<transaction>>(obj), pretty_output,
-                                       chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
-                                       abi_serializer::create_yield_function(get_abi_serializer_max_time()));
-        }
+        abi_serializer::to_variant(trx_trace, pretty_output,
+                                   chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+     } catch (chain::abi_exception&) {
+        pretty_output = trx_trace;
+    }
+    return pretty_output;
+}
+
+fc::variant chain_plugin::get_entire_trx(const transaction& trx) const {
+    fc::variant pretty_output;
+    auto ro_api = get_read_only_api();
+    try {
+        abi_serializer::to_variant(trx, pretty_output,
+                                   chain_apis::make_resolver(&ro_api, abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
     } catch (chain::abi_exception&) {
-        pretty_output = obj;
+        pretty_output = trx;
     }
     return pretty_output;
 }

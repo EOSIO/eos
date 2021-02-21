@@ -486,8 +486,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
                     if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
                         //Dump transaction
-                        std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(trx->get_transaction());
-                        auto entire_trx = self->chain_plug->get_entire_trx_trace(transaction_ptr);
+                        auto entire_trx = self->chain_plug->get_entire_trx(trx->get_transaction());
                         fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                     }
                   };
@@ -1694,8 +1693,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
 
                if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
                    // Dump transaction
-                   std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
-                   auto entire_trx = chain_plug->get_entire_trx_trace(transaction_ptr);
+                   auto entire_trx = chain_plug->get_entire_trx(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
                    fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                }
 
@@ -1708,8 +1706,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
 
                   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
                       // Dump transaction
-                      std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
-                      auto entire_trx = chain_plug->get_entire_trx_trace(transaction_ptr);
+                      auto entire_trx = chain_plug->get_entire_trx(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
                       fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                   }
                }
@@ -2316,12 +2313,15 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
            ("txid", trx_id)("why", reason));
 
-   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-       if (my->_unapplied_transactions.get_trx(trx_id)) {
+   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)){
+       transaction_metadata_ptr trx_meta_ptr = my->_unapplied_transactions.get_trx(trx_id);
+       if (trx_meta_ptr) {
            // Dump transaction
-           std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(my->_unapplied_transactions.get_trx(trx_id)->packed_trx()->get_transaction());
-           auto entire_trx = my->chain_plug->get_entire_trx_trace(transaction_ptr);
+           auto entire_trx = my->chain_plug->get_entire_trx(trx_meta_ptr->packed_trx()->get_transaction());
            fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
+       } else {
+           fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
+                   ("txid", trx_id)("why", reason));
        }
    }
 }

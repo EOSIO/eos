@@ -1070,7 +1070,8 @@ public:
    
    bool account_queries_enabled() const;
 
-   fc::variant get_entire_trx_trace(const std::variant<fc::exception_ptr, transaction_trace_ptr, std::shared_ptr<transaction>>& obj) const;
+   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_entire_trx(const transaction& trx) const;
 
 private:
    static void log_guard_exception(const chain::guard_exception& e);
