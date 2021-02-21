@@ -474,24 +474,21 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
 
-         auto trx_id = trx->id();
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
-                                                          next{std::move(next)}, trx_id]() mutable {
+                                                          next{std::move(next)}, trx]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx_id]() mutable {
-                  auto exception_handler = [self, &next, trx_id](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx]() mutable {
+                  auto exception_handler = [self, &next, trx](fc::exception_ptr ex) {
                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                            ("txid", trx_id)("why",ex->what()));
+                            ("txid", trx->id())("why",ex->what()));
                      next(ex);
 
                     if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                        if (self->_unapplied_transactions.get_trx(trx_id)) {
-                            //Dump transaction
-                            std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(self->_unapplied_transactions.get_trx(trx_id)->packed_trx()->get_transaction());
-                            auto entire_trx = self->chain_plug->get_entire_trx_trace(transaction_ptr);
-                            fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
-                        }
+                        //Dump transaction
+                        std::shared_ptr<transaction> transaction_ptr = std::make_shared<transaction>(trx->get_transaction());
+                        auto entire_trx = self->chain_plug->get_entire_trx_trace(transaction_ptr);
+                        fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                     }
                   };
                   try {
