@@ -97,6 +97,34 @@ BOOST_AUTO_TEST_CASE(std_copy) {
    BOOST_REQUIRE(parts == extracted_parts);
 }
 
+BOOST_AUTO_TEST_CASE(cow) {
+  auto original_text = std::string{"Hello World"};
+  const auto original = eosio::session::shared_bytes{original_text.data(), original_text.size()};
+
+  const auto copy1 = original;
+  const auto copy1_data = copy1.data();
+  BOOST_REQUIRE(copy1_data == original.data());
+
+  const auto copy1_it = std::begin(copy1);
+  BOOST_REQUIRE(*copy1_it == 'H');
+  BOOST_REQUIRE(copy1_it[0] == 'H'); 
+  BOOST_REQUIRE(copy1.data() == original.data());
+
+  auto copy2 = original;
+  auto copy2_data = copy2.data();
+  BOOST_REQUIRE(copy2_data != original.data());
+
+  auto copy3 = original;
+  const auto copy3_it = std::begin(copy3);
+  BOOST_REQUIRE(*copy3_it == 'H');
+  BOOST_REQUIRE(copy3.data() != original.data());
+
+  auto copy4 = original;
+  const auto copy4_it = std::begin(copy4);
+  BOOST_REQUIRE(copy4_it[0] == 'H');
+  BOOST_REQUIRE(copy4.data() != original.data());
+}
+
 BOOST_AUTO_TEST_CASE(next_test) {
    static constexpr auto* a_value  = "a";
    static constexpr auto* a_next_expected = "b";
