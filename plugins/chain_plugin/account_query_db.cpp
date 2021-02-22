@@ -147,7 +147,6 @@ namespace eosio::chain_apis {
          // build a initial time to block number map
          const auto lib_num = controller.last_irreversible_block_num();
          const auto head_num = controller.head_block_num();
-         const auto lib_time = controller.last_irreversible_block_time();
 
          for (uint32_t block_num = lib_num + 1; block_num <= head_num; block_num++) {
             const auto block_p = controller.fetch_block_by_number(block_num);
@@ -156,12 +155,7 @@ namespace eosio::chain_apis {
          }
 
          for (const auto& po : index ) {
-            uint32_t last_updated_height = lib_num;
-            if (po.last_updated > lib_time) {
-               const auto iter = time_to_block_num.find(po.last_updated);
-               EOS_ASSERT(iter != time_to_block_num.end(), chain::plugin_exception, "invalid block time encountered in on-chain accounts ${time}", ("time", po.last_updated));
-               last_updated_height = iter->second;
-            }
+            uint32_t last_updated_height = last_updated_time_to_height(po.last_updated);
             const auto& pi = permission_info_index.emplace( permission_info{ po.owner, po.name, last_updated_height, po.auth.threshold } ).first;
             add_to_bimaps(*pi, po);
          }
@@ -218,6 +212,20 @@ namespace eosio::chain_apis {
          return true;
       }
 
+      uint32_t last_updated_time_to_height( const fc::time_point& last_updated) {
+         const auto lib_num = controller.last_irreversible_block_num();
+         const auto lib_time = controller.last_irreversible_block_time();
+
+         uint32_t last_updated_height = lib_num;
+         if (last_updated > lib_time) {
+            const auto iter = time_to_block_num.find(last_updated);
+            EOS_ASSERT(iter != time_to_block_num.end(), chain::plugin_exception, "invalid block time encountered in on-chain accounts ${time}", ("time", last_updated));
+            last_updated_height = iter->second;
+         }
+
+         return last_updated_height;
+      }
+
       /**
        * Given a block number, remove all permissions that were last updated at or after that block number
        * this will effectively roll back the database to just before the incoming block
@@ -234,12 +242,9 @@ namespace eosio::chain_apis {
          // roll back time-map
          auto time_iter = time_to_block_num.rbegin();
          while (time_iter != time_to_block_num.rend() && time_iter->second >= bnum) {
-            std::advance(time_iter, 1);
+            time_iter++;
             time_to_block_num.erase( time_iter.base() );
          }
-
-         const auto lib_num = controller.last_irreversible_block_num();
-         const auto lib_time = controller.last_irreversible_block_time();
 
          while (!index.empty()) {
             const auto& pi = (*index.rbegin());
@@ -257,12 +262,7 @@ namespace eosio::chain_apis {
             } else {
                const auto& po = *itr;
 
-               uint32_t last_updated_height = lib_num;
-               if (po.last_updated > lib_time) {
-                  const auto iter = time_to_block_num.find(po.last_updated);
-                  EOS_ASSERT(iter != time_to_block_num.end(), chain::plugin_exception, "invalid block time encountered in on-chain accounts ${time}", ("time", po.last_updated));
-                  last_updated_height = iter->second;
-               }
+               uint32_t last_updated_height = last_updated_time_to_height(po.last_updated);
 
                index.modify(index.iterator_to(pi), [&po, last_updated_height](auto& mutable_pi) {
                   mutable_pi.last_updated_height = last_updated_height;

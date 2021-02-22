@@ -128,15 +128,19 @@ BOOST_AUTO_TEST_CASE(future_fork_test) { try {
    aq_db.cache_transaction_trace(trace_ptr);
    node_a.produce_block();
 
+   params pars;
+   pars.keys.emplace_back(node_a.get_public_key(tester_account, role));
+
+   const auto pre_results = aq_db.get_accounts_by_authorizers(pars);
+   BOOST_TEST_REQUIRE(find_account_auth(pre_results, tester_account, N(role)) == true);
+
    // have node B take over from head-1 and produce "future" blocks to overtake
    node_a.push_block(node_b.produce_block(fc::milliseconds(config::block_interval_ms * 100)));
    node_a.push_block(node_b.produce_block());
 
    // ensure the account was forked away
-   params pars;
-   pars.keys.emplace_back(node_a.get_public_key(tester_account, role));
-   const auto results = aq_db.get_accounts_by_authorizers(pars);
-   BOOST_TEST_REQUIRE(results.accounts.size() == 0);
+   const auto post_results = aq_db.get_accounts_by_authorizers(pars);
+   BOOST_TEST_REQUIRE(post_results.accounts.size() == 0);
 
 } FC_LOG_AND_RETHROW() }
 
