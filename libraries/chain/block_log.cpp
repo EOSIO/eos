@@ -1323,14 +1323,14 @@ namespace eosio { namespace chain {
               ("blocks_dir", blocks_dir));
          return;
       }
-      bfs::path temp_dir    = bfs::unique_path();
-      bfs::create_directory(temp_dir);
-      auto scoped_dir = fc::make_scoped_exit([&temp_dir] { bfs::remove_all(temp_dir); } );
-      uint32_t  start_block, end_block=0;
+
+      fc::temp_directory temp_dir;
+      bfs::path temp_path = temp_dir.path();
+      uint32_t start_block, end_block = 0;
       uint32_t version;
 
-      bfs::path temp_block_log = temp_dir / "blocks.log";
-      bfs::path temp_block_index  = temp_dir / "blocks.index";
+      bfs::path temp_block_log = temp_path / "blocks.log";
+      bfs::path temp_block_index  = temp_path / "blocks.index";
 
       for (auto const& [first_block_num, val] : catalog.collection ) {
          if (bfs::exists(temp_block_log)) {
@@ -1358,7 +1358,7 @@ namespace eosio { namespace chain {
                wlog("${file}.log cannot be merged with previous block log file because of the discontinuity of blocks, skip merging.",
                   ("file", val.filename_base.generic_string()));
             // there is a version or block number gap between the stride files 
-            move_blocklog_files(temp_dir, dest_dir, start_block, end_block);
+            move_blocklog_files(temp_path, dest_dir, start_block, end_block);
          }
            
          bfs::copy(val.filename_base + ".log", temp_block_log);
@@ -1369,7 +1369,7 @@ namespace eosio { namespace chain {
       }
 
       if (bfs::exists(temp_block_log)) {
-         move_blocklog_files(temp_dir, dest_dir, start_block, end_block);
+         move_blocklog_files(temp_path, dest_dir, start_block, end_block);
       }
    }
    } // namespace chain
