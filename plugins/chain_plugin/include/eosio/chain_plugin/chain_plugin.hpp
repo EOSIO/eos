@@ -57,9 +57,6 @@ struct permission {
    authority         required_auth;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -910,7 +907,6 @@ public:
 
    chain::symbol extract_core_symbol()const;
 
-   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -941,7 +937,6 @@ public:
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   friend resolver_factory<read_write>;
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
