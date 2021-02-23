@@ -449,6 +449,71 @@ const std::vector<char>& query_get_abi(wasm_ql::thread_state& thread_state, cons
    return thread_state.action_return_value;
 } // query_get_abi
 
+struct get_raw_abi_params {
+   eosio::name account_name = {};
+   std::optional<eosio::checksum256> abi_hash;
+};
+
+EOSIO_REFLECT(get_raw_abi_params, account_name, abi_hash)
+
+struct get_raw_abi_result {
+   eosio::name                account_name;
+   eosio::checksum256         code_hash;
+   eosio::checksum256         abi_hash;
+   std::optional<std::string> abi;
+};
+
+EOSIO_REFLECT(get_raw_abi_result, account_name, code_hash, abi_hash, abi)
+
+const std::vector<char>& query_get_raw_abi(wasm_ql::thread_state& thread_state, const std::vector<char>& contract_kv_prefix,
+                                       std::string_view body) {
+   get_raw_abi_params       params;
+   std::string              s{ body.begin(), body.end() };
+   eosio::json_token_stream stream{ s.data() };
+   try {
+      from_json(params, stream);
+   } catch (std::exception& e) {
+      throw std::runtime_error("An error occurred deserializing get_abi_params: "s + e.what());
+   }
+
+   rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
+   chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
+   db_view_state            db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
+
+   get_raw_abi_result result = {};
+
+   auto                              meta = get_state_row<ship_protocol::account_metadata>(
+         db_view_state.kv_state.view,
+         std::make_tuple(eosio::name{ "account.meta" }, eosio::name{ "primary" }, params.account_name));
+   if (meta) {
+      auto& meta0 = std::get<ship_protocol::account_metadata_v0>(meta->second);
+      if (!meta0.code->vm_type && !meta0.code->vm_version)
+         result.code_hash = meta0.code->code_hash;
+   }
+
+   auto acc = get_state_row<ship_protocol::account>(
+         db_view_state.kv_state.view,
+         std::make_tuple(eosio::name{ "account" }, eosio::name{ "primary" }, params.account_name));
+   if (!acc)
+      throw std::runtime_error("account " + (std::string)params.account_name + " not found");
+   auto& acc0 = std::get<ship_protocol::account_v0>(acc->second);
+
+   result.account_name = acc0.name;
+   if (acc0.abi.pos != acc0.abi.end) {
+      auto fc_abi_hash = fc::sha256::hash(acc0.abi.pos, acc0.abi.remaining());
+      auto abi_hash_stream = eosio::input_stream(fc_abi_hash.data(), fc_abi_hash.data_size());
+      eosio::from_bin(result.abi_hash, abi_hash_stream);
+      if(!params.abi_hash || *params.abi_hash != result.abi_hash) {
+        result.abi = fc::base64_encode(reinterpret_cast<const unsigned char*>(acc0.abi.pos), acc0.abi.remaining());
+      }
+   }
+
+   // todo: avoid the extra copy
+   auto json = eosio::convert_to_json(result);
+   thread_state.action_return_value.assign(json.begin(), json.end());
+   return thread_state.action_return_value;
+} // query_get_raw_abi
+
 // Ignores data field
 struct action_no_data {
    eosio::name                                  account       = {};

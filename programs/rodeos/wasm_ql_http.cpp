@@ -233,6 +233,15 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
                                std::string_view{ req.body().data(), req.body().size() }),
                  "application/json"));
          return;
+      } else if (req.target() == "/v1/chain/get_raw_abi") {
+         if (req.method() != http::verb::post)
+            return send(
+                  error(http::status::bad_request, "Unsupported HTTP-method for " + req.target().to_string() + "\n"));
+         auto thread_state = state_cache.get_state();
+         send(ok(query_get_raw_abi(*thread_state, temp_contract_kv_prefix,
+                               std::string_view{ req.body().data(), req.body().size() }),
+                 "application/json"));
+         return;
       } else if (req.target() == "/v1/chain/get_required_keys") { // todo: replace with a binary endpoint?
          if (req.method() != http::verb::post)
             return send(
