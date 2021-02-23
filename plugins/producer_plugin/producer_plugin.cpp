@@ -2327,9 +2327,9 @@ void producer_plugin_impl::produce_block() {
         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 }
 
-void producer_plugin::log_failed_transaction(const packed_transaction_ptr& packed_trx_ptr, const char* reason) const {
+void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, const char* reason) const {
    fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
-           ("txid", packed_trx_ptr->id())("why", reason));
+           ("txid", trx_id)("why", reason));
 
    if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)){
        if (packed_trx_ptr) {
@@ -2337,7 +2337,7 @@ void producer_plugin::log_failed_transaction(const packed_transaction_ptr& packe
            fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}", ("entire_trx", entire_trx));
        } else {
            fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why}",
-                   ("txid", packed_trx_ptr->id())("why", reason));
+                   ("txid", trx_id)("why", reason));
        }
    }
 }
