@@ -74,9 +74,7 @@ void wasm_ql_plugin::set_program_options(options_description& cli, options_descr
    auto op = cfg.add_options();
    op("wql-threads", bpo::value<int>()->default_value(8), "Number of threads to process requests");
    op("wql-listen", bpo::value<std::string>()->default_value("127.0.0.1:8880"), "Endpoint to listen on");
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    op("wql-unix-listen", bpo::value<std::string>(), "Unix socket path to listen on");
-#endif
    op("wql-retries", bpo::value<uint32_t>()->default_value(0xffff'ffff),
       "Number of times to retry binding to --wql-listen. Each retry is approx 1 second apart. Set to 0 to prevent "
       "retries.");

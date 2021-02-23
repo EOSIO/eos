@@ -40,9 +40,7 @@ namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http  = beast::http;          // from <boost/beast/http.hpp>
 namespace net   = boost::asio;          // from <boost/asio.hpp>
 using tcp       = boost::asio::ip::tcp; // from <boost/asio/ip/tcp.hpp>
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 using unixs     = boost::asio::local::stream_protocol; // from <boost/asio/local/stream_protocol.hpp>
-#endif
 
 using namespace std::literals;
 
@@ -519,7 +517,6 @@ struct tcp_http_session : public http_session<tcp_http_session>, public std::ena
    beast::tcp_stream stream;
 };
 
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 struct unix_http_session : public http_session<unix_http_session>, public std::enable_shared_from_this<unix_http_session> {
    unix_http_session(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
                     const std::shared_ptr<const wasm_ql::shared_state>& shared_state,
@@ -534,7 +531,6 @@ struct unix_http_session : public http_session<unix_http_session>, public std::e
 #endif
                        beast::unlimited_rate_policy> stream;
 };
-#endif
 
 // Accepts incoming connections and launches the sessions
 class listener : public std::enable_shared_from_this<listener> {
@@ -542,9 +538,7 @@ class listener : public std::enable_shared_from_this<listener> {
    std::shared_ptr<const wasm_ql::shared_state> shared_state;
    net::io_context&                             ioc;
    tcp::acceptor                                tcp_acceptor;
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    unixs::acceptor                              unix_acceptor;
-#endif
    bool                                         acceptor_ready = false;
    std::shared_ptr<thread_state_cache>          state_cache;
 
@@ -552,10 +546,7 @@ class listener : public std::enable_shared_from_this<listener> {
    listener(const std::shared_ptr<const wasm_ql::http_config>&  http_config,
             const std::shared_ptr<const wasm_ql::shared_state>& shared_state, net::io_context& ioc)
        : http_config{ http_config }, shared_state{ shared_state }, ioc(ioc), tcp_acceptor(net::make_strand(ioc)),
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-         unix_acceptor(net::make_strand(ioc)),
-#endif
-         state_cache(std::make_shared<thread_state_cache>(shared_state)) {
+         unix_acceptor(net::make_strand(ioc)), state_cache(std::make_shared<thread_state_cache>(shared_state)) {
 
       state_cache->preallocate(http_config->num_threads);
 
@@ -569,7 +560,7 @@ class listener : public std::enable_shared_from_this<listener> {
 
          start_listen(tcp_acceptor, tcp::endpoint{ a, (unsigned short)std::atoi(http_config->port.c_str()) });
       }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+
       if(http_config->unix_path.size()) {
          //take a sniff and see if anything is already listening at the given socket path, or if the socket path exists
          // but nothing is listening
@@ -588,7 +579,6 @@ class listener : public std::enable_shared_from_this<listener> {
 
          start_listen(unix_acceptor, unixs::endpoint(http_config->unix_path));
       }
-#endif
 
       acceptor_ready = true;
    }
@@ -626,10 +616,8 @@ class listener : public std::enable_shared_from_this<listener> {
          return acceptor_ready;
       if (tcp_acceptor.is_open())
          do_accept(tcp_acceptor);
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if (unix_acceptor.is_open())
          do_accept(unix_acceptor);
-#endif
       return acceptor_ready;
    }
 
@@ -644,10 +632,8 @@ class listener : public std::enable_shared_from_this<listener> {
             // Create the http session and run it
             if constexpr (std::is_same_v<Acceptor, tcp::acceptor>)
                std::make_shared<tcp_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
             else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>)
                std::make_shared<unix_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
-#endif
          }
 
          // Accept another connection
