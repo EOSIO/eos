@@ -323,7 +323,7 @@ int main(int argc, char** argv) {
 
       const auto blocks_dir = vmap["blocks-dir"].as<bfs::path>();
 
-      if (!blog.extract_blocklog && !block_log::exists(blocks_dir)) {
+      if (!blog.extract_blocklog && !blog.merge_blocklogs && !block_log::exists(blocks_dir)) {
          std::cerr << "The specified blocks-dir must contain blocks.log and blocks.index files";
          return -1;
       }
