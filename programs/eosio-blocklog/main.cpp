@@ -53,6 +53,7 @@ struct blocklog {
    bool                             prune_transactions = false;
    bool                             help               = false;
    bool                             extract_blocklog   = false;
+   bool                             merge_blocklogs    = false;
    uint32_t                         blocklog_split_stride   = 0;
 };
 
@@ -213,6 +214,9 @@ void blocklog::set_program_options(options_description& cli)
          ("extract-blocklog", bpo::bool_switch(&extract_blocklog)->default_value(false),
           "Extract blocks from blocks.log and blocks.index and keep the original." 
           " Must give 'blocks-dir' or 'blocks-filebase','output-dir', 'first' and 'last'.")
+          ("merge-blocklogs", bpo::bool_switch(&merge_blocklogs)->default_value(false),
+          "Merge block log files in 'blocks-dir' with the file pattern 'blocks-\\d+-\\d+.[log,index]' to 'output-dir' whenever possible." 
+          "The files in 'blocks-dir' will be kept without change. Must give 'blocks-dir' and 'output-dir'.")
          ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
          ;
 }
@@ -406,6 +410,11 @@ int main(int argc, char** argv) {
                                        blog.last_block - blog.first_block + 1);
          return 0;
       } 
+
+      if (blog.merge_blocklogs) {
+         block_log::merge_blocklogs(blocks_dir, output_dir);
+         return 0;
+      }
 
       // else print blocks.log as JSON
       blog.initialize(vmap);
