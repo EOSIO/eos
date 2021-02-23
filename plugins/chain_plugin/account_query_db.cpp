@@ -242,8 +242,7 @@ namespace eosio::chain_apis {
          // roll back time-map
          auto time_iter = time_to_block_num.rbegin();
          while (time_iter != time_to_block_num.rend() && time_iter->second >= bnum) {
-            time_iter++;
-            time_to_block_num.erase( time_iter.base() );
+            time_iter = decltype(time_iter){time_to_block_num.erase( std::next(time_iter).base() )};
          }
 
          while (!index.empty()) {
@@ -262,7 +261,7 @@ namespace eosio::chain_apis {
             } else {
                const auto& po = *itr;
 
-               uint32_t last_updated_height = last_updated_time_to_height(po.last_updated);
+               uint32_t last_updated_height = po.last_updated == bsp->header.timestamp ? bsp->block_num : last_updated_time_to_height(po.last_updated);
 
                index.modify(index.iterator_to(pi), [&po, last_updated_height](auto& mutable_pi) {
                   mutable_pi.last_updated_height = last_updated_height;
