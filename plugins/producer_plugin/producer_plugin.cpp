@@ -478,8 +478,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                                                           next{std::move(next)}, trx]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx]() mutable {
-                  auto exception_handler = [self, &next, trx](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}]() mutable {
+                  auto exception_handler = [self, &next, trx{std::move(trx)}](fc::exception_ptr ex) {
                     fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                             ("txid", trx->id())("why",ex->what()));
                      next(ex);
