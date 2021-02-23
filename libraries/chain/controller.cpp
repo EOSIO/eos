@@ -256,6 +256,11 @@ struct controller_impl {
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
+#ifdef EOSIO_REQUIRE_CHAIN_ID
+      EOS_ASSERT(chain_id == chain_id_type(EOSIO_REQUIRE_CHAIN_ID), disallowed_chain_id_exception,
+                 "required chain id:${c} runtime chain id:${r}", ("r", chain_id)("c", EOSIO_REQUIRE_CHAIN_ID) );
+#endif
+
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
