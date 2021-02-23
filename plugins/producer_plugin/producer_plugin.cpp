@@ -485,7 +485,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      next(ex);
 
                     if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                        //Dump transaction
                         auto entire_trx = self->chain_plug->get_entire_trx(trx->get_transaction());
                         fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                     }
@@ -527,7 +526,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
 
                if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                   //Dump transaction trace
                    auto entire_trace = std::get<fc::exception_ptr>(response);
                    fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trace} ", ("entire_trace", entire_trace));
                }
@@ -544,7 +542,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
 
                if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                   //Dump transaction trace
                    auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );
                    fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trace}", ("entire_trace", entire_trace));
                }
@@ -1692,7 +1689,6 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                }
 
                if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                   // Dump transaction
                    auto entire_trx = chain_plug->get_entire_trx(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
                    fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                }
@@ -1705,7 +1701,6 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                         ("txid", txid));
 
                   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                      // Dump transaction
                       auto entire_trx = chain_plug->get_entire_trx(this->_unapplied_transactions.get_trx(txid)->packed_trx()->get_transaction());
                       fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
                   }
@@ -2316,7 +2311,6 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
    if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)){
        transaction_metadata_ptr trx_meta_ptr = my->_unapplied_transactions.get_trx(trx_id);
        if (trx_meta_ptr) {
-           // Dump transaction
            auto entire_trx = my->chain_plug->get_entire_trx(trx_meta_ptr->packed_trx()->get_transaction());
            fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] ${entire_trx}", ("entire_trx", entire_trx));
        } else {
