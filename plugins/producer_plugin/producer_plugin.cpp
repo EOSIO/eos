@@ -1691,7 +1691,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
    size_t num_expired_other = 0;
    size_t orig_count = _unapplied_transactions.size();
    bool exhausted = !_unapplied_transactions.clear_expired( pending_block_time, deadline,
-                  [this, &num_expired_persistent, &num_expired_other, pbm = _pending_block_mode,
+                  [chain_plug = chain_plug, &num_expired_persistent, &num_expired_other, pbm = _pending_block_mode,
                    &chain, has_producers = !_producers.empty()]( const packed_transaction_ptr& packed_trx_ptr, trx_enum_type trx_type ) {
 
             if( trx_type == trx_enum_type::persisted ) {
@@ -1702,7 +1702,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                            ("prod", chain.is_building_block() ? chain.pending_block_producer() : name()) );
 
                   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                       auto entire_trx = this->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
+                       auto entire_trx = chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
                        fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${entire_trx}",
                                ("block_num", chain.head_block_num() + 1)
                                ("prod", chain.is_building_block() ? chain.pending_block_producer() : name())
@@ -1712,7 +1712,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", packed_trx_ptr->id()));
 
                   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                       auto entire_trx = this->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
+                       auto entire_trx = chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
                        fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${entire_trx}", ("entire_trx", entire_trx));
                   }
                }
@@ -1724,7 +1724,7 @@ bool producer_plugin_impl::remove_expired_trxs( const fc::time_point& deadline )
                         ("txid", packed_trx_ptr->id()));
 
                   if (_trx_trace_dump_log.is_enabled(fc::log_level::debug)) {
-                      auto entire_trx = this->chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
+                      auto entire_trx = chain_plug->get_entire_trx(packed_trx_ptr->get_transaction());
                       fc_dlog(_trx_trace_dump_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED: ${entire_trx}", ("entire_trx", entire_trx));
                   }
                }
