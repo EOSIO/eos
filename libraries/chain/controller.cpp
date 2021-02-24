@@ -2340,6 +2340,11 @@ const controller::config& controller::get_config()const
    return my->conf;
 }
 
+const uint32_t controller::get_first_block_num()const
+{
+   return my->blog.get_first_block_num();
+}
+
 controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
 :my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {
@@ -2801,6 +2806,7 @@ block_state_ptr controller::fetch_block_state_by_id( block_id_type id )const {
 
 block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )const  { try {
    const auto& rev_blocks = my->reversible_blocks.get_index<reversible_block_index,by_num>();
+
    auto objitr = rev_blocks.find(block_num);
 
    if( objitr == rev_blocks.end() ) {
