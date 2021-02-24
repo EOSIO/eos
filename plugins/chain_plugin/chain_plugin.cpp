@@ -1485,11 +1485,13 @@ std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
 }
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+
    const auto& rm = db.get_resource_limits_manager();
    return {
       itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
       db.head_block_num(),
+      db.get_first_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
       db.head_block_id(),
