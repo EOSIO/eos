@@ -1324,6 +1324,9 @@ namespace eosio { namespace chain {
          return;
       }
 
+      if (!fc::exists(dest_dir))
+         fc::create_directories(dest_dir);
+
       fc::temp_directory temp_dir;
       bfs::path temp_path = temp_dir.path();
       uint32_t start_block, end_block = 0;
