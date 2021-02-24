@@ -649,6 +649,15 @@ namespace eosio { namespace chain {
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
 
+         auto reconstruct_index = [&]() {
+            if (config.fix_irreversible_blocks) {
+               block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
+               block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+            } else {
+               log_data.construct_index(index_file.get_file_path());
+            }
+         };
+
          if (index_size) {
             ilog("Index is nonempty");
             if (index_size % sizeof(uint64_t) == 0) {
@@ -668,17 +677,11 @@ namespace eosio { namespace chain {
                }
             }
             else {
-               if (config.fix_irreversible_blocks) {
-                  block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
-                  block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
-               }
-               else {
-                  log_data.construct_index(index_file.get_file_path());
-               }
+               reconstruct_index();
             } 
          } else {
             ilog("Index is empty. Reconstructing index...");
-            log_data.construct_index(index_file.get_file_path());
+            reconstruct_index();
          }
       } else if (index_size) {
          ilog("Log file is empty while the index file is nonempty, discard the index file");
