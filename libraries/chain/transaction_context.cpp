@@ -174,7 +174,9 @@ namespace eosio { namespace chain {
 
       if( !explicit_billed_cpu_time ) {
          // Fail early if amount of the previous speculative execution is within 10% of remaining account cpu available
-         int64_t validate_account_cpu_limit = account_cpu_limit - EOS_PERCENT( account_cpu_limit, 10 * config::percent_1 );
+         int64_t validate_account_cpu_limit = account_cpu_limit - subjective_cpu_bill_us;
+         if( validate_account_cpu_limit > 0 )
+            validate_account_cpu_limit -= EOS_PERCENT( validate_account_cpu_limit, 10 * config::percent_1 );
          if( validate_account_cpu_limit < 0 ) validate_account_cpu_limit = 0;
          validate_account_cpu_usage( billed_cpu_time_us, validate_account_cpu_limit, true );
       }
