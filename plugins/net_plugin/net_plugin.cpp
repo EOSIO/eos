@@ -147,7 +147,7 @@ namespace eosio {
 
    private:
       constexpr static auto stage_str( stages s );
-      void set_state( stages s );
+      bool set_state( stages s );
       bool is_sync_required( uint32_t fork_head_block_num );
       void request_next_chunk( std::unique_lock<std::mutex> g_sync, const connection_ptr& conn = connection_ptr() );
       void start_sync( const connection_ptr& c, uint32_t target );
@@ -380,7 +380,6 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
-   constexpr auto     def_max_consecutive_rejected_blocks = 13; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -526,6 +525,45 @@ namespace eosio {
    }; // queued_buffer
 
 
+   /// monitors the status of blocks as to whether a block is accepted (sync'd) or
+   /// rejected. It groups consecutive rejected blocks in a (configurable) time
+   /// window (rbw) and maintains a metric of the number of consecutive rejected block
+   /// time windows (rbws).
+   class block_status_monitor {
+   private:
+      bool in_accepted_state_ {true};              ///< indicates of accepted(true) or rejected(false) state
+      fc::microseconds window_size_{2*1000};       ///< rbw time interval (2ms)
+      fc::time_point   window_start_;              ///< The start of the recent rbw (0 implies not started)
+      uint32_t         events_{0};                 ///< The number of consecutive rbws
+      const uint32_t   max_consecutive_rejected_windows_{13};
+      
+   public:
+      /// ctor
+      ///
+      /// @param[in] window_size          The time, in microseconds, of the rejected block window
+      /// @param[in] max_rejected_windows The max consecutive number of rejected block windows
+      /// @note   Copy ctor is not allowed
+      explicit block_status_monitor(fc::microseconds window_size = fc::microseconds(2*1000),
+            uint32_t max_rejected_windows = 13) :
+         window_size_(window_size) {}
+      block_status_monitor( const block_status_monitor& ) = delete;
+      block_status_monitor( block_status_monitor&& ) = delete;
+      ~block_status_monitor() = default;
+      /// reset to initial state
+      void reset();
+      /// called when a block is accepted (sync_recv_block)
+      void accepted() { reset(); }
+      /// called when a block is rejected
+      void rejected();
+      /// returns number of consecutive rbws
+      auto events() const { return events_; }
+      /// indicates if the max number of consecutive rbws has been reached or exceeded
+      bool max_events_violated() const { return events_ >= max_consecutive_rejected_windows_; }
+      /// assignment not allowed
+      block_status_monitor& operator=( const block_status_monitor& ) = delete;
+      block_status_monitor& operator=( block_status_monitor&& ) = delete;
+   };
+
    class connection : public std::enable_shared_from_this<connection> {
    public:
       explicit connection( string endpoint );
@@ -576,6 +614,7 @@ namespace eosio {
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
+      block_status_monitor    block_status_monitor_;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
 
       std::mutex                            response_expected_timer_mtx;
@@ -923,7 +962,7 @@ namespace eosio {
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
-      self->consecutive_rejected_blocks = 0;
+      self->block_status_monitor_.reset();
       ++self->consecutive_immediate_connection_close;
       bool has_last_req = false;
       {
@@ -1352,6 +1391,31 @@ namespace eosio {
    }
 
    //-----------------------------------------------------------
+   void block_status_monitor::reset() {
+      in_accepted_state_ = true;
+      events_ = 0;
+   }
+
+   void block_status_monitor::rejected() {
+      const auto now = fc::time_point::now();
+
+      // in rejected state
+      if(!in_accepted_state_) {
+         const auto elapsed = now - window_start_;
+         if( elapsed < window_size_ ) {
+            return;
+         }
+         ++events_;
+         window_start_ = now;
+         return;
+      }
+
+      // switching to rejected state
+      in_accepted_state_ = false;
+      window_start_ = now;
+      events_ = 0;
+   }
+   //-----------------------------------------------------------
 
     sync_manager::sync_manager( uint32_t req_span )
       :sync_known_lib_num( 0 )
@@ -1372,12 +1436,13 @@ namespace eosio {
     }
   }
 
-   void sync_manager::set_state(stages newstate) {
+   bool sync_manager::set_state(stages newstate) {
       if( sync_state == newstate ) {
-         return;
+         return false;
       }
       fc_ilog( logger, "old state ${os} becoming ${ns}", ("os", stage_str( sync_state ))( "ns", stage_str( newstate ) ) );
       sync_state = newstate;
+      return true;
    }
 
    void sync_manager::sync_reset_lib_num(const connection_ptr& c) {
@@ -1742,9 +1807,10 @@ namespace eosio {
 
    // called from connection strand
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
-      std::unique_lock<std::mutex> g( sync_mtx );
-      if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
+      c->block_status_monitor_.rejected();
+      if( c->block_status_monitor_.max_events_violated()) {
          fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)("p", c->peer_name()) );
+         std::unique_lock<std::mutex> g( sync_mtx );
          sync_last_requested_num = 0;
          sync_source.reset();
          g.unlock();
@@ -1778,7 +1844,7 @@ namespace eosio {
          c->close( false, true );
          return;
       }
-      c->consecutive_rejected_blocks = 0;
+      c->block_status_monitor_.accepted();
       sync_update_expected( c, blk_id, blk_num, blk_applied );
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
@@ -1808,7 +1874,9 @@ namespace eosio {
          } );
 
          if( set_state_to_head_catchup ) {
-            set_state( head_catchup );
+            if( set_state( head_catchup ) ) {
+                send_handshakes();
+            }
          } else {
             set_state( in_sync );
             send_handshakes();

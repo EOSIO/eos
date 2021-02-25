@@ -4,41 +4,43 @@ VERSION=1
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 jq || :
 # install clang from source
-git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git clang8
 cd clang8
 git checkout 18e41dc
+sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
 cd tools
-git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/lld.git
 cd lld
 git checkout d60a035
 cd ../
-git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/polly.git
 cd polly
 git checkout 1bc06e5
 cd ../
-git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/clang.git clang
 cd clang
 git checkout a03da8b
+sed -i.bak 's,https://github.com/llvm-mirror/,https://git.llvm.org/git/,g' .git/config
 cd tools
 mkdir extra
 cd extra
-git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/clang-tools-extra.git
 cd clang-tools-extra
 git checkout 6b34834
 cd ../../../../../projects/
-git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/libcxx.git
 cd libcxx
 git checkout 1853712
 cd ../
-git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/libcxxabi.git
 cd libcxxabi
 git checkout d7338a4
 cd ../
-git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/libunwind.git
 cd libunwind
 git checkout 57f6739
 cd ../
-git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git
+git clone --single-branch --branch release_80 https://github.com/llvm-mirror/compiler-rt.git
 cd compiler-rt
 git checkout 5bc7979
 mkdir ../../build

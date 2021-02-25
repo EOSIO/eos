@@ -74,13 +74,13 @@ brew remove eosio
 
 #### Ubuntu 18.04 Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.0.9/eosio_2.0.9-1-ubuntu-18.04_amd64.deb
-sudo apt install ./eosio_2.0.9-1-ubuntu-18.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.10/eosio_2.0.10-1-ubuntu-18.04_amd64.deb
+sudo apt install ./eosio_2.0.10-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.0.9/eosio_2.0.9-1-ubuntu-16.04_amd64.deb
-sudo apt install ./eosio_2.0.9-1-ubuntu-16.04_amd64.deb
+wget https://github.com/eosio/eos/releases/download/v2.0.10/eosio_2.0.10-1-ubuntu-16.04_amd64.deb
+sudo apt install ./eosio_2.0.10-1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
@@ -91,8 +91,8 @@ sudo apt remove eosio
 
 #### RPM Package Install
 ```sh
-wget https://github.com/eosio/eos/releases/download/v2.0.9/eosio-2.0.9-1.el7.x86_64.rpm
-sudo yum install ./eosio-2.0.9-1.el7.x86_64.rpm
+wget https://github.com/eosio/eos/releases/download/v2.0.10/eosio-2.0.10-1.el7.x86_64.rpm
+sudo yum install ./eosio-2.0.10-1.el7.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
@@ -126,7 +126,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started) walkthrough.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started-guide) walkthrough.
 
 ## Contributing
 
