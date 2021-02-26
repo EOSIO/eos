@@ -2296,7 +2296,7 @@ const controller::config& controller::get_config()const
    return my->conf;
 }
 
-const uint32_t controller::get_first_block_num()const
+uint32_t controller::get_first_block_num()const
 {
    return my->blog.get_first_block_num();
 }
