@@ -3,6 +3,7 @@
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/block_header_state_unpack_stream.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -110,6 +111,11 @@ protected:
                                                                const vector<digest_type>& )>& validator )&&;
 };
 
+struct security_group_info_t {
+   uint32_t version = 0;
+   flat_set<account_name> participants;
+};
+
 /**
  *  @struct block_header_state
  *  @brief defines the minimum state necessary to validate transaction headers
@@ -125,6 +131,18 @@ struct block_header_state : public detail::block_header_state_common {
    /// duplication of work
    flat_multimap<uint16_t, block_header_extension> header_exts;
 
+   struct state_extension_v1 {
+      security_group_info_t security_group_info;
+   };
+
+   // For future extension, one should use
+   //
+   // struct state_extension_v2 : state_extension_v1 { new_field_t new_field };
+   // using state_extension_t = std::variant<state_extension_v1, state_extension_v2> state_extension; 
+
+   using state_extension_t = std::variant<state_extension_v1>;
+   state_extension_t state_extension; 
+   
    block_header_state() = default;
 
    explicit block_header_state( detail::block_header_state_common&& base )
@@ -153,6 +171,15 @@ struct block_header_state : public detail::block_header_state_common {
    void                   verify_signee()const;
 
    const vector<digest_type>& get_new_protocol_feature_activations()const;
+
+   security_group_info_t&  get_security_group_info() { 
+      return std::visit( [](auto& v)  -> security_group_info_t& { return v.security_group_info; },  state_extension); 
+   }
+
+   const security_group_info_t&  get_security_group_info() const { 
+      return std::visit( [](const auto& v) -> const security_group_info_t& { return v.security_group_info; },  state_extension); 
+   }
+   
 };
 
 using block_header_state_ptr = std::shared_ptr<block_header_state>;
@@ -177,6 +204,15 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
+FC_REFLECT( eosio::chain::security_group_info_t,
+            (version)
+            (participants)
+)
+
+FC_REFLECT( eosio::chain::block_header_state::state_extension_v1,
+            (security_group_info)
+)
+
 // @ignore header_exts
 FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::block_header_state_common),
                      (id)
@@ -184,8 +220,8 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
                      (pending_schedule)
                      (activated_protocol_features)
                      (additional_signatures)
+                     (state_extension)
 )
-
 
 FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2::schedule_info,
           ( schedule_lib_num )
@@ -209,3 +245,44 @@ FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2,
           ( pending_schedule )
           ( activated_protocol_features )
 )
+
+namespace fc {
+namespace raw {
+namespace detail {
+
+// The `Stream` class should contain a `block_header_state_version` member; otherwise, the compilation would fail
+template <typename Stream, typename Class>
+struct unpack_block_header_state_derived_visitor
+   : fc::reflector_init_visitor<Class> {
+   
+   unpack_block_header_state_derived_visitor(Class& _c, Stream& _s)
+       : fc::reflector_init_visitor<Class>(_c)
+       , s(_s) {}
+
+   template <typename T, typename C, T(C::*p)>
+   inline void operator()(const char* name) const {
+      try {
+         if constexpr (std::is_same_v< eosio::chain::block_header_state::state_extension_t, std::decay_t<decltype(this->obj.*p)>>)
+            // do not unpack  `state_extension` when the block_header_state_version is zero
+            if (s.block_header_state_version == 0) return;
+
+         fc::raw::unpack(s, this->obj.*p);
+      }
+      FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
+   }
+
+ private:
+   Stream& s;
+};
+
+
+template <typename Stream>
+struct unpack_object_visitor<Stream, eosio::chain::block_header_state> 
+   : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
+   using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
+   using Base::Base;
+};
+
+} // namespace detail
+} // namespace raw
+} // namespace fc
