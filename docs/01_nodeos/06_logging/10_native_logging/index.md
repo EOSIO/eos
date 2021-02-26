@@ -84,7 +84,8 @@ The logging library built into EOSIO currently supports the following loggers:
 - `state_history` - detailed logging for state history plugin.
 - `transaction_success_tracing` - detailed log that emits successful verdicts from relay nodes on the P2P network.
 - `transaction_failure_tracing` - detailed log that emits failed verdicts from relay nodes on the P2P network.
-- `transaction_trace_dump` - detailed log that emits successful and failed verdicts from relay nodes on the P2P network; enabling this logger can greatly slow down nodeos.
+- `transaction_trace_success` - fully detailed log that emits successful verdicts from relay nodes on the P2P network; enabling this logger can greatly slow down nodeos.
+- `transaction_trace_failure` - fully detailed log that emits failed verdicts from relay nodes on the P2P network; enabling this logger can greatly slow down nodeos.
 - `trace_api` - detailed logging for the trace_api plugin.
 - `blockvault_client_plugin` - detailed logging for the blockvault client plugin.
 
