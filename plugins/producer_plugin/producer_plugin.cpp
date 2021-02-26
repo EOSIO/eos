@@ -73,7 +73,7 @@ fc::logger       _trx_successful_trace_log;
 const fc::string trx_failed_trace_logger_name("transaction_failure_tracing");
 fc::logger       _trx_failed_trace_log;
 
-const fc::string trx_trace_dump_logger_name("transaction_trace_success");
+const fc::string trx_trace_success_logger_name("transaction_trace_success");
 fc::logger       _trx_trace_success_log;
 
 const fc::string trx_trace_failure_logger_name("transaction_trace_failure");
@@ -1036,8 +1036,8 @@ void producer_plugin::handle_sighup() {
    fc::logger::update( logger_name, _log );
    fc::logger::update(trx_successful_trace_logger_name, _trx_successful_trace_log);
    fc::logger::update(trx_failed_trace_logger_name, _trx_failed_trace_log);
-   fc::logger::update(trx_trace_dump_logger_name, _trx_trace_success_log);
-   fc::logger::update(trx_trace_dump_logger_name, _trx_trace_failure_log);
+   fc::logger::update(trx_trace_success_logger_name, _trx_trace_success_log);
+   fc::logger::update(trx_trace_failure_logger_name, _trx_trace_failure_log);
 }
 
 void producer_plugin::pause() {
