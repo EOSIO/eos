@@ -1491,7 +1491,6 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
       db.head_block_num(),
-      db.get_first_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
       db.head_block_id(),
@@ -1509,7 +1508,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       app().full_version_string(),
       db.last_irreversible_block_time(),
       rm.get_total_cpu_weight(),
-      rm.get_total_net_weight()
+      rm.get_total_net_weight(),
+      db.get_first_block_num()
    };
 }
 
