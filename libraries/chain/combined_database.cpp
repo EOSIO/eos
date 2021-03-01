@@ -390,6 +390,8 @@ namespace eosio { namespace chain {
          header.validate();
       });
 
+      snapshot->chain_snapshot_version = header.version;
+
       db.create<kv_db_config_object>([](auto&) {});
       check_backing_store_setting(true);
 
