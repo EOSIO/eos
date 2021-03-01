@@ -9,6 +9,7 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <fc/io/fstream.hpp>
 #include <fstream>
+#include <eosio/chain/block_header_state_unpack_stream.hpp>
 
 namespace eosio { namespace chain {
    using boost::multi_index_container;
@@ -17,7 +18,7 @@ namespace eosio { namespace chain {
    const uint32_t fork_database::magic_number = 0x30510FDB;
 
    const uint32_t fork_database::min_supported_version = 1;
-   const uint32_t fork_database::max_supported_version = 1;
+   const uint32_t fork_database::max_supported_version = 2;
 
    // work around block_state::is_valid being private
    inline bool block_state_is_valid( const block_state& bs ) {
@@ -122,14 +123,16 @@ namespace eosio { namespace chain {
                        ("max", max_supported_version)
             );
 
+            block_header_state_unpack_stream unpack_strm(ds, version > min_supported_version);
+
             block_header_state bhs;
-            fc::raw::unpack( ds, bhs );
+            fc::raw::unpack( unpack_strm, bhs );
             reset( bhs );
 
             unsigned_int size; fc::raw::unpack( ds, size );
             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
                block_state s;
-               fc::raw::unpack( ds, s );
+               fc::raw::unpack( unpack_strm, s );
                // do not populate transaction_metadatas, they will be created as needed in apply_block with appropriate key recovery
                s.header_exts = s.block->validate_and_extract_header_extensions();
                my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
