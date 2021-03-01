@@ -327,7 +327,7 @@ void istream_snapshot_reader::set_section( const string& section_name ) {
 }
 
 bool istream_snapshot_reader::read_row( detail::abstract_snapshot_row_reader& row_reader ) {
-   block_header_state_unpack_stream unpack_strm(snapshot, version - minimum_snapshot_version);
+   block_header_state_unpack_stream unpack_strm(snapshot, version > minimum_snapshot_version);
    row_reader.provide(unpack_strm);
    return ++cur_row < num_rows;
 }

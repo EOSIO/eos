@@ -131,23 +131,22 @@ struct block_header_state : public detail::block_header_state_common {
    /// duplication of work
    flat_multimap<uint16_t, block_header_extension> header_exts;
 
-   struct state_extension_v1 {
+   struct state_extension_v0 {
       security_group_info_t security_group_info;
    };
 
    // For future extension, one should use
    //
-   // struct state_extension_v2 : state_extension_v1 { new_field_t new_field };
-   // using state_extension_t = std::variant<state_extension_v1, state_extension_v2> state_extension; 
+   // struct state_extension_v1 : state_extension_v0 { new_field_t new_field };
+   // using state_extension_t = std::variant<state_extension_v0, state_extension_v1> state_extension;
 
-   using state_extension_t = std::variant<state_extension_v1>;
-   state_extension_t state_extension; 
-   
+   using state_extension_t = std::variant<state_extension_v0>;
+   state_extension_t state_extension;
+
    block_header_state() = default;
 
-   explicit block_header_state( detail::block_header_state_common&& base )
-   :detail::block_header_state_common( std::move(base) )
-   {}
+   explicit block_header_state(detail::block_header_state_common&& base)
+       : detail::block_header_state_common(std::move(base)) {}
 
    explicit block_header_state( legacy::snapshot_block_header_state_v2&& snapshot );
 
@@ -170,16 +169,16 @@ struct block_header_state : public detail::block_header_state_common {
    void                   sign( const signer_callback_type& signer );
    void                   verify_signee()const;
 
-   const vector<digest_type>& get_new_protocol_feature_activations()const;
+   const vector<digest_type>& get_new_protocol_feature_activations() const;
 
-   security_group_info_t&  get_security_group_info() { 
-      return std::visit( [](auto& v)  -> security_group_info_t& { return v.security_group_info; },  state_extension); 
+   security_group_info_t& get_security_group_info() {
+      return std::visit([](auto& v) -> security_group_info_t& { return v.security_group_info; }, state_extension);
    }
 
-   const security_group_info_t&  get_security_group_info() const { 
-      return std::visit( [](const auto& v) -> const security_group_info_t& { return v.security_group_info; },  state_extension); 
+   const security_group_info_t& get_security_group_info() const {
+      return std::visit([](const auto& v) -> const security_group_info_t& { return v.security_group_info; },
+                        state_extension);
    }
-   
 };
 
 using block_header_state_ptr = std::shared_ptr<block_header_state>;
@@ -209,7 +208,7 @@ FC_REFLECT( eosio::chain::security_group_info_t,
             (participants)
 )
 
-FC_REFLECT( eosio::chain::block_header_state::state_extension_v1,
+FC_REFLECT( eosio::chain::block_header_state::state_extension_v0,
             (security_group_info)
 )
 
@@ -250,11 +249,10 @@ namespace fc {
 namespace raw {
 namespace detail {
 
-// The `Stream` class should contain a `block_header_state_version` member; otherwise, the compilation would fail
+// The `Stream` class should contain a `has_block_header_state_extension` member; otherwise, the compilation would fail
 template <typename Stream, typename Class>
-struct unpack_block_header_state_derived_visitor
-   : fc::reflector_init_visitor<Class> {
-   
+struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
+
    unpack_block_header_state_derived_visitor(Class& _c, Stream& _s)
        : fc::reflector_init_visitor<Class>(_c)
        , s(_s) {}
@@ -262,9 +260,10 @@ struct unpack_block_header_state_derived_visitor
    template <typename T, typename C, T(C::*p)>
    inline void operator()(const char* name) const {
       try {
-         if constexpr (std::is_same_v< eosio::chain::block_header_state::state_extension_t, std::decay_t<decltype(this->obj.*p)>>)
-            // do not unpack  `state_extension` when the block_header_state_version is zero
-            if (s.block_header_state_version == 0) return;
+         if constexpr (std::is_same_v<eosio::chain::block_header_state::state_extension_t,
+                                      std::decay_t<decltype(this->obj.*p)>>)
+            if (!s.has_block_header_state_extension)
+               return;
 
          fc::raw::unpack(s, this->obj.*p);
       }
@@ -275,10 +274,9 @@ struct unpack_block_header_state_derived_visitor
    Stream& s;
 };
 
-
 template <typename Stream>
-struct unpack_object_visitor<Stream, eosio::chain::block_header_state> 
-   : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
+struct unpack_object_visitor<Stream, eosio::chain::block_header_state>
+    : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
    using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
    using Base::Base;
 };

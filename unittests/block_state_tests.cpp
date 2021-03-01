@@ -70,6 +70,7 @@ BOOST_AUTO_TEST_CASE(test_unpack_legacy_block_state) {
       eosio::chain::block_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
+      BOOST_CHECK_EQUAL(bs->block->previous, tmp.block->previous);
       BOOST_CHECK_EQUAL(in_strm.remaining(), 0);
    }
 }
@@ -102,6 +103,7 @@ eosio::testing::tester main;
       eosio::chain::block_state tmp;
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
+      BOOST_CHECK_EQUAL(bs->block->previous, tmp.block->previous);
       BOOST_CHECK_EQUAL(bs->get_security_group_info().version, 1);
       BOOST_TEST(bs->get_security_group_info().participants == sgi.participants);
       BOOST_CHECK_EQUAL(in_strm.remaining(), 0);
