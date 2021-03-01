@@ -132,9 +132,8 @@ struct block_header_state : public detail::block_header_state_common {
 
    block_header_state() = default;
 
-   explicit block_header_state( detail::block_header_state_common&& base )
-   :detail::block_header_state_common( std::move(base) )
-   {}
+   explicit block_header_state(detail::block_header_state_common&& base)
+       : detail::block_header_state_common(std::move(base)) {}
 
    explicit block_header_state( legacy::snapshot_block_header_state_v2&& snapshot );
 
@@ -218,11 +217,10 @@ namespace fc {
 namespace raw {
 namespace detail {
 
-// The `Stream` class should contain a `block_header_state_version` member; otherwise, the compilation would fail
+// The `Stream` class should contain a `has_block_header_state_extension` member; otherwise, the compilation would fail
 template <typename Stream, typename Class>
-struct unpack_block_header_state_derived_visitor
-   : fc::reflector_init_visitor<Class> {
-   
+struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
+
    unpack_block_header_state_derived_visitor(Class& _c, Stream& _s)
        : fc::reflector_init_visitor<Class>(_c)
        , s(_s) {}
@@ -239,10 +237,9 @@ struct unpack_block_header_state_derived_visitor
    Stream& s;
 };
 
-
 template <typename Stream>
-struct unpack_object_visitor<Stream, eosio::chain::block_header_state> 
-   : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
+struct unpack_object_visitor<Stream, eosio::chain::block_header_state>
+    : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
    using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
    using Base::Base;
 };

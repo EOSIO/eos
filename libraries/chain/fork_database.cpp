@@ -123,7 +123,7 @@ namespace eosio { namespace chain {
                        ("max", max_supported_version)
             );
 
-            versioned_unpack_stream unpack_strm(ds, version - min_supported_version + block_header_state::minimum_version_with_state_extension -1);
+            block_header_state_unpack_stream unpack_strm(ds, version > min_supported_version);
 
             block_header_state bhs;
             fc::raw::unpack( unpack_strm, bhs );
