@@ -3,7 +3,7 @@
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
-#include <eosio/chain/block_header_state_unpack_stream.hpp>
+#include <eosio/chain/versioned_unpack_stream.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -121,6 +121,10 @@ struct security_group_info_t {
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state : public detail::block_header_state_common {
+
+   /// this version is coming from chain_snapshot_header.version
+   static constexpr uint32_t minimum_version_with_state_extension = 6; 
+
    block_id_type                        id;
    signed_block_header                  header;
    detail::schedule_info                pending_schedule;
@@ -262,7 +266,7 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
       try {
          if constexpr (std::is_same_v<eosio::chain::block_header_state::state_extension_t,
                                       std::decay_t<decltype(this->obj.*p)>>)
-            if (!s.has_block_header_state_extension)
+            if (s.version < eosio::chain::block_header_state::minimum_version_with_state_extension)
                return;
 
          fc::raw::unpack(s, this->obj.*p);
