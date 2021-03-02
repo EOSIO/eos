@@ -54,6 +54,14 @@ namespace eosio { namespace chain {
       };
    }
 
+
+   struct pending_security_group_t {
+      block_num_type         block_num = 0;
+      uint32_t               version   = 0;
+      flat_set<account_name> participants;
+   };
+
+
    /**
     * @class global_property_object
     * @brief Maintains global state information about block producer schedules and chain configuration parameters
@@ -72,6 +80,8 @@ namespace eosio { namespace chain {
       chain_id_type                       chain_id;
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
+
+      std::optional<pending_security_group_t> pending_security_group;
 
      void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val, const kv_database_config& kv_config_val, const wasm_config& wasm_config_val ) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
@@ -118,6 +128,21 @@ namespace eosio { namespace chain {
       chain_id_type                       chain_id;
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
+
+      static constexpr uint32_t minimum_version_with_extension = 6; 
+
+      struct extension_v0 {
+         std::optional<pending_security_group_t>    pending_security_group;
+      };
+
+      // for future extensions, please use the following pattern:
+      // 
+      // struct extension_v1 : extension_v0 { new_field_t new_field; };
+      // using extension_t = std::variant<extension_v0, extension_v1>;
+      //  
+
+      using extension_t = std::variant<extension_v0>;
+      extension_t extension;
    };
 
    namespace detail {
@@ -126,17 +151,33 @@ namespace eosio { namespace chain {
          using value_type = global_property_object;
          using snapshot_type = snapshot_global_property_object;
 
-         static snapshot_global_property_object to_snapshot_row( const global_property_object& value, const chainbase::database& ) {
-            return {value.proposed_schedule_block_num, producer_authority_schedule::from_shared(value.proposed_schedule), value.configuration, value.chain_id, value.kv_configuration, value.wasm_configuration};
+         static_assert(std::is_same_v<snapshot_global_property_object::extension_t,
+                                      std::variant<snapshot_global_property_object::extension_v0>>,
+                       "Please update to_snapshot_row()/from_snapshot_row() accordingly when "
+                       "snapshot_global_property_object::extension_t is changed");
+
+         static snapshot_global_property_object to_snapshot_row(const global_property_object& value,
+                                                                const chainbase::database&) {
+            return {value.proposed_schedule_block_num,
+                    producer_authority_schedule::from_shared(value.proposed_schedule),
+                    value.configuration,
+                    value.chain_id,
+                    value.kv_configuration,
+                    value.wasm_configuration,
+                    snapshot_global_property_object::extension_v0{value.pending_security_group}};
          }
 
-         static void from_snapshot_row( snapshot_global_property_object&& row, global_property_object& value, chainbase::database& ) {
+         static void from_snapshot_row(snapshot_global_property_object&& row, global_property_object& value,
+                                       chainbase::database&) {
             value.proposed_schedule_block_num = row.proposed_schedule_block_num;
-            value.proposed_schedule = row.proposed_schedule.to_shared(value.proposed_schedule.producers.get_allocator());
-            value.configuration = row.configuration;
-            value.chain_id = row.chain_id;
-            value.kv_configuration = row.kv_configuration;
+            value.proposed_schedule =
+                row.proposed_schedule.to_shared(value.proposed_schedule.producers.get_allocator());
+            value.configuration      = row.configuration;
+            value.chain_id           = row.chain_id;
+            value.kv_configuration   = row.kv_configuration;
             value.wasm_configuration = row.wasm_configuration;
+            std::visit([&value](auto& ext) { value.pending_security_group = std::move(ext.pending_security_group); },
+                       row.extension);
          }
       };
    }
@@ -186,10 +227,49 @@ FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v4,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)
           )
 
+FC_REFLECT(eosio::chain::pending_security_group_t, 
+             (block_num)(version)(participants)
+          )
+
+FC_REFLECT(eosio::chain::snapshot_global_property_object::extension_v0,
+            (pending_security_group)
+          )
+
 FC_REFLECT(eosio::chain::snapshot_global_property_object,
-            (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)
+            (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)(extension)
           )
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
             (global_action_sequence)
           )
+
+namespace fc {
+namespace raw {
+namespace detail {
+
+template <typename VersionedStream>
+struct unpack_object_visitor<VersionedStream, eosio::chain::snapshot_global_property_object>
+    : fc::reflector_init_visitor<eosio::chain::snapshot_global_property_object> {
+   unpack_object_visitor(eosio::chain::snapshot_global_property_object& _c, VersionedStream& _s)
+       : fc::reflector_init_visitor<eosio::chain::snapshot_global_property_object>(_c)
+       , s(_s) {}
+
+   template <typename T, typename C, T(C::*p)>
+   inline void operator()(const char* name) const {
+      try {
+         if constexpr (std::is_same_v<eosio::chain::snapshot_global_property_object::extension_t,
+                                      std::decay_t<decltype(this->obj.*p)>>)
+            if (s.version < eosio::chain::snapshot_global_property_object::minimum_version_with_extension)
+               return;
+
+         fc::raw::unpack(s, this->obj.*p);
+      }
+      FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
+   }
+
+ private:
+   VersionedStream& s;
+};
+} // namespace detail
+} // namespace raw
+} // namespace fc

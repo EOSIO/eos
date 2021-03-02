@@ -24,6 +24,7 @@ struct chain_snapshot_header {
     *         - chain_config update
     *   6: Updated for v2.2.0 eos features:
     *         -  block_header_state::state_extension
+    *         -  global_proper_state::extension
     */
 
    static constexpr uint32_t minimum_compatible_version = 2;

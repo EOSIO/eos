@@ -253,11 +253,18 @@ namespace fc {
 namespace raw {
 namespace detail {
 
-// The `Stream` class should contain a `has_block_header_state_extension` member; otherwise, the compilation would fail
-template <typename Stream, typename Class>
+// C++20 Concept 
+//
+// template <typename T> 
+// concept VersionedStream = requires (T t) {
+//    t.version;
+// }
+//
+
+template <typename VersionedStream, typename Class>
 struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
 
-   unpack_block_header_state_derived_visitor(Class& _c, Stream& _s)
+   unpack_block_header_state_derived_visitor(Class& _c, VersionedStream& _s)
        : fc::reflector_init_visitor<Class>(_c)
        , s(_s) {}
 
@@ -275,13 +282,13 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
    }
 
  private:
-   Stream& s;
+   VersionedStream& s;
 };
 
-template <typename Stream>
-struct unpack_object_visitor<Stream, eosio::chain::block_header_state>
-    : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
-   using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
+template <typename VersionedStream>
+struct unpack_object_visitor<VersionedStream, eosio::chain::block_header_state>
+    : unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state> {
+   using Base = unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state>;
    using Base::Base;
 };
 
