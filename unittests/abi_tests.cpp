@@ -2698,7 +2698,7 @@ BOOST_AUTO_TEST_CASE(abi_large_signature)
       auto stop = fc::time_point::now();
       // Give it a leaway of 50ms
       BOOST_CHECK_LE( (stop - start).count(), 51*1000 );
-      // only contains hex_data if it didn't hit the deadline
+      // contains only hex_data if it didn't hit the deadline
       if( check_data ) {
          BOOST_CHECK( !var.get_object().contains( "data" ) );
          BOOST_CHECK( var.get_object().contains( "hex_data" ) );
