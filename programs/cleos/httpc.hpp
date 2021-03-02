@@ -103,7 +103,6 @@ namespace eosio { namespace client { namespace http {
    const string get_required_keys = chain_func_base + "/get_required_keys";
    const string get_contract_query_func = chain_func_base + "/get_contract_query";
 
-
    const string history_func_base = "/v1/history";
    const string get_actions_func = history_func_base + "/get_actions";
    const string get_transaction_func = history_func_base + "/get_transaction";

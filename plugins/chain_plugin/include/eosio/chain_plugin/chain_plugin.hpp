@@ -311,11 +311,10 @@ public:
 
    get_transaction_id_result get_transaction_id( const get_transaction_id_params& params)const;
 
-
    struct get_contract_query_params {
        name code;
        string query;
-       string other_args;
+       string args;
    };
 
    struct get_contract_query_result {
@@ -327,7 +326,6 @@ public:
    };
 
    get_contract_query_result get_contract_query(const get_contract_query_params& params) const;
-
 
    struct get_block_params {
       string block_num_or_id;
@@ -1141,5 +1139,5 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
-FC_REFLECT( eosio::chain_apis::read_only::get_contract_query_params, (code)(query)(other_args) )
+FC_REFLECT( eosio::chain_apis::read_only::get_contract_query_params, (code)(query)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_contract_query_result, (head_block_num)(last_irreversible_block_num)(code_hash)(pending_transactions)(result) )

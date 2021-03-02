@@ -3186,7 +3186,6 @@ read_only::get_contract_query_result read_only::get_contract_query(const get_con
     //TODO: query a contract
     get_contract_query_result result{0, 1, fc::sha256::hash("banana"_n), {fc::sha256::hash("banana"_n)},{'a'} };
 
-
     return result;
 }
 
