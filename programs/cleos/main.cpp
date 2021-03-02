@@ -3063,6 +3063,22 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
+   // get contract_query
+   string acct_name;
+   string query;
+   string other_args;
+   auto getContractQuery =get->add_subcommand("contract_query", localized("Read-only query a contract"));
+   getContractQuery->add_option( "contract", code, localized("The contract that operates the query") )->required();
+   getContractQuery->add_option( "account", acct_name, localized("The account to query contract for") )->required();
+   getContractQuery->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
+   getContractQuery->add_option("args", other_args, localized("Optional arguments") );
+   getContractQuery->callback([&]{
+       fc::mutable_variant_object arg;
+       arg( "code", code );
+       arg( "query", query );
+       arg( "args", other_args);
+       std::cout<< fc::json::to_pretty_string(call(get_contract_query_func, arg))<<std::endl;
+   });
 
    // get servants
    string controllingAccount;
