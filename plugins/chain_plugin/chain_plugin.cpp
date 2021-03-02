@@ -3182,6 +3182,14 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
+read_only::get_contract_query_result read_only::get_contract_query(const get_contract_query_params& params) const {
+    //TODO: query a contract
+    get_contract_query_result result{0, 1, fc::sha256::hash("banana"_n), {fc::sha256::hash("banana"_n)},{'a'} };
+
+
+    return result;
+}
+
 account_query_db::get_accounts_by_authorizers_result read_only::get_accounts_by_authorizers( const account_query_db::get_accounts_by_authorizers_params& args) const
 {
    EOS_ASSERT(aqdb.has_value(), plugin_config_exception, "Account Queries being accessed when not enabled");
