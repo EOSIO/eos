@@ -418,16 +418,10 @@ EOF
             IFS=$nIFS
         done
         IFS=$oIFS
-        if [[ "$ROUND" != "$ROUNDS" ]]; then
-            echo '  - wait'
-            echo ''
-        fi
-    done
-    # Execute multiversion test
-    if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
-        cat <<EOF
+        if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+            cat <<EOF
   - label: ":pipeline: Multiversion Test"
-    command: 
+    command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
       - ./.cicd/test.sh .cicd/multiversion.sh
     env:
@@ -440,6 +434,12 @@ EOF
 
 EOF
     fi
+        if [[ "$ROUND" != "$ROUNDS" ]]; then
+            echo '  - wait'
+            echo ''
+        fi
+    done
+    
     # trigger eosio-lrt post pr
     if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
@@ -678,7 +678,7 @@ cat <<EOF
     command:  "./.cicd/create-docker-from-binary.sh"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
-    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_PACKAGE_BUILDER}${SKIP_PUBLIC_DOCKER}
     timeout: ${TIMEOUT:-10}
 EOF
 IFS=$oIFS
