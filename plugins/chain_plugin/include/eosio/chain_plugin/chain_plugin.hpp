@@ -57,9 +57,6 @@ struct permission {
    authority         required_auth;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -138,6 +135,7 @@ public:
       std::optional<chain::block_id_type>  fork_db_head_block_id;
       std::optional<string>                server_full_version_string;
       std::optional<fc::time_point>        last_irreversible_block_time;
+      std::optional<uint32_t>              first_block_num;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -352,10 +350,10 @@ public:
         name                   code;                  // name of contract
         name                   table;                 // name of kv table,
         name                   index_name;            // name of index index
-        string                 encode_type = "bytes"; // "bytes" : binary values in index_value/lower_bound/upper_bound
-        std::optional<string>  index_value;           // index value for point query.  If this is set, it is processed as a point query
-        std::optional<string>  lower_bound;           // lower bound value of index of index_name. If index_value is not set and lower_bound is not set, return from the beginning of range in the prefix
-        std::optional<string>  upper_bound;           // upper bound value of index of index_name, If index_value is not set and upper_bound is not set, It is set to the beginning of the next prefix range.
+        string                 encode_type;           // encoded type for values in index_value/lower_bound/upper_bound
+        string                 index_value;           // index value for point query.  If this is set, it is processed as a point query
+        string                 lower_bound;           // lower bound value of index of index_name. If index_value is not set and lower_bound is not set, return from the beginning of range in the prefix
+        string                 upper_bound;           // upper bound value of index of index_name, If index_value is not set and upper_bound is not set, It is set to the beginning of the next prefix range.
         uint32_t               limit = 10;            // max number of rows
         bool                   reverse = false;       // if true output rows in reverse order
         bool                   show_payer = false;
@@ -910,7 +908,6 @@ public:
 
    chain::symbol extract_core_symbol()const;
 
-   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -941,7 +938,6 @@ public:
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   friend resolver_factory<read_write>;
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1035,21 +1031,6 @@ public:
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
-   static bool recover_reversible_blocks( const fc::path& db_dir,
-                                          uint32_t cache_size,
-                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
-                                          uint32_t truncate_at_block = 0
-                                        );
-
-   static bool import_reversible_blocks( const fc::path& reversible_dir,
-                                         uint32_t cache_size,
-                                         const fc::path& reversible_blocks_file
-                                       );
-
-   static bool export_reversible_blocks( const fc::path& reversible_dir,
-                                        const fc::path& reversible_blocks_file
-                                       );
-
    // Only call this after plugin_initialize()!
    controller& chain();
    // Only call this after plugin_initialize()!
@@ -1069,6 +1050,10 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_entire_trx(const transaction& trx) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
@@ -1084,7 +1069,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (head_block_id)(head_block_time)(head_block_producer)
            (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
-           (last_irreversible_block_time) )
+           (last_irreversible_block_time) (first_block_num) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
