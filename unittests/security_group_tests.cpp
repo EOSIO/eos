@@ -36,6 +36,11 @@ struct snapshot_global_property_object_v5 {
        , kv_configuration(value.kv_configuration)
        , wasm_configuration(value.wasm_configuration) {}
 };
+
+bool operator == (const security_group_info_t& lhs, const security_group_info_t& rhs) {
+   return lhs.version == rhs.version && std::equal(lhs.participants.begin(), lhs.participants.end(),
+                                                   rhs.participants.begin(), rhs.participants.end());
+}
 }}
 
 FC_REFLECT_DERIVED(  eosio::chain::block_header_state_v0, (eosio::chain::detail::block_header_state_common),
@@ -51,7 +56,7 @@ FC_REFLECT(eosio::chain::snapshot_global_property_object_v5,
           )
 
 
-BOOST_AUTO_TEST_SUITE(block_state_tests)
+BOOST_AUTO_TEST_SUITE(security_group_tests)
 
 BOOST_AUTO_TEST_CASE(test_unpack_legacy_block_state) {
    eosio::testing::tester main;
@@ -106,9 +111,8 @@ BOOST_AUTO_TEST_CASE(test_unpack_new_block_state) {
    auto b = main.produce_block();
 
    auto bs = main.control->head_block_state();
-   auto& sgi = bs->get_security_group_info();
-   sgi.version = 1;
-   sgi.participants.insert("adam"_n);
+   bs->set_security_group_info( { .version =1, .participants={"adam"_n }} );
+   
 
    // pack block_header_state as the legacy format
    fc::datastream<std::vector<char>> out_strm;
@@ -125,8 +129,8 @@ BOOST_AUTO_TEST_CASE(test_unpack_new_block_state) {
       BOOST_CHECK_NO_THROW(fc::raw::unpack(unpack_strm, tmp));
       BOOST_CHECK_EQUAL(bs->id, tmp.id);
       BOOST_CHECK_EQUAL(bs->block->previous, tmp.block->previous);
-      BOOST_CHECK_EQUAL(bs->get_security_group_info().version, 1);
-      BOOST_TEST(bs->get_security_group_info().participants == sgi.participants);
+      BOOST_CHECK_EQUAL(bs->get_security_group_info().version, tmp.get_security_group_info().version);
+      BOOST_TEST(bs->get_security_group_info().participants == tmp.get_security_group_info().participants);
       BOOST_CHECK_EQUAL(in_strm.remaining(), 0);
    }
 }
@@ -164,12 +168,9 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
 
    {
       // pack snapshot_global_property_object as the new format
-      gpo.pending_security_group = eosio::chain::pending_security_group_t {
-         .block_num = 10,
-         .version = 1,
-         .participants = { "adam"_n }
-      };
-      
+      gpo.proposed_security_group_block_num = 10;
+      gpo.proposed_security_group_participants = {"adam"_n};
+
       fc::datastream<std::vector<char>> out_strm;
       fc::raw::pack(out_strm, row_traits::to_snapshot_row(gpo, main.control->db()));
 
@@ -183,15 +184,53 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
          BOOST_CHECK_EQUAL(in_strm.remaining(), 0);
 
          BOOST_CHECK_EQUAL(row.chain_id, gpo.chain_id);
-         auto pending_security_group = std::visit([](auto& ext) { return ext.pending_security_group; }, row.extension);
-         BOOST_CHECK(pending_security_group.has_value());
-         if (pending_security_group.has_value()) {
-            BOOST_CHECK_EQUAL(pending_security_group->block_num, gpo.pending_security_group->block_num);
-            BOOST_CHECK_EQUAL(pending_security_group->version, gpo.pending_security_group->version);
-            BOOST_TEST(pending_security_group->participants ==  gpo.pending_security_group->participants);
-         }
+         std::visit(
+             [&gpo](const auto& ext) {
+                BOOST_CHECK_EQUAL(ext.proposed_security_group_block_num, gpo.proposed_security_group_block_num);
+                BOOST_TEST(ext.proposed_security_group_participants == gpo.proposed_security_group_participants );
+             },
+             row.extension);
       }
    }
+}
+
+BOOST_AUTO_TEST_CASE(test_participants_change) {
+   eosio::testing::tester chain;
+   using namespace eosio::chain::literals;
+
+   chain.create_accounts( {"alice"_n,"bob"_n,"charlie"_n} );
+   chain.produce_block();
+   
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 0);
+      BOOST_REQUIRE_EQUAL(cur_security_group.participants.size(), 0);
+   }
+
+   using participants_t = boost::container::flat_set<eosio::chain::account_name>;
+
+   participants_t new_participants({"alice"_n, "bob"_n});
+   chain.control->propose_security_group_participants_add(new_participants);
+
+   BOOST_TEST(chain.control->proposed_security_group_participants() == new_participants);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size() , 0);
+
+   chain.produce_block();
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == new_participants);
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+   BOOST_CHECK(!chain.control->in_active_security_group(participants_t{"bob"_n, "charlie"_n}));
+
+   chain.control->propose_security_group_participants_remove({"alice"_n});
+   BOOST_TEST(chain.control->proposed_security_group_participants() == participants_t{"bob"_n});
+
+   chain.produce_block();
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t{"bob"_n}));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

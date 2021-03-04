@@ -4,6 +4,7 @@
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/versioned_unpack_stream.hpp>
+#include <eosio/chain/security_group_info.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -81,6 +82,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
    block_timestamp_type                 timestamp;
    uint32_t                             active_schedule_version = 0;
    uint16_t                             confirmed = 1;
+   security_group_info_t                security_group;
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
@@ -111,10 +113,7 @@ protected:
                                                                const vector<digest_type>& )>& validator )&&;
 };
 
-struct security_group_info_t {
-   uint32_t version = 0;
-   flat_set<account_name> participants;
-};
+
 
 /**
  *  @struct block_header_state
@@ -175,8 +174,8 @@ struct block_header_state : public detail::block_header_state_common {
 
    const vector<digest_type>& get_new_protocol_feature_activations() const;
 
-   security_group_info_t& get_security_group_info() {
-      return std::visit([](auto& v) -> security_group_info_t& { return v.security_group_info; }, state_extension);
+   void set_security_group_info(security_group_info_t&& new_info) {
+      std::visit([&new_info](auto& v) {  v.security_group_info = std::move(new_info); }, state_extension);
    }
 
    const security_group_info_t& get_security_group_info() const {
@@ -207,10 +206,6 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
-FC_REFLECT( eosio::chain::security_group_info_t,
-            (version)
-            (participants)
-)
 
 FC_REFLECT( eosio::chain::block_header_state::state_extension_v0,
             (security_group_info)

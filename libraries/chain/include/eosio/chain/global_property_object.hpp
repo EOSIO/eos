@@ -11,6 +11,7 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/security_group_info.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -54,14 +55,6 @@ namespace eosio { namespace chain {
       };
    }
 
-
-   struct pending_security_group_t {
-      block_num_type         block_num = 0;
-      uint32_t               version   = 0;
-      flat_set<account_name> participants;
-   };
-
-
    /**
     * @class global_property_object
     * @brief Maintains global state information about block producer schedules and chain configuration parameters
@@ -80,10 +73,11 @@ namespace eosio { namespace chain {
       chain_id_type                       chain_id;
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
+      block_num_type                      proposed_security_group_block_num = 0;
+      flat_set<account_name>              proposed_security_group_participants;
 
-      std::optional<pending_security_group_t> pending_security_group;
-
-     void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val, const kv_database_config& kv_config_val, const wasm_config& wasm_config_val ) {
+      void initalize_from(const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val,
+                          const kv_database_config& kv_config_val, const wasm_config& wasm_config_val) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
          proposed_schedule = producer_authority_schedule(legacy.proposed_schedule).to_shared(proposed_schedule.producers.get_allocator());
          configuration = legacy.configuration;
@@ -129,10 +123,11 @@ namespace eosio { namespace chain {
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
 
-      static constexpr uint32_t minimum_version_with_extension = 6; 
+      static constexpr uint32_t minimum_version_with_extension = 6;
 
       struct extension_v0 {
-         std::optional<pending_security_group_t>    pending_security_group;
+         block_num_type         proposed_security_group_block_num = 0;
+         flat_set<account_name> proposed_security_group_participants;
       };
 
       // for future extensions, please use the following pattern:
@@ -164,7 +159,8 @@ namespace eosio { namespace chain {
                     value.chain_id,
                     value.kv_configuration,
                     value.wasm_configuration,
-                    snapshot_global_property_object::extension_v0{value.pending_security_group}};
+                    snapshot_global_property_object::extension_v0{value.proposed_security_group_block_num,
+                                                                  value.proposed_security_group_participants}};
          }
 
          static void from_snapshot_row(snapshot_global_property_object&& row, global_property_object& value,
@@ -176,8 +172,12 @@ namespace eosio { namespace chain {
             value.chain_id           = row.chain_id;
             value.kv_configuration   = row.kv_configuration;
             value.wasm_configuration = row.wasm_configuration;
-            std::visit([&value](auto& ext) { value.pending_security_group = std::move(ext.pending_security_group); },
-                       row.extension);
+            std::visit(
+                [&value](auto& ext) {
+                   value.proposed_security_group_block_num = ext.proposed_security_group_block_num;
+                   value.proposed_security_group_participants = std::move(ext.proposed_security_group_participants);
+                },
+                row.extension);
          }
       };
    }
@@ -227,12 +227,8 @@ FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v4,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)
           )
 
-FC_REFLECT(eosio::chain::pending_security_group_t, 
-             (block_num)(version)(participants)
-          )
-
 FC_REFLECT(eosio::chain::snapshot_global_property_object::extension_v0,
-            (pending_security_group)
+            (proposed_security_group_block_num)(proposed_security_group_participants)
           )
 
 FC_REFLECT(eosio::chain::snapshot_global_property_object,
