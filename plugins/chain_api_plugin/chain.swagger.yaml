@@ -576,13 +576,13 @@ paths:
                   description: Encoding type to use for index_value, lower_bound, and upper_bound. Valid values are "bytes", "string", "name", "dec", or "hex"'. If not provided, the appropriate value based on the index_name's abi indicated type, for integers "dec" is the default. "bytes" are encoded as hexidecimal strings and can be used for any type of field. Example values for each type "bytes" => "0000000000000e1a", "string" => "Some value!", "name" => "eosio", "dec" => "3610", and "hex" => "e1a".
                 index_value:
                   type: string
-                  description: index value used for point query encoded as 'encode_type'. Cannot be used with either lower_bound or upper_bound.
+                  description: Index value used for point query encoded as 'encode_type'. Cannot be used with either lower_bound or upper_bound.
                 lower_bound:
                   type: string
-                  description:  lower bound index value for ranged query. Query result includes rows specified with lower_bound.  Cannot be used with index_value.  If index_value and lower_bound are not provided, then lower_bound is defaulted to be the lowest value in the table for that index_name.
+                  description: Lower bound index value for ranged query. Query result includes rows specified with lower_bound.  Cannot be used with index_value.  If index_value and lower_bound are not provided, then lower_bound is defaulted to be the lowest value in the table for that index_name.
                 upper_bound:
                   type: string
-                  description:  upper bound index value for ranged query. Query result includes rows specified with upper_bound.  Cannot be used with index_value.  If index_value and upper_bound are not provided, then upper_bound is defaulted to be the highest value in the table for that index_name.
+                  description: Upper bound index value for ranged query. Query result includes rows specified with upper_bound.  Cannot be used with index_value.  If index_value and upper_bound are not provided, then upper_bound is defaulted to be the highest value in the table for that index_name.
                 limit:
                   type: integer
                   description: Limit number of results returned
@@ -614,7 +614,7 @@ paths:
                     description: Indicates the value to provide for next query to retrieve the next range of rows to complete the query. The original query should be reused, but substituting next_key's value for lower_bound, if reverse is False or not provided, otherwise it should be substituted for upper_bound.
                   next_key_bytes:
                     type: string
-                    description: This is the same value as next_key except encoded as "bytes". It can be used in the same way, except the original query would also need its encode_type replaced with "bytes". This likely only would be used if upper_bound is not provided (or reverse set True and lower_bound is not provided), since both lower_bound and upper_bound would need to be provided as "bytes".
+                    description: This is the same value as next_key except encoded as "bytes". It can be used in the same way, except the original query would also need its encode_type replaced with "bytes".
 
   /abi_json_to_bin:
     post:
