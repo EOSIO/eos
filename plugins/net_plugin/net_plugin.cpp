@@ -2,6 +2,7 @@
 
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
+#include <eosio/net_plugin/security_group.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
@@ -27,6 +28,7 @@
 
 #include <atomic>
 #include <shared_mutex>
+#include <functional>
 
 using namespace eosio::chain::plugin_interface;
 
@@ -336,6 +338,17 @@ namespace eosio {
       constexpr static uint16_t to_protocol_version(uint16_t v);
 
       connection_ptr find_connection(const string& host)const; // must call with held mutex
+      /** private security group management */
+      security_group_manager security_group;
+      /** \brief  Update security group information
+       *
+       * Retrieves the security group information from the indicated block and
+       * updates the cached security group information. If a participant is
+       * removed from the cached security group, the TLS connection is closed.
+       *
+       * \param   bs The block_state containing the security group update
+       */
+      void update_security_group(const block_state_ptr& bs);
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -575,7 +588,20 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
+      /** @brief  For non TLS connection setup
+       *
+       * @param endpoint    The connection endpoint
+       */
       explicit connection( string endpoint );
+      /** @brief  For TLS connection setup
+       *
+       * @param endpoint        The connection endpoint
+       * @param participant     The name of the participant
+       * @param participaing    Indicates if the participant is participating in block creation (default = true)
+       *                            true - block creation
+       *                            false - syncing only
+       */
+      explicit connection( string endpoint, chain::account_name participant, bool participaing = true );
       connection();
 
       ~connection() {}
@@ -789,6 +815,32 @@ namespace eosio {
             ( "_lport", local_endpoint_port );
          return mvo;
       }
+
+      // security group management
+      //
+   private:
+      std::optional<security_group_participant> security_group_info_;
+
+   public:
+      /** @brief  Set/change the participant name for the connection
+       *
+       *  @param name   The name of the participant
+       */
+      void participant_name(chain::account_name name) {
+         security_group_info_ = security_group_participant(name);
+      }
+      /** @brief  Returns the optional name of the participant */
+      std::optional<chain::account_name> participant_name();
+      bool is_participating() const {
+         return security_group_info_ && security_group_info_->is_participating();
+      }
+      bool is_syncing() const {
+         return security_group_info_ && security_group_info_->is_syncing();
+      }
+      /**   @brief    Flag the tls connection as participating in block production */
+      void now_participating();
+      /**   @brief   Flag the connection as only publishing sync information */
+      void now_syncing();
    };
 
    const string connection::unknown = "<unknown>";
@@ -875,6 +927,12 @@ namespace eosio {
         last_handshake_sent()
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
+   }
+
+   connection::connection( string endpoint, chain::account_name participant, bool participating )
+      : connection(endpoint)
+   {
+      security_group_info_ = security_group_participant(participant, participating);
    }
 
    connection::connection()
@@ -1286,6 +1344,22 @@ namespace eosio {
       });
 
       return true;
+   }
+
+   std::optional<chain::account_name> connection::participant_name() {
+      if(security_group_info_)
+         return security_group_info_.value().name();
+      return std::optional<chain::account_name>();
+   }
+
+   void connection::now_participating() {
+      if(security_group_info_)
+         security_group_info_.value().now_participating();
+   }
+
+   void connection::now_syncing() {
+      if(security_group_info_)
+         security_group_info_.value().now_syncing();
    }
 
    //------------------------------------------------------------------------
@@ -3428,10 +3502,40 @@ namespace eosio {
       }
    }
 
+   // called from any thread
+   void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
+      // update connections
+      //
+      auto updater = [](chain::account_name name, auto handler) {
+         for_each_connection([name, handler](auto& cp) {
+            auto participant_name = cp->participant_name();
+            if(participant_name && participant_name.value() == name) {
+               handler(*cp);
+            }
+            return true;
+         });
+      };
+      // add a new participant to the security group
+      //
+      auto on_add = [updater](chain::account_name name) {
+         updater(name, [](connection& con) { con.now_participating(); });
+      };
+      // remove a participant from the security group
+      //
+      auto on_remove = [updater](chain::account_name name) {
+         updater(name, [](connection& con) { con.now_syncing(); });
+      };
+      // update cache
+      //
+      auto& update = bs->get_security_group_info();
+      security_group.update_cache(update.version, update.participants, on_add, on_remove);
+   }
+
    // called from application thread
    void net_plugin_impl::on_accepted_block(const block_state_ptr& bs) {
       update_chain_info();
       controller& cc = chain_plug->chain();
+      update_security_group(bs);
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
 
