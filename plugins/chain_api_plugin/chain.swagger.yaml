@@ -573,16 +573,16 @@ paths:
                   description: The name of primary or secondary index
                 encode_type:
                   type: string ( 'bytes' for arbitray binary index value )
-                  description: Encoding type to use for index_value, lower_bound, and upper_bound. Valid values are "bytes", "string", "name", "dec", or "hex"'. If not provided, the appropriate value based on the index_name's abi indicated type, for integers "dec" is the default. "bytes" can be used for any type of field. Example values for each type "bytes" => "0000000000000e1a", "string" => "Some value!", "name" => "eosio", "dec" => "3610", and "hex" => "e1a".
+                  description: Encoding type to use for index_value, lower_bound, and upper_bound. Valid values are "bytes", "string", "name", "dec", or "hex"'. If not provided, the appropriate value based on the index_name's abi indicated type, for integers "dec" is the default. "bytes" are encoded as hexidecimal strings and can be used for any type of field. Example values for each type "bytes" => "0000000000000e1a", "string" => "Some value!", "name" => "eosio", "dec" => "3610", and "hex" => "e1a".
                 index_value:
                   type: string
                   description: index value used for point query encoded as 'encode_type'. Cannot be used with either lower_bound or upper_bound.
                 lower_bound:
                   type: string
-                  description:  lower bound index value for ranged query. Query result includes rows specified with lower_bound.  Cannot be used with index_value.  If index_name and lower_bound are not provided, then lower_bound is defaulted to be the lowest value in the table for that index_name.
+                  description:  lower bound index value for ranged query. Query result includes rows specified with lower_bound.  Cannot be used with index_value.  If index_value and lower_bound are not provided, then lower_bound is defaulted to be the lowest value in the table for that index_name.
                 upper_bound:
                   type: string
-                  description:  upper bound index value for ranged query. Query result includes rows specified with upper_bound.  Cannot be used with index_value.  If index_name and upper_bound are not provided, then lower_bound is defaulted to be the highest value in the table for that index_name.
+                  description:  upper bound index value for ranged query. Query result includes rows specified with upper_bound.  Cannot be used with index_value.  If index_value and upper_bound are not provided, then upper_bound is defaulted to be the highest value in the table for that index_name.
                 limit:
                   type: integer
                   description: Limit number of results returned
