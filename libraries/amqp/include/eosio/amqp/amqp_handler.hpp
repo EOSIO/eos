@@ -99,10 +99,18 @@ public:
          std::promise<void> stop_promise;
          auto future = stop_promise.get_future();
          boost::asio::post( *handler_->amqp_strand(), [&]() {
-            if( channel_ ) {
+            if( channel_ && channel_->usable() ) {
                auto& cb = channel_->close();
                cb.onFinalize( [&]() {
-                  stop_promise.set_value();
+                  try {
+                     stop_promise.set_value();
+                  } catch(...) {}
+               } );
+               cb.onError( [&](const char* message) {
+                  elog( "Error on stop: ${m}", ("m", message) );
+                  try {
+                     stop_promise.set_value();
+                  } catch(...) {}
                } );
             } else {
                stop_promise.set_value();
