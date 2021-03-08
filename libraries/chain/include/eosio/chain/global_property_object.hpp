@@ -125,6 +125,7 @@ namespace eosio { namespace chain {
       static constexpr uint32_t minimum_version_with_extension = 6;
 
       struct extension_v0 {
+         extension_v0() {};
          block_num_type         proposed_security_group_block_num = 0;
          flat_set<account_name> proposed_security_group_participants;
       };
