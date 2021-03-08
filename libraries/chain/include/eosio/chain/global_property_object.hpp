@@ -75,6 +75,7 @@ namespace eosio { namespace chain {
       wasm_config                         wasm_configuration;
       block_num_type                      proposed_security_group_block_num = 0;
       flat_set<account_name>              proposed_security_group_participants;
+      vector<transaction_hook>            transaction_hooks;
 
       void initalize_from(const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val,
                           const kv_database_config& kv_config_val, const wasm_config& wasm_config_val) {
@@ -130,13 +131,17 @@ namespace eosio { namespace chain {
          flat_set<account_name> proposed_security_group_participants;
       };
 
+      struct extension_v1 : extension_v0 {
+         vector<transaction_hook>            transaction_hooks;
+      };
+
       // for future extensions, please use the following pattern:
       // 
-      // struct extension_v1 : extension_v0 { new_field_t new_field; };
-      // using extension_t = std::variant<extension_v0, extension_v1>;
+      // struct extension_v2 : extension_v1 { new_field_t new_field; };
+      // using extension_t = std::variant<extension_v0, extension_v1, extension_v2>;
       //  
 
-      using extension_t = std::variant<extension_v0>;
+      using extension_t = std::variant<extension_v0, extension_v1>;
       extension_t extension;
    };
 
@@ -147,7 +152,8 @@ namespace eosio { namespace chain {
          using snapshot_type = snapshot_global_property_object;
 
          static_assert(std::is_same_v<snapshot_global_property_object::extension_t,
-                                      std::variant<snapshot_global_property_object::extension_v0>>,
+                                      std::variant<snapshot_global_property_object::extension_v0,
+                                                   snapshot_global_property_object::extension_v1>>,
                        "Please update to_snapshot_row()/from_snapshot_row() accordingly when "
                        "snapshot_global_property_object::extension_t is changed");
 
@@ -159,8 +165,10 @@ namespace eosio { namespace chain {
                     value.chain_id,
                     value.kv_configuration,
                     value.wasm_configuration,
-                    snapshot_global_property_object::extension_v0{value.proposed_security_group_block_num,
-                                                                  value.proposed_security_group_participants}};
+                    snapshot_global_property_object::extension_v1{{value.proposed_security_group_block_num,
+                                                                  value.proposed_security_group_participants},
+                                                                  value.transaction_hooks
+                                                                  }};
          }
 
          static void from_snapshot_row(snapshot_global_property_object&& row, global_property_object& value,
@@ -176,6 +184,9 @@ namespace eosio { namespace chain {
                 [&value](auto& ext) {
                    value.proposed_security_group_block_num = ext.proposed_security_group_block_num;
                    value.proposed_security_group_participants = std::move(ext.proposed_security_group_participants);
+                   if constexpr( std::is_base_of<snapshot_global_property_object::extension_v1, typename std::decay<decltype(ext)>::type>::value ) {
+                      value.transaction_hooks = std::move(ext.transaction_hooks);
+                   }
                 },
                 row.extension);
          }
@@ -229,6 +240,10 @@ FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v4,
 
 FC_REFLECT(eosio::chain::snapshot_global_property_object::extension_v0,
             (proposed_security_group_block_num)(proposed_security_group_participants)
+          )
+
+FC_REFLECT_DERIVED(eosio::chain::snapshot_global_property_object::extension_v1,
+                   (eosio::chain::snapshot_global_property_object::extension_v0), (transaction_hooks)
           )
 
 FC_REFLECT(eosio::chain::snapshot_global_property_object,
