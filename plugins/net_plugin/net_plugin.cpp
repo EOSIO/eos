@@ -258,6 +258,7 @@ namespace eosio {
 
       mutable std::shared_mutex             connections_mtx;
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
+      std::unordered_multimap<chain::account_name, connection_ptr> particiant_connections;
 
       std::mutex                            connector_check_timer_mtx;
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
@@ -4023,6 +4024,16 @@ namespace eosio {
       if( my->find_connection( host ) )
          return "already connected";
 
+      /** @todo when making a shared tls connection, need to use the ctor that takes
+       *        requires the participant name.
+       *  connection_ptr c = std::make_shared<connection>(host, nam);
+       *
+       *  @todo Need to add the connection to the
+       *        unordered_multimap.
+       *
+       *  participant_connections.emplace(name, c);
+       *
+       */
       connection_ptr c = std::make_shared<connection>( host );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
