@@ -3103,6 +3103,10 @@ fc::microseconds controller::get_abi_serializer_max_time()const {
    return my->conf.abi_serializer_max_time_us;
 }
 
+fc::microseconds controller::get_read_only_query_max_time()const {
+    return my->conf.read_only_query_max_time_us;
+}
+
 bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
 }

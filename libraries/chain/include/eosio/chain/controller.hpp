@@ -89,6 +89,7 @@ namespace eosio { namespace chain {
             uint64_t                 persistent_storage_bytes_per_sync = chain::config::default_persistent_storage_bytes_per_sync;
             uint32_t                 persistent_storage_mbytes_batch = chain::config::default_persistent_storage_mbytes_batch;
             fc::microseconds         abi_serializer_max_time_us = fc::microseconds(chain::config::default_abi_serializer_max_time_us);
+            fc::microseconds         read_only_query_max_time_us = fc::microseconds(chain::config::default_read_only_query_max_time_us);
             uint32_t   max_nonprivileged_inline_action_size =  chain::config::default_max_nonprivileged_inline_action_size;
             bool                     read_only                  = false;
             bool                     force_all_checks           = false;
@@ -315,6 +316,8 @@ namespace eosio { namespace chain {
          uint32_t get_greylist_limit()const;
 
          fc::microseconds get_abi_serializer_max_time() const;
+
+         fc::microseconds get_read_only_query_max_time() const;
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes, uint32_t action_id, const char* event_id );
          bool all_subjective_mitigations_disabled()const;

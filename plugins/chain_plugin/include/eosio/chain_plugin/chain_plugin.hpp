@@ -1038,6 +1038,7 @@ public:
 
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
+   fc::microseconds get_read_only_query_max_time() const;
    bool api_accept_transactions() const;
    // set true by other plugins if any plugin allows transactions
    bool accept_transactions() const;

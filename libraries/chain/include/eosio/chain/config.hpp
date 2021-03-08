@@ -125,6 +125,7 @@ const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call 
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::eos_vm_jit;
 const static uint32_t   default_abi_serializer_max_time_us = 15*1000; ///< default deadline for abi serialization methods
+const static uint32_t   default_read_only_query_max_time_us = 500; ///< default deadline for read-only queries
 
 /**
  *  The number of sequential blocks produced by a single producer

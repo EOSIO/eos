@@ -195,6 +195,8 @@ public:
    std::optional<vm_type>            wasm_runtime;
    fc::microseconds                  abi_serializer_max_time_us;
    std::optional<bfs::path>          snapshot_path;
+   fc::microseconds                  read_only_query_max_time_us;
+
 
 
    // retained references to channels for easy publication
@@ -399,6 +401,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
          ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
          ("max-nonprivileged-inline-action-size", bpo::value<uint32_t>()->default_value(config::default_max_nonprivileged_inline_action_size), "maximum allowed size (in bytes) of an inline action for a nonprivileged account")
+         ("read-only-query-time-us", bpo::value<uint32_t>()->default_value(config::default_read_only_query_max_time_us), "Override default maximum read-only queries time allowed in us")
          ;
 
 // TODO: rate limiting
@@ -820,6 +823,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->abi_serializer_max_time_us = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
          my->chain_config->abi_serializer_max_time_us = my->abi_serializer_max_time_us;
       }
+
+       if(options.count("read-only-query-time-us")) {
+           my->read_only_query_max_time_us = fc::microseconds(options.at("read-only-query-time-us").as<uint32_t>());
+           my->chain_config->read_only_query_max_time_us = my->read_only_query_max_time_us;
+       }
 
       my->chain_config->blog.log_dir                 = my->blocks_dir;
       my->chain_config->state_dir                    = app().data_dir() / config::default_state_dir_name;
@@ -1392,6 +1400,10 @@ chain::chain_id_type chain_plugin::get_chain_id()const {
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_us;
+}
+
+fc::microseconds chain_plugin::get_read_only_query_max_time() const {
+    return my->read_only_query_max_time_us;
 }
 
 bool chain_plugin::api_accept_transactions() const{
