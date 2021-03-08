@@ -230,6 +230,17 @@ Builtin protocol feature: BLOCKCHAIN_PARAMETERS
 
 Allows privileged contracts to get and set subsets of blockchain parameters.
 */
+         (  builtin_protocol_feature_t::security_group, builtin_protocol_feature_spec{
+            "SECURITY_GROUP",
+            fc::variant("410976abd4d5caed3308134f03f1eb5983e91eb26ac20f3a8fd34fd1b49faaea").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: SECURITY_GROUP
+
+Allows privileged contracts to add/remove participants for mutual TLS enforcement.
+*/
+            {}
+         } )
    ;
 
 
