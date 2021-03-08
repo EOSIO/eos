@@ -11,7 +11,6 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/security_group_info.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -213,6 +212,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
 
 FC_REFLECT(eosio::chain::global_property_object,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)
+            (proposed_security_group_block_num)(proposed_security_group_participants)
           )
 
 FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v2,
