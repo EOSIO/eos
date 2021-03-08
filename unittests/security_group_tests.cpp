@@ -321,7 +321,6 @@ std::vector<char> participants_payload( participants_t names ) {
    return ds.storage();
 }
 
-
 BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
 
    eosio::testing::tester chain1;
@@ -370,6 +369,28 @@ BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
    fc::raw::pack(strm, grp);
 
    BOOST_TEST_REQUIRE(chain1.push_action(eosio::chain::action({}, "getgroup"_n, {}, strm.storage()), "getgroup"_n.to_uint64_t()) == "");
+   chain1.produce_blocks(11);
+   chain1.control->abort_block();
+
+   /// Test snapshot recovery
+
+   std::stringstream snapshot_strm;
+   auto writer = std::make_shared<eosio::chain::ostream_snapshot_writer>(snapshot_strm);
+   chain1.control->write_snapshot(writer);
+   writer->finalize();
+
+   auto               cfg = chain1.get_config();
+   fc::temp_directory tmp_dir;
+   cfg.blog.log_dir = tmp_dir.path() / "blocks";
+   cfg.state_dir    = tmp_dir.path() / "state";
+
+   auto                   reader = std::make_shared<eosio::chain::istream_snapshot_reader>(snapshot_strm);
+   eosio::testing::tester chain2([&cfg, &reader](eosio::testing::tester& self) { self.init(cfg, reader); });
+   {
+      const auto& active_security_group = chain2.control->active_security_group();
+      BOOST_CHECK_EQUAL(2, active_security_group.version);
+      BOOST_TEST(active_security_group.participants == participants_t{"bob"_n});
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
