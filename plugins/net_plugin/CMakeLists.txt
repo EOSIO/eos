@@ -5,3 +5,7 @@ add_library( net_plugin
 
 target_link_libraries( net_plugin chain_plugin producer_plugin appbase fc )
 target_include_directories( net_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include  "${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/appbase/include")
+
+# once tests are added to the test subdirectory, the following line should be uncommented
+# add_subdirectory(test)
+
