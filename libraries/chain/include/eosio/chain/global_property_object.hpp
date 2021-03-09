@@ -137,6 +137,12 @@ namespace eosio { namespace chain {
       };
 
       struct extension_v1 : extension_v0 {
+         // libstdc++ requires the following two constructors to work.
+         extension_v1(){};
+         extension_v1(block_num_type num, const flat_set<account_name>& participants, const vector<transaction_hook>& trx_hooks)
+         : extension_v0(num, participants),
+         transaction_hooks(trx_hooks) {}
+
          vector<transaction_hook>            transaction_hooks;
       };
 
@@ -170,8 +176,8 @@ namespace eosio { namespace chain {
                     value.chain_id,
                     value.kv_configuration,
                     value.wasm_configuration,
-                    snapshot_global_property_object::extension_v1{{value.proposed_security_group_block_num,
-                                                                  value.proposed_security_group_participants},
+                    snapshot_global_property_object::extension_v1{value.proposed_security_group_block_num,
+                                                                  value.proposed_security_group_participants,
                                                                   value.transaction_hooks
                                                                   }};
          }
