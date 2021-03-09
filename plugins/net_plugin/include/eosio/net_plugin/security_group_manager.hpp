@@ -3,7 +3,6 @@
 
 #include <boost/container/flat_set.hpp>
 
-#include <limits>
 #include <atomic>
 
 namespace eosio {
@@ -21,7 +20,7 @@ namespace eosio {
       /** @brief Determine if a participant is in the security group */
       bool is_in_security_group(chain::account_name participant) const { return cache_.find(participant) != cache_.end(); }
    private:
-      uint32_t version_ {std::numeric_limits<uint32_t>::max()}; ///! The security group version
-      participant_list_t cache_;    ///! Cache of accounts in the security group
+      uint32_t version_ {0};        ///! The security group version
+      participant_list_t cache_;    ///! Cache of participants in the security group
    };
 }

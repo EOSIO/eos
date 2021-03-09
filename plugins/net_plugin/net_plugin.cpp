@@ -2,7 +2,7 @@
 
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
-#include <eosio/net_plugin/security_group.hpp>
+#include <eosio/net_plugin/security_group_manager.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
@@ -3494,6 +3494,9 @@ namespace eosio {
          return;
       }
 
+      std::vector<connection_ptr> added_connections;
+      added_connections.reserve(connections.size());
+
       // update connections
       //
       auto do_update = [&](auto& connection) {
@@ -3502,7 +3505,10 @@ namespace eosio {
             return true;
          }
          if(security_group.is_in_security_group(participant.value())) {
-            connection->now_participating();
+            if(connection->is_syncing()) {
+               connection->now_participating();
+               added_connections.push_back(connection);
+            }
          }
          else {
             connection->now_syncing();
@@ -3511,6 +3517,12 @@ namespace eosio {
       };
 
       for_each_connection(do_update);
+
+      // send handshake when added to group
+      //
+      for(auto& connection : added_connections) {
+         connection->send_handshake();
+      }
    }
 
    // called from application thread
