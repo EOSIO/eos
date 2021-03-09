@@ -1,7 +1,7 @@
 file(GLOB HEADERS "include/eosio/net_plugin/*.hpp" )
 add_library( net_plugin
              net_plugin.cpp
-             security_group.cpp
+        security_group_manager.cpp
              ${HEADERS} )
 
 target_link_libraries( net_plugin chain_plugin producer_plugin appbase fc )
