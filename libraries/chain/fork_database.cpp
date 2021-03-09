@@ -123,7 +123,14 @@ namespace eosio { namespace chain {
                        ("max", max_supported_version)
             );
 
-            versioned_unpack_stream unpack_strm(ds, version - min_supported_version + block_header_state::minimum_version_with_state_extension -1);
+            // The unpack_strm here is used only to unpack `block_header_state` and `block_state`. However, those two
+            // classes are written to unpack based on the snapshot version; therefore,  we orient it to the snapshot version.
+
+            const bool              has_block_header_state_extension = version > min_supported_version;
+            versioned_unpack_stream unpack_strm(
+                ds, has_block_header_state_extension
+                        ? block_header_state::minimum_snapshot_version_with_state_extension
+                        : block_header_state::minimum_snapshot_version_with_state_extension - 1);
 
             block_header_state bhs;
             fc::raw::unpack( unpack_strm, bhs );

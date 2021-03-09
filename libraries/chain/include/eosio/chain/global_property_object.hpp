@@ -11,7 +11,6 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/snapshot.hpp>
-#include <eosio/chain/security_group_info.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -127,6 +126,12 @@ namespace eosio { namespace chain {
       static constexpr uint32_t minimum_version_with_extension = 6;
 
       struct extension_v0 {
+         // libstdc++ requires the following two constructors to work. 
+         extension_v0(){};
+         extension_v0(block_num_type num, const flat_set<account_name>& participants)
+             : proposed_security_group_block_num(num)
+             , proposed_security_group_participants(participants) {}
+
          block_num_type         proposed_security_group_block_num = 0;
          flat_set<account_name> proposed_security_group_participants;
       };
@@ -224,6 +229,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
 
 FC_REFLECT(eosio::chain::global_property_object,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)(kv_configuration)(wasm_configuration)
+            (proposed_security_group_block_num)(proposed_security_group_participants)
           )
 
 FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v2,

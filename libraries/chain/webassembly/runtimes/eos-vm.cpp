@@ -275,6 +275,12 @@ REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
 REGISTER_HOST_FUNCTION(set_privileged, privileged_check);
 
+// security group api
+REGISTER_HOST_FUNCTION(propose_security_group_participants_add, privileged_check);
+REGISTER_HOST_FUNCTION(propose_security_group_participants_remove, privileged_check);
+REGISTER_HOST_FUNCTION(in_active_security_group);
+REGISTER_HOST_FUNCTION(get_active_security_group);
+
 // softfloat api
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_add);
 REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sub);
