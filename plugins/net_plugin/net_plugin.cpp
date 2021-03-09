@@ -820,28 +820,25 @@ namespace eosio {
       // security group management
       //
    private:
-      std::optional<security_group_participant> security_group_info_;
+      std::optional<chain::account_name> participant_name_;
+      std::atomic<bool> participating_{false};
 
    public:
       /** @brief  Set/change the participant name for the connection
        *
        *  @param name   The name of the participant
        */
-      void participant_name(chain::account_name name) {
-         security_group_info_ = security_group_participant(name);
-      }
+      void participant_name(chain::account_name name) { participant_name_ = name; }
       /** @brief  Returns the optional name of the participant */
-      std::optional<chain::account_name> participant_name();
-      bool is_participating() const {
-         return security_group_info_ && security_group_info_->is_participating();
-      }
-      bool is_syncing() const {
-         return security_group_info_ && security_group_info_->is_syncing();
-      }
+      auto participant_name() { return participant_name_; }
+      /** returns true if connection is in the security group */
+      bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
+       /** returns false if the connection is not in the security group */
+      bool is_syncing() const { return !participating_.load(std::memory_order_relaxed); }
       /**   @brief    Flag the tls connection as participating in block production */
-      void now_participating();
+      void now_participating() { participating_.store(true, std::memory_order_relaxed); }
       /**   @brief   Flag the connection as only publishing sync information */
-      void now_syncing();
+      void now_syncing() { participating_.store(false, std::memory_order_relaxed); }
    };
 
    const string connection::unknown = "<unknown>";
@@ -933,7 +930,8 @@ namespace eosio {
    connection::connection( string endpoint, chain::account_name participant, bool participating )
       : connection(endpoint)
    {
-      security_group_info_ = security_group_participant(participant, participating);
+         participant_name_ = participant;
+         participating_.store(participating, std::memory_order_relaxed);
    }
 
    connection::connection()
@@ -1345,22 +1343,6 @@ namespace eosio {
       });
 
       return true;
-   }
-
-   std::optional<chain::account_name> connection::participant_name() {
-      if(security_group_info_)
-         return security_group_info_.value().name();
-      return std::optional<chain::account_name>();
-   }
-
-   void connection::now_participating() {
-      if(security_group_info_)
-         security_group_info_.value().now_participating();
-   }
-
-   void connection::now_syncing() {
-      if(security_group_info_)
-         security_group_info_.value().now_syncing();
    }
 
    //------------------------------------------------------------------------
@@ -3505,31 +3487,30 @@ namespace eosio {
 
    // called from any thread
    void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
-      // update connections
-      //
-      auto updater = [](chain::account_name name, auto handler) {
-         for_each_connection([name, handler](auto& cp) {
-            auto participant_name = cp->participant_name();
-            if(participant_name && participant_name.value() == name) {
-               handler(*cp);
-            }
-            return true;
-         });
-      };
-      // add a new participant to the security group
-      //
-      auto on_add = [updater](chain::account_name name) {
-         updater(name, [](connection& con) { con.now_participating(); });
-      };
-      // remove a participant from the security group
-      //
-      auto on_remove = [updater](chain::account_name name) {
-         updater(name, [](connection& con) { con.now_syncing(); });
-      };
       // update cache
       //
       auto& update = bs->get_security_group_info();
-      security_group.update_cache(update.version, update.participants, on_add, on_remove);
+      if(!security_group.update_cache(update.version, update.participants)) {
+         return;
+      }
+
+      // update connections
+      //
+      auto do_update = [&](auto& connection) {
+         const auto& participant = connection->participant_name();
+         if(!participant) {
+            return true;
+         }
+         if(security_group.is_in_security_group(participant.value())) {
+            connection->now_participating();
+         }
+         else {
+            connection->now_syncing();
+         }
+         return true;
+      };
+
+      for_each_connection(do_update);
    }
 
    // called from application thread
