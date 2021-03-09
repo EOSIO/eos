@@ -22,87 +22,85 @@ namespace {
       }
       return participant_list;
    }
-   auto dummy_add = [](eosio::chain::account_name) {};
-   auto dummy_remove = [](eosio::chain::account_name) {};
 }
 
 BOOST_AUTO_TEST_SUITE(security_group_tests)
 using namespace eosio::testing;
+
 BOOST_AUTO_TEST_CASE(test_initial_population) {
    auto populate = create_list({ 1, 2, 3, 4, 5, 6});
-   size_t add_count  = 0;
-   auto on_add = [&](eosio::chain::account_name name) {
-      BOOST_REQUIRE(populate.find(name) != populate.end());
-      ++add_count;
-   };
-
-   auto on_rem = [&](eosio::chain::account_name name) {
-      BOOST_FAIL("Name removed from security group");
-   };
-
    eosio::security_group_manager manager;
-   manager.update_cache(1, populate, on_add, on_rem);
+   BOOST_REQUIRE(manager.update_cache(1, populate));
+   BOOST_REQUIRE(!manager.update_cache(1, populate));
 
-   BOOST_REQUIRE_EQUAL(add_count, populate.size());
+   for(auto participant : populate) {
+      BOOST_REQUIRE(manager.is_in_security_group(participant));
+   }
 }
-
 BOOST_AUTO_TEST_CASE(test_remove_all) {
    auto populate = create_list({1, 2, 3, 4, 5, 6});
    eosio::security_group_manager manager;
-   manager.update_cache(1, populate, dummy_add, dummy_remove);
-
-   auto check_add = [](eosio::chain::account_name) {
-      BOOST_FAIL("Tried to add name from empty list");
-   };
-
-   size_t remove_count = 0;
-   auto check_remove = [&remove_count](eosio::chain::account_name) { ++remove_count; };
+   manager.update_cache(1, populate);
 
    participant_list_t clear;
-   manager.update_cache(2, clear, check_add, check_remove);
-   BOOST_REQUIRE_EQUAL(populate.size(), remove_count);
+   BOOST_REQUIRE(manager.update_cache(2, clear));
+
+   for(auto participant : populate) {
+      BOOST_REQUIRE(!manager.is_in_security_group(participant));
+   }
 }
 
 BOOST_AUTO_TEST_CASE(test_add_only) {
       auto populate = create_list({1, 2, 3, 4, 5, 6});
       eosio::security_group_manager manager;
-      manager.update_cache(1, populate, dummy_add, dummy_remove);
+      manager.update_cache(1, populate);
 
-      size_t add_count = 0;
-      auto check_add = [&add_count](eosio::chain::account_name) { ++add_count; };
-      auto check_remove = [](eosio::chain::account_name) { BOOST_FAIL("Nothing should be removed");};
+      auto add = create_list({7, 8, 9});
+      for(auto participant : add) {
+         BOOST_REQUIRE(!manager.is_in_security_group(participant));
+      }
 
-      auto update = create_list({1, 2, 3, 4, 5, 6, 7, 8, 9});
-      manager.update_cache(2, update, check_add, check_remove);
-      BOOST_REQUIRE_EQUAL((update.size() - populate.size()), add_count);
+      populate.insert(add.begin(), add.end());
+      manager.update_cache(2, populate);
+      for(auto participant : populate) {
+         BOOST_REQUIRE(manager.is_in_security_group(participant));
+      }
 }
 
 BOOST_AUTO_TEST_CASE(test_remove_only) {
       auto populate = create_list({1, 2, 3, 4, 5, 6});
       eosio::security_group_manager manager;
-      manager.update_cache(1, populate, dummy_add, dummy_remove);
-
-      auto check_add = [](eosio::chain::account_name) { BOOST_FAIL("Nothing should be added");};
-      size_t remove_count = 0;
-      auto check_remove = [&remove_count](eosio::chain::account_name) { ++remove_count; };
+      manager.update_cache(1, populate);
 
       auto update = create_list({2, 4, 6});
-      manager.update_cache(2, update, check_add, check_remove);
-      BOOST_REQUIRE_EQUAL(populate.size() - update.size(), remove_count);
+      manager.update_cache(2, update);
+
+      auto removed = create_list({1, 3, 5});
+      for(auto participant : removed) {
+         BOOST_REQUIRE(!manager.is_in_security_group(participant));
+      }
+
+      for (auto participant : update) {
+         BOOST_REQUIRE(manager.is_in_security_group(participant));
+      }
 }
 
 BOOST_AUTO_TEST_CASE(test_update) {
       auto populate = create_list({1, 2, 3, 4, 5, 6});
       eosio::security_group_manager manager;
-      manager.update_cache(1, populate, dummy_add, dummy_remove);
-
-      size_t add_count = 0;
-      auto check_add = [&add_count](eosio::chain::account_name) { ++add_count;};
-      size_t remove_count = 0;
-      auto check_remove = [&remove_count](eosio::chain::account_name) { ++remove_count; };
+      manager.update_cache(1, populate);
 
       auto update = create_list({2, 4, 6, 7, 8, 9});
-      manager.update_cache(2, update, check_add, check_remove);
-      BOOST_REQUIRE_EQUAL(add_count + remove_count, update.size());
+      manager.update_cache(2, update);
+
+      auto removed = create_list({1, 3, 5});
+      for(auto participant : removed) {
+         BOOST_REQUIRE(!manager.is_in_security_group(participant));
+      }
+
+      auto added = create_list({7, 8, 9});
+      for (auto participant : added) {
+         BOOST_REQUIRE(manager.is_in_security_group(participant));
+      }
 }
 BOOST_AUTO_TEST_SUITE_END()
