@@ -2,7 +2,7 @@
 #include <boost/container/flat_set.hpp>
 
 #include <eosio/testing/tester.hpp>
-#include <eosio/net_plugin/security_group.hpp>
+#include <eosio/net_plugin/security_group_manager.hpp>
 
 #include <array>
 #include <utility>
