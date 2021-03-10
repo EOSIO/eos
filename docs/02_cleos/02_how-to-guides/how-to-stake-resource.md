@@ -1,6 +1,6 @@
-## Goal
+## Overview
 
-Stake resources, NET and/or CPU, for your account.
+This how-to guide provides instructions on how to stake resources, NET and/or CPU, for your account using the `cleos` CLI tool.
 
 ## Before you begin
 
@@ -12,38 +12,70 @@ Stake resources, NET and/or CPU, for your account.
   * What is an [account](https://developers.eos.io/welcome/latest/glossary/index/#account).
   * What is [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/net).
   * What is [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/cpu).
-  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
 
-## Steps
+## Command Reference
 
-* Stake `0.01 SYS` NET bandwidth for `alice` from `alice` account:
+See the following reference guides for command line usage and related options for the `cleos` command:
+
+* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+
+## Procedure
+
+The following steps show:
+
+1. [How to stake NET bandwidth.](#1-Stake-NET-bandwidth)
+2. [How to stake SPU bandwidth.](#2-Stake-CPU-bandwidth)
+
+### 1. Stake NET bandwidth
+
+Run the following command to stake `0.01 SYS` of NET bandwidth for `alice` account from `bob` account:
 
 ```sh
-cleos system delegatebw alice alice "0.01 SYS" "0 SYS"
+cleos system delegatebw alice bob "0.01 SYS" "0 SYS"
 ```
 
-The output should be similar to the one below:
+Where:
+
+* `alice` = the account for which the NET bandwidth is staked.
+* `bob` = the account that pays the `0.01 SYS` for the NET bandwidth staked.
+* "0.01 SYS" = the amount of system tokens `SYS` spent to stake NET bandwidth.
+* "0 SYS" = the amount of system tokens `SYS` spent to stake CPU bandwidth.
+
+Example output:
 
 ```console
 executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd18e3ae  192 bytes  503 us
-#         eosio <= eosio::delegatebw            {"from":"alice","receiver":"alice","stake_net_quantity":"0.01 SYS","stake_cpu_quanti...
-#   eosio.token <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 EOS","memo":"stake bandwidth"}
-#  alice <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
-#   eosio.stake <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
+#         eosio <= eosio::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.01 SYS","stake_cpu_quanti...
+#   eosio.token <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 EOS","memo":"stake bandwidth"}
+#  alice <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
+#   eosio.stake <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
 ```
 
-* Stake `0.01 SYS` CPU bandwidth for `alice` from `alice` account:
+### 2. Stake CPU bandwidth
+
+Run the following command to stake `0.01 SYS` of CPU bandwidth for `alice` account from `bob` account:
 
 ```sh
-cleos system delegatebw alice alice "0 SYS" "0.01 SYS"
+cleos system delegatebw alice bob "0 SYS" "0.01 SYS"
 ```
 
-The output should be similar to the one below:
+Where:
+
+* `alice` = the account for which the CPU bandwidth is staked.
+* `bob` = the account that pays the `0.01 SYS` for the CPU bandwidth staked.
+* "0 SYS" = the amount of system tokens `SYS` spent to stake NET bandwidth.
+* "0.01 SYS" = the amount of system tokens `SYS` spent to stake CPU bandwidth.
+
+Example output:
 
 ```console
 executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd18e3ae  192 bytes  503 us
-#         eosio <= eosio::delegatebw            {"from":"alice","receiver":"alice","stake_net_quantity":"0.0000 SYS","stake_cpu_quanti...
-#   eosio.token <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 EOS","memo":"stake bandwidth"}
-#  alice <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
-#   eosio.stake <= eosio.token::transfer        {"from":"alice","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
+#         eosio <= eosio::delegatebw            {"from":"bob","receiver":"alice","stake_net_quantity":"0.0000 SYS","stake_cpu_quanti...
+#   eosio.token <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 EOS","memo":"stake bandwidth"}
+#  alice <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
+#   eosio.stake <= eosio.token::transfer        {"from":"bob","to":"eosio.stake","quantity":"0.01 SYS","memo":"stake bandwidth"}
 ```
+
+## Summary
+
+In conclusion, by following these instructions you are able to stake CPU and/or NET bandwidth from an account to another one.
