@@ -107,4 +107,4 @@ executed transaction: 5487afafd67bf459a20fcc2dbc5d0c2f0d1f10e33123eaaa07088046fd
 
 ## Summary
 
-In conclusion, the above instructions show how to stake CPU and/or NET bandwidth from one account to another or to self.
+In conclusion, the above instructions show how to stake CPU and/or NET bandwidth from one account to another or to itself.
