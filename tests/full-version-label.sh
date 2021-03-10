@@ -1,6 +1,6 @@
 #!/bin/bash
-# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
-echo '##### Nodeos Version Label Test #####'
+# The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
+echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
@@ -28,7 +28,7 @@ elif [[ -f "$CMAKE_LISTS" ]]; then
     EXPECTED="v$VERSION_FULL"
 fi
 # fail if no expected value was found
-if [[ "$EXPECTED" == '' ]]; then
+if [[ -z "$EXPECTED" ]]; then
     echo 'ERROR: Could not determine expected value for version label!'
     set +e
     echo "EOSIO_ROOT=\"$EOSIO_ROOT\""
@@ -51,12 +51,18 @@ if [[ "$EXPECTED" == '' ]]; then
     ls -la "$EOSIO_ROOT/build"
     exit 1
 fi
+VERSION_HASH=$(grep -Irn version_hash $EOSIO_ROOT/build/libraries/version | grep std::string | sed 's/^.\+"\([a-f0-9]\+\)".\+$/\1/')
+if [[ -z "$VERSION_HASH" ]]; then
+    echo 'No version hash found.'
+    exit 1
+fi
+EXPECTED=$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
+ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --full-version)
 # test
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
-    echo 'Passed with \"$ACTUAL\".'
+    echo "Passed with \"$ACTUAL\"."
     exit 0
 fi
 echo 'Failed!'
