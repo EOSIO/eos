@@ -55,16 +55,10 @@ GROUP_SIZE=4
 parse-args "${@}"
 
 echo "*************************************************"
-echo "         generating dh param                     "
-echo "*************************************************"
-#using low values like 128 here and below as this is for unit tests and our goal to save running time. For real applications 2048 recommended
-openssl dhparam -out dh.pem 128
-
-echo "*************************************************"
 echo "         generating CA_cert.pem                  "
 echo "*************************************************"
 
-openssl req -newkey rsa:512 -nodes -keyout CA_key.pem -x509 -days ${DAYS} -out CA_cert.pem -subj "/C=US/ST=VA/L=Blocksburg/O=${CA_ORG}/CN=${CA_CN}"
+openssl req -newkey rsa:2048 -nodes -keyout CA_key.pem -x509 -days ${DAYS} -out CA_cert.pem -subj "/C=US/ST=VA/L=Blocksburg/O=${CA_ORG}/CN=${CA_CN}"
 
 echo "*************************************************"
 openssl x509 -in CA_cert.pem -text -noout
@@ -81,7 +75,7 @@ do
    echo "*************************************************"
    echo "generating certificate for $ORG_NAME / $CN_NAME  "
    echo "*************************************************"
-   openssl req -newkey rsa:512 -nodes -keyout "${ORG_NAME}_key.pem" -out "${ORG_NAME}.csr" -subj "/C=US/ST=VA/L=Blockburg/O=${ORG_NAME}/CN=${CN_NAME}"
+   openssl req -newkey rsa:2048 -nodes -keyout "${ORG_NAME}_key.pem" -out "${ORG_NAME}.csr" -subj "/C=US/ST=VA/L=Blockburg/O=${ORG_NAME}/CN=${CN_NAME}"
    openssl x509 -req -in "${ORG_NAME}.csr" -CA CA_cert.pem -CAkey CA_key.pem -CAcreateserial -out "${ORG_NAME}.crt" -days ${DAYS} -sha256
    echo "*************************************************"
    openssl x509 -in "${ORG_NAME}.crt" -text -noout
