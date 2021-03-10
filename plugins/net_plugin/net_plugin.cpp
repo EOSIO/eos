@@ -3655,7 +3655,7 @@ namespace eosio {
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
          ( "p2p-tls-ca-certificate-file", bpo::value<string>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
          ( "p2p-tls-own-certificate-file", bpo::value<string>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
-         ( "p2p-tls-private-key-file", bpo::value<string>(), "Private key file that is used in conjunction with tsl-own-certificate-file for server authorization in TLS connection. Together tls-private-key-file + tsl-own-certificate-file automatically enables TLS-only connection for peers.")
+         ( "p2p-tls-private-key-file", bpo::value<string>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
         ;
    }
 
