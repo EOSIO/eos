@@ -56,7 +56,7 @@ echo "Expecting \"$EXPECTED\"..."
 ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
 # test
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
-    echo 'Passed with \"$ACTUAL\".'
+    echo "Passed with \"$ACTUAL\"."
     exit 0
 fi
 echo 'Failed!'
