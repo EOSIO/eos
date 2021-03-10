@@ -594,15 +594,6 @@ namespace eosio {
        * @param endpoint    The connection endpoint
        */
       explicit connection( string endpoint );
-      /** @brief  For TLS connection setup
-       *
-       * @param endpoint        The connection endpoint
-       * @param participant     The name of the participant
-       * @param participaing    Indicates if the participant is participating in block creation (default = true)
-       *                            true - block creation
-       *                            false - syncing only
-       */
-      explicit connection( string endpoint, chain::account_name participant, bool participaing = true );
       connection();
 
       ~connection() {}
@@ -925,13 +916,6 @@ namespace eosio {
         last_handshake_sent()
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
-   }
-
-   connection::connection( string endpoint, chain::account_name participant, bool participating )
-      : connection(endpoint)
-   {
-         participant_name_ = participant;
-         participating_.store(participating, std::memory_order_relaxed);
    }
 
    connection::connection()
@@ -1492,6 +1476,18 @@ namespace eosio {
 
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
+      // for tls connections, when the connection is not in the security group
+      // certain message types will not be transmitted
+      if(participant_name_ && !participating_) {
+         const bool ignore = std::holds_alternative<notice_message>(m) ||
+                             std::holds_alternative<signed_block_v0>(m) ||
+                             std::holds_alternative<packed_transaction_v0>(m) ||
+                             std::holds_alternative<signed_block>(m) ||
+                             std::holds_alternative<trx_message_v1>(m);
+         if(ignore) {
+            return;
+         }
+      }
       go_away_reason close_after_send = no_reason;
       if (std::holds_alternative<go_away_message>(m)) {
          close_after_send = std::get<go_away_message>(m).reason;
@@ -3497,7 +3493,7 @@ namespace eosio {
       std::vector<connection_ptr> added_connections;
       added_connections.reserve(connections.size());
 
-      // update connections
+      // update connection
       //
       auto do_update = [&](auto& connection) {
          const auto& participant = connection->participant_name();
