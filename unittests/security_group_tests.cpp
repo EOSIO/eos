@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <contracts.hpp>
 
 
 namespace eosio { namespace chain {
@@ -210,7 +211,7 @@ BOOST_AUTO_TEST_CASE(test_participants_change) {
    }
 
    participants_t new_participants({"alice"_n, "bob"_n});
-   chain.control->propose_security_group_participants_add(new_participants);
+   chain.control->add_security_group_participants(new_participants);
 
    BOOST_TEST(chain.control->proposed_security_group_participants() == new_participants);
    BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size() , 0);
@@ -222,7 +223,7 @@ BOOST_AUTO_TEST_CASE(test_participants_change) {
    BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
    BOOST_CHECK(!chain.control->in_active_security_group(participants_t{"bob"_n, "charlie"_n}));
 
-   chain.control->propose_security_group_participants_remove({"alice"_n});
+   chain.control->remove_security_group_participants({"alice"_n});
    BOOST_TEST(chain.control->proposed_security_group_participants() == participants_t{"bob"_n});
 
    chain.produce_block();
@@ -242,36 +243,39 @@ void push_blocks( eosio::testing::tester& from, eosio::testing::tester& to ) {
    }
 }
 
-static const char propose_security_group_participants_add_wast[] =  R"=====(
+// The webassembly in text format to add security group participants
+static const char add_security_group_participants_wast[] =  R"=====(
 (module
  (func $action_data_size (import "env" "action_data_size") (result i32))
  (func $read_action_data (import "env" "read_action_data") (param i32 i32) (result i32))
- (func $propose_security_group_participants_add (import "env" "propose_security_group_participants_add") (param i32 i32)(result i64))
+ (func $add_security_group_participants (import "env" "add_security_group_participants") (param i32 i32)(result i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
    (local $bytes_remaining i32)
    (set_local $bytes_remaining (call $action_data_size))
    (drop (call $read_action_data (i32.const 0) (get_local $bytes_remaining)))
-   (drop (call $propose_security_group_participants_add (i32.const 0) (get_local $bytes_remaining)))
+   (drop (call $add_security_group_participants (i32.const 0) (get_local $bytes_remaining)))
  )
 )
 )=====";
 
-static const char propose_security_group_participants_remove_wast[] =  R"=====(
+// The webassembly in text format to remove security group participants
+static const char remove_security_group_participants_wast[] =  R"=====(
 (module
  (func $action_data_size (import "env" "action_data_size") (result i32))
  (func $read_action_data (import "env" "read_action_data") (param i32 i32) (result i32))
- (func $propose_security_group_participants_remove (import "env" "propose_security_group_participants_remove") (param i32 i32)(result i64))
+ (func $remove_security_group_participants (import "env" "remove_security_group_participants") (param i32 i32)(result i64))
  (memory 1)
  (func (export "apply") (param i64 i64 i64)
    (local $bytes_remaining i32)
    (set_local $bytes_remaining (call $action_data_size))
    (drop (call $read_action_data (i32.const 0) (get_local $bytes_remaining)))
-   (drop (call $propose_security_group_participants_remove (i32.const 0) (get_local $bytes_remaining)))
+   (drop (call $remove_security_group_participants (i32.const 0) (get_local $bytes_remaining)))
  )
 )
 )=====";
 
+// The webassembly in text format to assert the given participants are all in active security group
 static const char assert_in_security_group_wast[] =  R"=====(
 (module
  (func $action_data_size (import "env" "action_data_size") (result i32))
@@ -291,7 +295,7 @@ static const char assert_in_security_group_wast[] =  R"=====(
 )
 )=====";
 
-
+// The webassembly in text format to assert the given participants are exactly the entire active security group
 static const char assert_get_security_group_wast[] =  R"=====(
 (module
  (func $action_data_size (import "env" "action_data_size") (result i32))
@@ -332,8 +336,8 @@ BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
    chain1.create_accounts({ "addmember"_n, "rmmember"_n, "ingroup"_n, "getgroup"_n });
    chain1.produce_block();
 
-   chain1.set_code( "addmember"_n, propose_security_group_participants_add_wast );
-   chain1.set_code( "rmmember"_n, propose_security_group_participants_remove_wast );
+   chain1.set_code( "addmember"_n, add_security_group_participants_wast );
+   chain1.set_code( "rmmember"_n, remove_security_group_participants_wast );
    chain1.set_code( "ingroup"_n, assert_in_security_group_wast );
    chain1.set_code( "getgroup"_n, assert_get_security_group_wast );
    chain1.produce_block();
@@ -346,10 +350,13 @@ BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
    chain1.produce_blocks(3); // Starts new blocks which promotes the proposed schedule to pending
    BOOST_REQUIRE_EQUAL( chain1.control->active_producers().version, 1u );
 
-   BOOST_TEST_REQUIRE(chain1.push_action(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"alice"_n, "bob"_n})), "addmember"_n.to_uint64_t() ) == "");
-   chain1.produce_blocks(11);
+   BOOST_TEST_REQUIRE(chain1.push_action(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"alice"_n})), "addmember"_n.to_uint64_t() ) == "");
+   chain1.produce_block();
+   BOOST_TEST_REQUIRE(chain1.push_action(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"bob"_n})), "addmember"_n.to_uint64_t() ) == "");
+   chain1.produce_blocks(10+11);
    BOOST_CHECK_EQUAL(chain1.control->proposed_security_group_participants().size() , 2);
-   chain1.produce_blocks(12);
+   BOOST_CHECK_EQUAL(chain1.control->active_security_group().participants.size(), 0);
+   chain1.produce_blocks(1);
    BOOST_CHECK_EQUAL(chain1.control->proposed_security_group_participants().size() , 0);
    BOOST_CHECK(chain1.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
 
@@ -369,7 +376,9 @@ BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
    fc::raw::pack(strm, grp);
 
    BOOST_TEST_REQUIRE(chain1.push_action(eosio::chain::action({}, "getgroup"_n, {}, strm.storage()), "getgroup"_n.to_uint64_t()) == "");
-   chain1.produce_blocks(11);
+   BOOST_TEST_REQUIRE(chain1.push_action(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"charlie"_n})), "addmember"_n.to_uint64_t() ) == "");
+   chain1.produce_blocks(11); 
+   BOOST_TEST(chain1.control->proposed_security_group_participants() == participants_t({"bob"_n, "charlie"_n}));
    chain1.control->abort_block();
 
    /// Test snapshot recovery
@@ -390,6 +399,49 @@ BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
       const auto& active_security_group = chain2.control->active_security_group();
       BOOST_CHECK_EQUAL(2, active_security_group.version);
       BOOST_TEST(active_security_group.participants == participants_t{"bob"_n});
+      BOOST_TEST(chain2.control->proposed_security_group_participants() == participants_t({"bob"_n, "charlie"_n}));
+   }
+}
+
+
+BOOST_AUTO_TEST_CASE(test_security_group_contract) {
+   eosio::testing::tester chain;
+   using namespace eosio::chain::literals;
+
+   chain.create_accounts({"secgrptest"_n,"alice"_n,"bob"_n,"charlie"_n});
+   chain.produce_block();
+   chain.set_code("secgrptest"_n, eosio::testing::contracts::security_group_test_wasm());
+   chain.set_abi("secgrptest"_n, eosio::testing::contracts::security_group_test_abi().data());
+   chain.produce_block();
+   chain.push_action( "eosio"_n, "setpriv"_n, "eosio"_n, fc::mutable_variant_object()("account", "secgrptest"_n)("is_priv", 1));
+   chain.produce_block();
+
+   chain.push_action("secgrptest"_n, "add"_n, "secgrptest"_n, fc::mutable_variant_object()
+         ( "nm", "alice" )
+      );
+   chain.push_action("secgrptest"_n, "add"_n, "secgrptest"_n, fc::mutable_variant_object()
+         ( "nm", "bob" )
+      );
+   chain.produce_block();
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   chain.push_action("secgrptest"_n, "remove"_n, "secgrptest"_n, fc::mutable_variant_object()
+         ( "nm", "alice" )
+      );
+   chain.produce_block();
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"bob"_n})));
+
+   {
+      auto result =
+          chain.push_action("secgrptest"_n, "ingroup"_n, "secgrptest"_n, fc::mutable_variant_object()("nm", "alice"));
+
+      BOOST_CHECK_EQUAL(false, fc::raw::unpack<bool>(result->action_traces[0].return_value));
+   }
+
+   {
+      auto result = chain.push_action("secgrptest"_n, "activegroup"_n, "secgrptest"_n, fc::mutable_variant_object());
+      auto participants = fc::raw::unpack<participants_t>(result->action_traces[0].return_value);
+      BOOST_TEST(participants == participants_t({"bob"_n}));
    }
 }
 

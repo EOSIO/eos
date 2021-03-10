@@ -1968,7 +1968,7 @@ namespace webassembly {
           * 
           * @return -1 if proposing a new security group was unsuccessful, otherwise returns 0.
          */
-         int64_t propose_security_group_participants_add(span<const char> packed_participants);
+         int64_t add_security_group_participants(span<const char> packed_participants);
 
          /**
           * Propose to remove participants from the security group.
@@ -1978,7 +1978,7 @@ namespace webassembly {
           * 
           * @return -1 if proposing a new security group was unsuccessful, otherwise returns 0.
          */
-         int64_t propose_security_group_participants_remove(span<const char> packed_participants);
+         int64_t remove_security_group_participants(span<const char> packed_participants);
 
          /**
           * Check if the specified accounts are all in the active security group.

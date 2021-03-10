@@ -2875,13 +2875,13 @@ const flat_set<account_name>& controller::proposed_security_group_participants()
    return get_global_properties().proposed_security_group_participants;
 }
 
-int64_t controller::propose_security_group_participants_add(const flat_set<account_name>& participants) {
+int64_t controller::add_security_group_participants(const flat_set<account_name>& participants) {
    return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
       pending_participants.insert(participants.begin(), participants.end());
    });
 }
 
-int64_t controller::propose_security_group_participants_remove(const flat_set<account_name>& participants) {
+int64_t controller::remove_security_group_participants(const flat_set<account_name>& participants) {
    return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
       flat_set<account_name>::sequence_type tmp;
       tmp.reserve(pending_participants.size());
@@ -3407,8 +3407,8 @@ void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_param
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::security_group>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "propose_security_group_participants_add" );
-      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "propose_security_group_participants_remove" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "add_security_group_participants" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "remove_security_group_participants" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "in_active_security_group" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_active_security_group" );
    } );

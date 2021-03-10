@@ -295,8 +295,8 @@ namespace eosio { namespace chain {
          const security_group_info_t& active_security_group() const;
          const flat_set<account_name>& proposed_security_group_participants() const;
 
-         int64_t propose_security_group_participants_add(const flat_set<account_name>& participants);
-         int64_t propose_security_group_participants_remove(const flat_set<account_name>& participants);
+         int64_t add_security_group_participants(const flat_set<account_name>& participants);
+         int64_t remove_security_group_participants(const flat_set<account_name>& participants);
 
          bool in_active_security_group(const flat_set<account_name>& participants) const;
 

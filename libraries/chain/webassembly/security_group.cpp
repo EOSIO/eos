@@ -6,18 +6,18 @@ namespace eosio {
 namespace chain {
 namespace webassembly {
 
-int64_t interface::propose_security_group_participants_add(span<const char> packed_participants) {
+int64_t interface::add_security_group_participants(span<const char> packed_participants) {
    datastream<const char*> ds(packed_participants.data(), packed_participants.size());
    flat_set<account_name>  participants;
    fc::raw::unpack(ds, participants);
-   return context.control.propose_security_group_participants_add(participants);
+   return context.control.add_security_group_participants(participants);
 }
 
-int64_t interface::propose_security_group_participants_remove(span<const char> packed_participants) {
+int64_t interface::remove_security_group_participants(span<const char> packed_participants) {
    datastream<const char*> ds(packed_participants.data(), packed_participants.size());
    flat_set<account_name>  participants;
    fc::raw::unpack(ds, participants);
-   return context.control.propose_security_group_participants_remove(participants);
+   return context.control.remove_security_group_participants(participants);
 }
 
 bool interface::in_active_security_group(span<const char> packed_participants) const {
