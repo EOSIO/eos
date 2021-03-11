@@ -256,9 +256,9 @@ namespace eosio {
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
-      mutable std::shared_mutex             connections_mtx;
+      mutable std::shared_mutex             connections_mtx; // protects both connections and security_group
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
-      std::unordered_multimap<chain::account_name, connection_ptr> particiant_connections;
+      security_group_manager security_group;
 
       std::mutex                            connector_check_timer_mtx;
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
@@ -339,13 +339,12 @@ namespace eosio {
       constexpr static uint16_t to_protocol_version(uint16_t v);
 
       connection_ptr find_connection(const string& host)const; // must call with held mutex
-      /** private security group management */
-      security_group_manager security_group;
       /** \brief  Update security group information
        *
        * Retrieves the security group information from the indicated block and
        * updates the cached security group information. If a participant is
-       * removed from the cached security group, the TLS connection is closed.
+       * removed from the cached security group, it is marked as non-participating
+       * and some messages are not sent.
        *
        * \param   bs The block_state containing the security group update
        */
@@ -589,10 +588,6 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      /** @brief  For non TLS connection setup
-       *
-       * @param endpoint    The connection endpoint
-       */
       explicit connection( string endpoint );
       connection();
 
@@ -812,24 +807,15 @@ namespace eosio {
       //
    private:
       std::optional<chain::account_name> participant_name_;
-      std::atomic<bool> participating_{false};
+      std::atomic<bool> participating_{true};
 
    public:
-      /** @brief  Set/change the participant name for the connection
-       *
-       *  @param name   The name of the participant
-       */
-      void participant_name(chain::account_name name) { participant_name_ = name; }
       /** @brief  Returns the optional name of the participant */
       auto participant_name() { return participant_name_; }
+      /** @brief Set the participating status */
+      void set_participating(bool status) { participating_.store(status, std::memory_order_relaxed); }
       /** returns true if connection is in the security group */
       bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
-       /** returns false if the connection is not in the security group */
-      bool is_syncing() const { return !participating_.load(std::memory_order_relaxed); }
-      /**   @brief    Flag the tls connection as participating in block production */
-      void now_participating() { participating_.store(true, std::memory_order_relaxed); }
-      /**   @brief   Flag the connection as only publishing sync information */
-      void now_syncing() { participating_.store(false, std::memory_order_relaxed); }
    };
 
    const string connection::unknown = "<unknown>";
@@ -1478,7 +1464,7 @@ namespace eosio {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       // for tls connections, when the connection is not in the security group
       // certain message types will not be transmitted
-      if(participant_name_ && !participating_) {
+      if(!is_participating()) {
          const bool ignore = std::holds_alternative<notice_message>(m) ||
                              std::holds_alternative<signed_block_v0>(m) ||
                              std::holds_alternative<packed_transaction_v0>(m) ||
@@ -1499,6 +1485,9 @@ namespace eosio {
    }
 
    void connection::enqueue_block( const signed_block_ptr& b, bool to_sync_queue) {
+      if(!is_participating()) {
+         return;
+      }
       fc_dlog( logger, "enqueue block ${num}", ("num", b->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
@@ -3484,8 +3473,10 @@ namespace eosio {
    // called from any thread
    void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
       // update cache
+      //    - connection_mtx is needed
       //
       auto& update = bs->get_security_group_info();
+      std::shared_lock<std::shared_mutex> connection_guard(connections_mtx);
       if(!security_group.update_cache(update.version, update.participants)) {
          return;
       }
@@ -3493,29 +3484,29 @@ namespace eosio {
       std::vector<connection_ptr> added_connections;
       added_connections.reserve(connections.size());
 
-      // update connection
+      // update connections
+      //    - connection_mtx still needed
       //
-      auto do_update = [&](auto& connection) {
+      for(auto& connection : connections) {
          const auto& participant = connection->participant_name();
          if(!participant) {
-            return true;
+            return;
          }
          if(security_group.is_in_security_group(participant.value())) {
-            if(connection->is_syncing()) {
-               connection->now_participating();
+            if(!connection->is_participating()) {
+               connection->set_participating(true);
                added_connections.push_back(connection);
             }
          }
          else {
-            connection->now_syncing();
+            connection->set_participating(false);
          }
-         return true;
       };
 
-      for_each_connection(do_update);
-
       // send handshake when added to group
+      //    - connection mutex no longer needd
       //
+      connection_guard.unlock();
       for(auto& connection : added_connections) {
          connection->send_handshake();
       }
@@ -4013,16 +4004,6 @@ namespace eosio {
       if( my->find_connection( host ) )
          return "already connected";
 
-      /** @todo when making a shared tls connection, need to use the ctor that takes
-       *        requires the participant name.
-       *  connection_ptr c = std::make_shared<connection>(host, nam);
-       *
-       *  @todo Need to add the connection to the
-       *        unordered_multimap.
-       *
-       *  participant_connections.emplace(name, c);
-       *
-       */
       connection_ptr c = std::make_shared<connection>( host );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
