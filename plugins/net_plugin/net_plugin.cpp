@@ -1266,20 +1266,16 @@ namespace eosio {
          peer_requested.reset();
          fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
+
       connection_wptr weak = shared_from_this();
-
-      connection_ptr c = weak.lock();
-      if (!c){
-          return true;
-      }
       controller &cc = my_impl->chain_plug->chain();
-
       send_buffer_type send_buffer;
       try{
-          send_buffer = cc.fetch_block_buffer_by_number(num, (c->protocol_version >= proto_pruned_types ? true:false));
+          send_buffer = cc.fetch_block_buffer_by_number(num, (weak.lock()->protocol_version >= proto_pruned_types ? true:false));
       } FC_LOG_AND_DROP();
+
       if (send_buffer){
-          c->enqueue_buffer(send_buffer, no_reason, true);
+          weak.lock()->enqueue_buffer(send_buffer, no_reason, true);
       }else{
           app().post( priority::medium, [num, weak{std::move(weak)}]() {
               connection_ptr c = weak.lock();
