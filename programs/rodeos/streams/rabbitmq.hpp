@@ -35,7 +35,7 @@ class rabbitmq : public stream_handler {
    {
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
       bool error = false;
-      eosio::amqp declare_queue( address_, queue_name_, [&error](const std::string& err){
+      eosio::amqp_handler declare_queue( address_, queue_name_, [&error](const std::string& err){
          elog("AMQP Queue error: ${e}", ("e", err));
          appbase::app().quit();
          error = true;
@@ -54,7 +54,7 @@ class rabbitmq : public stream_handler {
    {
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
       bool error = false;
-      eosio::amqp declare_exchange( address_, exchange_name_, exchange_type, [&error](const std::string& err){
+      eosio::amqp_handler declare_exchange( address_, exchange_name_, exchange_type, [&error](const std::string& err){
          elog("AMQP Exchange error: ${e}", ("e", err));
          appbase::app().quit();
          error = true;

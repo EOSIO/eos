@@ -56,11 +56,11 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    chain_plugin* chain_plug = nullptr;
    amqp_trace_plugin* trace_plug = nullptr;
-   std::optional<amqp> amqp_trx;
+   std::optional<amqp_handler> amqp_trx;
 
    std::string amqp_trx_address;
    ack_mode acked = ack_mode::executed;
-   std::map<uint32_t, eosio::amqp::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
+   std::map<uint32_t, eosio::amqp_handler::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -71,7 +71,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
 
    // called from amqp thread
-   void consume_message( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
+   void consume_message( const eosio::amqp_handler::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
       try {
          fc::datastream<const char*> ds( buf, s );
          fc::unsigned_int which;
@@ -119,7 +119,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 private:
 
    // called from amqp thread
-   void handle_message( const eosio::amqp::delivery_tag_t& delivery_tag, chain::packed_transaction_ptr trx ) {
+   void handle_message( const eosio::amqp_handler::delivery_tag_t& delivery_tag, chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
@@ -250,7 +250,7 @@ void amqp_trx_plugin::plugin_startup() {
                elog( "amqp error: ${e}", ("e", err) );
                app().quit();
             },
-            [&]( const eosio::amqp::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
+            [&]( const eosio::amqp_handler::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
                if( app().is_quiting() ) return; // leave non-ack
                my->consume_message( delivery_tag, buf, s );
             }
