@@ -93,8 +93,6 @@ namespace eosio { namespace chain {
 
          static bool is_supported_version(uint32_t version);
 
-         static bool is_new_version(uint32_t version);
-
          static bool trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block);
          static int  trim_blocklog_end(fc::path block_dir, uint32_t n);
 

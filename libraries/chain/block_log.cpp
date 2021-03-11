@@ -1258,8 +1258,6 @@ namespace eosio { namespace chain {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 
-   bool block_log::is_new_version(uint32_t version) { return (version >= pruned_transaction_version ? true:false);}
-
    void extract_blocklog_i(block_log_bundle& log_bundle, fc::path new_block_filename, fc::path new_index_filename,
                            uint32_t first_block_num, uint32_t num_blocks) {
 
