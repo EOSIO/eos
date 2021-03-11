@@ -53,8 +53,14 @@ if [[ "$EXPECTED" == '' ]]; then
 fi
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
-# test
+ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version)
+EXIT_CODE=$?
+# verify 0 exit code explicitly
+if [[ $EXIT_CODE -ne 0 ]]; then
+    echo "Nodeos produced non-zero exit code \"$EXIT_CODE\"."
+    exit $EXIT_CODE
+fi
+# test version
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo "Passed with \"$ACTUAL\"."
     exit 0
