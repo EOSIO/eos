@@ -60,7 +60,13 @@ EXPECTED=$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
 ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --full-version)
-# test
+EXIT_CODE=$?
+# verify 0 exit code explicitly
+if [[ $EXIT_CODE -ne 0 ]]; then
+    echo "Nodeos produced non-zero exit code \"$EXIT_CODE\"."
+    exit $EXIT_CODE
+fi
+# test version
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo "Passed with \"$ACTUAL\"."
     exit 0
