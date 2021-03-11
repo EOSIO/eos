@@ -51,7 +51,7 @@ if [[ -z "$EXPECTED" ]]; then
     ls -la "$EOSIO_ROOT/build"
     exit 1
 fi
-VERSION_HASH=$(grep -Irn version_hash $EOSIO_ROOT/build/libraries/version | grep std::string | sed 's/^.\+"\([a-f0-9]\+\)".\+$/\1/')
+VERSION_HASH=$BUILDKITE_COMMIT
 if [[ -z "$VERSION_HASH" ]]; then
     echo 'No version hash found.'
     exit 1
