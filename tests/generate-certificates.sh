@@ -41,6 +41,7 @@ then
    echo "--org-mask:   Paritipant certificates name mask in format of name{number}"
    echo "--cn-mask:    Paritipant certificates common name mask in format of name{number}"
    echo "--group-size: Number of participants signed by generated CA"
+   exit 0
 fi
 
 #default arguments:
@@ -68,7 +69,7 @@ echo "         generating nodes certificates    "
 echo "*************************************************"
 
 #client certificate requests + private keys
-for n in $(seq 1 $GROUP_SIZE)
+for n in $(seq 0 $(($GROUP_SIZE-1)))
 do
    ORG_NAME=$(sed "s/{NUMBER}/$n/" <<< "$ORG_MASK")
    CN_NAME=$(sed "s/{NUMBER}/$n/" <<< "$CN_MASK")
