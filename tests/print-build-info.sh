@@ -16,8 +16,8 @@ if [[ $EXIT_CODE -eq 0 ]]; then
 fi
 
 OUTPUT=$(echo "$OUTPUT" | tr -d '\r\n')
-OUTPUT=$(echo "$OUTPUT" | sed 's/^.\+JSON://')
-OUTPUT=$(echo "$OUTPUT" | sed 's/}.\+$/}/')
+OUTPUT=$(echo "$OUTPUT" | sed -E 's/^.+JSON://')
+OUTPUT=$(echo "$OUTPUT" | sed -E 's/}.+$/}/')
 
 JQ_OUTPUT=$(echo "$OUTPUT" | jq type)
 EXIT_CODE=$?
@@ -48,10 +48,10 @@ if [[ "$PLATFORM_TYPE" == "pinned" ]]; then
         exit 1
     fi
     FILE=$(ls $EOSIO_ROOT/.cicd/platforms/pinned/$IMAGE_TAG* | head)
-    BOOST=$(cat $FILE | grep boost | tr -d '\r\n' | sed 's/^.\+boost_\([0-9_]\+\) .\+$/\1/' | head)
-    BOOST_MAJOR=$(echo $BOOST | sed 's/^\([0-9]\)\+_[0-9]\+_[0-9]\+$/\1/')
-    BOOST_MINOR=$(echo $BOOST | sed 's/^[0-9]\+_\([0-9]\+\)_[0-9]\+$/\1/')
-    BOOST_PATCH=$(echo $BOOST | sed 's/^[0-9]\+_[0-9]\+_\([0-9]\)\+$/\1/')
+    BOOST=$(cat $FILE | grep boost | tr -d '\r\n' | sed -E 's/^.+boost_([0-9]+_[0-9]+_[0-9]+).+$/\1/' | head)
+    BOOST_MAJOR=$(echo $BOOST | sed -E 's/^([0-9])+_[0-9]+_[0-9]+$/\1/')
+    BOOST_MINOR=$(echo $BOOST | sed -E 's/^[0-9]+_([0-9]+)_[0-9]+$/\1/')
+    BOOST_PATCH=$(echo $BOOST | sed -E 's/^[0-9]+_[0-9]+_([0-9])+$/\1/')
     E_BOOST=$(printf "%d%03d%02d" $BOOST_MAJOR $BOOST_MINOR $BOOST_PATCH)
 
     echo "Verifying boost version: \"$E_BOOST\" == \"$V_BOOST\"."
