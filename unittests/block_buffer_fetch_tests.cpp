@@ -31,10 +31,6 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
         //unpack
         fc::datastream<const char*> ds((*pBuffer).data(), (*pBuffer).size());
-        ds.skip(4); //skip header
-        unsigned_int which{};
-        fc::raw::unpack( ds, which );
-
         if (return_signed_block){
             signed_block sb;
             sb.unpack(ds, packed_transaction::cf_compression_type::none);
