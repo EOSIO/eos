@@ -252,6 +252,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
       set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
+      set_activation_handler<builtin_protocol_feature_t::security_group>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -1429,6 +1430,27 @@ struct controller_impl {
             });
          }
 
+         if (gpo.proposed_security_group_block_num) {
+            if (gpo.proposed_security_group_block_num <= pbhs.dpos_irreversible_blocknum) {
+
+               // Promote proposed security group to pending.
+               if( !replay_head_time ) {
+                  ilog( "promoting proposed security group (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} participants: ${participants} ",
+                        ("proposed_num", gpo.proposed_security_group_block_num)("n", pbhs.block_num)
+                        ("lib", pbhs.dpos_irreversible_blocknum)
+                        ("participants",  gpo.proposed_security_group_participants ) );
+               }
+
+               ++bb._pending_block_header_state.security_group.version;
+               bb._pending_block_header_state.security_group.participants = std::move(gpo.proposed_security_group_participants);
+
+               db.modify(gpo, [&](auto& gp) { 
+                  gp.proposed_security_group_block_num = 0; 
+                  gp.proposed_security_group_participants.clear(); 
+               });
+            }
+         }
+
          try {
             transaction_metadata_ptr onbtrx =
                   transaction_metadata::create_no_recover_keys( std::make_shared<packed_transaction>( get_on_block_transaction(), true ),
@@ -2229,6 +2251,35 @@ struct controller_impl {
       return deep_mind_logger;
    }
 
+   int64_t propose_security_group(std::function<void(flat_set<account_name>&)> && modify_participants) {
+      const auto& gpo           = self.get_global_properties();
+      auto        cur_block_num = head->block_num + 1;
+
+      if (!self.is_builtin_activated(builtin_protocol_feature_t::security_group)) {
+         return -1;
+      }
+
+      flat_set<account_name> proposed_participants = gpo.proposed_security_group_block_num == 0
+                                                         ? self.active_security_group().participants
+                                                         : gpo.proposed_security_group_participants;
+
+      auto orig_participants_size = proposed_participants.size();
+
+      modify_participants(proposed_participants);
+
+      if (orig_participants_size == proposed_participants.size()) {
+         // no changes in the participants
+         return -1;
+      }
+
+      db.modify(gpo, [&proposed_participants, cur_block_num](auto& gp) {
+         gp.proposed_security_group_block_num    = cur_block_num;
+         gp.proposed_security_group_participants = std::move(proposed_participants);
+      });
+
+      return 0;
+   }
+
 }; /// controller_impl
 
 const resource_limits_manager&   controller::get_resource_limits_manager()const
@@ -2808,6 +2859,43 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
    return version;
 }
 
+const security_group_info_t& controller::active_security_group() const {
+   if( !(my->pending) )
+      return  my->head->get_security_group_info();
+
+   return std::visit(
+       overloaded{
+           [](const building_block& bb) -> const security_group_info_t& { return bb._pending_block_header_state.security_group; },
+           [](const assembled_block& ab) -> const security_group_info_t& { return ab._pending_block_header_state.security_group; },
+           [](const completed_block& cb) -> const security_group_info_t& { return cb._block_state->get_security_group_info(); }},
+       my->pending->_block_stage);
+}
+
+const flat_set<account_name>& controller::proposed_security_group_participants() const {
+   return get_global_properties().proposed_security_group_participants;
+}
+
+int64_t controller::add_security_group_participants(const flat_set<account_name>& participants) {
+   return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
+      pending_participants.insert(participants.begin(), participants.end());
+   });
+}
+
+int64_t controller::remove_security_group_participants(const flat_set<account_name>& participants) {
+   return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
+      flat_set<account_name>::sequence_type tmp;
+      tmp.reserve(pending_participants.size());
+      std::set_difference(pending_participants.begin(), pending_participants.end(), participants.begin(),
+                          participants.end(), std::back_inserter(tmp));
+      pending_participants.adopt_sequence(std::move(tmp));
+   });
+}
+
+bool controller::in_active_security_group(const flat_set<account_name>& participants) const {
+   const auto& active = active_security_group().participants;
+   return std::includes(active.begin(), active.end(), participants.begin(), participants.end());
+}
+
 const producer_authority_schedule&    controller::active_producers()const {
    if( !(my->pending) )
       return  my->head->active_schedule;
@@ -3312,6 +3400,17 @@ void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_param
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_parameters_packed" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_parameters_packed" );
+   } );
+}
+
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::security_group>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "add_security_group_participants" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "remove_security_group_participants" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "in_active_security_group" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_active_security_group" );
    } );
 }
 

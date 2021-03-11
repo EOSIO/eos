@@ -218,6 +218,7 @@ void istream_snapshot_reader::validate() const {
                  "Binary snapshot has unexpected magic number!");
 
       // validate version
+      uint32_t version;
       snapshot.read((char*)&version, sizeof(version));
       EOS_ASSERT(version > 0 && version <= current_snapshot_version, snapshot_exception,
                  "Binary snapshot is an unsuppored version.  version is ${actual} while code supports version(s) [1,${max}]",
@@ -327,7 +328,7 @@ void istream_snapshot_reader::set_section( const string& section_name ) {
 }
 
 bool istream_snapshot_reader::read_row( detail::abstract_snapshot_row_reader& row_reader ) {
-   block_header_state_unpack_stream unpack_strm(snapshot, version > minimum_snapshot_version);
+   versioned_unpack_stream unpack_strm(snapshot, chain_snapshot_version);
    row_reader.provide(unpack_strm);
    return ++cur_row < num_rows;
 }
