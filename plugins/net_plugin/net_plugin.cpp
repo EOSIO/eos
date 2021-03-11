@@ -2757,10 +2757,10 @@ namespace eosio {
 
       const unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
 
-      auto report_dropping_trx = [](const transaction_id_type& trx_id, unsigned long trx_in_progress_sz) {
+      auto report_dropping_trx = [](const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, unsigned long trx_in_progress_sz) {
          char reason[72];
          snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
-         my_impl->producer_plug->log_failed_transaction(trx_id, reason);
+         my_impl->producer_plug->log_failed_transaction(trx_id, packed_trx_ptr, reason);
       };
 
       bool have_trx = false;
@@ -2774,7 +2774,7 @@ namespace eosio {
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
             if (trx_in_progress_sz > def_max_trx_in_progress_size) {
-               report_dropping_trx(*trx_id, trx_in_progress_sz);
+               report_dropping_trx(*trx_id, ptr, trx_in_progress_sz);
                return true;
             }
             have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
@@ -2789,14 +2789,14 @@ namespace eosio {
             ptr = std::move( trx );
 
             if (ptr && trx_id && *trx_id != ptr->id()) {
-               my_impl->producer_plug->log_failed_transaction(*trx_id, "Provided trx_id does not match provided packed_transaction");
+               my_impl->producer_plug->log_failed_transaction(*trx_id, ptr, "Provided trx_id does not match provided packed_transaction");
                EOS_ASSERT(false, transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
             }
             
             if( !trx_id ) {
                if (trx_in_progress_sz > def_max_trx_in_progress_size) {
-                  report_dropping_trx(ptr->id(), trx_in_progress_sz);
+                  report_dropping_trx(ptr->id(), ptr, trx_in_progress_sz);
                   return true;
                }
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
@@ -2809,7 +2809,7 @@ namespace eosio {
          packed_transaction_v0 pt_v0;
          fc::raw::unpack( ds, pt_v0 );
          if( trx_in_progress_sz > def_max_trx_in_progress_size) {
-            report_dropping_trx(pt_v0.id(), trx_in_progress_sz);
+            report_dropping_trx(pt_v0.id(), ptr, trx_in_progress_sz);
             return true;
          }
          have_trx = my_impl->dispatcher->have_txn( pt_v0.id() );

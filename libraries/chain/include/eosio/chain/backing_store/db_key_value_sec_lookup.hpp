@@ -110,7 +110,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(parent.receiver, scope, table, secondary, id);
 
-         add_table_if_needed(secondary_key.full_secondary_key, payer);
+         add_table_if_needed(scope, table, payer);
 
          auto old_value = current_session.read(secondary_key.full_secondary_key);
 

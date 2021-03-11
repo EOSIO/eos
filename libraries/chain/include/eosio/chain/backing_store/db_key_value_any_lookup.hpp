@@ -46,7 +46,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       static key_bundle get_slice(name code, name scope, name table);
       static key_bundle get_table_end_slice(name code, name scope, name table);
-      void add_table_if_needed(const shared_bytes& key, account_name payer);
+      void add_table_if_needed(name scope, name table, account_name payer);
       void remove_table_if_empty(const shared_bytes& key);
       template<typename IterStore>
       int32_t get_end_iter(name code, name scope, name table, IterStore& iter_store) {

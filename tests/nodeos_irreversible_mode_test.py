@@ -119,6 +119,24 @@ def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeS
       assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
          "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
 
+# Confirm lib of irreversible mode
+# Under any condition of irreversible mode:
+# - forkDbHead >= head == lib
+# headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
+# When comparing with the the state before node is switched:
+# - head == libBeforeSwitchMode == lib and forkDbHead == libBeforeSwitchMode == forkDbLibBeforeSwitchMode
+def confirmLibOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
+   head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
+   assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
+   assert forkDbHead >= head, "Fork db head ({}) should be larger or equal to the head ({})".format(forkDbHead, head)
+
+   if headLibAndForkDbHeadBeforeSwitchMode:
+      headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
+      assert head == libBeforeSwitchMode, "Head ({}) should be equal to lib before switch mode ({})".format(head, libBeforeSwitchMode)
+      assert lib == libBeforeSwitchMode, "Lib ({}) should be equal to lib before switch mode ({})".format(lib, libBeforeSwitchMode)
+      assert forkDbHead == libBeforeSwitchMode, \
+         "Fork db head ({}) should be equal to lib before switch mode ({})".format(forkDbHead, libBeforeSwitchMode)
+
 # Confirm the head lib and fork db of speculative mode
 # Under any condition of speculative mode:
 # - forkDbHead == head >= lib
@@ -233,7 +251,7 @@ try:
       relaunchNode(nodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Ensure the node condition is as expected after relaunch
-      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
+      confirmLibOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
 
    # 3rd test case: Switch mode speculative -> irreversible without replay
    # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the irreversible mode expectation
@@ -362,7 +380,7 @@ try:
          # Ensure it automatically replays "reversible blocks", i.e. head lib and fork db should be the same
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
          assert headLibAndForkDbHeadBeforeShutdown == headLibAndForkDbHeadAfterRelaunch, \
-            "Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
+            "1: Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
 
          # Start production and wait until lib advance, ensure everything is alright
          startProdNode()
@@ -379,7 +397,7 @@ try:
          relaunchNode(nodeToTest)
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
          assert headLibAndForkDbHeadBeforeShutdown == headLibAndForkDbHeadAfterRelaunch, \
-            "Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
+            "2: Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
       finally:
          stopProdNode()
 

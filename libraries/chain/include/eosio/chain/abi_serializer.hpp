@@ -432,20 +432,11 @@ namespace impl {
                      binary_to_variant_context _ctx(*abi, ctx, type);
                      _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
-                     mvo("hex_data", act.data);
-                  } catch(...) {
-                     // any failure to serialize data, then leave as not serailzed
-                     mvo("data", act.data);
-                  }
-               } else {
-                  mvo("data", act.data);
+                  } catch(...) {}
                }
-            } else {
-               mvo("data", act.data);
             }
-         } catch(...) {
-            mvo("data", act.data);
-         }
+         }catch(...) {}
+         mvo("hex_data", act.data);
          out(name, std::move(mvo));
       }
 
@@ -829,7 +820,7 @@ namespace impl {
             }
          }
 
-         if( !valid_empty_data && act.data.empty() ) {
+         if( ( !valid_empty_data && act.data.empty() ) || !vo.contains( "data" )  ) {
             if( vo.contains( "hex_data" ) ) {
                const auto& data = vo["hex_data"];
                if( data.is_string() ) {

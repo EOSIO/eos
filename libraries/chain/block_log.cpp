@@ -7,6 +7,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/scoped_exit.hpp>
 #include <future>
 #include <regex>
 #include <shared_mutex>
@@ -213,9 +214,15 @@ namespace eosio { namespace chain {
 
    class index_writer {
     public:
-      index_writer(const fc::path& block_index_name, uint32_t blocks_expected)
+      index_writer(const fc::path& block_index_name, uint32_t blocks_expected, bool create=true)
           : current_offset(blocks_expected * sizeof(uint64_t)) {
-         create_mapped_file(index, block_index_name.generic_string(), current_offset);
+            if (create)
+               create_mapped_file(index, block_index_name.generic_string(), current_offset);
+            else {
+               auto sz = sizeof(uint64_t)*blocks_expected;
+               bfs::resize_file(block_index_name.generic_string(), sizeof(uint64_t)*blocks_expected);
+               index.open(block_index_name.generic_string(), sz);
+            }
       }
       void write(uint64_t pos) {
          current_offset -= sizeof(pos);
@@ -427,9 +434,9 @@ namespace eosio { namespace chain {
       block_log_data  log_data;
       block_log_index log_index;
 
-      block_log_bundle(fc::path block_dir) {
-         block_file_name = block_dir / "blocks.log";
-         index_file_name = block_dir / "blocks.index";
+      block_log_bundle(fc::path block_file, fc::path index_file)
+          : block_file_name(block_file)
+          , index_file_name(index_file) {
 
          log_data.open(block_file_name);
          log_index.open(index_file_name);
@@ -437,10 +444,14 @@ namespace eosio { namespace chain {
          uint32_t log_num_blocks   = log_data.num_blocks();
          uint32_t index_num_blocks = log_index.num_blocks();
 
-         EOS_ASSERT(
-             log_num_blocks == index_num_blocks, block_log_exception,
-             "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} indicated by ${index_file_name}",
-             ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)("index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
+         EOS_ASSERT(log_num_blocks == index_num_blocks, block_log_exception,
+                    "${block_file_name} says it has ${log_num_blocks} blocks which disagrees with ${index_num_blocks} "
+                    "indicated by ${index_file_name}",
+                    ("block_file_name", block_file_name)("log_num_blocks", log_num_blocks)(
+                        "index_num_blocks", index_num_blocks)("index_file_name", index_file_name));
+      }
+
+      block_log_bundle(fc::path block_dir) : block_log_bundle(block_dir / "blocks.log", block_dir / "blocks.index") {
       }
    };
 
@@ -474,6 +485,10 @@ namespace eosio { namespace chain {
          current_position = read_buffer<uint64_t>(addr()) - sizeof(uint64_t);
          return *this;
       }
+
+      bool done() const {
+         return current_position <= begin_position;
+      }
    };
 
    template <typename BlockLogData>
@@ -485,6 +500,16 @@ namespace eosio { namespace chain {
    reverse_block_position_iterator<BlockLogData> make_reverse_block_position_iterator(const BlockLogData& t,
                                                                                      uint64_t first_block_position) {
       return reverse_block_position_iterator<BlockLogData>(t, first_block_position);
+   }
+
+   void adjust_block_positions(index_writer& index, boost::iostreams::mapped_file_sink& block_file, uint64_t first_block_position, int64_t offset) {
+      // walk along the block position of each block entry and add its value by offset
+      for (auto itr = make_reverse_block_position_iterator(block_file, first_block_position);
+           !itr.done(); ++itr) {
+         auto new_pos = itr.get_value() + offset;
+         index.write(new_pos);
+         itr.set_value(new_pos);
+      }
    }
 
    void block_log_data::construct_index(const fc::path& index_file_path) {
@@ -605,6 +630,7 @@ namespace eosio { namespace chain {
 
    void block_log::set_version(uint32_t ver) { detail::block_log_impl::default_version = ver; }
    uint32_t block_log::version() const { return my->preamble.version; }
+   uint32_t block_log::get_first_block_num() const { return my->preamble.first_block_num; }
 
    detail::block_log_impl::block_log_impl(const block_log::config_type& config)
    : stride( config.stride )
@@ -641,6 +667,12 @@ namespace eosio { namespace chain {
       const auto log_size   = fc::file_size(block_file.get_file_path());
       const auto index_size = fc::file_size(index_file.get_file_path());
 
+      if (log_size == 0 && !catalog.empty()) {
+         this->reset(catalog.last_block_num() + 1, catalog.verifier.chain_id);
+         this->head = read_block_by_num(catalog.last_block_num());
+         return;
+      }
+
       if (log_size) {
          ilog("Log is nonempty");
          block_log_data log_data(block_file.get_file_path());
@@ -651,6 +683,15 @@ namespace eosio { namespace chain {
                     "block log file ${path} has a different chain id", ("path", block_file.get_file_path()));
 
          genesis_written_to_block_log = true; // Assume it was constructed properly.
+
+         auto reconstruct_index = [&]() {
+            if (config.fix_irreversible_blocks) {
+               block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
+               block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
+            } else {
+               log_data.construct_index(index_file.get_file_path());
+            }
+         };
 
          if (index_size) {
             ilog("Index is nonempty");
@@ -671,17 +712,11 @@ namespace eosio { namespace chain {
                }
             }
             else {
-               if (config.fix_irreversible_blocks) {
-                  block_log::repair_log(block_file.get_file_path().parent_path(), UINT32_MAX);
-                  block_log::construct_index(block_file.get_file_path(), index_file.get_file_path());
-               }
-               else {
-                  log_data.construct_index(index_file.get_file_path());
-               }
+               reconstruct_index();
             } 
          } else {
             ilog("Index is empty. Reconstructing index...");
-            log_data.construct_index(index_file.get_file_path());
+            reconstruct_index();
          }
       } else if (index_size) {
          ilog("Log file is empty while the index file is nonempty, discard the index file");
@@ -1225,6 +1260,52 @@ namespace eosio { namespace chain {
 
    bool block_log::is_new_version(uint32_t version) { return (version >= pruned_transaction_version ? true:false);}
 
+   void extract_blocklog_i(block_log_bundle& log_bundle, fc::path new_block_filename, fc::path new_index_filename,
+                           uint32_t first_block_num, uint32_t num_blocks) {
+
+      auto position_for_block = [&log_bundle](uint64_t block_num) {
+         uint64_t block_order = block_num - log_bundle.log_data.first_block_num();
+         if (block_order < static_cast<uint64_t>(log_bundle.log_index.num_blocks()))
+            return log_bundle.log_index.nth_block_position(block_order);
+         return log_bundle.log_data.size();
+      };
+
+      const auto     num_blocks_to_skip   = first_block_num - log_bundle.log_data.first_block_num();
+      const uint64_t first_kept_block_pos = position_for_block(first_block_num);
+      const uint64_t nbytes_to_trim =
+          num_blocks_to_skip == 0 ? 0 : first_kept_block_pos - block_log_preamble::nbytes_with_chain_id;
+      const uint64_t last_block_num      = first_block_num + num_blocks;
+      const uint64_t last_block_pos      = position_for_block(last_block_num);
+      const auto     new_block_file_size = last_block_pos - nbytes_to_trim;
+
+      boost::iostreams::mapped_file_sink new_block_file;
+      create_mapped_file(new_block_file, new_block_filename.generic_string(), new_block_file_size);
+
+      if (num_blocks_to_skip == 0) {
+         memcpy(new_block_file.data(), log_bundle.log_data.data(), new_block_file_size);
+
+         boost::iostreams::mapped_file_sink new_index_file;
+         const uint64_t                     index_file_size = num_blocks * sizeof(uint64_t);
+         create_mapped_file(new_index_file, new_index_filename.generic_string(), index_file_size);
+         memcpy(new_index_file.data(), log_bundle.log_index.data(), index_file_size);
+         return;
+      }
+
+      fc::datastream<char*> ds(new_block_file.data(), new_block_file.size());
+      block_log_preamble    preamble;
+      // version 4 or above have different log entry format; therefore version 1 to 3 can only be upgrade up to version
+      // 3 format.
+      preamble.version = log_bundle.log_data.version() < pruned_transaction_version ? genesis_state_or_chain_id_version
+                                                                                    : block_log::max_supported_version;
+      preamble.first_block_num = first_block_num;
+      preamble.chain_context   = log_bundle.log_data.chain_id();
+      preamble.write_to(ds);
+      ds.write(log_bundle.log_data.data() + first_kept_block_pos, last_block_pos - first_kept_block_pos);
+
+      index_writer index(new_index_filename, num_blocks);
+      adjust_block_positions(index, new_block_file, block_log_preamble::nbytes_with_chain_id, - nbytes_to_trim);
+   }
+
    bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
       
@@ -1245,42 +1326,13 @@ namespace eosio { namespace chain {
       // ****** create the new block log file and write out the header for the file
       fc::create_directories(temp_dir);
       fc::path new_block_filename = temp_dir / "blocks.log";
+      fc::path new_index_filename = temp_dir / "blocks.index";
    
       static_assert( block_log::max_supported_version == pruned_transaction_version,
                      "Code was written to support format of version 4 or lower, need to update this code for latest format." );
-      
-      const auto     preamble_size           = block_log_preamble::nbytes_with_chain_id;
-      const auto     num_blocks_to_truncate  = truncate_at_block - log_bundle.log_data.first_block_num();
-      const uint64_t first_kept_block_pos    = log_bundle.log_index.nth_block_position(num_blocks_to_truncate);
-      const uint64_t nbytes_to_trim          = first_kept_block_pos - preamble_size;
-      const auto     new_block_file_size     = log_bundle.log_data.size() - nbytes_to_trim;
 
-      boost::iostreams::mapped_file_sink new_block_file;
-      create_mapped_file(new_block_file, new_block_filename.generic_string(), new_block_file_size);
-      fc::datastream<char*> ds(new_block_file.data(), new_block_file.size());
-
-      block_log_preamble preamble;
-      // version 4 or above have different log entry format; therefore version 1 to 3 can only be upgrade up to version 3 format.
-      preamble.version         = log_bundle.log_data.version() < pruned_transaction_version ? genesis_state_or_chain_id_version : block_log::max_supported_version;
-      preamble.first_block_num = truncate_at_block;
-      preamble.chain_context   = log_bundle.log_data.chain_id();
-      preamble.write_to(ds);
-
-      memcpy(new_block_file.data() + preamble_size, log_bundle.log_data.data() + first_kept_block_pos, new_block_file_size - preamble_size);
-
-      fc::path new_index_filename = temp_dir / "blocks.index";
-      index_writer index(new_index_filename, log_bundle.log_index.num_blocks() - num_blocks_to_truncate);
-
-      // walk along the block position of each block entry and decrement its value by nbytes_to_trim
-      for (auto itr = make_reverse_block_position_iterator(new_block_file, preamble_size);
-            itr.get_value() != block_log::npos; ++itr) {
-         auto new_pos = itr.get_value() - nbytes_to_trim;
-         index.write(new_pos);
-         itr.set_value(new_pos);
-      }
-
-      index.close();
-      new_block_file.close();
+      extract_blocklog_i(log_bundle, new_block_filename, new_index_filename, truncate_at_block,
+                  log_bundle.log_data.last_block_num() - truncate_at_block + 1);
 
       fc::path old_log = temp_dir / "old.log";
       rename(log_bundle.block_file_name, old_log);
@@ -1338,4 +1390,134 @@ namespace eosio { namespace chain {
    bool block_log::exists(const fc::path& data_dir) {
       return fc::exists(data_dir / "blocks.log") && fc::exists(data_dir / "blocks.index");
    }
-}} /// eosio::chain
+
+   std::pair<fc::path, fc::path> blocklog_files(const fc::path& dir, uint32_t start_block_num, uint32_t num_blocks) {
+      const int bufsize = 64;
+      char      buf[bufsize];
+      snprintf(buf, bufsize, "blocks-%d-%d.log", start_block_num, start_block_num + num_blocks - 1);
+      fc::path new_block_filename = dir / buf;
+      fc::path new_index_filename(new_block_filename);
+      new_index_filename.replace_extension(".index");
+      return std::make_pair(new_block_filename, new_index_filename);
+   }
+
+   void block_log::extract_blocklog(const fc::path& log_filename, const fc::path& index_filename,
+                                    const fc::path& dest_dir, uint32_t start_block_num, uint32_t num_blocks) {
+
+      block_log_bundle log_bundle(log_filename, index_filename);
+
+      EOS_ASSERT(start_block_num >= log_bundle.log_data.first_block_num(), block_log_exception,
+                 "The first available block is block ${first_block}.",
+                 ("first_block", log_bundle.log_data.first_block_num()));
+
+      EOS_ASSERT(start_block_num + num_blocks - 1 <= log_bundle.log_data.last_block_num(), block_log_exception,
+                 "The last available block is block ${last_block}.",
+                 ("last_block", log_bundle.log_data.last_block_num()));
+
+      if (!fc::exists(dest_dir))
+         fc::create_directories(dest_dir);
+
+      auto [new_block_filename, new_index_filename] = blocklog_files(dest_dir, start_block_num, num_blocks);
+
+      extract_blocklog_i(log_bundle, new_block_filename, new_index_filename, start_block_num, num_blocks);
+   }
+
+   void block_log::split_blocklog(const fc::path& block_dir, const fc::path& dest_dir, uint32_t stride) {
+
+      block_log_bundle log_bundle(block_dir);
+      const uint32_t   first_block_num = log_bundle.log_data.first_block_num();
+      const uint32_t   last_block_num  = log_bundle.log_data.last_block_num();
+
+      if (!fc::exists(dest_dir))
+         fc::create_directories(dest_dir);
+
+      for (uint32_t i = (first_block_num - 1) / stride; i < (last_block_num + stride - 1) / stride; ++i) {
+         uint32_t start_block_num = std::max(i * stride + 1, first_block_num);
+         uint32_t num_blocks      = std::min((i + 1) * stride, last_block_num) - start_block_num + 1;
+
+         auto [new_block_filename, new_index_filename] = blocklog_files(dest_dir, start_block_num, num_blocks);
+
+         extract_blocklog_i(log_bundle, new_block_filename, new_index_filename, start_block_num, num_blocks);
+      }
+   }
+
+   inline bfs::path operator+(bfs::path left, bfs::path right){return bfs::path(left)+=right;}
+
+   void move_blocklog_files(const bfs::path& src_dir, const fc::path& dest_dir, uint32_t start_block, uint32_t end_block) {
+      auto [log_filename, index_filename] = blocklog_files(dest_dir, start_block, end_block - start_block + 1);
+      bfs::rename(src_dir / "blocks.log", log_filename);
+      bfs::rename(src_dir / "blocks.index", index_filename);
+   }
+
+   uint32_t get_blocklog_version(const bfs::path& blocklog_file) {
+      uint32_t version;
+      fc::cfile f;
+      f.set_file_path(blocklog_file.generic_string());
+      f.open("r");
+      f.read((char*)&version, sizeof(uint32_t));
+      return version;
+   }
+
+   void block_log::merge_blocklogs(const fc::path& blocks_dir, const fc::path& dest_dir) {
+      block_log_catalog catalog;
+      
+      catalog.open("", blocks_dir, "", "blocks");
+      if (catalog.collection.size() <= 1) {
+         wlog("There's no more than one blocklog files in ${blocks_dir}, skip merge.",
+              ("blocks_dir", blocks_dir));
+         return;
+      }
+
+      if (!fc::exists(dest_dir))
+         fc::create_directories(dest_dir);
+
+      fc::temp_directory temp_dir;
+      bfs::path temp_path = temp_dir.path();
+      uint32_t start_block, end_block = 0;
+      uint32_t version;
+
+      bfs::path temp_block_log = temp_path / "blocks.log";
+      bfs::path temp_block_index  = temp_path / "blocks.index";
+
+      for (auto const& [first_block_num, val] : catalog.collection ) {
+         if (bfs::exists(temp_block_log)) {
+            if (first_block_num == end_block + 1) {
+               block_log_data log_data;
+               auto           ds  = log_data.open(val.filename_base + ".log");
+
+               if ((version >= pruned_transaction_version && log_data.version() >= pruned_transaction_version) ||
+                  (version < pruned_transaction_version && log_data.version() < pruned_transaction_version) ) {
+                  
+                  auto orig_log_size = bfs::file_size(temp_block_log);
+                  bfs::resize_file(temp_block_log, orig_log_size + ds.remaining());
+                  boost::iostreams::mapped_file_sink file(temp_block_log);
+                  memcpy(file.data() + orig_log_size, ds.pos(), ds.remaining());
+                  end_block   = val.last_block_num;
+                  index_writer index(temp_block_index, end_block - start_block + 1, false);
+                  adjust_block_positions(index, file, orig_log_size, orig_log_size - (ds.pos() - log_data.data()));
+                  continue;
+               }
+               else 
+                  wlog("${file}.log has a block log version ${new_version} which is incompatible with previous block log version ${version}, skip merging.",
+                  ("file", val.filename_base.generic_string())("new_version", log_data.version())("version", version));
+            }
+            else 
+               wlog("${file}.log cannot be merged with previous block log file because of the discontinuity of blocks, skip merging.",
+                  ("file", val.filename_base.generic_string()));
+            // there is a version or block number gap between the stride files 
+            move_blocklog_files(temp_path, dest_dir, start_block, end_block);
+         }
+           
+         bfs::copy(val.filename_base + ".log", temp_block_log);
+         bfs::copy(val.filename_base + ".index", temp_block_index);
+         start_block = first_block_num;
+         end_block   = val.last_block_num;
+         version = get_blocklog_version(temp_block_log);
+      }
+
+      if (bfs::exists(temp_block_log)) {
+         move_blocklog_files(temp_path, dest_dir, start_block, end_block);
+      }
+   }
+   } // namespace chain
+   } // namespace eosio

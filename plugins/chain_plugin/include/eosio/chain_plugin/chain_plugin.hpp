@@ -57,9 +57,6 @@ struct permission {
    authority         required_auth;
 };
 
-template<typename>
-struct resolver_factory;
-
 // see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
@@ -138,6 +135,7 @@ public:
       std::optional<chain::block_id_type>  fork_db_head_block_id;
       std::optional<string>                server_full_version_string;
       std::optional<fc::time_point>        last_irreversible_block_time;
+      std::optional<uint32_t>              first_block_num;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -910,7 +908,6 @@ public:
 
    chain::symbol extract_core_symbol()const;
 
-   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -941,7 +938,6 @@ public:
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   friend resolver_factory<read_write>;
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1035,21 +1031,6 @@ public:
    bool accept_block( const chain::signed_block_ptr& block, const chain::block_id_type& id );
    void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
-   static bool recover_reversible_blocks( const fc::path& db_dir,
-                                          uint32_t cache_size,
-                                          std::optional<fc::path> new_db_dir = std::optional<fc::path>(),
-                                          uint32_t truncate_at_block = 0
-                                        );
-
-   static bool import_reversible_blocks( const fc::path& reversible_dir,
-                                         uint32_t cache_size,
-                                         const fc::path& reversible_blocks_file
-                                       );
-
-   static bool export_reversible_blocks( const fc::path& reversible_dir,
-                                        const fc::path& reversible_blocks_file
-                                       );
-
    // Only call this after plugin_initialize()!
    controller& chain();
    // Only call this after plugin_initialize()!
@@ -1069,6 +1050,10 @@ public:
    static void handle_bad_alloc();
    
    bool account_queries_enabled() const;
+
+   fc::variant get_entire_trx_trace(const transaction_trace_ptr& trx_trace) const;
+   fc::variant get_entire_trx(const transaction& trx) const;
+
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
@@ -1084,7 +1069,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
            (head_block_id)(head_block_time)(head_block_producer)
            (virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)
            (server_version_string)(fork_db_head_block_num)(fork_db_head_block_id)(server_full_version_string)
-           (last_irreversible_block_time) )
+           (last_irreversible_block_time) (first_block_num) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_params, (lower_bound)(upper_bound)(limit)(search_by_block_num)(reverse) )
 FC_REFLECT(eosio::chain_apis::read_only::get_activated_protocol_features_results, (activated_protocol_features)(more) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
