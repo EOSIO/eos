@@ -18,7 +18,9 @@ namespace eosio {
        */
       bool update_cache(const uint32_t version, const participant_list_t& participant_list);
       /** @brief Determine if a participant is in the security group */
-      bool is_in_security_group(chain::account_name participant) const { return cache_.find(participant) != cache_.end(); }
+      bool is_in_security_group(chain::account_name participant) const {
+         return cache_.empty() || (cache_.find(participant) != cache_.end());
+      }
    private:
       uint32_t version_ {0};        ///! The security group version
       participant_list_t cache_;    ///! Cache of participants in the security group

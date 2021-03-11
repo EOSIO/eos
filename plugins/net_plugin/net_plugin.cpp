@@ -2237,6 +2237,10 @@ namespace eosio {
             return true;
          }
 
+         if(!cp->is_participating()) {
+            return true;
+         }
+
          cp->strand.post( [this, cp, id, bnum, sb{std::move(sb)}]() {
             std::unique_lock<std::mutex> g_conn( cp->conn_mtx );
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
@@ -2282,7 +2286,7 @@ namespace eosio {
 
       trx_buffer_factory buff_factory;
       for_each_connection( [this, &trx, &nts, &buff_factory]( auto& cp ) {
-         if( cp->is_blocks_only_connection() || !cp->current() ) {
+         if( cp->is_blocks_only_connection() || !cp->current() || !cp->is_participating() ) {
             return true;
          }
          nts.connection_id = cp->connection_id;
@@ -3473,43 +3477,30 @@ namespace eosio {
    // called from any thread
    void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
       // update cache
-      //    - connection_mtx is needed
       //
       auto& update = bs->get_security_group_info();
-      std::shared_lock<std::shared_mutex> connection_guard(connections_mtx);
+      std::lock_guard<std::shared_mutex> connection_guard(connections_mtx);
       if(!security_group.update_cache(update.version, update.participants)) {
          return;
       }
 
-      std::vector<connection_ptr> added_connections;
-      added_connections.reserve(connections.size());
-
       // update connections
-      //    - connection_mtx still needed
       //
       for(auto& connection : connections) {
          const auto& participant = connection->participant_name();
          if(!participant) {
-            return;
+            continue;
          }
          if(security_group.is_in_security_group(participant.value())) {
             if(!connection->is_participating()) {
                connection->set_participating(true);
-               added_connections.push_back(connection);
+               connection->send_handshake();
             }
          }
          else {
             connection->set_participating(false);
          }
       };
-
-      // send handshake when added to group
-      //    - connection mutex no longer needd
-      //
-      connection_guard.unlock();
-      for(auto& connection : added_connections) {
-         connection->send_handshake();
-      }
    }
 
    // called from application thread
