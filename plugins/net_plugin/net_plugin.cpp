@@ -1271,7 +1271,7 @@ namespace eosio {
       controller &cc = my_impl->chain_plug->chain();
       send_buffer_type send_buffer;
       try{
-          send_buffer = cc.fetch_block_buffer_by_number(num, (weak.lock()->protocol_version >= proto_pruned_types ? true:false));
+          send_buffer = cc.fetch_block_buffer_by_number(num, (weak.lock()->protocol_version >= proto_pruned_types));
       } FC_LOG_AND_DROP();
 
       if (send_buffer){
