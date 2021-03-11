@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(test_remove_all) {
    BOOST_REQUIRE(manager.update_cache(2, clear));
 
    for(auto participant : populate) {
-      BOOST_REQUIRE(!manager.is_in_security_group(participant));
+      BOOST_REQUIRE(manager.is_in_security_group(participant));
    }
 }
 
