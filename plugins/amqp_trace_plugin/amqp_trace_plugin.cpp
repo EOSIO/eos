@@ -51,11 +51,9 @@ void amqp_trace_plugin::plugin_startup() {
          ilog( "Starting amqp_trace_plugin" );
          my->started = true;
 
-         my->amqp_trace.emplace( my->amqp_trace_address, "trace",
-                                 []( const std::string& err ) {
-                                    elog( "amqp error: ${e}", ("e", err) );
-                                    app().quit();
-                                 } );
+         const boost::filesystem::path trace_data_file_path = appbase::app().data_dir() / "amqp_trace_plugin" / "trace.bin";
+
+         my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, "trace", trace_data_file_path );
 
          auto chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
@@ -80,11 +78,6 @@ void amqp_trace_plugin::plugin_shutdown() {
          dlog( "shutdown.." );
 
          applied_transaction_connection.reset();
-         if( my->amqp_trace ) {
-            // use stop() instead of destroying amqp_trace as amqp_trx_plugin keeps a pointer to amqp_trace
-            // and needs to live until amqp_trx_plugin shutdown.
-            my->amqp_trace->stop();
-         }
 
          dlog( "exit amqp_trace_plugin" );
       }

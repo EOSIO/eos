@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/amqp/amqp_handler.hpp>
+#include <eosio/amqp/reliable_amqp_publisher.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/transaction.hpp>
 
@@ -7,7 +7,7 @@ namespace eosio {
 
 struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_impl> {
 
-   std::optional<amqp> amqp_trace;
+   std::optional<reliable_amqp_publisher> amqp_trace;
 
    std::string amqp_trace_address;
    std::string amqp_trace_exchange;
