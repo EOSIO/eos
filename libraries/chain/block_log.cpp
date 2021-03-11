@@ -10,7 +10,7 @@
 #include <fc/scoped_exit.hpp>
 #include <future>
 #include <regex>
-#include <shared_mutex>
+#include <mutex>
 
 namespace eosio { namespace chain {
 
@@ -893,7 +893,7 @@ namespace eosio { namespace chain {
            if (blog_version  >= pruned_transaction_version){
                pBuffer = read_packed_block(block_file, blog_version, &block_size);
            }else{
-               //calculate and pass block size, which is needed when reading a packed block from a block log file with version < pruned_transaction_version
+               //calculate and pass block size, which is needed when reading a packed block from a block log file with version less than pruned_transaction_version
                uint64_t next_pos = get_block_pos(block_num + 1);
                if (next_pos != block_log::npos){
                    block_size = (next_pos - pos) - sizeof(uint64_t);
@@ -918,30 +918,9 @@ namespace eosio { namespace chain {
            || (blog_version < pruned_transaction_version && return_signed_block)){
                //block log version and protocol version mismatch
                pBuffer = handle_version_mismatch(pBuffer, blog_version, return_signed_block);
-               block_size = (*pBuffer).size();
            }
-
-           // add block data and its header information into one buffer
-           std::shared_ptr<std::vector<char>> send_buff;
-           uint32_t which; // see net_message in net_plugin/protocol.hpp
-           if (return_signed_block)
-               which = 9;  // signed_block_which
-           else
-               which = 7;  // signed_block_v0_which
-           const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
-           const uint32_t payload_size = which_size + block_size;
-           const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
-           constexpr size_t header_size = 4;   // see message_header_size in net_plugin.cpp
-           const size_t buffer_size = header_size + payload_size;
-           send_buff = std::make_shared<std::vector<char>>(buffer_size);
-           fc::datastream<char*> datastream( send_buff->data(), buffer_size );
-           datastream.write( header, header_size );
-           fc::raw::pack( datastream, unsigned_int( which ) );
-           datastream.write(pBuffer->data(), block_size);
-
-           return send_buff;
+           return pBuffer;
        }
-
        return {}; // archived or deleted
    }
 

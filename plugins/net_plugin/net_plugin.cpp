@@ -1269,12 +1269,32 @@ namespace eosio {
 
       connection_wptr weak = shared_from_this();
       controller &cc = my_impl->chain_plug->chain();
-      send_buffer_type send_buffer;
+      send_buffer_type pBuffer;
+      bool return_signed_block = (weak.lock()->protocol_version >= proto_pruned_types ? true : false);
       try{
-          send_buffer = cc.fetch_block_buffer_by_number(num, (weak.lock()->protocol_version >= proto_pruned_types));
+          pBuffer = cc.fetch_block_buffer_by_number(num, return_signed_block);
       } FC_LOG_AND_DROP();
 
-      if (send_buffer){
+      if (pBuffer){
+          //Prefix header information to pBuffer
+          uint32_t block_size = (*pBuffer).size();
+          send_buffer_type send_buffer;
+          uint32_t which; // see net_message in net_plugin/protocol.hpp
+          if (return_signed_block)
+              which = 9;  // signed_block_which
+          else
+              which = 7;  // signed_block_v0_which
+          const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+          const uint32_t payload_size = which_size + block_size;
+          const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+          constexpr size_t header_size = 4;   // see message_header_size
+          const size_t buffer_size = header_size + payload_size;
+          send_buffer = std::make_shared<std::vector<char>>(buffer_size);
+          fc::datastream<char*> datastream( send_buffer->data(), buffer_size );
+          datastream.write( header, header_size );
+          fc::raw::pack( datastream, unsigned_int( which ) );
+          datastream.write(pBuffer->data(), block_size);
+
           weak.lock()->enqueue_buffer(send_buffer, no_reason, true);
       }else{
           app().post( priority::medium, [num, weak{std::move(weak)}]() {
