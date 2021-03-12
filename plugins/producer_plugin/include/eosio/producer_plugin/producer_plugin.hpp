@@ -113,7 +113,7 @@ public:
 
    get_account_ram_corrections_result  get_account_ram_corrections( const get_account_ram_corrections_params& params ) const;
 
-   void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const;
+   void log_failed_transaction(const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, const char* reason) const;
 
  private:
    std::shared_ptr<class producer_plugin_impl> my;

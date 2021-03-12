@@ -1410,10 +1410,12 @@ class Node(object):
                     break
         return protocolFeatureDigestDict
 
-    def waitForHeadToAdvance(self, timeout=6):
+    def waitForHeadToAdvance(self, blocksToAdvance=1, timeout=None):
         currentHead = self.getHeadBlockNum()
+        if timeout is None:
+            timeout = 6 + blocksToAdvance / 2
         def isHeadAdvancing():
-            return self.getHeadBlockNum() > currentHead
+            return self.getHeadBlockNum() >= currentHead + blocksToAdvance
         return Utils.waitForTruth(isHeadAdvancing, timeout)
 
     def waitForLibToAdvance(self, timeout=30):
@@ -1431,7 +1433,7 @@ class Node(object):
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        assert self.waitForHeadToAdvance(), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
+        assert self.waitForHeadToAdvance(blocksToAdvance=2), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
@@ -1458,7 +1460,7 @@ class Node(object):
             if trans is None or not trans[0]:
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
                 return None
-        self.waitForHeadToAdvance()
+        self.waitForHeadToAdvance(blocksToAdvance=2)
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
     def preactivateAllBuiltinProtocolFeature(self):
