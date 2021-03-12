@@ -1,7 +1,7 @@
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
 #include <eosio/amqp_trace_plugin/amqp_trace_plugin_impl.hpp>
-#include <eosio/amqp/amqp_handler.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -18,7 +18,9 @@ static appbase::abstract_plugin& amqp_trace_plugin_ = appbase::app().register_pl
 namespace eosio {
 
 amqp_trace_plugin::amqp_trace_plugin()
-: my(std::make_shared<amqp_trace_plugin_impl>()) {}
+: my(std::make_shared<amqp_trace_plugin_impl>()) {
+   app().register_config_type<amqp_trace_plugin_impl::reliable_mode>();
+}
 
 amqp_trace_plugin::~amqp_trace_plugin() {}
 
@@ -35,6 +37,10 @@ void amqp_trace_plugin::set_program_options(options_description& cli, options_de
       "AMQP queue to publish transaction traces.");
    op("amqp-trace-exchange", bpo::value<std::string>()->default_value(""),
       "Existing AMQP exchange to send transaction trace messages.");
+   op("amqp-trace-reliable-mode", bpo::value<amqp_trace_plugin_impl::reliable_mode>()->default_value(amqp_trace_plugin_impl::reliable_mode::queue),
+      "Reliable mode 'exit', exit application on any AMQP publish error.\n"
+      "Reliable mode 'queue', queue transaction traces to send to AMQP on connection establishment.\n"
+      "Reliable mode 'log', log an error and drop message when unable to directly publish to AMQP.");
 }
 
 void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
@@ -44,6 +50,7 @@ void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
       my->amqp_trace_queue_name = options.at("amqp-trace-queue-name").as<std::string>();
       EOS_ASSERT( !my->amqp_trace_queue_name.empty(), chain::plugin_config_exception, "amqp-trace-queue-name required" );
       my->amqp_trace_exchange = options.at("amqp-trace-exchange").as<std::string>();
+      my->pub_reliable_mode = options.at("amqp-trace-reliable-mode").as<amqp_trace_plugin_impl::reliable_mode>();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -55,7 +62,15 @@ void amqp_trace_plugin::plugin_startup() {
          ilog( "Starting amqp_trace_plugin" );
          my->started = true;
 
-         const boost::filesystem::path trace_data_file_path = appbase::app().data_dir() / "amqp_trace_plugin" / "trace.bin";
+         const boost::filesystem::path trace_data_dir_path = appbase::app().data_dir() / "amqp_trace_plugin";
+         const boost::filesystem::path trace_data_file_path = trace_data_dir_path / "trace.bin";
+         if( my->pub_reliable_mode != amqp_trace_plugin_impl::reliable_mode::queue ) {
+            EOS_ASSERT( !fc::exists(trace_data_file_path), chain::plugin_config_exception,
+                        "Existing queue file when amqp-trace-reliable-mode != 'queue': ${f}",
+                        ("f", trace_data_file_path.generic_string()) );
+         } else if( auto resmon_plugin = app().find_plugin<resource_monitor_plugin>() ) {
+            resmon_plugin->monitor_directory( trace_data_dir_path );
+         }
 
          my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, my->amqp_trace_queue_name, trace_data_file_path,
                                  []( const std::string& err ) {

@@ -87,13 +87,19 @@ class rabbitmq : public stream_handler {
    void publish(const std::vector<char>& data, const eosio::name& routing_key) override {
       if (exchange_name_.empty()) {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( queue_name_, std::string(), data );
+            amqp_publisher_->publish_message_direct( queue_name_, std::string(), data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
          } else {
             queue_.emplace_back( std::make_pair( queue_name_, data ) );
          }
       } else {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( routing_key.to_string(), std::string(), data );
+            amqp_publisher_->publish_message_direct( routing_key.to_string(), std::string(), data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
          } else {
             queue_.emplace_back( std::make_pair( routing_key.to_string(), data ) );
          }
