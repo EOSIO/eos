@@ -68,7 +68,7 @@ echo "         generating nodes certificates    "
 echo "*************************************************"
 
 #client certificate requests + private keys
-for n in $(seq 1 $GROUP_SIZE)
+for n in $(seq 0 $(($GROUP_SIZE-1)) )
 do
    ORG_NAME=$(sed "s/{NUMBER}/$n/" <<< "$ORG_MASK")
    CN_NAME=$(sed "s/{NUMBER}/$n/" <<< "$CN_MASK")
