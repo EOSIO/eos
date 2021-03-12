@@ -30,7 +30,9 @@ void amqp_trace_plugin::set_program_options(options_description& cli, options_de
    auto op = cfg.add_options();
    op("amqp-trace-address", bpo::value<std::string>(),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will publish to 'trace' queue.");
+      "Will publish to amqp-trace-queue-name ('trace') queue.");
+   op("amqp-trace-queue-name", bpo::value<std::string>()->default_value("trace"),
+      "AMQP queue to publish transaction traces.");
    op("amqp-trace-exchange", bpo::value<std::string>()->default_value(""),
       "Existing AMQP exchange to send transaction trace messages.");
 }
@@ -39,6 +41,8 @@ void amqp_trace_plugin::plugin_initialize(const variables_map& options) {
    try {
       EOS_ASSERT( options.count("amqp-trace-address"), chain::plugin_config_exception, "amqp-trace-address required" );
       my->amqp_trace_address = options.at("amqp-trace-address").as<std::string>();
+      my->amqp_trace_queue_name = options.at("amqp-trace-queue-name").as<std::string>();
+      EOS_ASSERT( !my->amqp_trace_queue_name.empty(), chain::plugin_config_exception, "amqp-trace-queue-name required" );
       my->amqp_trace_exchange = options.at("amqp-trace-exchange").as<std::string>();
    }
    FC_LOG_AND_RETHROW()
@@ -53,7 +57,7 @@ void amqp_trace_plugin::plugin_startup() {
 
          const boost::filesystem::path trace_data_file_path = appbase::app().data_dir() / "amqp_trace_plugin" / "trace.bin";
 
-         my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, "trace", trace_data_file_path );
+         my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, my->amqp_trace_queue_name, trace_data_file_path );
 
          auto chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );

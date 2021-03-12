@@ -10,6 +10,7 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
    std::optional<reliable_amqp_publisher> amqp_trace;
 
    std::string amqp_trace_address;
+   std::string amqp_trace_queue_name;
    std::string amqp_trace_exchange;
    bool started = false;
 

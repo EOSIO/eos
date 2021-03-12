@@ -59,6 +59,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::optional<amqp_handler> amqp_trx;
 
    std::string amqp_trx_address;
+   std::string amqp_trx_queue;
    ack_mode acked = ack_mode::executed;
    std::map<uint32_t, eosio::amqp_handler::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
    uint32_t trx_processing_queue_size = 1000;
@@ -176,7 +177,9 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
    auto op = cfg.add_options();
    op("amqp-trx-address", bpo::value<std::string>(),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will consume from 'trx' queue.");
+      "Will consume from amqp-trx-queue-name ('trx') queue.");
+   op("amqp-trx-queue-name", bpo::value<std::string>()->default_value("trx"),
+      "AMQP queue to consume transactions from.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
@@ -195,6 +198,9 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
       EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
       my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
+
+      my->amqp_trx_queue = options.at("amqp-trx-queue-name").as<std::string>();
+      EOS_ASSERT( !my->amqp_trx_queue.empty(), chain::plugin_config_exception, "amqp-trx-queue-name required" );
 
       my->acked = options.at("amqp-trx-ack-mode").as<ack_mode>();
 
@@ -245,7 +251,7 @@ void amqp_trx_plugin::plugin_startup() {
 
       my->trx_queue_ptr->run();
 
-      my->amqp_trx.emplace( my->amqp_trx_address, "trx",
+      my->amqp_trx.emplace( my->amqp_trx_address, my->amqp_trx_queue,
             [](const std::string& err) {
                elog( "amqp error: ${e}", ("e", err) );
                app().quit();
