@@ -1,5 +1,6 @@
 #!/bin/bash
 # The purpose of this test is to ensure that the output of the "nodeos --print-build-info" command.
+# This includes verifying valid output in JSON shape and checking parameters (only boost for now).
 echo '##### Nodeos Print Build Info Test #####'
 # orient ourselves
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')

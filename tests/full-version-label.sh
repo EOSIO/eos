@@ -51,11 +51,7 @@ if [[ -z "$EXPECTED" ]]; then
     ls -la "$EOSIO_ROOT/build"
     exit 1
 fi
-VERSION_HASH=$BUILDKITE_COMMIT
-if [[ -z "$VERSION_HASH" ]]; then
-    echo 'No version hash found.'
-    exit 1
-fi
+[[ -z "$BUILDKITE_COMMIT" ]] && VERSION_HASH="$(git rev-parse HEAD 2>/dev/null || :)" || VERSION_HASH=$BUILDKITE_COMMIT
 EXPECTED=$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
