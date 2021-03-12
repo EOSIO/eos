@@ -25,7 +25,9 @@ struct reliable_amqp_publisher_handler;
 
 struct reliable_amqp_publisher_impl {
    reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
-                                const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id);
+                                const boost::filesystem::path& unconfirmed_path,
+                                reliable_amqp_publisher::error_callback_t on_fatal_error,
+                                const std::optional<std::string>& message_id);
    ~reliable_amqp_publisher_impl();
    void pump_queue();
    void publish_message_raw(std::vector<char>&& data);
@@ -52,6 +54,7 @@ struct reliable_amqp_publisher_impl {
    boost::asio::io_context ctx;
 
    single_channel_retrying_amqp_connection retrying_connection;
+   reliable_amqp_publisher::error_callback_t on_fatal_error;
 
    const boost::filesystem::path data_file_path;
 
@@ -64,8 +67,11 @@ struct reliable_amqp_publisher_impl {
 };
 
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
-                                                           const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
+                                                           const boost::filesystem::path& unconfirmed_path,
+                                                           reliable_amqp_publisher::error_callback_t on_fatal_error,
+                                                           const std::optional<std::string>& message_id) :
   retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
+  on_fatal_error(std::move(on_fatal_error)),
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
 
    boost::system::error_code ec;
@@ -79,6 +85,8 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& ur
          fc::raw::unpack(file, message_deque);
          if( !message_deque.empty() )
             batch_num = message_deque.back().num;
+         ilog("AMQP existing persistent file ${f} loaded with ${c} unconfirmed messages for ${a} publishing to \"${e}\".",
+              ("f", data_file_path.generic_string())("a", retrying_connection.address())("e", exchange));
       } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously unconfirmed AMQP messages from ${f}", ("f", (fc::path)data_file_path));
    }
    else {
@@ -182,6 +190,10 @@ void reliable_amqp_publisher_impl::pump_queue() {
 bool reliable_amqp_publisher_impl::verify_max_queue_size() {
    constexpr unsigned max_queued_messages = 1u << 20u;
 
+   if(message_deque.size() > max_queued_messages - 1000) {
+      std::string err = "AMQP publishing to " + exchange + " has reached " + std::to_string(message_deque.size()) + " unconfirmed messages";
+      on_fatal_error(err);
+   }
    if(message_deque.size() > max_queued_messages) {
       if(logged_exceeded_max_depth == false)
          elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; dropping messages",
@@ -249,8 +261,10 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
 
 
 reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key,
-                                                 const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id) :
-   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, message_id)) {}
+                                                 const boost::filesystem::path& unconfirmed_path,
+                                                 reliable_amqp_publisher::error_callback_t on_fatal_error,
+                                                 const std::optional<std::string>& message_id) :
+   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, std::move(on_fatal_error), message_id)) {}
 
 void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->publish_message_raw( std::move( data ) );

@@ -41,7 +41,11 @@ class rabbitmq : public stream_handler {
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_);
+      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_,
+                                                                         [](const std::string& err) {
+                                                                            elog("AMQP fatal error: ${e}", ("e", err));
+                                                                            appbase::app().quit();
+                                                                         });
    }
 
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
@@ -60,7 +64,11 @@ class rabbitmq : public stream_handler {
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>( address_, exchange_name_, "", unconfirmed_path_ );
+      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, exchange_name_, "", unconfirmed_path_,
+                                                                         [](const std::string& err){
+                                                                            elog("AMQP fatal error: ${e}", ("e", err));
+                                                                            appbase::app().quit();
+                                                                         });
    }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }

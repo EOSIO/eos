@@ -44,7 +44,13 @@ void amqp_witness_plugin::plugin_startup() {
    if(boost::filesystem::exists(witness_data_file_path) && my->delete_previous)
       boost::filesystem::remove(witness_data_file_path);
 
-   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key, witness_data_file_path, "eosio.node.witness_v0");
+   my->rqueue = std::make_unique<reliable_amqp_publisher>(my->amqp_server, my->exchange, my->routing_key,
+                                                          witness_data_file_path,
+                                                          [](const std::string& err){
+                                                             elog("AMQP fatal error: ${e}", ("e", err));
+                                                             appbase::app().quit();
+                                                          },
+                                                          "eosio.node.witness_v0");
 
    app().get_plugin<witness_plugin>().add_on_witness_sig([rqueue=my->rqueue.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
       rqueue->post_on_io_context([rqueue, bsp, sig]() {

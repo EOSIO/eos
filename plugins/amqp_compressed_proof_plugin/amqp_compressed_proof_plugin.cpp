@@ -253,7 +253,12 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
             EOS_ASSERT(filtered_receivers.size(), chain::plugin_config_exception, "Cannot have empty filter list for compressed-proof");
 
             const boost::filesystem::path amqp_unconfimed_file   = dir / (file_prefix + "-unconfirmed-"s + name + ".bin"s);
-            reliable_amqp_publisher& publisher = my->publishers.emplace_back(tokens[2], tokens[3], "", amqp_unconfimed_file, "eosio.node.compressed_proof_v0");
+            reliable_amqp_publisher& publisher = my->publishers.emplace_back(tokens[2], tokens[3], "", amqp_unconfimed_file,
+                                                                             [](const std::string& err){
+                                                                                elog("AMQP fatal error: ${e}", ("e", err));
+                                                                                appbase::app().quit();
+                                                                             },
+                                                                             "eosio.node.compressed_proof_v0");
 
             //the presence of an empty set means any action on that receiver
             std::map<chain::name, std::set<chain::name>> filter_on_names_and_actions;

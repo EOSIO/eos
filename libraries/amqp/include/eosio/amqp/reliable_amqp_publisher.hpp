@@ -16,20 +16,25 @@ namespace eosio {
  * to already exist. Publishing to a non-existing exchange will effectively block
  * reliable_amqp_publisher's queue until the exchange exists because the queue will be unable to make progress.
  *
- * At a large enough uncomfirmed queue depth (currently on the order of 1 million entries) reliable_amqp_publisher
- * will start dropping messages after logging an error.
+ * At a large enough unconfirmed queue depth (currently on the order of 1 million entries) reliable_amqp_publisher
+ * will call fatal_error() and then start dropping messages after logging an error.
  */
 
 class reliable_amqp_publisher {
    public:
+      // Called from amqp thread when unconfirmed queue depth about to be exceeded.
+      using error_callback_t = std::function<void(const std::string& err)>;
+
       /// Create a reliable queue to the given server publishing to the given exchange
       /// \param server_url server url as amqp://...
       /// \param exchange the exchange to publish to
       /// \param routing_key on published messages, used if no routing_key provided for publish_message.. calls
       /// \param unconfirmed_path path to save/load unconfirmed message to be tried again after stop/start
+      /// \param on_fatal_error called from amqp thread when unconfirmed queue depth about to be exceeded.
       /// \param message_id optional message id to send with each message
       reliable_amqp_publisher(const std::string& server_url, const std::string& exchange, const std::string& routing_key,
-                              const boost::filesystem::path& unconfirmed_path, const std::optional<std::string>& message_id = {});
+                              const boost::filesystem::path& unconfirmed_path, error_callback_t on_fatal_error,
+                              const std::optional<std::string>& message_id = {});
 
       /// Publish a message. May be called from any thread.
       /// \param t serializable object

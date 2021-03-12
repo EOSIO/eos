@@ -57,7 +57,11 @@ void amqp_trace_plugin::plugin_startup() {
 
          const boost::filesystem::path trace_data_file_path = appbase::app().data_dir() / "amqp_trace_plugin" / "trace.bin";
 
-         my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, my->amqp_trace_queue_name, trace_data_file_path );
+         my->amqp_trace.emplace( my->amqp_trace_address, my->amqp_trace_exchange, my->amqp_trace_queue_name, trace_data_file_path,
+                                 []( const std::string& err ) {
+                                    elog( "AMQP fatal error: ${e}", ("e", err) );
+                                    appbase::app().quit();
+                                 } );
 
          auto chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
