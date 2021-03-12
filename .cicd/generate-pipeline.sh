@@ -223,6 +223,9 @@ EOF
             - 'registry_2'
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
+    env:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
