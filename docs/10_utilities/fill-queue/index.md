@@ -31,14 +31,11 @@ A healthy sync state-history enabled node running Fill-Queue application should 
 Fill-Queue application tolerates low hardware configurations at runtime. Any machine that can build it in a reasonable, satisfactory, amount of time can also run it without problems.  \
 The RabbitMQ hosting needs attention because depending on how long it is running it can require significant amounts of storage for saving the accumulating message, therefore this aspect has to be considered carefully.
 
-## Common scenarios
-
-One of the common scenarios showing how Fill-Queue can be used is depicted in the below diagram.
+## Common Architecture
 
 ![Single host single node testnet](fill-queue-1.png)
 
-
-Note that in this example the `nodeos` and the Fill-Queue application are deployed on the same server instance and the RabbitMQ is deployed on a separate server instance. But you can choose to deploy and run them all on the same server or have them deployed on separate servers. The optimal architecture will have to take in consideration the following:
+In this example the `nodeos` and the Fill-Queue application are deployed on the same server instance and the RabbitMQ is deployed on a separate server instance. But you can choose to deploy and run them all on the same server or have them deployed on separate servers. The optimal architecture will have to take in consideration the following:
 
 * The load of the messages filtered.
 * The server configurations used.
