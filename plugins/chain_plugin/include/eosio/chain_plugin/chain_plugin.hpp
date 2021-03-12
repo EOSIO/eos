@@ -1013,7 +1013,6 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((blockvault_client_plugin))
 
    chain_plugin();
    virtual ~chain_plugin();
