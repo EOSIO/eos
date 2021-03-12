@@ -42,10 +42,10 @@ BOOST_AUTO_TEST_CASE(test_version) {
    eosio::security_group_manager manager;
    BOOST_REQUIRE(manager.current_version() == 0);
 
-      auto populate = create_list({ 1, 2, 3, 4, 5, 6});
-      BOOST_REQUIRE(manager.update_cache(1, populate));
-      BOOST_REQUIRE(manager.current_version() == 1);
-   }
+   auto populate = create_list({ 1, 2, 3, 4, 5, 6});
+   BOOST_REQUIRE(manager.update_cache(1, populate));
+   BOOST_REQUIRE(manager.current_version() == 1);
+}
 
 BOOST_AUTO_TEST_CASE(test_remove_all) {
    auto populate = create_list({1, 2, 3, 4, 5, 6});
