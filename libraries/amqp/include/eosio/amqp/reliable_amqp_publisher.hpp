@@ -44,7 +44,12 @@ class reliable_amqp_publisher {
          publish_message_raw(std::move(v));
       }
 
+      /// \param data message to send
       void publish_message_raw(std::vector<char>&& data);
+
+      /// \param correlation_id if not empty() sets as correlation id of the message envelope
+      /// \param data message to send
+      void publish_message_raw(const std::string& correlation_id, std::vector<char>&& data);
 
       /// Publish messages. May be called from any thread.
       /// \param queue set of messages to send in one transaction <routing_key, message_data>
@@ -55,7 +60,9 @@ class reliable_amqp_publisher {
       /// \param routing_key if empty() uses class provided default routing_key
       /// \param correlation_id if not empty() sets as correlation id of the message envelope
       /// \param data message to send
-      void publish_message_direct(const std::string& routing_key, const std::string& correlation_id, std::vector<char> data);
+      /// \param on_error() call from AMQP thread if unable to directly publish (e.g. not currently connected)
+      void publish_message_direct(const std::string& routing_key, const std::string& correlation_id,
+                                  std::vector<char> data, error_callback_t on_error);
 
       /// reliable_amqp_publisher runs its own thread. In some cases it may be desirable to skip a needless thread jump
       ///  when performing work. This method will allow submission of work to reliable_amqp_publisher's thread.

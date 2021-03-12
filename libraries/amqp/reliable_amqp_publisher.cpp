@@ -21,8 +21,6 @@
 
 namespace eosio {
 
-struct reliable_amqp_publisher_handler;
-
 struct reliable_amqp_publisher_impl {
    reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                 const boost::filesystem::path& unconfirmed_path,
@@ -31,8 +29,10 @@ struct reliable_amqp_publisher_impl {
    ~reliable_amqp_publisher_impl();
    void pump_queue();
    void publish_message_raw(std::vector<char>&& data);
+   void publish_message_raw(const std::string& correlation_id, std::vector<char>&& data);
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
-   void publish_message_direct(const std::string& routing_key, const std::string& correlation_id, std::vector<char> data);
+   void publish_message_direct(const std::string& routing_key, const std::string& correlation_id,
+                               std::vector<char> data, reliable_amqp_publisher::error_callback_t on_error);
    bool verify_max_queue_size();
 
    void channel_ready(AMQP::Channel* channel);
@@ -46,6 +46,7 @@ struct reliable_amqp_publisher_impl {
    struct amqp_message {
       fc::unsigned_int  num = 0; ///< unique numbers indicates amqp transaction set (reset on clean restart)
       std::string       routing_key;
+      std::string       correlation_id;
       std::vector<char> data;
    };
    std::deque<amqp_message> message_deque;
@@ -86,7 +87,7 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& ur
          if( !message_deque.empty() )
             batch_num = message_deque.back().num;
          ilog("AMQP existing persistent file ${f} loaded with ${c} unconfirmed messages for ${a} publishing to \"${e}\".",
-              ("f", data_file_path.generic_string())("a", retrying_connection.address())("e", exchange));
+              ("f", data_file_path.generic_string())("c",message_deque.size())("a", retrying_connection.address())("e", exchange));
       } FC_RETHROW_EXCEPTIONS(error, "Failed to load previously unconfirmed AMQP messages from ${f}", ("f", (fc::path)data_file_path));
    }
    else {
@@ -167,6 +168,8 @@ void reliable_amqp_publisher_impl::pump_queue() {
       envelope.setPersistent();
       if(message_id)
          envelope.setMessageID(*message_id);
+      if(!msg.correlation_id.empty())
+         envelope.setCorrelationID(msg.correlation_id);
       channel->publish(exchange, msg.routing_key.empty() ? routing_key : msg.routing_key, envelope);
 
       prev = msg.num;
@@ -214,7 +217,21 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
 
    if( !verify_max_queue_size() ) return;
 
-   message_deque.emplace_back(amqp_message{0, "", std::move(data)});
+   message_deque.emplace_back(amqp_message{0, "", "", std::move(data)});
+   pump_queue();
+}
+
+void reliable_amqp_publisher_impl::publish_message_raw(const std::string& correlation_id, std::vector<char>&& data) {
+   if(!ctx.get_executor().running_in_this_thread()) {
+      boost::asio::post(user_submitted_work_strand, [this, d=std::move(data), id=correlation_id]() mutable {
+         publish_message_raw(id, std::move(d));
+      });
+      return;
+   }
+
+   if( !verify_max_queue_size() ) return;
+
+   message_deque.emplace_back(amqp_message{0, "", correlation_id, std::move(data)});
    pump_queue();
 }
 
@@ -231,22 +248,26 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std
    ++batch_num.value;
    if( batch_num == 0u ) ++batch_num.value;
    for( auto& d : queue ) {
-      message_deque.emplace_back(amqp_message{batch_num, std::move(d.first), std::move(d.second)});
+      message_deque.emplace_back(amqp_message{batch_num, "", std::move(d.first), std::move(d.second)});
    }
    pump_queue();
 }
 
-void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk, const std::string& correlation_id, std::vector<char> data) {
+void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk, const std::string& correlation_id,
+                                                          std::vector<char> data,
+                                                          reliable_amqp_publisher::error_callback_t on_error) {
    if(!ctx.get_executor().running_in_this_thread()) {
-      boost::asio::post(user_submitted_work_strand, [this, rk, correlation_id, d=std::move(data)]() mutable {
-         publish_message_direct(rk, correlation_id, std::move(d));
+      boost::asio::post(user_submitted_work_strand,
+                        [this, rk, correlation_id, d=std::move(data), on_e=std::move(on_error)]() mutable {
+         publish_message_direct(rk, correlation_id, std::move(d), std::move(on_e));
       });
       return;
    }
 
    if(stopping || !channel) {
-      elog( "AMQP connection ${a} to ${e} not connected dropping message ${rk}",
-            ("a", retrying_connection.address())("e", exchange)("rk", rk));
+      std::string err = "AMQP connection " + fc::variant(retrying_connection.address()).as_string() +
+            " to " + exchange + " not connected, dropping message " + rk;
+      on_error(err);
       return;
    }
 
@@ -270,13 +291,17 @@ void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->publish_message_raw( std::move( data ) );
 }
 
+void reliable_amqp_publisher::publish_message_raw(const std::string& correlation_id, std::vector<char>&& data) {
+   my->publish_message_raw( correlation_id, std::move( data ) );
+}
+
 void reliable_amqp_publisher::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
    my->publish_messages_raw( std::move( queue ) );
 }
 
 void reliable_amqp_publisher::publish_message_direct(const std::string& routing_key, const std::string& correlation_id,
-                                                     std::vector<char> data) {
-   my->publish_message_direct( routing_key, correlation_id, std::move(data) );
+                                                     std::vector<char> data, error_callback_t on_error) {
+   my->publish_message_direct( routing_key, correlation_id, std::move(data), std::move(on_error) );
 }
 
 void reliable_amqp_publisher::post_on_io_context(std::function<void()>&& f) {
