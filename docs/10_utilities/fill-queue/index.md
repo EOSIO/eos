@@ -61,11 +61,11 @@ Fill-Queue application supports the following configurable parameters in its `co
 
 ## Filters
 
-Filters determine what messages the Fill-Queue application publishes to the queue. Filters can be defined in the `config.ini` file.
+Filters determine what messages the Fill-Queue application pushes to the queue. Filters can be defined in the `config.ini` file. 
 
 ### Filter all actions for a contract
 
-To filter all the actions of a specific smart contract, set the ``filtered-actions`` configuration property to the name of the contract.
+To filter all the actions of a specific smart contract, set the `filtered-actions` configuration property to the name of the contract.
 
 For example to filter all the actions for the `eosio.token` contract set the configuration file to contain the following line:
 
@@ -75,7 +75,7 @@ filtered-actions = eosio.token:
 
 ### Filter one action for a contract
 
-To filter only one action of a smart contract, set the ``filtered-actions`` configuration property to the name of the contract followed by a column and the name of the action.
+To filter only one action of a smart contract, add a ``filtered-actions`` configuration property and set its value to be the name of the contract followed by a column `:` and the name of the action.
 
 For example to filter only the action `transfer` for `eosio.token` contract set the configuration file to contain the following line:
 
@@ -83,9 +83,9 @@ For example to filter only the action `transfer` for `eosio.token` contract set 
 filtered-actions = eosio.token:transfer
 ```
 
-### Filter a random set of actions
+### Filter random actions from different contracts
 
-To filter a random set of actions, set the ``filtered-actions`` configuration property for every `contract:action` pair.
+To filter random actions, belonging to different contracts, add a `filtered-actions` property in the configuration file for every `contract:action` pair.
 
 For example to filter
 
@@ -105,13 +105,13 @@ filtered-actions = eosio.system:setacctram
 
 ### Filter all actions for all contracts
 
-To bypass the filtering altogether, that is, to have no filter and push all actions for all contracts, use the asterisks ‘*’ as the value for ``filtered-actions``.
+To bypass the filtering altogether, that is, to have no filter and push all actions for all contracts, use the asterisks ‘*’ as the value for `filtered-actions`.
 
 ```text
 filtered-actions = *
 ```
 
-Be aware that this configuration can fill up the memory quickly and it could stop `nodeos` as the warning message is displayed at the console when `fill-queue` is started with this configuration enabled:
+Be aware that this configuration can fill up the memory quickly and it could stop `nodeos`. If you use this configuration the `Fill-Queue` will also print a warning message at the console, see below for details:
 
 ```console
 info  2021-03-11T11:14:27.871 thread-0  fill_queue_config.hpp:84      load                 ] --filter-on * enabled. This can fill shared_mem, causing nodeos to stop.
