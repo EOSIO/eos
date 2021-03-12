@@ -2227,17 +2227,13 @@ namespace eosio {
       for_each_block_connection( [this, &id, &bnum, &b, &buff_factory]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
-         if( !cp->current() ) return true;
+         if( !cp->current() || !cp->is_participating() ) return true;
          send_buffer_type sb = buff_factory.get_send_buffer( b, cp->protocol_version.load() );
          if( !sb ) {
             peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
                        ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
             // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
             cp->enqueue( go_away_message( fatal_other ) );
-            return true;
-         }
-
-         if(!cp->is_participating()) {
             return true;
          }
 
@@ -3478,7 +3474,14 @@ namespace eosio {
    void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
       // update cache
       //
+      // Check the version before taking the lock.  Since this is the only thread that
+      // touches the version information, no need to take the lock if the version is
+      // unchanged.
+      //
       auto& update = bs->get_security_group_info();
+      if(security_group.current_version() == update.version) {
+         return;
+      }
       std::lock_guard<std::shared_mutex> connection_guard(connections_mtx);
       if(!security_group.update_cache(update.version, update.participants)) {
          return;

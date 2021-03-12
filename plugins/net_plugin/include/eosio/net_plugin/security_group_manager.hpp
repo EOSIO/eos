@@ -10,6 +10,8 @@ namespace eosio {
    class security_group_manager {
    public:
       using participant_list_t = boost::container::flat_set<chain::account_name>;
+      /** @brief Provides the current security group version */
+      auto current_version() const { return version_; }
       /** @brief Update the security group participants
        *
        * @param version             The version number for this update
