@@ -22,7 +22,7 @@ else
 fi
 # run tests
 set +e # defer ctest error handling to end
-CTEST_COMMAND="ctest -j '$JOBS' -LE '_tests' --output-on-failure -T 'Test'"
+CTEST_COMMAND="ctest -j '1' -LE '_tests' -T 'Test' -VV"
 echo "$ $CTEST_COMMAND"
 eval $CTEST_COMMAND
 EXIT_STATUS=$?
