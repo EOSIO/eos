@@ -114,6 +114,8 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
 
+         void set_resource_payer( const account_name payer );
+
          uint32_t get_action_id() const { return action_id.current(); }
 
       private:

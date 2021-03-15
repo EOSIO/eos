@@ -25,6 +25,7 @@ struct unimplemented_callbacks {
    int  is_privileged(int64_t) { return unimplemented<int>("is_privileged"); }
    void set_privileged(int64_t, int) { return unimplemented<void>("set_privileged"); }
    void preactivate_feature(int) { return unimplemented<void>("preactivate_feature"); }
+   bool set_transaction_resource_payer(int64_t, int64_t, int64_t) { return unimplemented<bool>("set_transaction_resource_payer"); }
 
    // producer_api
    int get_active_producers(int, int) { return unimplemented<int>("get_active_producers"); }
@@ -151,6 +152,7 @@ struct unimplemented_callbacks {
       Rft::template add<&Derived::is_privileged>("env", "is_privileged");
       Rft::template add<&Derived::set_privileged>("env", "set_privileged");
       Rft::template add<&Derived::preactivate_feature>("env", "preactivate_feature");
+      Rft::template add<&Derived::set_transaction_resource_payer>("env", "set_transaction_resource_payer");
 
       // producer_api
       Rft::template add<&Derived::get_active_producers>("env", "get_active_producers");

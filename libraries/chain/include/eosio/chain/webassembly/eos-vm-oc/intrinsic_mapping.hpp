@@ -78,6 +78,7 @@ inline constexpr auto get_intrinsic_table() {
       "env.is_privileged",
       "env.set_privileged",
       "env.preactivate_feature",
+      "env.set_transaction_resource_payer",
       "env.get_active_producers",
       "env.db_store_i64",
       "env.db_update_i64",

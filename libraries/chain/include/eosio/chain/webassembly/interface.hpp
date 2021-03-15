@@ -306,6 +306,17 @@ namespace webassembly {
          */
          void set_privileged(account_name account, bool is_priv);
 
+         /**
+          * Set the resource payer for the transaction.
+          *
+          * @ingroup privileged
+          *
+          * @param payer - name of the account who is paying for the transaction.
+          * @param max_net - max amount of net resource to be paid for the transaction.
+          * @param max_cpu - max amount of cpu resource to be paid for the transaction.
+         */
+         bool set_transaction_resource_payer(const name payer, const uint64_t max_net, const uint64_t max_cpu);
+
          // softfloat api
          float _eosio_f32_add(float, float) const;
          float _eosio_f32_sub(float, float) const;

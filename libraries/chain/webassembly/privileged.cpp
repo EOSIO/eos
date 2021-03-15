@@ -287,4 +287,20 @@ namespace eosio { namespace chain { namespace webassembly {
          ma.set_privileged( is_priv );
       });
    }
+
+   bool interface::set_transaction_resource_payer( const name payer, const uint64_t max_net, const uint64_t max_cpu ) {
+      //  check if the payer has signed 
+      if ( has_auth ( payer ) )
+      {
+         transaction& trx = const_cast<transaction&>( context.trx_context.packed_trx.get_transaction() );
+
+         context.trx_context.set_resource_payer( payer );
+         trx.set_max_net( max_net );
+         trx.set_max_cpu( max_cpu );
+
+         return true;
+      }
+
+      return false;
+   }
 }}} // ns eosio::chain::webassembly
