@@ -287,4 +287,40 @@ namespace eosio { namespace chain { namespace webassembly {
          ma.set_privileged( is_priv );
       });
    }
+
+   bool interface::register_transaction_hook(uint32_t hook, name callback_contract, name callback_action) {
+      const auto* account = context.db.find<account_metadata_object, by_name>( callback_contract );
+
+      if(account == nullptr) {
+         return false;
+      }
+
+      bool code_exists = account->code_hash != digest_type();
+
+      if(!code_exists) {
+         return false;
+      }
+
+      context.db.modify( context.control.get_global_properties(),
+         [&]( auto& gprops ) {
+            auto it = find_if(std::begin(gprops.transaction_hooks), std::end(gprops.transaction_hooks),
+                              [&](transaction_hook &t_hook) {
+                                 return t_hook.type == hook;
+                              }
+            );
+
+            if(it==std::end(gprops.transaction_hooks)) {
+               // Add new hook
+               gprops.transaction_hooks.push_back({hook, callback_contract, callback_action});
+            }
+            else {
+               // Update existing hook
+               it->contract = callback_contract;
+               it->action = callback_action;
+            }
+      });
+
+      return true;
+   }
+
 }}} // ns eosio::chain::webassembly

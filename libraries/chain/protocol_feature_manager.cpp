@@ -241,6 +241,18 @@ Allows privileged contracts to add/remove participants for mutual TLS enforcemen
 */
             {}
          } )
+         (  builtin_protocol_feature_t::register_transaction_hook, builtin_protocol_feature_spec{
+               "TRANSACTION_HOOK_INTRINSIC",
+               fc::variant("3062b6019a7ac71e0960198d6e0969f92001cb73d12f8bf0ff5f2acdbfb320e0").as<digest_type>(),
+               // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: TRANSACTION_HOOK_INTRINSIC
+
+Allows privileged contracts to add transaction hooks, which are actions that are executed at a certain point on the
+lifetime of the execution of a transaction.
+*/
+               {}
+         } )
    ;
 
 

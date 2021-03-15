@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( trxhookreg trxhookreg trxhookreg.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/trxhookreg.wasm ${CMAKE_CURRENT_BINARY_DIR}/trxhookreg.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/trxhookreg.abi  ${CMAKE_CURRENT_BINARY_DIR}/trxhookreg.abi  COPYONLY )
+endif()

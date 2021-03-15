@@ -281,7 +281,8 @@ inline constexpr auto get_intrinsic_table() {
       "env.propose_security_group_participants_add",
       "env.propose_security_group_participants_remove",
       "env.in_active_security_group",
-      "env.get_active_security_group"
+      "env.get_active_security_group",
+      "env.register_transaction_hook"
    );
 }
 inline constexpr std::size_t find_intrinsic_index(std::string_view hf) {
