@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
-# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
-echo '##### Nodeos Version Label Test #####'
+# The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
+echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
@@ -29,7 +29,7 @@ elif [[ -f "$CMAKE_LISTS" ]]; then
     EXPECTED="v$VERSION_FULL"
 fi
 # fail if no expected value was found
-if [[ "$EXPECTED" == '' ]]; then
+if [[ -z "$EXPECTED" ]]; then
     echo 'ERROR: Could not determine expected value for version label!'
     set +e
     echo "EOSIO_ROOT=\"$EOSIO_ROOT\""
@@ -52,9 +52,11 @@ if [[ "$EXPECTED" == '' ]]; then
     ls -la "$EOSIO_ROOT/build"
     exit 1
 fi
+[[ -z "$BUILDKITE_COMMIT" ]] && VERSION_HASH="$(git rev-parse HEAD 2>/dev/null || :)" || VERSION_HASH=$BUILDKITE_COMMIT
+EXPECTED=$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version)
+ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --full-version)
 EXIT_CODE=$?
 # verify 0 exit code explicitly
 if [[ $EXIT_CODE -ne 0 ]]; then
