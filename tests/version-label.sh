@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
 echo '##### Nodeos Version Label Test #####'
 # orient ourselves

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --print-build-info" command.
 # This includes verifying valid output in JSON shape and checking parameters (only boost for now).
 echo '##### Nodeos Print Build Info Test #####'
@@ -8,13 +9,10 @@ echo '##### Nodeos Print Build Info Test #####'
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
 echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
 
-OUTPUT=$($EOSIO_ROOT/build/bin/nodeos --print-build-info 2>&1)
-EXIT_CODE=$?
-echo "$OUTPUT"
-if [[ $EXIT_CODE -eq 0 ]]; then
-    echo 'Expected non-zero nodeos exit code.'
-    exit 1
-fi
+exec 9>&1 # enable tee to write to STDOUT as a file
+PRINT_BUILD_INFO="$EOSIO_ROOT/build/bin/nodeos --print-build-info 2>&1 | tee >(cat - >&9) || :"
+echo "$ $PRINT_BUILD_INFO"
+OUTPUT="$(eval $PRINT_BUILD_INFO)"
 
 OUTPUT=$(echo "$OUTPUT" | tr -d '\r\n')
 OUTPUT=$(echo "$OUTPUT" | sed -E 's/^.+JSON://')
