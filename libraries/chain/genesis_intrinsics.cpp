@@ -55,7 +55,6 @@ const std::vector<const char*> genesis_intrinsics = {
    "set_blockchain_parameters_packed",
    "is_privileged",
    "set_privileged",
-   "set_transaction_resource_payer",
    "get_active_producers",
    "db_idx64_store",
    "db_idx64_remove",

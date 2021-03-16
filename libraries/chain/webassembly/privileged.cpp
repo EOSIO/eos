@@ -288,15 +288,13 @@ namespace eosio { namespace chain { namespace webassembly {
       });
    }
 
-   bool interface::set_transaction_resource_payer( const name payer, const uint64_t max_net, const uint64_t max_cpu ) {
+   bool interface::set_transaction_resource_payer( const name payer, const uint64_t max_net_bytes, const uint64_t max_cpu_us ) {
       //  check if the payer has signed 
       if ( has_auth ( payer ) )
       {
-         transaction& trx = const_cast<transaction&>( context.trx_context.packed_trx.get_transaction() );
-
          context.trx_context.set_resource_payer( payer );
-         trx.set_max_net( max_net );
-         trx.set_max_cpu( max_cpu );
+         context.trx_context.set_sponsored_max_net( max_net_bytes );
+         context.trx_context.set_sponsored_max_cpu( max_cpu_us );
 
          return true;
       }

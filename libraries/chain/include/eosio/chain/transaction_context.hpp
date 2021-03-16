@@ -115,6 +115,8 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
 
          void set_resource_payer( const account_name payer );
+         void set_sponsored_max_net( const uint64_t max_net_bytes ) { sponsored_max_net_bytes = max_net_bytes; }
+         void set_sponsored_max_cpu( const uint64_t max_cpu_us ) { sponsored_max_cpu_us = max_cpu_us; }
 
          uint32_t get_action_id() const { return action_id.current(); }
 
@@ -206,6 +208,9 @@ namespace eosio { namespace chain {
          fc::time_point                pseudo_start;
          fc::microseconds              billed_time;
          fc::microseconds              billing_timer_duration_limit;
+
+         uint64_t                      sponsored_max_net_bytes;
+         uint64_t                      sponsored_max_cpu_us;
    };
 
 } }

@@ -61,8 +61,6 @@ namespace eosio { namespace chain {
       void set_reference_block( const block_id_type& reference_block );
       bool verify_reference_block( const block_id_type& reference_block )const;
       void validate()const;
-      void set_max_net( const uint64_t max_net ) { max_net_usage_words = max_net; }
-      void set_max_cpu( const uint64_t max_cpu ) { max_cpu_usage_ms = max_cpu; }
    };
 
    /**
