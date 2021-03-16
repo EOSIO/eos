@@ -382,12 +382,15 @@ class Cluster(object):
                 if nodeName == "bios":
                     continue
                 nodeNum=getTestnetNodeNum(nodeName)
-                if nodeNum not in topo:
-                    errorExit("node name: {} was not included in the topo structure: {}".format(nodeName, topo))
-                peers = topo[nodeNum]
                 customShapePeers = []
+                if nodeNum not in topo:
+                    if Utils.Debug: Utils.Print("node name: {} was not included in the topo structure: {}".format(nodeName, topo))
+                    nodeObject["peers"] = customShapePeers
+                    continue
+                peers = topo[nodeNum]
+                Utils.Print("nodeNum: {}, peers: {}".format(nodeNum, peers))
                 for peer in peers:
-                    assert(isinstance(peer, int))
+                    Utils.Print("peer: {}".format(peer))
                     assert(peer < totalNodes)
                     peerStr = str(peer) if peer > 9 else "0" + str(peer)
                     customShapePeers.append(testnetPrefix + peerStr)
