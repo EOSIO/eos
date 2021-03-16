@@ -1,8 +1,9 @@
 #include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
 #include <eosio/amqp_trx_plugin/fifo_trx_processing_queue.hpp>
 #include <eosio/amqp/amqp_handler.hpp>
-#include <eosio/amqp_trace_plugin/amqp_trace_plugin.hpp>
+#include <eosio/amqp_trace_plugin/amqp_trace_plugin_impl.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -55,8 +56,8 @@ using boost::signals2::scoped_connection;
 struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl> {
 
    chain_plugin* chain_plug = nullptr;
-   amqp_trace_plugin* trace_plug = nullptr;
    std::optional<amqp_handler> amqp_trx;
+   std::optional<amqp_trace_plugin_impl> trace_plug;
 
    std::string amqp_trx_address;
    std::string amqp_trx_queue;
@@ -72,20 +73,20 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
 
    // called from amqp thread
-   void consume_message( const eosio::amqp_handler::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
+   void consume_message( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
       try {
-         fc::datastream<const char*> ds( buf, s );
+         fc::datastream<const char*> ds( message.body(), message.bodySize() );
          fc::unsigned_int which;
          fc::raw::unpack(ds, which);
          if( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction_v0>()) ) {
             chain::packed_transaction_v0 v0;
             fc::raw::unpack(ds, v0);
             auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
-            handle_message( delivery_tag, std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), std::move( ptr ) );
          } else if ( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction>()) ) {
             auto ptr = std::make_shared<chain::packed_transaction>();
             fc::raw::unpack(ds, *ptr);
-            handle_message( delivery_tag, std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), std::move( ptr ) );
          } else {
             FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
@@ -120,7 +121,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 private:
 
    // called from amqp thread
-   void handle_message( const eosio::amqp_handler::delivery_tag_t& delivery_tag, chain::packed_transaction_ptr trx ) {
+   void handle_message( const amqp_handler::delivery_tag_t& delivery_tag, const std::string& reply_to, chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
@@ -129,7 +130,8 @@ private:
       fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, trx](const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, reply_to, trx]
+                (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
             auto trx_span = fc_create_span_from_token(token, "Processed");
             fc_add_tag(trx_span, "trx_id", trx->id());
 
@@ -137,7 +139,7 @@ private:
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
                if( my->trace_plug ) {
-                  my->trace_plug->publish_error( trx->id().str(), eptr->code(), eptr->to_string() );
+                  my->trace_plug->publish_error( reply_to, trx->id().str(), eptr->code(), eptr->to_string() );
                }
                fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
@@ -146,6 +148,9 @@ private:
                }
             } else {
                auto& trace = std::get<chain::transaction_trace_ptr>(result);
+               if( my->trace_plug ) {
+                  my->trace_plug->publish_result( reply_to, trx, trace );
+               }
                fc_add_tag(trx_span, "block_num", trace->block_num);
                fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
                fc_add_tag(trx_span, "elapsed", trace->elapsed.count());
@@ -187,14 +192,23 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
    op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
       "AMQP ack when 'received' from AMQP, when 'executed', or when 'in_block' is produced that contains trx.\n"
       "Options: received, executed, in_block");
+   op("amqp-trx-trace-address", bpo::value<std::string>(),
+      "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
+      "Will publish to amqp-trx-trace-queue-name ('trace') queue. If not provided traces are not sent.");
+   op("amqp-trx-trace-queue-name", bpo::value<std::string>()->default_value("trace"),
+      "AMQP queue to publish transaction traces of amqp transactions.");
+   op("amqp-trx-trace-exchange", bpo::value<std::string>()->default_value(""),
+      "Existing AMQP exchange to send transaction trace messages.");
+   op("amqp-trx-trace-reliable-mode", bpo::value<amqp_trace_plugin_impl::reliable_mode>()->default_value(amqp_trace_plugin_impl::reliable_mode::queue),
+      "Reliable mode 'exit', exit application on any AMQP publish error.\n"
+      "Reliable mode 'queue', queue transaction traces to send to AMQP on connection establishment.\n"
+      "Reliable mode 'log', log an error and drop message when unable to directly publish to AMQP.");
 }
 
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
    try {
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
-
-      my->trace_plug = app().find_plugin<amqp_trace_plugin>(); // optional
 
       EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
       my->amqp_trx_address = options.at("amqp-trx-address").as<std::string>();
@@ -210,6 +224,15 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
                   "amqp-trx-ack-mode = in_block not supported with amqp-trx-speculative-execution" );
 
+      if( options.count("amqp-trx-trace-address") ) {
+         my->trace_plug.emplace();
+         my->trace_plug->amqp_trace_address = options.at( "amqp-trx-trace-address" ).as<std::string>();
+         my->trace_plug->amqp_trace_queue_name = options.at( "amqp-trx-trace-queue-name" ).as<std::string>();
+         EOS_ASSERT( !my->trace_plug->amqp_trace_queue_name.empty(), chain::plugin_config_exception, "amqp-trx-trace-queue-name required" );
+         my->trace_plug->amqp_trace_exchange = options.at( "amqp-trx-trace-exchange" ).as<std::string>();
+         my->trace_plug->pub_reliable_mode = options.at("amqp-trx-trace-reliable-mode").as<amqp_trace_plugin_impl::reliable_mode>();
+      }
+
       my->chain_plug->enable_accept_transactions();
    }
    FC_LOG_AND_RETHROW()
@@ -217,58 +240,62 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
 void amqp_trx_plugin::plugin_startup() {
    handle_sighup();
-   try {
 
-      if( !my->trace_plug ||
-          ( my->trace_plug->get_state() != abstract_plugin::initialized &&
-            my->trace_plug->get_state() != abstract_plugin::started ) ) {
-         dlog( "running without amqp_trace_plugin" );
-         my->trace_plug = nullptr;
-      } else {
-         // always want trace plugin running if specified so traces can be published
-         my->trace_plug->plugin_startup();
+   ilog( "Starting amqp_trx_plugin" );
+
+   auto* prod_plugin = app().find_plugin<producer_plugin>();
+   EOS_ASSERT( prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
+   EOS_ASSERT( my->allow_speculative_execution || prod_plugin->has_producers(), chain::plugin_config_exception,
+               "Must be a producer to run without amqp-trx-speculative-execution" );
+
+   auto& chain = my->chain_plug->chain();
+   my->trx_queue_ptr =
+         std::make_shared<fifo_trx_processing_queue<producer_plugin>>( chain.get_chain_id(),
+                                                                       chain.configured_subjective_signature_length_limit(),
+                                                                       my->allow_speculative_execution,
+                                                                       chain.get_thread_pool(),
+                                                                       prod_plugin,
+                                                                       my->trx_processing_queue_size );
+
+   if( my->trace_plug ) {
+      const boost::filesystem::path trace_data_dir_path = appbase::app().data_dir() / "amqp_trx_plugin";
+      const boost::filesystem::path trace_data_file_path = trace_data_dir_path / "trace.bin";
+      if( my->trace_plug->pub_reliable_mode != amqp_trace_plugin_impl::reliable_mode::queue ) {
+         EOS_ASSERT( !fc::exists( trace_data_file_path ), chain::plugin_config_exception,
+                     "Existing queue file when amqp-trace-reliable-mode != 'queue': ${f}",
+                     ("f", trace_data_file_path.generic_string()) );
+      } else if( auto resmon_plugin = app().find_plugin<resource_monitor_plugin>() ) {
+         resmon_plugin->monitor_directory( trace_data_dir_path );
       }
 
-      ilog( "Starting amqp_trx_plugin" );
-
-      auto* prod_plugin = app().find_plugin<producer_plugin>();
-      EOS_ASSERT( prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
-      EOS_ASSERT( my->allow_speculative_execution || prod_plugin->has_producers(), chain::plugin_config_exception,
-                  "Must be a producer to run without amqp-trx-speculative-execution" );
-
-      auto& chain = my->chain_plug->chain();
-      my->trx_queue_ptr =
-            std::make_shared<fifo_trx_processing_queue<producer_plugin>>( chain.get_chain_id(),
-                                                                          chain.configured_subjective_signature_length_limit(),
-                                                                          my->allow_speculative_execution,
-                                                                          chain.get_thread_pool(),
-                                                                          prod_plugin,
-                                                                          my->trx_processing_queue_size );
-
-      my->block_start_connection.emplace(chain.block_start.connect( [this]( uint32_t bn ){ my->on_block_start( bn ); } ));
-      my->block_abort_connection.emplace(chain.block_abort.connect( [this]( uint32_t bn ){ my->on_block_abort( bn ); } ));
-      my->accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_accepted_block( bsp ); } ));
-
-      my->trx_queue_ptr->run();
-
-      my->amqp_trx.emplace( my->amqp_trx_address, my->amqp_trx_queue,
-            [](const std::string& err) {
-               elog( "amqp error: ${e}", ("e", err) );
-               app().quit();
-            },
-            [&]( const eosio::amqp_handler::delivery_tag_t& delivery_tag, const char* buf, size_t s ) {
-               if( app().is_quiting() ) return; // leave non-ack
-               my->consume_message( delivery_tag, buf, s );
-            }
-      );
-
-   } catch( ... ) {
-      // always want plugin_shutdown even on exception
-      plugin_shutdown();
-      if( my->trace_plug )
-         my->trace_plug->plugin_shutdown();
-      throw;
+      my->trace_plug->amqp_trace.emplace( my->trace_plug->amqp_trace_address, my->trace_plug->amqp_trace_exchange,
+                                          my->trace_plug->amqp_trace_queue_name, trace_data_file_path,
+                                          []( const std::string& err ) {
+                                             elog( "AMQP fatal error: ${e}", ("e", err) );
+                                             appbase::app().quit();
+                                          } );
    }
+
+   my->block_start_connection.emplace(
+         chain.block_start.connect( [this]( uint32_t bn ) { my->on_block_start( bn ); } ) );
+   my->block_abort_connection.emplace(
+         chain.block_abort.connect( [this]( uint32_t bn ) { my->on_block_abort( bn ); } ) );
+   my->accepted_block_connection.emplace(
+         chain.accepted_block.connect( [this]( const auto& bsp ) { my->on_accepted_block( bsp ); } ) );
+
+   my->trx_queue_ptr->run();
+
+   my->amqp_trx.emplace( my->amqp_trx_address, my->amqp_trx_queue,
+                         []( const std::string& err ) {
+                            elog( "amqp error: ${e}", ("e", err) );
+                            app().quit();
+                         },
+                         [&]( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
+                            if( app().is_quiting() ) return; // leave non-ack
+                            my->consume_message( message, delivery_tag, redelivered );
+                         }
+   );
+
 }
 
 void amqp_trx_plugin::plugin_shutdown() {

@@ -34,19 +34,19 @@ std::ostream& operator<<(std::ostream& osm, amqp_trace_plugin_impl::reliable_mod
 }
 
 // called from any thread
-void amqp_trace_plugin_impl::publish_error( std::string tid, int64_t error_code, std::string error_message ) {
+void amqp_trace_plugin_impl::publish_error( std::string routing_key, std::string tid, int64_t error_code, std::string error_message ) {
    try {
       // reliable_amqp_publisher ensures that any post_on_io_context() is called before its dtor returns
       amqp_trace->post_on_io_context(
-            [&amqp_trace = *amqp_trace, mode=pub_reliable_mode,
+            [&amqp_trace = *amqp_trace, mode=pub_reliable_mode, rk{std::move(routing_key)},
              tid{std::move(tid)}, error_code, em{std::move(error_message)}]() mutable {
          transaction_trace_msg msg{transaction_trace_exception{error_code}};
          std::get<transaction_trace_exception>( msg ).error_message = std::move( em );
          std::vector<char> buf = convert_to_bin( msg );
          if( mode == reliable_mode::queue) {
-            amqp_trace.publish_message_raw( tid, std::move( buf ) );
+            amqp_trace.publish_message_raw( rk, tid, std::move( buf ) );
          } else {
-            amqp_trace.publish_message_direct( std::string(), tid, std::move( buf ),
+            amqp_trace.publish_message_direct( rk, tid, std::move( buf ),
                                                [mode]( const std::string& err ) {
                                                   elog( "AMQP direct message error: ${e}", ("e", err) );
                                                   if( mode == reliable_mode::exit )
@@ -62,18 +62,19 @@ void amqp_trace_plugin_impl::publish_error( std::string tid, int64_t error_code,
 void amqp_trace_plugin_impl::on_applied_transaction( const chain::transaction_trace_ptr& trace,
                                                      const chain::packed_transaction_ptr& t ) {
    try {
-      publish_result( t, trace );
+      publish_result( std::string(), t, trace );
    }
    FC_LOG_AND_DROP()
 }
 
 // called from application thread
-void amqp_trace_plugin_impl::publish_result( const chain::packed_transaction_ptr& trx,
+void amqp_trace_plugin_impl::publish_result( std::string routing_key,
+                                             const chain::packed_transaction_ptr& trx,
                                              const chain::transaction_trace_ptr& trace ) {
    try {
       // reliable_amqp_publisher ensures that any post_on_io_context() is called before its dtor returns
       amqp_trace->post_on_io_context(
-            [&amqp_trace = *amqp_trace, trx, trace, mode=pub_reliable_mode]() {
+            [&amqp_trace = *amqp_trace, trx, trace, rk=std::move(routing_key), mode=pub_reliable_mode]() {
          if( !trace->except ) {
             dlog( "chain accepted transaction, bcast ${id}", ("id", trace->id) );
          } else {
@@ -82,9 +83,9 @@ void amqp_trace_plugin_impl::publish_result( const chain::packed_transaction_ptr
          transaction_trace_msg msg{ eosio::state_history::convert( *trace ) };
          std::vector<char> buf = convert_to_bin( msg );
          if( mode == reliable_mode::queue) {
-            amqp_trace.publish_message_raw( trx->id(), std::move( buf ) );
+            amqp_trace.publish_message_raw( rk, trx->id(), std::move( buf ) );
          } else {
-            amqp_trace.publish_message_direct( std::string(), trx->id(), std::move( buf ),
+            amqp_trace.publish_message_direct( rk, trx->id(), std::move( buf ),
                                                [mode]( const std::string& err ) {
                                                   elog( "AMQP direct message error: ${e}", ("e", err) );
                                                   if( mode == reliable_mode::exit )
