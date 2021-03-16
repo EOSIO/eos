@@ -143,21 +143,35 @@ namespace eosio { namespace chain {
       // struct extension_v1 : extension_v0 { new_field_t new_field; };
       // using extension_t = std::variant<extension_v0, extension_v1>;
       //  
+      // In addition, get_gpo_extension(), set_gpo_extension() and 
+      // eosio::ship_protocol::global_property from ship_protocol.hpp 
+      // in abieos has to be changed accordingly. 
 
       using extension_t = std::variant<extension_v0>;
       extension_t extension;
    };
+
+   inline snapshot_global_property_object::extension_t get_gpo_extension(const global_property_object& gpo) {
+      return snapshot_global_property_object::extension_v0{
+          gpo.proposed_security_group_block_num, gpo.proposed_security_group_participants, gpo.transaction_hooks};
+   }
+
+   inline void set_gpo_extension(global_property_object&                             gpo,
+                                 const snapshot_global_property_object::extension_t& extension) {
+      std::visit(
+          [&gpo](auto& ext) {
+             gpo.proposed_security_group_block_num    = ext.proposed_security_group_block_num;
+             gpo.proposed_security_group_participants = std::move(ext.proposed_security_group_participants);
+             gpo.transaction_hooks                    = std::move(ext.transaction_hooks);
+          },
+          extension);
+   }
 
    namespace detail {
       template<>
       struct snapshot_row_traits<global_property_object> {
          using value_type = global_property_object;
          using snapshot_type = snapshot_global_property_object;
-
-         static_assert(std::is_same_v<snapshot_global_property_object::extension_t,
-                                      std::variant<snapshot_global_property_object::extension_v0>>,
-                       "Please update to_snapshot_row()/from_snapshot_row() accordingly when "
-                       "snapshot_global_property_object::extension_t is changed");
 
          static snapshot_global_property_object to_snapshot_row(const global_property_object& value,
                                                                 const chainbase::database&) {
@@ -167,10 +181,7 @@ namespace eosio { namespace chain {
                     value.chain_id,
                     value.kv_configuration,
                     value.wasm_configuration,
-                    snapshot_global_property_object::extension_v0{value.proposed_security_group_block_num,
-                                                                  value.proposed_security_group_participants,
-                                                                  value.transaction_hooks
-                                                                  }};
+                    get_gpo_extension(value)};
          }
 
          static void from_snapshot_row(snapshot_global_property_object&& row, global_property_object& value,
@@ -182,13 +193,7 @@ namespace eosio { namespace chain {
             value.chain_id           = row.chain_id;
             value.kv_configuration   = row.kv_configuration;
             value.wasm_configuration = row.wasm_configuration;
-            std::visit(
-                [&value](auto& ext) {
-                   value.proposed_security_group_block_num = ext.proposed_security_group_block_num;
-                   value.proposed_security_group_participants = std::move(ext.proposed_security_group_participants);
-                   value.transaction_hooks = std::move(ext.transaction_hooks);
-                },
-                row.extension);
+            set_gpo_extension(value, row.extension);
          }
       };
    }

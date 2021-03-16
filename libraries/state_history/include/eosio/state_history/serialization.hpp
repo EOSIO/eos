@@ -359,13 +359,15 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
 
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(1));
+   fc::raw::pack(ds, fc::unsigned_int(2)); // for global_property_v2
    fc::raw::pack(ds, as_type<std::optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
    fc::raw::pack(ds, as_type<eosio::chain::chain_id_type>(obj.obj.chain_id));
-
+   fc::raw::pack(ds, as_type<eosio::chain::kv_database_config>(obj.obj.kv_configuration));
+   fc::raw::pack(ds, as_type<eosio::chain::wasm_config>(obj.obj.wasm_configuration));
+   fc::raw::pack(ds, eosio::chain::get_gpo_extension(obj.obj));
    return ds;
 }
 
