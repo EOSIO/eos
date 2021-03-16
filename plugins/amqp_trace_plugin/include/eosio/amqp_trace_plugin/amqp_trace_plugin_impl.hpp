@@ -19,7 +19,6 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
    std::string amqp_trace_queue_name;
    std::string amqp_trace_exchange;
    reliable_mode pub_reliable_mode = reliable_mode::queue;
-   bool started = false;
 
 public:
 
