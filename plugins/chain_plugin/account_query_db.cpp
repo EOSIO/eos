@@ -244,8 +244,13 @@ namespace eosio::chain_apis {
             time_iter = decltype(time_iter){time_to_block_num.erase( std::next(time_iter).base() )};
          }
 
+         auto curr_iter = index.rbegin();
          while (!index.empty()) {
-            const auto& pi = (*index.rbegin());
+            if (curr_iter == index.rend()) {
+               break;
+            }
+
+            const auto& pi = (*curr_iter);
             if (pi.last_updated_height < bnum) {
                break;
             }
@@ -256,7 +261,7 @@ namespace eosio::chain_apis {
             auto itr = permission_by_owner.find(std::make_tuple(pi.owner, pi.name));
             if (itr == permission_by_owner.end()) {
                // this permission does not exist at this point in the chains history
-               index.erase(index.iterator_to(pi));
+               curr_iter = decltype(curr_iter)( index.erase(index.iterator_to(pi)) );
             } else {
                const auto& po = *itr;
 
@@ -267,6 +272,7 @@ namespace eosio::chain_apis {
                   mutable_pi.threshold = po.auth.threshold;
                });
                add_to_bimaps(pi, po);
+               ++curr_iter;
             }
          }
       }
