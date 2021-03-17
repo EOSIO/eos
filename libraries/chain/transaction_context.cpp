@@ -128,6 +128,24 @@ namespace eosio { namespace chain {
             }
          }
       }
+
+      if( control.is_builtin_activated( builtin_protocol_feature_t::register_transaction_hook ) ) {
+         auto gprops = control.get_global_properties();
+         const uint32_t preexecution_hook_type = 0;
+
+         auto it = find_if(std::begin(gprops.transaction_hooks), std::end(gprops.transaction_hooks),
+                           [&](transaction_hook &t_hook) {
+                              return t_hook.type == preexecution_hook_type;
+                           }
+         );
+
+         if (it != std::end(gprops.transaction_hooks)) {
+            chain::action preexecution_hook_action{{}, it->contract, it->action, {}};
+            schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
+            execute_action( 1, 0 );
+         }
+      }
+
       validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Update usage values of accounts to reflect new time
