@@ -2,6 +2,15 @@
 set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
 echo '##### Nodeos Full Version Label Test #####'
+# If the environment variable BUILDKITE_TAG is empty or unset, this test will echo success
+if [[ "$BUILDKITE_TAG" == '' || "$BUILDKITE" != 'true' ]]; then
+    echo 'This test is only run in Buildkite against tagged builds.'
+    [[ "$BUILDKITE" != 'true' ]] && echo 'This is not Buildkite.'
+    [[ "$BUILDKITE_TAG" == '' ]] && echo 'This is not a tagged build.'
+    echo 'Exiting...'
+    exit 0
+fi
+echo 'Tagged build detected, running test.'
 # orient ourselves
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
