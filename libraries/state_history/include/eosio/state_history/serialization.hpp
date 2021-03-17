@@ -359,7 +359,8 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
 
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(2)); // for global_property_v2
+   const fc::unsigned_int global_property_version = 2;
+   fc::raw::pack(ds, global_property_version);
    fc::raw::pack(ds, as_type<std::optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
