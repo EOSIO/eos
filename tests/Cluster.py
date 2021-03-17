@@ -239,7 +239,7 @@ class Cluster(object):
                 f.write("=========================")
                 f.write("{}".format(rtn))
             os.chdir(original)
-            if Utils.Debug: Utils.Print("changed back to dir: %s" % (os.getcwd()))
+            if Utils.Debug: Utils.Print("changed back to dir: {}".format(os.getcwd()))
             if specificExtraNodeosArgs is None:
                 specificExtraNodeosArgs = {}
 
@@ -360,9 +360,8 @@ class Cluster(object):
                 return False
 
             Utils.Print("opening shape file: %s, current dir: %s" % (newFile, os.getcwd()))
-            f = open(newFile, "r")
-            newFileJsonStr = f.read()
-            f.close()
+            with open(newFile, 'r') as f:
+                newFileJsonStr = f.read()
             return json.loads(newFileJsonStr)
 
         testnetPrefix = "testnet_"
@@ -393,8 +392,7 @@ class Cluster(object):
                 for peer in peers:
                     Utils.Print("peer: {}".format(peer))
                     assert(peer < totalNodes)
-                    peerStr = str(peer) if peer > 9 else "0" + str(peer)
-                    customShapePeers.append(testnetPrefix + peerStr)
+                    customShapePeers.append("{}{:02}".format(testnetPrefix, peerStr))
                 nodeObject["peers"] = customShapePeers
 
             f=open(customShapeFile,"w")

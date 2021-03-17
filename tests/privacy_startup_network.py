@@ -33,13 +33,13 @@ args = TestHelper.parse_args({"--port","-p","-n","--dump-error-details","--keep-
 port=args.port
 pnodes=args.p
 relayNodes=pnodes # every pnode paired with a relay node
-apiNodes=2        # minimum number of apiNodes that 
+apiNodes=2        # minimum number of apiNodes that will be used in this test
 minTotalNodes=pnodes+relayNodes+apiNodes
 totalNodes=args.n if args.n >= minTotalNodes else minTotalNodes
 if totalNodes > minTotalNodes:
     apiNodes += totalNodes - minTotalNodes
 
-debug=args.v
+Utils.Debug=args.v
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -48,7 +48,6 @@ killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
-Utils.Debug=debug
 cluster=Cluster(host=TestHelper.LOCAL_HOST, port=port, walletd=True)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False

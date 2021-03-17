@@ -1503,7 +1503,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   node_rt_info info;
   info.remote = !host->is_local();
 
-  const auto node_num = (instance.name == "bios") ? -1 : boost::lexical_cast<uint16_t,string>(instance.get_node_num());
+  const auto node_num = (instance.name == "bios") ? bios_node_num : boost::lexical_cast<uint16_t,string>(instance.get_node_num());
   string install_path;
   if (!specific_nodeos_installation_paths.empty()) {
      if (specific_nodeos_installation_paths.count(node_num)) {
