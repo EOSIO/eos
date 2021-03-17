@@ -155,7 +155,7 @@ EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -239,7 +239,7 @@ EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -297,7 +297,7 @@ EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -355,7 +355,7 @@ EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -415,7 +415,7 @@ EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -641,7 +641,7 @@ cat <<EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -667,7 +667,7 @@ cat <<EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -693,7 +693,7 @@ cat <<EOF
           debug: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
