@@ -1041,11 +1041,15 @@ namespace eosio {
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
       boost::system::error_code ec;
-      if( self->socket->is_open() ) {
-         self->socket->shutdown( tcp::socket::shutdown_both, ec );
-         self->socket->close( ec );
+      if( self->get_socket().is_open() ) {
+         self->get_socket().shutdown( tcp::socket::shutdown_both, ec );
+         self->get_socket().close( ec );
       }
-      self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
+      if (self->use_ssl)
+         self->ssl_socket.reset( new ssl_stream{my_impl->thread_pool->get_executor(), *my_impl->ssl_context} );
+      else
+         self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
+      
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
@@ -1259,11 +1263,11 @@ namespace eosio {
       buffer_queue.fill_out_buffer( bufs );
 
       strand.post( [c{std::move(c)}, bufs{std::move(bufs)}]() {
-         auto write_lambda = [c, socket=c->socket]( boost::system::error_code ec, std::size_t w ) {
+         auto write_lambda = [c, psocket=&c->get_socket()]( boost::system::error_code ec, std::size_t w ) {
             try {
                c->buffer_queue.clear_out_queue();
                // May have closed connection and cleared buffer_queue
-               if( !c->socket_is_open() || socket != c->socket ) {
+               if( !c->socket_is_open() || psocket != &c->get_socket() ) {
                   fc_ilog( logger, "async write socket ${r} before callback: ${p}",
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
                   c->close();
@@ -2493,10 +2497,10 @@ namespace eosio {
       connecting = true;
       pending_message_buffer.reset();
       buffer_queue.clear_out_queue();
-      boost::asio::async_connect( *socket, endpoints,
+      boost::asio::async_connect( get_socket(), endpoints,
          boost::asio::bind_executor( strand,
-               [resolver, c = shared_from_this(), socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
-            if( !err && socket->is_open() && socket == c->socket ) {
+               [resolver, c = shared_from_this(), psocket=&get_socket()]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
+            if( !err && psocket->is_open() && psocket == &c->get_socket() ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
