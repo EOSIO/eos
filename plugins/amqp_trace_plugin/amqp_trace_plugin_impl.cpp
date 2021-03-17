@@ -33,7 +33,7 @@ std::ostream& operator<<(std::ostream& osm, amqp_trace_plugin_impl::reliable_mod
    return osm;
 }
 
-// called from any thread
+// Can be called from any thread except reliable_amqp_publisher thread
 void amqp_trace_plugin_impl::publish_error( std::string tid, int64_t error_code, std::string error_message ) {
    try {
       // reliable_amqp_publisher ensures that any post_on_io_context() is called before its dtor returns
