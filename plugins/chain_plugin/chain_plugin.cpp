@@ -2186,9 +2186,10 @@ struct kv_reverse_range {
 template <typename Range>
 read_only::get_table_rows_result kv_get_rows(Range&& range) {
 
+   keep_processing kp {};
    read_only::get_table_rows_result result;
    auto&                            ctx      = range.current.context;
-   for (unsigned count = 0; count < ctx.p.limit && !range.is_done();
+   for (unsigned count = 0; count < ctx.p.limit && !range.is_done() && kp() ;
         ++count) {
       result.rows.emplace_back(range.current.get_value_and_maybe_payer_var());
       range.next();
