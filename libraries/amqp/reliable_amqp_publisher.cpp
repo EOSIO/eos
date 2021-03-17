@@ -195,7 +195,7 @@ void reliable_amqp_publisher_impl::verify_max_queue_size() {
       elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages",
            ("a", retrying_connection.address())("e", exchange)("max", max_queued_messages));
       std::string err = "AMQP publishing to " + exchange + " has reached " + std::to_string(message_deque.size()) + " unconfirmed messages";
-      on_fatal_error(err);
+      if( on_fatal_error) on_fatal_error(err);
    }
 }
 
