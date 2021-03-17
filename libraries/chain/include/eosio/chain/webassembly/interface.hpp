@@ -317,6 +317,21 @@ namespace webassembly {
          */
          bool set_transaction_resource_payer(const name payer, const uint64_t max_net_bytes, const uint64_t max_cpu_us);
 
+        /**
+          * Register a transaction hook.
+          * Transaction hooks are actions that execute at certain points on the lifetime of the execution
+          * of every transaction on the blockchain.
+          *
+          * @ingroup privileged
+          * @param hook - type of the hook to register (preexecution,...).
+          * @param callback_contract - name of the contract associated with the hook
+          * @param callback_action - name of the action associated with the hook
+          *
+          *  @return false if the contract account does not exist or does not contain any code
+          *  @return true otherwise
+         */
+         bool register_transaction_hook(uint32_t hook, name callback_contract, name callback_action);
+
          // softfloat api
          float _eosio_f32_add(float, float) const;
          float _eosio_f32_sub(float, float) const;
