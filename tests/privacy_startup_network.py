@@ -74,11 +74,9 @@ try:
     firstApiNodeNum = pnodes + relayNodes
     apiNodeNums = [x for x in range(firstApiNodeNum, totalNodes)]
     for producerNum in range(pnodes):
-        topo[producerNum] = []
-        pairedRelayNodeNum = producerNum + 1
-        topo[producerNum].append(pairedRelayNodeNum)
-        topo[pairedRelayNodeNum] = []
-        topo[pairedRelayNodeNum].extend(apiNodeNums)
+        pairedRelayNodeNum = pnodes + producerNum
+        topo[producerNum] = [pairedRelayNodeNum]
+        topo[pairedRelayNodeNum] = apiNodeNums
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
 
     if cluster.launch(totalNodes=totalNodes, prodCount=1, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
@@ -90,8 +88,8 @@ try:
 
     cluster.biosNode.kill(signal.SIGTERM)
 
-    producers = [cluster.getNode(2 * x) for x in range(pnodes) ]
-    relays = [cluster.getNode(2 * x + 1) for x in range(pnodes) ]
+    producers = [cluster.getNode(x) for x in range(pnodes) ]
+    relays = [cluster.getNode(pnodes + x) for x in range(pnodes) ]
     apiNodes = [cluster.getNode(x) for x in apiNodeNums]
 
     def verifyInSync(producerNum):
@@ -116,7 +114,7 @@ try:
                 "API node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
 
         Utils.Print("Ensure all nodes are in-sync")
-        assert node.waitForBlock(lib + 1, blockType=BlockType.lib) != None, "API node failed to get block number {}".format(headBlockNum)
+        assert node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
 
     verifyInSync(producerNum=0)
 

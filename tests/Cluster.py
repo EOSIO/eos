@@ -372,6 +372,7 @@ class Cluster(object):
             return int(m.group(1))
 
         if isinstance(topo, dict):
+            if Utils.Debug: Utils.Print("Creating custom shape topology with the following node connections: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
             customShapeFile=os.path.join(Utils.ConfigDir, "customShape.json")
             customShapeFileObject = createDefaultShapeFile(customShapeFile, cmdArr)
             nodeArray = customShapeFileObject["nodes"]
