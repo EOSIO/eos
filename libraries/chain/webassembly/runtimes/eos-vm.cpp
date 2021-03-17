@@ -274,6 +274,7 @@ REGISTER_HOST_FUNCTION(get_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(set_kv_parameters_packed, privileged_check);
 REGISTER_HOST_FUNCTION(is_privileged, privileged_check);
 REGISTER_HOST_FUNCTION(set_privileged, privileged_check);
+REGISTER_HOST_FUNCTION(set_transaction_resource_payer, privileged_check);
 REGISTER_HOST_FUNCTION(register_transaction_hook, privileged_check);
 
 // security group api

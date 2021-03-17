@@ -724,4 +724,10 @@ namespace eosio { namespace chain {
    }
 
 
+   void transaction_context::set_resource_payer( const account_name payer )
+   {
+      bill_to_accounts.clear();
+      bill_to_accounts.insert( payer );
+   }
+
 } } /// eosio::chain

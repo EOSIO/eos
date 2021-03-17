@@ -306,6 +306,17 @@ namespace webassembly {
          */
          void set_privileged(account_name account, bool is_priv);
 
+         /**
+          * Set the resource payer for the transaction.
+          *
+          * @ingroup privileged
+          *
+          * @param payer - name of the account who is paying for the transaction.
+          * @param max_net_bytes - max amount of net resource (bytes) to be paid for the transaction.
+          * @param max_cpu_us - max amount of cpu resource (microseconds) to be paid for the transaction.
+         */
+         bool set_transaction_resource_payer(const name payer, const uint64_t max_net_bytes, const uint64_t max_cpu_us);
+
         /**
           * Register a transaction hook.
           * Transaction hooks are actions that execute at certain points on the lifetime of the execution
