@@ -3,7 +3,7 @@
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
-#include <eosio/chain/block_header_state_unpack_stream.hpp>
+#include <eosio/chain/versioned_unpack_stream.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -48,6 +48,11 @@ using signer_callback_type = std::function<std::vector<signature_type>(const dig
 
 struct block_header_state;
 
+struct security_group_info_t {
+   uint32_t                                 version = 0;
+   boost::container::flat_set<account_name> participants;
+};
+
 namespace detail {
    struct block_header_state_common {
       uint32_t                          block_num = 0;
@@ -81,6 +86,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
    block_timestamp_type                 timestamp;
    uint32_t                             active_schedule_version = 0;
    uint16_t                             confirmed = 1;
+   security_group_info_t                security_group;
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
@@ -111,16 +117,17 @@ protected:
                                                                const vector<digest_type>& )>& validator )&&;
 };
 
-struct security_group_info_t {
-   uint32_t version = 0;
-   flat_set<account_name> participants;
-};
+
 
 /**
  *  @struct block_header_state
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state : public detail::block_header_state_common {
+
+   /// this version is coming from chain_snapshot_header.version
+   static constexpr uint32_t minimum_snapshot_version_with_state_extension = 6; 
+
    block_id_type                        id;
    signed_block_header                  header;
    detail::schedule_info                pending_schedule;
@@ -171,8 +178,8 @@ struct block_header_state : public detail::block_header_state_common {
 
    const vector<digest_type>& get_new_protocol_feature_activations() const;
 
-   security_group_info_t& get_security_group_info() {
-      return std::visit([](auto& v) -> security_group_info_t& { return v.security_group_info; }, state_extension);
+   void set_security_group_info(security_group_info_t&& new_info) {
+      std::visit([&new_info](auto& v) {  v.security_group_info = std::move(new_info); }, state_extension);
    }
 
    const security_group_info_t& get_security_group_info() const {
@@ -203,10 +210,7 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
-FC_REFLECT( eosio::chain::security_group_info_t,
-            (version)
-            (participants)
-)
+FC_REFLECT(eosio::chain::security_group_info_t, (version)(participants))
 
 FC_REFLECT( eosio::chain::block_header_state::state_extension_v0,
             (security_group_info)
@@ -249,11 +253,18 @@ namespace fc {
 namespace raw {
 namespace detail {
 
-// The `Stream` class should contain a `has_block_header_state_extension` member; otherwise, the compilation would fail
-template <typename Stream, typename Class>
+// C++20 Concept 
+//
+// template <typename T> 
+// concept VersionedStream = requires (T t) {
+//    t.version;
+// }
+//
+
+template <typename VersionedStream, typename Class>
 struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
 
-   unpack_block_header_state_derived_visitor(Class& _c, Stream& _s)
+   unpack_block_header_state_derived_visitor(Class& _c, VersionedStream& _s)
        : fc::reflector_init_visitor<Class>(_c)
        , s(_s) {}
 
@@ -262,7 +273,7 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
       try {
          if constexpr (std::is_same_v<eosio::chain::block_header_state::state_extension_t,
                                       std::decay_t<decltype(this->obj.*p)>>)
-            if (!s.has_block_header_state_extension)
+            if (s.version < eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension)
                return;
 
          fc::raw::unpack(s, this->obj.*p);
@@ -271,13 +282,13 @@ struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Cl
    }
 
  private:
-   Stream& s;
+   VersionedStream& s;
 };
 
-template <typename Stream>
-struct unpack_object_visitor<Stream, eosio::chain::block_header_state>
-    : unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state> {
-   using Base = unpack_block_header_state_derived_visitor<Stream, eosio::chain::block_header_state>;
+template <typename VersionedStream>
+struct unpack_object_visitor<VersionedStream, eosio::chain::block_header_state>
+    : unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state> {
+   using Base = unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state>;
    using Base::Base;
 };
 

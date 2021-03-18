@@ -202,6 +202,7 @@ namespace eosio { namespace chain {
          const protocol_feature_manager&       get_protocol_feature_manager()const;
          uint32_t                              get_max_nonprivileged_inline_action_size()const;
          const config&                         get_config()const;
+         uint32_t get_first_block_num() const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
@@ -291,6 +292,14 @@ namespace eosio { namespace chain {
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
+
+         const security_group_info_t& active_security_group() const;
+         const flat_set<account_name>& proposed_security_group_participants() const;
+
+         int64_t add_security_group_participants(const flat_set<account_name>& participants);
+         int64_t remove_security_group_participants(const flat_set<account_name>& participants);
+
+         bool in_active_security_group(const flat_set<account_name>& participants) const;
 
          bool light_validation_allowed() const;
          bool skip_auth_check()const;

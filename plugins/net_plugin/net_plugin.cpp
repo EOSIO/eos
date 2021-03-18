@@ -2,6 +2,7 @@
 
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
+#include <eosio/net_plugin/security_group_manager.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
@@ -27,6 +28,7 @@
 
 #include <atomic>
 #include <shared_mutex>
+#include <functional>
 
 using namespace eosio::chain::plugin_interface;
 
@@ -254,8 +256,9 @@ namespace eosio {
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
-      mutable std::shared_mutex             connections_mtx;
+      mutable std::shared_mutex             connections_mtx; // protects both connections and security_group
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
+      security_group_manager security_group;
 
       std::mutex                            connector_check_timer_mtx;
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
@@ -336,6 +339,16 @@ namespace eosio {
       constexpr static uint16_t to_protocol_version(uint16_t v);
 
       connection_ptr find_connection(const string& host)const; // must call with held mutex
+      /** \brief  Update security group information
+       *
+       * Retrieves the security group information from the indicated block and
+       * updates the cached security group information. If a participant is
+       * removed from the cached security group, it is marked as non-participating
+       * and some messages are not sent.
+       *
+       * \param   bs The block_state containing the security group update
+       */
+      void update_security_group(const block_state_ptr& bs);
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -789,6 +802,20 @@ namespace eosio {
             ( "_lport", local_endpoint_port );
          return mvo;
       }
+
+      // security group management
+      //
+   private:
+      std::optional<chain::account_name> participant_name_;
+      std::atomic<bool> participating_{true};
+
+   public:
+      /** @brief  Returns the optional name of the participant */
+      auto participant_name() { return participant_name_; }
+      /** @brief Set the participating status */
+      void set_participating(bool status) { participating_.store(status, std::memory_order_relaxed); }
+      /** returns true if connection is in the security group */
+      bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
    };
 
    const string connection::unknown = "<unknown>";
@@ -1435,6 +1462,18 @@ namespace eosio {
 
    void connection::enqueue( const net_message& m ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
+      // for tls connections, when the connection is not in the security group
+      // certain message types will not be transmitted
+      if(!is_participating()) {
+         const bool ignore = std::holds_alternative<notice_message>(m) ||
+                             std::holds_alternative<signed_block_v0>(m) ||
+                             std::holds_alternative<packed_transaction_v0>(m) ||
+                             std::holds_alternative<signed_block>(m) ||
+                             std::holds_alternative<trx_message_v1>(m);
+         if(ignore) {
+            return;
+         }
+      }
       go_away_reason close_after_send = no_reason;
       if (std::holds_alternative<go_away_message>(m)) {
          close_after_send = std::get<go_away_message>(m).reason;
@@ -1446,6 +1485,9 @@ namespace eosio {
    }
 
    void connection::enqueue_block( const signed_block_ptr& b, bool to_sync_queue) {
+      if(!is_participating()) {
+         return;
+      }
       fc_dlog( logger, "enqueue block ${num}", ("num", b->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
@@ -2185,7 +2227,7 @@ namespace eosio {
       for_each_block_connection( [this, &id, &bnum, &b, &buff_factory]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
-         if( !cp->current() ) return true;
+         if( !cp->current() || !cp->is_participating() ) return true;
          send_buffer_type sb = buff_factory.get_send_buffer( b, cp->protocol_version.load() );
          if( !sb ) {
             peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
@@ -2240,7 +2282,7 @@ namespace eosio {
 
       trx_buffer_factory buff_factory;
       for_each_connection( [this, &trx, &nts, &buff_factory]( auto& cp ) {
-         if( cp->is_blocks_only_connection() || !cp->current() ) {
+         if( cp->is_blocks_only_connection() || !cp->current() || !cp->is_participating() ) {
             return true;
          }
          nts.connection_id = cp->connection_id;
@@ -2739,10 +2781,10 @@ namespace eosio {
 
       const unsigned long trx_in_progress_sz = this->trx_in_progress_size.load();
 
-      auto report_dropping_trx = [](const transaction_id_type& trx_id, unsigned long trx_in_progress_sz) {
+      auto report_dropping_trx = [](const transaction_id_type& trx_id, const packed_transaction_ptr& packed_trx_ptr, unsigned long trx_in_progress_sz) {
          char reason[72];
          snprintf(reason, 72, "Dropping trx, too many trx in progress %lu bytes", trx_in_progress_sz);
-         my_impl->producer_plug->log_failed_transaction(trx_id, reason);
+         my_impl->producer_plug->log_failed_transaction(trx_id, packed_trx_ptr, reason);
       };
 
       bool have_trx = false;
@@ -2756,7 +2798,7 @@ namespace eosio {
          fc::raw::unpack( ds, trx_id );
          if( trx_id ) {
             if (trx_in_progress_sz > def_max_trx_in_progress_size) {
-               report_dropping_trx(*trx_id, trx_in_progress_sz);
+               report_dropping_trx(*trx_id, ptr, trx_in_progress_sz);
                return true;
             }
             have_trx = my_impl->dispatcher->add_peer_txn( *trx_id, connection_id );
@@ -2771,14 +2813,14 @@ namespace eosio {
             ptr = std::move( trx );
 
             if (ptr && trx_id && *trx_id != ptr->id()) {
-               my_impl->producer_plug->log_failed_transaction(*trx_id, "Provided trx_id does not match provided packed_transaction");
+               my_impl->producer_plug->log_failed_transaction(*trx_id, ptr, "Provided trx_id does not match provided packed_transaction");
                EOS_ASSERT(false, transaction_id_type_exception,
                         "Provided trx_id does not match provided packed_transaction" );
             }
             
             if( !trx_id ) {
                if (trx_in_progress_sz > def_max_trx_in_progress_size) {
-                  report_dropping_trx(ptr->id(), trx_in_progress_sz);
+                  report_dropping_trx(ptr->id(), ptr, trx_in_progress_sz);
                   return true;
                }
                have_trx = my_impl->dispatcher->have_txn( ptr->id() );
@@ -2791,7 +2833,7 @@ namespace eosio {
          packed_transaction_v0 pt_v0;
          fc::raw::unpack( ds, pt_v0 );
          if( trx_in_progress_sz > def_max_trx_in_progress_size) {
-            report_dropping_trx(pt_v0.id(), trx_in_progress_sz);
+            report_dropping_trx(pt_v0.id(), ptr, trx_in_progress_sz);
             return true;
          }
          have_trx = my_impl->dispatcher->have_txn( pt_v0.id() );
@@ -3428,10 +3470,47 @@ namespace eosio {
       }
    }
 
+   // called from any thread
+   void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
+      // update cache
+      //
+      // Check the version before taking the lock.  Since this is the only thread that
+      // touches the version information, no need to take the lock if the version is
+      // unchanged.
+      //
+      auto& update = bs->get_security_group_info();
+      if(security_group.current_version() == update.version) {
+         return;
+      }
+      std::lock_guard<std::shared_mutex> connection_guard(connections_mtx);
+      if(!security_group.update_cache(update.version, update.participants)) {
+         return;
+      }
+
+      // update connections
+      //
+      for(auto& connection : connections) {
+         const auto& participant = connection->participant_name();
+         if(!participant) {
+            continue;
+         }
+         if(security_group.is_in_security_group(participant.value())) {
+            if(!connection->is_participating()) {
+               connection->set_participating(true);
+               connection->send_handshake();
+            }
+         }
+         else {
+            connection->set_participating(false);
+         }
+      };
+   }
+
    // called from application thread
    void net_plugin_impl::on_accepted_block(const block_state_ptr& bs) {
       update_chain_info();
       controller& cc = chain_plug->chain();
+      update_security_group(bs);
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
 
