@@ -529,12 +529,12 @@ class Node(object):
                 currentBlockNum = self.node.getBlockNum(blockType=blockType)
                 self.advanced = False
                 if self.lastBlockNum is None or self.lastBlockNum < currentBlockNum:
-                    self.advanced = True
+                    self.advanced = True if self.lastBlockNum is not None else False
                 elif self.lastBlockNum > currentBlockNum:
                     Utils.Print("waitForBlock is waiting to reach block number: %d and the block number has rolled back from %d to %d." %
                                 (self.blockNum, self.lastBlockNum, currentBlockNum))
                 self.lastBlockNum = currentBlockNum
-                self.passed = self.lastBlockNum > self.blockNum
+                self.passed = self.lastBlockNum >= self.blockNum
                 return self.passed
 
             def __enter__(self):
