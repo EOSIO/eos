@@ -256,6 +256,9 @@ function ensure-boost() {
         curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
+        && (if [[ \"$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR\" = '1.70' ]]; then \
+            patch tools/build/src/tools/darwin.jam < \"$REPO_ROOT/scripts/boost-1_70-clang-version-check.patch\"; \
+        fi) \
         && ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
         && ./b2 ${B2_FLAGS} \
         && cd .. \
