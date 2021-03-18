@@ -703,13 +703,10 @@ namespace eosio { namespace chain { namespace backing_store {
                   "invariant failure in ${func}, iter store found to update but no primary keys in database",
                   ("func", calling_func));
 
-      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
+      auto value = *(*session_iter).second; // copy the value out so it remains persistent
+      payer_payload pp(value);
+      const account_name found_payer = pp.payer;
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, found_key, found_payer));
-
-      // value pointed by the iterator might have changed. need to cache from the source.
-      const backing_store::unique_table* table_store = primary_iter_store.find_table_by_end_iterator(table_ei);
-      const auto current_key_value = get_primary_key_value(table_store->contract, table_store->scope, table_store->table, found_key);
-      payer_payload pp {*current_key_value.value};
       primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
 
       return store_itr;
@@ -766,7 +763,9 @@ namespace eosio { namespace chain { namespace backing_store {
          primary_key = id;
       }
 
-      const account_name found_payer = payer_payload(*(*session_iter).second).payer;
+      auto value = *(*session_iter).second; // copy the value out so it remains persistent
+      payer_payload pp(value);
+      const account_name found_payer = pp.payer;
       if (!primary_key) {
          uint64_t key = 0;
          const auto valid = db_key_value_format::get_primary_key((*session_iter).first, desired_type_prefix, key);
@@ -774,12 +773,7 @@ namespace eosio { namespace chain { namespace backing_store {
                      "invariant failure in find_i64, primary key already verified but method indicates it is not a primary key");
          primary_key = key;
       }
-
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
-
-      // value pointed by the iterator might have changed. need to cache from the      source.
-      const auto current_key_value = get_primary_key_value(code, scope, table, *primary_key);
-      payer_payload pp {*current_key_value.value};
       primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
 
       return store_itr;
