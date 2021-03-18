@@ -392,7 +392,7 @@ class Cluster(object):
                 for peer in peers:
                     Utils.Print("peer: {}".format(peer))
                     assert(peer < totalNodes)
-                    customShapePeers.append("{}{:02}".format(testnetPrefix, peerStr))
+                    customShapePeers.append("{}{:02}".format(testnetPrefix, peer))
                 nodeObject["peers"] = customShapePeers
 
             f=open(customShapeFile,"w")
