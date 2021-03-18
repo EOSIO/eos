@@ -63,8 +63,8 @@ Utils.setIrreversibleTimeout(timeout)
 try:
     TestHelper.printSystemInfo("BEGIN")
     cluster.setWalletMgr(walletMgr)
-    Print("SERVER: %s" % (TestHelper.LOCAL_HOST))
-    Print("PORT: %d" % (port))
+    Print("SERVER: {}".format(TestHelper.LOCAL_HOST))
+    Print("PORT: {}".format(port))
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()

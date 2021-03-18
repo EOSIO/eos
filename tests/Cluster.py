@@ -223,11 +223,11 @@ class Cluster(object):
         if configSecurityGroup:
             privacyDir=os.path.join(Utils.ConfigDir, "privacy")
             if not os.path.isdir(privacyDir):
-                if Utils.Debug: Utils.Print("creating dir %s in dir: %s" % (privacyDir, os.getcwd()))
+                if Utils.Debug: Utils.Print("creating dir {} in dir: {}".format(privacyDir, os.getcwd()))
                 os.mkdir(privacyDir)
             original=os.getcwd()
             os.chdir(privacyDir)
-            if Utils.Debug: Utils.Print("change to dir: %s" % (os.getcwd()))
+            if Utils.Debug: Utils.Print("change to dir: {}".format(os.getcwd()))
             genCertScript=os.path.join(original, "tests", "generate-certificates.sh")
             totalNodesInNetwork = totalNodes + 1  # account for bios node
             cmd = "{} --days 1 --CA-org Block.one --CA-CN test-domain --org-mask node{{NUMBER}} --cn-mask test-domain{{NUMBER}} --group-size {}".format(genCertScript, totalNodesInNetwork)
@@ -356,10 +356,10 @@ class Cluster(object):
             s=" ".join(cmdArrForOutput)
             if Utils.Debug: Utils.Print("cmd: %s" % (s))
             if 0 != subprocess.call(cmdArrForOutput):
-                Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (newFile))
+                Utils.Print("ERROR: Launcher failed to create shape file \"{}\".".format(newFile))
                 return False
 
-            Utils.Print("opening shape file: %s, current dir: %s" % (newFile, os.getcwd()))
+            Utils.Print("opening shape file: {}, current dir: {}".format(newFile, os.getcwd()))
             with open(newFile, 'r') as f:
                 newFileJsonStr = f.read()
             return json.loads(newFileJsonStr)
@@ -395,9 +395,8 @@ class Cluster(object):
                     customShapePeers.append("{}{:02}".format(testnetPrefix, peer))
                 nodeObject["peers"] = customShapePeers
 
-            f=open(customShapeFile,"w")
-            f.write(json.dumps(customShapeFileObject, indent=4, sort_keys=True))
-            f.close()
+            with open(customShapeFile, 'w') as f:
+                f.write(json.dumps(customShapeFileObject, indent=4, sort_keys=True))
 
             cmdArr.append("--shape")
             cmdArr.append(customShapeFile)
