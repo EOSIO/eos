@@ -57,7 +57,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    chain_plugin* chain_plug = nullptr;
    std::optional<amqp_handler> amqp_trx;
-   std::optional<amqp_trace_plugin_impl> trace_plug;
+   amqp_trace_plugin_impl trace_plug;
 
    std::string amqp_trx_address;
    std::string amqp_trx_queue;
@@ -138,8 +138,8 @@ private:
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
-               if( my->trace_plug ) {
-                  my->trace_plug->publish_error( reply_to, trx->id().str(), eptr->code(), eptr->to_string() );
+               if( !reply_to.empty() ) {
+                  my->trace_plug.publish_error( reply_to, trx->id().str(), eptr->code(), eptr->to_string() );
                }
                fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
@@ -148,8 +148,8 @@ private:
                }
             } else {
                auto& trace = std::get<chain::transaction_trace_ptr>(result);
-               if( my->trace_plug ) {
-                  my->trace_plug->publish_result( reply_to, trx, trace );
+               if( !reply_to.empty() ) {
+                  my->trace_plug.publish_result( reply_to, trx, trace );
                }
                fc_add_tag(trx_span, "block_num", trace->block_num);
                fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
@@ -192,13 +192,6 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
    op("amqp-trx-ack-mode", bpo::value<ack_mode>()->default_value(ack_mode::in_block),
       "AMQP ack when 'received' from AMQP, when 'executed', or when 'in_block' is produced that contains trx.\n"
       "Options: received, executed, in_block");
-   op("amqp-trx-trace-address", bpo::value<std::string>(),
-      "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will publish to amqp-trx-trace-queue-name ('trace') queue. If not provided traces are not sent.");
-   op("amqp-trx-trace-queue-name", bpo::value<std::string>()->default_value("trace"),
-      "AMQP queue to publish transaction traces of amqp transactions.");
-   op("amqp-trx-trace-exchange", bpo::value<std::string>()->default_value(""),
-      "Existing AMQP exchange to send transaction trace messages.");
    op("amqp-trx-trace-reliable-mode", bpo::value<amqp_trace_plugin_impl::reliable_mode>()->default_value(amqp_trace_plugin_impl::reliable_mode::queue),
       "Reliable mode 'exit', exit application on any AMQP publish error.\n"
       "Reliable mode 'queue', queue transaction traces to send to AMQP on connection establishment.\n"
@@ -224,14 +217,10 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT( my->acked != ack_mode::in_block || !my->allow_speculative_execution, chain::plugin_config_exception,
                   "amqp-trx-ack-mode = in_block not supported with amqp-trx-speculative-execution" );
 
-      if( options.count("amqp-trx-trace-address") ) {
-         my->trace_plug.emplace();
-         my->trace_plug->amqp_trace_address = options.at( "amqp-trx-trace-address" ).as<std::string>();
-         my->trace_plug->amqp_trace_queue_name = options.at( "amqp-trx-trace-queue-name" ).as<std::string>();
-         EOS_ASSERT( !my->trace_plug->amqp_trace_queue_name.empty(), chain::plugin_config_exception, "amqp-trx-trace-queue-name required" );
-         my->trace_plug->amqp_trace_exchange = options.at( "amqp-trx-trace-exchange" ).as<std::string>();
-         my->trace_plug->pub_reliable_mode = options.at("amqp-trx-trace-reliable-mode").as<amqp_trace_plugin_impl::reliable_mode>();
-      }
+      my->trace_plug.amqp_trace_address = my->amqp_trx_address;
+      my->trace_plug.amqp_trace_queue_name = ""; // not used, reply-to is used for each message
+      my->trace_plug.amqp_trace_exchange = ""; // not used, reply-to used for routing-key
+      my->trace_plug.pub_reliable_mode = options.at("amqp-trx-trace-reliable-mode").as<amqp_trace_plugin_impl::reliable_mode>();
 
       my->chain_plug->enable_accept_transactions();
    }
@@ -257,24 +246,22 @@ void amqp_trx_plugin::plugin_startup() {
                                                                        prod_plugin,
                                                                        my->trx_processing_queue_size );
 
-   if( my->trace_plug ) {
-      const boost::filesystem::path trace_data_dir_path = appbase::app().data_dir() / "amqp_trx_plugin";
-      const boost::filesystem::path trace_data_file_path = trace_data_dir_path / "trace.bin";
-      if( my->trace_plug->pub_reliable_mode != amqp_trace_plugin_impl::reliable_mode::queue ) {
-         EOS_ASSERT( !fc::exists( trace_data_file_path ), chain::plugin_config_exception,
-                     "Existing queue file when amqp-trace-reliable-mode != 'queue': ${f}",
-                     ("f", trace_data_file_path.generic_string()) );
-      } else if( auto resmon_plugin = app().find_plugin<resource_monitor_plugin>() ) {
-         resmon_plugin->monitor_directory( trace_data_dir_path );
-      }
-
-      my->trace_plug->amqp_trace.emplace( my->trace_plug->amqp_trace_address, my->trace_plug->amqp_trace_exchange,
-                                          my->trace_plug->amqp_trace_queue_name, trace_data_file_path,
-                                          []( const std::string& err ) {
-                                             elog( "AMQP fatal error: ${e}", ("e", err) );
-                                             appbase::app().quit();
-                                          } );
+   const boost::filesystem::path trace_data_dir_path = appbase::app().data_dir() / "amqp_trx_plugin";
+   const boost::filesystem::path trace_data_file_path = trace_data_dir_path / "trxtrace.bin";
+   if( my->trace_plug.pub_reliable_mode != amqp_trace_plugin_impl::reliable_mode::queue ) {
+      EOS_ASSERT( !fc::exists( trace_data_file_path ), chain::plugin_config_exception,
+                  "Existing queue file when amqp-trx-trace-reliable-mode != 'queue': ${f}",
+                  ("f", trace_data_file_path.generic_string()) );
+   } else if( auto resmon_plugin = app().find_plugin<resource_monitor_plugin>() ) {
+      resmon_plugin->monitor_directory( trace_data_dir_path );
    }
+
+   my->trace_plug.amqp_trace.emplace( my->trace_plug.amqp_trace_address, my->trace_plug.amqp_trace_exchange,
+                                      my->trace_plug.amqp_trace_queue_name, trace_data_file_path,
+                                      []( const std::string& err ) {
+                                         elog( "AMQP fatal error: ${e}", ("e", err) );
+                                         appbase::app().quit();
+                                      } );
 
    my->block_start_connection.emplace(
          chain.block_start.connect( [this]( uint32_t bn ) { my->on_block_start( bn ); } ) );
