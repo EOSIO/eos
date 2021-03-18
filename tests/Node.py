@@ -1424,16 +1424,50 @@ class Node(object):
             return self.getIrreversibleBlockNum() > currentLib
         return Utils.waitForTruth(isLibAdvancing, timeout)
 
-    # Require producer_api_plugin
-    def activatePreactivateFeature(self):
-        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
-        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]["feature_digest"]
-        assert preactivateFeatureDigest
+    def waitUntilBeginningOfProdTurn(self, producerName, timeout=30, sleepTime=0.4):
+        beginningOfProdTurnHead = 0
+        def isDesiredProdTurn():
+            beginningOfProdTurnHead = self.getHeadBlockNum()
+            res =  self.getBlock(beginningOfProdTurnHead)["producer"] == producerName and \
+                   self.getBlock(beginningOfProdTurnHead-1)["producer"] != producerName
+            return res
+        ret = Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
+        assert ret != None, "Expected producer to arrive within {} seconds".format(timeout)
+        return beginningOfProdTurnHead
 
-        self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
+    # Require producer_api_plugin
+    def activateFeatures(self, features):
+        featureDigests = []
+        for feature in features:
+            protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
+            assert feature in protocolFeatureDigestDict
+            featureDigest = protocolFeatureDigestDict[feature]["feature_digest"]
+            assert featureDigest
+            featureDigests.append(featureDigest)
+
+        self.scheduleProtocolFeatureActivations(featureDigests)
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        assert self.waitForHeadToAdvance(blocksToAdvance=2), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
+        assert self.waitForHeadToAdvance(blocksToAdvance=2), print("ERROR: TIMEOUT WAITING FOR activating features: {}".format(",".join(features)))
+
+    # Require producer_api_plugin
+    def activatePreactivateFeature(self):
+        return self.activateFeatures(["PREACTIVATE_FEATURE"])
+
+    def containsFeatures(self, features):
+        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
+        blockHeaderState = self.getLatestBlockHeaderState()
+        assert blockHeaderState, "blockHeaderState should not be empty"
+        for feature in features:
+            featureDigest = protocolFeatureDict[feature]["feature_digest"]
+            assert featureDigest, "{}'s Digest should not be empty".format(feature)
+            activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
+            if featureDigest not in activatedProtocolFeatures:
+                return False
+        return True
+
+    def containsPreactivateFeature(self):
+        return containsFeatures(["PREACTIVATE_FEATURE"])
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
