@@ -22,7 +22,7 @@ public:
    // delivery_tag type of consume, use for ack/reject
    using delivery_tag_t = uint64_t;
    // called from amqp thread on consume of message
-   using on_consume_t = std::function<void(const AMQP::Message& message, const delivery_tag_t& delivery_tag, bool redelivered)>;
+   using on_consume_t = std::function<void(const AMQP::Message& message, delivery_tag_t delivery_tag, bool redelivered)>;
 
    /// @param address AMQP address
    /// @param name AMQP routing key
@@ -229,9 +229,8 @@ private:
          on_error( message );
          first_connect_.set();
       } );
-      consumer.onReceived( [&](const AMQP::Message& message, const delivery_tag_t& delivery_tag, bool redelivered) {
-         on_consume_( message, delivery_tag, redelivered );
-      } );
+      static_assert( std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed" );
+      consumer.onReceived( on_consume_ );
    }
 
    // called from amqp thread
