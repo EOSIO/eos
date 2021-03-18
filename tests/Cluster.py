@@ -254,7 +254,7 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
                 insertSpecificExtraNodeosArgs(node, arguments)
 
-            arguments = getArguments(totalNodes + 1)
+            arguments = getArguments(totalNodes)
             if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
             biosNodeNum = -1
             insertSpecificExtraNodeosArgs(biosNodeNum, arguments)
