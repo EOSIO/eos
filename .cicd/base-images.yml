@@ -35,7 +35,7 @@ steps:
           always-pull: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           failover-registries:
           - "registry_1"
@@ -58,7 +58,7 @@ steps:
           always-pull: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           failover-registries:
           - "registry_1"
@@ -125,7 +125,7 @@ steps:
           always-pull: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           failover-registries:
           - "registry_1"
@@ -148,7 +148,7 @@ steps:
           always-pull: true
           wait-network: true
           pre-execute-sleep: 5
-          pre-execute-ping-sleep: 140.82.114.4
+          pre-execute-ping-sleep: github.com
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           failover-registries:
           - "registry_1"
