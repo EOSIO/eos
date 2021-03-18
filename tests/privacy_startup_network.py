@@ -90,12 +90,16 @@ try:
     producers = [cluster.getNode(x) for x in range(pnodes) ]
     relays = [cluster.getNode(pnodes + x) for x in range(pnodes) ]
     apiNodes = [cluster.getNode(x) for x in apiNodeNums]
+    blockProducer = None
 
     def verifyInSync(producerNum):
         Utils.Print("Ensure all nodes are in-sync")
         lib = producers[producerNum].getInfo()["last_irreversible_block_num"]
         headBlockNum = producers[producerNum].getBlockNum()
         headBlock = producers[producerNum].getBlock(headBlockNum)
+        global blockProducer
+        if blockProducer is None:
+            blockProducer = headBlock["producer"]
         Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
         headBlockId = headBlock["id"]
         for prod in producers:
@@ -116,6 +120,16 @@ try:
         assert node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
 
     verifyInSync(producerNum=0)
+
+    featureDict = producers[0].getSupportedProtocolFeatureDict()
+    Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
+
+    Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
+    timeout = ( pnodes * 12 / 2 ) * 2   # (number of producers * blocks produced / 0.5 blocks per second) * 2 rounds
+    producers[0].waitUntilBeginningOfProdTurn(blockProducer, timeout=timeout)
+    feature = "SECURITY_GROUP"
+    producers[0].activateFeatures([feature])
+    assert producers[0].containsFeatures([feature]), "{} feature was not activated".format(feature)
 
     if sanityTest:
         testSuccessful=True
