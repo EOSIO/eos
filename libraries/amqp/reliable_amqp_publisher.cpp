@@ -33,7 +33,7 @@ struct reliable_amqp_publisher_impl {
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
    void publish_message_direct(const std::string& routing_key, const std::string& correlation_id,
                                std::vector<char> data, reliable_amqp_publisher::error_callback_t on_error);
-   bool verify_max_queue_size();
+   void verify_max_queue_size();
 
    void channel_ready(AMQP::Channel* channel);
    void channel_failed();
@@ -62,7 +62,6 @@ struct reliable_amqp_publisher_impl {
    const std::string exchange;
    const std::string routing_key;
    const std::optional<std::string> message_id;
-   bool logged_exceeded_max_depth = false;
 
    boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand = boost::asio::make_strand(ctx);
 };
@@ -177,7 +176,6 @@ void reliable_amqp_publisher_impl::pump_queue() {
 
    channel->commitTransaction().onSuccess([this](){
       message_deque.erase(message_deque.begin(), message_deque.begin()+in_flight);
-      logged_exceeded_max_depth = false;
    })
    .onFinalize([this]() {
       in_flight = 0;
@@ -190,21 +188,15 @@ void reliable_amqp_publisher_impl::pump_queue() {
    });
 }
 
-bool reliable_amqp_publisher_impl::verify_max_queue_size() {
+void reliable_amqp_publisher_impl::verify_max_queue_size() {
    constexpr unsigned max_queued_messages = 1u << 20u;
 
-   if(message_deque.size() > max_queued_messages - 1000) {
-      std::string err = "AMQP publishing to " + exchange + " has reached " + std::to_string(message_deque.size()) + " unconfirmed messages";
-      on_fatal_error(err);
-   }
    if(message_deque.size() > max_queued_messages) {
-      if(logged_exceeded_max_depth == false)
-         elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages; dropping messages",
-              ("a", retrying_connection.address())("e", exchange)("max", max_queued_messages));
-      logged_exceeded_max_depth = true;
-      return false;
+      elog("AMQP connection ${a} publishing to \"${e}\" has reached ${max} unconfirmed messages",
+           ("a", retrying_connection.address())("e", exchange)("max", max_queued_messages));
+      std::string err = "AMQP publishing to " + exchange + " has reached " + std::to_string(message_deque.size()) + " unconfirmed messages";
+      if( on_fatal_error) on_fatal_error(err);
    }
-   return true;
 }
 
 void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data) {
@@ -215,7 +207,7 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
       return;
    }
 
-   if( !verify_max_queue_size() ) return;
+   verify_max_queue_size();
 
    message_deque.emplace_back(amqp_message{0, "", "", std::move(data)});
    pump_queue();
@@ -231,7 +223,7 @@ void reliable_amqp_publisher_impl::publish_message_raw(const std::string& routin
       return;
    }
 
-   if( !verify_max_queue_size() ) return;
+   verify_max_queue_size();
 
    message_deque.emplace_back(amqp_message{0, routing_key, correlation_id, std::move(data)});
    pump_queue();
@@ -245,7 +237,7 @@ void reliable_amqp_publisher_impl::publish_messages_raw(std::deque<std::pair<std
       return;
    }
 
-   if( !verify_max_queue_size() ) return;
+   verify_max_queue_size();
 
    ++batch_num.value;
    if( batch_num == 0u ) ++batch_num.value;
