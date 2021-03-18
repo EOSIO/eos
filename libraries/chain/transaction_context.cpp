@@ -141,8 +141,10 @@ namespace eosio { namespace chain {
 
          if (it != std::end(gprops.transaction_hooks)) {
             chain::action preexecution_hook_action{{}, it->contract, it->action, {}};
-            schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
-            execute_action( 1, 0 );
+            int action_ordinal = schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
+            apply_context acontext( control, *this, action_ordinal, 0 );
+            acontext.exec();
+            trace->action_traces.pop_back();
          }
       }
 

@@ -62,9 +62,8 @@ BOOST_FIXTURE_TEST_CASE( preexecution_hook_test, register_transaction_hook_teste
    produce_blocks(2);
 
    trace = push_action("tester"_n, "addhashobj"_n, "tester"_n, mutable_variant_object()("hashinput", "hello"));
-   BOOST_REQUIRE_EQUAL(trace->action_traces.size(), 2);
-   msg = trace->action_traces.front().console;
-   BOOST_REQUIRE_EQUAL(msg, "Im a payloadless action");
+   BOOST_REQUIRE_EQUAL(trace->action_traces.size(), 1);
+   BOOST_REQUIRE_EQUAL(trace->action_traces[0].act.name, "addhashobj"_n);
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    produce_blocks(2);
