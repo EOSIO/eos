@@ -43,24 +43,6 @@ def restartNode(node: Node, chainArg=None, addSwapFlags=None, nodeosPath=None):
                                       timeout=5, cachePopen=True, nodeosPath=nodeosPath)
     assert isRelaunchSuccess, "Fail to relaunch"
 
-def shouldNodeContainPreactivateFeature(node):
-    preactivateFeatureDigest = node.getSupportedProtocolFeatureDict()["PREACTIVATE_FEATURE"]["feature_digest"]
-    assert preactivateFeatureDigest, "preactivateFeatureDigest should not be empty"
-    blockHeaderState = node.getLatestBlockHeaderState()
-    assert blockHeaderState, "blockHeaderState should not be empty"
-    activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
-    return preactivateFeatureDigest in activatedProtocolFeatures
-
-beginningOfProdTurnHead = 0
-def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
-    def isDesiredProdTurn():
-        beginningOfProdTurnHead = node.getHeadBlockNum()
-        res =  node.getBlock(beginningOfProdTurnHead)["producer"] == producerName and \
-               node.getBlock(beginningOfProdTurnHead-1)["producer"] != producerName
-        return res
-    ret = Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
-    assert ret != None, "Expected producer to arrive within 19 seconds (with 3 other producers)"
-
 def waitForOneRound():
     time.sleep(24) # We have 4 producers for this test
 
@@ -178,15 +160,15 @@ try:
     for i in range(3):
         Utils.Print("1st node tries activatePreactivateFeature time(s): {}".format(i+1))
         # 1st node waits for the start of the production turn each time it tries activatePreactivateFeature()
-        waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
+        beginningOfProdTurnHead = newNodes[0].waitUntilBeginningOfProdTurn("defproducera")
         newNodes[0].activatePreactivateFeature()
-        if shouldNodeContainPreactivateFeature(newNodes[0]):
+        if newNodes[0].containsPreactivateFeature():
             break
         diff = newNodes[0].getInfo()["head_block_num"] - beginningOfProdTurnHead
         assert diff >= 12, "1st node should contain PREACTIVATE FEATURE since we set it during its production window"
 
-    assert shouldNodeContainPreactivateFeature(newNodes[0]), "1st node should contain PREACTIVATE FEATURE"
-    assert not (shouldNodeContainPreactivateFeature(newNodes[1]) or shouldNodeContainPreactivateFeature(newNodes[2])), \
+    assert newNodes[0].containsPreactivateFeature(), "1st node should contain PREACTIVATE FEATURE"
+    assert not (newNodes[1].containsPreactivateFeature() or newNodes[2].containsPreactivateFeature()), \
         "2nd and 3rd node should not contain PREACTIVATE FEATURE"
     Utils.Print("+++ 2nd, 3rd and 4th node should be in sync, and 1st node should be out of sync +++")
     assert areNodesInSync([newNodes[1], newNodes[2], oldNode], pauseAll=True, resumeAll=False), "2nd, 3rd and 4th node should be in sync"
@@ -194,7 +176,7 @@ try:
 
     waitForOneRound()
 
-    assert not shouldNodeContainPreactivateFeature(newNodes[0]), "PREACTIVATE_FEATURE should be dropped"
+    assert not newNodes[0].containsPreactivateFeature(), "PREACTIVATE_FEATURE should be dropped"
     assert areNodesInSync(allNodes), "All nodes should be in sync"
 
     # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
@@ -205,13 +187,13 @@ try:
     setValidityOfActTimeSubjRestriction(newNodes[1], "PREACTIVATE_FEATURE", True)
     setValidityOfActTimeSubjRestriction(newNodes[2], "PREACTIVATE_FEATURE", True)
 
-    waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
+    newNodes[0].waitUntilBeginningOfProdTurn("defproducera")
     libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
     newNodes[0].activatePreactivateFeature()
 
     assert areNodesInSync(newNodes, pauseAll=True, resumeAll=False), "New nodes should be in sync"
     assert not areNodesInSync(allNodes, pauseAll=False, resumeAll=True), "Nodes should not be in sync after preactivation"
-    for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
+    for node in newNodes: assert node.containsPreactivateFeature(), "New node should contain PREACTIVATE_FEATURE"
 
     activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
     assert waitUntilBlockBecomeIrr(newNodes[0], activatedBlockNum), \
@@ -237,7 +219,7 @@ try:
     time.sleep(2) # Give some time to replay
 
     assert areNodesInSync(allNodes), "All nodes should be in sync"
-    assert shouldNodeContainPreactivateFeature(oldNode), "4th node should contain PREACTIVATE_FEATURE"
+    assert oldNode.containsPreactivateFeature(), "4th node should contain PREACTIVATE_FEATURE"
 
     testSuccessful = True
 finally:
