@@ -35,13 +35,17 @@ class rabbitmq : public stream_handler {
    {
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
       bool error = false;
-      eosio::amqp declare_queue( address_, queue_name_, [&error](const std::string& err){
+      eosio::amqp_handler declare_queue( address_, queue_name_, [&error](const std::string& err){
          elog("AMQP Queue error: ${e}", ("e", err));
          appbase::app().quit();
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_);
+      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_,
+                                                                         [](const std::string& err) {
+                                                                            elog("AMQP fatal error: ${e}", ("e", err));
+                                                                            appbase::app().quit();
+                                                                         });
    }
 
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
@@ -54,13 +58,17 @@ class rabbitmq : public stream_handler {
    {
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
       bool error = false;
-      eosio::amqp declare_exchange( address_, exchange_name_, exchange_type, [&error](const std::string& err){
+      eosio::amqp_handler declare_exchange( address_, exchange_name_, exchange_type, [&error](const std::string& err){
          elog("AMQP Exchange error: ${e}", ("e", err));
          appbase::app().quit();
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>( address_, exchange_name_, "", unconfirmed_path_ );
+      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, exchange_name_, "", unconfirmed_path_,
+                                                                         [](const std::string& err){
+                                                                            elog("AMQP fatal error: ${e}", ("e", err));
+                                                                            appbase::app().quit();
+                                                                         });
    }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
@@ -79,13 +87,19 @@ class rabbitmq : public stream_handler {
    void publish(const std::vector<char>& data, const eosio::name& routing_key) override {
       if (exchange_name_.empty()) {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( queue_name_, data );
+            amqp_publisher_->publish_message_direct( queue_name_, std::string(), data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
          } else {
             queue_.emplace_back( std::make_pair( queue_name_, data ) );
          }
       } else {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( routing_key.to_string(), data );
+            amqp_publisher_->publish_message_direct( routing_key.to_string(), std::string(), data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
          } else {
             queue_.emplace_back( std::make_pair( routing_key.to_string(), data ) );
          }
