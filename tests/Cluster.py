@@ -243,10 +243,10 @@ class Cluster(object):
             if specificExtraNodeosArgs is None:
                 specificExtraNodeosArgs = {}
 
-            certAuth = os.path.join(Utils.ConfigDir, "CA_cert.pem")
+            certAuth = os.path.join(privacyDir, "CA_cert.pem")
             def getArguments(number):
-                nodeCert = os.path.join(Utils.ConfigDir, "node{}.crt".format(number))
-                nodeKey = os.path.join(Utils.ConfigDir, "node{}_key.pem".format(number))
+                nodeCert = os.path.join(privacyDir, "node{}.crt".format(number))
+                nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(number))
                 return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-ca-certificate-file {}".format(nodeCert, nodeKey, certAuth)
 
             for node in range(totalNodes):
