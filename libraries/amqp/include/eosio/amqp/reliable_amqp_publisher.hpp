@@ -47,9 +47,10 @@ class reliable_amqp_publisher {
       /// \param data message to send
       void publish_message_raw(std::vector<char>&& data);
 
+      /// \param routing_key if empty() uses class provided default routing_key
       /// \param correlation_id if not empty() sets as correlation id of the message envelope
       /// \param data message to send
-      void publish_message_raw(const std::string& correlation_id, std::vector<char>&& data);
+      void publish_message_raw(const std::string& routing_key, const std::string& correlation_id, std::vector<char>&& data);
 
       /// Publish messages. May be called from any thread.
       /// \param queue set of messages to send in one transaction <routing_key, message_data>

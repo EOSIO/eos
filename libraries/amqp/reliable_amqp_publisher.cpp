@@ -29,7 +29,7 @@ struct reliable_amqp_publisher_impl {
    ~reliable_amqp_publisher_impl();
    void pump_queue();
    void publish_message_raw(std::vector<char>&& data);
-   void publish_message_raw(const std::string& correlation_id, std::vector<char>&& data);
+   void publish_message_raw(const std::string& routing_key, const std::string& correlation_id, std::vector<char>&& data);
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
    void publish_message_direct(const std::string& routing_key, const std::string& correlation_id,
                                std::vector<char> data, reliable_amqp_publisher::error_callback_t on_error);
@@ -213,17 +213,19 @@ void reliable_amqp_publisher_impl::publish_message_raw(std::vector<char>&& data)
    pump_queue();
 }
 
-void reliable_amqp_publisher_impl::publish_message_raw(const std::string& correlation_id, std::vector<char>&& data) {
+void reliable_amqp_publisher_impl::publish_message_raw(const std::string& routing_key,
+                                                       const std::string& correlation_id,
+                                                       std::vector<char>&& data) {
    if(!ctx.get_executor().running_in_this_thread()) {
-      boost::asio::post(user_submitted_work_strand, [this, d=std::move(data), id=correlation_id]() mutable {
-         publish_message_raw(id, std::move(d));
+      boost::asio::post(user_submitted_work_strand, [this, d=std::move(data), rk=routing_key, id=correlation_id]() mutable {
+         publish_message_raw(rk, id, std::move(d));
       });
       return;
    }
 
    verify_max_queue_size();
 
-   message_deque.emplace_back(amqp_message{0, "", correlation_id, std::move(data)});
+   message_deque.emplace_back(amqp_message{0, routing_key, correlation_id, std::move(data)});
    pump_queue();
 }
 
@@ -283,8 +285,8 @@ void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->publish_message_raw( std::move( data ) );
 }
 
-void reliable_amqp_publisher::publish_message_raw(const std::string& correlation_id, std::vector<char>&& data) {
-   my->publish_message_raw( correlation_id, std::move( data ) );
+void reliable_amqp_publisher::publish_message_raw(const std::string& routing_key, const std::string& correlation_id, std::vector<char>&& data) {
+   my->publish_message_raw( routing_key, correlation_id, std::move( data ) );
 }
 
 void reliable_amqp_publisher::publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue) {
