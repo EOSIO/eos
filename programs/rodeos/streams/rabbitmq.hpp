@@ -13,8 +13,8 @@
 
 namespace b1 {
 
-class rabbitmq : public stream_handler {
-   std::shared_ptr<eosio::reliable_amqp_publisher> amqp_publisher_;
+class rabbitmq : public stream_handler, public std::enable_shared_from_this<rabbitmq> {
+   std::unique_ptr<eosio::reliable_amqp_publisher> amqp_publisher_;
    const AMQP::Address                  address_;
    const bool                           publish_immediately_ = false;
    const std::string                    exchange_name_;
@@ -24,7 +24,43 @@ class rabbitmq : public stream_handler {
    // capture all messages per block and send as one amqp transaction
    std::deque<std::pair<std::string, std::vector<char>>> queue_;
 
- public:
+   class ack_cond {
+   private:
+      std::mutex mtx_;
+      bool acked_ = false;
+      std::condition_variable ack_cond_;
+   public:
+      void set() {
+         {
+            auto lock = std::scoped_lock(mtx_);
+            acked_ = true;
+         }
+         ack_cond_.notify_one();
+      }
+      bool wait() {
+         std::unique_lock<std::mutex> lk(mtx_);
+         return ack_cond_.wait_for( lk, std::chrono::seconds( 10 ), [&]{ return acked_; } );
+      }
+      void un_set() {
+         auto lock = std::scoped_lock( mtx_ );
+         acked_ = false;
+      }
+   };
+
+   ack_cond ack_cond_;
+
+public:
+   void init() {
+      amqp_publisher_ = std::make_unique<eosio::reliable_amqp_publisher>(address_, exchange_name_, "", unconfirmed_path_,
+                                                                         [](const std::string& err){
+                                                                            elog("AMQP fatal error: ${e}", ("e", err));
+                                                                            appbase::app().quit();
+                                                                         },
+                                                                         [me = shared_from_this()]() {
+                                                                            me->ack();
+                                                                         } );
+   }
+
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
             std::string queue_name, const boost::filesystem::path& unconfirmed_path)
        : address_(address)
@@ -41,11 +77,7 @@ class rabbitmq : public stream_handler {
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, "", "", unconfirmed_path_,
-                                                                         [](const std::string& err) {
-                                                                            elog("AMQP fatal error: ${e}", ("e", err));
-                                                                            appbase::app().quit();
-                                                                         });
+      init();
    }
 
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
@@ -64,16 +96,13 @@ class rabbitmq : public stream_handler {
          error = true;
       } );
       if( error ) return;
-      amqp_publisher_ = std::make_shared<eosio::reliable_amqp_publisher>(address_, exchange_name_, "", unconfirmed_path_,
-                                                                         [](const std::string& err){
-                                                                            elog("AMQP fatal error: ${e}", ("e", err));
-                                                                            appbase::app().quit();
-                                                                         });
+      init();
    }
 
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
    void start_block(uint32_t block_num) override {
+      ack_cond_.un_set();
       queue_.clear();
    }
 
@@ -81,7 +110,19 @@ class rabbitmq : public stream_handler {
       if( !publish_immediately_ ) {
          amqp_publisher_->publish_messages_raw( std::move( queue_ ) );
          queue_.clear();
+         wait_on_ack();
       }
+   }
+
+   void wait_on_ack() {
+      if( !ack_cond_.wait() ) {
+         elog("Unable to get ack from AMQP, exiting");
+         appbase::app().quit();
+      }
+   }
+
+   void ack() {
+      ack_cond_.set();
    }
 
    void publish(const std::vector<char>& data, const eosio::name& routing_key) override {
@@ -184,8 +225,10 @@ inline void initialize_rabbits_queue(std::vector<std::unique_ptr<stream_handler>
       // TODO: uniqueness
       boost::filesystem::path msg_path = p / ("queue_" + queue_name) / "stream.bin";
 
-      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
-                                                      std::move(queue_name), msg_path));
+      auto r = std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
+                                          std::move(queue_name), msg_path);
+      r->init();
+      streams.emplace_back(std::move(r));
    }
 }
 
@@ -210,8 +253,10 @@ inline void initialize_rabbits_exchange(std::vector<std::unique_ptr<stream_handl
       // TODO: uniqueness
       boost::filesystem::path msg_path = p / ("exchange_" + exchange) / "stream.bin";
 
-      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
-                                                      std::move(exchange), std::move(exchange_type), msg_path));
+      auto r = std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
+                                          std::move(exchange), std::move(exchange_type), msg_path);
+      r->init();
+      streams.emplace_back(std::move(r));
    }
 }
 
