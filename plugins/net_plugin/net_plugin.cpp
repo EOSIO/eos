@@ -599,31 +599,44 @@ namespace eosio {
    };
 
    struct flex_socket {
-      std::shared_ptr<tcp::socket>              socket;
-      std::shared_ptr<ssl_stream>               ssl_socket;
+      using socket_ptr     = std::shared_ptr<tcp::socket>;
+      using ssl_socket_ptr = std::shared_ptr<ssl_stream>;
+      using socket_variant = std::variant<socket_ptr, ssl_socket_ptr>;
+
+   private:
+      socket_variant                            socket;
+   public:
       const bool                                use_ssl;
 
       flex_socket(bool ssl) : use_ssl(ssl) {
          reset_socket();
       }
 
-      inline tcp::socket& get_socket() {
+      inline tcp::socket& raw_socket() {
          if (use_ssl){
-            EOS_ASSERT(ssl_socket, ssl_configuration_error, "null ssl socket instance");
-            return ssl_socket->next_layer();
+            return ssl_socket()->next_layer();
          }
-         EOS_ASSERT(socket, ssl_configuration_error, "null socket");
-         return *socket;
+         return *tcp_socket();
+      }
+
+      inline socket_ptr& tcp_socket() {
+         return std::get<socket_ptr>(socket);
+      }
+
+      inline ssl_socket_ptr& ssl_socket() {
+         return std::get<ssl_socket_ptr>(socket);
       }
 
       void reset_socket() {
 
          if (use_ssl) {
+            socket = ssl_socket_ptr{};
             EOS_ASSERT(my_impl->ssl_context, ssl_configuration_error, "ssl context is empty");
-            ssl_socket.reset( new ssl_stream{my_impl->thread_pool->get_executor(), *my_impl->ssl_context} );
+            ssl_socket().reset( new ssl_stream{my_impl->thread_pool->get_executor(), *my_impl->ssl_context} );
          }
          else {
-            socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
+            socket = socket_ptr{};
+            tcp_socket().reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
          }
       }
    };
@@ -913,7 +926,7 @@ namespace eosio {
       void reset_socket() {
          socket.reset_socket();
          if (socket.use_ssl) {
-            socket.ssl_socket->set_verify_callback(
+            socket.ssl_socket()->set_verify_callback(
                [this](auto bverified, auto& ctx){ 
                   return verify_certificate(bverified, ctx); 
                });
@@ -1020,8 +1033,8 @@ namespace eosio {
    void connection::update_endpoints() {
       boost::system::error_code ec;
       boost::system::error_code ec2;
-      auto rep = socket.get_socket().remote_endpoint(ec);
-      auto lep = socket.get_socket().local_endpoint(ec2);
+      auto rep = socket.raw_socket().remote_endpoint(ec);
+      auto lep = socket.raw_socket().local_endpoint(ec2);
       std::lock_guard<std::mutex> g_conn( conn_mtx );
       remote_endpoint_ip = ec ? unknown : rep.address().to_string();
       remote_endpoint_port = ec ? unknown : std::to_string(rep.port());
@@ -1070,7 +1083,7 @@ namespace eosio {
       update_endpoints();
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
-      socket.get_socket().set_option( nodelay, ec );
+      socket.raw_socket().set_option( nodelay, ec );
       if( ec ) {
          fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
          close();
@@ -1083,8 +1096,11 @@ namespace eosio {
             start_read_message();
          };
          if (socket.use_ssl) {
-            socket.ssl_socket->async_handshake(ssl::stream_base::server,
-                                       boost::asio::bind_executor(strand, [start_read](const auto& ec){
+            socket.ssl_socket()->async_handshake(ssl::stream_base::server,
+                                       boost::asio::bind_executor(strand, [start_read, socket=socket](const auto& ec){
+                                          //we use socket just to retain connection shared_ptr just in case it will be deleted
+                                          //when we will need it inside start_read_message
+                                          std::ignore = socket;
                                           if (ec) {
                                              fc_elog( logger, "ssl handshake error: ${e}", ("e", ec.message()) );
                                              return;
@@ -1120,7 +1136,7 @@ namespace eosio {
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
       boost::system::error_code ec;
-      tcp::socket& cur_sock = self->socket.get_socket();
+      tcp::socket& cur_sock = self->socket.raw_socket();
       if( cur_sock.is_open() ) {
          cur_sock.shutdown( tcp::socket::shutdown_both, ec );
          cur_sock.close( ec );
@@ -1345,7 +1361,7 @@ namespace eosio {
             try {
                c->buffer_queue.clear_out_queue();
                // May have closed connection and cleared buffer_queue
-               if( !c->socket_is_open() || &socket.get_socket() != &c->socket.get_socket() ) {
+               if( !c->socket_is_open() || &socket.raw_socket() != &c->socket.raw_socket() ) {
                   fc_ilog( logger, "async write socket ${r} before callback: ${p}",
                            ("r", c->socket_is_open() ? "changed" : "closed")("p", c->peer_name()) );
                   c->close();
@@ -1380,10 +1396,10 @@ namespace eosio {
          };
 
          if (c->socket.use_ssl){
-            boost::asio::async_write( *c->socket.ssl_socket, bufs, boost::asio::bind_executor( c->strand, write_lambda ));
+            boost::asio::async_write( *c->socket.ssl_socket(), bufs, boost::asio::bind_executor( c->strand, write_lambda ));
          }
          else {
-            boost::asio::async_write( *c->socket.socket, bufs, boost::asio::bind_executor( c->strand, write_lambda ));
+            boost::asio::async_write( *c->socket.tcp_socket(), bufs, boost::asio::bind_executor( c->strand, write_lambda ));
          }
       });
    }
@@ -2575,12 +2591,12 @@ namespace eosio {
       connecting = true;
       pending_message_buffer.reset();
       buffer_queue.clear_out_queue();
-      boost::asio::async_connect( socket.get_socket(), endpoints,
+      boost::asio::async_connect( socket.raw_socket(), endpoints,
          boost::asio::bind_executor( strand,
             [resolver, 
              c = shared_from_this(), 
              socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) mutable {
-            if( !err && socket.get_socket().is_open() && &socket.get_socket() == &c->socket.get_socket() ) {
+            if( !err && socket.raw_socket().is_open() && &socket.raw_socket() == &c->socket.raw_socket() ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
@@ -2595,14 +2611,13 @@ namespace eosio {
       connection_ptr new_connection = std::make_shared<connection>(ssl_enabled);
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
-         acceptor->async_accept( new_connection->socket.get_socket(),
-            boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
+         acceptor->async_accept( new_connection->socket.raw_socket(),
+            boost::asio::bind_executor( new_connection->strand, [new_connection, socket=new_connection->socket, this]( boost::system::error_code ec ) mutable {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
                boost::system::error_code rec;
-               tcp::socket& socket = new_connection->socket.get_socket();
-               const auto& paddr_add = socket.remote_endpoint( rec ).address();
+               const auto& paddr_add = socket.raw_socket().remote_endpoint( rec ).address();
                string paddr_str;
                if( rec ) {
                   fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()));
@@ -2637,8 +2652,8 @@ namespace eosio {
                      }
                      // new_connection never added to connections and start_session not called, lifetime will end
                      boost::system::error_code ec;
-                     socket.shutdown( tcp::socket::shutdown_both, ec );
-                     socket.close( ec );
+                     socket.raw_socket().shutdown( tcp::socket::shutdown_both, ec );
+                     socket.raw_socket().close( ec );
                   }
                }
             } else {
@@ -2672,7 +2687,7 @@ namespace eosio {
             std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
             boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
             boost::system::error_code ec;
-            socket.get_socket().set_option( read_watermark_opt, ec );
+            socket.raw_socket().set_option( read_watermark_opt, ec );
             if( ec ) {
                fc_elog( logger, "unable to set read watermark ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
             }
@@ -2695,7 +2710,7 @@ namespace eosio {
          }
          auto handle_read = [conn = shared_from_this(), socket=socket]( boost::system::error_code ec, std::size_t bytes_transferred ) mutable {
                // may have closed connection and cleared pending_message_buffer
-               if( !conn->socket_is_open() || &socket.get_socket() != &conn->socket.get_socket() ) return;
+               if( !conn->socket_is_open() || &socket.raw_socket() != &conn->socket.raw_socket() ) return;
 
                bool close_connection = false;
                try {
@@ -2780,13 +2795,13 @@ namespace eosio {
                }
          };
          if (socket.use_ssl){
-            boost::asio::async_read( *socket.ssl_socket,
+            boost::asio::async_read( *socket.ssl_socket(),
                                      pending_message_buffer.get_buffer_sequence_for_boost_async_read(), 
                                      completion_handler,
                                      boost::asio::bind_executor( strand, handle_read));
          }
          else {
-            boost::asio::async_read( *socket.socket,
+            boost::asio::async_read( *socket.tcp_socket(),
                                      pending_message_buffer.get_buffer_sequence_for_boost_async_read(), 
                                      completion_handler,
                                      boost::asio::bind_executor( strand, handle_read));
