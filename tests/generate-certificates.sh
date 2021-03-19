@@ -59,6 +59,7 @@ then
    echo "--group-size: Number of participants signed by generated CA"
    echo "--use-EC:     Use EC algorithm. Enabled by default."
    echo "--use-RSA:    Use RSA algorithm. Default is EC"
+   exit 0
 fi
 
 #default arguments:

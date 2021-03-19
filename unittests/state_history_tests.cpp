@@ -854,7 +854,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
       BOOST_REQUIRE(result.first);
       auto &it_global_property = result.second;
       BOOST_REQUIRE_EQUAL(it_global_property->rows.obj.size(), 1);
-      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v1, eosio::ship_protocol::global_property>(it_global_property);
+      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v2, eosio::ship_protocol::global_property>(it_global_property);
       auto configuration = std::get<eosio::ship_protocol::chain_config_v1>(global_properties[0].configuration);
       BOOST_REQUIRE_EQUAL(configuration.max_transaction_delay, 60);
    }
