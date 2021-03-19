@@ -247,7 +247,7 @@ class Cluster(object):
             def getArguments(number):
                 nodeCert = os.path.join(privacyDir, "node{}.crt".format(number))
                 nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(number))
-                return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-ca-certificate-file {}".format(nodeCert, nodeKey, certAuth)
+                return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
 
             for node in range(totalNodes):
                 arguments = getArguments(node)
