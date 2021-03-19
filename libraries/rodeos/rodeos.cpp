@@ -297,7 +297,7 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
             filter_state->eosvmoc_tierup.emplace(
                   cache_path, eosvmoc_config, code,
                   eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
-         } catch( const eosio::chain::database_exception& ) {
+         } catch( const eosio::chain::database_exception& e ) {
             wlog( "eosvmoc cache exception ${e} removing cache ${c}", ("e", e.to_string())("c", cache_path.generic_string()) );
             // destroy cache and try again
             boost::filesystem::remove_all( cache_path );
