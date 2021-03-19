@@ -44,6 +44,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 keepLogs=args.keep_logs
 stateHistoryEndpoint = "127.0.0.1:8080"
+stateHistoryStride = 10
 enableOC=args.eos_vm_oc_enable
 
 loggingFile="logging.json"
@@ -118,11 +119,14 @@ class Rodeos:
         self.endpoint = "http://127.0.0.1:8880/"
         self.rodeosStdout = open(os.path.join(self.rodeosDir, "stdout.out"), "w")
         self.rodeosStderr = open(os.path.join(self.rodeosDir, "stderr.out"), "w")
-        self.rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir,'rocksdb'), '--data-dir', os.path.join(self.rodeosDir,'data'),
-                               '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
-                stdout=self.rodeosStdout, 
-                stderr=self.rodeosStderr)
+        self.restart()
         return self
+
+    def restart(self):
+        self.rodeos = subprocess.Popen(['./programs/rodeos/rodeos', '--rdb-database', os.path.join(self.rodeosDir,'rocksdb'), '--data-dir', os.path.join(self.rodeosDir,'data'),
+                                        '--clone-connect-to',  self.stateHistoryEndpoint , '--filter-name', self.filterName , '--filter-wasm', self.filterWasm ] + self.OCArg,
+                                       stdout=self.rodeosStdout,
+                                       stderr=self.rodeosStderr)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.rodeos is not None:
@@ -134,6 +138,12 @@ class Rodeos:
             self.rodeosStderr.close()
         if testSuccessful and not keepLogs:
             shutil.rmtree(self.rodeosDir, ignore_errors=True)
+
+    def sigkill(self):
+        if self.rodeos is not None:
+            self.rodeos.send_signal(signal.SIGKILL)
+            self.rodeos.wait()
+            self.rodeos = None
 
     def waitTillReady(self):
         Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
@@ -160,8 +170,10 @@ try:
         useBiosBootFile=False,
         loadSystemContract=False,
         specificExtraNodeosArgs={
-            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts --state-history-stride 20 --max-retained-history-files 3 " 
-                "--state-history-endpoint {} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryEndpoint)})
+            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
+                "--state-history-stride {0} " 
+                "--state-history-endpoint {1} "
+                "--plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryStride, stateHistoryEndpoint)})
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)
@@ -201,7 +213,7 @@ try:
     trans = producerNode.getEosAccount("payloadless", exitOnError=False)
     assert trans["account_name"], "Failed to get the account payloadless"
 
-    Utils.Print("verify the context free transaction from producer node")
+    Utils.Print("verify the context free transaction from producer node, block num {}".format(cfTrxBlockNum))
     trans_from_full = producerNode.getTransaction(cfTrxId)
     assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
 
@@ -211,13 +223,45 @@ try:
         Utils.Print("Verify rodeos get_info endpoint works")
         while head_block_num < cfTrxBlockNum:
             response = rodeos.get_info()
-            assert 'head_block_num' in response, "Redeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
+            assert 'head_block_num' in response, "Rodeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
             head_block_num = int(response['head_block_num'])
-            time.sleep(1)
+            if head_block_num < cfTrxBlockNum: time.sleep(1)
         
         response = rodeos.get_block(cfTrxBlockNum)
         assert response["block_num"] == cfTrxBlockNum, "Rodeos responds with wrong block"
-    
+        # Verify no skipped blocks
+        first_block_num = 0
+        for i in range(1,cfTrxBlockNum+1):
+            response = rodeos.get_block(i)
+            if "block_num" in response:
+                if first_block_num == 0:
+                    first_block_num = i
+                assert response["block_num"] == i, "Rodeos responds with wrong block {0}, response body = {1}".format(i, json.dumps(response))
+        Utils.Print("First block in rodeos is {}".format(first_block_num))
+        killTestLoopCount = 3
+        for n in range(killTestLoopCount):
+            # Test sigkill restart
+            rodeos.sigkill()
+            rodeos.restart()
+            rodeos.waitTillReady()
+            head_block_num = 0
+            Utils.Print("Verify rodeos get_info endpoint works after kill")
+            response = rodeos.get_info()
+            assert 'head_block_num' in response, "After kill, Rodeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
+            current_block_num = int(response['head_block_num'])
+            nextBlockNum = current_block_num + int(stateHistoryStride/killTestLoopCount)+1 # stride+1
+            while head_block_num < nextBlockNum:
+                response = rodeos.get_info()
+                assert 'head_block_num' in response, "After kill, Rodeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
+                head_block_num = int(response['head_block_num'])
+                if head_block_num < nextBlockNum: time.sleep(1)
+            response = rodeos.get_block(nextBlockNum)
+            assert 'block_num' in response and response["block_num"] == nextBlockNum, "After kill, Rodeos responds with wrong block {0}, response body = {1}".format(nextBlockNum, json.dumps(response))
+            # Verify no skipped blocks
+            for i in range(first_block_num,nextBlockNum+1):
+                response = rodeos.get_block(i)
+                assert "block_num" in response and response["block_num"] == i, "After kill, Rodeos responds with wrong block {0}, response body = {1}".format(i, json.dumps(response))
+
     testSuccessful = True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
