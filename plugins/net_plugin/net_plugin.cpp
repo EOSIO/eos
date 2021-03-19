@@ -27,6 +27,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <atomic>
 #include <shared_mutex>
@@ -34,6 +35,7 @@
 
 using namespace eosio::chain::plugin_interface;
 using namespace boost::asio;
+namespace bfs = boost::filesystem;
 
 namespace eosio {
    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
@@ -3892,9 +3894,9 @@ namespace eosio {
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
-         ( "p2p-tls-security-group-ca-file", bpo::value<string>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
-         ( "p2p-tls-own-certificate-file", bpo::value<string>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
-         ( "p2p-tls-private-key-file", bpo::value<string>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
+         ( "p2p-tls-security-group-ca-file", bpo::value<bfs::path>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
+         ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
+         ( "p2p-tls-private-key-file", bpo::value<bfs::path>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
         ;
    }
 
@@ -4005,18 +4007,26 @@ namespace eosio {
 
          //if we have certificate option that TLS must be enabled
          if ( options.count("p2p-tls-own-certificate-file") ) {
-            auto certificate = options["p2p-tls-own-certificate-file"].as<string>();
-            auto pkey        = options["p2p-tls-private-key-file"].as<string>();
-            auto ca_cert     = options["p2p-tls-security-group-ca-file"].as<string>();
+            auto certificate = options["p2p-tls-own-certificate-file"].as<bfs::path>();
+            auto pkey        = options["p2p-tls-private-key-file"].as<bfs::path>();
+            auto ca_cert     = options["p2p-tls-security-group-ca-file"].as<bfs::path>();
+            auto relative_to_absolute = [](bfs::path& file) {
+               if( file.is_relative()) {
+               file = bfs::current_path() / file;
+               }
+            };
+            relative_to_absolute(certificate);
+            relative_to_absolute(pkey);
+            relative_to_absolute(ca_cert);
 
-            EOS_ASSERT(fc::is_regular_file({certificate}), ssl_incomplete_configuration, "p2p-tls-own-certificate-file doesn't contain regular file: ${p}", ("p", certificate));
-            EOS_ASSERT(fc::is_regular_file({pkey}), ssl_incomplete_configuration, "p2p-tls-private-key-file doesn't contain regular file: ${p}", ("p", pkey));
+            EOS_ASSERT(fc::is_regular_file(certificate), ssl_incomplete_configuration, "p2p-tls-own-certificate-file doesn't contain regular file: ${p}", ("p", certificate.generic_string()));
+            EOS_ASSERT(fc::is_regular_file(pkey), ssl_incomplete_configuration, "p2p-tls-private-key-file doesn't contain regular file: ${p}", ("p", pkey.generic_string()));
             my->ssl_enabled = true;
             if (!ca_cert.empty()){
-               EOS_ASSERT(fc::is_regular_file({ca_cert}), ssl_incomplete_configuration, "p2p-tls-security-group-ca-file doesn't contain regular file: ${p}", ("p", ca_cert));
+               EOS_ASSERT(fc::is_regular_file(ca_cert), ssl_incomplete_configuration, "p2p-tls-security-group-ca-file doesn't contain regular file: ${p}", ("p", ca_cert.generic_string()));
             }
 
-            my->init_ssl_context(certificate, pkey, ca_cert);
+            my->init_ssl_context(certificate.generic_string(), pkey.generic_string(), ca_cert.generic_string());
          }
 
       } FC_LOG_AND_RETHROW()
