@@ -3,8 +3,8 @@ set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
 echo '##### Nodeos Version Label Test #####'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT="$(pwd)"
-echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
+[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT="$(pwd)"
+echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 EXPECTED=v$1
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
@@ -12,7 +12,7 @@ if [[ -z "$EXPECTED" ]]; then
 fi
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($EOSIO_ROOT/bin/nodeos --version)
+ACTUAL=$($BUILD_ROOT/bin/nodeos --version)
 EXIT_CODE=$?
 # verify 0 exit code explicitly
 if [[ $EXIT_CODE -ne 0 ]]; then
