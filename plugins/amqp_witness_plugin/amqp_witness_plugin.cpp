@@ -50,6 +50,7 @@ void amqp_witness_plugin::plugin_startup() {
                                                              elog("AMQP fatal error: ${e}", ("e", err));
                                                              appbase::app().quit();
                                                           },
+                                                          nullptr,
                                                           "eosio.node.witness_v0");
 
    app().get_plugin<witness_plugin>().add_on_witness_sig([rqueue=my->rqueue.get()](const chain::block_state_ptr& bsp, const chain::signature_type& sig) {
