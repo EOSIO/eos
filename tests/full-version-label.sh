@@ -3,8 +3,8 @@ set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
 echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(pwd)
-echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
+[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT=$(pwd)
+echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 EXPECTED=$1
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
@@ -14,7 +14,7 @@ VERSION_HASH="$(pushd $2 &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>
 EXPECTED=v$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($EOSIO_ROOT/bin/nodeos --full-version)
+ACTUAL=$($BUILD_ROOT/bin/nodeos --full-version)
 EXIT_CODE=$?
 # verify 0 exit code explicitly
 if [[ $EXIT_CODE -ne 0 ]]; then

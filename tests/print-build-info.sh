@@ -4,11 +4,11 @@ set -eo pipefail
 # This includes verifying valid output in JSON shape and checking parameters (only boost for now).
 echo '##### Nodeos Print Build Info Test #####'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT="$(pwd)"
-echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
+[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT="$(pwd)"
+echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 
 exec 9>&1 # enable tee to write to STDOUT as a file
-PRINT_BUILD_INFO="$EOSIO_ROOT/bin/nodeos --print-build-info 2>&1 | tee >(cat - >&9) || :"
+PRINT_BUILD_INFO="$BUILD_ROOT/bin/nodeos --print-build-info 2>&1 | tee >(cat - >&9) || :"
 echo "$ $PRINT_BUILD_INFO"
 OUTPUT="$(eval $PRINT_BUILD_INFO)"
 
