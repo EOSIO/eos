@@ -480,7 +480,7 @@ namespace eosio { namespace chain {
                const int64_t cpu_limit = (cpu_limited_by_account ? account_cpu_limit : objective_duration_limit.count());
                EOS_ASSERT( billed_us <= cpu_limit,
                            tx_cpu_usage_exceeded,
-                           "${desc} CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
+                           "${desc} Transaction CPU time (${billed} us) is greater than the maximum available (${billable} us). Please stake more resources to CPU.",
                            ("desc", (estimate ? "estimated" : "billed"))("billed", billed_us)( "billable", cpu_limit )
                );
             }
