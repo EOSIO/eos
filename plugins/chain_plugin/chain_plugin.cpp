@@ -8,10 +8,8 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/backing_store/kv_context.hpp>
@@ -27,6 +25,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -188,7 +188,6 @@ public:
    bool                             api_accept_transactions = true;
    bool                             account_queries_enabled = false;
 
-   std::optional<fork_database>      fork_db;
    std::optional<controller::config> chain_config;
    std::optional<controller>         chain;
    std::optional<genesis_state>      genesis;
@@ -326,8 +325,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("persistent-storage-mbytes-snapshot-batch", bpo::value<uint32_t>()->default_value(config::default_persistent_storage_mbytes_batch),
           "Rocksdb batch size threshold before writing read in snapshot data to database.")
 
-         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
-         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(0),
+          "(DEPRECATED: no longer used) Maximum size (in MiB) of the reversible blocks database")
+         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(0),
+          "(DEPRECATED: no longer used) Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
           "Percentage of actual signature recovery cpu to bill. Whole number percentages, e.g. 50 for 50%")
          ("chain-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
@@ -421,8 +422,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print build environment information to console as JSON and exit")
          ("extract-build-info", bpo::value<bfs::path>(),
           "extract build environment information as JSON, write into specified file, and exit")
-         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
-          "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any validation checks while replaying blocks (useful for replaying blocks from untrusted source)")
          ("disable-replay-opts", bpo::bool_switch()->default_value(false),
@@ -437,10 +436,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
          ("terminate-at-block", bpo::value<uint32_t>()->default_value(0),
           "terminate after reaching this block number (if set to a non-zero number)")
-         ("import-reversible-blocks", bpo::value<bfs::path>(),
-          "replace reversible block database with blocks imported from specified file and then exit")
-         ("export-reversible-blocks", bpo::value<bfs::path>(),
-           "export reversible block database in portable format into specified file and then exit")
          ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
          ;
 
@@ -684,25 +679,36 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    return pfs;
 }
 
+namespace {
+  // This can be removed when versions of eosio that support reversible chainbase state file no longer supported.
+  void upgrade_from_reversible_to_fork_db(chain_plugin_impl* my) {
+     namespace bfs = boost::filesystem;
+     bfs::path old_fork_db = my->chain_config->state_dir / config::forkdb_filename;
+     bfs::path new_fork_db = my->blocks_dir / config::reversible_blocks_dir_name / config::forkdb_filename;
+     if( bfs::exists( old_fork_db ) && bfs::is_regular_file( old_fork_db ) ) {
+        bool copy_file = false;
+        if( bfs::exists( new_fork_db ) && bfs::is_regular_file( new_fork_db ) ) {
+           if( bfs::last_write_time( old_fork_db ) > bfs::last_write_time( new_fork_db ) ) {
+              copy_file = true;
+           }
+        } else {
+           copy_file = true;
+           bfs::create_directories( my->blocks_dir / config::reversible_blocks_dir_name );
+        }
+        if( copy_file ) {
+           fc::rename( old_fork_db, new_fork_db );
+        } else {
+           fc::remove( old_fork_db );
+        }
+     }
+  }
+}
+
 void
 chain_plugin::do_hard_replay(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
          auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>(),config::reversible_blocks_dir_name);
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blog.log_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-            }
-         }
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
@@ -866,11 +872,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   "persistent-storage-mbytes-snapshot-batch ${num} must be greater than 0", ("num", my->chain_config->persistent_storage_mbytes_batch) );
 
       if( options.count( "reversible-blocks-db-size-mb" ))
-         my->chain_config->reversible_cache_size =
-               options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
+         wlog( "reversible-blocks-db-size-mb deprecated and will be removed in future version" );
 
       if( options.count( "reversible-blocks-db-guard-size-mb" ))
-         my->chain_config->reversible_guard_size = options.at( "reversible-blocks-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+         wlog( "reversible-blocks-db-guard-size-mb deprecated and will be removed in future version" );
 
       if( options.count( "max-nonprivileged-inline-action-size" ))
          my->chain_config->max_nonprivileged_inline_action_size = options.at( "max-nonprivileged-inline-action-size" ).as<uint32_t>();
@@ -942,20 +947,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
-      if( options.count("export-reversible-blocks") ) {
-         auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
-
-         if( p.is_relative()) {
-            p = bfs::current_path() / p;
-         }
-
-         if( export_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name, p ) )
-            ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-         else
-            ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-
-         EOS_THROW( node_management_success, "exported reversible blocks" );
-      }
+      // move fork_db to new location
+      upgrade_from_reversible_to_fork_db( my.get() );
 
       if( options.at( "delete-all-blocks" ).as<bool>()) {
          ilog( "Deleting state database and blocks" );
@@ -970,37 +963,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          eosio::chain::combined_database::destroy( my->chain_config->state_dir );
-         if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-            if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size )) {
-               ilog( "Reversible blocks database was not corrupted." );
-            }
-         }
-      } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-         if( !recover_reversible_blocks( my->chain_config->blog.log_dir / config::reversible_blocks_dir_name,
-                                         my->chain_config->reversible_cache_size,
-                                         std::optional<fc::path>(),
-                                         options.at( "truncate-at-block" ).as<uint32_t>())) {
-            ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
-         } else {
-            ilog( "Exiting after fixing reversible blocks database..." );
-         }
-         EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
-         wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
-      } else if( options.count("import-reversible-blocks") ) {
-         auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
-         ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
-         fc::remove_all( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name );
-
-         import_reversible_blocks( my->chain_config->blog.log_dir/config::reversible_blocks_dir_name,
-                                   my->chain_config->reversible_cache_size, reversible_blocks_file );
-
-         EOS_THROW( node_management_success, "imported reversible blocks" );
-      }
-
-      if( options.count("import-reversible-blocks") ) {
-         wlog("The --import-reversible-blocks option should be used by itself.");
+         wlog( "The --truncate-at-block option can only be used with --hard-replay-blockchain." );
       }
 
       std::optional<chain_id_type> chain_id;
@@ -1419,217 +1383,6 @@ void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, 
    my->incoming_transaction_async_method(trx, false, std::move(next));
 }
 
-bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              std::optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
-   try {
-      chainbase::database reversible( db_dir, database::read_only); // Test if dirty
-      // If it reaches here, then the reversible database is not dirty
-
-      if( truncate_at_block == 0 )
-         return false;
-
-      reversible.add_index<reversible_block_index>();
-      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-
-      auto itr = ubi.rbegin();
-      if( itr != ubi.rend() && itr->blocknum <= truncate_at_block )
-         return false; // Because we are not going to be truncating the reversible database at all.
-   } catch( const std::runtime_error& ) {
-   } catch( ... ) {
-      throw;
-   }
-   // Reversible block database is dirty (or incompatible). So back it up (unless already moved) and then create a new one.
-
-   auto reversible_dir = fc::canonical( db_dir );
-   if( reversible_dir.filename().generic_string() == "." ) {
-      reversible_dir = reversible_dir.parent_path();
-   }
-   fc::path backup_dir;
-
-   auto now = fc::time_point::now();
-
-   if( new_db_dir ) {
-      backup_dir = reversible_dir;
-      reversible_dir = *new_db_dir;
-   } else {
-      auto reversible_dir_name = reversible_dir.filename().generic_string();
-      EOS_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
-      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
-
-      EOS_ASSERT( !fc::exists(backup_dir),
-                  reversible_blocks_backup_dir_exist,
-                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
-                 ("backup_dir", backup_dir) );
-
-      fc::rename( reversible_dir, backup_dir );
-      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
-   }
-
-   fc::create_directories( reversible_dir );
-
-   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
-
-   std::optional<chainbase::database> old_reversible;
-
-   try {
-      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
-   } catch (const std::runtime_error &) {
-      // since we are allowing for dirty, it must be incompatible
-      ilog( "Did not recover any reversible blocks since reversible database incompatible");
-      return true;
-   }
-
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
-                           std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   old_reversible->add_index<reversible_block_index>();
-   new_reversible.add_index<reversible_block_index>();
-   const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   if( truncate_at_block > 0 && start > truncate_at_block ) {
-      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
-      return true;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = itr->blocknum;
-            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
-         });
-         end = itr->blocknum;
-         ++num;
-         if( end == truncate_at_block )
-            break;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( end == truncate_at_block )
-      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
-
-   if( num == 0 )
-      ilog( "There were no recoverable blocks in the reversible block database" );
-   else if( num == 1 )
-      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return true;
-}
-
-bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
-                                             uint32_t cache_size,
-                                             const fc::path& reversible_blocks_file ) {
-   std::fstream         reversible_blocks;
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
-
-   reversible_blocks.seekg( 0, std::ios::end );
-   auto end_pos = reversible_blocks.tellg();
-   reversible_blocks.seekg( 0 );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   new_reversible.add_index<reversible_block_index>();
-   try {
-      while( reversible_blocks.tellg() < end_pos ) {
-         signed_block_v0 tmp;
-         fc::raw::unpack(reversible_blocks, tmp);
-         num = tmp.block_num();
-
-         if( start == 0 ) {
-            start = num;
-         } else {
-            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
-                        "gap in reversible block database between ${end} and ${num}",
-                        ("end", end)("num", num)
-                      );
-         }
-
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(std::move(tmp), true) );
-         });
-         end = num;
-      }
-   } catch( gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-      FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
-   } catch( ... ) {}
-
-   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
-
-   if( num == 0 || end != num )
-      return false;
-
-   return true;
-}
-
-bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
-                                             const fc::path& reversible_blocks_file ) {
-   chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   reversible.add_index<reversible_block_index>();
-   const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         signed_block tmp;
-         fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
-         fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         const auto v0 = tmp.to_signed_block_v0(); // store in signed_block_v0 format
-         auto packed_v0 = fc::raw::pack(*v0);
-         reversible_blocks.write( packed_v0.data(), packed_v0.size() );
-         end = itr->blocknum;
-         ++num;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( num == 0 ) {
-      ilog( "There were no recoverable blocks in the reversible block database" );
-      return false;
-   }
-   else if( num == 1 )
-      ilog( "Exported 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Exported ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return (end >= start) && ((end - start + 1) == num);
-}
-
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
@@ -1675,7 +1428,7 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
 }
 
 void chain_plugin::handle_db_exhaustion() {
-   elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
+   elog("database memory exhausted: increase chain-state-db-size-mb");
    //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
 }
@@ -1689,7 +1442,6 @@ void chain_plugin::handle_bad_alloc() {
 bool chain_plugin::account_queries_enabled() const {
    return my->account_queries_enabled;
 }
-
 
 namespace chain_apis {
 
@@ -1705,6 +1457,7 @@ std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
 }
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+
    const auto& rm = db.get_resource_limits_manager();
    return {
       itoh(static_cast<uint32_t>(app().version())),
@@ -1725,7 +1478,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_pending_head_block_num(),
       db.fork_db_pending_head_block_id(),
       app().full_version_string(),
-      db.last_irreversible_block_time()
+      db.last_irreversible_block_time(),
+      db.get_first_block_num()
    };
 }
 
@@ -2010,533 +1764,469 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 #pragma GCC diagnostic pop
 }
 
-void read_only::convert_key(const string& index_type, const string& encode_type, const string& index_value, vector<char>& bin)const {
-   constexpr int hex_base = 16;
-   constexpr int dec_base = 10;
+/// short_string is intended to optimize the string equality comparison where one of the operand is
+/// no greater than 8 bytes long.
+struct short_string {
+   uint64_t data = 0;
 
-   try {
-      // converts arbitrary hex strings to bytes ex) "FFFEFD" to {255, 254, 253}
-      if( encode_type == "bytes" ) {
-         string bytes_data = boost::algorithm::unhex(index_value);
-         auto bytes_datasize = bytes_data.size();
-         if( bin.size() < bytes_datasize ) {
-            bin.resize(bytes_datasize);
-         }
-         memcpy(bin.data(), bytes_data.data(), bytes_datasize);
-         return;
-      }
-
-      if( encode_type == "string" ) {
-         convert_to_key(index_value, bin);
-         return;
-      }
-
-      if ( index_type == "name" ) {
-         name nm(index_value);
-         convert_to_key(nm.to_uint64_t(), bin);
-         return;
-      }
-
-      size_t pos = 0;
-      if( encode_type == "hex" ) {
-         if( index_type == "sha256" || index_type == "i256" ) {
-            checksum256_type sha{index_value};
-            memcpy(bin.data(), sha.data(), sha.data_size());
-         } else if( index_type == "ripemd160" ) {
-            checksum160_type ripem160{index_value};
-            memcpy(bin.data(), ripem160.data(), ripem160.data_size());
-         } else if( index_type == "uint64" ) {
-            uint64_t u64 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u64, bin);
-         }  else if( index_type == "uint32" ) {
-            uint32_t u32 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u32, bin);
-         }  else if( index_type == "uint16" ) {
-            uint16_t u16 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u16, bin);
-         }  else if( index_type == "uint8" ) {
-            uint8_t u8 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u8, bin);
-         } else if( index_type == "int64" ) {
-            int64_t i64 = std::stol(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i64, bin);
-         }  else if( index_type == "int32" ) {
-            int32_t i32 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i32, bin);
-         }  else if( index_type == "int16" ) {
-            int16_t i16 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i16, bin);
-         }  else if( index_type == "int8" ) {
-            int8_t i8 = std::stoul(index_value, &pos, hex_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i8, bin);
-         } else {
-            EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-         }
-      } else if( encode_type == "dec" ) {
-         if( index_type == "float32" ) {
-            float d = convert_to_type<float>( index_value, "index_value" );
-            convert_to_key(d, bin);
-         } else if( index_type == "float64" ) {
-            double d = convert_to_type<double>( index_value, "index_value" );
-            convert_to_key(d, bin);
-         } else if( index_type == "uint64" ) {
-            uint64_t u64 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u64, bin);
-         }  else if( index_type == "uint32" ) {
-            uint32_t u32 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u32, bin);
-         }  else if( index_type == "uint16" ) {
-            uint16_t u16 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u16, bin);
-         }  else if( index_type == "uint8" ) {
-            uint8_t u8 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(u8, bin);
-         } else if( index_type == "int64" ) {
-            int64_t i64 = std::stol(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i64, bin);
-         }  else if( index_type == "int32" ) {
-            int32_t i32 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i32, bin);
-         }  else if( index_type == "int16" ) {
-            int16_t i16 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i16, bin);
-         }  else if( index_type == "int8" ) {
-            int8_t i8 = std::stoul(index_value, &pos, dec_base);
-            if( pos == 0 ) throw std::invalid_argument("invalid index_value " + index_value);
-            convert_to_key(i8, bin);
-         } else {
-            EOS_ASSERT(false, chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-         }
-      }
-   } catch( const std::invalid_argument& e) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid argument for index type/encode_type: ${t}/${e} {$v} ", ("t", index_type)("e", encode_type)("v", index_value));
-   } catch( const std::out_of_range& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Out of range for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
-   } catch( boost::bad_lexical_cast& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Bad lexical cast for index type/encode_type/index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
-   } catch( boost::exception& e ) {
-      EOS_ASSERT(false, chain::contract_table_query_exception, "Invalid index type/encode_type/Index_value: ${t}/${e}/{$v} ", ("t", index_type)("e", encode_type)("v", index_value));
+   template <size_t SIZE>
+   short_string(const char (&str)[SIZE]) {
+      static_assert(SIZE <= 8, "data has to be 8 bytes or less");
+      memcpy(&data, str, SIZE);
    }
+
+   short_string(std::string str) { memcpy(&data, str.c_str(), std::min(sizeof(data), str.size())); }
+
+   bool empty() const { return data == 0; }
+
+   friend bool operator==(short_string lhs, short_string rhs) { return lhs.data == rhs.data; }
+   friend bool operator!=(short_string lhs, short_string rhs) { return lhs.data != rhs.data; }
+};
+
+template <typename Type, typename Enable = void>
+struct key_converter;
+
+inline void key_convert_assert(bool condition) {
+   // EOS_ASSERT is avoided intentionally here because EOS_ASSERT would create the fc::log_message object which is
+   // relatively expensive. The throw statement here is only used for flow control purpose, not for error reporting
+   // purpose. 
+   if (!condition)
+      throw std::invalid_argument("");
 }
 
-// prefix 17bytes: status(1 byte) + table_name(8bytes) + index_name(8 bytes)
-void read_only::make_prefix(eosio::name table_name,  eosio::name index_name, uint8_t status, vector<char>& prefix)const {
-   EOS_ASSERT(prefix.size() == 2 * sizeof(uint64_t) + 1, chain::contract_table_query_exception, "Invalid prefix");
-
-   prefix[0] = static_cast<char>(status);
-   vector<char> bin;
-   bin.reserve(sizeof(uint64_t));
-   convert_to_key(table_name.to_uint64_t(), bin);
-   for( unsigned i = 0; i < sizeof(uint64_t); ++i ) {
-      prefix[i + 1] = bin[i];
-   }
-
-   bin.clear();
-   convert_to_key(index_name.to_uint64_t(), bin);
-   int offset = sizeof(uint64_t) + 1;
-   for( unsigned i = 0; i < sizeof(uint64_t ); ++i) {
-      prefix[offset + i] = bin[i];
-   }
-}
-
-read_only::get_table_rows_result read_only::get_kv_table_rows( const read_only::get_kv_table_rows_params& p)const {
-   auto &gp = db.get_global_properties();
-   auto &kv_config = gp.kv_configuration;
-   const abi_def abi = eosio::chain_apis::get_abi(db, p.code);
-   name database_id = chain::kvram_id;
-
-   const chain::kv_database_config &limits = kv_config;
-   const auto &kv_database = db.kv_db();
-   // To do: provide kv_resource_manmager to create_kv_context
-   auto kv_context = kv_database.create_kv_context(p.code, {}, limits);
-
-   return get_kv_table_rows_context(p, *kv_context, abi);
-}
-
-read_only::get_table_rows_result read_only::get_kv_table_rows_context( const read_only::get_kv_table_rows_params& pp, kv_context  &kv_context, const abi_def &abi )const {
-   read_only::get_kv_table_rows_params p(pp);
-   EOS_ASSERT(p.limit > 0, chain::contract_table_query_exception,  "invalid limit : ${n}", ("n", p.limit));
-   string tbl_name = p.table.to_string();
-
-   // Check valid table name
-   const auto table_it = abi.kv_tables.value.find(p.table);
-   if( table_it == abi.kv_tables.value.end() ) {
-     EOS_ASSERT(false, chain::contract_table_query_exception,  "Unknown kv_table: ${t}", ("t", tbl_name));
-   }
-   const auto &kv_tbl_def = table_it->second;
-   // Check valid index_name
-   bool is_primary_idx = (p.index_name == kv_tbl_def.primary_index.name);
-   bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
-   EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception,  "Unknown kv index: ${t} ${i}", ("t", p.table)("i", p.index_name));
-
-   int offset = 0;
-
-   string index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
-   // Is point query of ranged query?
-   bool point_query = p.index_value.has_value() && !p.index_value.value().empty();
-
-   // compose 17bytes prefix
-   vector<char> prefix;
-   prefix.resize( prefix_size() );
-   make_prefix(p.table, p.index_name, 1, prefix);
-
-   abi_serializer abis;
-   abis.set_abi(abi, abi_serializer::create_yield_function(abi_serializer_max_time));
-
-   get_table_rows_result result;
-   uint32_t key_size;
-   uint32_t value_size;
-
-   auto cur_time = fc::time_point::now();
-   auto end_time = cur_time + fc::microseconds(1000 * 10);
-
-   auto wait_time = end_time - cur_time;
-   bool unbounded = false;
-   ///////////////////////////////////////////////////////////
-   // point query
-   ///////////////////////////////////////////////////////////
-   if( point_query ) {
-      const string &index_value = *p.index_value;
-      p.lower_bound = p.index_value;
-      unbounded = true;
-      p.reverse = false;
-   }
-
-   ///////////////////////////////////////////////////////////
-   // ranged query
-   ///////////////////////////////////////////////////////////
-   bool has_lower_bound = p.lower_bound.has_value() && !p.lower_bound.value().empty();
-   bool has_upper_bound = p.upper_bound.has_value() && !p.upper_bound.value().empty();
-   unbounded = !has_lower_bound || !has_upper_bound;
-   // reverse mode has upper_bound value, non-reverse and point query has lower bound value
-   EOS_ASSERT((p.reverse && has_upper_bound) || (!p.reverse && has_lower_bound) || (has_lower_bound && point_query), chain::contract_table_query_exception, "Unknown/Invalid range: ${t} ${i}", ("t", p.table)("i", p.index_name));
-
-   vector<char> lb_key;
-   const string &lower_bound = *p.lower_bound;
-   vector<char> lv;
-  
-   if( has_lower_bound ) {
-      convert_key(index_type, p.encode_type, lower_bound, lv);
-      lb_key.resize(prefix.size() + lv.size());
-      memcpy(lb_key.data(), prefix.data(), prefix.size());
-      memcpy(lb_key.data() + prefix.size(), lv.data(), lv.size());
-   }
-
-   vector<char> ub_key;
-   const string &upper_bound = *p.upper_bound;
-   vector<char> uv;
-   if( has_upper_bound ) {
-      convert_key(index_type, p.encode_type, upper_bound, uv);
-      ub_key.resize(prefix.size() + uv.size());
-      memcpy(ub_key.data(), prefix.data(), prefix.size());
-      memcpy(ub_key.data() + prefix.size(), uv.data(), uv.size());
-   }
-
-   // Iterate the range
-   vector<char> row_key;
-   vector<char> row_value;
-
-   std::unique_ptr<kv_iterator> lb_itr;
-   std::unique_ptr<kv_iterator> ub_itr;
-   
-   if( has_lower_bound ) {
-      lb_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-   }
-   if( has_upper_bound ) {
-      ub_itr = kv_context.kv_it_create(p.code.to_uint64_t(), prefix.data(), prefix.size());
-   }
-
-   uint32_t lb_key_size = 0;
-   uint32_t lb_value_size = 0;
-   uint32_t lb_key_actual_size = 0;
-   uint32_t ub_key_size = 0;
-   uint32_t ub_value_size = 0;
-   uint32_t ub_key_actual_size = 0;
-
-   // Find lower bound iterator
-   auto status_lb = chain::kv_it_stat::iterator_end;
-   if( has_lower_bound ) {
-      status_lb = lb_itr->kv_it_lower_bound(lb_key.data(), lb_key.size(), &lb_key_size, &lb_value_size);
-      EOS_ASSERT(status_lb != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-
-      if( !point_query ) {
-         lb_key.resize(lb_key_size);
-         status_lb = lb_itr->kv_it_key(0, lb_key.data(), lb_key_size, lb_key_actual_size);
-         EOS_ASSERT(lb_key_size == lb_key_actual_size, chain::contract_table_query_exception, "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-      }
-   }
-
-  // Find upper bound iterator
-   auto status_ub = chain::kv_it_stat::iterator_end;
-   if( has_upper_bound ) {
-      auto exact_match = kv_context.kv_get(p.code.to_uint64_t(), ub_key.data(), ub_key.size(), value_size);
-      status_ub = ub_itr->kv_it_lower_bound(ub_key.data(), ub_key.size(), &ub_key_size, &ub_value_size);
-      if( !point_query && !exact_match ) {
-         status_ub = ub_itr->kv_it_prev(&ub_key_size, &ub_value_size);
-      }
-
-      EOS_ASSERT(status_ub != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,  "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-      ub_key.resize(ub_key_size);
-      status_ub = ub_itr->kv_it_key(0, ub_key.data(), ub_key_size, ub_key_actual_size);
-      EOS_ASSERT(ub_key_size == ub_key_actual_size, chain::contract_table_query_exception, "Invalid upper bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-   }
-
-   kv_it_stat status;
-   //=============================== iterate the range ============================
-   auto walk_table_row_range = [&]( auto &itr, auto &end_itr, bool reverse ) {
-      uint32_t actual_size = 0;
-
-      const vector<char> &end_key = (reverse ? lb_key : ub_key);
-      if( reverse ) {
-         key_size = ub_key_size;
-         value_size = ub_value_size;
-      } else {
-         key_size = lb_key_size;
-         value_size = lb_value_size;
-      }
-
-      auto cur_status = itr->kv_it_status();
-      int32_t cmp = 0;
-      if( unbounded ) {
-         cmp = (cur_status == chain::kv_it_stat::iterator_ok ) ? -1 : 1;
-      } else {
-         cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-         if( reverse ) {
-            cmp *= -1;
-         }
-      }
-
-      unsigned int count = 0;
-      for( count = 0; cur_time <= end_time && count < p.limit && cmp <= 0; cur_time = fc::time_point::now() ) {
-         row_key.resize(key_size);
-         status = itr->kv_it_key(0, row_key.data(), key_size, actual_size);
-         EOS_ASSERT(key_size == actual_size, chain::contract_table_query_exception, "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-         if( point_query ) {
-            if( row_key.size() != lb_key_size || row_key != lb_key) {
-               cmp = 1;
-               continue;
-            }
-         }
-
-         row_value.clear();
-         row_value.resize(value_size);
-         status = itr->kv_it_value(offset, row_value.data(), value_size, actual_size);
-         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
-         EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "Invalid iterator value in ${t} ${i}", ("t", p.table)("i", p.index_name));
-
-         if (!is_primary_idx) {
-            value_size = row_value.size();
-            auto success = kv_context.kv_get(p.code.to_uint64_t(), row_value.data(), row_value.size(), value_size);
-            if (success) {
-               row_value.resize(value_size);
-               actual_size = kv_context.kv_get_data(offset, row_value.data(), value_size);
-               EOS_ASSERT(value_size == actual_size, chain::contract_table_query_exception, "query value size mismatch: ${s1} ${s2}", ("s1", value_size)("s2", actual_size));
-            } else {
-               EOS_ASSERT(false, chain::contract_table_query_exception, "invalid secondary index in ${t} ${i}", ("t", p.table)("i", p.index_name));
-            }
-         }
-
-         fc::variant row_var;
-         if( p.json ) {
-            auto time_left = end_time - cur_time;
-            try {
-               row_var = abis.binary_to_variant( p.table.to_string(), row_value, abi_serializer::create_yield_function( time_left ), shorten_abi_errors );
-            } catch ( fc::exception &e ) {
-               row_var = fc::variant( row_value );
-            }
-         } else {
-            row_var = fc::variant( row_value );
-         }
-
-         result.rows.emplace_back( std::move(row_var) );
-         ++count;
-
-         if( reverse ) {
-            status = itr->kv_it_prev(&key_size, &value_size);
-         } else {
-            status = itr->kv_it_next(&key_size, &value_size);
-         }
-         if( status == chain::kv_it_stat::iterator_end ) {
-            break;
-         }
-         EOS_ASSERT(status == chain::kv_it_stat::iterator_ok, chain::contract_table_query_exception,  "Invalid iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-
-         if (unbounded) {
-            cur_status = itr->kv_it_status();
-            cmp = (cur_status == chain::kv_it_stat::iterator_ok) ? -1 : 1;
-            if( point_query && cmp != 0) {
-               cmp = 1;
-            }
-         } else {
-            cmp = itr->kv_it_key_compare(end_key.data(), end_key.size());
-            if (reverse) {
-               cmp *= -1;
-            }
-         }
-
-         if (count == p.limit && cmp <= 0)
-         {
-            result.more = true;
-            row_key.resize(key_size);
-            auto status = itr->kv_it_key(0, row_key.data(), key_size, value_size);
-            EOS_ASSERT(status != chain::kv_it_stat::iterator_erased && value_size >= prefix_size(), chain::contract_table_query_exception,  "Invalid lower bound iterator in ${t} ${i}", ("t", p.table)("i", p.index_name));
-            auto next_key_bytes = string(&row_key.data()[prefix_size()], row_key.size() - prefix_size());
-
-            boost::algorithm::hex(next_key_bytes.begin(), next_key_bytes.end(), std::back_inserter(result.next_key_bytes));
-       }
-      } // end of for
-   };
-
-   if( p.reverse ) {
-     walk_table_row_range( ub_itr, lb_itr, true);
-   } else {
-     walk_table_row_range( lb_itr, ub_itr, false );
-   }
-
-   // Set result.next_key
-   set_kv_next_key(p.encode_type, index_type, result);
-
+// convert unsigned integer in hex representation back to its integer representation
+template <typename UnsignedInt>
+UnsignedInt unhex(const std::string& bytes_in_hex) {
+   assert(bytes_in_hex.size() == 2 * sizeof(UnsignedInt));
+   std::array<char, sizeof(UnsignedInt)> bytes;
+   boost::algorithm::unhex(bytes_in_hex.begin(), bytes_in_hex.end(), bytes.rbegin());
+   UnsignedInt result;
+   memcpy(&result, bytes.data(), sizeof(result));
    return result;
 }
 
-namespace {
-    template <typename UInt, typename T>
-    UInt float_from_bytes(T& t, const std::string& next_key_bytes)  {
-        std::stringstream ss;
-        ss << std::hex << next_key_bytes;
-        UInt val;
-        ss >> val;
-        UInt mask = 0;
-        UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
-        if (!(val & signbit)) //flip mask if val is positive
-            mask = ~mask;
-        val ^=(mask | signbit);
-        return val;
-    }
-    template <typename T>
-    void convert_from_bytes( T& t, const std::string& next_key_bytes)  {
-        if constexpr (std::is_floating_point_v<T>) {
-            if constexpr (sizeof(T) == 4) {
-                uint32_t val = float_from_bytes<uint32_t>(t, next_key_bytes);
-                std::memcpy(&t, &val, sizeof(T));
-            }else {
-                static_assert(sizeof(T) == 8, "Unknown floating point type");
-                uint64_t val = float_from_bytes<uint64_t>(t, next_key_bytes);
-                std::memcpy(&t, &val, sizeof(T));
-            }
-        }else if constexpr (std::is_integral_v<T>) {
-            std::stringstream ss;
-            ss << std::hex << next_key_bytes;
-            auto unsigned_val = static_cast<std::make_unsigned_t<T>>(t);
-            ss >> unsigned_val;
-            if (unsigned_val > std::numeric_limits<T>::max()) {
-                t = unsigned_val + static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min());
-            }
-            else {
-                t = unsigned_val + std::numeric_limits<T>::min();
-            }
-        }else {
-            FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported type to convert from bytes");
-        }
-    }
-    void convert_to_hex(const int& n, string& str)  {
-        std::stringstream ss1;
-        ss1<< std::hex << std::uppercase << n;
-        ss1 >> str;
-    }
-    template<typename T>
-    void hex_from_bytes(string& next_key, const string& next_key_bytes) {
-        T val;
-        convert_from_bytes(val, next_key_bytes);
-        convert_to_hex(val, next_key);
-    }
-    template<typename T>
-    void dec_from_bytes(string& next_key, const string& next_key_bytes) {
-        T val;
-        convert_from_bytes(val, next_key_bytes);
-        next_key = std::to_string(val);
-    }
+template <typename IntType>
+struct key_converter<IntType, std::enable_if_t<std::is_integral_v<IntType>>> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      int base = 10;
+      if (encode_type == "hex")
+         base = 16;
+      else
+         key_convert_assert(encode_type.empty() || encode_type == "dec");
+
+      size_t pos = 0;
+      if constexpr (std::is_unsigned_v<IntType>) {
+         uint64_t value = std::stoul(str, &pos, base);
+         key_convert_assert(pos > 0 && value <= std::numeric_limits<IntType>::max());
+         to_key(static_cast<IntType>(value), strm);
+      } else {
+         int64_t value = std::stol(str, &pos, base);
+         key_convert_assert(pos > 0 && value <= std::numeric_limits<IntType>::max() &&
+                            value >= std::numeric_limits<IntType>::min());
+         to_key(static_cast<IntType>(value), strm);
+      }
+   }
+
+   static IntType value_from_hex(const std::string& bytes_in_hex) {
+      auto unsigned_val = unhex<std::make_unsigned_t<IntType>>(bytes_in_hex);
+      if (unsigned_val > std::numeric_limits<IntType>::max()) {
+         return unsigned_val + static_cast<std::make_unsigned_t<IntType>>(std::numeric_limits<IntType>::min());
+      } else {
+         return unsigned_val + std::numeric_limits<IntType>::min();
+      }
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      IntType val = value_from_hex(bytes_in_hex);
+      if (encode_type.empty() || encode_type == "dec") {
+         return std::to_string(val);
+      } else if (encode_type == "hex") {
+         std::array<char, sizeof(IntType)> v;
+         memcpy(v.data(), &val, sizeof(val));
+         char result[2 * sizeof(IntType) + 1] = {'\0'};
+         boost::algorithm::hex(v.rbegin(), v.rend(), result);
+         return std::find_if_not(result, result + 2 * sizeof(IntType), [](char v) { return v == '0'; });
+      }
+      throw std::invalid_argument("");
+   }
+};
+
+template <typename Float>
+struct key_converter<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "dec");
+      if constexpr (sizeof(Float) == 4) {
+         to_key(std::stof(str), strm);
+      } else {
+         to_key(std::stod(str), strm);
+      }
+   }
+
+   static Float value_from_hex(const std::string& bytes_in_hex) {
+      using UInt = std::conditional_t<sizeof(Float) == 4, uint32_t, uint64_t>;
+      UInt val   = unhex<UInt>(bytes_in_hex);
+
+      UInt mask    = 0;
+      UInt signbit = (static_cast<UInt>(1) << (std::numeric_limits<UInt>::digits - 1));
+      if (!(val & signbit)) // flip mask if val is positive
+         mask = ~mask;
+      val ^= (mask | signbit);
+      Float result;
+      memcpy(&result, &val, sizeof(val));
+      return result;
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      return std::to_string(value_from_hex(bytes_in_hex));
+   }
+};
+
+template <>
+struct key_converter<checksum256_type, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "hex");
+      checksum256_type sha{str};
+      strm.write(sha.data(), sha.data_size());
+   }
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) { return bytes_in_hex; }
+};
+
+template <>
+struct key_converter<name, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "name");
+      to_key(name(str).to_uint64_t(), strm);
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      return name(key_converter<uint64_t>::value_from_hex(bytes_in_hex)).to_string();
+   }
+};
+
+template <>
+struct key_converter<std::string, void> {
+   static void to_bytes(const string& str, short_string encode_type, fixed_buf_stream& strm) {
+      key_convert_assert(encode_type.empty() || encode_type == "string");
+      to_key(str, strm);
+   }
+
+   static std::string from_hex(const std::string& bytes_in_hex, short_string encode_type) {
+      std::string result = boost::algorithm::unhex(bytes_in_hex);
+      /// restore the string following the encoding rule from `template <typename S> to_key(std::string, S&)` in abieos
+      /// to_key.hpp
+      boost::replace_all(result, "\0\1", "\0");
+      // remove trailing '\0\0'
+      auto sz = result.size();
+      if (sz >= 2 && result[sz - 1] == '\0' && result[sz - 2] == '\0')
+         result.resize(sz - 2);
+      return result;
+   }
+};
+
+namespace key_helper {
+/// Caution: the order of `key_type` and `key_type_ids` should match exactly.
+using key_types = std::tuple<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double,
+                             name, checksum256_type, checksum256_type, std::string>;
+static const short_string key_type_ids[] = {"int8",   "int16",   "int32",   "int64", "uint8",  "uint16", "uint32",
+                                            "uint64", "float32", "float64", "name",  "sha256", "i256",   "string"};
+
+static_assert(sizeof(key_type_ids) / sizeof(short_string) == std::tuple_size<key_types>::value,
+              "key_type_ids and key_types must be of the same size and the order of their elements has to match");
+
+uint64_t type_string_to_function_index(short_string name) {
+   unsigned index = std::find(std::begin(key_type_ids), std::end(key_type_ids), name) - std::begin(key_type_ids);
+   key_convert_assert(index < std::tuple_size<key_types>::value);
+   return index;
 }
 
-void read_only::set_kv_next_key(const string& encode_type, const string& index_type, read_only::get_table_rows_result& result) const {
-    if (result.more == true) {
-        if (encode_type == "bytes") {
-            result.next_key = result.next_key_bytes;
-        }else if (encode_type == "string") {
-            result.next_key = boost::algorithm::unhex(result.next_key_bytes);
-            boost::algorithm::trim_right_if( result.next_key, []( char c ){ return c == '\0'; } );
-        }else if (encode_type == "name") {
-            uint64_t ull;
-            convert_from_bytes(ull, result.next_key_bytes);
-            name nm(ull);
-            result.next_key = nm.to_string();
-        }else if (encode_type == "hex") {
-            if (index_type == "uint64") {
-                hex_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint32") {
-                hex_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint16") {
-                hex_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint8") {
-                hex_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int64") {
-                hex_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int32") {
-                hex_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int16") {
-                hex_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int8") {
-                hex_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
-            }else if( index_type == "sha256" || index_type == "i256" ) {
-                result.next_key = result.next_key_bytes;
-            } else if( index_type == "ripemd160" ) {
-                result.next_key = result.next_key_bytes;
-            }else {
-                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-            }
-        }else if (encode_type == "dec") {
-            if (index_type == "float64") {
-                dec_from_bytes<double>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "float32") {
-                dec_from_bytes<float>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint64" ) {
-                dec_from_bytes<uint64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint32") {
-                dec_from_bytes<uint32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint16") {
-                dec_from_bytes<uint16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "uint8") {
-                dec_from_bytes<uint8_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int64") {
-                dec_from_bytes<int64_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int32") {
-                dec_from_bytes<int32_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int16") {
-                dec_from_bytes<int16_t>(result.next_key, result.next_key_bytes);
-            }else if (index_type == "int8") {
-                dec_from_bytes<int8_t>(result.next_key, result.next_key_bytes);
-            }else {
-                FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ", ("t", index_type)("e", encode_type));
-            }
-        }
-    }
+void write_key(string index_type, string encode_type, const string& index_value, fixed_buf_stream& strm) {
+   try {
+      // converts arbitrary hex strings to bytes ex) "FFFEFD" to {255, 254, 253}
+      if (encode_type == "bytes") {
+         strm.pos = boost::algorithm::unhex(index_value.begin(), index_value.end(), strm.pos);
+         return;
+      }
+
+      if (index_type == "ripemd160") {
+         key_convert_assert(encode_type.empty() || encode_type == "hex");
+         checksum160_type ripem160{index_value};
+         strm.write(ripem160.data(), ripem160.data_size());
+         return;
+      }
+
+      std::apply(
+          [index_type, &index_value, encode_type, &strm](auto... t) {
+             using to_byte_fun_t         = void (*)(const string&, short_string, fixed_buf_stream&);
+             static to_byte_fun_t funs[] = {&key_converter<decltype(t)>::to_bytes...};
+             auto                 index  = type_string_to_function_index(index_type);
+             funs[index](index_value, encode_type, strm);
+          },
+          key_types{});
+   } catch (...) {
+      FC_THROW_EXCEPTION(chain::contract_table_query_exception,
+                         "Incompatible index type/encode_type/Index_value: ${t}/${e}/{$v} ",
+                         ("t", index_type)("e", encode_type)("v", index_value));
+   }
 }
 
+std::string read_key(string index_type, string encode_type, const string& bytes_in_hex) {
+   try {
+      if (encode_type == "bytes" || index_type == "ripemd160")
+         return bytes_in_hex;
+
+      return std::apply(
+          [index_type, bytes_in_hex, &encode_type](auto... t) {
+             using from_hex_fun_t         = std::string (*)(const string&, short_string);
+             static from_hex_fun_t funs[] = {&key_converter<decltype(t)>::from_hex...};
+             auto                    index  = type_string_to_function_index(index_type);
+             return funs[index](bytes_in_hex, encode_type);
+          },
+          key_types{});
+   } catch (...) {
+      FC_THROW_EXCEPTION(chain::contract_table_query_exception, "Unsupported index type/encode_type: ${t}/${e} ",
+                         ("t", index_type)("e", encode_type));
+   }
+}
+} // namespace key_helper
+
+constexpr uint32_t prefix_size = 17; // prefix 17bytes: status(1 byte) + table_name(8bytes) + index_name(8 bytes)
+struct kv_table_rows_context {
+   std::unique_ptr<eosio::chain::kv_context>  kv_context;
+   const read_only::get_kv_table_rows_params& p;
+   abi_serializer::yield_function_t           yield_function;                            
+   abi_def                                    abi;
+   abi_serializer                             abis;
+   std::string                                index_type;
+   bool                                       shorten_abi_errors;
+   bool                                       is_primary_idx;
+
+   kv_table_rows_context(const controller& db, const read_only::get_kv_table_rows_params& param,
+                         const fc::microseconds abi_serializer_max_time, bool shorten_error)
+       : kv_context(db.kv_db().create_kv_context(
+             param.code, {},
+             db.get_global_properties().kv_configuration)) // To do: provide kv_resource_manmager to create_kv_context
+       , p(param)
+       , yield_function(abi_serializer::create_yield_function(abi_serializer_max_time))
+       , abi(eosio::chain_apis::get_abi(db, param.code))
+       , shorten_abi_errors(shorten_error) {
+
+      EOS_ASSERT(p.limit > 0, chain::contract_table_query_exception, "invalid limit : ${n}", ("n", p.limit));
+      string tbl_name = p.table.to_string();
+
+      // Check valid table name
+      const auto table_it = abi.kv_tables.value.find(p.table);
+      if (table_it == abi.kv_tables.value.end()) {
+         EOS_ASSERT(false, chain::contract_table_query_exception, "Unknown kv_table: ${t}", ("t", tbl_name));
+      }
+      const auto& kv_tbl_def = table_it->second;
+      // Check valid index_name
+      is_primary_idx  = (p.index_name == kv_tbl_def.primary_index.name);
+      bool is_sec_idx = (kv_tbl_def.secondary_indices.find(p.index_name) != kv_tbl_def.secondary_indices.end());
+      EOS_ASSERT(is_primary_idx || is_sec_idx, chain::contract_table_query_exception, "Unknown kv index: ${t} ${i}",
+                 ("t", p.table)("i", p.index_name));
+
+      index_type = kv_tbl_def.get_index_type(p.index_name.to_string());
+      abis.set_abi(abi, yield_function);
+   }
+
+   bool point_query() const { return p.index_value.size(); }
+
+   void write_prefix(fixed_buf_stream& strm) const {
+      strm.write('\1');
+      to_key(p.table.to_uint64_t(), strm);
+      to_key(p.index_name.to_uint64_t(), strm);
+   }
+
+   std::vector<char> get_full_key(string key) const {
+      // the max possible encoded_key_byte_count occurs when the encoded type is string and when all characters 
+      // in the string is '\0'
+      const size_t max_encoded_key_byte_count = std::max(sizeof(uint64_t), 2 * key.size() + 1);
+      std::vector<char> full_key(prefix_size + max_encoded_key_byte_count);
+      fixed_buf_stream  strm(full_key.data(), full_key.size());
+      write_prefix(strm);
+      if (key.size())
+         key_helper::write_key(index_type, p.encode_type, key, strm);
+      full_key.resize(strm.pos - full_key.data());
+      return full_key;
+   }
+};
+
+struct kv_iterator_ex {
+   uint32_t                     key_size   = 0;
+   uint32_t                     value_size = 0;
+   const kv_table_rows_context& context;
+   std::unique_ptr<kv_iterator> base;
+   kv_it_stat                   status;
+
+   kv_iterator_ex(const kv_table_rows_context& ctx, const std::vector<char>& full_key)
+       : context(ctx) {
+      base   = context.kv_context->kv_it_create(context.p.code.to_uint64_t(), full_key.data(), prefix_size);
+      status = base->kv_it_lower_bound(full_key.data(), full_key.size(), &key_size, &value_size);
+      EOS_ASSERT(status != chain::kv_it_stat::iterator_erased, chain::contract_table_query_exception,
+                 "Invalid iterator in ${t} ${i}", ("t", context.p.table)("i", context.p.index_name));
+   }
+
+   bool is_end() const { return status == kv_it_stat::iterator_end; }
+
+   /// @pre ! is_end()
+   std::vector<char> get_key() const {
+      std::vector<char> result(key_size);
+      uint32_t          actual_size;
+      base->kv_it_key(0, result.data(), key_size, actual_size);
+      return result;
+   }
+
+   /// @pre ! is_end()
+   std::vector<char> get_value() const {
+      std::vector<char> result(value_size);
+      uint32_t          actual_size;
+      base->kv_it_value(0, result.data(), value_size, actual_size);
+      if (!context.is_primary_idx) {
+         auto success =
+             context.kv_context->kv_get(context.p.code.to_uint64_t(), result.data(), result.size(), actual_size);
+         EOS_ASSERT(success, chain::contract_table_query_exception, "invalid secondary index in ${t} ${i}",
+                    ("t", context.p.table)("i", context.p.index_name));
+         result.resize(actual_size);
+         context.kv_context->kv_get_data(0, result.data(), actual_size);
+      }
+
+      return result;
+   }
+
+   /// @pre ! is_end()
+   fc::variant get_value_var() const {
+      std::vector<char> row_value = get_value();
+      if (context.p.json) {
+         try {
+            return context.abis.binary_to_variant(context.p.table.to_string(), row_value,
+                                                  context.yield_function,
+                                                  context.shorten_abi_errors);
+         } catch (fc::exception& e) {
+         }
+      }
+      return fc::variant(row_value);
+   }
+
+   /// @pre ! is_end()
+   fc::variant get_value_and_maybe_payer_var() const {
+      fc::variant result = get_value_var();
+      if (context.p.show_payer) {
+         auto maybe_payer = base->kv_it_payer();
+         std::string payer = maybe_payer.has_value() ? maybe_payer.value().to_string() : "";
+         return fc::mutable_variant_object("data", std::move(result))("payer", payer);
+      }
+      return result;
+   }
+
+   /// @pre ! is_end()
+   std::string get_key_hex_string() const {
+      auto        row_key = get_key();
+      std::string result;
+      boost::algorithm::hex(row_key.begin() + prefix_size, row_key.end(), std::back_inserter(result));
+      return result;
+   }
+
+   /// @pre ! is_end()
+   kv_iterator_ex& operator++() {
+      status = base->kv_it_next(&key_size, &value_size);
+      return *this;
+   }
+
+   /// @pre ! is_end()
+   kv_iterator_ex& operator--() {
+      status = base->kv_it_prev(&key_size, &value_size);
+      return *this;
+   }
+
+   int key_compare(const std::vector<char>& key) const {
+      return base->kv_it_key_compare(key.data(), key.size());
+   }
+};
+
+struct kv_forward_range {
+   kv_iterator_ex           current;
+   const std::vector<char>& last_key;
+
+   kv_forward_range(const kv_table_rows_context& ctx, const std::vector<char>& first_key,
+                    const std::vector<char>& last_key)
+       : current(ctx, first_key)
+       , last_key(last_key) {}
+
+   bool is_done() const {
+      return current.is_end() ||
+             (last_key.size() > prefix_size && current.key_compare(last_key) > 0);
+   }
+
+   void next() { ++current; }
+};
+
+struct kv_reverse_range {
+   kv_iterator_ex           current;
+   const std::vector<char>& last_key;
+
+   kv_reverse_range(const kv_table_rows_context& ctx, const std::vector<char>& first_key,
+                    const std::vector<char>& last_key)
+       : current(ctx, first_key)
+       , last_key(last_key) {
+      if (first_key.size() == prefix_size) {
+         current.status = current.base->kv_it_move_to_end();
+      }
+      if (current.is_end() || current.key_compare(first_key) != 0)
+         --current;
+   }
+
+   bool is_done() const {
+      return current.is_end() ||
+             (last_key.size() > prefix_size && current.key_compare(last_key) < 0);
+   }
+
+   void next() { --current; }
+};
+
+template <typename Range>
+read_only::get_table_rows_result kv_get_rows(Range&& range) {
+
+   keep_processing kp {};
+   read_only::get_table_rows_result result;
+   auto&                            ctx      = range.current.context;
+   for (unsigned count = 0; count < ctx.p.limit && !range.is_done() && kp() ;
+        ++count) {
+      result.rows.emplace_back(range.current.get_value_and_maybe_payer_var());
+      range.next();
+   }
+
+   if (!range.is_done()) {
+      result.more           = true;
+      result.next_key_bytes = range.current.get_key_hex_string();
+      result.next_key = key_helper::read_key(ctx.index_type, ctx.p.encode_type, result.next_key_bytes);
+   }
+   return result;
+}
+
+read_only::get_table_rows_result read_only::get_kv_table_rows(const read_only::get_kv_table_rows_params& p) const {
+
+   kv_table_rows_context context{db, p, abi_serializer_max_time, shorten_abi_errors};
+
+   if (context.point_query()) {
+      EOS_ASSERT(p.lower_bound.empty() && p.upper_bound.empty(), chain::contract_table_query_exception,
+                 "specify both index_value and ranges (i.e. lower_bound/upper_bound) is not allowed");
+      read_only::get_table_rows_result result;
+      auto full_key = context.get_full_key(p.index_value);
+      kv_iterator_ex                   itr(context, full_key);
+      if (!itr.is_end() && itr.key_compare(full_key) == 0) {
+         result.rows.emplace_back(itr.get_value_and_maybe_payer_var());
+      }
+      return result;
+   }
+
+   auto lower_bound = context.get_full_key(p.lower_bound);
+   auto upper_bound = context.get_full_key(p.upper_bound);
+
+   if (context.p.reverse == false)
+      return kv_get_rows(kv_forward_range(context, lower_bound, upper_bound));
+   else
+      return kv_get_rows(kv_reverse_range(context, upper_bound, lower_bound));
+}
 
 struct table_receiver
   : chain::backing_store::table_only_error_receiver<table_receiver, chain::contract_table_query_exception> {
@@ -2871,28 +2561,24 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
    return result;
 }
 
-template<typename Api>
 struct resolver_factory {
-   static auto make(const Api* api, abi_serializer::yield_function_t yield) {
-      return [api, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
-         const auto* accnt = api->db.db().template find<account_object, by_name>(name);
+   static auto make( const controller& control, abi_serializer::yield_function_t yield) {
+      return [&control, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
+         const auto* accnt = control.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
             if (abi_serializer::to_abi(accnt->abi, abi)) {
                return abi_serializer(abi, yield);
             }
          }
-
          return std::optional<abi_serializer>();
       };
    }
 };
 
-template<typename Api>
-auto make_resolver(const Api* api, abi_serializer::yield_function_t yield) {
-   return resolver_factory<Api>::make(api, std::move( yield ));
+auto make_resolver(const controller& control, abi_serializer::yield_function_t yield) {
+   return resolver_factory::make(control, std::move( yield ));
 }
-
 
 read_only::get_scheduled_transactions_result
 read_only::get_scheduled_transactions( const read_only::get_scheduled_transactions_params& p ) const {
@@ -2926,7 +2612,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
    read_only::get_scheduled_transactions_result result;
 
-   auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+   auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    uint32_t remaining = p.limit;
    auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
@@ -2992,7 +2678,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    // serializes signed_block to variant in signed_block_v0 format
    fc::variant pretty_output;
-   abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time )),
+   abi_serializer::to_variant(*block, pretty_output, make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time )),
                               abi_serializer::create_yield_function( abi_serializer_max_time ));
 
    const auto id = block->calculate_id();
@@ -3070,7 +2756,7 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    try {
       packed_transaction_v0 input_trx_v0;
-      auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3213,7 +2899,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
 
    try {
       packed_transaction_v0 input_trx_v0;
-      auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
       packed_transaction_ptr input_trx;
       try {
          abi_serializer::from_variant(params, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3482,7 +3168,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   auto resolver = make_resolver(this, abi_serializer::create_yield_function( abi_serializer_max_time ));
+   auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer::create_yield_function( abi_serializer_max_time ));
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
@@ -3549,6 +3235,32 @@ eosio::chain::backing_store_type read_only::get_backing_store() const {
 }
 
 } // namespace chain_apis
+
+fc::variant chain_plugin::get_entire_trx_trace(const transaction_trace_ptr& trx_trace )const {
+
+    fc::variant pretty_output;
+    try {
+        abi_serializer::to_variant(trx_trace, pretty_output,
+                                   chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+     } catch (...) {
+        pretty_output = trx_trace;
+    }
+    return pretty_output;
+}
+
+fc::variant chain_plugin::get_entire_trx(const transaction& trx) const {
+    fc::variant pretty_output;
+    try {
+        abi_serializer::to_variant(trx, pretty_output,
+                                   chain_apis::make_resolver(chain(), abi_serializer::create_yield_function(get_abi_serializer_max_time())),
+                                   abi_serializer::create_yield_function(get_abi_serializer_max_time()));
+    } catch (...) {
+        pretty_output = trx;
+    }
+    return pretty_output;
+}
+
 } // namespace eosio
 
 FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

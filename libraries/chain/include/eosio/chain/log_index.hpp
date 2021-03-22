@@ -32,6 +32,8 @@ class log_index {
    uint64_t back() const { return *(this->end() - 1); }
    int      num_blocks() const { return file.size() / sizeof(uint64_t); }
    uint64_t nth_block_position(uint32_t n) const { return *(begin() + n); }
+
+   const char* data() const { return file.data(); }
 };
 
 } // namespace chain

@@ -111,13 +111,17 @@ for label, commit in commits.items():
             build = resp.pop(0)
             for job in build.get('jobs'):
                 job_name = job.get('name')
-                if job_name == ':ubuntu: 18.04 Build':
+                if job_name and re.search(r":ubuntu:.+18.04.+Build$", job_name):
                     artifact_urls[label] = job.get('artifacts_url')
+                    break
         else:
             print 'No builds found for {}'.format(label)
     else:
         print r.text
         sys.exit('Something went wrong getting build data for {}'.format(label))
+
+#number of artifacts found must match number of commits from multiversion.conf
+assert len(artifact_urls) == len(commits)
 
 print 'Downloading and extracting build directories...'
 for label, artifact_url in artifact_urls.items():

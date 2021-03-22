@@ -381,8 +381,7 @@ namespace eosio { namespace chain {
                                               uint32_t blog_end,
                                               eosio::chain::authorization_manager& authorization,
                                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
-                                              eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
-                                              uint32_t&                          snapshot_head_block,
+                                              eosio::chain::block_state_ptr& head, uint32_t& snapshot_head_block,
                                               const eosio::chain::chain_id_type& chain_id) {
       chain_snapshot_header header;
       snapshot->read_section<chain_snapshot_header>([this, &header](auto& section) {
@@ -415,9 +414,8 @@ namespace eosio { namespace chain {
                     ("snapshot_head_block", snapshot_head_block)("block_log_first_num",
                                                                  blog_start)("block_log_last_num", blog_end));
 
-         fork_db.reset(head_header_state);
-         head                = fork_db.head();
-         snapshot_head_block = head->block_num;
+         head = std::make_shared<block_state>();
+         static_cast<block_header_state&>(*head) = head_header_state;
       }
 
       controller_index_set::walk_indices([this, &snapshot, &header](auto utils) {

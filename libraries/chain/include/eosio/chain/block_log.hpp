@@ -97,13 +97,19 @@ namespace eosio { namespace chain {
          // used for unit test to generate older version blocklog
          static void set_version(uint32_t);
          uint32_t    version() const;
+         uint32_t get_first_block_num() const;
 
          /**
           * @param n Only test 1 block out of every n blocks. If n is 0, it is maximum between 1 and the ceiling of the total number blocks divided by 8.
           */
          static void smoke_test(fc::path block_dir, uint32_t n);
 
-   private:
+         static void extract_blocklog(const fc::path& log_filename, const fc::path& index_filename,
+                                      const fc::path& dest_dir, uint32_t start_block, uint32_t num_blocks);
+         static void split_blocklog(const fc::path& block_dir, const fc::path& dest_dir, uint32_t stride);
+         static void merge_blocklogs(const fc::path& block_dir, const fc::path& dest_dir);
+
+       private:
          std::unique_ptr<detail::block_log_impl> my;
    };
 } }

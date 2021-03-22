@@ -42,6 +42,7 @@ namespace eosio { namespace chain {
                                           uint32_t* found_key_size, uint32_t* found_value_size)         = 0;
       virtual kv_it_stat kv_it_key(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size)   = 0;
       virtual kv_it_stat kv_it_value(uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size) = 0;
+      virtual std::optional<name> kv_it_payer()                                                         = 0;
    };
 
    struct kv_resource_trace {

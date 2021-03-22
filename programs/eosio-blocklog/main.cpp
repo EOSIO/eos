@@ -1,8 +1,8 @@
 #include <memory>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
 
 #include <eosio/state_history/log.hpp>
 
@@ -52,6 +52,9 @@ struct blocklog {
    bool                             smoke_test = false;
    bool                             prune_transactions = false;
    bool                             help               = false;
+   bool                             extract_blocklog   = false;
+   bool                             merge_blocklogs    = false;
+   uint32_t                         blocklog_split_stride   = 0;
 };
 
 struct report_time {
@@ -84,25 +87,26 @@ void blocklog::read_log() {
       first_block = block_logger.first_block_num();
    }
 
-   std::optional<chainbase::database> reversible_blocks;
-   try {
-      ilog("opening reversible db");
-      reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
-      reversible_blocks->add_index<reversible_block_index>();
-      const auto& idx = reversible_blocks->get_index<reversible_block_index,by_num>();
-      auto first = idx.lower_bound(end->block_num());
-      auto last = idx.rbegin();
-      if (first != idx.end() && last != idx.rend())
-         ilog( "existing reversible block num ${first} through block num ${last} ", ("first",first->get_block()->block_num())("last",last->get_block()->block_num()) );
-      else {
+   eosio::chain::branch_type fork_db_branch;
+   if( fc::exists( blocks_dir / config::reversible_blocks_dir_name / config::forkdb_filename ) ) {
+      ilog( "opening fork_db" );
+      fork_database fork_db( blocks_dir / config::reversible_blocks_dir_name );
+
+      fork_db.open( []( block_timestamp_type timestamp,
+                        const flat_set<digest_type>& cur_features,
+                        const vector<digest_type>& new_features ) {}
+      );
+
+      fork_db_branch = fork_db.fetch_branch( fork_db.head()->id );
+      if( fork_db_branch.empty() ) {
          elog( "no blocks available in reversible block database: only block_log blocks are available" );
-         reversible_blocks.reset();
-      }
-   } catch (const std::system_error&e) {
-      if (chainbase::db_error_code::dirty == e.code().value()) {
-         elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
       } else {
-         throw;
+         auto first = fork_db_branch.rbegin();
+         auto last = fork_db_branch.rend() - 1;
+         ilog( "existing reversible fork_db block num ${first} through block num ${last} ",
+               ("first", (*first)->block_num)( "last", (*last)->block_num ) );
+         EOS_ASSERT( end->block_num() + 1 == (*first)->block_num, block_log_exception,
+                     "fork_db does not start at end of block log" );
       }
    }
 
@@ -154,12 +158,11 @@ void blocklog::read_log() {
       contains_obj = true;
    }
 
-   if (reversible_blocks) {
-      const reversible_block_object* obj = nullptr;
-      while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
+   if( !fork_db_branch.empty() ) {
+      for( auto bitr = fork_db_branch.rbegin(); bitr != fork_db_branch.rend() && block_num <= last_block; ++bitr ) {
          if (as_json_array && contains_obj)
             *out << ",";
-         auto next = obj->get_block();
+         auto next = (*bitr)->block;
          print_block(next);
          ++block_num;
          contains_obj = true;
@@ -176,6 +179,9 @@ void blocklog::set_program_options(options_description& cli)
    cli.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to the current directory)")
+          ("blocks-filebase", bpo::value<bfs::path>()->default_value("blocks"),
+          "the name of the blocks log/index files without file extension (absolute path or relative to the current directory)."
+          " This can only used for extract-blocklog.")
          ("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to the current dir)")
          ("output-file,o", bpo::value<bfs::path>(),
@@ -201,6 +207,16 @@ void blocklog::set_program_options(options_description& cli)
          ("transaction,t", bpo::value<std::vector<std::string> >()->multitoken(), "The transaction id to be pruned")
          ("prune-transactions", bpo::bool_switch(&prune_transactions)->default_value(false),
           "Prune the context free data and signatures from specified transactions of specified block-num.")
+         ("output-dir", bpo::value<bfs::path>()->default_value("."),
+          "the output location for 'split-blocklog' or 'extract-blocklog'.")
+         ("split-blocklog", bpo::value<uint32_t>(&blocklog_split_stride)->default_value(0),
+          "split the block log file based on the stride and store the result in the specified 'output-dir'.")
+         ("extract-blocklog", bpo::bool_switch(&extract_blocklog)->default_value(false),
+          "Extract blocks from blocks.log and blocks.index and keep the original." 
+          " Must give 'blocks-dir' or 'blocks-filebase','output-dir', 'first' and 'last'.")
+          ("merge-blocklogs", bpo::bool_switch(&merge_blocklogs)->default_value(false),
+          "Merge block log files in 'blocks-dir' with the file pattern 'blocks-\\d+-\\d+.[log,index]' to 'output-dir' whenever possible." 
+          "The files in 'blocks-dir' will be kept without change. Must give 'blocks-dir' and 'output-dir'.")
          ("help,h", bpo::bool_switch(&help)->default_value(false), "Print this help message and exit.")
          ;
 }
@@ -287,6 +303,9 @@ int prune_transactions(bfs::path block_dir, bfs::path state_history_dir, uint32_
           prune_transactions<state_history_traces_log>("state history traces log", state_history_dir, block_num, ids);
 }
 
+inline bfs::path operator+(bfs::path left, bfs::path right){return bfs::path(left)+=right;}
+
+
 int main(int argc, char** argv) {
    std::ios::sync_with_stdio(false); // for potential performance boost for large block log files
    options_description cli ("eosio-blocklog command line options");
@@ -296,16 +315,25 @@ int main(int argc, char** argv) {
       variables_map vmap;
       bpo::store(bpo::parse_command_line(argc, argv, cli), vmap);
       bpo::notify(vmap);
+
       if (blog.help) {
          cli.print(std::cerr);
          return 0;
       }
+
+      const auto blocks_dir = vmap["blocks-dir"].as<bfs::path>();
+
+      if (!blog.extract_blocklog && !blog.merge_blocklogs && !block_log::exists(blocks_dir)) {
+         std::cerr << "The specified blocks-dir must contain blocks.log and blocks.index files";
+         return -1;
+      }
+
       if (blog.smoke_test) {
-         smoke_test(vmap.at("blocks-dir").as<bfs::path>());
+         smoke_test(blocks_dir);
          return 0;
       }
       if (blog.fix_irreversible_blocks) {
-          fix_irreversible_blocks(vmap.at("blocks-dir").as<bfs::path>());
+          fix_irreversible_blocks(blocks_dir);
           return 0;
       }
       if (blog.trim_log) {
@@ -314,17 +342,16 @@ int main(int argc, char** argv) {
             return -1;
          }
          if (blog.last_block != std::numeric_limits<uint32_t>::max()) {
-            if (trim_blocklog_end(vmap.at("blocks-dir").as<bfs::path>(), blog.last_block) != 0)
+            if (trim_blocklog_end(blocks_dir, blog.last_block) != 0)
                return -1;
          }
          if (blog.first_block != 0) {
-            if (!trim_blocklog_front(vmap.at("blocks-dir").as<bfs::path>(), blog.first_block))
+            if (!trim_blocklog_front(blocks_dir, blog.first_block))
                return -1;
          }
          return 0;
       }
       if (blog.make_index) {
-         const bfs::path blocks_dir = vmap.at("blocks-dir").as<bfs::path>();
          bfs::path out_file = blocks_dir / "blocks.index";
          const bfs::path block_file = blocks_dir / "blocks.log";
 
@@ -339,8 +366,9 @@ int main(int argc, char** argv) {
          rt.report();
          return 0;
       }
+      
+
       if (blog.prune_transactions) {
-         const auto  blocks_dir        = vmap["blocks-dir"].as<bfs::path>();
          const auto  state_history_dir = vmap["state-history-dir"].as<bfs::path>();
          const auto  block_num         = vmap["block-num"].as<uint32_t>();
          const auto  ids               = vmap.count("transaction") ? vmap["transaction"].as<std::vector<string>>() : std::vector<string>{};
@@ -350,7 +378,45 @@ int main(int argc, char** argv) {
          rt.report();
          return ret;
       }
-      //else print blocks.log as JSON
+
+      const auto output_dir = vmap["output-dir"].as<bfs::path>();
+
+      if (blog.blocklog_split_stride != 0) {
+         
+         block_log::split_blocklog(blocks_dir, output_dir, blog.blocklog_split_stride);
+         return 0;
+      }
+
+      if (blog.extract_blocklog) {
+
+         if (blog.first_block == 0 && blog.last_block == std::numeric_limits<uint32_t>::max()) {
+            std::cerr << "extract_blocklog does nothing unless specify first and/or last block.";
+         }
+         
+         bfs::path blocks_filebase = vmap["blocks-filebase"].as<bfs::path>();
+         if (blocks_filebase.empty() && !blocks_dir.empty()) {
+            blocks_filebase = blocks_dir / "blocks";
+         }
+
+         bfs::path log_filename = blocks_filebase + ".log";
+         bfs::path index_filename = blocks_filebase + ".index";
+
+         if (!bfs::exists(log_filename) || !bfs::exists(index_filename)){
+            std::cerr << "Both "<< log_filename << " and " << index_filename << " must exist";
+            return -1;
+         }
+
+         block_log::extract_blocklog(log_filename, index_filename, output_dir, blog.first_block,
+                                       blog.last_block - blog.first_block + 1);
+         return 0;
+      } 
+
+      if (blog.merge_blocklogs) {
+         block_log::merge_blocklogs(blocks_dir, output_dir);
+         return 0;
+      }
+
+      // else print blocks.log as JSON
       blog.initialize(vmap);
       blog.read_log();
    } catch( const fc::exception& e ) {
