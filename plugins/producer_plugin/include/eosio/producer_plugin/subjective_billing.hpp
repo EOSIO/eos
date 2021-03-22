@@ -13,6 +13,8 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 
+#include <unordered_map>
+
 namespace eosio {
 
 namespace bmi = boost::multi_index;
@@ -53,8 +55,8 @@ private:
       }
    };
 
-   using account_subjective_bill_cache = std::map<account_name, subjective_billing_info>;
-   using block_subjective_bill_cache = std::map<account_name, uint64_t>;
+   using account_subjective_bill_cache = std::unordered_map<account_name, subjective_billing_info>;
+   using block_subjective_bill_cache = std::unordered_map<account_name, uint64_t>;
 
    bool                                      _disabled = false;
    trx_cache_index                           _trx_cache_index;
