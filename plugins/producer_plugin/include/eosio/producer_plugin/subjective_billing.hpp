@@ -112,6 +112,7 @@ public: // public for tests
 
 public:
    void disable() { _disabled = true; }
+   bool is_disabled() const { return _disabled; }
 
    /// @param in_pending_block pass true if pt's bill time is accounted for in the pending block
    void subjective_bill( const transaction_id_type& id, const fc::time_point& expire, const account_name& first_auth,
