@@ -28,13 +28,11 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
+BOOST_AUTO_TEST_SUITE(get_kv_table_addr_tests)
+
 using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
-
-BOOST_AUTO_TEST_SUITE(get_kv_table_addr_tests)
-
 
 BOOST_FIXTURE_TEST_CASE( get_kv_table_addr_test, TESTER ) try {
    eosio::chain_apis::read_only::get_table_rows_result result;
