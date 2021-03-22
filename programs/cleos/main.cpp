@@ -3063,23 +3063,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-   // get contract_query
-   string acct_name;
-   string query;
-   string other_args;
-   auto getContractQuery =get->add_subcommand("contract_query", localized("Read-only query a contract"));
-   getContractQuery->add_option( "contract", code, localized("The contract that operates the query") )->required();
-   getContractQuery->add_option( "account", acct_name, localized("The account to query contract for") )->required();
-   getContractQuery->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
-   getContractQuery->add_option("args", other_args, localized("Optional arguments") );
-   getContractQuery->callback([&]{
-       fc::mutable_variant_object arg;
-       arg( "code", code );
-       arg( "query", query );
-       arg( "args", other_args);
-       std::cout<< fc::json::to_pretty_string(call(get_contract_query_func, arg))<<std::endl;
-   });
-
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "));
@@ -3628,6 +3611,27 @@ int main( int argc, char** argv ) {
          send_actions( { open_, transfer }, signing_keys_opt.get_keys());
       }
    });
+
+    // contract_query subcommand
+    string con_account;
+    string query;
+    string args;
+    auto getContractQuery =app.add_subcommand("contract_query", localized("Read-only query a contract"));
+    getContractQuery->add_option( "account", con_account, localized("The account to query contract for") )->required();
+    getContractQuery->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
+    getContractQuery->add_option("args", args, localized("Optional arguments") );
+
+    add_standard_transaction_options_plus_signing(getContractQuery);
+
+    getContractQuery->callback([&]{
+        fc::variant action_args_var;
+        if( !args.empty() ) {
+            action_args_var = json_from_file_or_string(args, fc::json::parse_type::relaxed_parser);
+        }
+        auto accountPermissions = get_account_permissions(tx_permission);
+        send_actions({chain::action{accountPermissions, name(con_account), name(query),
+                                    variant_to_bin( name(con_account), name(query), action_args_var ) }}, signing_keys_opt.get_keys());
+    });
 
    // Net subcommand
    string new_host;
