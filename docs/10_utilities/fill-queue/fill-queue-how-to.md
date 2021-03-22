@@ -88,7 +88,7 @@ The following options are available when you have completed the procedure:
 * See the first messages of the queue with:
 
 ```sh
-rabbitmqadmin get queue=blocks
+rabbitmqadmin get queue=fq.default
 ```
 
 * Stop Fill-Queue with:

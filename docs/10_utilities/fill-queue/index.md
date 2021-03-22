@@ -14,7 +14,7 @@ Fill-Queue is an application which accomplishes the following:
 
 ## Overview
 
-Fill-Queue is an application derived from [history-tools](https://developers.eos.io/welcome/v2.1/tools/history-tools/history-tools/). It has to be configured to connect to a state-history enabled `EOSIO` node, from which it reads the blocks, filters the desired contracts’ actions and publishes messages to a queue. Fill-Queue uses the RabbitMQ implementation of the  Advanced Message Queuing Protocol (AMQP).
+Fill-Queue is an application derived from [history-tools](https://developers.eos.io/welcome/v2.1/tools/history-tools/history-tools/). It has to be configured to connect to a state-history enabled `EOSIO` node, from which it reads the blocks, filters the desired contracts’ actions and publishes messages to a queue. Fill-Queue uses Advanced Message Queuing Protocol (AMQP) to connect to Message Queue. So far Fill-Queue was tested with RabbitMQ only.
 
 To build and install the Fill-Queue application please follow the instructions outlined in the [How-To Setup And User Fill-Queue](./fill-queue-how-to).
 
