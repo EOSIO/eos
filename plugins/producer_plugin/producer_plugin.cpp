@@ -398,6 +398,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch ( const fork_database_exception& e ) {
+            elog("Cannot recover from ${e}. Shutting down.", ("e", e.to_detail_string()));
+            appbase::app().quit();
          } catch( const fc::exception& e ) {
             handle_error(e);
          } catch (const std::exception& e) {
