@@ -60,7 +60,7 @@ namespace eosio {
 
    using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
    using ssl_context_ptr = std::unique_ptr<boost::asio::ssl::context>;
-   using ssl_stream      = ssl::stream<tcp::socket>;
+
 
    template <typename Strand>
    void verify_strand_in_this_thread(const Strand& strand, const char* func, int line) {
@@ -600,23 +600,22 @@ namespace eosio {
 
    struct flex_socket {
       using socket_ptr     = std::shared_ptr<tcp::socket>;
+      using ssl_stream     = ssl::stream<tcp::socket>;
       using ssl_socket_ptr = std::shared_ptr<ssl_stream>;
       using socket_variant = std::variant<socket_ptr, ssl_socket_ptr>;
 
    private:
       socket_variant                            socket;
    public:
-      const bool                                use_ssl;
-
-      flex_socket(bool ssl) : use_ssl(ssl) {
+      flex_socket() {
          reset_socket();
       }
 
-      inline tcp::socket& raw_socket() {
-         if (use_ssl){
-            return ssl_socket()->next_layer();
+      inline tcp::socket::lowest_layer_type& raw_socket() {
+         if (my_impl->ssl_enabled){
+            return ssl_socket()->lowest_layer();
          }
-         return *tcp_socket();
+         return tcp_socket()->lowest_layer();
       }
 
       inline socket_ptr& tcp_socket() {
@@ -629,7 +628,7 @@ namespace eosio {
 
       void reset_socket() {
 
-         if (use_ssl) {
+         if (my_impl->ssl_enabled) {
             socket = ssl_socket_ptr{};
             EOS_ASSERT(my_impl->ssl_context, ssl_configuration_error, "ssl context is empty");
             ssl_socket().reset( new ssl_stream{my_impl->thread_pool->get_executor(), *my_impl->ssl_context} );
@@ -643,12 +642,12 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      explicit connection( string endpoint, bool ssl );
-      explicit connection(bool ssl);
+      explicit connection( string endpoint );
+      connection();
 
       ~connection() {}
 
-      bool start_session();
+      bool start_session(bool server);
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
       const string& peer_address() const { return peer_addr; } // thread safe, const
@@ -871,6 +870,22 @@ namespace eosio {
       /** returns true if connection is in the security group */
       bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
 
+      std::string certificate_subject(ssl::verify_context &ctx) {
+         X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+         if (!cert)
+            return "";
+         
+         char buf[256];
+         //printing full subject string of rejected certificate
+         //openssl doesn't recommend this function for use due to lack of support of unicode and issues with '\'
+         //however there is no single function that can do the same.
+         //TODO: investigate usage of X509_NAME_print_ex , compare performance
+         //see http://openssl.6102.n7.nabble.com/openssl-org-1425-Request-make-X509-NAME-oneline-use-same-formatter-as-X509-NAME-print-ex-td33142.html
+         char* subject_str = X509_NAME_oneline(X509_get_subject_name(cert), buf, std::size(buf));
+
+         return {subject_str};
+      }
+
       bool verify_certificate(bool preverified, ssl::verify_context &ctx) {
          
          //certificate depth means number of certificate issuers verified current certificate
@@ -878,9 +893,11 @@ namespace eosio {
          //we don't use CA certificate or intermidiate issuers, so skipping those
          //we interested only in last certificate in the chain, i.e. the one that identifies client
          auto depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
-         if (depth > 0)
+         if (depth > 0) {
+            fc_dlog(logger, "preverified: ${p} certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
             //preverified is true when certificate matches verification chain, provided via load_verify_file
             return preverified;
+         }
 
          //return pointer is managed by openssl
          X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
@@ -899,33 +916,26 @@ namespace eosio {
             std::string organization{buf, (size_t)length};
             if (is_string_valid_name(organization)){
                account_name participant{organization};
-
+               
                std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
                if(my_impl->security_group.is_in_security_group(participant)) {
-                  if(!is_participating()) {
-                     set_participating(true);
-                  }
-
+                  set_participating(true);
+                  fc_dlog(logger, "participant added: ${o}", ("o", organization));
                   return true;
                }
             }
-
+            
             fc_dlog(logger, "received unauthorized participant: ${s}", ("s", organization));
          }
 
-         //printing full subject string of rejected certificate
-         //openssl doesn't recommend this function for use due to lack of support of unicode and issues with '\'
-         //however there is no single function that can do the same.
-         //TODO: investigate usage of X509_NAME_print_ex , compare performance
-         //see http://openssl.6102.n7.nabble.com/openssl-org-1425-Request-make-X509-NAME-oneline-use-same-formatter-as-X509-NAME-print-ex-td33142.html
-         char* subject_str = X509_NAME_oneline(subj, buf, std::size(buf));
-         fc_dlog(logger, "certificate subject: ${s}", ("s", subject_str ? subject_str : ""));
+         fc_dlog(logger, "certificate subject: ${s}", ("s", certificate_subject(ctx)));
+         set_participating(false);
          return false;
       }
 
       void reset_socket() {
          socket.reset_socket();
-         if (socket.use_ssl) {
+         if (my_impl->ssl_enabled) {
             socket.ssl_socket()->set_verify_callback(
                [this](auto bverified, auto& ctx){ 
                   return verify_certificate(bverified, ctx); 
@@ -1008,9 +1018,9 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint, bool ssl )
+   connection::connection( string endpoint )
       : peer_addr( endpoint ),
-        socket(ssl),
+        socket(),
         strand( my_impl->thread_pool->get_executor() ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
@@ -1025,8 +1035,8 @@ namespace eosio {
          fc_ilog( logger, "created connection to ${n}", ("n", endpoint) );
    }
 
-   connection::connection(bool ssl)
-      : connection({}, ssl)
+   connection::connection()
+      : connection(string{})
    {
    }
 
@@ -1077,7 +1087,7 @@ namespace eosio {
       return stat;
    }
 
-   bool connection::start_session() {
+   bool connection::start_session(bool server) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
       update_endpoints();
@@ -1095,14 +1105,15 @@ namespace eosio {
             socket_open = true;
             start_read_message();
          };
-         if (socket.use_ssl) {
-            socket.ssl_socket()->async_handshake(ssl::stream_base::server,
-                                       boost::asio::bind_executor(strand, [start_read, socket=socket](const auto& ec){
+         if (my_impl->ssl_enabled) {
+            socket.ssl_socket()->async_handshake(server ? ssl::stream_base::server : ssl::stream_base::client,
+                                       boost::asio::bind_executor(strand, [start_read, c = shared_from_this(), socket=socket](const auto& ec){
                                           //we use socket just to retain connection shared_ptr just in case it will be deleted
                                           //when we will need it inside start_read_message
                                           std::ignore = socket;
                                           if (ec) {
                                              fc_elog( logger, "ssl handshake error: ${e}", ("e", ec.message()) );
+                                             c->close();
                                              return;
                                           }
                                           start_read();
@@ -1136,7 +1147,7 @@ namespace eosio {
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
       boost::system::error_code ec;
-      tcp::socket& cur_sock = self->socket.raw_socket();
+      auto& cur_sock = self->socket.raw_socket();
       if( cur_sock.is_open() ) {
          cur_sock.shutdown( tcp::socket::shutdown_both, ec );
          cur_sock.close( ec );
@@ -1395,7 +1406,7 @@ namespace eosio {
             }
          };
 
-         if (c->socket.use_ssl){
+         if (my_impl->ssl_enabled){
             boost::asio::async_write( *c->socket.ssl_socket(), bufs, boost::asio::bind_executor( c->strand, write_lambda ));
          }
          else {
@@ -2597,7 +2608,7 @@ namespace eosio {
              c = shared_from_this(), 
              socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) mutable {
             if( !err && socket.raw_socket().is_open() && &socket.raw_socket() == &c->socket.raw_socket() ) {
-               if( c->start_session() ) {
+               if( c->start_session(false) ) {
                   c->send_handshake();
                }
             } else {
@@ -2608,7 +2619,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_listen_loop() {
-      connection_ptr new_connection = std::make_shared<connection>(ssl_enabled);
+      connection_ptr new_connection = std::make_shared<connection>();
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
          acceptor->async_accept( new_connection->socket.raw_socket(),
@@ -2638,7 +2649,7 @@ namespace eosio {
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
                      fc_ilog( logger, "Accepted new connection: " + paddr_str );
                      new_connection->set_heartbeat_timeout( heartbeat_timeout );
-                     if( new_connection->start_session()) {
+                     if( new_connection->start_session(true)) {
                         std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                         connections.insert( new_connection );
                      }
@@ -2794,7 +2805,7 @@ namespace eosio {
                   conn->close();
                }
          };
-         if (socket.use_ssl){
+         if (my_impl->ssl_enabled){
             boost::asio::async_read( *socket.ssl_socket(),
                                      pending_message_buffer.get_buffer_sequence_for_boost_async_read(), 
                                      completion_handler,
@@ -3805,17 +3816,19 @@ namespace eosio {
       error_code ec;
 
       if (!ca.empty()){
+         fc_dlog(logger, "using verify file: ${p}", ("p", ca));
          ssl_context->load_verify_file(ca, ec);
          EOS_ASSERT(!ec, ssl_configuration_error, "load_verify_file: ${e}", ("e", ec.message()));
 
          //this ensures peer has trusted certificate. no certificate-less connections
          ssl_context->set_verify_mode(ssl::context::verify_peer | ssl::context::verify_fail_if_no_peer_cert);
       }
-
+      fc_dlog(logger, "using private key file: ${p}", ("p", pkey));
       ssl_context->use_private_key_file(pkey, ssl::context::pem, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_private_key_file: ${e}", ("e", ec.message()));
 
-      ssl_context->use_certificate_chain_file(cert, ec);//cert_verify_chain.pem // //client1.crt
+      fc_dlog(logger, "using chain file: ${p}", ("p", cert));
+      ssl_context->use_certificate_chain_file(cert, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_certificate_chain_file: ${e}", ("e", ec.message()));
    }
 
@@ -4027,7 +4040,7 @@ namespace eosio {
             auto ca_cert     = options["p2p-tls-security-group-ca-file"].as<bfs::path>();
             auto relative_to_absolute = [](bfs::path& file) {
                if( file.is_relative()) {
-               file = bfs::current_path() / file;
+                  file = bfs::current_path() / file;
                }
             };
             relative_to_absolute(certificate);
@@ -4040,7 +4053,7 @@ namespace eosio {
             if (!ca_cert.empty()){
                EOS_ASSERT(fc::is_regular_file(ca_cert), ssl_incomplete_configuration, "p2p-tls-security-group-ca-file doesn't contain regular file: ${p}", ("p", ca_cert.generic_string()));
             }
-
+            
             my->init_ssl_context(certificate.generic_string(), pkey.generic_string(), ca_cert.generic_string());
          }
 
@@ -4201,7 +4214,7 @@ namespace eosio {
       if( my->find_connection( host ) )
          return "already connected";
 
-      connection_ptr c = std::make_shared<connection>( host, my->ssl_enabled );
+      connection_ptr c = std::make_shared<connection>( host );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
          fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );
