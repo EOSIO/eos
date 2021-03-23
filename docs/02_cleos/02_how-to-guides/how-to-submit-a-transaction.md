@@ -1,6 +1,6 @@
-## Goal
+## Overview
 
-Push a transaction
+This how-to guide provides instructions on how to submit, or push, a transaction using the `cleos` CLI tool.
 
 ## Before you begin
 
@@ -12,9 +12,22 @@ Push a transaction
     * Consult [cleos push transaction reference](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/push/push-transaction), and pay attention to option `-d` and `-j`.
     * Consult [push transaction operation](https://developers.eos.io/manuals/eos/v2.1/nodeos/plugins/chain_api_plugin/api-reference/index#operation/push_transactions) for chain api plug-in, and pay attention to the payload definition.
 
-## Steps
+## Command Reference
 
-1. Create the JSON snippet which contains the transaction.
+See the following reference guides for command line usage and related options for the `cleos` command:
+
+* The [`push transaction` cleos sub-command](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/push/push-transaction).
+
+## Procedure
+
+The following steps show how to:
+
+1. [Create the transaction as JSON snippet.](#1-create-the-transaction-as-json-snippet)
+2. [Send the transaction.](#2-send-the-transaction)
+
+### 1. Create the transaction as JSON snippet
+
+You can create the JSON snippet defining the transaction in two ways:
 
 * Create a JSON snippet which contains a valid transaction and uses hex format for `data` field.
 
@@ -78,16 +91,22 @@ Push a transaction
 }
 ```
 
-2. Send the transaction packed in a JSON file or using a direct JSON text
+### 2. Send the transaction
 
-* Send the transaction stored in `TRX_FILE.json` file:
+You can send the transaction you created as JSON snippet in two ways:
+
+* You can send the transaction stored in `TRX_FILE.json` file:
 
 ```sh
 cleos push transaction TRX_FILE.json
 ```
 
-* Send the transaction using the JSON content directly:
+* Alternatively, you can send the transaction using the JSON content directly:
 
 ```sh
 cleos push transaction '{"expiration": "2019-08-01T07:15:49", "ref_block_num": 34881,"ref_block_prefix": 2972818865,"max_net_usage_words": 0,"max_cpu_usage_ms": 0,"delay_sec": 0,"context_free_actions": [],"actions": [{"account": "eosio.token","name": "transfer","authorization": [{"actor": "han","permission": "active"}],"data": {"from": "han","to": "eosio","quantity": "0.0001 SYS","memo": "m"}}],"transaction_extensions": [],"context_free_data": []}'
 ```
+
+## Summary
+
+In conclusion, the above instructions show how to submit, or push, a transaction using the `cleos` CLI tool.
