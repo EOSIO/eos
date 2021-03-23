@@ -350,6 +350,14 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
    cpu_weight = buo.cpu_weight;
 }
 
+bool resource_limits_manager::is_unlimited_cpu( const account_name& account ) const {
+   const auto* rlo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(false, account) );
+   if (rlo) {
+      return rlo->cpu_weight == -1;
+   }
+   return false;
+}
+
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
    auto& by_owner_index = multi_index.indices().get<by_owner>();
