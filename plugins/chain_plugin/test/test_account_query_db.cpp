@@ -115,22 +115,22 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
       }
 
       // produce a block on node A with a new account and permission
-      const auto& tester_account = N(tester);
-      const auto& tester_account2 = N(tester2);
+      const auto& tester_account = "tester"_n;
+      const auto& tester_account2 = "tester2"_n;
       const string role = "first";
       node_a.create_account(tester_account);
       node_a.create_account(tester_account2);
 
       const auto trace_ptr = node_a.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
             ("account", tester_account)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_a.get_public_key(tester_account, role), 5)), 1
       );
       aq_db.cache_transaction_trace(trace_ptr);
       const auto trace_ptr2 = node_a.push_action(config::system_account_name, updateauth::get_name(), tester_account2, fc::mutable_variant_object()
             ("account", tester_account2)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_a.get_public_key(tester_account2, role), 5)), 2
       );
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
       pars.keys.emplace_back(node_a.get_public_key(tester_account, role));
 
       const auto pre_results = aq_db.get_accounts_by_authorizers(pars);
-      BOOST_TEST_REQUIRE(find_account_auth(pre_results, tester_account, N(role)) == true);
+      BOOST_TEST_REQUIRE(find_account_auth(pre_results, tester_account, "role"_n) == true);
 
       // have node B take over from head-1 and also update permissions
       node_b.create_account(tester_account);
@@ -149,14 +149,14 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
 
       const auto trace_ptr3 = node_b.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
             ("account", tester_account)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_b.get_public_key(tester_account, role), 6)), 1
       );
       aq_db.cache_transaction_trace(trace_ptr3);
       const auto trace_ptr4 = node_b.push_action(config::system_account_name, updateauth::get_name(), tester_account2, fc::mutable_variant_object()
             ("account", tester_account2)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_b.get_public_key(tester_account2, role), 6)), 2
       );
@@ -167,14 +167,14 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
 
       const auto trace_ptr5 = node_b.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
             ("account", tester_account)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_b.get_public_key(tester_account, role), 5)), 3
       );
       aq_db.cache_transaction_trace(trace_ptr5);
       const auto trace_ptr6 = node_b.push_action(config::system_account_name, updateauth::get_name(), tester_account2, fc::mutable_variant_object()
             ("account", tester_account2)
-            ("permission", N(role))
+            ("permission", "role"_n)
             ("parent", "active")
             ("auth",  authority(node_b.get_public_key(tester_account2, role), 5)), 4
       );
