@@ -214,8 +214,13 @@ namespace eosio::chain_apis {
          auto& index = permission_info_index.get<by_last_updated>();
          const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
 
+         auto curr_iter = index.rbegin();
          while (!index.empty()) {
-            const auto& pi = (*index.rbegin());
+            if (curr_iter == index.rend()) {
+               break;
+            }
+
+            const auto& pi = (*curr_iter);
             if (pi.last_updated < t) {
                break;
             }
@@ -226,7 +231,7 @@ namespace eosio::chain_apis {
             auto itr = permission_by_owner.find(std::make_tuple(pi.owner, pi.name));
             if (itr == permission_by_owner.end()) {
                // this permission does not exist at this point in the chains history
-               index.erase(index.iterator_to(pi));
+               curr_iter = decltype(curr_iter)( index.erase(index.iterator_to(pi)) );
             } else {
                const auto& po = *itr;
                index.modify(index.iterator_to(pi), [&po](auto& mutable_pi) {
@@ -234,6 +239,7 @@ namespace eosio::chain_apis {
                   mutable_pi.threshold = po.auth.threshold;
                });
                add_to_bimaps(pi, po);
+               ++curr_iter;
             }
          }
       }
