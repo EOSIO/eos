@@ -109,7 +109,7 @@ public:
    }
 
    void stop_block(uint32_t block_num) override {
-      if( !publish_immediately_ ) {
+      if( !publish_immediately_ && !queue_.empty() ) {
          amqp_publisher_->publish_messages_raw( std::move( queue_ ) );
          queue_.clear();
          wait_on_ack();
