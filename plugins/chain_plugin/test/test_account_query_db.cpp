@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
       }
 
       // produce a block on node A with a new account and permission
-      const auto& tester_account = N(tester);
-      const auto& tester_account2 = N(tester2);
+      const auto& tester_account = "tester"_n;
+      const auto& tester_account2 = "tester2"_n;
       const string role = "first";
       node_a.create_account(tester_account);
       node_a.create_account(tester_account2);
