@@ -78,7 +78,6 @@ inline constexpr auto get_intrinsic_table() {
       "env.is_privileged",
       "env.set_privileged",
       "env.preactivate_feature",
-      "env.set_transaction_resource_payer",
       "env.get_active_producers",
       "env.db_store_i64",
       "env.db_update_i64",
@@ -283,7 +282,8 @@ inline constexpr auto get_intrinsic_table() {
       "env.propose_security_group_participants_remove",
       "env.in_active_security_group",
       "env.get_active_security_group",
-      "env.register_transaction_hook"
+      "env.register_transaction_hook",
+      "env.set_transaction_resource_payer"
    );
 }
 inline constexpr std::size_t find_intrinsic_index(std::string_view hf) {
