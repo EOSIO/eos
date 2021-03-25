@@ -8,7 +8,6 @@
 #include <fc/log/logger_config.hpp> //set_os_thread_name()
 
 #include <amqpcpp.h>
-#include <amqpcpp/libboostasio.h>
 
 #include <thread>
 #include <chrono>
@@ -16,7 +15,7 @@
 #include <algorithm>
 #include <atomic>
 
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 
 namespace eosio {
@@ -25,7 +24,6 @@ struct reliable_amqp_publisher_impl {
    reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                 const boost::filesystem::path& unconfirmed_path,
                                 reliable_amqp_publisher::error_callback_t on_fatal_error,
-                                reliable_amqp_publisher::amqp_ack_callback_t on_amqp_ack,
                                 const std::optional<std::string>& message_id);
    ~reliable_amqp_publisher_impl();
    void pump_queue();
@@ -57,7 +55,6 @@ struct reliable_amqp_publisher_impl {
 
    single_channel_retrying_amqp_connection retrying_connection;
    reliable_amqp_publisher::error_callback_t on_fatal_error;
-   reliable_amqp_publisher::amqp_ack_callback_t on_amqp_ack;
 
    const boost::filesystem::path data_file_path;
 
@@ -71,11 +68,9 @@ struct reliable_amqp_publisher_impl {
 reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                                            const boost::filesystem::path& unconfirmed_path,
                                                            reliable_amqp_publisher::error_callback_t on_fatal_error,
-                                                           reliable_amqp_publisher::amqp_ack_callback_t on_amqp_ack,
                                                            const std::optional<std::string>& message_id) :
   retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
   on_fatal_error(std::move(on_fatal_error)),
-  on_amqp_ack(std::move(on_amqp_ack)),
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
 
    boost::system::error_code ec;
@@ -180,9 +175,6 @@ void reliable_amqp_publisher_impl::pump_queue() {
 
    channel->commitTransaction().onSuccess([this](){
       message_deque.erase(message_deque.begin(), message_deque.begin()+in_flight);
-      if(message_deque.empty() && on_amqp_ack) {
-         on_amqp_ack();
-      }
    })
    .onFinalize([this]() {
       in_flight = 0;
@@ -268,7 +260,7 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
    if(stopping || !channel) {
       std::string err = "AMQP connection " + fc::variant(retrying_connection.address()).as_string() +
             " to " + exchange + " not connected, dropping message " + rk;
-      on_error(err);
+      if(on_error) on_error(err);
       return;
    }
 
@@ -285,9 +277,8 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
 reliable_amqp_publisher::reliable_amqp_publisher(const std::string& url, const std::string& exchange, const std::string& routing_key,
                                                  const boost::filesystem::path& unconfirmed_path,
                                                  reliable_amqp_publisher::error_callback_t on_fatal_error,
-                                                 reliable_amqp_publisher::amqp_ack_callback_t on_amqp_ack,
                                                  const std::optional<std::string>& message_id) :
-   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, std::move(on_fatal_error), std::move(on_amqp_ack), message_id)) {}
+   my(new reliable_amqp_publisher_impl(url, exchange, routing_key, unconfirmed_path, std::move(on_fatal_error), message_id)) {}
 
 void reliable_amqp_publisher::publish_message_raw(std::vector<char>&& data) {
    my->publish_message_raw( std::move( data ) );

@@ -6,7 +6,7 @@
 #include "stream.hpp"
 #include <appbase/application.hpp>
 #include <eosio/amqp/amqp_handler.hpp>
-#include <eosio/amqp/reliable_amqp_publisher.hpp>
+#include <eosio/amqp/transactional_amqp_publisher.hpp>
 #include <fc/log/logger.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <memory>
@@ -14,7 +14,7 @@
 namespace b1 {
 
 class rabbitmq : public stream_handler {
-   std::unique_ptr<eosio::reliable_amqp_publisher> amqp_publisher_;
+   std::unique_ptr<eosio::transactional_amqp_publisher> amqp_publisher_;
    const AMQP::Address                  address_;
    const bool                           publish_immediately_ = false;
    const std::string                    exchange_name_;
@@ -24,42 +24,15 @@ class rabbitmq : public stream_handler {
    // capture all messages per block and send as one amqp transaction
    std::deque<std::pair<std::string, std::vector<char>>> queue_;
 
-   class ack_cond {
-   private:
-      std::mutex mtx_;
-      bool acked_ = false;
-      std::condition_variable ack_cond_;
-   public:
-      void set() {
-         {
-            auto lock = std::scoped_lock(mtx_);
-            acked_ = true;
-         }
-         ack_cond_.notify_one();
-      }
-      bool wait() {
-         std::unique_lock<std::mutex> lk(mtx_);
-         return ack_cond_.wait_for( lk, std::chrono::seconds( 10 ), [&]{ return acked_; } );
-      }
-      void un_set() {
-         auto lock = std::scoped_lock( mtx_ );
-         acked_ = false;
-      }
-   };
-
-   std::shared_ptr<ack_cond> ack_cond_;
-
 private:
    void init() {
-      ack_cond_ = std::make_shared<ack_cond>();
-      amqp_publisher_ = std::make_unique<eosio::reliable_amqp_publisher>(address_, exchange_name_, "", unconfirmed_path_,
-                                                                         [](const std::string& err){
-                                                                            elog("AMQP fatal error: ${e}", ("e", err));
-                                                                            appbase::app().quit();
-                                                                         },
-                                                                         [ack_cond = ack_cond_]() {
-                                                                            ack_cond->set();
-                                                                         } );
+      amqp_publisher_ =
+            std::make_unique<eosio::transactional_amqp_publisher>( address_, exchange_name_,
+                                                                   fc::seconds( 15 ),
+                                                                   []( const std::string& err ) {
+                                                                      elog( "AMQP fatal error: ${e}", ("e", err) );
+                                                                      appbase::app().quit();
+                                                                   } );
    }
 
 public:
@@ -104,7 +77,6 @@ public:
    const std::vector<eosio::name>& get_routes() const override { return routes_; }
 
    void start_block(uint32_t block_num) override {
-      ack_cond_->un_set();
       queue_.clear();
    }
 
@@ -112,21 +84,13 @@ public:
       if( !publish_immediately_ && !queue_.empty() ) {
          amqp_publisher_->publish_messages_raw( std::move( queue_ ) );
          queue_.clear();
-         wait_on_ack();
-      }
-   }
-
-   void wait_on_ack() {
-      if( !ack_cond_->wait() ) {
-         elog("Unable to get ack from AMQP, exiting");
-         appbase::app().quit();
       }
    }
 
    void publish(const std::vector<char>& data, const eosio::name& routing_key) override {
       if (exchange_name_.empty()) {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( queue_name_, std::string(), data,
+            amqp_publisher_->publish_message_direct( queue_name_, data,
                                                      []( const std::string& err ) {
                                                         elog( "AMQP direct message error: ${e}", ("e", err) );
                                                      } );
@@ -135,7 +99,7 @@ public:
          }
       } else {
          if( publish_immediately_ ) {
-            amqp_publisher_->publish_message_direct( routing_key.to_string(), std::string(), data,
+            amqp_publisher_->publish_message_direct( routing_key.to_string(), data,
                                                      []( const std::string& err ) {
                                                         elog( "AMQP direct message error: ${e}", ("e", err) );
                                                      } );

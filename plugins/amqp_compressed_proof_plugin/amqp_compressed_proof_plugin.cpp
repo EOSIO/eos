@@ -258,7 +258,6 @@ void amqp_compressed_proof_plugin::plugin_initialize(const variables_map& option
                                                                                 elog("AMQP fatal error: ${e}", ("e", err));
                                                                                 appbase::app().quit();
                                                                              },
-                                                                             nullptr,
                                                                              "eosio.node.compressed_proof_v0");
 
             //the presence of an empty set means any action on that receiver

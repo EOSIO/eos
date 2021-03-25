@@ -24,20 +24,16 @@ class reliable_amqp_publisher {
    public:
       // Called from amqp thread when unconfirmed queue depth about to be exceeded.
       using error_callback_t = std::function<void(const std::string& err)>;
-      // Called on successful ack from AMQP and all queued messages have been ack'ed
-      using amqp_ack_callback_t = std::function<void()>;
 
       /// Create a reliable queue to the given server publishing to the given exchange
       /// \param server_url server url as amqp://...
       /// \param exchange the exchange to publish to
       /// \param routing_key on published messages, used if no routing_key provided for publish_message.. calls
       /// \param unconfirmed_path path to save/load unconfirmed message to be tried again after stop/start
-      /// \param on_fatal_error called from AMQP thread when unconfirmed queue depth is exceeded
-      /// \param on_amqp_ack called from AMQP thread on successful ack from AMQP and all queued messages have been ack'ed
+      /// \param on_fatal_error called from AMQP thread when unconfirmed queue depth is exceeded.
       /// \param message_id optional message id to send with each message
       reliable_amqp_publisher(const std::string& server_url, const std::string& exchange, const std::string& routing_key,
-                              const boost::filesystem::path& unconfirmed_path,
-                              error_callback_t on_fatal_error, amqp_ack_callback_t on_amqp_ack = nullptr,
+                              const boost::filesystem::path& unconfirmed_path, error_callback_t on_fatal_error,
                               const std::optional<std::string>& message_id = {});
 
       /// Publish a message. May be called from any thread.
