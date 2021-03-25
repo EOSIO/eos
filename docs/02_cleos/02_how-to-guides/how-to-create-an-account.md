@@ -21,7 +21,7 @@ Make sure you meet the following requirements:
 
 See the following reference guide for command line usage:
 
-* [`cleos account create`](../03_command-reference/create/account.md) command and its parameters
+* [`cleos create account`](../03_command-reference/create/account.md) command and its parameters
 
 
 ## Procedure
