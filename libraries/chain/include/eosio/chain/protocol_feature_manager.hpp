@@ -28,7 +28,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    configurable_wasm_limits,
    blockchain_parameters,
    security_group,
-   register_transaction_hook
+   register_transaction_hook,
+   set_transaction_resource_payer
 };
 
 struct protocol_feature_subjective_restrictions {

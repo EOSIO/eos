@@ -253,6 +253,18 @@ lifetime of the execution of a transaction.
 */
                {}
          } )
+         (  builtin_protocol_feature_t::set_transaction_resource_payer, builtin_protocol_feature_spec{
+               "SET_PAYER_INTRINSIC",
+               fc::variant("e14eaf02ed65f0549cd1d3b4b059b8adff2cce08788a36dac6b0846c123741e9").as<digest_type>(),
+               // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: SET_PAYER_INTRINSIC
+
+Allows privileged contracts to set transaction payer, a sponsor who is paying for the net and cpu resources
+(up to specified max limits) of the transaction, by calling `set_transaction_resource_payer` intrinsic.
+*/
+               {}
+         } )
    ;
 
 

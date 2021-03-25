@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( set_trx_payer set_trx_payer set_trx_payer.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/set_trx_payer.wasm ${CMAKE_CURRENT_BINARY_DIR}/set_trx_payer.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/set_trx_payer.abi  ${CMAKE_CURRENT_BINARY_DIR}/set_trx_payer.abi  COPYONLY )
+endif()

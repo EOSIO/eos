@@ -1834,6 +1834,59 @@ BOOST_AUTO_TEST_CASE( register_transaction_hook_test ) { try {
    c.produce_block();
 } FC_LOG_AND_RETHROW() }
 
+static const char import_set_transaction_resource_payer_wast[] = R"=====(
+(module
+ (import "env" "set_transaction_resource_payer" (func $set_transaction_resource_payer (param i64 i64 i64)(result i32)))
+ (memory $0 1)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (drop
+     (call $set_transaction_resource_payer
+       (i64.const 0)
+       (i64.const 43)
+       (i64.const 43)
+     )
+   )
+ )
+ (data (i32.const 0) "\00\00\00\00\00\00\00\00")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE( set_transaction_resource_payer_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::set_transaction_resource_payer);
+   BOOST_REQUIRE(d);
+
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {alice_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( alice_account, import_set_transaction_resource_payer_wast ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.set_transaction_resource_payer unresolveable" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // ensure it now resolves
+   c.set_code( alice_account, import_set_transaction_resource_payer_wast );
+
+   // check that it cannot be executed if the account is not privileged
+   BOOST_REQUIRE_EQUAL(
+         c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()),
+               "alice does not have permission to call this API"
+         );
+
+   c.push_action(config::system_account_name, "setpriv"_n, config::system_account_name,  fc::mutable_variant_object()("account", alice_account)("is_priv", 1));
+
+   // ensure it can be called with a privileged account
+   BOOST_REQUIRE_EQUAL(c.push_action(action({{ alice_account, permission_name("active") }}, alice_account, action_name(), {} ), alice_account.to_uint64_t()), c.success());
+
+   c.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 static const char import_get_parameters_packed_wast[] = R"=====(
 (module
  (import "env" "get_parameters_packed" (func $get_parameters_packed (param i32 i32 i32 i32)(result i32)))

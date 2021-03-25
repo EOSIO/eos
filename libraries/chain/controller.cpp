@@ -254,6 +254,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
       set_activation_handler<builtin_protocol_feature_t::security_group>();
       set_activation_handler<builtin_protocol_feature_t::register_transaction_hook>();
+      set_activation_handler<builtin_protocol_feature_t::set_transaction_resource_payer>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3428,6 +3429,13 @@ template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::register_transaction_hook>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "register_transaction_hook" );
+   } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::set_transaction_resource_payer>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_transaction_resource_payer" );
    } );
 }
 
