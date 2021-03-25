@@ -1,8 +1,8 @@
-## Goal
+## Overview
 
-Import a private key into a wallet
+This how-to guide provides instructions on how to import a private key into a wallet. You can use the private key to authorize transactions in an EOSIO blockchain. 
 
-## Before you Begin
+## Before you begin
 
 Make sure you meet the following requirements:
 
@@ -18,16 +18,20 @@ Make sure you meet the following requirements:
 
 * Understand what a [public](https://developers.eos.io/welcome/latest/glossary/index/#public-key) and [private](https://developers.eos.io/welcome/latest/glossary/index/#private-key) key pair is.
 
-## Steps
+## Command Reference
+See the following reference guide for command line usage and related options for the cleos command:
+* [cleos wallet import](../03_command-reference/wallet/import.md) command and its parameters
 
-Perform the following steps:
+## Procedure
+
+The following steps show how to import a private key to an existing `keosd` wallet:
 
 1. Run the following command to import a private key into an existing wallet:
 ```sh
 cleos wallet import
 ```
 
-2. Enter your private key. 
+2. Enter the private key and hit Enter. 
 ```console
 cleos wallet import
 private key:
@@ -40,3 +44,5 @@ The following example confirms that the private key is imported for the correspo
 ```console
 private key: imported private key for: EOS8FBXJUfbANf3xeDWPoJxnip3Ych9HjzLBr1VaXRQFdkVAxwLE7
 ```
+## Summary
+By following these instructions, you are able to import a private key to an existing wallet. 
