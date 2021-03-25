@@ -322,8 +322,10 @@ namespace eosio { namespace chain {
          }
       }
 
-      for( uint32_t action_ordinal = action_ordinal_range_lower_value; action_ordinal <= action_ordinal_range_upper_value; ++action_ordinal ) {
-         execute_action( action_ordinal, 0 );
+      if( action_ordinal_range_lower_value > 0 ) {
+         for (uint32_t action_ordinal = action_ordinal_range_lower_value; action_ordinal <= action_ordinal_range_upper_value; ++action_ordinal) {
+            execute_action(action_ordinal, 0);
+         }
       }
 
       if( delay != fc::microseconds() ) {
