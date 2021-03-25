@@ -20,7 +20,6 @@ class rabbitmq : public stream_handler {
    const std::string                    exchange_name_;
    const std::string                    queue_name_;
    const std::vector<eosio::name>       routes_;
-   const boost::filesystem::path        unconfirmed_path_;
    // capture all messages per block and send as one amqp transaction
    std::deque<std::pair<std::string, std::vector<char>>> queue_;
 
@@ -36,13 +35,11 @@ private:
    }
 
 public:
-   rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
-            std::string queue_name, const boost::filesystem::path& unconfirmed_path)
+   rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately, std::string queue_name)
        : address_(address)
        , publish_immediately_(publish_immediately)
        , queue_name_( std::move( queue_name))
        , routes_( std::move( routes))
-       , unconfirmed_path_( unconfirmed_path)
    {
       ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
       bool error = false;
@@ -56,12 +53,11 @@ public:
    }
 
    rabbitmq(std::vector<eosio::name> routes, const AMQP::Address& address, bool publish_immediately,
-            std::string exchange_name, std::string exchange_type, const boost::filesystem::path& unconfirmed_path)
+            std::string exchange_name, std::string exchange_type)
        : address_(address)
        , publish_immediately_(publish_immediately)
        , exchange_name_( std::move( exchange_name))
        , routes_( std::move( routes))
-       , unconfirmed_path_( unconfirmed_path)
    {
       ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
       bool error = false;
@@ -179,16 +175,11 @@ inline void initialize_rabbits_queue(std::vector<std::unique_ptr<stream_handler>
 
       AMQP::Address address = parse_rabbitmq_address(rabbit, queue_name, routes);
 
-
       if (queue_name.empty()) {
          queue_name = "stream.default";
       }
 
-      // TODO: uniqueness
-      boost::filesystem::path msg_path = p / ("queue_" + queue_name) / "stream.bin";
-
-      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
-                                                      std::move(queue_name), msg_path));
+      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately, std::move(queue_name)));
    }
 }
 
@@ -210,11 +201,8 @@ inline void initialize_rabbits_exchange(std::vector<std::unique_ptr<stream_handl
          exchange.erase(double_column_pos);
       }
 
-      // TODO: uniqueness
-      boost::filesystem::path msg_path = p / ("exchange_" + exchange) / "stream.bin";
-
       streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
-                                                      std::move(exchange), std::move(exchange_type), msg_path));
+                                                      std::move(exchange), std::move(exchange_type)));
    }
 }
 
