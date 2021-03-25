@@ -887,14 +887,13 @@ namespace eosio {
       }
 
       bool verify_certificate(bool preverified, ssl::verify_context &ctx) {
-         
+         peer_dlog(this, "preverified: ${p} certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
          //certificate depth means number of certificate issuers verified current certificate
          //openssl provides those one by one starting from root certificate
          //we don't use CA certificate or intermidiate issuers, so skipping those
          //we interested only in last certificate in the chain, i.e. the one that identifies client
          auto depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
          if (depth > 0) {
-            fc_dlog(logger, "preverified: ${p} certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
             //preverified is true when certificate matches verification chain, provided via load_verify_file
             return preverified;
          }
@@ -902,7 +901,7 @@ namespace eosio {
          //return pointer is managed by openssl
          X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
          if (!cert) {
-            fc_dlog(logger, "X509_STORE_CTX_get_current_cert returned null certificate");
+            peer_dlog(this, "X509_STORE_CTX_get_current_cert returned null certificate");
             return false;
          }
 
@@ -920,17 +919,18 @@ namespace eosio {
                std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
                if(my_impl->security_group.is_in_security_group(participant)) {
                   set_participating(true);
-                  fc_dlog(logger, "participant added: ${o}", ("o", organization));
+                  peer_dlog(this, "participant added: ${o}", ("o", organization));
                   return true;
                }
             }
             
-            fc_dlog(logger, "received unauthorized participant: ${s}", ("s", organization));
+            peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
          }
-
-         fc_dlog(logger, "certificate subject: ${s}", ("s", certificate_subject(ctx)));
+         
          set_participating(false);
-         return false;
+         //we keep connection if peer has valid certificate but participant name is not authorized
+         //however that connection doesn't receive updates
+         return preverified;
       }
 
       void reset_socket() {
