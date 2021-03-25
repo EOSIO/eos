@@ -141,10 +141,8 @@ namespace eosio { namespace chain {
 
          if (it != std::end(gprops.transaction_hooks)) {
             chain::action preexecution_hook_action{{}, it->contract, it->action, {}};
-            int action_ordinal = schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
-            apply_context acontext( control, *this, action_ordinal, 0 );
-            acontext.exec();
-            trace->action_traces.pop_back();
+            uint32_t action_ordinal_scheduled = schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
+            execute_action( action_ordinal_scheduled, 0 );
          }
       }
 
@@ -303,22 +301,29 @@ namespace eosio { namespace chain {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       const transaction& trx = packed_trx.get_transaction();
+
+      uint32_t action_ordinal_range_lower_value = 0, action_ordinal_range_upper_value = 0;
+      auto update_ordinal_range = [&](uint32_t action_ordinal_scheduled) -> void {
+         if(action_ordinal_range_lower_value == 0) action_ordinal_range_lower_value = action_ordinal_scheduled;
+         action_ordinal_range_upper_value = action_ordinal_scheduled;
+      };
+
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            schedule_action( act, act.account, true, 0, 0 );
+            uint32_t action_ordinal_scheduled = schedule_action( act, act.account, true, 0, 0 );
+            update_ordinal_range(action_ordinal_scheduled);
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            schedule_action( act, act.account, false, 0, 0 );
+            uint32_t action_ordinal_scheduled = schedule_action( act, act.account, false, 0, 0 );
+            update_ordinal_range(action_ordinal_scheduled);
          }
       }
 
-      auto& action_traces = trace->action_traces;
-      uint32_t num_original_actions_to_execute = action_traces.size();
-      for( uint32_t i = 1; i <= num_original_actions_to_execute; ++i ) {
-         execute_action( i, 0 );
+      for( uint32_t action_ordinal = action_ordinal_range_lower_value; action_ordinal <= action_ordinal_range_upper_value; ++action_ordinal ) {
+         execute_action( action_ordinal, 0 );
       }
 
       if( delay != fc::microseconds() ) {
