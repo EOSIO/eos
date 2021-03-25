@@ -1,12 +1,11 @@
-## Goal
+## Overview
 
-Query infomation of an EOSIO transaction
+This how-to guide provides instructions on how to retrieve infomation of an EOSIO transaction using a transaction ID.
+
+The example in this how-to retrieves transaction information associated with the creation of the account **bob**. 
 
 ## Before you begin
-
-
-
-
+Make sure you meet the following requirements:
 * Install the currently supported version of `cleos`.
 
 [[info | Note]]
@@ -14,18 +13,27 @@ Query infomation of an EOSIO transaction
 
 
 
-* Understand how transactions work in an EOSIO blockchain. For more information on transactions, see the [Transactions Protocol](https://developers.eos.io/welcome/latest/protocol-guides/transactions_protocol) section.  
+* Understand how transactions work in an EOSIO blockchain. For more information on transactions, see the [Transactions Protocol](https://developers.eos.io/welcome/latest/protocol-guides/transactions_protocol) section.
 
-## Steps
-Run the following command to query information of an executed transaction:
+## Command Reference
+See the following reference guide for command line usage and related options for the cleos command:
+
+* [`cleos get transaction`](../03_command-reference/get/transaction.md) command and its parameters
+
+
+## Procedure
+
+The following step shows how to retrieve transaction information associated with the creation of the account **bob**.
+
+1. Retrieve transaction information by:
 ```sh
-cleos get transaction <id>
+cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedadada9b1
 ```
-Where `id` is the transaction ID of the executed transaction. 
+* Where `870a6b6e38...dada9b1`= The transaction ID associated with the creation of account **bob**. 
 
 **Example Output**
 
-The following example shows detailed information of a transaction executed to create a new blockchain account **bob**:
+The following example shows detailed information of the transaction:
 
 ```console
 cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedadada9b1
@@ -174,12 +182,13 @@ cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedad
 [[info]]
 | Be aware that you need to connect to a `nodeos` instance that enables history API plugin to query transaction information.
 
+## Summary
+By following these instructions, you are able to retrieve transaction information using a transaction ID. 
 
 
+## Trobleshooting
 
-**Trobleshooting**
-
-If the history API plugin is not enabled in the `nodeos` **config.ini file**, the `cleos get transaction id` command will result in an error as shown below.
+If the history API plugin is not enabled in the `nodeos` **config.ini file**, the `cleos get transaction id` command will result in an error as shown below:
 
 ```console
 cleos get transaction 509eee3aa8988d533a336fec7a4c8b067ae3205cd97e2d27b3e9a2da61ef460c
