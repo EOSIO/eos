@@ -708,7 +708,7 @@ struct callbacks {
       auto fut = eosio::chain::transaction_metadata::start_recover_keys(
             ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum());
       auto start_time = std::chrono::steady_clock::now();
-      auto result     = chain.control->push_transaction(fut.get(), fc::time_point::maximum(), 2000, true);
+      auto result     = chain.control->push_transaction(fut.get(), fc::time_point::maximum(), 2000, true, 0);
       auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
       ilog("chainlib transaction took ${u} us", ("u", us.count()));
       // ilog("${r}", ("r", fc::json::to_pretty_string(result)));
