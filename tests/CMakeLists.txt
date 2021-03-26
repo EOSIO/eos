@@ -122,7 +122,7 @@ add_test(NAME db_modes_test COMMAND tests/db_modes_test.sh WORKING_DIRECTORY ${C
 set_tests_properties(db_modes_test PROPERTIES COST 6000)
 add_test(NAME release-build-test COMMAND tests/release-build.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME validate-reflection-test COMMAND "${CMAKE_BINARY_DIR}/tests/validate-reflection.py" plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_test(NAME version-label-test COMMAND tests/version-label.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME version-label-test COMMAND tests/version-label.sh ${VERSION_FULL} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME full-version-label-test COMMAND tests/full-version-label.sh ${VERSION_FULL} ${CMAKE_SOURCE_DIR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME print-build-info-test COMMAND tests/print-build-info.sh ${CMAKE_SOURCE_DIR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 if(NOT EOSIO_REQUIRE_FULL_VALIDATION)
