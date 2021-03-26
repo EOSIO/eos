@@ -1898,7 +1898,7 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
       trx.max_cpu_usage_ms = trx_max_ms;
       trx.sign( chain.get_private_key( acc, "active" ), chain.control->get_chain_id() );
       auto ptrx = std::make_shared<packed_transaction>(std::move(trx), true);
-      auto fut = transaction_metadata::start_recover_keys( ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, chain.control->get_thread_pool(), chain.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
       return fut.get();
    };
 

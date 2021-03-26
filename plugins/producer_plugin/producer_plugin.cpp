@@ -208,6 +208,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
       incoming::methods::blockvault_sync::method_type::handle   _incoming_blockvault_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
+      incoming::methods::transaction_sync::method_type::handle  _incoming_transaction_sync_provider;
 
       transaction_id_with_expiry_index                          _blacklisted_transactions;
       pending_snapshot_index                                    _pending_snapshot_index;
@@ -445,13 +446,40 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          schedule_production_loop();
       }
 
-      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      void on_incoming_transaction_sync(const packed_transaction_ptr &trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) {
+         chain::controller& chain = chain_plug->chain();
+         const auto max_trx_time_ms = _max_transaction_time_ms.load();
+         fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
+
+         auto result = transaction_metadata::create_no_recover_keys(trx, transaction_metadata::trx_type::read_only);
+
+         try {
+            if( !process_incoming_transaction_async( result, persist_until_expired, next ) ) {
+               if( _pending_block_mode == pending_block_mode::producing ) {
+                  schedule_maybe_produce_block( true );
+               } else {
+                  restart_speculative_block();
+               }
+            }
+         } catch ( fc::exception_ptr ex) {
+            fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                    ("txid", trx->id())("why",ex->what()));
+            next(ex);
+
+            if (_trx_trace_failure_log.is_enabled(fc::log_level::debug)) {
+               auto entire_trx = chain_plug->get_entire_trx(trx->get_transaction());
+               fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}", ("entire_trx", entire_trx));
+            }
+         }
+      }
+
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
          auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
+                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), transaction_metadata::trx_type::input, chain.configured_subjective_signature_length_limit() );
 
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
                                                           next{std::move(next)}, trx]() mutable {
@@ -955,7 +983,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe(
          [this](const packed_transaction_ptr& trx) {
       try {
-         my->on_incoming_transaction_async(trx, false, [](const auto&){});
+         my->on_incoming_transaction_async(trx, false, false, [](const auto&){});
       } LOG_AND_DROP();
    });
 
@@ -970,8 +998,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    });
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
-         [this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
-      return my->on_incoming_transaction_async(trx, persist_until_expired, next );
+         [this](const packed_transaction_ptr& trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) -> void {
+      return my->on_incoming_transaction_async(trx, persist_until_expired, false, next );
+   });
+
+   my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider(
+         [this](const packed_transaction_ptr& trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) -> void {
+            return my->on_incoming_transaction_sync(trx, persist_until_expired, read_only, next );
    });
 
    if (options.count("greylist-account")) {
