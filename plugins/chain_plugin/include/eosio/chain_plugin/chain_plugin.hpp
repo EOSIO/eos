@@ -339,6 +339,23 @@ public:
 
    fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 
+   struct get_contract_query_params {
+      name account_name;
+      fc::variant transaction;
+   };
+
+   struct get_contract_query_results {
+      uint32_t                     head_block_num = 0;
+      chain::block_id_type         head_block_id;
+      uint32_t                     last_irreversible_block_num = 0;
+      chain::block_id_type         last_irreversible_block_id;
+      digest_type                  code_hash;
+      vector<transaction_id_type>  pending_transactions;
+      fc::variant                  result;
+   };
+
+   void get_contract_query(const get_contract_query_params& params, chain::plugin_interface::next_function<get_contract_query_results> next ) const;
+
    struct get_table_rows_params {
       bool                 json = false;
       name                 code;
@@ -1181,3 +1198,6 @@ FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_params, (limit)(lower
 FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result::account_result, (name)(creation_date))
 FC_REFLECT( eosio::chain_apis::read_only::get_all_accounts_result, (accounts)(more))
 FC_REFLECT( eosio::chain_apis::read_only::get_consensus_parameters_results, (chain_config)(kv_database_config)(wasm_config))
+FC_REFLECT( eosio::chain_apis::read_only::get_contract_query_params, (account_name)(transaction) )
+FC_REFLECT( eosio::chain_apis::read_only::get_contract_query_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) )
+
