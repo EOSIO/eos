@@ -1509,6 +1509,8 @@ class Node(object):
 
     def getActivatedProtocolFeatures(self):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
+        if "activated_protocol_features" not in latestBlockHeaderState or "protocol_features" not in latestBlockHeaderState["activated_protocol_features"]:
+            Utils.errorExit("getLatestBlockHeaderState did not return expected output, should contain [\"activated_protocol_features\"][\"protocol_features\"]: {}".format(latestBlockHeaderState))
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
 
     def modifyBuiltinPFSubjRestrictions(self, featureCodename, subjectiveRestriction={}):
