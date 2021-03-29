@@ -111,7 +111,7 @@ try:
         lib = producers[producerNum].getInfo()["last_irreversible_block_num"]
         headBlockNum = producers[producerNum].getBlockNum()
         headBlock = producers[producerNum].getBlock(headBlockNum)
-        global blockProducer
+        nonlocal blockProducer
         if blockProducer is None:
             blockProducer = headBlock["producer"]
         Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
