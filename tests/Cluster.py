@@ -573,8 +573,9 @@ class Cluster(object):
         Utils.Print("Bootstrap cluster.")
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
-        if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf)
+        if onlyBios or not useBiosBootFile or configSecurityGroup:
+            delayProductionTransfer = 35 if configSecurityGroup else None # when TLS delay is analyzed, then this delay and ignoring of useBiosBootFile can be removed
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf, delayProductionTransfer=delayProductionTransfer)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
@@ -1180,7 +1181,7 @@ class Cluster(object):
 
         return biosNode
 
-    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True, manualProducerNodeConf=[]):
+    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True, manualProducerNodeConf=[], delayProductionTransfer=None):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -1310,6 +1311,10 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                 Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
                 opts="--permission eosio@active"
+
+                if delayProductionTransfer:
+                    time.sleep(delayProductionTransfer)
+
                 # pylint: disable=redefined-variable-type
                 trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
                 if trans is None or not trans[0]:
