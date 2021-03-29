@@ -1427,6 +1427,7 @@ class Node(object):
     def waitUntilBeginningOfProdTurn(self, producerName, timeout=30, sleepTime=0.4):
         beginningOfProdTurnHead = 0
         def isDesiredProdTurn():
+            nonlocal beginningOfProdTurnHead
             beginningOfProdTurnHead = self.getHeadBlockNum()
             res =  self.getBlock(beginningOfProdTurnHead)["producer"] == producerName and \
                    self.getBlock(beginningOfProdTurnHead-1)["producer"] != producerName
