@@ -148,24 +148,24 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "none", "fields": [
+            "name": "prunable_data_none", "fields": [
                 { "name": "prunable_digest", "type": "checksum256" }
             ]
         },
         {
-            "name": "partial", "fields": [
+            "name": "prunable_data_partial", "fields": [
                 { "name": "signatures", "type": "signature[]" },
                 { "name": "context_free_segments", "type": "segment_type[]" }
             ]
         },
         {
-            "name": "full", "fields": [
+            "name": "prunable_data_full", "fields": [
                 { "name": "signatures", "type": "signature[]" },
                 { "name": "context_free_segments", "type": "bytes[]" }
             ]
         },
         {
-            "name": "full_legacy", "fields": [
+            "name": "prunable_data_full_legacy", "fields": [
                 { "name": "signatures", "type": "signature[]" },
                 { "name": "packed_context_free_data", "type": "bytes" }
             ]
@@ -637,7 +637,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "transaction_variant_v0", "types": ["transaction_id", "packed_transaction_v0"] },
         { "name": "signed_block_variant", "types": ["signed_block_v0", "signed_block_v1"] },
         { "name": "segment_type", "types": ["checksum256", "bytes"] },
-        { "name": "prunable_data_t", "types": ["full_legacy", "none", "partial", "full"] },
+        { "name": "prunable_data_t", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
         { "name": "table_delta", "types": ["table_delta_v0", "table_delta_v1"] },
         { "name": "account", "types": ["account_v0"] },
         { "name": "account_metadata", "types": ["account_metadata_v0"] },
