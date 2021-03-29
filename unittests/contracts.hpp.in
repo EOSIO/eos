@@ -37,6 +37,7 @@ namespace eosio {
 
          // Contracts in `eos/unittests/unittests/test-contracts' directory
          MAKE_READ_WASM_ABI(asserter,              asserter,              test-contracts)
+         MAKE_READ_WASM_ABI(chgpayerhk,            chgpayerhk,            test-contracts)
          MAKE_READ_WASM_ABI(deferred_test,         deferred_test,         test-contracts)
          MAKE_READ_WASM_ABI(get_sender_test,       get_sender_test,       test-contracts)
          MAKE_READ_WASM_ABI(get_table_test,        get_table_test,        test-contracts)

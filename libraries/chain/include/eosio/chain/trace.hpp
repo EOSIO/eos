@@ -64,6 +64,7 @@ namespace eosio { namespace chain {
       std::optional<fc::exception>               except;
       std::optional<uint64_t>                    error_code;
       std::exception_ptr                         except_ptr;
+      flat_set<account_name>                     bill_to_accounts;
    };
 
    /**
