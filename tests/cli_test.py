@@ -80,7 +80,7 @@ def cleos_sign_test():
             '"permission": "active"'
         '}'
         '],'
-        '"data":' "000000000000a6690000000000ea305501000000000000000453595300000000016d"
+        '"data": "000000000000a6690000000000ea305501000000000000000453595300000000016d"'
        '}'
        '],'
         '"transaction_extensions": [],'
@@ -92,7 +92,14 @@ def cleos_sign_test():
     # make sure it is signed
     assert(b'signatures' in output)
     # make sure fields are kept
+    assert(b'"expiration": "2019-08-01T07:15:49"' in output)
     assert(b'"ref_block_num": 34881' in output)
+    assert(b'"ref_block_prefix": 2972818865' in output)
+    assert(b'"account": "eosio.token"' in output)
+    assert(b'"name": "transfer"' in output)
+    assert(b'"actor": "eosio"' in output)
+    assert(b'"permission": "active"' in output)
+    assert(b'"data": "000000000000a6690000000000ea305501000000000000000453595300000000016d"' in output)
 
     packed_trx = ' { "signatures": [], "compression": "none", "packed_context_free_data": "", "packed_trx": "a591425d4188b19d31b1000000000100a6823403ea3055000000572d3ccdcd010000000000ea305500000000a8ed323222000000000000a6690000000000ea305501000000000000000453595300000000016d00" } '
 
@@ -108,7 +115,14 @@ def cleos_sign_test():
     except subprocess.CalledProcessError as ex:
         print(ex.output)
     # make sure fields are unpacked
+    assert(b'"expiration": "2019-08-01T07:15:49"' in errs)
     assert(b'"ref_block_num": 34881' in errs)
+    assert(b'"ref_block_prefix": 2972818865' in errs)
+    assert(b'"account": "eosio.token"' in errs)
+    assert(b'"name": "transfer"' in errs)
+    assert(b'"actor": "eosio"' in errs)
+    assert(b'"permission": "active"' in errs)
+    assert(b'"data": "000000000000a6690000000000ea305501000000000000000453595300000000016d"' in errs)
 
     # Test packed transaction is signed.
     output = subprocess.check_output(['./programs/cleos/cleos', 'sign',
