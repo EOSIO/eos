@@ -90,6 +90,20 @@ try:
     producers = [cluster.getNode(x) for x in range(pnodes) ]
     relays = [cluster.getNode(pnodes + x) for x in range(pnodes) ]
     apiNodes = [cluster.getNode(x) for x in apiNodeNums]
+
+    def createAccount(newAcc):
+        producers[0].createInitializeAccount(newAcc, cluster.eosioAccount)
+        ignWallet = cluster.walletMgr.create("ignition")  # will actually just look up the wallet
+        cluster.walletMgr.importKey(newAcc, ignWallet)
+
+    numAccounts = 4
+    testAccounts = Cluster.createAccountKeys(numAccounts)
+    accountPrefix = "testaccount"
+    for i in range(numAccounts):
+        testAccount = testAccounts[i]
+        testAccount.name  = accountPrefix + str(i + 1)
+        createAccount(testAccount)
+
     blockProducer = None
 
     def verifyInSync(producerNum):
@@ -134,6 +148,12 @@ try:
     if sanityTest:
         testSuccessful=True
         exit(0)
+
+    def publishContract(account, wasmFile, waitForTransBlock=False):
+        Print("Publish contract")
+        return producers[0].publishContract(account, "unittests/test-contracts/security_group_test/", wasmFile, abiFile=None, waitForTransBlock=waitForTransBlock)
+
+    publishContract(testAccounts[0], 'security_group_test.wasm', waitForTransBlock=True)
 
     testSuccessful=True
 finally:
