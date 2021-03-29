@@ -1834,6 +1834,7 @@ BOOST_AUTO_TEST_CASE( register_transaction_hook_test ) { try {
    c.produce_block();
 } FC_LOG_AND_RETHROW() }
 
+// TODO: investigate case when payer is set manually to 0 here
 static const char import_set_transaction_resource_payer_wast[] = R"=====(
 (module
  (import "env" "set_transaction_resource_payer" (func $set_transaction_resource_payer (param i64 i64 i64)(result i32)))
@@ -1842,7 +1843,7 @@ static const char import_set_transaction_resource_payer_wast[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
    (drop
      (call $set_transaction_resource_payer
-       (i64.const 0)
+       (i64.const 3773036822876127232)
        (i64.const 43)
        (i64.const 43)
      )
