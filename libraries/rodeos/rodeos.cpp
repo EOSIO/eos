@@ -292,9 +292,19 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    if (eosvmoc_enable) {
       try {
-         filter_state->eosvmoc_tierup.emplace(
-               eosvmoc_path, eosvmoc_config, code,
-               eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+         auto cache_path = eosvmoc_path / "rodeos_eosvmoc_cc";
+         try {
+            filter_state->eosvmoc_tierup.emplace(
+                  cache_path, eosvmoc_config, code,
+                  eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+         } catch( const eosio::chain::database_exception& e ) {
+            wlog( "eosvmoc cache exception ${e} removing cache ${c}", ("e", e.to_string())("c", cache_path.generic_string()) );
+            // destroy cache and try again
+            boost::filesystem::remove_all( cache_path );
+            filter_state->eosvmoc_tierup.emplace(
+                  cache_path, eosvmoc_config, code,
+                  eosio::chain::digest_type::hash(reinterpret_cast<const char*>(code.data()), code.size()));
+         }
       }
       FC_LOG_AND_RETHROW();
    }
