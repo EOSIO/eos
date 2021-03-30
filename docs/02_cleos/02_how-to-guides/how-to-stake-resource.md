@@ -9,9 +9,9 @@ This how-to guide provides instructions on how to stake resources, NET and/or CP
 * Ensure the [reference system contracts](https://developers.eos.io/manuals/eosio.contracts/v1.9/build-and-deploy) are deployed and used to manage system resources.
 
 * Understand the following:
-  * What is an [account](https://developers.eos.io/welcome/v2.1/glossary/index/#account).
-  * What is [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/net).
-  * What is [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/cpu).
+  * What an [account](https://developers.eos.io/welcome/v2.1/glossary/index/#account) is.
+  * What [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/net) is.
+  * What [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/v1.9/key-concepts/cpu) is.
   * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/system/system-delegatebw).
 
 ## Command Reference
@@ -40,8 +40,8 @@ Where:
 
 * `alice` = the account for which the NET bandwidth is staked.
 * `bob` = the account that pays the `0.01 SYS` for the NET bandwidth staked.
-* "0.01 SYS" = the amount of system tokens `SYS` allocated to stake NET bandwidth.
-* "0 SYS" = the amount of system tokens `SYS` allocated to stake CPU bandwidth.
+* `0.01 SYS` = the amount of `SYS` tokens allocated to stake NET bandwidth.
+* `0 SYS` = the amount of `SYS` tokens allocated to stake CPU bandwidth.
 
 Example output:
 
@@ -65,8 +65,8 @@ Where:
 
 * `alice` = the account for which the CPU bandwidth is staked.
 * `bob` = the account that pays the `0.01 SYS` for the CPU bandwidth staked.
-* "0 SYS" = the amount of system tokens `SYS` allocated to stake NET bandwidth.
-* "0.01 SYS" = the amount of system tokens `SYS` allocated to stake CPU bandwidth.
+* `0 SYS` = the amount of `SYS` tokens allocated to stake NET bandwidth.
+* `0.01 SYS` = the amount `SYS` tokens allocated to stake CPU bandwidth.
 
 Example output:
 
@@ -90,8 +90,8 @@ Where:
 
 * `alice` = the account for which the NET and CPU bandwidth is staked.
 * `bob` = the account that pays `0.01 SYS` for the NET and `0.02 SYS` for the CPU bandwidth staked.
-* "0.01 SYS" = the amount of system tokens `SYS` allocated to stake NET bandwidth.
-* "0.02 SYS" = the amount of system tokens `SYS` allocated to stake CPU bandwidth.
+* `0.01 SYS` = the amount of `SYS` tokens allocated to stake NET bandwidth.
+* `0.02 SYS` = the amount of `SYS` tokens allocated to stake CPU bandwidth.
 
 Example output:
 

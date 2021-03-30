@@ -9,14 +9,14 @@ This how-to guide provides instructions on how to transfer tokens created by `eo
 * `eosio.token` contract is deployed on the network you are connected to.
 
 * Understand the following:
-  * What is a [transaction](https://developers.eos.io/welcome/v2.1/glossary/index/#transaction).
+  * What a [transaction](https://developers.eos.io/welcome/v2.1/glossary/index/#transaction) is.
   * Token transfers are irreversible.
 
 ## Command Reference
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [`transfer` cleos sub-command](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/transfer).
+* The [transfer cleos](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/transfer) reference.
 
 ## Procedure
 
@@ -30,8 +30,8 @@ Where:
 
 * `alice` = the account that transfers the tokens.
 * `bob` = the account that receives the tokens.
-* "0.0001 SYS" = the amount and the token symbol sent.
-* "Hodl!" = the message, or memo, that is accompanying the transaction.
+* `0.0001 SYS` = the amount of `SYS` tokens sent.
+* `Hodl!` = the message, or memo, that is accompanying the transaction.
 
 Example output:
 
