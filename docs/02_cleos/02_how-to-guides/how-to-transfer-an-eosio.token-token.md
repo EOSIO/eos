@@ -9,7 +9,7 @@ This how-to guide provides instructions on how to transfer tokens created by `eo
 * `eosio.token` contract is deployed on the network you are connected to.
 
 * Understand the following:
-  * What is a [transaction](https://developers.eos.io/welcome/latest/glossary/index/#transaction).
+  * What is a [transaction](https://developers.eos.io/welcome/v2.1/glossary/index/#transaction).
   * Token transfers are irreversible.
 
 ## Command Reference

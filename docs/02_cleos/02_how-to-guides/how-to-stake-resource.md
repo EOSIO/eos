@@ -18,7 +18,7 @@ This how-to guide provides instructions on how to stake resources, NET and/or CP
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/system/system-delegatebw).
 
 ## Procedure
 
