@@ -18,7 +18,7 @@ This how-to guide provides instructions on how to vote for block producers.
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [`system voteproducer prods` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-voteproducer-prods).
+* The [cleos system voteproducer prods](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-voteproducer-prods) reference.
 
 ## Procedure
 
@@ -32,8 +32,8 @@ cleos system voteproducer prods eosiotestts2 blockproducer1 blockproducer2
 
 Where:
 
-* eosiotestts2 = the account that votes.
-* blockproducer1 and blockproducer2 = the accounts receiving the votes. The number of accounts receiving the votes can vary from one to multiple. Maximum default number of block producers one account can vote for is 30.
+* `eosiotestts2` = the account that votes.
+* `blockproducer1` and `blockproducer2` = the accounts receiving the votes. The number of accounts receiving the votes can vary from one to multiple. Maximum default number of block producers one account can vote for is 30.
 
 Example output:
 
