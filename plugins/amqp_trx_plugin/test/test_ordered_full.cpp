@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(order) {
          fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
          std::vector<const char*> argv =
                {"test", "--data-dir", temp.c_str(), "--config-dir", temp.c_str(),
-                "-p", "eosio", "-e", "--max-transaction-time", "500" };
+                "-p", "eosio", "-e", "--max-transaction-time", "500", "--disable-subjective-billing" };
          appbase::app().initialize<chain_plugin, producer_plugin>( argv.size(), (char**) &argv[0] );
          appbase::app().startup();
          plugin_promise.set_value(
