@@ -23,6 +23,7 @@ struct transactional_amqp_publisher_impl {
                                      const fc::microseconds& time_out,
                                      transactional_amqp_publisher::error_callback_t on_fatal_error);
    ~transactional_amqp_publisher_impl();
+   void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
    void pump_queue();
    void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
    void publish_message_direct(const std::string& routing_key, std::vector<char> data,
@@ -34,7 +35,7 @@ struct transactional_amqp_publisher_impl {
    AMQP::Channel* channel = nullptr; ///< nullptr when channel is not up
    std::atomic_bool stopping = false;
 
-   unsigned in_flight = 0;
+   bool in_flight = false;
    std::deque<std::pair<std::string, std::vector<char>>> message_deque;
 
    std::thread thread;
@@ -53,10 +54,12 @@ struct transactional_amqp_publisher_impl {
       std::mutex mtx_;
       bool acked_ = false;
       std::condition_variable ack_cond_;
-      const std::chrono::microseconds time_out_us;
+      const fc::microseconds time_out_us;
+      std::atomic_bool& stopping;
    public:
-      explicit acked_cond(const fc::microseconds& time_out)
-      : time_out_us(time_out.count()) {}
+      acked_cond(const fc::microseconds& time_out, std::atomic_bool& stopping)
+      : time_out_us(time_out)
+      , stopping(stopping) {}
       void set() {
          {
             auto lock = std::scoped_lock(mtx_);
@@ -65,8 +68,19 @@ struct transactional_amqp_publisher_impl {
          ack_cond_.notify_one();
       }
       bool wait() {
+         uint32_t n = 1;
+         std::chrono::microseconds wait_time{time_out_us.count()};
+         if( time_out_us > fc::milliseconds(10) ) {
+            n = time_out_us.count() / fc::milliseconds(10).count();
+            wait_time = std::chrono::milliseconds(10);
+         }
+         bool success = false;
          std::unique_lock<std::mutex> lk(mtx_);
-         return ack_cond_.wait_for( lk, time_out_us, [&]{ return acked_; } );
+         for( uint32_t i = 0; i < n && !success; ++i ) {
+            success = ack_cond_.wait_for( lk, wait_time, [&]{ return acked_; } );
+            if( stopping ) return false;
+         }
+         return success;
       }
       void un_set() {
          auto lock = std::scoped_lock( mtx_ );
@@ -77,16 +91,30 @@ struct transactional_amqp_publisher_impl {
    acked_cond ack_cond;
 };
 
+void transactional_amqp_publisher_impl::wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss) {
+   ss->async_wait([this, ss](const boost::system::error_code& ec, int) {
+      if(ec)
+         return;
+      stopping = true;
+      wait_for_signal(ss);
+   });
+}
+
 transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(const std::string& url, const std::string& exchange,
                                                                      const fc::microseconds& time_out,
                                                                      transactional_amqp_publisher::error_callback_t on_fatal_error)
   : retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();})
   , on_fatal_error(std::move(on_fatal_error))
   , exchange(exchange)
-  , ack_cond(time_out)
+  , ack_cond(time_out, stopping)
 {
    thread = std::thread([this]() {
       fc::set_os_thread_name("tamqp");
+      std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(ctx, SIGINT, SIGTERM);
+#ifdef SIGPIPE
+      ss->add(SIGPIPE);
+#endif
+      wait_for_signal(ss);
       while(true) {
          try {
             ctx.run();
@@ -113,7 +141,7 @@ transactional_amqp_publisher_impl::~transactional_amqp_publisher_impl() {
 
    //if a message is in flight, let it try to run to completion
    if(in_flight) {
-      auto until = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+      auto until = std::chrono::steady_clock::now() + std::chrono::seconds(15);
       ctx.restart();
       while(in_flight && ctx.run_one_until(until));
    }
@@ -132,28 +160,21 @@ void transactional_amqp_publisher_impl::pump_queue() {
    if(stopping || in_flight || !channel || message_deque.empty())
       return;
 
-   constexpr size_t max_msg_single_transaction = 16; // if msg.num == 0
-
    channel->startTransaction();
-   in_flight = 0;
-   for( auto i = message_deque.begin(), end = message_deque.end(); i != end; ++i, ++in_flight) {
-      const auto& msg = *i;
-      if( in_flight > max_msg_single_transaction )
-         break;
-
+   in_flight = true;
+   for(const auto& msg : message_deque) {
       AMQP::Envelope envelope(msg.second.data(), msg.second.size());
       envelope.setPersistent();
       channel->publish(exchange, msg.first, envelope);
    }
 
    channel->commitTransaction().onSuccess([this](){
-      message_deque.erase(message_deque.begin(), message_deque.begin()+in_flight);
-      if(message_deque.empty()) {
-         ack_cond.set();
-      }
+      message_deque.clear();
+      ack_cond.set();
+      in_flight = false;
    })
    .onFinalize([this]() {
-      in_flight = 0;
+      in_flight = false;
       //unfortuately we don't know if an error is due to something recoverable or if an error is due
       // to something unrecoverable. To know that, we need to pump the event queue some which may allow
       // channel_failed() to be called as needed. So always pump the event queue here
