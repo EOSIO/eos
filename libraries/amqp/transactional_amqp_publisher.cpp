@@ -47,19 +47,17 @@ struct transactional_amqp_publisher_impl {
    const std::string exchange;
    const fc::microseconds ack_time_out;
 
-   boost::asio::strand<boost::asio::io_context::executor_type> user_submitted_work_strand = boost::asio::make_strand(ctx);
+   boost::asio::strand<boost::asio::io_context::executor_type> submitted_work_strand = boost::asio::make_strand(ctx);
 
    class acked_cond {
    private:
       std::mutex mtx_;
       bool acked_ = false;
       std::condition_variable ack_cond_;
-      const fc::microseconds time_out_us;
-      std::atomic_bool& stopping;
+      const std::chrono::microseconds time_out_us;
    public:
-      acked_cond(const fc::microseconds& time_out, std::atomic_bool& stopping)
-      : time_out_us(time_out)
-      , stopping(stopping) {}
+      explicit acked_cond(const fc::microseconds& time_out)
+      : time_out_us(time_out.count()) {}
       void set() {
          {
             auto lock = std::scoped_lock(mtx_);
@@ -68,19 +66,8 @@ struct transactional_amqp_publisher_impl {
          ack_cond_.notify_one();
       }
       bool wait() {
-         uint32_t n = 1;
-         std::chrono::microseconds wait_time{time_out_us.count()};
-         if( time_out_us > fc::milliseconds(10) ) {
-            n = time_out_us.count() / fc::milliseconds(10).count();
-            wait_time = std::chrono::milliseconds(10);
-         }
-         bool success = false;
          std::unique_lock<std::mutex> lk(mtx_);
-         for( uint32_t i = 0; i < n && !success; ++i ) {
-            success = ack_cond_.wait_for( lk, wait_time, [&]{ return acked_; } );
-            if( stopping ) return false;
-         }
-         return success;
+         return ack_cond_.wait_for( lk, time_out_us, [&]{ return acked_; } );
       }
       void un_set() {
          auto lock = std::scoped_lock( mtx_ );
@@ -96,6 +83,7 @@ void transactional_amqp_publisher_impl::wait_for_signal(std::shared_ptr<boost::a
       if(ec)
          return;
       stopping = true;
+      ack_cond.set();
       wait_for_signal(ss);
    });
 }
@@ -106,7 +94,7 @@ transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(const std::
   : retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();})
   , on_fatal_error(std::move(on_fatal_error))
   , exchange(exchange)
-  , ack_cond(time_out, stopping)
+  , ack_cond(time_out)
 {
    thread = std::thread([this]() {
       fc::set_os_thread_name("tamqp");
@@ -128,23 +116,16 @@ transactional_amqp_publisher_impl::transactional_amqp_publisher_impl(const std::
 transactional_amqp_publisher_impl::~transactional_amqp_publisher_impl() {
    stopping = true;
 
-   //drain any remaining items on user submitted queue
+   // drain any remaining items on submitted queue
    std::promise<void> shutdown_promise;
    auto shutdown_future = shutdown_promise.get_future();
-   boost::asio::post(user_submitted_work_strand, [&]() {
+   boost::asio::post(submitted_work_strand, [&]() {
       shutdown_promise.set_value();
    });
    shutdown_future.wait();
 
    ctx.stop();
    thread.join();
-
-   //if a message is in flight, let it try to run to completion
-   if(in_flight) {
-      auto until = std::chrono::steady_clock::now() + std::chrono::seconds(15);
-      ctx.restart();
-      while(in_flight && ctx.run_one_until(until));
-   }
 }
 
 void transactional_amqp_publisher_impl::channel_ready(AMQP::Channel* c) {
@@ -194,7 +175,7 @@ void transactional_amqp_publisher_impl::publish_messages_raw(std::deque<std::pai
 
    ack_cond.un_set();
 
-   boost::asio::post( user_submitted_work_strand, [this, q = std::move( queue )]() mutable {
+   boost::asio::post( submitted_work_strand, [this, q = std::move( queue )]() mutable {
       if( !message_deque.empty() ) {
          if( on_fatal_error ) on_fatal_error( "message_deque not drained" );
          return;
@@ -203,7 +184,7 @@ void transactional_amqp_publisher_impl::publish_messages_raw(std::deque<std::pai
       pump_queue();
    } );
 
-   if( !ack_cond.wait() ) {
+   if( !ack_cond.wait() || stopping ) {
       if( on_fatal_error ) on_fatal_error( "time out waiting on AMQP commit transaction success ack" );
    }
 }
@@ -211,7 +192,7 @@ void transactional_amqp_publisher_impl::publish_messages_raw(std::deque<std::pai
 void transactional_amqp_publisher_impl::publish_message_direct(const std::string& rk, std::vector<char> data,
                                                                transactional_amqp_publisher::error_callback_t on_error) {
    if(!ctx.get_executor().running_in_this_thread()) {
-      boost::asio::post(user_submitted_work_strand,
+      boost::asio::post(submitted_work_strand,
                         [this, rk, d=std::move(data), on_e=std::move(on_error)]() mutable {
          publish_message_direct(rk, std::move(d), std::move(on_e));
       });

@@ -35,7 +35,8 @@ class transactional_amqp_publisher {
                                    const fc::microseconds& time_out, error_callback_t on_fatal_error);
 
       /// Publish messages. May be called from any thread except internal thread (do not call from on_fatal_error)
-      /// Blocks until AMQP ack of success transactional commit or on_fatal_error if timeout waiting on ack
+      /// All calls should be from the same thread or at the very least no two calls should be performed concurrently.
+      /// Blocks until AMQP ack of success transactional commit or on_fatal_error if timeout waiting on ack.
       /// \param queue set of messages to send in one transaction <routing_key, message_data>
       void publish_messages_raw(std::deque<std::pair<std::string, std::vector<char>>>&& queue);
 
