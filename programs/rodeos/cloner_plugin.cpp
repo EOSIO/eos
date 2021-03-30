@@ -187,6 +187,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          if (my->streamer)
             my->streamer->stop_block(result.this_block->block_num);
       }
+      if( app().is_quiting() )
+         return false;
 
       rodeos_snapshot->end_block(result, false);
       return true;

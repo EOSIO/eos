@@ -8,7 +8,6 @@
 #include <fc/log/logger_config.hpp> //set_os_thread_name()
 
 #include <amqpcpp.h>
-#include <amqpcpp/libboostasio.h>
 
 #include <thread>
 #include <chrono>
@@ -16,7 +15,7 @@
 #include <algorithm>
 #include <atomic>
 
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 
 namespace eosio {
@@ -261,7 +260,7 @@ void reliable_amqp_publisher_impl::publish_message_direct(const std::string& rk,
    if(stopping || !channel) {
       std::string err = "AMQP connection " + fc::variant(retrying_connection.address()).as_string() +
             " to " + exchange + " not connected, dropping message " + rk;
-      on_error(err);
+      if(on_error) on_error(err);
       return;
    }
 
