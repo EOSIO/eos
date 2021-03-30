@@ -138,7 +138,7 @@ try:
     featureDict = producers[0].getSupportedProtocolFeatureDict()
     Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
 
-    #Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
+    Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
     timeout = ( pnodes * 12 / 2 ) * 2   # (number of producers * blocks produced / 0.5 blocks per second) * 2 rounds
     producers[0].waitUntilBeginningOfProdTurn(blockProducer, timeout=timeout)
     feature = "SECURITY_GROUP"

@@ -1504,9 +1504,14 @@ class Node(object):
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
-        cmdDesc = "get block {} --header-state".format(headBlockNum)
-        latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
-        return latestBlockHeaderState
+        for i in range(10):
+            cmdDesc = "get block {} --header-state".format(headBlockNum)
+            latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+            Utils.Print("block num: {}, block state: {}, head: {}".format(headBlockNum, latestBlockHeaderState, self.getHeadBlockNum()))
+            if latestBlockHeaderState:
+                return latestBlockHeaderState
+            time.sleep(1)
+        return None
 
     def getActivatedProtocolFeatures(self):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
