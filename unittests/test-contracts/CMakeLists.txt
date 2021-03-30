@@ -12,6 +12,7 @@ if( USE_EOSIO_CDT_1_7_X )
 endif()
 
 add_subdirectory( asserter )
+add_subdirectory( chgpayerhk )
 add_subdirectory( deferred_test )
 add_subdirectory( get_sender_test )
 add_subdirectory( get_table_test )

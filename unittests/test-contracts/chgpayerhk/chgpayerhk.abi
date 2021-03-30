@@ -1,0 +1,34 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "changepayer",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "setpayerhf",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "changepayer",
+            "type": "changepayer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpayerhf",
+            "type": "setpayerhf",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}
