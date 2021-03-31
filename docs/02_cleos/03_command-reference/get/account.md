@@ -1,25 +1,37 @@
-
 ## Command
+
+```sh
 cleos get account [OPTIONS] name [core-symbol]
+```
 
-**Where**
-* [OPTIONS] = See Options in Command Usage section below.
+**Where**:
 
-**Note**: The arguments and options enclosed in square brackets are optional.
+* [`OPTIONS`] = See **Options** in **Command Usage** section below
+* `name` = The name of the account to retrieve
+* [`core-symbol`] = The expected core symbol of the chain you are querying
 
 ## Description
-Retrieve an account from the blockchain
+Use this command to retrieve information associated with a blockchain account. 
+
 
 ## Command Usage
-The following information shows the different positionals and options you can use with the `cleos create key` command:
 
-### Positionals:
-- `name` _TEXT_ - The name of the account to retrieve
-- `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying - OPTIONAL
+The following information shows the different positionals and options you can use with the `cleos get account` command:
 
-### Options
-- `-h,--help` Print this help message and exit
-- `-j,--json` - Output in JSON format
+```console
+Usage: cleos get account [OPTIONS] name [core-symbol]
+
+Positionals:
+  name TEXT                   The name of the account to retrieve (required)
+  core-symbol TEXT            The expected core symbol of the chain you are querying
+
+Options:
+  -j,--json                   Output in JSON format
+```
+
+## Requirements
+
+For prerequisites to run this command, see the **Before you Begin** section of the [_How to Get Account Information_](../02_how-to-guides/how-to-get-account-information.md) topic.
 
 ## Requirements
 * Install the currently supported version of `cleos.`
@@ -29,7 +41,10 @@ The following information shows the different positionals and options you can us
 
 ## Examples
 
-1. Get formatted data for user **eosio**
+The following examples retrieves data associated with the `eosio` account:
+
+**Example 1: Retrieve formatted data for `eosio` account**
+
 
 ```shell
 cleos get account eosio
@@ -58,7 +73,9 @@ cpu bandwidth: (averaged over 3 days)
 
 producers:     <not voted>
 ```
-2. Get JSON data for user **eosio**
+
+
+**Example 2: Retrieve formatted JSON data for `eosio` account**
 
 ```sh
 cleos get account eosio --json
