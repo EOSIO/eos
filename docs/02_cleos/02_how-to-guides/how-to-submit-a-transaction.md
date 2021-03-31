@@ -7,7 +7,7 @@ This how-to guide provides instructions on how to submit, or push, a transaction
 * Install the currently supported version of `cleos`
 
 * Understand the following:
-  * What [transaction](https://developers.eos.io/welcome/v2.1/glossary/index/#transaction) is.
+  * What a [transaction](https://developers.eos.io/welcome/latest/glossary/index/#transaction) is.
   * How to generate a valid transaction JSON.
     * Consult [cleos push transaction](https://developers.eos.io/manuals/eos/v2.1/cleos/command-reference/push/push-transaction) reference, and pay attention to option `-d` and `-j`.
     * Consult [push transaction](https://developers.eos.io/manuals/eos/v2.1/nodeos/plugins/chain_api_plugin/api-reference/index#operation/push_transaction) endpoint for chain api plug-in, and pay attention to the payload definition.
