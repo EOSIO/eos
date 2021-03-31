@@ -150,6 +150,8 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -232,11 +234,16 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
+    env:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      PLATFORM_TYPE: $PLATFORM_TYPE
     agents: "queue=mac-anka-node-fleet"
     retry:
       manual:
@@ -285,6 +292,8 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -341,6 +350,8 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -399,6 +410,8 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -613,6 +626,8 @@ cat <<EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
@@ -637,6 +652,8 @@ cat <<EOF
           always-pull: true
           debug: true
           wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
           failover-registries:
             - 'registry_1'
             - 'registry_2'
