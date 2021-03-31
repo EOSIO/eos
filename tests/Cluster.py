@@ -249,8 +249,7 @@ class Cluster(object):
                 # eos name can have only numbers 1-5
                 # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
                 def normalizeNumber(number):
-                    if number <= 0:
-                        number = 1
+                    assert(number > 0)
                     if number <= 5:
                         return str(number)
                     cnt = number
@@ -261,7 +260,7 @@ class Cluster(object):
                             ret = "{}.5".format(ret)
                         else:
                             ret = "{}.{}".format(ret, cnt)
-                    assert(len(ret) <= 13)
+                        assert(len(ret) <= 13)
                     
                     return ret
                 
