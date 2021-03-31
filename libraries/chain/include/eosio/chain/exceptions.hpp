@@ -681,4 +681,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( state_history_exception,    chain_exception,
                                  3280000, "State history exception" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( ssl_exception, chain_exception,
+                                 3290000, "SSL exception")
+
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_incomplete_configuration, ssl_exception,
+                                    3290001, "Incomplete SSL configuration")
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_configuration_error, ssl_exception,
+                                    3290002, "SSL configuration error")
 } } // eosio::chain

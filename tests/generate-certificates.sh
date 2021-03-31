@@ -48,6 +48,29 @@ function get-algo-str {
    fi
 }
 
+function normalized-name {
+   if [ $2 -le 5 ]
+   then
+      NAME=$(sed "s/{NUMBER}/$2/" <<< "$1")
+   else
+      CNT=$2
+      NUM="5"
+      while [ $CNT -gt 5 ]
+      do
+         CNT=$(( $CNT - 5 ))
+         if [ $CNT -gt 5 ]
+         then
+            NUM="${NUM}.5"
+         else
+            NUM="${NUM}.${CNT}"
+         fi
+      done
+      NAME=$(sed "s/{NUMBER}/$NUM/" <<< "$1")
+   fi
+
+   echo $NAME
+}
+
 if [[ $1 == "--help" ]]
 then
    echo "Usage:"
@@ -92,10 +115,10 @@ echo "         generating nodes certificates    "
 echo "*************************************************"
 
 #client certificate requests + private keys
-for n in $(seq 0 $(($GROUP_SIZE-1)) )
+for n in $(seq 1 $(($GROUP_SIZE)) )
 do
-   ORG_NAME=$(sed "s/{NUMBER}/$n/" <<< "$ORG_MASK")
-   CN_NAME=$(sed "s/{NUMBER}/$n/" <<< "$CN_MASK")
+   ORG_NAME=$(normalized-name "$ORG_MASK" $n)
+   CN_NAME=$(normalized-name "$CN_MASK" $n)
    echo "*************************************************"
    echo "generating certificate for $ORG_NAME / $CN_NAME  "
    echo "*************************************************"

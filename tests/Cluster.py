@@ -245,9 +245,28 @@ class Cluster(object):
 
             certAuth = os.path.join(privacyDir, "CA_cert.pem")
             def getArguments(number):
-                nodeCert = os.path.join(privacyDir, "node{}.crt".format(number))
-                nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(number))
-                return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-ca-certificate-file {}".format(nodeCert, nodeKey, certAuth)
+                # this function converts number to eos name string
+                # eos name can have only numbers 1-5
+                # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
+                def normalizeNumber(number):
+                    assert(number > 0)
+                    if number <= 5:
+                        return str(number)
+                    cnt = number
+                    ret = "5"
+                    while cnt > 5:
+                        cnt = cnt - 5
+                        if cnt > 5:
+                            ret = "{}.5".format(ret)
+                        else:
+                            ret = "{}.{}".format(ret, cnt)
+                        assert(len(ret) <= 13)
+                    
+                    return ret
+                
+                nodeCert = os.path.join(privacyDir, "node{}.crt".format(normalizeNumber(number+1)))
+                nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(normalizeNumber(number+1)))
+                return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
 
             for node in range(totalNodes):
                 arguments = getArguments(node)
