@@ -1,18 +1,34 @@
-## Description
-Retrieves a transaction from the blockchain
-
-## Positional Parameters
-`id`` _TEXT_ - ID of the transaction to retrieve
-
-## Options
-` -b,--block-hint` UINT        the block number this transaction may be in
-
-**Command**
+## Command
 
 ```sh
-cleos get transaction
+cleos get transaction [OPTIONS] id
 ```
-**Output**
+**Where**:
+
+* [`OPTIONS`] = See **Options** in **Command Usage** section below
+* `id` = ID of the transaction to retrieve
+
+## Description
+Use this command to retrieve a transaction from the blockchain. 
+
+## Command Usage
+
+The following information shows the different positionals and options you can use with the `cleos get transaction` command:
+
+```console
+Usage: cleos get transaction [OPTIONS] id
+
+Positionals:
+  id TEXT                     ID of the transaction to retrieve (required)
+
+Options:
+  -b,--block-hint UINT        The block number this transaction may be in.
+```
+
+## Requirements
+
+For prerequisites to run this command, see the **Before you Begin** section of the [_How to Get Transaction Information_](../02_how-to-guides/how-to-get-transaction-information.md) topic.
+
 
 ## Example
 
