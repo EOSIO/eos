@@ -449,7 +449,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
-         auto result = transaction_metadata::create_no_recover_keys(trx, transaction_metadata::trx_type::read_only);
+         auto result = transaction_metadata::create_no_recover_keys(trx, read_only ? transaction_metadata::trx_type::read_only : transaction_metadata::trx_type::input);
 
          try {
             if( !process_incoming_transaction_async( result, persist_until_expired, next ) ) {
@@ -477,7 +477,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
          auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), transaction_metadata::trx_type::input, chain.configured_subjective_signature_length_limit() );
+                                                                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ),
+                                                                 read_only ? transaction_metadata::trx_type::read_only : transaction_metadata::trx_type::input,
+                                                                 chain.configured_subjective_signature_length_limit() );
 
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
                                                           next{std::move(next)}, trx]() mutable {
@@ -517,7 +519,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             next(response);
 
             if (std::holds_alternative<fc::exception_ptr>(response)) {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
+               if (!trx->read_only) {
+                  _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
+               }
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
@@ -543,7 +547,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   }
                }
             } else {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
+               if (!trx->read_only) {
+                  _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
+               }
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
