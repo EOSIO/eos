@@ -2020,9 +2020,9 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
 
    ptrx = create_trx(0);
    BOOST_CHECK_LT( cpu_limit, max_cpu_time_us );
-   // indicate non-explicit billing at our account cpu limit, will allow this trx to run, but only bills for actual use
-   auto r = push_trx( ptrx, fc::time_point::maximum(), cpu_limit, false, 0 );
-   BOOST_CHECK_LT( r->receipt->cpu_usage_us, cpu_limit ); // verify not billed at provided bill amount when explicit_billed_cpu_time=false
+   // indicate non-explicit billing at one less than our account cpu limit, will allow this trx to run, but only bills for actual use
+   auto r = push_trx( ptrx, fc::time_point::maximum(), cpu_limit-1, false, 0 );
+   BOOST_CHECK_LT( r->receipt->cpu_usage_us, cpu_limit-1 ); // verify not billed at provided bill amount when explicit_billed_cpu_time=false
 
    chain.produce_block();
    chain.produce_block( fc::days(1) ); // produce for one day to reset account cpu
