@@ -446,7 +446,14 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
       } else {
          try {
             if (tx_contract_query_print_json)
-                return call(get_contract_query_func, packed_transaction_v0(trx, compression));
+            {
+                packed_transaction_v0 pt_v0(trx, compression);
+                name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
+                auto args = fc::mutable_variant_object()
+                        ("account_name", account_name)
+                        ("transaction", pt_v0);
+                return call(get_contract_query_func, args);
+            }
             else
                 return call(send_txn_func, packed_transaction_v0(trx, compression));
          }
