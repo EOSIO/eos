@@ -445,7 +445,10 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          try {
-            return call(send_txn_func, packed_transaction_v0(trx, compression));
+            if (tx_contract_query_print_json)
+                return call(get_contract_query_func, packed_transaction_v0(trx, compression));
+            else
+                return call(send_txn_func, packed_transaction_v0(trx, compression));
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
