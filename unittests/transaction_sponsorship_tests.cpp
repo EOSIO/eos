@@ -35,13 +35,17 @@ BOOST_FIXTURE_TEST_CASE( bill_to_accounts_tests, transaction_sponsorship_tester 
    set_code("tester"_n, contracts::get_table_test_wasm());
    set_abi("tester"_n, contracts::get_table_test_abi().data());
 
-   auto trace = push_action("tester"_n, "addhashobj"_n, "tester"_n, mutable_variant_object()("hashinput", "hello"));
+   // TEST_NOT_ACTIVATED_WITH_SPONSOR (IT-TS-001)
+   // 1.all the test contract using the player account with sponsor metadata
+   auto trace = push_action("tester"_n, "addhashobj"_n, {"tester"_n, "respayer"_n }, mutable_variant_object()("hashinput", "hello"));
+   //Verify that the contract runs as normal and bill the user account
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    BOOST_REQUIRE_EQUAL(trace->bill_to_accounts.size(), 1);
    BOOST_REQUIRE_EQUAL(*trace->bill_to_accounts.begin(), "tester"_n);
 
    produce_block();
 
+   // Activate features
    create_accounts({"chgpayerhk"_n});
    set_code( "chgpayerhk"_n, contracts::chgpayerhk_wasm() );
    set_abi( "chgpayerhk"_n, contracts::chgpayerhk_abi().data() );
@@ -55,7 +59,36 @@ BOOST_FIXTURE_TEST_CASE( bill_to_accounts_tests, transaction_sponsorship_tester 
 
    produce_block();
 
-   trace = push_action("tester"_n, "addhashobj"_n, "tester"_n, mutable_variant_object()("hashinput", "hello2"));
+   // TEST_ACTIVATED_NO_SPONSOR (IT-TS-002)
+   // 1. Call the test contract using the player account without any transaction metadata
+   trace = push_action("tester"_n, "addhashobj"_n, {"tester"_n }, mutable_variant_object()("hashinput", "hello"));
+   // 2. Verify that the user account is billed for the usage
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+   BOOST_REQUIRE_EQUAL(trace->bill_to_accounts.size(), 1);
+   BOOST_REQUIRE_EQUAL(*trace->bill_to_accounts.begin(), "tester"_n);
+
+   // Test Case TEST_ACTIVATED_SELF_SPONSORED (IT-TS-003)
+   // 1. Call the test contract using the player account with sponsor metadata
+   trace = push_action("tester"_n, "addhashobj"_n, {"tester"_n }, mutable_variant_object()("hashinput", "hello2"));
+   // 2. Verify that the user account is billed for the usage
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+   BOOST_REQUIRE_EQUAL(trace->bill_to_accounts.size(), 1);
+   BOOST_REQUIRE_EQUAL(*trace->bill_to_accounts.begin(), "tester"_n);
+
+   // Test Case TEST_WITH_SPONSOR_NO_SIG (IT-TS-004)
+   // Call the test contract using the player account with sponsor metadata
+   vector<account_name> empty;
+   // Verify that the contract fails
+   BOOST_CHECK_EXCEPTION(push_action("tester"_n, "addhashobj"_n, empty, mutable_variant_object()("hashinput", "hello2")), tx_no_auths,
+                         [](const fc::assert_exception& e) {
+                            return expect_assert_message(e, "transaction must have at least one authorization");
+                         }
+   );
+
+   // Test Case TEST_WITH_SPONSOR (IT-TS-005)
+   // 1. Call the test contract signed with the sponsor key and using the player account with sponsor metadata
+   trace = push_action("tester"_n, "addhashobj"_n, {"tester"_n , "respayer"_n }, mutable_variant_object()("hashinput", "hello2"));
+   // 2. Verify that the contract succeeds and the sponsor account is billed
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    BOOST_REQUIRE_EQUAL(trace->bill_to_accounts.size(), 1);
    BOOST_REQUIRE_EQUAL(*trace->bill_to_accounts.begin(), "respayer"_n);

@@ -290,17 +290,26 @@ namespace eosio { namespace chain { namespace webassembly {
 
    bool interface::set_transaction_resource_payer( const name payer, const uint64_t max_net_bytes, const uint64_t max_cpu_us ) {
       //  check if the payer has signed
-      // FIXME: fix the if condition
-      if ( true || has_auth ( payer ) )
-      {
-         context.trx_context.set_resource_payer( payer );
-         context.trx_context.set_sponsored_max_net( max_net_bytes );
-         context.trx_context.set_sponsored_max_cpu( max_cpu_us );
+      const transaction& context_transaction = context.trx_context.packed_trx.get_transaction();
+      bool payer_found_in_authorization = false;
 
-         return true;
+      for(const auto &action: context_transaction.actions) {
+         for (const auto &permission_level: action.authorization) {
+            if (permission_level.actor == payer) {
+               payer_found_in_authorization = true;
+            }
+         }
       }
 
-      return false;
+      if(!payer_found_in_authorization) {
+         return false;
+      }
+
+      context.trx_context.set_resource_payer( payer );
+      context.trx_context.set_sponsored_max_net( max_net_bytes );
+      context.trx_context.set_sponsored_max_cpu( max_cpu_us );
+
+      return true;
    }
 
    bool interface::register_transaction_hook(uint32_t hook, name callback_contract, name callback_action) {
