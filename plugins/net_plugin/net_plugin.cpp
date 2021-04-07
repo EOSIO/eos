@@ -3816,18 +3816,18 @@ namespace eosio {
       error_code ec;
 
       if (!ca.empty()){
-         fc_dlog(logger, "using verify file: ${p}", ("p", ca));
+         dlog("using verify file: ${p}", ("p", ca));
          ssl_context->load_verify_file(ca, ec);
          EOS_ASSERT(!ec, ssl_configuration_error, "load_verify_file: ${e}", ("e", ec.message()));
 
          //this ensures peer has trusted certificate. no certificate-less connections
          ssl_context->set_verify_mode(ssl::context::verify_peer | ssl::context::verify_fail_if_no_peer_cert);
       }
-      fc_dlog(logger, "using private key file: ${p}", ("p", pkey));
+      dlog("using private key file: ${p}", ("p", pkey));
       ssl_context->use_private_key_file(pkey, ssl::context::pem, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_private_key_file: ${e}", ("e", ec.message()));
 
-      fc_dlog(logger, "using chain file: ${p}", ("p", cert));
+      dlog("using chain file: ${p}", ("p", cert));
       ssl_context->use_certificate_chain_file(cert, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_certificate_chain_file: ${e}", ("e", ec.message()));
    }
