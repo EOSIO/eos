@@ -647,7 +647,10 @@ namespace eosio {
 
       ~connection() {}
 
-      bool start_session(bool server);
+      //this function calls callback synchronously in case of non-ssl connection
+      //and asynchronously in case of ssl after asynchronous ssl handshake 
+      template<typename _Callback>
+      void start_session(bool server, _Callback callback);
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
       inline void set_socket_open(bool open = true) { socket_open = open; }
@@ -1086,7 +1089,8 @@ namespace eosio {
       return stat;
    }
 
-   bool connection::start_session(bool server) {
+   template<typename _Callback>
+   void connection::start_session(bool server, _Callback callback) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
       update_endpoints();
@@ -1096,12 +1100,13 @@ namespace eosio {
       if( ec ) {
          fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
          close();
-         return false;
+         callback(false);
       } else {
 
          if (my_impl->ssl_enabled) {
             socket.ssl_socket()->async_handshake(server ? ssl::stream_base::server : ssl::stream_base::client,
-                                       boost::asio::bind_executor(strand, [c = shared_from_this(), socket=socket](const auto& ec){
+                                       boost::asio::bind_executor(strand, 
+                                       [c = shared_from_this(), socket=socket, callback](const auto& ec){
                                           //we use socket just to retain connection shared_ptr just in case it will be deleted
                                           //when we will need it inside start_read_message
                                           std::ignore = socket;
@@ -1118,14 +1123,15 @@ namespace eosio {
                                           fc_dlog( logger, "participant added: ${o}", ("o", c->participant_name()));
                                           
                                           c->start_read_message();
+                                          callback(true);
                                        }));
          }
          else {
             fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
             set_socket_open();
             start_read_message();
+            callback(true);
          }
-         return true;
       }
    }
 
@@ -2611,9 +2617,10 @@ namespace eosio {
              c = shared_from_this(), 
              socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) mutable {
             if( !err && socket.raw_socket().is_open() && &socket.raw_socket() == &c->socket.raw_socket() ) {
-               if( c->start_session(false) ) {
-                  c->send_handshake();
-               }
+               c->start_session(false, [c](bool success){
+                  if (success)
+                     c->send_handshake();
+               });
             } else {
                fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                c->close( false );
@@ -2652,10 +2659,12 @@ namespace eosio {
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
                      fc_ilog( logger, "Accepted new connection: " + paddr_str );
                      new_connection->set_heartbeat_timeout( heartbeat_timeout );
-                     if( new_connection->start_session(true)) {
-                        std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
-                        connections.insert( new_connection );
-                     }
+                     new_connection->start_session(true, [c = shared_from_this(), new_connection](bool success) {
+                        if (success) {
+                           std::lock_guard<std::shared_mutex> g_unique( c->connections_mtx );
+                           c->connections.insert( new_connection );
+                        }
+                     });
 
                   } else {
                      if( from_addr >= max_nodes_per_host ) {
