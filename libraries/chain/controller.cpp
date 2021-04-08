@@ -1442,7 +1442,11 @@ struct controller_impl {
                }
 
                ++bb._pending_block_header_state.security_group.version;
-               bb._pending_block_header_state.security_group.participants = std::move(gpo.proposed_security_group_participants);
+               bb._pending_block_header_state.security_group.participants = {
+                  gpo.proposed_security_group_participants.begin(),
+                  gpo.proposed_security_group_participants.end(),
+                  bb._pending_block_header_state.security_group.participants.key_comp(),
+                  bb._pending_block_header_state.security_group.participants.get_allocator()};
 
                db.modify(gpo, [&](auto& gp) { 
                   gp.proposed_security_group_block_num = 0; 
@@ -2260,8 +2264,9 @@ struct controller_impl {
       }
 
       flat_set<account_name> proposed_participants = gpo.proposed_security_group_block_num == 0
-                                                         ? self.active_security_group().participants
-                                                         : gpo.proposed_security_group_participants;
+                              ? self.active_security_group().participants
+                              : flat_set<account_name>{gpo.proposed_security_group_participants.begin(),
+                                                       gpo.proposed_security_group_participants.end()};
 
       auto orig_participants_size = proposed_participants.size();
 
@@ -2274,7 +2279,10 @@ struct controller_impl {
 
       db.modify(gpo, [&proposed_participants, cur_block_num](auto& gp) {
          gp.proposed_security_group_block_num    = cur_block_num;
-         gp.proposed_security_group_participants = std::move(proposed_participants);
+         gp.proposed_security_group_participants = {proposed_participants.begin(),
+                                                    proposed_participants.end(),
+                                                    gp.proposed_security_group_participants.key_comp(),
+                                                    gp.proposed_security_group_participants.get_allocator()};
       });
 
       return 0;
@@ -2876,8 +2884,9 @@ const security_group_info_t& controller::active_security_group() const {
        my->pending->_block_stage);
 }
 
-const flat_set<account_name>& controller::proposed_security_group_participants() const {
-   return get_global_properties().proposed_security_group_participants;
+flat_set<account_name> controller::proposed_security_group_participants() const {
+   return {get_global_properties().proposed_security_group_participants.begin(),
+           get_global_properties().proposed_security_group_participants.end()};
 }
 
 int64_t controller::add_security_group_participants(const flat_set<account_name>& participants) {
