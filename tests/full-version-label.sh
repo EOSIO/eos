@@ -9,7 +9,7 @@ echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 # test expectations
 if [[ -z "$EXPECTED" ]]; then
     [[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
-    export EXPECTED="v$1-$BUILDKITE_COMMIT"
+    export EXPECTED="$1-$BUILDKITE_COMMIT"
 fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
