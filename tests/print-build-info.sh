@@ -4,7 +4,7 @@ set -eo pipefail
 # This includes verifying valid output in JSON shape and checking parameters (only boost for now).
 echo '##### Nodeos Print Build Info Test #####'
 # orient ourselves
-[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT="$(pwd)"
+[[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 [[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$1"
 
