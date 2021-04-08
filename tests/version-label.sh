@@ -7,7 +7,7 @@ echo '##### Nodeos Version Label Test #####'
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 # test expectations
 if [[ -z "$EXPECTED" ]]; then
-    export EXPECTED="v$1"
+    export EXPECTED="$1"
 fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
