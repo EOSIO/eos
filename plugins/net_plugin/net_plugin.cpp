@@ -3678,10 +3678,8 @@ namespace eosio {
       //
       for(auto& connection : connections) {
          const auto& participant = connection->participant_name();
-         if(!participant) {
-            continue;
-         }
-         if(security_group.is_in_security_group(participant.value())) {
+         if(participant && security_group.is_in_security_group(participant.value())) {
+            ilog("REM update_security_group participant in: ${part}, participating: ${p}",("part",participant->to_string())("p",connection->is_participating()));
             if(!connection->is_participating()) {
                connection->set_participating(true);
                connection->send_handshake();
