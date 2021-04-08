@@ -3,7 +3,7 @@ set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
 echo '##### Nodeos Version Label Test #####'
 # orient ourselves
-[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT="$(pwd)"
+[[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 EXPECTED=v$1
 if [[ -z "$EXPECTED" ]]; then
