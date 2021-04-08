@@ -7,7 +7,8 @@ echo '##### Nodeos Version Label Test #####'
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 # test expectations
 if [[ -z "$EXPECTED" ]]; then
-    export EXPECTED="$1"
+    [[ -z "$BUILDKITE_TAG" ]] export BUILDKITE_TAG="${GIT_TAG:-$1}"
+    export EXPECTED="$BUILDKITE_TAG"
 fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
