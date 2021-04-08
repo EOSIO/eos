@@ -11,8 +11,8 @@ if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
     exit 1
 fi
-VERSION_HASH="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
-EXPECTED=v$EXPECTED-$VERSION_HASH
+[[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
+EXPECTED=v$EXPECTED-$BUILDKITE_COMMIT
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
 ACTUAL=$($BUILD_ROOT/bin/nodeos --full-version)
