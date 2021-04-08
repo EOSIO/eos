@@ -140,7 +140,12 @@ namespace eosio { namespace chain {
          );
 
          if (it != std::end(gprops.transaction_hooks)) {
-            chain::action preexecution_hook_action{{}, it->contract, it->action, {}};
+            // Gather all auths from all the transaction's actions
+            vector<permission_level> all_auths;
+            for(const auto &action : trx.actions)
+               all_auths.insert(all_auths.end(), action.authorization.begin(), action.authorization.end());
+
+            chain::action preexecution_hook_action{all_auths, it->contract, it->action, {}};
             uint32_t action_ordinal_scheduled = schedule_action(preexecution_hook_action, preexecution_hook_action.account, false, 0, 0);
             execute_action( action_ordinal_scheduled, 0 );
          }
