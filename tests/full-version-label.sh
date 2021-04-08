@@ -5,12 +5,13 @@ echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
 [[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT=$(pwd)
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
+[[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$2"
 EXPECTED=$1
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
     exit 1
 fi
-VERSION_HASH="$(pushd $2 &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
+VERSION_HASH="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
 EXPECTED=v$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
