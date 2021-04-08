@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(future_fork_test) { try {
    pars.keys.emplace_back(node_a.get_public_key(tester_account, role));
 
    const auto pre_results = aq_db.get_accounts_by_authorizers(pars);
-   BOOST_TEST_REQUIRE(find_account_auth(pre_results, tester_account, N(role)) == true);
+   BOOST_TEST_REQUIRE(find_account_auth(pre_results, tester_account, "role"_n) == true);
 
    // have node B take over from head-1 and produce "future" blocks to overtake
    node_a.push_block(node_b.produce_block(fc::milliseconds(config::block_interval_ms * 100)));
