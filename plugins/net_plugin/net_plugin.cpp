@@ -653,7 +653,6 @@ namespace eosio {
       void start_session(bool server, _Callback callback);
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
-      inline void set_socket_open(bool open = true) { socket_open = open; }
       const string& peer_address() const { return peer_addr; } // thread safe, const
 
       void set_connection_type( const string& peer_addr );
@@ -865,14 +864,23 @@ namespace eosio {
    private:
       std::optional<chain::account_name> participant_name_;
       std::atomic<bool> participating_{true};
+      volatile bool     verified;
 
    public:
       /** @brief  Returns the optional name of the participant */
-      auto participant_name() { return participant_name_; }
+      inline auto participant_name() { return participant_name_; }
       /** @brief Set the participating status */
-      void set_participating(bool status) { participating_.store(status, std::memory_order_relaxed); }
+      inline void set_participating(bool status) { 
+         if (my_impl->ssl_enabled)
+            participating_.store(status, std::memory_order_relaxed); 
+      }
       /** returns true if connection is in the security group */
-      bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
+      inline bool is_participating() const { 
+         if (my_impl->ssl_enabled)
+            return participating_.load(std::memory_order_relaxed);
+         
+         return true;
+      }
 
       std::string certificate_subject(ssl::verify_context &ctx) {
          X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
@@ -918,12 +926,15 @@ namespace eosio {
          if (length > 0) {
             std::string organization{buf, (size_t)length};
             if (is_string_valid_name(organization)){
-               account_name participant{organization};
-               
+               participant_name_ = account_name{organization};
+
                std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
-               if(my_impl->security_group.is_in_security_group(participant)) {
-                  participant_name_ = participant;
-                  return true;
+               if(my_impl->security_group.is_in_security_group(*participant_name_)) {
+                  fc_dlog( logger, "participant added: ${o}", ("o", participant_name()));
+                  verified = true;
+                  //must be true since we reach there if root certificate was preverified
+                  //but just in case let's return preverified other that true
+                  return preverified;
                }
             }
             
@@ -1102,35 +1113,31 @@ namespace eosio {
          close();
          callback(false);
       } else {
-
+         auto start_read = [this, callback](){
+            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
+            socket_open = true;
+            set_participating(verified);
+            start_read_message();
+            callback(true);
+         };
          if (my_impl->ssl_enabled) {
             socket.ssl_socket()->async_handshake(server ? ssl::stream_base::server : ssl::stream_base::client,
                                        boost::asio::bind_executor(strand, 
-                                       [c = shared_from_this(), socket=socket, callback](const auto& ec){
+                                       [start_read, c = shared_from_this(), socket=socket, callback](const auto& ec){
                                           //we use socket just to retain connection shared_ptr just in case it will be deleted
                                           //when we will need it inside start_read_message
                                           std::ignore = socket;
                                           if (ec) {
-                                             c->set_participating(false);
                                              fc_elog( logger, "ssl handshake error: ${e}", ("e", ec.message()) );
                                              c->close();
                                              return;
                                           }
 
-                                          c->set_socket_open();
-                                          c->set_participating(true);
-                                          fc_dlog( logger, "connected to ${peer}", ("peer", c->peer_name()) );
-                                          fc_dlog( logger, "participant added: ${o}", ("o", c->participant_name()));
-                                          
-                                          c->start_read_message();
-                                          callback(true);
+                                          start_read();
                                        }));
          }
          else {
-            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
-            set_socket_open();
-            start_read_message();
-            callback(true);
+            start_read();
          }
       }
    }
@@ -1154,7 +1161,9 @@ namespace eosio {
    }
 
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
-      self->set_socket_open(false);
+      self->socket_open = false;
+      self->verified    = false;
+      self->set_participating(false);
       boost::system::error_code ec;
       auto& cur_sock = self->socket.raw_socket();
       if( cur_sock.is_open() ) {
