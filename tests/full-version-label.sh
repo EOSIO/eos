@@ -9,7 +9,7 @@ echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 # test expectations
 if [[ -z "$EXPECTED" ]]; then
     [[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
-    [[ -z "$BUILDKITE_TAG" ]] export BUILDKITE_TAG="${GIT_TAG:-$1}"
+    [[ -z "$BUILDKITE_TAG" ]] && export BUILDKITE_TAG="${GIT_TAG:-$1}"
     export EXPECTED="$BUILDKITE_TAG-$BUILDKITE_COMMIT"
 fi
 if [[ -z "$EXPECTED" ]]; then
