@@ -6,13 +6,15 @@ echo '##### Nodeos Full Version Label Test #####'
 [[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
 [[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$2"
-EXPECTED=$1
+# test expectations
+if [[ -z "$EXPECTED" ]]; then
+    [[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
+    export EXPECTED="v$1-$BUILDKITE_COMMIT"
+fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
     exit 1
 fi
-[[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
-EXPECTED=v$EXPECTED-$BUILDKITE_COMMIT
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
 ACTUAL=$($BUILD_ROOT/bin/nodeos --full-version)

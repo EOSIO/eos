@@ -5,7 +5,10 @@ echo '##### Nodeos Version Label Test #####'
 # orient ourselves
 [[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
-EXPECTED=v$1
+# test expectations
+if [[ -z "$EXPECTED" ]]; then
+    export EXPECTED="v$1"
+fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
     exit 1
