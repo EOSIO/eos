@@ -1468,7 +1468,7 @@ class Node(object):
         return True
 
     def containsPreactivateFeature(self):
-        return containsFeatures(["PREACTIVATE_FEATURE"])
+        return self.containsFeatures(["PREACTIVATE_FEATURE"])
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
