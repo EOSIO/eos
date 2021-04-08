@@ -650,6 +650,7 @@ namespace eosio {
       bool start_session(bool server);
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
+      inline void set_socket_open(bool open = true) { socket_open = open; }
       const string& peer_address() const { return peer_addr; } // thread safe, const
 
       void set_connection_type( const string& peer_addr );
@@ -918,16 +919,14 @@ namespace eosio {
                
                std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
                if(my_impl->security_group.is_in_security_group(participant)) {
-                  set_participating(true);
-                  peer_dlog(this, "participant added: ${o}", ("o", organization));
+                  participant_name_ = participant;
                   return true;
                }
             }
             
             peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
          }
-         
-         set_participating(false);
+
          //we keep connection if peer has valid certificate but participant name is not authorized
          //however that connection doesn't receive updates
          return preverified;
@@ -1100,27 +1099,31 @@ namespace eosio {
          return false;
       } else {
 
-         auto start_read = [this](){
-            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
-            socket_open = true;
-            start_read_message();
-         };
          if (my_impl->ssl_enabled) {
             socket.ssl_socket()->async_handshake(server ? ssl::stream_base::server : ssl::stream_base::client,
-                                       boost::asio::bind_executor(strand, [start_read, c = shared_from_this(), socket=socket](const auto& ec){
+                                       boost::asio::bind_executor(strand, [c = shared_from_this(), socket=socket](const auto& ec){
                                           //we use socket just to retain connection shared_ptr just in case it will be deleted
                                           //when we will need it inside start_read_message
                                           std::ignore = socket;
                                           if (ec) {
+                                             c->set_participating(false);
                                              fc_elog( logger, "ssl handshake error: ${e}", ("e", ec.message()) );
                                              c->close();
                                              return;
                                           }
-                                          start_read();
+
+                                          c->set_socket_open();
+                                          c->set_participating(true);
+                                          fc_dlog( logger, "connected to ${peer}", ("peer", c->peer_name()) );
+                                          fc_dlog( logger, "participant added: ${o}", ("o", c->participant_name()));
+                                          
+                                          c->start_read_message();
                                        }));
          }
          else {
-            start_read();
+            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
+            set_socket_open();
+            start_read_message();
          }
          return true;
       }
@@ -1145,7 +1148,7 @@ namespace eosio {
    }
 
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
-      self->socket_open = false;
+      self->set_socket_open(false);
       boost::system::error_code ec;
       auto& cur_sock = self->socket.raw_socket();
       if( cur_sock.is_open() ) {
