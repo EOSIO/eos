@@ -1003,7 +1003,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
          [this](const packed_transaction_ptr& trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) -> void {
-      return my->on_incoming_transaction_async(trx, persist_until_expired, false, next );
+      return my->on_incoming_transaction_async(trx, persist_until_expired, read_only, next );
    });
 
    my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider(
