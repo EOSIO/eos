@@ -5,6 +5,9 @@
 #include <contracts.hpp>
 
 
+using boost::container::flat_set;
+using eosio::chain::name;
+
 namespace eosio { namespace chain {
 
 // block_header_state_v0 should has the same layout with block_header_state except
@@ -190,7 +193,9 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
          std::visit(
              [&gpo](const auto& ext) {
                 BOOST_CHECK_EQUAL(ext.proposed_security_group_block_num, gpo.proposed_security_group_block_num);
-                BOOST_TEST(ext.proposed_security_group_participants == gpo.proposed_security_group_participants );
+                flat_set<name> gpo_sg_participants{gpo.proposed_security_group_participants.begin(),
+                                                   gpo.proposed_security_group_participants.end()};
+                BOOST_TEST(ext.proposed_security_group_participants == gpo_sg_participants);
              },
              row.extension);
       }
