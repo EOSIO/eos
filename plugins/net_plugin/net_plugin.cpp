@@ -864,7 +864,6 @@ namespace eosio {
    private:
       std::optional<chain::account_name> participant_name_;
       std::atomic<bool> participating_{true};
-      volatile bool     verified;
 
    public:
       /** @brief  Returns the optional name of the participant */
@@ -880,6 +879,16 @@ namespace eosio {
             return participating_.load(std::memory_order_relaxed);
          
          return true;
+      }
+      inline void setup_participant() {
+         if(my_impl->ssl_enabled) {
+            account_name participant = participant_name_ ? *participant_name_ : account_name{};
+            bool participating = my_impl->security_group.is_in_security_group(participant);
+
+            fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
+                     ("peer", peer_name())("name", participant_name())("enabled", participating));
+            set_participating(participating);
+         }
       }
 
       std::string certificate_subject(ssl::verify_context &ctx) {
@@ -899,7 +908,7 @@ namespace eosio {
       }
 
       bool verify_certificate(bool preverified, ssl::verify_context &ctx) {
-         peer_dlog(this, "preverified: ${p} certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
+         peer_dlog(this, "preverified: [${p}] certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
          //certificate depth means number of certificate issuers verified current certificate
          //openssl provides those one by one starting from root certificate
          //we don't use CA certificate or intermidiate issuers, so skipping those
@@ -927,18 +936,12 @@ namespace eosio {
             std::string organization{buf, (size_t)length};
             if (is_string_valid_name(organization)){
                participant_name_ = account_name{organization};
-
-               std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
-               if(my_impl->security_group.is_in_security_group(*participant_name_)) {
-                  fc_dlog( logger, "participant added: ${o}", ("o", participant_name()));
-                  verified = true;
-                  //must be true since we reach there if root certificate was preverified
-                  //but just in case let's return preverified other that true
-                  return preverified;
-               }
+               //participant name will be later used in start_session to determine if
+               //participant is participating or not
             }
-            
-            peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
+            else {
+               peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
+            }
          }
 
          //we keep connection if peer has valid certificate but participant name is not authorized
@@ -1114,9 +1117,9 @@ namespace eosio {
          callback(false);
       } else {
          auto start_read = [this, callback](){
-            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
             socket_open = true;
-            set_participating(verified);
+            setup_participant();
+            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
             start_read_message();
             callback(true);
          };
@@ -1162,7 +1165,6 @@ namespace eosio {
 
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
-      self->verified    = false;
       self->set_participating(false);
       boost::system::error_code ec;
       auto& cur_sock = self->socket.raw_socket();
@@ -3932,7 +3934,7 @@ namespace eosio {
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable experimental socket read watermark optimization")
-         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}] " ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
            "   _name  \tself-reported name\n\n"
