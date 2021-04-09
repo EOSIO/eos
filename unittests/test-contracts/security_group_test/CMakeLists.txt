@@ -4,3 +4,6 @@ else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/security_group_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/security_group_test.wasm COPYONLY )
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/security_group_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/security_group_test.abi  COPYONLY )
 endif()
+
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/eosio.secgrp.wasm ${CMAKE_CURRENT_BINARY_DIR}/eosio.secgrp.wasm COPYONLY )
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/eosio.secgrp.abi  ${CMAKE_CURRENT_BINARY_DIR}/eosio.secgrp.abi  COPYONLY )
