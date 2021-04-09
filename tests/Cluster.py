@@ -310,6 +310,8 @@ class Cluster(object):
             shapeFilePrefix="shape_bridge"
             shapeFile=shapeFilePrefix+".json"
             cmdArrForOutput=copy.deepcopy(cmdArr)
+            cmdArrForOutput.append("--shape")
+            cmdArrForOutput.append("ring")
             cmdArrForOutput.append("--output")
             cmdArrForOutput.append(shapeFile)
             s=" ".join(cmdArrForOutput)
