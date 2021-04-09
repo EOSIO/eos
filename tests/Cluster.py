@@ -245,27 +245,9 @@ class Cluster(object):
 
             certAuth = os.path.join(privacyDir, "CA_cert.pem")
             def getArguments(number):
-                # this function converts number to eos name string
-                # eos name can have only numbers 1-5
-                # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
-                def normalizeNumber(number):
-                    assert(number > 0)
-                    if number <= 5:
-                        return str(number)
-                    cnt = number
-                    ret = "5"
-                    while cnt > 5:
-                        cnt = cnt - 5
-                        if cnt > 5:
-                            ret = "{}.5".format(ret)
-                        else:
-                            ret = "{}.{}".format(ret, cnt)
-                        assert(len(ret) <= 13)
-                    
-                    return ret
-                
-                nodeCert = os.path.join(privacyDir, "node{}.crt".format(normalizeNumber(number+1)))
-                nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(normalizeNumber(number+1)))
+                participantName = Node.participantName(number)
+                nodeCert = os.path.join(privacyDir, "{}.crt".format(participantName))
+                nodeKey = os.path.join(privacyDir, "{}_key.pem".format(participantName))
                 return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
 
             for node in range(totalNodes):
@@ -370,9 +352,11 @@ class Cluster(object):
 
         def createDefaultShapeFile(newFile, cmdArr):
             cmdArrForOutput=copy.deepcopy(cmdArr)
+            cmdArrForOutput.append("--shape")
+            cmdArrForOutput.append("ring")
             cmdArrForOutput.append("--output")
             cmdArrForOutput.append(newFile)
-            s=" ".join(cmdArrForOutput)
+            s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArrForOutput.copy()])
             if Utils.Debug: Utils.Print("cmd: %s" % (s))
             if 0 != subprocess.call(cmdArrForOutput):
                 Utils.Print("ERROR: Launcher failed to create shape file \"{}\".".format(newFile))
