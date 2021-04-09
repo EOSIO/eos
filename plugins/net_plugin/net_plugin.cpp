@@ -883,6 +883,8 @@ namespace eosio {
       inline void setup_participant() {
          if(my_impl->ssl_enabled) {
             account_name participant = participant_name_ ? *participant_name_ : account_name{};
+            
+            std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
             bool participating = my_impl->security_group.is_in_security_group(participant);
 
             fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
