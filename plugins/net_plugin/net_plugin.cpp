@@ -647,7 +647,10 @@ namespace eosio {
 
       ~connection() {}
 
-      bool start_session(bool server);
+      //this function calls callback synchronously in case of non-ssl connection
+      //and asynchronously in case of ssl after asynchronous ssl handshake 
+      template<typename _Callback>
+      void start_session(bool server, _Callback callback);
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
       const string& peer_address() const { return peer_addr; } // thread safe, const
@@ -864,11 +867,31 @@ namespace eosio {
 
    public:
       /** @brief  Returns the optional name of the participant */
-      auto participant_name() { return participant_name_; }
+      inline auto participant_name() { return participant_name_; }
       /** @brief Set the participating status */
-      void set_participating(bool status) { participating_.store(status, std::memory_order_relaxed); }
+      inline void set_participating(bool status) { 
+         if (my_impl->ssl_enabled)
+            participating_.store(status, std::memory_order_relaxed); 
+      }
       /** returns true if connection is in the security group */
-      bool is_participating() const { return participating_.load(std::memory_order_relaxed); }
+      inline bool is_participating() const { 
+         if (my_impl->ssl_enabled)
+            return participating_.load(std::memory_order_relaxed);
+         
+         return true;
+      }
+      inline void setup_participant() {
+         if(my_impl->ssl_enabled) {
+            account_name participant = participant_name_ ? *participant_name_ : account_name{};
+            
+            std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
+            bool participating = my_impl->security_group.is_in_security_group(participant);
+
+            fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
+                     ("peer", peer_name())("name", participant_name())("enabled", participating));
+            set_participating(participating);
+         }
+      }
 
       std::string certificate_subject(ssl::verify_context &ctx) {
          X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
@@ -887,7 +910,7 @@ namespace eosio {
       }
 
       bool verify_certificate(bool preverified, ssl::verify_context &ctx) {
-         peer_dlog(this, "preverified: ${p} certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
+         peer_dlog(this, "preverified: [${p}] certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
          //certificate depth means number of certificate issuers verified current certificate
          //openssl provides those one by one starting from root certificate
          //we don't use CA certificate or intermidiate issuers, so skipping those
@@ -914,20 +937,15 @@ namespace eosio {
          if (length > 0) {
             std::string organization{buf, (size_t)length};
             if (is_string_valid_name(organization)){
-               account_name participant{organization};
-               
-               std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
-               if(my_impl->security_group.is_in_security_group(participant)) {
-                  set_participating(true);
-                  peer_dlog(this, "participant added: ${o}", ("o", organization));
-                  return true;
-               }
+               participant_name_ = account_name{organization};
+               //participant name will be later used in start_session to determine if
+               //participant is participating or not
             }
-            
-            peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
+            else {
+               peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
+            }
          }
-         
-         set_participating(false);
+
          //we keep connection if peer has valid certificate but participant name is not authorized
          //however that connection doesn't receive updates
          return preverified;
@@ -1087,7 +1105,8 @@ namespace eosio {
       return stat;
    }
 
-   bool connection::start_session(bool server) {
+   template<typename _Callback>
+   void connection::start_session(bool server, _Callback callback) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
       update_endpoints();
@@ -1097,17 +1116,19 @@ namespace eosio {
       if( ec ) {
          fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
          close();
-         return false;
+         callback(false);
       } else {
-
-         auto start_read = [this](){
-            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
+         auto start_read = [this, callback](){
             socket_open = true;
+            setup_participant();
+            fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
             start_read_message();
+            callback(true);
          };
          if (my_impl->ssl_enabled) {
             socket.ssl_socket()->async_handshake(server ? ssl::stream_base::server : ssl::stream_base::client,
-                                       boost::asio::bind_executor(strand, [start_read, c = shared_from_this(), socket=socket](const auto& ec){
+                                       boost::asio::bind_executor(strand, 
+                                       [start_read, c = shared_from_this(), socket=socket, callback](const auto& ec){
                                           //we use socket just to retain connection shared_ptr just in case it will be deleted
                                           //when we will need it inside start_read_message
                                           std::ignore = socket;
@@ -1116,13 +1137,13 @@ namespace eosio {
                                              c->close();
                                              return;
                                           }
+
                                           start_read();
                                        }));
          }
          else {
             start_read();
          }
-         return true;
       }
    }
 
@@ -1146,6 +1167,7 @@ namespace eosio {
 
    void connection::_close( connection* self, bool reconnect, bool shutdown ) {
       self->socket_open = false;
+      self->set_participating(false);
       boost::system::error_code ec;
       auto& cur_sock = self->socket.raw_socket();
       if( cur_sock.is_open() ) {
@@ -2608,9 +2630,10 @@ namespace eosio {
              c = shared_from_this(), 
              socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) mutable {
             if( !err && socket.raw_socket().is_open() && &socket.raw_socket() == &c->socket.raw_socket() ) {
-               if( c->start_session(false) ) {
-                  c->send_handshake();
-               }
+               c->start_session(false, [c](bool success){
+                  if (success)
+                     c->send_handshake();
+               });
             } else {
                fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                c->close( false );
@@ -2649,10 +2672,12 @@ namespace eosio {
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
                      fc_ilog( logger, "Accepted new connection: " + paddr_str );
                      new_connection->set_heartbeat_timeout( heartbeat_timeout );
-                     if( new_connection->start_session(true)) {
-                        std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
-                        connections.insert( new_connection );
-                     }
+                     new_connection->start_session(true, [c = shared_from_this(), new_connection](bool success) {
+                        if (success) {
+                           std::lock_guard<std::shared_mutex> g_unique( c->connections_mtx );
+                           c->connections.insert( new_connection );
+                        }
+                     });
 
                   } else {
                      if( from_addr >= max_nodes_per_host ) {
@@ -3816,18 +3841,18 @@ namespace eosio {
       error_code ec;
 
       if (!ca.empty()){
-         fc_dlog(logger, "using verify file: ${p}", ("p", ca));
+         dlog("using verify file: ${p}", ("p", ca));
          ssl_context->load_verify_file(ca, ec);
          EOS_ASSERT(!ec, ssl_configuration_error, "load_verify_file: ${e}", ("e", ec.message()));
 
          //this ensures peer has trusted certificate. no certificate-less connections
          ssl_context->set_verify_mode(ssl::context::verify_peer | ssl::context::verify_fail_if_no_peer_cert);
       }
-      fc_dlog(logger, "using private key file: ${p}", ("p", pkey));
+      dlog("using private key file: ${p}", ("p", pkey));
       ssl_context->use_private_key_file(pkey, ssl::context::pem, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_private_key_file: ${e}", ("e", ec.message()));
 
-      fc_dlog(logger, "using chain file: ${p}", ("p", cert));
+      dlog("using chain file: ${p}", ("p", cert));
       ssl_context->use_certificate_chain_file(cert, ec);
       EOS_ASSERT(!ec, ssl_configuration_error, "use_certificate_chain_file: ${e}", ("e", ec.message()));
    }
@@ -3911,7 +3936,7 @@ namespace eosio {
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable experimental socket read watermark optimization")
-         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}] " ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
            "   _name  \tself-reported name\n\n"

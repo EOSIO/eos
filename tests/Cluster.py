@@ -230,7 +230,7 @@ class Cluster(object):
             if Utils.Debug: Utils.Print("change to dir: {}".format(os.getcwd()))
             genCertScript=os.path.join(original, "tests", "generate-certificates.sh")
             totalNodesInNetwork = totalNodes + 1  # account for bios node
-            cmd = "{} --days 1 --CA-org Block.one --CA-CN test-domain --org-mask node{{NUMBER}} --cn-mask test-domain{{NUMBER}} --group-size {}".format(genCertScript, totalNodesInNetwork)
+            cmd = "{} --days 1 --CA-org Block.one --CA-CN test-domain --org-mask node{{NUMBER}} --cn-mask test-domain{{NUMBER}} --group-size {} --use-RSA".format(genCertScript, totalNodesInNetwork)
             rtn=Utils.runCmdReturnStr(cmd, silentErrors=False)
             with open("generate.log", 'w') as f:
                 f.write("executed cmd: {}".format(cmd))
