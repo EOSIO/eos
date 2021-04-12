@@ -233,7 +233,7 @@ function ensure-boost() {
             local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
         execute bash -c "cd $SRC_DIR && \
-        curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
+        curl -LO https://boostorg.jfrog.io/artifactory/main/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
         && SDKROOT="$SDKROOT" ./bootstrap.sh ${BOOTSTRAP_FLAGS} --prefix=$BOOST_ROOT \
@@ -304,8 +304,11 @@ function ensure-libpq-and-libpqxx() {
 
     if [[ $ARCH == "Darwin" ]] && [ ! -f "/usr/local/lib/pkgconfig/libpqxx.pc" ]; then
         if $PIN_COMPILER; then
-            curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
-            brew install -f ./libpqxx.rb && rm ./libpqxx.rb
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - 
+            cd  libpqxx-7.2.1  
+            cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPostgreSQL_ROOT=/usr/local/opt/libpq  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build 
+            cmake --build build && cmake --install build 
+            cd .. && rm -rf libpqxx-7.2.1
         else
             brew install libpq libpqxx
         fi
