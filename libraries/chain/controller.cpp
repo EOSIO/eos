@@ -1759,6 +1759,9 @@ struct controller_impl {
          if( !use_bsp_cached ) {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
          }
+
+         auto& pbsh = ab._pending_block_header_state;
+         bsp->set_security_group_info(std::move(pbsh.security_group));
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
 
