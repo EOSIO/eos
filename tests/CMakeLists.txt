@@ -119,7 +119,7 @@ add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.
 set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_startup_network COMMAND tests/privacy_startup_network.py -p 1 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_startup_network PROPERTY LABELS nonparallelizable_tests)
-add_test(NAME privacy_simple_network COMMAND tests/privacy_simple_network.py -p 1 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME privacy_simple_network COMMAND tests/privacy_simple_network.py -p 2 -n 3 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_simple_network PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests

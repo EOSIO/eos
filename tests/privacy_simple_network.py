@@ -35,7 +35,7 @@ args = TestHelper.parse_args({"--port","-p","-n","--dump-error-details","--keep-
 port=args.port
 pnodes=args.p
 apiNodes=0        # minimum number of apiNodes that will be used in this test
-# bios is also treated as an API node
+# bios is also treated as an API node, but doesn't count against totalnodes count
 minTotalNodes=pnodes+apiNodes
 totalNodes=args.n if args.n >= minTotalNodes else minTotalNodes
 if totalNodes > minTotalNodes:
@@ -201,27 +201,77 @@ try:
 
     publishContract(cluster.eosioAccount, 'eosio.secgrp', waitForTransBlock=True)
 
-    addTrans = []
-    action = None
-    for producerNum in range(pnodes):
-        if action is None:
-            action = '[['
-        else:
-            action += ','
-        action += '"{}"'.format(Node.participantName(producerNum))
-    action += ']]'
+    participants = [x for x in producers]
+    nonParticipants = [x for x in apiNodes]
 
-    addTrans.append(producers[0].pushMessage(cluster.eosioAccount.name, "add", action, "--permission eosio@active"))
-    addTrans.append(producers[0].pushMessage(cluster.eosioAccount.name, "publish", "[0]", "--permission eosio@active"))
+    def security_group(nodeNums):
+        action = None
+        for nodeNum in nodeNums:
+            if action is None:
+                action = '[['
+            else:
+                action += ','
+            action += '"{}"'.format(Node.participantName(nodeNum))
+        action += ']]'
 
-    highestBlock = None
-    for trans in addTrans:
-        Utils.Print("trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+        Utils.Print("adding {} to the security group".format(action))
+        trans = producers[0].pushMessage(cluster.eosioAccount.name, "add", action, "--permission eosio@active")
+        Utils.Print("add trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+        trans = producers[0].pushMessage(cluster.eosioAccount.name, "publish", "[0]", "--permission eosio@active")
+        Utils.Print("publish action trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+        return trans
 
-    for i in range(10):
-        Utils.Print("\n\n\n\n\nNext Round of Info:")
-        reportInfo()
-        time.sleep(5)
+    def verifyParticipantsTransactionFinalized(transId):
+        Utils.Print("Verify participants are in sync")
+        for part in participants:
+            if part.waitForTransFinalization(transId) == None:
+                Utils.exitError("Transaction: {}, never finalized".format(trans))
+
+    def verifyNonParticipants(transId):
+        Utils.Print("Verify non-participants don't receive blocks")
+        publishBlock = producers[0].getBlockIdByTransId(transId)
+        prodLib = producers[0].getBlockNum(blockType=BlockType.lib)
+        waitForLib = prodLib + 3 * 12
+        if producers[0].waitForBlock(waitForLib, blockType=BlockType.lib) == None:
+            Utils.exitError("Producer did not advance lib the expected amount.  Starting lib: {}, exp lib: {}, actual state: {}".format(prodLib, waitForLib, producers[0].getInfo()))
+        producerHead = producers[0].getBlockNum()
+
+        for nonParticipant in nonParticipants:
+            nonParticipantPostLIB = nonParticipant.getBlockNum(blockType=BlockType.lib)
+            assert nonParticipantPostLIB < publishBlock, "Participants not in security group should not have advanced LIB to {}, but it has advanced to {}".format(publishBlock, nonParticipantPostLIB)
+            nonParticipantHead = nonParticipant.getBlockNum()
+            assert nonParticipantHead < producerHead, "Participants (that are not producers themselves) should not advance head to {}, but it has advanced to {}".format(producerHead, nonParticipantHead)
+
+    Utils.Print("Add all producers to security group")
+    publishTrans = security_group([x for x in range(pnodes)])
+    publishTransId = Node.getTransId(publishTrans[1])
+    verifyParticipantsTransactionFinalized(publishTransId)
+    verifyNonParticipants(publishTransId)
+
+    while len(nonParticipants) > 0:
+        toAdd = nonParticipants[0]
+        participants.append(toAdd)
+        del nonParticipants[0]
+        Utils.Print("Take a non-participant and make a participant. Now there are {} participants and {} non-participants".format(len(participants), len(nonParticipants)))
+
+        toAddNum = None
+        num = 0
+        for node in cluster.getNodes():
+            if node == toAdd:
+                toAddNum = num
+                Utils.Print("TEMP FOUND NODE: {}".format(num))
+                break
+            num += 1
+        if toAddNum is None:
+            assert toAdd == cluster.biosNode
+            toAddNum = totalNodes
+            Utils.Print("TEMP FOUND NODE checking bios: {}".format(toAddNum))
+        Utils.Print("TEMP toAddNum: {}".format(toAddNum))
+        publishTrans = security_group([toAddNum])
+        publishTransId = Node.getTransId(publishTrans[1])
+        verifyParticipantsTransactionFinalized(publishTransId)
+        verifyNonParticipants(publishTransId)
+
 
     testSuccessful=True
 finally:
