@@ -16,7 +16,7 @@ sudo make install
 cd ../..
 rm -rf clang10
 # install boost from source
-curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2
+curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2
 tar -xjf boost_1_72_0.tar.bz2
 cd boost_1_72_0
 ./bootstrap.sh --prefix=/usr/local

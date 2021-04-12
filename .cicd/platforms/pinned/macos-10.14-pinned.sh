@@ -18,7 +18,7 @@ rm -rf clang10
 # install boost from source
 ## Boost Fix: eosio/install/bin/../include/c++/v1/stdlib.h:94:15: fatal error: 'stdlib.h' file not found
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
-curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2
+curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2
 tar -xjf boost_1_72_0.tar.bz2
 cd boost_1_72_0
 ./bootstrap.sh --prefix=/usr/local
