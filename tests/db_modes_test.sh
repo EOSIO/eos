@@ -51,9 +51,8 @@ run_expect_success() {
    wait $NODEOS_PID && rc=$? || rc=$?
    if [[ rc -eq  127  || rc -eq 0 ]]; then
       rc=0
-   else
-      exit rc
    fi
+   return $rc
 }
 
 run_and_kill() {
