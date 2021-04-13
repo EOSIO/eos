@@ -174,14 +174,11 @@ try:
         for node in cluster.getNodes():
             if node == toAdd:
                 toAddNum = num
-                Utils.Print("TEMP FOUND NODE: {}".format(num))
                 break
             num += 1
         if toAddNum is None:
             assert toAdd == cluster.biosNode
             toAddNum = totalNodes
-            Utils.Print("TEMP FOUND NODE checking bios: {}".format(toAddNum))
-        Utils.Print("TEMP toAddNum: {}".format(toAddNum))
         publishTrans = security_group([toAddNum])
         publishTransId = Node.getTransId(publishTrans[1])
         verifyParticipantsTransactionFinalized(publishTransId)
