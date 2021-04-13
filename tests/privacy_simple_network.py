@@ -31,7 +31,7 @@ cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--port","-p","-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--wallet-port"})
 port=args.port
 pnodes=args.p
 apiNodes=0        # minimum number of apiNodes that will be used in this test
@@ -47,7 +47,6 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 onlyBios=False
 killAll=args.clean_run
-sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
 cluster=Cluster(host=TestHelper.LOCAL_HOST, port=port, walletd=True)
@@ -55,7 +54,6 @@ walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
-dontBootstrap=sanityTest # intent is to limit the scope of the sanity test to just verifying that nodes can be started
 
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
@@ -72,108 +70,29 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True) is False:
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, configSecurityGroup=True) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    def getNodes():
-        global cluster
-        nodes = [cluster.biosNode]
-        nodes.extend(cluster.getNodes())
-        return nodes
-
-#    cluster.biosNode.kill(signal.SIGTERM)
-
-    def reportInfo():
-        Utils.Print("\n\n\n\n\nInfo:")
-        for node in getNodes():
-            Utils.Print("Info: {}".format(json.dumps(node.getInfo(), indent=4, sort_keys=True)))
-
     Utils.Print("\n\n\n\n\nCheck after KILL:")
     Utils.Print("\n\n\n\n\nNext Round of Info:")
-    reportInfo()
+    cluster.reportInfo()
 
     producers = [cluster.getNode(x) for x in range(pnodes) ]
     apiNodes = [cluster.getNode(x) for x in range(pnodes, totalNodes)]
     apiNodes.append(cluster.biosNode)
 
-    def createAccount(newAcc):
-        producers[0].createInitializeAccount(newAcc, cluster.eosioAccount)
-        ignWallet = cluster.walletMgr.create("ignition")  # will actually just look up the wallet
-        cluster.walletMgr.importKey(newAcc, ignWallet)
+    blockProducer = producers[0].getHeadOrLib()["producer"]
 
-    # numAccounts = 4
-    # testAccounts = Cluster.createAccountKeys(numAccounts)
-    # accountPrefix = "testaccount"
-    # for i in range(numAccounts):
-    #     testAccount = testAccounts[i]
-    #     testAccount.name  = accountPrefix + str(i + 1)
-    #     createAccount(testAccount)
-
-    blockProducer = None
-
-    def verifyInSync(producerNum):
-        Utils.Print("Ensure all nodes are in-sync")
-        lib = producers[producerNum].getInfo()["last_irreversible_block_num"]
-        headBlockNum = producers[producerNum].getBlockNum()
-        headBlock = producers[producerNum].getBlock(headBlockNum)
-        global blockProducer
-        if blockProducer is None:
-            blockProducer = headBlock["producer"]
-        Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
-        headBlockId = headBlock["id"]
-        error = None
-        for prod in producers:
-            if prod == producers[producerNum]:
-                continue
-
-            if prod.waitForBlock(headBlockNum, reportInterval = 1) is None:
-                error = "Producer node failed to get block number {}. Current node info: {}".format(headBlockNum, json.dumps(prod.getInfo(), indent=4, sort_keys=True))
-                break
-
-            if prod.getBlock(headBlockId) is None:
-                error = "Producer node has block number: {}, but it is not id: {}. Block: {}".format(headBlockNum, headBlockId, json.dumps(prod.getBlock(headBlockNum), indent=4, sort_keys=True))
-                break
-
-            if prod.waitForBlock(lib, blockType=BlockType.lib) is None:
-                error = "Producer node is failing to advance its lib ({}) with producer {} ({})".format(prod.getInfo()["last_irreversible_block_num"], producerNum, lib)
-                break
-
-        if error:
-            reportInfo()
-            Utils.exitError(error)
-
-        for node in apiNodes:
-            if node.waitForBlock(headBlockNum, reportInterval = 1) == None:
-                error = "API node failed to get block number {}".format(headBlockNum)
-                break
-
-            if node.getBlock(headBlockId) is None:
-                error = "API node has block number: {}, but it is not id: {}. Block: {}".format(headBlockNum, headBlockId, json.dumps(node.getBlock(headBlockNum), indent=4, sort_keys=True))
-                break
-
-            if node.waitForBlock(lib, blockType=BlockType.lib) == None:
-                error = "API node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
-                break
-
-            Utils.Print("Ensure all nodes are in-sync")
-            if node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) == None:
-                error = "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
-                break
-
-        if error:
-            reportInfo()
-            Utils.exitError(error)
-
-    verifyInSync(producerNum=0)
+    cluster.verifyInSync()
 
     featureDict = producers[0].getSupportedProtocolFeatureDict()
     Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
 
-    reportInfo()
+    cluster.reportInfo()
     Utils.Print("Activating SECURITY_GROUP Feature")
 
     #Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
@@ -186,17 +105,13 @@ try:
             break
 
     Utils.Print("SECURITY_GROUP Feature activated")
-    reportInfo()
+    cluster.reportInfo()
 
     assert producers[0].containsFeatures([feature]), "{} feature was not activated".format(feature)
 
-    if sanityTest:
-        testSuccessful=True
-        exit(0)
-
     def publishContract(account, file, waitForTransBlock=False):
         Print("Publish contract")
-        reportInfo()
+        cluster.reportInfo()
         return producers[0].publishContract(account, "unittests/test-contracts/security_group_test/", "{}.wasm".format(file), "{}.abi".format(file), waitForTransBlock=waitForTransBlock)
 
     publishContract(cluster.eosioAccount, 'eosio.secgrp', waitForTransBlock=True)
@@ -225,7 +140,7 @@ try:
         Utils.Print("Verify participants are in sync")
         for part in participants:
             if part.waitForTransFinalization(transId) == None:
-                Utils.exitError("Transaction: {}, never finalized".format(trans))
+                Utils.errorExit("Transaction: {}, never finalized".format(trans))
 
     def verifyNonParticipants(transId):
         Utils.Print("Verify non-participants don't receive blocks")
@@ -233,7 +148,7 @@ try:
         prodLib = producers[0].getBlockNum(blockType=BlockType.lib)
         waitForLib = prodLib + 3 * 12
         if producers[0].waitForBlock(waitForLib, blockType=BlockType.lib) == None:
-            Utils.exitError("Producer did not advance lib the expected amount.  Starting lib: {}, exp lib: {}, actual state: {}".format(prodLib, waitForLib, producers[0].getInfo()))
+            Utils.errorExit("Producer did not advance lib the expected amount.  Starting lib: {}, exp lib: {}, actual state: {}".format(prodLib, waitForLib, producers[0].getInfo()))
         producerHead = producers[0].getBlockNum()
 
         for nonParticipant in nonParticipants:

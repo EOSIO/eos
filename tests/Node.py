@@ -230,6 +230,10 @@ class Node(object):
         msg="(block %s=%s)" % (numOrId, blockNumOrId)
         return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
+    def getHeadOrLib(self, blockType=BlockType.head, silentErrors=False, exitOnError=False):
+        blockNum = self.getBlockNum(blockType=blockType)
+        return self.getBlock(blockNum, silentErrors=silentErrors, exitOnError=exitOnError)
+
     def isBlockPresent(self, blockNum, blockType=BlockType.head):
         """Does node have head_block_num/last_irreversible_block_num >= blockNum"""
         assert isinstance(blockNum, int)
@@ -491,7 +495,7 @@ class Node(object):
     def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
         if isinstance(timeout, WaitSpec):
-            timeout = timeout.seconds(num, num+1)
+            timeout.convert(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForTruth(lam, timeout)
         return ret
