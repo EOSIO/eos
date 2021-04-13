@@ -605,13 +605,17 @@ namespace eosio { namespace chain {
                                  const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
          uint64_t append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f);
 
+         // thread safe
          uint64_t write_log_entry(const std::vector<char>& block_buffer);
 
          void split_log();
          bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
 
+         // thread safe
          block_id_type                          read_block_id_by_num(uint32_t block_num);
+         // thread safe
          std::unique_ptr<signed_block>          read_block_by_num(uint32_t block_num);
+         // thread safe
          void                                   read_head();
 
          // thread safe
@@ -746,6 +750,8 @@ namespace eosio { namespace chain {
    }
 
    uint64_t detail::block_log_impl::write_log_entry(const std::vector<char>& block_buffer) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = block_file.tellp();
 
       block_file.write(block_buffer.data(), block_buffer.size());
@@ -957,6 +963,8 @@ namespace eosio { namespace chain {
    }
 
    std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = get_block_pos(block_num);
       if (pos != block_log::npos) {
          block_file.seek(pos);
@@ -970,6 +978,8 @@ namespace eosio { namespace chain {
    }
 
    block_id_type detail::block_log_impl::read_block_id_by_num(uint32_t block_num) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = get_block_pos(block_num);
       if (pos != block_log::npos) {
          block_file.seek(pos);
@@ -1005,6 +1015,7 @@ namespace eosio { namespace chain {
    void detail::block_log_impl::read_head() {
       uint64_t pos;
 
+      std::unique_lock<std::mutex> g(blog_mutex);
       block_file.seek_end(-sizeof(pos));
       block_file.read((char*)&pos, sizeof(pos));
       if (pos != block_log::npos) {
