@@ -73,6 +73,7 @@ namespace eosio { namespace chain {
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
       block_num_type                      proposed_security_group_block_num = 0;
+      // members that are containers need to be shared_* containers, since this object is stored in a multi-index container
       shared_set<account_name>            proposed_security_group_participants;
       shared_vector<transaction_hook>     transaction_hooks;
 
@@ -102,6 +103,18 @@ namespace eosio { namespace chain {
          chain_id = legacy.chain_id;
          kv_configuration = legacy.kv_configuration;
          wasm_configuration = legacy.wasm_configuration;
+      }
+
+      template<typename Iter>
+      void set_proposed_security_group_participants(Iter begin, Iter end) {
+         proposed_security_group_participants = {begin, end,
+                                                 proposed_security_group_participants.key_comp(),
+                                                 proposed_security_group_participants.get_allocator()};
+      }
+
+      template<typename Iter>
+      void set_transaction_hooks(Iter begin, Iter end) {
+         transaction_hooks = {begin, end, transaction_hooks.get_allocator()};
       }
    };
 
@@ -163,13 +176,9 @@ namespace eosio { namespace chain {
       std::visit(
           [&gpo](auto& ext) {
              gpo.proposed_security_group_block_num    = ext.proposed_security_group_block_num;
-             gpo.proposed_security_group_participants = {ext.proposed_security_group_participants.begin(),
-                                                         ext.proposed_security_group_participants.end(),
-                                                         gpo.proposed_security_group_participants.key_comp(),
-                                                         gpo.proposed_security_group_participants.get_allocator()};
-             gpo.transaction_hooks                    = {ext.transaction_hooks.begin(),
-                                                         ext.transaction_hooks.end(),
-                                                         gpo.transaction_hooks.get_allocator()};
+             gpo.set_proposed_security_group_participants(ext.proposed_security_group_participants.begin(),
+                                                          ext.proposed_security_group_participants.end());
+             gpo.set_transaction_hooks(ext.transaction_hooks.begin(), ext.transaction_hooks.end());
           },
           extension);
    }

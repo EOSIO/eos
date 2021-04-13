@@ -1444,9 +1444,7 @@ struct controller_impl {
                ++bb._pending_block_header_state.security_group.version;
                bb._pending_block_header_state.security_group.participants = {
                   gpo.proposed_security_group_participants.begin(),
-                  gpo.proposed_security_group_participants.end(),
-                  bb._pending_block_header_state.security_group.participants.key_comp(),
-                  bb._pending_block_header_state.security_group.participants.get_allocator()};
+                  gpo.proposed_security_group_participants.end()};
 
                db.modify(gpo, [&](auto& gp) { 
                   gp.proposed_security_group_block_num = 0; 
@@ -2282,10 +2280,8 @@ struct controller_impl {
 
       db.modify(gpo, [&proposed_participants, cur_block_num](auto& gp) {
          gp.proposed_security_group_block_num    = cur_block_num;
-         gp.proposed_security_group_participants = {proposed_participants.begin(),
-                                                    proposed_participants.end(),
-                                                    gp.proposed_security_group_participants.key_comp(),
-                                                    gp.proposed_security_group_participants.get_allocator()};
+         gp.set_proposed_security_group_participants(proposed_participants.begin(),
+                                                     proposed_participants.end());
       });
 
       return 0;
