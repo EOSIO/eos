@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
         }FC_LOG_AND_RETHROW()
     }
-
+/*
     void write_blocks(TESTER &chain){
         chain.produce_blocks(10);
     }
@@ -197,6 +197,7 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
         }FC_LOG_AND_RETHROW()
     }
+*/
 /*
     BOOST_AUTO_TEST_CASE(multi_threaded_test2) {
         try {
