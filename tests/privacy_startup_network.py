@@ -78,7 +78,10 @@ try:
         topo[pairedRelayNodeNum] = apiNodeNums
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
+    # adjust prodCount to ensure that lib trails more than 1 block behind head
+    prodCount = 1 if pnodes > 1 else 2
+
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 

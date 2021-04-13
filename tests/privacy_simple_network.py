@@ -70,7 +70,10 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, configSecurityGroup=True) is False:
+    # adjust prodCount to ensure that lib trails more than 1 block behind head
+    prodCount = 1 if pnodes > 1 else 2
+
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, configSecurityGroup=True) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
