@@ -116,7 +116,7 @@ try:
     allNodes=cluster.getNodes()
     for i in range(0, totalNodes):
         node=allNodes[i]
-        nodeProducers=Cluster.parseProducers(i)
+        nodeProducers=node.getProducers()
         numProducers=len(nodeProducers)
         Print("node has producers=%s" % (nodeProducers))
         if numProducers==0:

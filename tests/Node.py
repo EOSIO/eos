@@ -1687,3 +1687,24 @@ class Node(object):
             retry = retry - 1
             startBlockNum = latestBlockNum + 1
         return False
+
+    @staticmethod
+    def parseProducers(nodeNum):
+        """Parse node config file for producers."""
+
+        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
+        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
+        configStr=None
+        with open(configFile, 'r') as f:
+            configStr=f.read()
+
+        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
+        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
+        if producerMatches is None:
+            if Utils.Debug: Utils.Print("Failed to find producers.")
+            return None
+
+        return producerMatches
+
+    def getProducers(self):
+        return Node.parseProducers(self.nodeId)
