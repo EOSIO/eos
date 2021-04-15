@@ -1406,6 +1406,67 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(setabi_structure_test)
+{ try {
+
+   const char* abi_string = R"=====(
+      {
+         "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+         "version": "eosio::abi/1.2",
+         "types": [],
+         "structs": [
+             {
+                 "name": "fee_payer",
+                 "base": "",
+                 "fields": [
+                     {
+                         "name": "payer",
+                         "type": "name"
+                     },
+                     {
+                         "name": "quantity",
+                         "type": "uint64"
+                     }
+                 ]
+             },
+             {
+                 "name": "getpayer",
+                 "base": "",
+                 "fields": []
+             }
+         ],
+         "actions": [
+             {
+                 "name": "getpayer",
+                 "type": "getpayer",
+                 "ricardian_contract": ""
+             }
+         ],
+         "tables": [],
+         "kv_tables": {},
+         "ricardian_clauses": [],
+         "variants": [],
+         "action_results": [
+             {
+                 "name": "getpayer",
+                 "result_type": "fee_payer"
+             }
+         ]
+      }
+   )=====";
+
+   auto var = fc::json::from_string(abi_string);
+   auto abi = var.as<abi_def>();
+
+   BOOST_TEST("fee_payer" == abi.structs[0].name);
+   BOOST_TEST("" == abi.structs[0].base);
+   BOOST_TEST_REQUIRE(2u == abi.structs[0].fields.size());
+   BOOST_TEST("payer" == abi.structs[0].fields[0].name);
+   BOOST_TEST("name" == abi.structs[0].fields[0].type);
+   BOOST_TEST("quantity" == abi.structs[0].fields[1].name);
+   BOOST_TEST("uint64" == abi.structs[0].fields[1].type);
+
+} FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_CASE(setabi_kv_tables_test)
