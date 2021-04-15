@@ -405,6 +405,10 @@ class http_session {
                 : self(self), msg(std::move(msg)) {}
 
             void operator()() {
+               // expires_after controls two timers (read & write) which are only reset if there are no pending calls
+               // set expires_after here before write and also below before read to make sure both timers are reset
+               self.derived_session().stream.expires_after(std::chrono::milliseconds(self.http_config->idle_timeout_ms));
+
                http::async_write(
                      self.derived_session().stream, msg,
                      beast::bind_front_handler(&http_session::on_write, self.derived_session().shared_from_this(), msg.need_eof()));
@@ -469,8 +473,10 @@ class http_session {
       if (ec == http::error::end_of_stream)
          return do_close();
 
-      if (ec)
-         return fail(ec, "read");
+      if (ec) {
+         fail( ec, "read" );
+         return do_close();
+      }
 
       // Send the response
       handle_request(*http_config, *shared_state, *state_cache, parser->release(), queue_);
@@ -483,8 +489,10 @@ class http_session {
    void on_write(bool close, beast::error_code ec, std::size_t bytes_transferred) {
       boost::ignore_unused(bytes_transferred);
 
-      if (ec)
-         return fail(ec, "write");
+      if (ec) {
+         fail( ec, "write" );
+         do_close();
+      }
 
       if (close) {
          // This means we should close the connection, usually because
@@ -630,10 +638,18 @@ class listener : public std::enable_shared_from_this<listener> {
             fail(ec, "accept");
          } else {
             // Create the http session and run it
-            if constexpr (std::is_same_v<Acceptor, tcp::acceptor>)
-               std::make_shared<tcp_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
-            else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>)
-               std::make_shared<unix_http_session>(http_config, shared_state, state_cache, std::move(socket))->run();
+            if constexpr (std::is_same_v<Acceptor, tcp::acceptor>) {
+               boost::system::error_code ec;
+               dlog( "Accepting connection from ${ra}:${rp} to ${la}:${lp}",
+                     ("ra", socket.remote_endpoint(ec).address().to_string())("rp", socket.remote_endpoint(ec).port())
+                     ("la", socket.local_endpoint(ec).address().to_string())("lp", socket.local_endpoint(ec).port()) );
+               std::make_shared<tcp_http_session>( http_config, shared_state, state_cache, std::move( socket ) )->run();
+            } else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>) {
+               boost::system::error_code ec;
+               auto rep = socket.remote_endpoint(ec);
+               dlog( "Accepting connection from ${r}", ("r", rep.path()) );
+               std::make_shared<unix_http_session>( http_config, shared_state, state_cache, std::move( socket ) )->run();
+            }
          }
 
          // Accept another connection
