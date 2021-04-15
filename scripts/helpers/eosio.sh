@@ -300,17 +300,34 @@ function build-clang() {
     fi
 }
 
+function install_libpqxx_from_source() {
+    if [ ! -d ${OPT_DIR}/pqxx ]; then
+        execute bash -c "cd $SRC_DIR && \
+            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
+            cd libpqxx-7.2.1 && mkdir build && cd build && \
+            ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
+            make -j${JOBS} && make install && \
+            cd ../.. && rm -rf libpqxx-7.2.1"
+    fi
+
+    if [ -z "$PKG_CONFIG_PATH" ]; then
+        export PKG_CONFIG_PATH="${OPT_DIR}/pqxx/lib/pkgconfig"
+    else
+        export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPT_DIR}/pqxx/lib/pkgconfig"
+    fi
+} 
+
 function ensure-libpq-and-libpqxx() {  
 
-    if [[ $ARCH == "Darwin" ]] && [ ! -f "/usr/local/lib/pkgconfig/libpqxx.pc" ]; then
+    if [[ $ARCH == "Darwin" ]]; then
+        #install libpq
+        [ -f /usr/local/opt/libpq/lib/pkgconfig/libpq.pc ] || brew install libpq
+        #install libpqxx
         if $PIN_COMPILER; then
-            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - 
-            cd  libpqxx-7.2.1  
-            cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPostgreSQL_ROOT=/usr/local/opt/libpq  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build 
-            cmake --build build && cmake --install build 
-            cd .. && rm -rf libpqxx-7.2.1
-        else
-            brew install libpq libpqxx
+            EXTRA_CMAKE_FLAGS="-DPostgreSQL_ROOT=/usr/local/opt/libpq"
+            install_libpqxx_from_source
+        elif [ ! -f /usr/local/lib/pkgconfig/libpqxx.pc ]; then
+            brew install libpqxx
         fi
     fi
 
@@ -349,19 +366,6 @@ function ensure-libpq-and-libpqxx() {
             CXX_SPEC="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake"
         fi
 
-        if [ ! -d ${OPT_DIR}/pqxx ]; then
-            execute bash -c "cd $SRC_DIR && \
-                curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-                cd libpqxx-7.2.1 && mkdir build && cd build && \
-                ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
-                make -j${JOBS} && make install && \
-                cd ../.. && rm -rf libpqxx-7.2.1"
-        fi
-
-        if [ -z "$PKG_CONFIG_PATH" ]; then
-            export PKG_CONFIG_PATH="${OPT_DIR}/pqxx/lib/pkgconfig"
-        else
-            export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPT_DIR}/pqxx/lib/pkgconfig"
-        fi
+        install_libpqxx_from_source
     fi
 }
