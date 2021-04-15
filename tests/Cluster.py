@@ -1870,3 +1870,14 @@ class Cluster(object):
             num += 1
         assert nodeToIdentify == self.biosNode
         return self.totalNodes
+
+    def getProducingNodeIndex(self, blockProducer):
+        featureProdNum = 0
+        while featureProdNum < pnodes:
+            if blockProducer in self.nodes[featureProdNum].getProducers():
+                return featureProdNum
+
+            featureProdNum += 1
+
+        assert blockProducer in self.biosNode.getProducers(), "Checked all nodes but could not find producer: {}".format(blockProducer)
+        return "bios"
