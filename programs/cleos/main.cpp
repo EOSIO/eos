@@ -2311,7 +2311,11 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       std::cout << std::endl;
 
       std::cout << "subjective cpu bandwidth:" << std::endl;
-      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( res.subjective_cpu_bill ) << "\n";
+      uint32_t subjective_cpu_bill = 0;
+      if( res.subjective_cpu_bill.valid() ) {
+         subjective_cpu_bill = *res.subjective_cpu_bill;
+      }
+      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( subjective_cpu_bill ) << "\n";
       std::cout << std::endl;
 
       if( res.refund_request.is_object() ) {

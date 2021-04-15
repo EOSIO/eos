@@ -160,8 +160,6 @@ public:
       account_resource_limit     cpu_limit;
       int64_t                    ram_usage = 0;
 
-      uint32_t                   subjective_cpu_bill = 0;
-
       vector<permission>         permissions;
 
       fc::variant                total_resources;
@@ -169,6 +167,8 @@ public:
       fc::variant                refund_request;
       fc::variant                voter_info;
       fc::variant                rex_info;
+
+      optional<uint32_t>         subjective_cpu_bill;
    };
 
    struct get_account_params {
@@ -799,8 +799,8 @@ FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (tr
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
-            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(subjective_cpu_bill)(permissions)
-            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info) )
+            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
+            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info)(subjective_cpu_bill) )
 // @swap code_hash
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )
