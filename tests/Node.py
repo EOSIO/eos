@@ -1200,7 +1200,7 @@ class Node(object):
         block=self.getBlock(blockNum, exitOnError=exitOnError)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
-    def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
+    def getBlockProducer(self, timeout=None, exitOnError=True, blockType=BlockType.head):
         blockNum=self.getBlockNum(blockType=blockType)
         block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
