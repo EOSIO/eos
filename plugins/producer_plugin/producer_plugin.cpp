@@ -731,6 +731,11 @@ bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
   return false;
 }
 
+uint32_t producer_plugin::get_subjective_bill( const account_name& first_auth, const fc::time_point& now ) const
+{
+   return my->_subjective_billing.get_subjective_bill( first_auth, now );
+}
+
 chain::signature_type producer_plugin::sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const
 {
   if(key != chain::public_key_type()) {

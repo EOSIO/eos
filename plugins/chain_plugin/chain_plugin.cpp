@@ -1,4 +1,5 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -2435,6 +2436,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.net_limit = rm.get_account_net_limit_ex( result.account_name, greylist_limit).first;
    result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
+
+   producer_plugin* producer_plug = app().find_plugin<producer_plugin>();
+   if ( producer_plug ) {
+      result.subjective_cpu_bill = producer_plug->get_subjective_bill( result.account_name, fc::time_point::now() );
+   }
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
