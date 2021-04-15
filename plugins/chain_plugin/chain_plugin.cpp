@@ -186,6 +186,7 @@ public:
 
 
    fc::optional<chain_apis::account_query_db>                        _account_query_db;
+   const producer_plugin* producer_plug;
 };
 
 chain_plugin::chain_plugin()
@@ -1145,6 +1146,9 @@ void chain_plugin::plugin_startup()
    EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE || !accept_transactions(), plugin_config_exception,
                "read-mode = irreversible. transactions should not be enabled by enable_accept_transactions" );
    try {
+      my->producer_plug = app().find_plugin<producer_plugin>();
+      EOS_ASSERT(my->producer_plug, plugin_exception, "Failed to find producer_plugin");
+
       auto shutdown = [](){ return app().is_quiting(); };
       if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
@@ -1213,7 +1217,7 @@ void chain_apis::read_write::validate() const {
 }
 
 chain_apis::read_only chain_plugin::get_read_only_api() const {
-   return chain_apis::read_only(chain(), my->_account_query_db, get_abi_serializer_max_time());
+   return chain_apis::read_only(chain(), my->_account_query_db, get_abi_serializer_max_time(), my->producer_plug);
 }
 
 
@@ -2437,8 +2441,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
-   producer_plugin* producer_plug = app().find_plugin<producer_plugin>();
-   if ( producer_plug ) {
+   if ( producer_plug ) {  // producer_plug is null when called from chain_plugin_tests.cpp and get_table_tests.cpp
       result.subjective_cpu_bill = producer_plug->get_subjective_bill( result.account_name, fc::time_point::now() );
    }
 

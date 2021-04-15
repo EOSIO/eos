@@ -42,6 +42,8 @@ namespace eosio {
    using chain::abi_def;
    using chain::abi_serializer;
 
+class producer_plugin;
+
 namespace chain_apis {
 struct empty{};
 
@@ -83,12 +85,14 @@ class read_only {
    const fc::optional<account_query_db>& aqdb;
    const fc::microseconds abi_serializer_max_time;
    bool  shorten_abi_errors = true;
+   const producer_plugin* producer_plug;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db, const fc::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time)
-      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_only(const controller& db, const fc::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time, const producer_plugin* producer_plug)
+      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time), producer_plug(producer_plug) {
+   }
 
    void validate() const {}
 
