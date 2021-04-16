@@ -414,7 +414,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
          "When the stride is reached, the current history log and index will be renamed '*-history-<start num>-<end num>.log/index'\n"
          "and a new current history log and index will be created with the most recent blocks. All files following\n"
          "this format will be used to construct an extended history log.");
-   options("max-retained-history-files", bpo::value<uint32_t>()->default_value(10),
+   options("max-retained-history-files", bpo::value<uint32_t>()->default_value(UINT32_MAX),
           "the maximum number of history file groups to retain so that the blocks in those files can be queried.\n" 
           "When the number is reached, the oldest history file would be moved to archive dir or deleted if the archive dir is empty.\n"
           "The retained history log files should not be manipulated by users." );
