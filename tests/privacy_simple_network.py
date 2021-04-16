@@ -215,7 +215,7 @@ try:
 
 
     # if we have more than 1 api node, we will add and remove all those nodes in bulk, if not it is just a repeat of the above test
-    if totalNodes > pnodes + 1:
+    if len(apiNodes) > 1:
         # add all the api nodes to security group at once
         toAdd = []
         for apiNode in nonParticipants:
