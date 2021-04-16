@@ -162,7 +162,7 @@ try:
     lastIrreversibleBlockNum = None
 
     def cacheTransIdInBlock(transId, transToBlock, node):
-        nonlocal lastIrreversibleBlockNum
+        global lastIrreversibleBlockNum
         lastPassLIB = None
         blockWaitTimeout = 60
         transTimeDelayed = False

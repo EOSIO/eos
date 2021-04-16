@@ -294,7 +294,7 @@ namespace eosio { namespace chain {
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
          const security_group_info_t& active_security_group() const;
-         const flat_set<account_name>& proposed_security_group_participants() const;
+         flat_set<account_name> proposed_security_group_participants() const;
 
          int64_t add_security_group_participants(const flat_set<account_name>& participants);
          int64_t remove_security_group_participants(const flat_set<account_name>& participants);

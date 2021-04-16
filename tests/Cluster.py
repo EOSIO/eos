@@ -245,27 +245,9 @@ class Cluster(object):
 
             certAuth = os.path.join(privacyDir, "CA_cert.pem")
             def getArguments(number):
-                # this function converts number to eos name string
-                # eos name can have only numbers 1-5
-                # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
-                def normalizeNumber(number):
-                    assert(number > 0)
-                    if number <= 5:
-                        return str(number)
-                    cnt = number
-                    ret = "5"
-                    while cnt > 5:
-                        cnt = cnt - 5
-                        if cnt > 5:
-                            ret = "{}.5".format(ret)
-                        else:
-                            ret = "{}.{}".format(ret, cnt)
-                        assert(len(ret) <= 13)
-                    
-                    return ret
-                
-                nodeCert = os.path.join(privacyDir, "node{}.crt".format(normalizeNumber(number+1)))
-                nodeKey = os.path.join(privacyDir, "node{}_key.pem".format(normalizeNumber(number+1)))
+                participantName = Node.participantName(number)
+                nodeCert = os.path.join(privacyDir, "{}.crt".format(participantName))
+                nodeKey = os.path.join(privacyDir, "{}_key.pem".format(participantName))
                 return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
 
             for node in range(totalNodes):
@@ -370,9 +352,11 @@ class Cluster(object):
 
         def createDefaultShapeFile(newFile, cmdArr):
             cmdArrForOutput=copy.deepcopy(cmdArr)
+            cmdArrForOutput.append("--shape")
+            cmdArrForOutput.append("ring")
             cmdArrForOutput.append("--output")
             cmdArrForOutput.append(newFile)
-            s=" ".join(cmdArrForOutput)
+            s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArrForOutput.copy()])
             if Utils.Debug: Utils.Print("cmd: %s" % (s))
             if 0 != subprocess.call(cmdArrForOutput):
                 Utils.Print("ERROR: Launcher failed to create shape file \"{}\".".format(newFile))
@@ -1838,3 +1822,58 @@ class Cluster(object):
         while len(lowestMaxes)>0 and compareCommon(blockLogs, blockNameExtensions, first, lowestMaxes[0]):
             first=lowestMaxes[0]+1
             lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])
+
+    def getAllNodes(self):
+        nodes = []
+        nodes.extend(self.getNodes())
+        if self.biosNode is not None:
+            nodes.append(self.biosNode)
+        return nodes
+
+    def reportInfo(self):
+        Utils.Print("\n\n\n*****************************")
+        Utils.Print("All Nodes current info:")
+        for node in self.getAllNodes():
+            Utils.Print("Info: {}".format(json.dumps(node.getInfo(), indent=4, sort_keys=True)))
+        Utils.Print("\n*****************************")
+
+    def verifyInSync(self, sourceNodeNum=0, specificNodes=None):
+        assert isinstance(sourceNodeNum, int)
+        desc = "provided " if specificNodes else ""
+
+        if specificNodes is None:
+            specificNodes = self.getAllNodes()
+        assert sourceNodeNum < len(specificNodes)
+        Utils.Print("Ensure all {}nodes are in-sync".format(desc))
+        source = specificNodes[sourceNodeNum]
+        lib = source.getInfo()["last_irreversible_block_num"]
+        headBlockNum = source.getBlockNum()
+        headBlock = source.getBlock(headBlockNum)
+        Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
+        headBlockId = headBlock["id"]
+        error = None
+        for node in specificNodes:
+            if node.waitForBlock(headBlockNum, reportInterval = 1) is None:
+                error = "Node failed to get block number {}. Current node info: {}".format(headBlockNum, json.dumps(node.getInfo(), indent=4, sort_keys=True))
+                break
+
+            if node.waitForNextBlock() is None:
+                error = "Node failed to advance head. Current node info: {}".format(json.dumps(node.getInfo(), indent=4, sort_keys=True))
+                break
+
+            if node.getBlock(headBlockId) is None:
+                error = "Producer node has block number: {}, but it is not id: {}. Block: {}".format(headBlockNum, headBlockId, json.dumps(node.getBlock(headBlockNum), indent=4, sort_keys=True))
+                break
+
+            if node.waitForBlock(lib, blockType=BlockType.lib) is None:
+                error = "Producer node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
+                break
+
+            Utils.Print("Ensure all nodes are advancing lib")
+            if node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) == None:
+                error = "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
+                break
+
+        if error:
+            self.reportInfo()
+            Utils.errorExit(error)

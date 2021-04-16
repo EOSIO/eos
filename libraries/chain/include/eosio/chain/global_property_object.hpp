@@ -62,7 +62,7 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (proposed_schedule))
+      OBJECT_CTOR(global_property_object, (proposed_schedule)(proposed_security_group_participants)(transaction_hooks))
 
    public:
       id_type                             id;
@@ -73,8 +73,9 @@ namespace eosio { namespace chain {
       kv_database_config                  kv_configuration;
       wasm_config                         wasm_configuration;
       block_num_type                      proposed_security_group_block_num = 0;
-      flat_set<account_name>              proposed_security_group_participants;
-      vector<transaction_hook>            transaction_hooks;
+      // members that are containers need to be shared_* containers, since this object is stored in a multi-index container
+      shared_set<account_name>            proposed_security_group_participants;
+      shared_vector<transaction_hook>     transaction_hooks;
 
       void initalize_from(const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val,
                           const kv_database_config& kv_config_val, const wasm_config& wasm_config_val) {
@@ -103,6 +104,18 @@ namespace eosio { namespace chain {
          kv_configuration = legacy.kv_configuration;
          wasm_configuration = legacy.wasm_configuration;
       }
+
+      template<typename Iter>
+      void set_proposed_security_group_participants(Iter begin, Iter end) {
+         proposed_security_group_participants = {begin, end,
+                                                 proposed_security_group_participants.key_comp(),
+                                                 proposed_security_group_participants.get_allocator()};
+      }
+
+      template<typename Iter>
+      void set_transaction_hooks(Iter begin, Iter end) {
+         transaction_hooks = {begin, end, transaction_hooks.get_allocator()};
+      }
    };
 
 
@@ -128,10 +141,10 @@ namespace eosio { namespace chain {
       struct extension_v0 {
          // libstdc++ requires the following two constructors to work. 
          extension_v0(){};
-         extension_v0(block_num_type num, const flat_set<account_name>& participants, const vector<transaction_hook> trx_hooks)
+         extension_v0(block_num_type num, flat_set<account_name> participants, vector<transaction_hook> trx_hooks)
              : proposed_security_group_block_num(num)
-             , proposed_security_group_participants(participants)
-             , transaction_hooks(trx_hooks) {}
+             , proposed_security_group_participants(std::move(participants))
+             , transaction_hooks(std::move(trx_hooks)) {}
 
          block_num_type                      proposed_security_group_block_num = 0;
          flat_set<account_name>              proposed_security_group_participants;
@@ -153,7 +166,9 @@ namespace eosio { namespace chain {
 
    inline snapshot_global_property_object::extension_t get_gpo_extension(const global_property_object& gpo) {
       return snapshot_global_property_object::extension_v0{
-          gpo.proposed_security_group_block_num, gpo.proposed_security_group_participants, gpo.transaction_hooks};
+          gpo.proposed_security_group_block_num,
+          {gpo.proposed_security_group_participants.begin(), gpo.proposed_security_group_participants.end()},
+          {gpo.transaction_hooks.begin(), gpo.transaction_hooks.end()}};
    }
 
    inline void set_gpo_extension(global_property_object&                        gpo,
@@ -161,8 +176,9 @@ namespace eosio { namespace chain {
       std::visit(
           [&gpo](auto& ext) {
              gpo.proposed_security_group_block_num    = ext.proposed_security_group_block_num;
-             gpo.proposed_security_group_participants = std::move(ext.proposed_security_group_participants);
-             gpo.transaction_hooks                    = std::move(ext.transaction_hooks);
+             gpo.set_proposed_security_group_participants(ext.proposed_security_group_participants.begin(),
+                                                          ext.proposed_security_group_participants.end());
+             gpo.set_transaction_hooks(ext.transaction_hooks.begin(), ext.transaction_hooks.end());
           },
           extension);
    }

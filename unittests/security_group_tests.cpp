@@ -5,6 +5,9 @@
 #include <contracts.hpp>
 
 
+using boost::container::flat_set;
+using eosio::chain::name;
+
 namespace eosio { namespace chain {
 
 // block_header_state_v0 should has the same layout with block_header_state except
@@ -190,7 +193,9 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
          std::visit(
              [&gpo](const auto& ext) {
                 BOOST_CHECK_EQUAL(ext.proposed_security_group_block_num, gpo.proposed_security_group_block_num);
-                BOOST_TEST(ext.proposed_security_group_participants == gpo.proposed_security_group_participants );
+                flat_set<name> gpo_sg_participants{gpo.proposed_security_group_participants.begin(),
+                                                   gpo.proposed_security_group_participants.end()};
+                BOOST_TEST(ext.proposed_security_group_participants == gpo_sg_participants);
              },
              row.extension);
       }
@@ -198,6 +203,9 @@ BOOST_AUTO_TEST_CASE(test_snapshot_global_property_object) {
 }
 
 BOOST_AUTO_TEST_CASE(test_participants_change) {
+   // Need to create a 2 chain version of this test, but will require using a transaction,
+   // instead of calling add_security_group_participants directly, so the second chain can
+   // process it as part of the block
    eosio::testing::tester chain;
    using namespace eosio::chain::literals;
 
@@ -215,22 +223,56 @@ BOOST_AUTO_TEST_CASE(test_participants_change) {
 
    BOOST_TEST(chain.control->proposed_security_group_participants() == new_participants);
    BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size() , 0);
+   BOOST_CHECK(!chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 0);
+   }
 
    chain.produce_block();
 
-   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 1);
+   }
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size(), 0);
    BOOST_TEST(chain.control->active_security_group().participants == new_participants);
    BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
    BOOST_CHECK(!chain.control->in_active_security_group(participants_t{"bob"_n, "charlie"_n}));
 
    chain.control->remove_security_group_participants({"alice"_n});
    BOOST_TEST(chain.control->proposed_security_group_participants() == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 1);
+   }
 
    chain.produce_block();
 
    BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
    BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
    BOOST_CHECK(chain.control->in_active_security_group(participants_t{"bob"_n}));
+   BOOST_CHECK(!chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 2);
+   }
+
+   chain.produce_block();
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t{"bob"_n}));
+
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 2);
+   }
 
 }
 

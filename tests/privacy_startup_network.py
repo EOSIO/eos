@@ -78,7 +78,10 @@ try:
         topo[pairedRelayNodeNum] = apiNodeNums
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=1, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
+    # adjust prodCount to ensure that lib trails more than 1 block behind head
+    prodCount = 1 if pnodes > 1 else 2
+
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -138,7 +141,7 @@ try:
     featureDict = producers[0].getSupportedProtocolFeatureDict()
     Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
 
-    #Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
+    Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
     timeout = ( pnodes * 12 / 2 ) * 2   # (number of producers * blocks produced / 0.5 blocks per second) * 2 rounds
     producers[0].waitUntilBeginningOfProdTurn(blockProducer, timeout=timeout)
     feature = "SECURITY_GROUP"

@@ -230,6 +230,10 @@ class Node(object):
         msg="(block %s=%s)" % (numOrId, blockNumOrId)
         return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
+    def getHeadOrLib(self, blockType=BlockType.head, silentErrors=False, exitOnError=False):
+        blockNum = self.getBlockNum(blockType=blockType)
+        return self.getBlock(blockNum, silentErrors=silentErrors, exitOnError=exitOnError)
+
     def isBlockPresent(self, blockNum, blockType=BlockType.head):
         """Does node have head_block_num/last_irreversible_block_num >= blockNum"""
         assert isinstance(blockNum, int)
@@ -491,7 +495,7 @@ class Node(object):
     def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
         num=self.getBlockNum(blockType=blockType)
         if isinstance(timeout, WaitSpec):
-            timeout = timeout.seconds(num, num+1)
+            timeout.convert(num, num+1)
         lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForTruth(lam, timeout)
         return ret
@@ -821,6 +825,7 @@ class Node(object):
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
         cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
+        Utils.Print("cmd: {}".format(cmd))
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if signatures is not None:
@@ -1410,12 +1415,23 @@ class Node(object):
                     break
         return protocolFeatureDigestDict
 
-    def waitForHeadToAdvance(self, blocksToAdvance=1, timeout=None):
-        currentHead = self.getHeadBlockNum()
+    def waitForHeadToAdvance(self, blocksToAdvance=1, timeout=None, reportInterval=None):
+        originalHead = self.getHeadBlockNum()
+        targetHead = originalHead + blocksToAdvance
         if timeout is None:
             timeout = 6 + blocksToAdvance / 2
+        count = 0
         def isHeadAdvancing():
-            return self.getHeadBlockNum() >= currentHead + blocksToAdvance
+            nonlocal count
+            nonlocal reportInterval
+            nonlocal targetHead
+            head = self.getHeadBlockNum()
+            count += 1
+            done = head >= targetHead
+            if not done and reportInterval and count % reportInterval == 0:
+                Utils.Print("waitForHeadToAdvance to {}, currently at {}".format(targetHead, head))
+
+            return done
         return Utils.waitForTruth(isHeadAdvancing, timeout)
 
     def waitForLibToAdvance(self, timeout=30):
@@ -1504,9 +1520,14 @@ class Node(object):
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
-        cmdDesc = "get block {} --header-state".format(headBlockNum)
-        latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
-        return latestBlockHeaderState
+        for i in range(10):
+            cmdDesc = "get block {} --header-state".format(headBlockNum)
+            latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+            Utils.Print("block num: {}, block state: {}, head: {}".format(headBlockNum, latestBlockHeaderState, self.getHeadBlockNum()))
+            if latestBlockHeaderState:
+                return latestBlockHeaderState
+            time.sleep(1)
+        return None
 
     def getActivatedProtocolFeatures(self):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
@@ -1565,6 +1586,28 @@ class Node(object):
                     files.append(os.path.join(path, entry.name))
         files.sort()
         return files
+
+    @staticmethod
+    def participantName(nodeNumber):
+        # this function converts number to eos name string
+        # eos name can have only numbers 1-5
+        # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
+        def normalizeNumber(number):
+            assert(number > 0)
+            if number <= 5:
+                return str(number)
+            cnt = number
+            ret = "5"
+            while cnt > 5:
+                cnt = cnt - 5
+                if cnt > 5:
+                    ret = "{}.5".format(ret)
+                else:
+                    ret = "{}.{}".format(ret, cnt)
+                assert(len(ret) <= 13)
+
+            return ret
+        return "node{}".format(normalizeNumber(nodeNumber + 1))
 
     def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
         dataDir=Utils.getNodeDataDir(self.nodeId)
