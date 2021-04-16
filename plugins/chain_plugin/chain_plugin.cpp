@@ -2442,8 +2442,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    if ( producer_plug ) {  // producer_plug is null when called from chain_plugin_tests.cpp and get_table_tests.cpp
-      result.subjective_cpu_bill = producer_plug->get_subjective_bill( result.account_name, fc::time_point::now() );
-   }
+      account_resource_limit subjective_cpu_bill_limit;
+      subjective_cpu_bill_limit.used = producer_plug->get_subjective_bill( result.account_name, fc::time_point::now() );
+      result.subjective_cpu_bill_limit = subjective_cpu_bill_limit;
+   } 
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
