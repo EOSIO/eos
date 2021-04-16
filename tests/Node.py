@@ -1200,7 +1200,7 @@ class Node(object):
         block=self.getBlock(blockNum, exitOnError=exitOnError)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
-    def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
+    def getBlockProducer(self, timeout=None, exitOnError=True, blockType=BlockType.head):
         blockNum=self.getBlockNum(blockType=blockType)
         block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
@@ -1453,7 +1453,8 @@ class Node(object):
         return beginningOfProdTurnHead
 
     # Require producer_api_plugin
-    def activateFeatures(self, features):
+    def activateFeatures(self, features, blocksToAdvance=2):
+        assert blocksToAdvance >= 0
         featureDigests = []
         for feature in features:
             protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
@@ -1465,16 +1466,44 @@ class Node(object):
         self.scheduleProtocolFeatureActivations(featureDigests)
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        assert self.waitForHeadToAdvance(blocksToAdvance=2), print("ERROR: TIMEOUT WAITING FOR activating features: {}".format(",".join(features)))
+        assert self.waitForHeadToAdvance(blocksToAdvance=blocksToAdvance), print("ERROR: TIMEOUT WAITING FOR activating features: {}".format(",".join(features)))
+
+    def activateAndVerifyFeatures(self, features):
+        self.activateFeatures(features, blocksToAdvance=0)
+        headBlockNum = self.getBlockNum()
+        blockNum = headBlockNum
+        producers = {}
+        lastProducer = None
+        while True:
+            block = self.getBlock(blockNum)
+            blockHeaderState = self.getBlockHeaderState(blockNum)
+            if self.containsFeatures(features, blockHeaderState):
+                return
+
+            producer = block["producer"]
+            producers[producer] += 1
+            assert lastProducer != producer or producers[producer] == 1, \
+                   "We have already cycled through a complete cycle, so feature should have been set by now. \
+                   Initial block num: {}, looking at block num: {}".format(headBlockNum, blockNum)
+
+            # feature should be in block for this node's producers, if it is at least 2 blocks after we sent the activate
+            minBlocksForGuarantee = 2
+            assert producer not in self.getProducers() or blockNum - headBlockNum < minBlocksForGuarantee, \
+                   "It is {} blocks past the block when we activated the features and block num: {} was produced by this \
+                   node, so features should have been set."
+            self.waitForBlock(blockNum + 1)
+            blockNum = self.getBlockNum()
+
+
 
     # Require producer_api_plugin
     def activatePreactivateFeature(self):
         return self.activateFeatures(["PREACTIVATE_FEATURE"])
 
-    def containsFeatures(self, features):
+    def containsFeatures(self, features, blockHeaderState=None):
         protocolFeatureDict = self.getSupportedProtocolFeatureDict()
-        blockHeaderState = self.getLatestBlockHeaderState()
-        assert blockHeaderState, "blockHeaderState should not be empty"
+        if blockHeaderState is None:
+            blockHeaderState = self.getLatestBlockHeaderState()
         for feature in features:
             featureDigest = protocolFeatureDict[feature]["feature_digest"]
             assert featureDigest, "{}'s Digest should not be empty".format(feature)
@@ -1520,20 +1549,26 @@ class Node(object):
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
-        for i in range(10):
-            cmdDesc = "get block {} --header-state".format(headBlockNum)
-            latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
-            Utils.Print("block num: {}, block state: {}, head: {}".format(headBlockNum, latestBlockHeaderState, self.getHeadBlockNum()))
-            if latestBlockHeaderState:
-                return latestBlockHeaderState
-            time.sleep(1)
-        return None
+        return self.getBlockHeaderState(headBlockNum)
 
-    def getActivatedProtocolFeatures(self):
-        latestBlockHeaderState = self.getLatestBlockHeaderState()
-        if "activated_protocol_features" not in latestBlockHeaderState or "protocol_features" not in latestBlockHeaderState["activated_protocol_features"]:
+    def getBlockHeaderState(self, blockNum, errorOnNone=True):
+        cmdDesc = "get block {} --header-state".format(blockNum)
+        blockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+        if blockHeaderState is None and errorOnNone:
+            info = self.getInfo()
+            lib = info["last_irreversible_block_num"]
+            head = info["head_block_num"]
+            assert head == lib + 1, "getLatestBlockHeaderState failed to retrieve the latest block. This should be investigated."
+            Utils.errorExit("Called getLatestBlockHeaderState, which can only retrieve blocks in reversible database, but the test setup only has one producer so there" +
+                            " is only 1 block in the reversible database. Test should be redesigned to aquire this information via another interface.")
+        return blockHeaderState
+
+    def getActivatedProtocolFeatures(self, blockHeaderState=None):
+        if blockHeaderState is None:
+            blockHeaderState = self.getLatestBlockHeaderState()
+        if "activated_protocol_features" not in blockHeaderState or "protocol_features" not in blockHeaderState["activated_protocol_features"]:
             Utils.errorExit("getLatestBlockHeaderState did not return expected output, should contain [\"activated_protocol_features\"][\"protocol_features\"]: {}".format(latestBlockHeaderState))
-        return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
+        return blockHeaderState["activated_protocol_features"]["protocol_features"]
 
     def modifyBuiltinPFSubjRestrictions(self, featureCodename, subjectiveRestriction={}):
         jsonPath = os.path.join(Utils.getNodeConfigDir(self.nodeId),
@@ -1687,3 +1722,24 @@ class Node(object):
             retry = retry - 1
             startBlockNum = latestBlockNum + 1
         return False
+
+    @staticmethod
+    def parseProducers(nodeNum):
+        """Parse node config file for producers."""
+
+        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
+        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
+        configStr=None
+        with open(configFile, 'r') as f:
+            configStr=f.read()
+
+        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
+        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
+        if producerMatches is None:
+            if Utils.Debug: Utils.Print("Failed to find producers.")
+            return None
+
+        return producerMatches
+
+    def getProducers(self):
+        return Node.parseProducers(self.nodeId)

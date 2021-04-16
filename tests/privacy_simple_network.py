@@ -80,7 +80,6 @@ try:
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    Utils.Print("\n\n\n\n\nCheck after KILL:")
     Utils.Print("\n\n\n\n\nNext Round of Info:")
     cluster.reportInfo()
 
@@ -88,29 +87,16 @@ try:
     apiNodes = [cluster.getNode(x) for x in range(pnodes, totalNodes)]
     apiNodes.append(cluster.biosNode)
 
-    blockProducer = producers[0].getHeadOrLib()["producer"]
-
+    feature = "SECURITY_GROUP"
+    Utils.Print("Activating {} Feature".format(feature))
+    producers[0].activateAndVerifyFeatures({feature})
     cluster.verifyInSync()
 
     featureDict = producers[0].getSupportedProtocolFeatureDict()
     Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
 
+    Utils.Print("{} Feature activated".format(feature))
     cluster.reportInfo()
-    Utils.Print("Activating SECURITY_GROUP Feature")
-
-    #Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
-    timeout = ( pnodes * 12 / 2 ) * 2   # (number of producers * blocks produced / 0.5 blocks per second) * 2 rounds
-    for producer in producers:
-        producers[0].waitUntilBeginningOfProdTurn(blockProducer, timeout=timeout)
-        feature = "SECURITY_GROUP"
-        producers[0].activateFeatures([feature])
-        if producers[0].containsFeatures([feature]):
-            break
-
-    Utils.Print("SECURITY_GROUP Feature activated")
-    cluster.reportInfo()
-
-    assert producers[0].containsFeatures([feature]), "{} feature was not activated".format(feature)
 
     def publishContract(account, file, waitForTransBlock=False):
         Print("Publish contract")
@@ -122,20 +108,37 @@ try:
     participants = [x for x in producers]
     nonParticipants = [x for x in apiNodes]
 
-    def security_group(nodeNums):
-        action = None
-        for nodeNum in nodeNums:
-            if action is None:
-                action = '[['
-            else:
-                action += ','
-            action += '"{}"'.format(Node.participantName(nodeNum))
-        action += ']]'
+    # this is passed to limit the number of add/remove table entries are processed, but using it here to keep from getting duplicate transactions
+    publishProcessNum = 20
+    def security_group(addNodeNums=[], removeNodeNums=[]):
+        def createAction(nodeNums):
+            action = None
+            for nodeNum in nodeNums:
+                if action is None:
+                    action = '[['
+                else:
+                    action += ','
+                action += '"{}"'.format(Node.participantName(nodeNum))
+            if action:
+                action += ']]'
+            return action
 
-        Utils.Print("adding {} to the security group".format(action))
-        trans = producers[0].pushMessage(cluster.eosioAccount.name, "add", action, "--permission eosio@active")
-        Utils.Print("add trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
-        trans = producers[0].pushMessage(cluster.eosioAccount.name, "publish", "[0]", "--permission eosio@active")
+        addAction = createAction(addNodeNums)
+        removeAction = createAction(removeNodeNums)
+
+        if addAction:
+            Utils.Print("adding {} to the security group".format(addAction))
+            trans = producers[0].pushMessage(cluster.eosioAccount.name, "add", addAction, "--permission eosio@active")
+            Utils.Print("add trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+
+        if removeAction:
+            Utils.Print("removing {} from the security group".format(removeAction))
+            trans = producers[0].pushMessage(cluster.eosioAccount.name, "remove", removeAction, "--permission eosio@active")
+            Utils.Print("remove trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+
+        global publishProcessNum
+        publishProcessNum += 1
+        trans = producers[0].pushMessage(cluster.eosioAccount.name, "publish", "[{}]".format(publishProcessNum), "--permission eosio@active")
         Utils.Print("publish action trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
         return trans
 
@@ -160,33 +163,120 @@ try:
             nonParticipantHead = nonParticipant.getBlockNum()
             assert nonParticipantHead < producerHead, "Participants (that are not producers themselves) should not advance head to {}, but it has advanced to {}".format(producerHead, nonParticipantHead)
 
-    Utils.Print("Add all producers to security group")
-    publishTrans = security_group([x for x in range(pnodes)])
-    publishTransId = Node.getTransId(publishTrans[1])
-    verifyParticipantsTransactionFinalized(publishTransId)
-    verifyNonParticipants(publishTransId)
-
-    while len(nonParticipants) > 0:
-        toAdd = nonParticipants[0]
-        participants.append(toAdd)
-        del nonParticipants[0]
-        Utils.Print("Take a non-participant and make a participant. Now there are {} participants and {} non-participants".format(len(participants), len(nonParticipants)))
-
-        toAddNum = None
-        num = 0
-        for node in cluster.getNodes():
-            if node == toAdd:
-                toAddNum = num
-                break
-            num += 1
-        if toAddNum is None:
-            assert toAdd == cluster.biosNode
-            toAddNum = totalNodes
-        publishTrans = security_group([toAddNum])
-        publishTransId = Node.getTransId(publishTrans[1])
+    def verifySecurityGroup(publishTransPair):
+        publishTransId = Node.getTransId(publishTransPair[1])
         verifyParticipantsTransactionFinalized(publishTransId)
         verifyNonParticipants(publishTransId)
 
+    def moveToParticipants():
+        movedNode = nonParticipants[0]
+        participants.append(movedNode)
+        del nonParticipants[0]
+        return movedNode
+
+    def moveToNonParticipants():
+        movedNode = participants[-1]
+        # popping off back of participants and need to push on the front of nonParticipants
+        nonParticipants.insert(0, movedNode)
+        del participants[-1]
+        return movedNode
+
+    def addToSg():
+        node = moveToParticipants()
+        Utils.Print("Take a non-participant and make a participant. Now there are {} participants and {} non-participants".format(len(participants), len(nonParticipants)))
+        toAddNum = cluster.getParticipantNum(node)
+        return security_group([toAddNum])
+
+    def remFromSg():
+        node = moveToNonParticipants()
+        Utils.Print("Take a participant and make a non-participant. Now there are {} participants and {} non-participants".format(len(participants), len(nonParticipants)))
+        toRemoveNum = cluster.getParticipantNum(node)
+        return security_group(removeNodeNums=[toRemoveNum])
+
+    Utils.Print("Add all producers to security group")
+    publishTrans = security_group([x for x in range(pnodes)])
+    verifySecurityGroup(publishTrans)
+
+    cluster.reportInfo()
+
+
+    # one by one add each nonParticipant to the security group
+    while len(nonParticipants) > 0:
+        publishTrans = addToSg()
+        verifySecurityGroup(publishTrans)
+        cluster.reportInfo()
+
+
+    # one by one remove each (original) nonParticipant from the security group
+    while len(participants) > pnodes:
+        publishTrans = remFromSg()
+        verifySecurityGroup(publishTrans)
+        cluster.reportInfo()
+
+
+    # if we have more than 1 api node, we will add and remove all those nodes in bulk, if not it is just a repeat of the above test
+    if len(apiNodes) > 1:
+        # add all the api nodes to security group at once
+        toAdd = []
+        for apiNode in nonParticipants:
+            participantNum = cluster.getParticipantNum(apiNode)
+            toAdd.append(participantNum)
+        participants.extend(nonParticipants)
+        nonParticipants = []
+
+        Utils.Print("Add all api nodes to security group")
+        publishTrans = security_group(addNodeNums=toAdd)
+        verifySecurityGroup(publishTrans)
+
+        cluster.reportInfo()
+
+
+        # alternate adding/removing participants to ensure the security group doesn't change
+        initialBlockNum = None
+        blockNum = None
+        def is_done():
+            # want to ensure that we can identify the range of libs the security group was changed in
+            return blockNum - initialBlockNum > 12
+
+        done = False
+        # keep adding and removing nodes till we are done
+        while not done:
+            if blockNum:
+                participants[0].waitForNextBlock()
+
+            while not done and len(participants) > pnodes:
+                publishTrans = remFromSg()
+                Utils.Print("publishTrans: {}".format(json.dumps(publishTrans, indent=2)))
+                blockNum = Node.getTransBlockNum(publishTrans[1])
+                if initialBlockNum is None:
+                    initialBlockNum = blockNum
+                    lastBlockNum = blockNum
+                done = is_done()
+
+            while not done and len(nonParticipants) > 0:
+                publishTrans = addToSg()
+                blockNum = Node.getTransBlockNum(publishTrans[1])
+                done = is_done()
+
+        Utils.Print("First adjustment to security group was in block num: {}, verifying no changes till block num: {} is finalized".format(initialBlockNum, blockNum))
+        verifySecurityGroup(publishTrans)
+
+        cluster.reportInfo()
+
+        # remove all the api nodes from the security group at once
+        toRemove = []
+        # index pnodes and following are moving to nonParticipants, so participants has everything before that
+        nonParticipants = participants[pnodes:]
+        participants = participants[:pnodes]
+        for apiNode in nonParticipants:
+            participantNum = cluster.getParticipantNum(apiNode)
+            toRemove.append(participantNum)
+
+        Utils.Print("Remove all api nodes from security group")
+        publishTrans = security_group(removeNodeNums=toRemove)
+        verifySecurityGroup(publishTrans)
+
+        cluster.reportInfo()
 
     testSuccessful=True
 finally:

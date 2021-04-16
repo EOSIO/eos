@@ -538,6 +538,8 @@ class Cluster(object):
         if onlyBios:
             self.nodes=[biosNode]
 
+        self.totalNodes = totalNodes
+
         # ensure cluster node are inter-connected by ensuring everyone has block 1
         Utils.Print("Cluster viability smoke test. Validate every cluster node has block 1. ")
         if not self.waitOnClusterBlockNumSync(1):
@@ -1031,24 +1033,6 @@ class Cluster(object):
             producerKeys[m]=keys
 
         return producerKeys
-
-    @staticmethod
-    def parseProducers(nodeNum):
-        """Parse node config file for producers."""
-
-        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
-        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
-        configStr=None
-        with open(configFile, 'r') as f:
-            configStr=f.read()
-
-        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
-        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
-        if producerMatches is None:
-            if Utils.Debug: Utils.Print("Failed to find producers.")
-            return None
-
-        return producerMatches
 
     @staticmethod
     def parseClusterKeys(totalNodes):
@@ -1877,3 +1861,23 @@ class Cluster(object):
         if error:
             self.reportInfo()
             Utils.errorExit(error)
+
+    def getParticipantNum(self, nodeToIdentify):
+        num = 0
+        for node in self.nodes:
+            if node == nodeToIdentify:
+                return num
+            num += 1
+        assert nodeToIdentify == self.biosNode
+        return self.totalNodes
+
+    def getProducingNodeIndex(self, blockProducer):
+        featureProdNum = 0
+        while featureProdNum < pnodes:
+            if blockProducer in self.nodes[featureProdNum].getProducers():
+                return featureProdNum
+
+            featureProdNum += 1
+
+        assert blockProducer in self.biosNode.getProducers(), "Checked all nodes but could not find producer: {}".format(blockProducer)
+        return "bios"
