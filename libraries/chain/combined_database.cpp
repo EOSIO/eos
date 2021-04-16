@@ -3,6 +3,7 @@
 #include <eosio/chain/backing_store/db_combined.hpp>
 #include <eosio/chain/combined_database.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
+#include <eosio/chain/backing_store/db_cache.hpp>
 #include <eosio/chain/backing_store/db_context.hpp>
 #include <eosio/chain/backing_store/db_key_value_format.hpp>
 
@@ -70,6 +71,8 @@ namespace eosio { namespace chain {
             }
             CATCH_AND_EXIT_DB_FAILURE()
          }
+
+         eosio::chain::backing_store::db_cache_clear();
       }
    }
 

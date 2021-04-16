@@ -6,6 +6,7 @@
 #include <eosio/chain/backing_store/db_key_value_any_lookup.hpp>
 #include <eosio/chain/backing_store/db_key_value_sec_lookup.hpp>
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
+#include <eosio/chain/backing_store/db_cache.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
 #include <eosio/chain/combined_database.hpp>
 
@@ -254,6 +255,7 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       primary_iter_store.set_value(itr, value, value_size);
+      db_cache_upsert(old_key.full_key, pp.as_payload());
    }
 
    void db_context_rocksdb::db_remove_i64(int32_t itr) {
@@ -284,6 +286,7 @@ namespace eosio { namespace chain { namespace backing_store {
       primary_lookup.remove_table_if_empty(old_key.full_key);
 
       primary_iter_store.remove(itr); // don't use key_store anymore
+      db_cache_remove(old_key.full_key);
    }
 
    int32_t db_context_rocksdb::db_get_i64(int32_t itr, char* value , size_t value_size) {
@@ -369,8 +372,16 @@ namespace eosio { namespace chain { namespace backing_store {
       const name table_name {table};
       const unique_table t { code_name, scope_name, table_name };
       const auto table_ei = primary_iter_store.cache_table(t);
-
       key_bundle primary_key { db_key_value_format::create_primary_key(scope_name, table_name, id), code_name };
+
+      auto cached_value = db_cache_find( primary_key.full_key );
+      if ( cached_value ) {
+         const account_name found_payer = get_payer(cached_value->data());
+         const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, id, found_payer));
+         primary_iter_store.set_value(store_itr, actual_value_start(cached_value->data()), actual_value_size(cached_value->size()));
+         return store_itr;
+      }
+
       auto value = current_session.read(primary_key.full_key);
       if (!value) {
          // check if there is a table key to determine if we can return an end iterator
@@ -390,6 +401,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, id, found_payer));
       primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+      db_cache_upsert(primary_key.full_key, *value);
       return store_itr;
    }
 

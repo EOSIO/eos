@@ -2,6 +2,7 @@
 
 #include <eosio/chain/backing_store/chain_kv_payer.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/backing_store/db_cache.hpp>
 
 namespace eosio { namespace chain { namespace backing_store {
 
@@ -143,10 +144,11 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( table.contract == parent.receiver, table_access_violation, "db access violation" );
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(parent.receiver, table.scope, table.table, key_store.secondary, key_store.primary);
-         auto old_value = current_session.read(secondary_key.full_secondary_key);
-
-         EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
-                     "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
+         if( !db_cache_contains(secondary_key.full_secondary_key) ) { // read only when it is not cached
+            auto old_value = current_session.read(secondary_key.full_secondary_key);
+            EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
+                        "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
+         }
 
          auto session_iter = current_session.lower_bound(secondary_key.prefix_primary_to_sec_key);
          EOS_ASSERT( match_prefix(secondary_key.full_primary_to_sec_key, session_iter), db_rocksdb_invalid_operation_exception,
@@ -164,6 +166,8 @@ namespace eosio { namespace chain { namespace backing_store {
          current_session.erase(secondary_key.full_primary_to_sec_key);
          remove_table_if_empty(secondary_key.full_secondary_key);
          iter_store.remove(iterator);
+         db_cache_remove(secondary_key.full_secondary_key);
+         db_cache_remove(secondary_key.full_primary_to_sec_key);
       }
 
       void update( int iterator, account_name payer, const SecondaryKey& secondary ) {
@@ -172,17 +176,20 @@ namespace eosio { namespace chain { namespace backing_store {
          EOS_ASSERT( table.contract == parent.receiver, table_access_violation, "db access violation" );
 
          const sec_pair_bundle secondary_key = get_secondary_slices_in_secondaries(parent.receiver, table.scope, table.table, key_store.secondary, key_store.primary);
-         auto old_value = current_session.read(secondary_key.full_secondary_key);
-
          secondary_helper<SecondaryKey> helper;
-         EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
-                     "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
+         if( !db_cache_contains(secondary_key.full_secondary_key) ) { // read only when it is not cached
+            auto old_value = current_session.read(secondary_key.full_secondary_key);
+            EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
+                        "invariant failure in db_${d}_remove, iter store found to update but nothing in database", ("d", helper.desc()));
+         }
 
          // identify if this primary key already has a secondary key of this type
-         auto primary_sec_uesless_value = current_session.read(secondary_key.full_primary_to_sec_key);
-         EOS_ASSERT( primary_sec_uesless_value, db_rocksdb_invalid_operation_exception,
-                     "invariant failure in db_${d}_update, the secondary to primary lookup key was found, but not the "
-                     "primary to secondary lookup key", ("d", helper.desc()));
+         if( !db_cache_contains(secondary_key.full_secondary_key) ) {
+            auto primary_sec_uesless_value = current_session.read(secondary_key.full_primary_to_sec_key);
+            EOS_ASSERT( primary_sec_uesless_value, db_rocksdb_invalid_operation_exception,
+                        "invariant failure in db_${d}_update, the secondary to primary lookup key was found, but not the "
+                        "primary to secondary lookup key", ("d", helper.desc()));
+         }
 
          if( payer == account_name() ) payer = key_store.payer;
 
@@ -202,6 +209,8 @@ namespace eosio { namespace chain { namespace backing_store {
             // remove the secondary (to primary) key and the primary to secondary key
             current_session.erase(secondary_key.full_secondary_key);
             current_session.erase(secondary_key.full_primary_to_sec_key);
+            db_cache_remove(secondary_key.full_secondary_key);
+            db_cache_remove(secondary_key.full_primary_to_sec_key);
 
             // store the new secondary (to primary) key
             const auto new_secondary_keys = db_key_value_format::create_secondary_key_pair(table.scope, table.table, secondary, key_store.primary);
@@ -352,7 +361,10 @@ namespace eosio { namespace chain { namespace backing_store {
 
          const bytes legacy_secondary_key = db_key_value_format::create_secondary_key(scope, table, secondary, primary);
          const shared_bytes secondary_key = db_key_value_format::create_full_key(legacy_secondary_key, code);
-         const auto old_value = current_session.read(secondary_key);
+         auto old_value = db_cache_find(secondary_key);
+         if ( !old_value ) {
+            old_value = current_session.read(secondary_key);
+         }
          EOS_ASSERT( old_value, db_rocksdb_invalid_operation_exception,
                      "invariant failure in db_${d}_previous_secondary, found primary to secondary key in database but "
                      "not the secondary to primary key", ("d", helper.desc()));
@@ -504,6 +516,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       void set_value(const shared_bytes& full_key, const shared_bytes& payload) {
          current_session.write(full_key, payload);
+         db_cache_upsert(full_key, payload);
       }
 
    private:
@@ -542,7 +555,10 @@ namespace eosio { namespace chain { namespace backing_store {
          }
 
          auto full_secondary_key = backing_store::db_key_value_format::create_secondary_key_from_primary_to_sec_key<SecondaryKey>(found_kv.first);
-         auto session_iter = current_session.read(full_secondary_key);
+         auto session_iter = db_cache_find(full_secondary_key);
+         if ( !session_iter ) {
+            session_iter = current_session.read(full_secondary_key);
+         }
          EOS_ASSERT( match(found_kv.first, session_iter), db_rocksdb_invalid_operation_exception,
                      "invariant failure in find_matching_prim_sec, the primary to sec key was found in the database, "
                      "but no secondary to primary key");
