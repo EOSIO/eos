@@ -1863,7 +1863,7 @@ class Cluster(object):
             Utils.errorExit(error)
 
     def getParticipantNum(self, nodeToIdentify):
-        for num, node in zip(len(self.nodes), self.nodes):
+        for num, node in zip(range(len(self.nodes)), self.nodes):
             if node == nodeToIdentify:
                 return num
         assert nodeToIdentify == self.biosNode
