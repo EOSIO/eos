@@ -193,7 +193,7 @@ class Cluster(object):
         Generates TLS arguments for nodeos
         """
         privacyDir=os.path.join(Utils.ConfigDir, privacyDir)
-        participantName = Node.participantName(index)
+        participantName = Node.participantName(index+1)
         certAuth = os.path.join(privacyDir, "CA_cert.pem")
         nodeCert = os.path.join(privacyDir, "{}.crt".format(participantName))
         nodeKey = os.path.join(privacyDir, "{}_key.pem".format(participantName))
@@ -272,11 +272,11 @@ class Cluster(object):
                 specificExtraNodeosArgs = {}
             
             for node in range(totalNodes):
-                arguments = Cluster.getPrivacyArguments("privacy", node+1)
+                arguments = Cluster.getPrivacyArguments("privacy", node)
                 if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
                 insertSpecificExtraNodeosArgs(node, arguments)
 
-            arguments = Cluster.getPrivacyArguments("privacy", totalNodes+1)
+            arguments = Cluster.getPrivacyArguments("privacy", totalNodes)
             if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
             biosNodeNum = -1
             insertSpecificExtraNodeosArgs(biosNodeNum, arguments)

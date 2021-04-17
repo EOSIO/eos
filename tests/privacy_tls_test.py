@@ -23,7 +23,7 @@ def makeRootCertArgs(privacyDir):
     return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
 
 def makeWrongPrivateKeyArgs(index):
-    participantName = Node.participantName(index)
+    participantName = Node.participantName(index+1)
     certAuth = os.path.join(os.path.join(Utils.ConfigDir, "privacy1"), "CA_cert.pem")
     nodeCert = os.path.join(os.path.join(Utils.ConfigDir, "privacy1"), "{}.crt".format(participantName))
     nodeKey =  os.path.join(os.path.join(Utils.ConfigDir, "privacy2"), "{}_key.pem".format(participantName))
@@ -62,23 +62,23 @@ try:
 
     #VALID CASES
     #producer node
-    specificExtraNodeosArgs[-1] = Cluster.getPrivacyArguments("privacy1", 1)
+    specificExtraNodeosArgs[-1] = Cluster.getPrivacyArguments("privacy1", 0)
     #valid network member
-    specificExtraNodeosArgs[0] = Cluster.getPrivacyArguments("privacy1", 2)
+    specificExtraNodeosArgs[0] = Cluster.getPrivacyArguments("privacy1", 1)
     #testing duplicate
-    specificExtraNodeosArgs[1] = Cluster.getPrivacyArguments("privacy1", 2)
+    specificExtraNodeosArgs[1] = Cluster.getPrivacyArguments("privacy1", 1)
     #valid root certificate used as participant
     specificExtraNodeosArgs[2] = makeRootCertArgs("privacy1")
 
     #INVALID CASES
     #certificate out of group with same name #1
-    specificExtraNodeosArgs[3] = Cluster.getPrivacyArguments("privacy2", 1)
+    specificExtraNodeosArgs[3] = Cluster.getPrivacyArguments("privacy2", 0)
     #certificate out of group with same name #2
-    specificExtraNodeosArgs[4] = Cluster.getPrivacyArguments("privacy2", 2)
+    specificExtraNodeosArgs[4] = Cluster.getPrivacyArguments("privacy2", 1)
     #using invalid self-signed certificate
     specificExtraNodeosArgs[5] = makeRootCertArgs("privacy2")
     #valid CA and certificate but invalid password
-    specificExtraNodeosArgs[6] = makeWrongPrivateKeyArgs(2)
+    specificExtraNodeosArgs[6] = makeWrongPrivateKeyArgs(1)
     #no TLS arguments at all
     specificExtraNodeosArgs[7] = ""
 

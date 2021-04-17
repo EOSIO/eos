@@ -113,12 +113,12 @@ try:
     def security_group(addNodeNums=[], removeNodeNums=[]):
         def createAction(nodeNums):
             action = None
-            for nodeNum in nodeNums:
+            for nodeIndex in nodeNums:
                 if action is None:
                     action = '[['
                 else:
                     action += ','
-                action += '"{}"'.format(Node.participantName(nodeNum))
+                action += '"{}"'.format(Node.participantName(nodeIndex+1))
             if action:
                 action += ']]'
             return action
