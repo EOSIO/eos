@@ -63,6 +63,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_B
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/generate-certificates.sh ${CMAKE_CURRENT_BINARY_DIR}/generate-certificates.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_startup_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_startup_network.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_simple_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_simple_network.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_tls_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_tls_test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -121,6 +122,8 @@ add_test(NAME privacy_startup_network COMMAND tests/privacy_startup_network.py -
 set_property(TEST privacy_startup_network PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_simple_network COMMAND tests/privacy_simple_network.py -p 2 -n 4 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_simple_network PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_tls_test COMMAND tests/privacy_tls_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_tls_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

@@ -1642,7 +1642,7 @@ class Node(object):
                 assert(len(ret) <= 13)
 
             return ret
-        return "node{}".format(normalizeNumber(nodeNumber + 1))
+        return "node{}".format(normalizeNumber(nodeNumber))
 
     def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
         dataDir=Utils.getNodeDataDir(self.nodeId)
