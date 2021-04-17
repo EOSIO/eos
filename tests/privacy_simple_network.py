@@ -112,7 +112,7 @@ try:
     publishProcessNum = 20
     def security_group(addNodeNums=[], removeNodeNums=[]):
         def createAction(nodeNums):
-            return None if len(nodeNums) else \
+            return None if len(nodeNums) == 0 else \
                 "[[{}]]".format(','.join(['"[]"'.format(Node.participantName(nodeNum)) for nodeNum in nodeNums]))
 
         addAction = createAction(addNodeNums)
