@@ -405,10 +405,6 @@ class http_session {
                 : self(self), msg(std::move(msg)) {}
 
             void operator()() {
-               // expires_after controls two timers (read & write) which are only reset if there are no pending calls
-               // set expires_after here before write and also below before read to make sure both timers are reset
-               self.derived_session().stream.expires_after(std::chrono::milliseconds(self.http_config->idle_timeout_ms));
-
                http::async_write(
                      self.derived_session().stream, msg,
                      beast::bind_front_handler(&http_session::on_write, self.derived_session().shared_from_this(), msg.need_eof()));
@@ -458,9 +454,6 @@ class http_session {
       // of the body in bytes to prevent abuse.
       // todo: make configurable
       parser->body_limit(http_config->max_request_size);
-
-      // Set the timeout.
-      derived_session().stream.expires_after(std::chrono::milliseconds(http_config->idle_timeout_ms));
 
       // Read a request using the parser-oriented interface
       http::async_read(derived_session().stream, buffer, *parser, beast::bind_front_handler(&http_session::on_read, derived_session().shared_from_this()));
