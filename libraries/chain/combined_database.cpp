@@ -163,7 +163,7 @@ namespace eosio { namespace chain {
             rocksdb::Options options;
 
             options.create_if_missing = true; // Creates a database if it is missing
-            options.level_compaction_dynamic_level_bytes = true;
+ /*           options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
             options.use_adaptive_mutex = true;
 
@@ -227,7 +227,7 @@ namespace eosio { namespace chain {
 
             // Incorporates the Table options into options
             options.table_factory.reset(NewBlockBasedTableFactory(table_options));
-
+*/
             rocksdb::DB* p;
             auto         status = rocksdb::DB::Open(options, (cfg.state_dir / "chain-kv").string(), &p);
             if (!status.ok())
