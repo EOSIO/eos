@@ -169,6 +169,8 @@ namespace eosio { namespace chain {
             options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
             options.use_adaptive_mutex = true;
+	    options.enable_pipelined_write = true;
+            options.avoid_unnecessary_blocking_io = true;
 
             // Number of threads used for flush and compaction.
             options.IncreaseParallelism(cfg.persistent_storage_num_threads);
