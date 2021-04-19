@@ -112,16 +112,8 @@ try:
     publishProcessNum = 20
     def security_group(addNodeNums=[], removeNodeNums=[]):
         def createAction(nodeNums):
-            action = None
-            for nodeNum in nodeNums:
-                if action is None:
-                    action = '[['
-                else:
-                    action += ','
-                action += '"{}"'.format(Node.participantName(nodeNum))
-            if action:
-                action += ']]'
-            return action
+            return None if len(nodeNums) == 0 else \
+                "[[{}]]".format(','.join(['"{}"'.format(Node.participantName(nodeNum)) for nodeNum in nodeNums]))
 
         addAction = createAction(addNodeNums)
         removeAction = createAction(removeNodeNums)
@@ -246,7 +238,7 @@ try:
 
             while not done and len(participants) > pnodes:
                 publishTrans = remFromSg()
-                Utils.Print("publishTrans: {}".format(json.dumps(publishTrans, indent=2)))
+                Utils.Print("publishTrans: {}".format(json.dumps(publishTrans, indent=4)))
                 blockNum = Node.getTransBlockNum(publishTrans[1])
                 if initialBlockNum is None:
                     initialBlockNum = blockNum
