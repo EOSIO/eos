@@ -1409,6 +1409,130 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 BOOST_AUTO_TEST_CASE(setabi_structure_test)
 { try {
 
+   const char* abi_def_abi = R"=====(
+      {
+         "version": "eosio::abi/1.0",
+         "types": [{
+            "new_type_name": "type_name",
+            "type": "string"
+         },{
+            "new_type_name": "field_name",
+            "type": "string"
+         }],
+         "structs": [{
+            "name": "abi_extension",
+            "base": "",
+            "fields": [{
+               "name": "type",
+               "type": "uint16"
+            },{
+               "name": "data",
+               "type": "bytes"
+            }]
+         },{
+            "name": "type_def",
+            "base": "",
+            "fields": [{
+               "name": "new_type_name",
+               "type": "type_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "field_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "field_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "struct_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "type_name"
+            },{
+               "name": "base",
+               "type": "type_name"
+            }{
+               "name": "fields",
+               "type": "field_def[]"
+            }]
+         },{
+               "name": "action_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "action_name"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               },{
+                  "name": "ricardian_contract",
+                  "type": "string"
+               }]
+         },{
+               "name": "table_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "table_name"
+               },{
+                  "name": "index_type",
+                  "type": "type_name"
+               },{
+                  "name": "key_names",
+                  "type": "field_name[]"
+               },{
+                  "name": "key_types",
+                  "type": "type_name[]"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               }]
+         },{
+            "name": "clause_pair",
+            "base": "",
+            "fields": [{
+               "name": "id",
+               "type": "string"
+            },{
+               "name": "body",
+               "type": "string"
+            }]
+         },{
+               "name": "abi_def",
+               "base": "",
+               "fields": [{
+                  "name": "version",
+                  "type": "string"
+               },{
+                  "name": "types",
+                  "type": "type_def[]"
+               },{
+                  "name": "structs",
+                  "type": "struct_def[]"
+               },{
+                  "name": "actions",
+                  "type": "action_def[]"
+               },{
+                  "name": "tables",
+                  "type": "table_def[]"
+               },{
+                  "name": "ricardian_clauses",
+                  "type": "clause_pair[]"
+               }]
+         }],
+         "actions": [],
+         "tables": [],
+         "ricardian_clauses": [],
+      }
+   )=====";
+
    const char* abi_string = R"=====(
       {
          "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
@@ -1465,6 +1589,23 @@ BOOST_AUTO_TEST_CASE(setabi_structure_test)
    BOOST_TEST("name" == abi.structs[0].fields[0].type);
    BOOST_TEST("quantity" == abi.structs[0].fields[1].name);
    BOOST_TEST("uint64" == abi.structs[0].fields[1].type);
+
+   auto v = fc::json::from_string(abi_def_abi);
+
+   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()), abi_serializer::create_yield_function( max_serialization_time ));
+
+   auto var2 = verify_byte_round_trip_conversion( abis, "abi_def", var );
+   auto abi2 = var2.as<abi_def>();
+
+   BOOST_TEST_REQUIRE(abi.structs.size() == abi2.structs.size());
+
+   BOOST_TEST(abi.structs[0].name == abi2.structs[0].name);
+   BOOST_TEST(abi.structs[0].base == abi2.structs[0].base);
+   BOOST_TEST_REQUIRE(abi.structs[0].fields.size() == abi2.structs[0].fields.size());
+   BOOST_TEST(abi.structs[0].fields[0].name == abi2.structs[0].fields[0].name);
+   BOOST_TEST(abi.structs[0].fields[0].type == abi2.structs[0].fields[0].type);
+   BOOST_TEST(abi.structs[0].fields[1].name == abi2.structs[0].fields[1].name);
+   BOOST_TEST(abi.structs[0].fields[1].type == abi2.structs[0].fields[1].type);
 
 } FC_LOG_AND_RETHROW() }
 
