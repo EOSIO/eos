@@ -169,7 +169,10 @@ namespace eosio { namespace chain {
 
             // Number of threads used for flush and compaction.
             options.IncreaseParallelism(cfg.persistent_storage_num_threads);
-
+	       
+	    options.enable_pipelined_write = true;
+            options.avoid_unnecessary_blocking_io = true;   
+	    
             options.OptimizeLevelStyleCompaction(512ull << 20); // optimizes level style compaction
 
             // Number of open files that can be used by the DB.  
