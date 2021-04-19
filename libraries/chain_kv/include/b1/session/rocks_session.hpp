@@ -196,8 +196,11 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
       m_iterator_read_options{ [&]() {
          auto read_options                                 = rocksdb::ReadOptions{};
          read_options.verify_checksums                     = false;
-         read_options.fill_cache                           = false;
-         read_options.background_purge_on_iterator_cleanup = true;
+         read_options.fill_cache                           = true;
+//         read_options.background_purge_on_iterator_cleanup = true;
+         read_options.enable_pipelined_write = true;
+         read_options.avoid_unnecessary_blocking_io = true;
+
          return read_options;
       }() },
       m_iterators{ [&]() {
