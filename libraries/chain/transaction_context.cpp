@@ -389,6 +389,8 @@ namespace eosio { namespace chain {
 
       rl.add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
                                 block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
+
+      trace->bill_to_accounts = bill_to_accounts;
    }
 
    void transaction_context::squash() {

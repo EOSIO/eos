@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+    add_contract( chgpayerhk chgpayerhk chgpayerhk.cpp )
+else()
+    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/chgpayerhk.wasm ${CMAKE_CURRENT_BINARY_DIR}/chgpayerhk.wasm COPYONLY )
+    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/chgpayerhk.abi ${CMAKE_CURRENT_BINARY_DIR}/chgpayerhk.abi COPYONLY )
+endif()
