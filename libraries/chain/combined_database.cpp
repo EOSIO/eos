@@ -168,7 +168,7 @@ namespace eosio { namespace chain {
             options.avoid_unnecessary_blocking_io = true;
 	    options.OptimizeLevelStyleCompaction(2 * 512 * 1024 * 1024);
 	    options.OptimizeUniversalStyleCompaction(2 * 512 * 1024 * 1024);
-	    options.write_buffer_size(128<<20);
+	    options.write_buffer_size = 128<<20;
 	    options.unordered_write = true;
 	    options.write_thread_max_yield_usec = 500;
 	    
