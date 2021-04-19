@@ -372,8 +372,7 @@ inline typename session<rocksdb_t>::iterator session<rocksdb_t>::lower_bound(con
 }
 
 inline void session<rocksdb_t>::flush() {
-   rocksdb::Flush
-   op;
+   rocksdb::FlushOptions   op;
    op.allow_write_stall = false;
    op.wait              = false;
    m_db->Flush(op);
