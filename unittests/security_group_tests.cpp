@@ -223,7 +223,6 @@ BOOST_AUTO_TEST_CASE(test_participants_change) {
 
    BOOST_TEST(chain.control->proposed_security_group_participants() == new_participants);
    BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size() , 0);
-<<<<<<< Updated upstream
    BOOST_CHECK(!chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
 
    {
@@ -231,9 +230,6 @@ BOOST_AUTO_TEST_CASE(test_participants_change) {
       BOOST_REQUIRE_EQUAL(cur_security_group.version, 0);
    }
 
-=======
-   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 2);
->>>>>>> Stashed changes
    chain.produce_block();
 
    {
