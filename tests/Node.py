@@ -1473,7 +1473,6 @@ class Node(object):
         headBlockNum = self.getBlockNum()
         blockNum = headBlockNum
         producers = {}
-        lastProducer = None
         while True:
             block = self.getBlock(blockNum)
             blockHeaderState = self.getBlockHeaderState(blockNum)
@@ -1482,15 +1481,12 @@ class Node(object):
 
             producer = block["producer"]
             producers[producer] += 1
-            assert lastProducer != producer or producers[producer] == 1, \
-                   "We have already cycled through a complete cycle, so feature should have been set by now. \
-                   Initial block num: {}, looking at block num: {}".format(headBlockNum, blockNum)
 
             # feature should be in block for this node's producers, if it is at least 2 blocks after we sent the activate
             minBlocksForGuarantee = 2
             assert producer not in self.getProducers() or blockNum - headBlockNum < minBlocksForGuarantee, \
-                   "It is {} blocks past the block when we activated the features and block num: {} was produced by this \
-                   node, so features should have been set."
+                   "It is {} blocks past the block when we activated the features and block num {} was produced by this \
+                   node, so features should have been set.".format(blockNum - headBlockNum, blockNum)
             self.waitForBlock(blockNum + 1)
             blockNum = self.getBlockNum()
 
