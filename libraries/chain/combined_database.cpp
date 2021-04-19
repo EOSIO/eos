@@ -163,6 +163,17 @@ namespace eosio { namespace chain {
             rocksdb::Options options;
 
             options.create_if_missing = true; // Creates a database if it is missing
+	    options.IncreaseParallelism(20);
+	    options.enable_pipelined_write = true;
+            options.avoid_unnecessary_blocking_io = true;
+	    options.OptimizeLevelStyleCompaction(2 * 512 * 1024 * 1024);
+	    options.OptimizeUniversalStyleCompaction(2 * 512 * 1024 * 1024);
+	    options.write_buffer_size(128<<20);
+	    options.unordered_write = true;
+	    options.write_thread_max_yield_usec = 500;
+	    
+	       
+	       
  /*           options.level_compaction_dynamic_level_bytes = true;
             options.bytes_per_sync = cfg.persistent_storage_bytes_per_sync; // used to control the write rate of flushes and compactions.
             options.use_adaptive_mutex = true;
