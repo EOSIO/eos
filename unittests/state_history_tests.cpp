@@ -560,10 +560,10 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
          auto& blocks_result_v1 = std::get<eosio::ship_protocol::get_blocks_result_v1>(result);
 
          std::vector<eosio::ship_protocol::transaction_trace> traces;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.traces.unpack(traces));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.traces, traces));
 
          std::vector<eosio::ship_protocol::table_delta> deltas;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.deltas.unpack(deltas));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.deltas, deltas));
       }
    }
 }
