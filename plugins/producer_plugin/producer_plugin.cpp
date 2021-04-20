@@ -452,8 +452,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                future.wait();
                app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}]() mutable {
                   auto exception_handler = [&next, trx{std::move(trx)}](fc::exception_ptr ex) {
-                     fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
-                            ("txid", trx->id())("a",trx->get_transaction().first_authorizer())("why",ex->what()));
                      fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                             ("txid", trx->id())("a",trx->get_transaction().first_authorizer())("why",ex->what()));
                      next(ex);
@@ -482,12 +480,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             if (std::holds_alternative<fc::exception_ptr>(response)) {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(std::get<fc::exception_ptr>(response), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
-                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
-                        ("block_num", chain.head_block_num() + 1)
-                        ("prod", get_pending_block_producer())
-                        ("txid", trx->id())
-                        ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                        ("why",std::get<fc::exception_ptr>(response)->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
@@ -495,10 +487,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("a", trx->packed_trx()->get_transaction().first_authorizer())
                         ("why",std::get<fc::exception_ptr>(response)->what()));
                } else {
-                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
-                          ("txid", trx->id())
-                          ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                          ("why",std::get<fc::exception_ptr>(response)->what()));
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().first_authorizer())
