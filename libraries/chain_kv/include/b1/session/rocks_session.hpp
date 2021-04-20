@@ -231,6 +231,7 @@ inline bool session<rocksdb_t>::is_deleted(const shared_bytes& key) const { retu
 inline std::optional<shared_bytes> session<rocksdb_t>::read(const shared_bytes& key) {
    auto key_slice      = rocksdb::Slice{ key.data(), key.size() };
    auto pinnable_value = rocksdb::PinnableSlice{};
+   ilog("read single");
    auto status         = m_db->Get(m_read_options, column_family_(), key_slice, &pinnable_value);
 
    if (status.code() != rocksdb::Status::Code::kOk) {
@@ -243,17 +244,20 @@ inline std::optional<shared_bytes> session<rocksdb_t>::read(const shared_bytes& 
 inline void session<rocksdb_t>::write(const shared_bytes& key, const shared_bytes& value) {
    auto key_slice   = rocksdb::Slice{ key.data(), key.size() };
    auto value_slice = rocksdb::Slice{ value.data(), value.size() };
+ ilog("write single");
    auto status      = m_db->Put(m_write_options, column_family_(), key_slice, value_slice);
 }
 
 inline bool session<rocksdb_t>::contains(const shared_bytes& key) {
    auto key_slice = rocksdb::Slice{ key.data(), key.size() };
    auto value     = std::string{};
+   ilog("contains single");
    return m_db->KeyMayExist(m_read_options, column_family_(), key_slice, &value);
 }
 
 inline void session<rocksdb_t>::erase(const shared_bytes& key) {
    auto key_slice = rocksdb::Slice{ key.data(), key.size() };
+   ilog("erase single");
    auto status    = m_db->Delete(m_write_options, column_family_(), key_slice);
 }
 
@@ -272,6 +276,7 @@ session<rocksdb_t>::read_(const Iterable& keys) {
 
    auto values = std::vector<std::string>{};
    values.reserve(key_slices.size());
+   ilog("multiget");
    auto status = m_db->MultiGet(m_read_options, { key_slices.size(), column_family_() }, key_slices, &values);
 
    auto kvs = std::vector<std::pair<shared_bytes, shared_bytes>>{};
@@ -303,7 +308,7 @@ void session<rocksdb_t>::write(const Iterable& key_values) {
    for (const auto& kv : key_values) {
       batch.Put(column_family_(), { kv.first.data(), kv.first.size() }, { kv.second.data(), kv.second.size() });
    }
-
+    ilog("write batch");
    auto status = m_db->Write(m_write_options, &batch);
 }
 
@@ -311,6 +316,7 @@ template <typename Iterable>
 void session<rocksdb_t>::erase(const Iterable& keys) {
    for (const auto& key : keys) {
       auto key_slice = rocksdb::Slice{ key.data(), key.size() };
+      ilog("delete batch");
       auto status    = m_db->Delete(m_write_options, column_family_(), key_slice);
    }
 }
@@ -340,6 +346,7 @@ typename session<rocksdb_t>::iterator session<rocksdb_t>::make_iterator_(const P
       rit = m_iterators[index].get();
       rit->Refresh();
    } else {
+      ilog("create iterator");
       rit = m_db->NewIterator(m_iterator_read_options, column_family_());
    }
    setup(*rit);
@@ -375,6 +382,7 @@ inline void session<rocksdb_t>::flush() {
    rocksdb::FlushOptions   op;
    op.allow_write_stall = false;
    op.wait              = false;
+   ilog("flush");
    m_db->Flush(op);
 }
 
