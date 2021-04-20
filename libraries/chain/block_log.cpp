@@ -925,6 +925,7 @@ namespace eosio { namespace chain {
                //block log version and protocol version mismatch
                pBuffer = handle_version_mismatch(pBuffer, blog_version, return_signed_block);
            }
+           dlog("*** reading a serialized block from a log file ***");
            return pBuffer;
        }
        return {}; // archived or deleted
