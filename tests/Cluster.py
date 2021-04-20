@@ -1483,6 +1483,21 @@ class Cluster(object):
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
 
+    @staticmethod
+    def extractParticipant(pgrepStr):
+        pattern = r"\s--p2p-tls-own-certificate-file(?:\s+.*?/|\s+)(node[1-5](?:.[1-5])*).crt"
+        m = re.search(pattern, pgrepStr, re.MULTILINE)
+        if m is not None:
+            Utils.Print("FOUND participant: {}, pgrepStr: {}".format(m.group(1), pgrepStr))
+            return m.group(1)
+
+        pattern = r"\s--p2p-tls-own-certificate-file"
+        m = re.search(pattern, pgrepStr, re.MULTILINE)
+        if m is not None:
+            Utils.Print("FOUND participant start: {}".format(m.group(0)))
+
+        return None
+
     # Populate a node matched to actual running instance
     def discoverLocalNode(self, nodeNum, psOut=None, timeout=None):
         if psOut is None:
@@ -1495,7 +1510,8 @@ class Cluster(object):
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
-        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+        participant = Cluster.extractParticipant(m.group(2))
+        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, participant=participant)
         if Utils.Debug: Utils.Print("Node>", instance)
         return instance
 
@@ -1508,7 +1524,8 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
         else:
-            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+            participant = Cluster.extractParticipant(m.group(2))
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, participant=participant)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
