@@ -502,8 +502,9 @@ void session<Parent>::commit() {
             updates.emplace(p.first, p.second.value);
          }
       }
-
+      ilog("ds.erase: ","size:${size}",("size", deletes.size()) );
       ds.erase(deletes);
+      ilog("ds.write: ","size:${size}",("size", updates.size()) );
       ds.write(updates);
       clear();
    };
