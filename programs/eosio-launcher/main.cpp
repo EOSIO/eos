@@ -354,6 +354,7 @@ string producer_names::producer_name(unsigned int producer_number, bool shared_p
    // keeping legacy "defproducer[a-z]", but if greater than valid_char_range, will use "defpraaaaaaa"
    // shared_producer will appear in all nodes' config
    char prod_name[] = "defproducera";
+   string first_prod_name(prod_name);
    if (producer_number > valid_char_range) {
       for (int current_char_loc = 5; current_char_loc < total_chars; ++current_char_loc) {
          prod_name[current_char_loc] = slot_chars[0];
@@ -371,7 +372,7 @@ string producer_names::producer_name(unsigned int producer_number, bool shared_p
    }
 
    // make sure we haven't cycled back to the first 26 names (some time after 26^6)
-   if (string(prod_name) == "defproducera" && producer_number != 0)
+   if (string(prod_name) == first_prod_name && producer_number != 0)
       throw std::runtime_error( "launcher not designed to handle numbers this large " );
 
    if (shared_producer) {
@@ -537,17 +538,39 @@ void retrieve_paired_array_parameters (const variables_map &vmap, const std::str
 
 void
 launcher_def::initialize (const variables_map &vmap) {
-  if (vmap.count("mode")) {
-    const vector<string> modes = vmap["mode"].as<vector<string>>();
+  char mode_str[] = "mode";
+  char any_str[] = "any";
+  char producers_str[] = "producers";
+  char specified_str[] = "specified";
+  char none_str[] = "none";
+  char max_block_cpu_usage_str[] = "max-block-cpu-usage";
+  char max_trans_cpu_usage_str[] = "max-transaction-cpu-usage";
+  char genesis_str[] = "genesis";
+  char host_map_str[] = "host-map";
+  char servers_str[] = "servers";
+  char specific_num_str[] = "specific-num";
+  char spcfc_inst_num_str[] = "spcfc-inst-num";
+  char specific_prefix[] = "specific-";
+  char spcfc_inst_prefix[] = "spcfc-inst-";
+  char ring_str[] = "ring";
+  char star_str[] = "star";
+  char mesh_str[] = "mesh";
+  char hosts_json_suffix[] = "_hosts.json";
+  char time_format[] = "%Y_%m_%d_%H_%M_%S";
+  char eosio_home_str[] = "EOSIO_HOME";
+  char pwd_str[] = "PWD";
+  char staging_str[]= "staging";
+  if (vmap.count(mode_str)) {
+    const vector<string> modes = vmap[mode_str].as<vector<string>>();
     for(const string&m : modes)
     {
-      if (boost::iequals(m, "any"))
+      if (boost::iequals(m, any_str))
         allowed_connections |= PC_ANY;
-      else if (boost::iequals(m, "producers"))
+      else if (boost::iequals(m, producers_str))
         allowed_connections |= PC_PRODUCERS;
-      else if (boost::iequals(m, "specified"))
+      else if (boost::iequals(m, specified_str))
         allowed_connections |= PC_SPECIFIED;
-      else if (boost::iequals(m, "none"))
+      else if (boost::iequals(m, none_str))
         allowed_connections = PC_NONE;
       else {
         cerr << "unrecognized connection mode: " << m << endl;
@@ -556,39 +579,39 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  if (vmap.count("max-block-cpu-usage")) {
-     max_block_cpu_usage = vmap["max-block-cpu-usage"].as<uint32_t>();
+  if (vmap.count(max_block_cpu_usage_str)) {
+     max_block_cpu_usage = vmap[max_block_cpu_usage_str].as<uint32_t>();
   }
 
-  if (vmap.count("max-transaction-cpu-usage")) {
-     max_transaction_cpu_usage = vmap["max-transaction-cpu-usage"].as<uint32_t>();
+  if (vmap.count(max_trans_cpu_usage_str)) {
+     max_transaction_cpu_usage = vmap[max_trans_cpu_usage_str].as<uint32_t>();
   }
 
-  genesis = vmap["genesis"].as<string>();
-  if (vmap.count("host-map")) {
-     host_map_file = vmap["host-map"].as<string>();
+  genesis = vmap[genesis_str].as<string>();
+  if (vmap.count(host_map_str)) {
+     host_map_file = vmap[host_map_str].as<string>();
   }
-  if (vmap.count("servers")) {
-     server_ident_file = vmap["servers"].as<string>();
+  if (vmap.count(servers_str)) {
+     server_ident_file = vmap[servers_str].as<string>();
   }
 
-  retrieve_paired_array_parameters(vmap, "specific-num", "specific-" + string(node_executable_name), specific_nodeos_args);
-  retrieve_paired_array_parameters(vmap, "spcfc-inst-num", "spcfc-inst-" + string(node_executable_name), specific_nodeos_installation_paths);
+  retrieve_paired_array_parameters(vmap, specific_num_str, specific_prefix + string(node_executable_name), specific_nodeos_args);
+  retrieve_paired_array_parameters(vmap, spcfc_inst_num_str, spcfc_inst_prefix + string(node_executable_name), specific_nodeos_installation_paths);
 
   using namespace std::chrono;
   system_clock::time_point now = system_clock::now();
   std::time_t now_c = system_clock::to_time_t(now);
   ostringstream dstrm;
-  dstrm << std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S");
+  dstrm << std::put_time(std::localtime(&now_c), time_format);
   launch_time = dstrm.str();
 
   if ( ! (shape.empty() ||
-          boost::iequals( shape, "ring" ) ||
-          boost::iequals( shape, "star" ) ||
-          boost::iequals( shape, "mesh" )) &&
+          boost::iequals( shape, ring_str ) ||
+          boost::iequals( shape, star_str ) ||
+          boost::iequals( shape, mesh_str )) &&
        host_map_file.empty()) {
     bfs::path src = shape;
-    host_map_file = src.stem().string() + "_hosts.json";
+    host_map_file = src.stem().string() + hosts_json_suffix;
   }
 
   if( !host_map_file.empty() ) {
@@ -623,9 +646,9 @@ launcher_def::initialize (const variables_map &vmap) {
     exit (-1);
   }
 
-  if (vmap.count("specific-num")) {
-    const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
-    const auto specific_args = vmap["specific-" + string(node_executable_name)].as<vector<string>>();
+  if (vmap.count(specific_num_str)) {
+    const auto specific_nums = vmap[specific_num_str].as<vector<uint>>();
+    const auto specific_args = vmap[specific_prefix + string(node_executable_name)].as<vector<string>>();
     if (specific_nums.size() != specific_args.size()) {
       cerr << "ERROR: every specific-num argument must be paired with a specific-" << node_executable_name << " argument" << endl;
       exit (-1);
@@ -643,9 +666,9 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  char* erd_env_var = getenv ("EOSIO_HOME");
+  char* erd_env_var = getenv (eosio_home_str);
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
-     erd_env_var = getenv ("PWD");
+     erd_env_var = getenv (pwd_str);
   }
 
   if (erd_env_var != nullptr) {
@@ -659,7 +682,7 @@ launcher_def::initialize (const variables_map &vmap) {
     cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable EOSIO_HOME is set to the build path." << endl;
     exit (-1);
   }
-  stage /= bfs::path("staging");
+  stage /= bfs::path(staging_str);
   bfs::create_directories (stage);
   if (bindings.empty()) {
     define_network ();
@@ -713,14 +736,18 @@ launcher_def::assign_name (eosd_def &node, bool is_bios) {
 
 bool
 launcher_def::generate () {
+  char ring_str[] = "ring";
+  char star_str[] = "star";
+  char mesh_str[] = "mesh";
+  char hosts_json_suffix[] = "_hosts.json";
 
-  if (boost::iequals (shape,"ring")) {
+  if (boost::iequals (shape,ring_str)) {
     make_ring ();
   }
-  else if (boost::iequals (shape, "star")) {
+  else if (boost::iequals (shape, star_str)) {
     make_star ();
   }
-  else if (boost::iequals (shape, "mesh")) {
+  else if (boost::iequals (shape, mesh_str)) {
     make_mesh ();
   }
   else {
@@ -747,7 +774,7 @@ launcher_def::generate () {
       sf.close();
     }
     if (host_map_file.empty()) {
-      savefile = bfs::path (output.stem().string() + "_hosts.json");
+      savefile = bfs::path (output.stem().string() + hosts_json_suffix);
     }
     else {
       savefile = bfs::path (host_map_file);
@@ -782,7 +809,7 @@ launcher_def::write_dot_file () {
 
 void
 launcher_def::define_network () {
-
+  char pseudo_prefix[] = "pseudo_";
   if (per_host == 0) {
     host_def local_host;
     local_host.eosio_home = erd;
@@ -826,7 +853,7 @@ launcher_def::define_network () {
         else {
           string ext = host_ndx < 10 ? "0" : "";
           ext += boost::lexical_cast<string,int>(host_ndx);
-          lhost->host_name = "pseudo_" + ext;
+          lhost->host_name = pseudo_prefix + ext;
           lhost->public_name = lhost->host_name;
           ph_count = 1;
         }
@@ -856,6 +883,8 @@ launcher_def::bind_nodes () {
       cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
       exit (10);
    }
+   char private_key_str[] = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+   char prod_name_str[] = "eosio";
    size_t non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
@@ -869,12 +898,12 @@ launcher_def::bind_nodes () {
          node.name = inst.name;
          node.instance = &inst;
          auto kp = is_bios ?
-            private_key_type(string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) :
+            private_key_type(string(private_key_str)) :
             private_key_type::generate();
          auto pubkey = kp.get_public_key();
          node.keys.emplace_back (move(kp));
          if (is_bios) {
-            string prodname = "eosio";
+            string prodname = prod_name_str;
             node.producers.push_back(prodname);
             producer_set.schedule.push_back({prodname,pubkey});
          }
@@ -1740,6 +1769,9 @@ launcher_def::do_command(const host_def& host, const string& name,
    }
 }
 
+static  char eosio_home_str[] =  "EOSIO_HOME";
+static  char eosio_node_str[] = "EOSIO_NODE";
+
 void
 launcher_def::bounce (const string& node_numbers) {
    auto node_list = get_nodes(node_numbers);
@@ -1756,7 +1788,7 @@ launcher_def::bounce (const string& node_numbers) {
          }
       }
 
-      do_command(host, node.name, { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num } }, cmd);
+      do_command(host, node.name, { { eosio_home_str, host.eosio_home }, { eosio_node_str, node_num } }, cmd);
    }
 }
 
@@ -1770,7 +1802,7 @@ launcher_def::down (const string& node_numbers) {
       cout << "Taking down " << node.name << endl;
       string cmd = "./scripts/eosio-tn_down.sh ";
       do_command(host, node.name,
-                 { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 { { eosio_home_str, host.eosio_home }, { eosio_node_str, node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
                  cmd);
    }
 }
@@ -1783,7 +1815,7 @@ launcher_def::roll (const string& host_names) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
       string cmd = "./scripts/eosio-tn_roll.sh ";
-      do_command(*host, host_name, { { "EOSIO_HOME", host->eosio_home } }, cmd);
+      do_command(*host, host_name, { { eosio_home_str, host->eosio_home } }, cmd);
    }
 }
 
@@ -1948,25 +1980,29 @@ int main (int argc, char *argv[]) {
     bpo::notify(vmap);
 
     top.initialize(vmap);
+    char help_str[] = "help";
+    char version_str[] = "version";
+    char config_dir_str[] = "config-dir";
+    char config_str[] = "config";
 
-    if (vmap.count("help") > 0) {
+    if (vmap.count(help_str) > 0) {
       cli.print(cerr);
       return 0;
     }
-    if (vmap.count("version") > 0) {
+    if (vmap.count(version_str) > 0) {
       cout << eosio::launcher::config::version_str << endl;
       return 0;
     }
 
-    if( vmap.count( "config-dir" ) ) {
-      config_dir = vmap["config-dir"].as<bfs::path>();
+    if( vmap.count( config_dir_str ) ) {
+      config_dir = vmap[config_dir_str].as<bfs::path>();
       if( config_dir.is_relative() )
          config_dir = bfs::current_path() / config_dir;
     }
 
    bfs::path config_file_name = config_dir / "config.ini";
-   if( vmap.count( "config" ) ) {
-      config_file_name = vmap["config"].as<bfs::path>();
+   if( vmap.count( config_str ) ) {
+      config_file_name = vmap[config_str].as<bfs::path>();
       if( config_file_name.is_relative() )
          config_file_name = config_dir / config_file_name;
    }
@@ -1985,18 +2021,23 @@ int main (int argc, char *argv[]) {
                                            cfg, true), vmap);
 
 
-
-    if (vmap.count("launch")) {
-      string l = vmap["launch"].as<string>();
-      if (boost::iequals(l,"all"))
+    char launch_str[] = "launch";
+    char all_str[] = "all";
+    char local_str[] = "local";
+    char remote_str[] = "remote";
+    char none_str[] = "none";
+    char verify_str[] = "verify";
+    if (vmap.count(launch_str)) {
+      string l = vmap[launch_str].as<string>();
+      if (boost::iequals(l,all_str))
         mode = LM_ALL;
-      else if (boost::iequals(l,"local"))
+      else if (boost::iequals(l,local_str))
         mode = LM_LOCAL;
-      else if (boost::iequals(l,"remote"))
+      else if (boost::iequals(l,remote_str))
         mode = LM_REMOTE;
-      else if (boost::iequals(l,"none"))
+      else if (boost::iequals(l,none_str))
         mode = LM_NONE;
-      else if (boost::iequals(l,"verify"))
+      else if (boost::iequals(l,verify_str))
         mode = LM_VERIFY;
       else {
         mode = LM_NAMED;
