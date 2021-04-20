@@ -1113,29 +1113,37 @@ launcher_def::write_config_file (tn_node_def &node) {
    cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
    cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
 
+   char true_str[] = "true";
+   char any_str[] = "any";
+   char none_str[] = "none";
+   char producers_str[] = "producers";
+   char specified_str[] = "specified";
 
    if (is_bios) {
-    cfg << "enable-stale-production = true\n";
+    cfg << "enable-stale-production = " << true_str <<  "\n";
   }
   if (allowed_connections & PC_ANY) {
-    cfg << "allowed-connection = any\n";
+    cfg << "allowed-connection = " << any_str << "\n";
   }
   else if (allowed_connections == PC_NONE) {
-    cfg << "allowed-connection = none\n";
+    cfg << "allowed-connection = " << none_str << "\n";
   }
   else
   {
     if (allowed_connections & PC_PRODUCERS) {
-      cfg << "allowed-connection = producers\n";
+      cfg << "allowed-connection = " << producers_str << "\n";
     }
     if (allowed_connections & PC_SPECIFIED) {
-      cfg << "allowed-connection = specified\n";
+      cfg << "allowed-connection = " << specified_str << "\n";
       cfg << "peer-key = \"" << node.keys.begin()->get_public_key().to_string() << "\"\n";
       cfg << "peer-private-key = [\"" << node.keys.begin()->get_public_key().to_string()
           << "\",\"" << node.keys.begin()->to_string() << "\"]\n";
     }
   }
-
+  char producer_plugin_str[] = "eosio::producer_plugin";
+  char net_plugin_str[] = "eosio::net_plugin";
+  char chain_api_plugin_str[] = "eosio::chain_api_plugin";
+  char history_api_plugin_str[] = "eosio::history_api_plugin";
   if(!is_bios) {
      auto &bios_node = network.nodes["bios"];
      cfg << "p2p-peer-address = " << bios_node.instance->p2p_endpoint<< "\n";
@@ -1151,11 +1159,11 @@ launcher_def::write_config_file (tn_node_def &node) {
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
-    cfg << "plugin = eosio::producer_plugin\n";
+    cfg << "plugin = " << producer_plugin_str << "\n";
   }
-  cfg << "plugin = eosio::net_plugin\n";
-  cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n";
+  cfg << "plugin = " << net_plugin_str << "\n";
+  cfg << "plugin = " << chain_api_plugin_str << "\n"
+      << "plugin = " << history_api_plugin_str << "\n";
   cfg.close();
 }
 
