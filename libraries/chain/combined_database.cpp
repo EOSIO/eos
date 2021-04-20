@@ -170,6 +170,7 @@ namespace eosio { namespace chain {
 	    options.OptimizeUniversalStyleCompaction(2 * 512 * 1024 * 1024);
 	    options.write_buffer_size = 128<<20;
 	    options.write_thread_max_yield_usec = 500;
+	    options.disable_auto_compactions = true;
 	    
 	       
 	       
