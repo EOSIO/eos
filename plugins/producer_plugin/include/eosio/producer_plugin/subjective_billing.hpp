@@ -62,6 +62,7 @@ private:
    trx_cache_index                           _trx_cache_index;
    account_subjective_bill_cache             _account_subjective_bill_cache;
    block_subjective_bill_cache               _block_subjective_bill_cache;
+   std::set<chain::account_name>             _disabled_accounts;
 
 private:
    uint32_t time_ordinal_for( const fc::time_point& t ) const {
@@ -114,13 +115,13 @@ public: // public for tests
 
 public:
    void disable() { _disabled = true; }
-   bool is_disabled() const { return _disabled; }
+   void disable_account( chain::account_name a ) { _disabled_accounts.emplace( a ); }
 
    /// @param in_pending_block pass true if pt's bill time is accounted for in the pending block
    void subjective_bill( const transaction_id_type& id, const fc::time_point& expire, const account_name& first_auth,
                          const fc::microseconds& elapsed, bool in_pending_block )
    {
-      if( !_disabled ) {
+      if( !_disabled && !_disabled_accounts.count( first_auth ) ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
          auto p = _trx_cache_index.emplace(
                trx_cache_entry{id,
@@ -138,7 +139,7 @@ public:
 
    void subjective_bill_failure( const account_name& first_auth, const fc::microseconds& elapsed, const fc::time_point& now )
    {
-      if( !_disabled ) {
+      if( !_disabled && !_disabled_accounts.count( first_auth ) ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
          const auto time_ordinal = time_ordinal_for(now);
          _account_subjective_bill_cache[first_auth].expired_accumulator.add(bill, time_ordinal, expired_accumulator_average_window);
@@ -146,7 +147,7 @@ public:
    }
 
    uint32_t get_subjective_bill( const account_name& first_auth, const fc::time_point& now ) const {
-      if( _disabled ) return 0;
+      if( _disabled || _disabled_accounts.count( first_auth ) ) return 0;
       const auto time_ordinal = time_ordinal_for(now);
       const subjective_billing_info* sub_bill_info = nullptr;
       auto aitr = _account_subjective_bill_cache.find( first_auth );
