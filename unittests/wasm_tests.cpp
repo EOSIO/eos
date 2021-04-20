@@ -2048,7 +2048,7 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
                          fc_exception_message_starts_with("estimated") );
 
    // Test when cpu limit is 0
-   chain.push_action( config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+   chain.push_action( config::system_account_name, "setalimits"_n, config::system_account_name, fc::mutable_variant_object()
            ("account", acc)
            ("ram_bytes", -1)
            ("net_weight", 75)
