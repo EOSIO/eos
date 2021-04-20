@@ -206,6 +206,7 @@ inline session<rocksdb_t>::session(std::shared_ptr<rocksdb::DB> db, size_t max_i
 
          auto column_family = column_family_();
          for (size_t i = 0; i < max_iterators; ++i) {
+            ilog("emplacing back m_db->NewIterator");
             iterators.emplace_back(m_db->NewIterator(m_iterator_read_options, column_family));
          }
          return iterators;
