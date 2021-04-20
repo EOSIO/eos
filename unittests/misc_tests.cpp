@@ -10,6 +10,8 @@
 #include <appbase/execution_priority_queue.hpp>
 #include <fc/bitutil.hpp>
 
+#include <thread>
+
 #include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
