@@ -1105,6 +1105,61 @@ BOOST_AUTO_TEST_CASE(test_deltas_contract) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(test_deltas_contract_eosio_token) {
+   for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      table_deltas_tester chain { backing_store, setup_policy::preactivate_feature_and_new_bios };
+
+      chain.create_account("eosio.token"_n);
+      chain.produce_block();
+
+      chain.set_code("eosio.token"_n, contracts::eosio_token_wasm());
+      chain.set_abi("eosio.token"_n, contracts::eosio_token_abi().data());
+
+      chain.produce_block();
+
+      chain.push_action("eosio.token"_n, "create"_n, "eosio.token"_n, mutable_variant_object()
+            ("issuer", "eosio"_n)
+            ("maximum_supply", "9000000.0000 CUR")
+      );
+
+      chain.push_action("eosio.token"_n, "issue"_n, "eosio"_n, mutable_variant_object()
+            ("to",       "eosio"_n)
+            ("quantity", "1000000.0000 CUR")
+            ("memo", "for stuff")
+      );
+
+      auto result = chain.find_table_delta("contract_table", true);
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_table_full = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_table_full->rows.obj.size(), 3);
+
+      auto contract_tables = chain.deserialize_data<eosio::ship_protocol::contract_table_v0, eosio::ship_protocol::contract_table>(it_contract_table_full);
+      BOOST_REQUIRE_EQUAL(contract_tables.size(), 3);
+      BOOST_REQUIRE_EQUAL(contract_tables[0].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_tables[0].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_tables[1].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_tables[1].table.to_string(), "stat");
+      BOOST_REQUIRE_EQUAL(contract_tables[2].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_tables[2].table.to_string(), "accounts");
+
+      result = chain.find_table_delta("contract_row", true);
+      BOOST_REQUIRE(result.first);
+      auto &it_contract_row_full = result.second;
+      BOOST_REQUIRE_EQUAL(it_contract_row_full->rows.obj.size(), 4);
+
+      auto contract_rows_full = chain.deserialize_data<eosio::ship_protocol::contract_row_v0, eosio::ship_protocol::contract_row>(it_contract_row_full);
+      BOOST_REQUIRE_EQUAL(contract_rows_full.size(), 4);
+      BOOST_REQUIRE_EQUAL(contract_rows_full[0].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[0].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[1].code.to_string(), "eosio");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[1].table.to_string(), "abihash");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[2].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[2].table.to_string(), "stat");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[3].code.to_string(), "eosio.token");
+      BOOST_REQUIRE_EQUAL(contract_rows_full[3].table.to_string(), "accounts");
+   }
+}
+
 BOOST_AUTO_TEST_CASE(test_deltas_contract_several_rows){
    for (backing_store_type backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
       table_deltas_tester chain { backing_store, setup_policy::none };
