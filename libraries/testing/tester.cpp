@@ -632,6 +632,20 @@ namespace eosio { namespace testing {
       return success();
    }
 
+   transaction_trace_ptr base_tester::push_action_no_produce(action&& act, uint64_t authorizer) {
+      signed_transaction trx;
+      if (authorizer) {
+         act.authorization = vector<permission_level>{{account_name(authorizer), config::active_name}};
+      }
+      trx.actions.emplace_back(std::move(act));
+      set_transaction_headers(trx);
+      if (authorizer) {
+         trx.sign(get_private_key(account_name(authorizer), "active"), control->get_chain_id());
+      }
+
+      return push_transaction(trx);
+   }
+
    transaction_trace_ptr base_tester::push_action( const account_name& code,
                                                    const action_name& acttype,
                                                    const account_name& actor,

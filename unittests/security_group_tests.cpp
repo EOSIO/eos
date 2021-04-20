@@ -367,6 +367,59 @@ std::vector<char> participants_payload( participants_t names ) {
    return ds.storage();
 }
 
+BOOST_AUTO_TEST_CASE(test_participants_change_modified) {
+   eosio::testing::tester chain;
+   using namespace eosio::chain::literals;
+
+   chain.create_accounts( {"alice"_n,"bob"_n,"charlie"_n} );
+   chain.produce_block();
+   
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 0);
+      BOOST_REQUIRE_EQUAL(cur_security_group.participants.size(), 0);
+   }
+
+   chain.create_accounts({ "addmember"_n, "rmmember"_n });
+
+   chain.produce_block();
+
+   chain.set_code( "addmember"_n, add_security_group_participants_wast );
+   chain.set_code( "rmmember"_n, remove_security_group_participants_wast );
+
+   chain.produce_block();
+
+   chain.push_action( "eosio"_n, "setpriv"_n, "eosio"_n, fc::mutable_variant_object()("account", "addmember"_n)("is_priv", 1));
+   chain.push_action( "eosio"_n, "setpriv"_n, "eosio"_n, fc::mutable_variant_object()("account", "rmmember"_n)("is_priv", 1));
+
+   chain.produce_block();
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size(), 0);
+
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"alice"_n})), "addmember"_n.to_uint64_t()));
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"bob"_n})), "addmember"_n.to_uint64_t()));
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 2);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size(), 0);
+
+   chain.produce_block();
+   
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(  eosio::chain::action({}, "rmmember"_n, {}, participants_payload({"alice"_n})), "rmmember"_n.to_uint64_t()));
+   BOOST_TEST(chain.control->proposed_security_group_participants() == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   chain.produce_block();
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t{"bob"_n}));
+}
+
 BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
 
    eosio::testing::tester chain1;
