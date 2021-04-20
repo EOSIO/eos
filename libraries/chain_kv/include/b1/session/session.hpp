@@ -503,8 +503,14 @@ void session<Parent>::commit() {
          }
       }
 
+      if (deletes.size() > 0) {
       ds.erase(deletes);
+      }
+
+      if (updates.size() > 0) {
       ds.write(updates);
+      }
+      
       clear();
    };
 
