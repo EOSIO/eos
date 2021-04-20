@@ -115,6 +115,7 @@ public: // public for tests
 
 public:
    void disable() { _disabled = true; }
+   bool is_disabled() const { return _disabled; }
    void disable_account( chain::account_name a ) { _disabled_accounts.emplace( a ); }
 
    /// @param in_pending_block pass true if pt's bill time is accounted for in the pending block
