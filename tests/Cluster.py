@@ -18,6 +18,7 @@ from testUtils import Account
 from testUtils import BlockLogAction
 from Node import BlockType
 from Node import Node
+from SecurityGroup import SecurityGroup
 from WalletMgr import WalletMgr
 
 # Protocol Feature Setup Policy
@@ -121,6 +122,8 @@ class Cluster(object):
         self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
         self.biosNode = None
 
+        self.securityGroupEnabled = False
+
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
@@ -221,6 +224,7 @@ class Cluster(object):
             specificExtraNodeosArgs[node] = arg + " " + insertStr
 
         if configSecurityGroup:
+            self.securityGroupEnabled = True
             privacyDir=os.path.join(Utils.ConfigDir, "privacy")
             if not os.path.isdir(privacyDir):
                 if Utils.Debug: Utils.Print("creating dir {} in dir: {}".format(privacyDir, os.getcwd()))
@@ -1896,3 +1900,12 @@ class Cluster(object):
 
         assert blockProducer in self.biosNode.getProducers(), "Checked all nodes but could not find producer: {}".format(blockProducer)
         return "bios"
+
+    def getSecurityGroup(self, require=True):
+        assert not require or self.securityGroupEnabled, "Need to launch Cluster with configSecurityGroup=True to create a SecurityGroup"
+        if self.securityGroupEnabled:
+            for node in self.getAllNodes():
+                Utils.Print("Creating securityGroup with participant: {}".format(node.getParticipant()))
+            return SecurityGroup(self.getAllNodes(), self.eosioAccount, defaultNode=self.nodes[0])
+
+        return None
