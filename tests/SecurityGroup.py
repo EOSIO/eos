@@ -1,7 +1,9 @@
 import copy
 import json
-import Node
 
+from Node import BlockType
+from Node import Node
+from Node import ReturnType
 from testUtils import Utils
 
 # pylint: disable=too-many-public-methods
@@ -19,6 +21,7 @@ class SecurityGroup(object):
         self.publishProcessNum = minAddRemEntriesToPublish
         Utils.Print("Publish contract")
         self.contractTrans = self.defaultNode.publishContract(self.contractAccount, "unittests/test-contracts/security_group_test/", "eosio.secgrp.wasm", "eosio.secgrp.abi", waitForTransBlock=True)
+        self.publishTrans = None
 
     @staticmethod
     def __lessThan(lhsNode, rhsNode):
@@ -58,7 +61,7 @@ class SecurityGroup(object):
         return None if len(nodes) == 0 else \
             "[[{}]]".format(','.join(['"{}"'.format(node.getParticipant()) for node in nodes]))
 
-    def securityGroup(self, addNodes=[], removeNodes=[]):
+    def editSecurityGroup(self, addNodes=[], removeNodes=[]):
 
         addAction = SecurityGroup.createAction(addNodes)
         # doing deep copy in case the passed in list IS participants or nonParticipants lists, which will be adjusted
@@ -77,6 +80,48 @@ class SecurityGroup(object):
             Utils.Print("remove trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
 
         self.publishProcessNum += 1
-        trans = self.defaultNode.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")
-        Utils.Print("publish action trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+        self.publishTrans = self.defaultNode.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")[1]
+        Utils.Print("publish action trans: {}".format(json.dumps(self.publishTrans, indent=4, sort_keys=True)))
+        return self.publishTrans
+
+    def verifyParticipantsTransactionFinalized(self, transId = None):
+        Utils.Print("Verify participants are in sync")
+        if transId is None:
+            transId = Node.getTransId(self.publishTrans)
+        for part in self.participants:
+            if part.waitForTransFinalization(transId) == None:
+                Utils.errorExit("Transaction: {}, never finalized".format(trans))
+
+    def verifyNonParticipants(self, transId = None):
+        Utils.Print("Verify non-participants don't receive blocks")
+        if transId is None:
+            transId = Node.getTransId(self.publishTrans)
+        publishBlock = self.defaultNode.getBlockIdByTransId(transId)
+        prodLib = self.defaultNode.getBlockNum(blockType=BlockType.lib)
+        waitForLib = prodLib + 3 * 12
+        if self.defaultNode.waitForBlock(waitForLib, blockType=BlockType.lib) == None:
+            Utils.errorExit("Producer did not advance lib the expected amount.  Starting lib: {}, exp lib: {}, actual state: {}".format(prodLib, waitForLib, self.defaultNode.getInfo()))
+        producerHead = self.defaultNode.getBlockNum()
+
+        for nonParticipant in self.nonParticipants:
+            nonParticipantPostLIB = nonParticipant.getBlockNum(blockType=BlockType.lib)
+            assert nonParticipantPostLIB < publishBlock, "Participants not in security group should not have advanced LIB to {}, but it has advanced to {}".format(publishBlock, nonParticipantPostLIB)
+            nonParticipantHead = nonParticipant.getBlockNum()
+            assert nonParticipantHead < producerHead, "Participants (that are not producers themselves) should not advance head to {}, but it has advanced to {}".format(producerHead, nonParticipantHead)
+
+    def verifySecurityGroup(self, publishTrans = None):
+        if publishTrans is None:
+            publishTrans = self.publishTrans
+        publishTransId = Node.getTransId(publishTrans)
+        self.verifyParticipantsTransactionFinalized(publishTransId)
+        self.verifyNonParticipants(publishTransId)
+
+    def addToSecurityGroup(self):
+        trans = self.editSecurityGroup([self.nonParticipants[0]])
+        Utils.Print("Take a non-participant and make a participant. Now there are {} participants and {} non-participants".format(len(self.participants), len(self.nonParticipants)))
+        return trans
+
+    def remFromSecurityGroup(self):
+        trans = self.editSecurityGroup(removeNodes=[self.participants[-1]])
+        Utils.Print("Take a participant and make a non-participant. Now there are {} participants and {} non-participants".format(len(self.participants), len(self.nonParticipants)))
         return trans
