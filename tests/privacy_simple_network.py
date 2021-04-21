@@ -88,18 +88,8 @@ try:
     Utils.Print("producer participants: [{}]".format(", ".join([x.getParticipant() for x in producers])))
     Utils.Print("api participants: [{}]".format(", ".join([x.getParticipant() for x in apiNodes])))
 
-    feature = "SECURITY_GROUP"
-    Utils.Print("Activating {} Feature".format(feature))
-    producers[0].activateAndVerifyFeatures({feature})
-    cluster.verifyInSync()
-
-    featureDict = producers[0].getSupportedProtocolFeatureDict()
-    Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
-
-    Utils.Print("{} Feature activated".format(feature))
-    cluster.reportInfo()
-
     securityGroup = cluster.getSecurityGroup()
+    cluster.reportInfo()
 
     Utils.Print("Add all producers to security group")
     securityGroup.editSecurityGroup([cluster.getNodes()[x] for x in range(pnodes)])
@@ -110,7 +100,7 @@ try:
     Utils.Print("One by one, add each API Node to the security group")
     # one by one add each nonParticipant to the security group
     while len(securityGroup.nonParticipants) > 0:
-        securityGroup.addToSecurityGroup()
+        securityGroup.moveToSecurityGroup()
         securityGroup.verifySecurityGroup()
         cluster.reportInfo()
 
@@ -119,7 +109,7 @@ try:
     Utils.Print("One by one, remove each API Node from the security group")
     # one by one remove each (original) nonParticipant from the security group
     while len(securityGroup.participants) > pnodes:
-        removeTrans = securityGroup.remFromSecurityGroup()
+        removeTrans = securityGroup.removeFromSecurityGroup()
         securityGroup.verifySecurityGroup()
         cluster.reportInfo()
 
@@ -150,7 +140,7 @@ try:
             securityGroup.defaultNode.waitForNextBlock()
 
             while not done and len(securityGroup.participants) > pnodes:
-                publishTrans = securityGroup.remFromSecurityGroup()
+                publishTrans = securityGroup.removeFromSecurityGroup()
                 blockNum = Node.getTransBlockNum(publishTrans)
                 if initialBlockNum is None:
                     initialBlockNum = blockNum
@@ -158,7 +148,7 @@ try:
                 done = is_done()
 
             while not done and len(securityGroup.nonParticipants) > 0:
-                publishTrans = securityGroup.addToSecurityGroup()
+                publishTrans = securityGroup.moveToSecurityGroup()
                 blockNum = Node.getTransBlockNum(publishTrans)
                 done = is_done()
 
