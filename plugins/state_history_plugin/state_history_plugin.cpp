@@ -61,14 +61,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    string                                                     unix_path;
    std::unique_ptr<unixs::acceptor>                           unix_acceptor;
 
-   state_history::optional_signed_block get_block(uint32_t block_num) {
-      try {
-         return chain_plug->chain().fetch_block_by_number(block_num);
-      } catch (...) {
-      }
-      return {};
-   }
-
    std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
       std::optional<chain::block_id_type> result;
 
@@ -237,29 +229,51 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update();
       }
 
-      void send_update(get_blocks_result_v1&& result) {
+      uint32_t max_messages_in_flight() const {
+         if (current_request)
+            return current_request->max_messages_in_flight;
+         return 0;
+      }
+
+      void send_update(const block_state_ptr& head_block_state,  get_blocks_result_v1&& result) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !max_messages_in_flight() )
             return;
-         auto& chain = plugin->chain_plug->chain();
+         get_blocks_request_v0& block_req =  *current_request;
+         
+         auto& chain              = plugin->chain_plug->chain();
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
-               current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
-         if (current_request->start_block_num <= current &&
-             current_request->start_block_num < current_request->end_block_num) {
-            auto block_id = plugin->get_block_id(current_request->start_block_num);
+               block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
+         if (block_req.start_block_num <= current &&
+             block_req.start_block_num < block_req.end_block_num) {
+
+            auto& block_num = block_req.start_block_num;
+            auto block_id  = plugin->get_block_id(block_num);
+
+            auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
+               try {
+                  if (head_block_state->block_num == block_num)
+                     return head_block_state->block;
+                  return chain.fetch_block_by_number(block_num);
+               } catch (...) {
+                  return {};
+               }
+            };
+
             if (block_id) {
-               result.this_block  = block_position{current_request->start_block_num, *block_id};
-               auto prev_block_id = plugin->get_block_id(current_request->start_block_num - 1);
-               if (prev_block_id)
-                  result.prev_block = block_position{current_request->start_block_num - 1, *prev_block_id};
-               if (current_request->fetch_block)
-                  result.block = plugin->get_block(current_request->start_block_num);
-               if (current_request->fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_log_entry(current_request->start_block_num);
+               result.this_block  = block_position{block_num, *block_id};
+               auto prev_block_id = plugin->get_block_id(block_num - 1);
+               if (prev_block_id) 
+                  result.prev_block = block_position{block_num - 1, *prev_block_id};
+               if (block_req.fetch_block) {
+                  result.block = get_block();
+               }
+               if (block_req.fetch_traces && plugin->trace_log) {
+                  result.traces = plugin->trace_log->get_log_entry(block_num);
                }
                if (current_request->fetch_deltas && plugin->chain_state_log) {
-                  result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
+                  result.deltas = plugin->chain_state_log->get_log_entry(block_num);
                }
                fc_ilog(_log, "result.traces.bytes_count=${t_count} result.deltas.bytes_count=${d_count}",
                   ("t_count", result.traces.data_size())("d_count", result.deltas.data_size()) );
@@ -271,9 +285,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
 
          send(std::move(result));
-         --current_request->max_messages_in_flight;
-         need_to_send_update = current_request->start_block_num <= current &&
-                               current_request->start_block_num < current_request->end_block_num;
+         --block_req.max_messages_in_flight;
+         need_to_send_update = block_req.start_block_num <= current &&
+                               block_req.start_block_num < block_req.end_block_num;
 
          std::visit( [plugin=this->plugin]( auto&& ptr ) {
             if( ptr ) {
@@ -298,25 +312,29 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }, result.block );
       }
 
+      void send_update_for_block(const block_state_ptr& head_block_state) {
+         if (head_block_state->block) {
+            get_blocks_result_v1 result;
+            result.head = { head_block_state->block_num, head_block_state->id };
+            send_update(head_block_state, std::move(result)); 
+         }    
+      }
+
       void send_update(const block_state_ptr& block_state) override {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !max_messages_in_flight())
             return;
-         get_blocks_result_v1 result;
-         result.head = {block_state->block_num, block_state->id};
-         send_update(std::move(result));
+         send_update_for_block(block_state);
       }
 
       void send_update(bool changed = false) {
          if (changed)
             need_to_send_update = true;
-         if (!send_queue.empty() || !need_to_send_update || !current_request ||
-             !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !need_to_send_update || 
+             !max_messages_in_flight())
             return;
          auto& chain = plugin->chain_plug->chain();
-         get_blocks_result_v1 result;
-         result.head = {chain.head_block_num(), chain.head_block_id()};
-         send_update(std::move(result));
+         send_update_for_block(chain.head_block_state());
       }
 
       template <typename F>
