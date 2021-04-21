@@ -225,6 +225,7 @@ namespace eosio { namespace testing {
                                                const variant_object& data,
                                                uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                uint32_t delay_sec = 0 );
+         transaction_trace_ptr    push_action_no_produce(action&& act, uint64_t authorizer);
 
 
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
