@@ -115,10 +115,11 @@ try:
         cluster.reportInfo()
 
 
+    removeTrans = None
     Utils.Print("One by one, remove each API Node from the security group")
     # one by one remove each (original) nonParticipant from the security group
     while len(securityGroup.participants) > pnodes:
-        securityGroup.remFromSecurityGroup()
+        removeTrans = securityGroup.remFromSecurityGroup()
         securityGroup.verifySecurityGroup()
         cluster.reportInfo()
 
@@ -131,6 +132,9 @@ try:
 
         cluster.reportInfo()
 
+        # waiting for a block to change (2 blocks since transaction indication could be 1 behind) to prevent duplicate remove transactions
+        removeBlockNum = Node.getTransBlockNum(removeTrans)
+        securityGroup.defaultNode.waitForBlock(removeBlockNum + 2)
 
         # alternate adding/removing participants to ensure the security group doesn't change
         initialBlockNum = None
