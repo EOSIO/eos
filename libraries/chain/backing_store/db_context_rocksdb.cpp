@@ -169,6 +169,7 @@ namespace eosio { namespace chain { namespace backing_store {
      sec_lookup_double(*this, session), sec_lookup_long_double(*this, session) {}
 
    db_context_rocksdb::~db_context_rocksdb() {
+      db_cache_commit(current_session);
    }
 
    int32_t db_context_rocksdb::db_store_i64(uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* value , size_t value_size) {
@@ -223,7 +224,6 @@ namespace eosio { namespace chain { namespace backing_store {
 
       const payer_payload pp{payer, value, value_size};
       prefix_bundle old_key = get_primary_slice_in_primaries(table_store.contract, table_store.scope,table_store.table, key_store.primary);
-      set_value(old_key.full_key, pp);
 
       std::string event_id;
       auto dm_logger = context.control.get_deep_mind_logger();
@@ -255,7 +255,7 @@ namespace eosio { namespace chain { namespace backing_store {
       }
 
       primary_iter_store.set_value(itr, value, value_size);
-      db_cache_upsert(old_key.full_key, pp.as_payload());
+      db_cache_update(old_key.full_key, pp.as_payload());
    }
 
    void db_context_rocksdb::db_remove_i64(int32_t itr) {
@@ -401,7 +401,7 @@ namespace eosio { namespace chain { namespace backing_store {
 
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, id, found_payer));
       primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
-      db_cache_upsert(primary_key.full_key, *value);
+      db_cache_insert(primary_key.full_key, *value);
       return store_itr;
    }
 
@@ -719,7 +719,15 @@ namespace eosio { namespace chain { namespace backing_store {
       payer_payload pp(value);
       const account_name found_payer = pp.payer;
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, found_key, found_payer));
-      primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+
+      // Check if it is cached. Updates in the cache are batched, they are most up to date.
+      auto cached_value = db_cache_find( (*session_iter).first );
+      if ( cached_value ) {
+	 primary_iter_store.set_value(store_itr, actual_value_start(cached_value->data()), actual_value_size(cached_value->size()));
+      } else {
+	 // Use value from database
+         primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+      }
 
       return store_itr;
    }
@@ -786,7 +794,15 @@ namespace eosio { namespace chain { namespace backing_store {
          primary_key = key;
       }
       const auto store_itr = primary_iter_store.add(primary_key_iter(table_ei, *primary_key, found_payer));
-      primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+
+      // Check if it is cached. Updates in the cache are batched, they are most up to date.
+      auto cached_value = db_cache_find( (*session_iter).first );
+      if ( cached_value ) {
+	 primary_iter_store.set_value(store_itr, actual_value_start(cached_value->data()), actual_value_size(cached_value->size()));
+      } else {
+	 // Use value from database.
+         primary_iter_store.set_value(store_itr, pp.value, pp.value_size);
+      }
 
       return store_itr;
    }
