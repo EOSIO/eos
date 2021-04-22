@@ -3676,6 +3676,7 @@ namespace eosio {
 
       // update connections
       //
+      fc_dlog( logger, "SecurityGroup changed to version: ${v}", ("v", security_group.current_version()) );
       for(auto& connection : connections) {
          const auto& participant = connection->participant_name();
          if(participant && security_group.is_in_security_group(participant.value())) {

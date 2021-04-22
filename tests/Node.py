@@ -29,7 +29,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None):
+    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None, participant=None):
         self.host=host
         self.port=port
         self.pid=pid
@@ -48,6 +48,8 @@ class Node(object):
         self.transCache={}
         self.walletMgr=walletMgr
         self.missingTransaction=False
+        self.participant=participant
+        if participant is not None: Utils.Print("Creating participant: {}".format(participant))
         self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
 
     def eosClientArgs(self):
@@ -55,7 +57,11 @@ class Node(object):
         return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
-        return "Host: %s, Port:%d, NodeNum:%s, Pid:%s" % (self.host, self.port, self.nodeId, self.pid)
+        participantStr = ", Participant: {}".format(self.participant) if self.participant else ""
+        return "Host: {}, Port:{}, NodeNum: {}, Pid: {}{}".format(self.host, self.port, self.nodeId, self.pid, participantStr)
+
+    def __eq__(self, obj):
+        return isinstance(obj, Node) and str(self) == str(obj)
 
     @staticmethod
     def validateTransaction(trans):
@@ -1739,3 +1745,6 @@ class Node(object):
 
     def getProducers(self):
         return Node.parseProducers(self.nodeId)
+
+    def getParticipant(self):
+        return self.participant
