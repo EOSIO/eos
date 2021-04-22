@@ -421,7 +421,9 @@ BOOST_AUTO_TEST_CASE(test_participants_change_modified) {
 }
 
 BOOST_AUTO_TEST_CASE(test_participants_change_2_chains) { 
-   // chain2 trails chain a block behind since it reads the records of last finalized block from chain
+   /* Note:
+   * because produce_block calls start_block, and push_block does not, chain2 will trail behind chain
+   */
    eosio::testing::tester chain;
    eosio::testing::tester chain2;
    using namespace eosio::chain::literals;
