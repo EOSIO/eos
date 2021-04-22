@@ -5,8 +5,14 @@
 
 namespace eosio { namespace chain {
 
+   enum transaction_extension_id {
+      deferred_transaction_generation_context_id = 0,
+      resource_payer_id,
+      TRANSACTION_EXTENSION_ID_COUNT
+   };
+
    struct deferred_transaction_generation_context : fc::reflect_init {
-      static constexpr uint16_t extension_id() { return 0; }
+      static constexpr uint16_t extension_id() { return transaction_extension_id::deferred_transaction_generation_context_id; }
       static constexpr bool     enforce_unique() { return true; }
 
       deferred_transaction_generation_context() = default;
@@ -24,6 +30,28 @@ namespace eosio { namespace chain {
       account_name        sender;
    };
 
+   struct resource_payer : fc::reflect_init {
+      static constexpr uint16_t extension_id() { return transaction_extension_id::resource_payer_id; }
+      static constexpr bool enforce_unique() { return true; }
+
+      resource_payer() = default;
+
+      resource_payer( account_name payer, uint64_t max_net_bytes, uint64_t max_cpu_us, uint64_t max_memory_bytes )
+         : payer(payer)
+         ,max_net_bytes( max_net_bytes )
+         ,max_cpu_us( max_cpu_us )
+         ,max_memory_bytes( max_memory_bytes )
+      {}
+
+      void reflector_init();
+
+      account_name payer;
+
+      uint64_t max_net_bytes;
+      uint64_t max_cpu_us;
+      uint64_t max_memory_bytes;
+   };
+
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
@@ -33,7 +61,8 @@ namespace eosio { namespace chain {
    }
 
    using transaction_extension_types = detail::transaction_extension_types<
-      deferred_transaction_generation_context
+      deferred_transaction_generation_context,
+      resource_payer
    >;
 
    using transaction_extension = transaction_extension_types::transaction_extension_t;
@@ -352,6 +381,7 @@ namespace eosio { namespace chain {
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::deferred_transaction_generation_context, (sender_trx_id)(sender_id)(sender) )
+FC_REFLECT(eosio::chain::resource_payer, (payer)(max_net_bytes)(max_cpu_us)(max_memory_bytes) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
