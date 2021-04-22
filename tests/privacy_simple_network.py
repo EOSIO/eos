@@ -144,7 +144,6 @@ try:
                 blockNum = Node.getTransBlockNum(publishTrans)
                 if initialBlockNum is None:
                     initialBlockNum = blockNum
-                    lastBlockNum = blockNum
                 done = is_done()
 
             while not done and len(securityGroup.nonParticipants) > 0:

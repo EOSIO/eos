@@ -43,8 +43,9 @@ class SecurityGroup(object):
     # publish the eosio.secgrp contract
     @staticmethod
     def publishContract(node, account):
-            Utils.Print("Publish contract")
-            return node.publishContract(account, "unittests/test-contracts/security_group_test/", "eosio.secgrp.wasm", "eosio.secgrp.abi", waitForTransBlock=True)
+        contract = "eosio.secgrp"
+        Utils.Print("Publish {} contract".format(contract))
+        return node.publishContract(account, "unittests/test-contracts/security_group_test/", "{}.wasm".format(contract), "{}.abi".format(contract), waitForTransBlock=True)
 
     # move the provided nodes from the nonParticipants list to the participants list
     def __addParticipants(self, nodes):
