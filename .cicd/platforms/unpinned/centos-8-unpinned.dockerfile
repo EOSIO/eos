@@ -11,7 +11,7 @@ RUN yum update -y && \
     glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    dnf group install -y  "Development Tools" \
+    dnf group install -y  "Development Tools" && \
     dnf --enablerepo=powertools install -y doxygen ocaml
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
