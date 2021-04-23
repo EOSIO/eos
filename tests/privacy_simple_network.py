@@ -17,10 +17,13 @@ import os
 import time
 
 ###############################################################
-# privacy_startup_network
+# privacy_simple_network
 #
-# General test for Privacy to verify TLS connections, and slowly adding participants to the security group and verifying
-# how blocks and transactions are sent/not sent.
+# Implements Privacy Test Case #2 (and other misc scenarios). It creates a simple network of mesh connected
+# producers and non-producer nodes. It adds the producers to the security group and verifies they are in
+# sync and the non-producers are not.  Then, one by one it adds the non-producing nodes to the security
+# group, and verifies that the correct nodes are in sync and the others are not. It also repeatedly changes
+# the security group, not letting it finalize, to verify Test Case #2.
 #
 ###############################################################
 

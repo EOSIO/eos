@@ -15,9 +15,17 @@ class SecurityGroup(object):
         self.participants = []
         self.contractAccount = contractAccount
         assert len(nonParticipants) > 0
+        # copy over all the running processes
         self.nonParticipants = copy.copy(nonParticipants)
         if Utils.Debug: Utils.Print("Creating SecurityGroup with the following nonParticipants: []".format(SecurityGroup.createAction(self.nonParticipants)))
-        self.defaultNode = defaultNode if defaultNode else nonParticipants[0]
+        def findDefault(nodes):
+            for node in nodes:
+                if node.pid:
+                    return node
+
+            Utils.errorExit("SecurityGroup is being constructed with no running nodes, there needs to be at least one running node")
+
+        self.defaultNode = defaultNode if defaultNode else findDefault(self.nonParticipants)
         self.publishProcessNum = minAddRemEntriesToPublish
         if activateAndPublish:
             SecurityGroup.activateFeature(self.defaultNode)
@@ -110,9 +118,14 @@ class SecurityGroup(object):
     def verifyParticipantsTransactionFinalized(self, transId):
         Utils.Print("Verify participants are in sync")
         assert transId
+        atLeastOne = False
         for part in self.participants:
+            if part.pid is None:
+                continue
+            atLeastOne = True
             if part.waitForTransFinalization(transId) == None:
                 Utils.errorExit("Transaction: {}, never finalized".format(trans))
+        assert atLeastOne, "None of the participants are currently running, no reason to call verifyParticipantsTransactionFinalized"
 
     # verify that the block for the transaction ID is never finalized in nonParticipants
     def verifyNonParticipants(self, transId):
@@ -130,10 +143,15 @@ class SecurityGroup(object):
         # verify each nonParticipant in the list has not advanced its lib to the publish block, since the block that would cause it to become finalized would
         # never have been forwarded to a nonParticipant
         for nonParticipant in self.nonParticipants:
+            if nonParticipant.pid is None:
+                continue
             nonParticipantPostLIB = nonParticipant.getBlockNum(blockType=BlockType.lib)
             assert nonParticipantPostLIB < publishBlock, "Participants not in security group should not have advanced LIB to {}, but it has advanced to {}".format(publishBlock, nonParticipantPostLIB)
             nonParticipantHead = nonParticipant.getBlockNum()
             assert nonParticipantHead < producerHead, "Participants (that are not producers themselves) should not advance head to {}, but it has advanced to {}".format(producerHead, nonParticipantHead)
+
+    def getLatestPublishTransId(self):
+        return Node.getTransId(self.publishTrans)
 
     # verify that the participants' and nonParticipants' nodes are consistent based on the publish transaction
     def verifySecurityGroup(self, publishTrans = None):
