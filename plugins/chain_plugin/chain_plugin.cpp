@@ -292,7 +292,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks archive directory (absolute path or relative to blocks dir).\n"
           "If the value is empty, blocks files beyond the retained limit will be deleted.\n"
           "All files in the archive directory are completely under user's control, i.e. they won't be accessed by nodeos anymore.")
-         ("fix-irreversible-blocks", bpo::value<bool>()->default_value("false"),
+         ("fix-irreversible-blocks", bpo::value<bool>()->default_value(false),
           "When the existing block log is inconsistent with the index, allows fixing the block log and index files automatically - that is, " 
           "it will take the highest indexed block if it is valid; otherwise it will repair the block log and reconstruct the index.")
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
@@ -2186,9 +2186,10 @@ struct kv_reverse_range {
 template <typename Range>
 read_only::get_table_rows_result kv_get_rows(Range&& range) {
 
+   keep_processing kp {};
    read_only::get_table_rows_result result;
    auto&                            ctx      = range.current.context;
-   for (unsigned count = 0; count < ctx.p.limit && !range.is_done();
+   for (unsigned count = 0; count < ctx.p.limit && !range.is_done() && kp() ;
         ++count) {
       result.rows.emplace_back(range.current.get_value_and_maybe_payer_var());
       range.next();

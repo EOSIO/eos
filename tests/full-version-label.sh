@@ -1,14 +1,16 @@
 #!/bin/bash
 set -eo pipefail
-# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
-echo '##### Nodeos Version Label Test #####'
+# The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
+echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
 [[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
+[[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$2"
 # test expectations
 if [[ -z "$EXPECTED" ]]; then
+    [[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
     [[ -z "$BUILDKITE_TAG" ]] && export BUILDKITE_TAG="${GIT_TAG:-$1}"
-    export EXPECTED="$BUILDKITE_TAG"
+    export EXPECTED="$BUILDKITE_TAG-$BUILDKITE_COMMIT"
 fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
@@ -16,7 +18,7 @@ if [[ -z "$EXPECTED" ]]; then
 fi
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
-ACTUAL=$($BUILD_ROOT/bin/nodeos --version)
+ACTUAL=$($BUILD_ROOT/bin/nodeos --full-version)
 EXIT_CODE=$?
 # verify 0 exit code explicitly
 if [[ $EXIT_CODE -ne 0 ]]; then

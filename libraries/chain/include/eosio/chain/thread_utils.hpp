@@ -5,6 +5,7 @@
 #include <boost/asio/post.hpp>
 #include <future>
 #include <memory>
+#include <optional>
 
 namespace eosio { namespace chain {
 
