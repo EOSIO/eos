@@ -1,33 +1,42 @@
-## Goal
 
-Acquire RAM for contract deployment, database tables, and other blockchain resources
+## Overview
+This guide provides instructions on how to buy RAM for an EOSIO blockchain account using the cleos CLI tool. RAM is a system resource and is used to store smart contract state and account information.
 
-## Before you begin
-Before you follow the step, make sure you fulfill the following items: 
+The example uses cleos CLI tool to buy RAM for the alice account. The alice account pays for the RAM and the alice@active permisssion authorizes the transaction.  
 
-* You have an EOSIO account
+## Before you Begin
+Make sure you meet the following requirements: 
 
-* Ensure the reference system contracts from [`eosio.contracts`](https://github.com/EOSIO/eosio.contracts) repository is deployed and used to manage system resources
-
-* You have sufficient [token allocated](how-to-transfer-an-eosio.token-token.md) to your account
-
-* Install the currently supported version of `cleos`
-
+* Install the currently supported version of `cleos.`
 [[info | Note]]
-| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
+| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
+* You have access to a blockchain and the `eosio.system` reference contract from [`eosio.contracts`](https://github.com/EOSIO/eosio.contracts) repository is deployed and used to manage system resources.
+* You have an EOSIO account and access to the account private key.
+* You have sufficient [token allocated](how-to-transfer-an-eosio.token-token.md) to your account.
 
-* Unlock your wallet using the `cleos wallet unlock` command
+## Command Reference
+See the following reference guides for command line usage and related options:
 
+* [cleos system buyram](../03_command-reference/system/system-buyram.md) command
 
-## Steps
+## Buy Ram Procedure
 
-Buys RAM in value of 0.1 SYS tokens for account `alice`:
+The following step shows you how to buy ram
 
-```sh
+1. Run the following command to buy RAM worth 0.1 of `SYS` tokens for the alice account:
+
+```shell
 cleos system buyram alice alice "0.1 SYS" -p alice@active
 ```
 
+**Where**
+`alice` = payer, the account paying for RAM.
+`alice` = receiver, the account receiving bought RAM.
+`0.1 SYS` = The amount of tokens to pay for RAM.
+`-p alice@active` = The permission used to authorize the payment, in this case the active permission.  
+
 **Example Output**
+
 ```sh
 # cleos system buyram alice alice "0.1 SYS" -p alice@active
 executed transaction: aa243c30571a5ecc8458cb971fa366e763682d89b636fe9dbe7d28327d1cc4e9  128 bytes  283 us
@@ -40,4 +49,5 @@ executed transaction: aa243c30571a5ecc8458cb971fa366e763682d89b636fe9dbe7d28327d
 #  eosio.ramfee <= eosio.token::transfer        {"from":"alice","to":"eosio.ramfee","quantity":"0.0005 SYS","memo":"ram fee"}
 warning: transaction executed locally, but may not be confirmed by the network yet         ]
 ```
-
+## Summary
+In conclusion, by following these instructions you are able to purchase RAM, with a specified amount of tokens, for the specified accounts.
