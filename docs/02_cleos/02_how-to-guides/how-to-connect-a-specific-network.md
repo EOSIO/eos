@@ -1,25 +1,28 @@
-## Goal
+## Overview
+This guide provides instructions on how to connect to specifc blockchain network when using `cleos`. `Cleos` can connect to a specific node by using the `--url` optional argument, followed by the http address and port number.
 
-Connect to a specific `nodeos` or `keosd` host to send COMMAND
-
-`cleos` and `keosd` can connect to a specific node by using the `--url` or `--wallet-url` optional arguments, respectively, followed by the http address and port number these services are listening to.
+The examples use the `--url`optional argument to send commands to the specified blockchain.   
 
 [[info | Default address:port]]
-| If no optional arguments are used (i.e. `--url` or `--wallet-url`), `cleos` attempts to connect to a local `nodeos` or `keosd` running at localhost `127.0.0.1` and default port `8888`.
+| If no optional arguments are used (i.e. no `--url`), `cleos` attempts to connect to a local `nodeos` running at localhost or `127.0.0.1` and default port `8888`. Use the nodeos command line arguments or [config.ini](../../01_nodeos/02_usage/01_nodeos-configuration/#configini-location) file to specify a different address.
 
-## Before you begin
+## Before you Begin
+Make sure you meet the following requirements: 
 
-* Install the currently supported version of `cleos`
+* Install the currently supported version of `cleos`.
+[[info | Note]]
+| The `cleos` tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
+* You have access to a blockchain and the http afddress and port number of a `nodeos` daemon. 
 
-## Steps
-### Connecting to Nodeos
+## Command Reference
+See the following reference guides for command line usage and related options:
 
-```sh
+* [cleos](../index.md) command
+
+## Connection procedure
+
+1. Add the -url option to a command
+
+```shell
 cleos -url http://nodeos-host:8888 COMMAND
-```
-
-### Connecting to Keosd
-
-```sh
-cleos --wallet-url http://keosd-host:8888 COMMAND
 ```
