@@ -19,8 +19,11 @@ import os
 ###############################################################
 # privacy_startup_network
 #
-# General test for Privacy to verify TLS connections, and slowly adding participants to the security group and verifying
-# how blocks and transactions are sent/not sent.
+# Script implements Privacy Test Case #1. It pairs up producers with p2p connections with relay nodes
+# and the relay nodes connected to at least 2 or more API nodes.  The producers and relay nodes are
+# added to the security Group and then it validates they are in sync and the api nodes do not receive
+# blocks.  Then it adds all but one api nodes and verifies they are in sync with producers, then all
+# nodes are added and verifies that all nodes are in sync.
 #
 ###############################################################
 
