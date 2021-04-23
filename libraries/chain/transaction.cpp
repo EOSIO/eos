@@ -23,6 +23,11 @@ void deferred_transaction_generation_context::reflector_init() {
       );
 }
 
+void resource_payer::reflector_init() {
+   static_assert( fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+                  "resource_payer expects FC to support reflector_init" );
+}
+
 void transaction_header::set_reference_block( const block_id_type& reference_block ) {
    ref_block_num    = fc::endian_reverse_u32(reference_block._hash[0]);
    ref_block_prefix = reference_block._hash[1];
