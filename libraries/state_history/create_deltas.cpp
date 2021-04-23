@@ -51,6 +51,8 @@ bool include_delta(const chain::account_metadata_object& old, const chain::accou
 }
 
 bool include_delta(const chain::code_object& old, const chain::code_object& curr) { //
+   // code_object data that is exported by SHiP is never modified they are only deleted or created,
+   // see serialization of history_serial_wrapper<eosio::chain::code_object>
    return false;
 }
 

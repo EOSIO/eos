@@ -28,6 +28,9 @@ echo $pub_key > /etc/eosio/producers/$producer_name
 
 cleos wallet create --to-console
 cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+date
+sleep 10
+date
 cleos create account eosio $producer_name ${pub_key} ${pub_key}
 
 for host in ${peers//;/ }; do

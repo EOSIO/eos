@@ -47,7 +47,12 @@ run_expect_success() {
    local NODEOS_PID=$!
    sleep 10
    kill $NODEOS_PID
-   wait $NODEOS_PID
+   rc=0
+   wait $NODEOS_PID && rc=$? || rc=$?
+   if [[ rc -eq  127  || rc -eq 0 ]]; then
+      rc=0
+   fi
+   return $rc
 }
 
 run_and_kill() {
