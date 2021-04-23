@@ -15,7 +15,8 @@ class SecurityGroup(object):
         self.participants = []
         self.contractAccount = contractAccount
         assert len(nonParticipants) > 0
-        self.nonParticipants = copy.copy(nonParticipants)
+        # copy over all the running processes
+        self.nonParticipants = [x for x in nonParticipants if x.pid]
         if Utils.Debug: Utils.Print("Creating SecurityGroup with the following nonParticipants: []".format(SecurityGroup.createAction(self.nonParticipants)))
         self.defaultNode = defaultNode if defaultNode else nonParticipants[0]
         self.publishProcessNum = minAddRemEntriesToPublish

@@ -9,6 +9,7 @@ from Node import Node
 from Node import ReturnType
 from TestHelper import TestHelper
 
+import copy
 import decimal
 import re
 import signal
@@ -36,8 +37,10 @@ relayNodes=pnodes # every pnode paired with a relay node
 apiNodes=2        # minimum number of apiNodes that will be used in this test
 minTotalNodes=pnodes+relayNodes+apiNodes
 totalNodes=args.n if args.n >= minTotalNodes else minTotalNodes
-if totalNodes > minTotalNodes:
+if totalNodes >= minTotalNodes:
     apiNodes += totalNodes - minTotalNodes
+else:
+    Utils.Print("Requested {} total nodes, but since the minumum number of API nodes is {}, there will be {} total nodes".format(args.n, apiNodes, totalNodes))
 
 Utils.Debug=args.v
 dumpErrorDetails=args.dump_error_details
@@ -74,8 +77,12 @@ try:
     apiNodeNums = [x for x in range(firstApiNodeNum, totalNodes)]
     for producerNum in range(pnodes):
         pairedRelayNodeNum = pnodes + producerNum
+        # p2p connection between producer and relay
         topo[producerNum] = [pairedRelayNodeNum]
-        topo[pairedRelayNodeNum] = apiNodeNums
+        # p2p connections between relays
+        topo[pairedRelayNodeNum] = [x + producerNum for x in range(pnodes) if x != producerNum]
+        # p2p connections between relay and all api nodes
+        topo[pairedRelayNodeNum].extend(apiNodeNums)
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
 
     # adjust prodCount to ensure that lib trails more than 1 block behind head
@@ -94,69 +101,25 @@ try:
     relays = [cluster.getNode(pnodes + x) for x in range(pnodes) ]
     apiNodes = [cluster.getNode(x) for x in apiNodeNums]
 
-    def createAccount(newAcc):
-        producers[0].createInitializeAccount(newAcc, cluster.eosioAccount)
-        ignWallet = cluster.walletMgr.create("ignition")  # will actually just look up the wallet
-        cluster.walletMgr.importKey(newAcc, ignWallet)
+    securityGroup = cluster.getSecurityGroup()
+    cluster.reportInfo()
 
-    numAccounts = 4
-    testAccounts = Cluster.createAccountKeys(numAccounts)
-    accountPrefix = "testaccount"
-    for i in range(numAccounts):
-        testAccount = testAccounts[i]
-        testAccount.name  = accountPrefix + str(i + 1)
-        createAccount(testAccount)
+    Utils.Print("Add all producers and relay nodes to security group")
+    prodsAndRelays = copy.copy(producers)
+    prodsAndRelays.extend(relays)
+    securityGroup.editSecurityGroup(prodsAndRelays)
+    securityGroup.verifySecurityGroup()
 
-    blockProducer = None
+    allButLastApiNodes = apiNodes[:-1]
+    lastApiNode = [apiNodes[-1]]
 
-    def verifyInSync(producerNum):
-        Utils.Print("Ensure all nodes are in-sync")
-        lib = producers[producerNum].getInfo()["last_irreversible_block_num"]
-        headBlockNum = producers[producerNum].getBlockNum()
-        headBlock = producers[producerNum].getBlock(headBlockNum)
-        global blockProducer
-        if blockProducer is None:
-            blockProducer = headBlock["producer"]
-        Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
-        headBlockId = headBlock["id"]
-        for prod in producers:
-            if prod == producers[producerNum]:
-                continue
+    Utils.Print("Add all but last API node and verify they receive blocks and the last API node does not")
+    securityGroup.editSecurityGroup(addNodes=allButLastApiNodes)
+    securityGroup.verifySecurityGroup()
 
-            assert prod.waitForBlock(headBlockNum, timeout = 10, reportInterval = 1) != None, "Producer node failed to get block number {}".format(headBlockNum)
-            prod.getBlock(headBlockId)  # if it isn't there it will throw an exception
-            assert prod.waitForBlock(lib, blockType=BlockType.lib), \
-                "Producer node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
-        for node in apiNodes:
-            assert node.waitForBlock(headBlockNum, timeout = 10, reportInterval = 1) != None, "API node failed to get block number {}".format(headBlockNum)
-            node.getBlock(headBlockId)  # if it isn't there it will throw an exception
-            assert node.waitForBlock(lib, blockType=BlockType.lib), \
-                "API node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
-
-        Utils.Print("Ensure all nodes are in-sync")
-        assert node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
-
-    verifyInSync(producerNum=0)
-
-    featureDict = producers[0].getSupportedProtocolFeatureDict()
-    Utils.Print("feature dict: {}".format(json.dumps(featureDict, indent=4, sort_keys=True)))
-
-    Utils.Print("act feature dict: {}".format(json.dumps(producers[0].getActivatedProtocolFeatures(), indent=4, sort_keys=True)))
-    timeout = ( pnodes * 12 / 2 ) * 2   # (number of producers * blocks produced / 0.5 blocks per second) * 2 rounds
-    producers[0].waitUntilBeginningOfProdTurn(blockProducer, timeout=timeout)
-    feature = "SECURITY_GROUP"
-    producers[0].activateFeatures([feature])
-    assert producers[0].containsFeatures([feature]), "{} feature was not activated".format(feature)
-
-    if sanityTest:
-        testSuccessful=True
-        exit(0)
-
-    def publishContract(account, wasmFile, waitForTransBlock=False):
-        Print("Publish contract")
-        return producers[0].publishContract(account, "unittests/test-contracts/security_group_test/", wasmFile, abiFile=None, waitForTransBlock=waitForTransBlock)
-
-    publishContract(testAccounts[0], 'security_group_test.wasm', waitForTransBlock=True)
+    Utils.Print("Add the last API node and verify it receives blocks")
+    securityGroup.editSecurityGroup(addNodes=lastApiNode)
+    securityGroup.verifySecurityGroup()
 
     testSuccessful=True
 finally:
