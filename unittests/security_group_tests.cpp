@@ -420,6 +420,93 @@ BOOST_AUTO_TEST_CASE(test_participants_change_modified) {
    BOOST_CHECK(chain.control->in_active_security_group(participants_t{"bob"_n}));
 }
 
+BOOST_AUTO_TEST_CASE(test_participants_change_2_chains) { 
+   /* Note:
+   * because produce_block calls start_block after finalizing the produced block,
+   * and push_block does not, chain2 will trail behind chain
+   */
+   eosio::testing::tester chain;
+   eosio::testing::tester chain2;
+   using namespace eosio::chain::literals;
+   
+   chain.create_accounts( {"alice"_n,"bob"_n,"charlie"_n} );
+
+   chain2.push_block(chain.produce_block());
+   
+   {
+      const auto& cur_security_group = chain.control->active_security_group();
+      BOOST_REQUIRE_EQUAL(cur_security_group.version, 0);
+      BOOST_REQUIRE_EQUAL(cur_security_group.participants.size(), 0);
+   }
+
+   chain.create_accounts({ "addmember"_n, "rmmember"_n });
+
+   chain2.push_block(chain.produce_block());
+
+   chain.set_code( "addmember"_n, add_security_group_participants_wast );
+   chain.set_code( "rmmember"_n, remove_security_group_participants_wast );
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->active_security_group().participants.size(), 0);
+
+   chain.push_action( "eosio"_n, "setpriv"_n, "eosio"_n, fc::mutable_variant_object()("account", "addmember"_n)("is_priv", 1));
+   chain.push_action( "eosio"_n, "setpriv"_n, "eosio"_n, fc::mutable_variant_object()("account", "rmmember"_n)("is_priv", 1));
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size(), 0);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->active_security_group().participants.size(), 0);
+
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"alice"_n})), "addmember"_n.to_uint64_t()));
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(  eosio::chain::action({}, "addmember"_n, {}, participants_payload({"bob"_n})), "addmember"_n.to_uint64_t()));
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size(), 2);
+   BOOST_CHECK_EQUAL(chain.control->active_security_group().participants.size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 0);
+   BOOST_CHECK_EQUAL(chain2.control->active_security_group().participants.size(), 0);
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 2); 
+   BOOST_CHECK_EQUAL(chain2.control->active_security_group().participants.size(), 0);
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 0); // 
+   BOOST_CHECK(chain2.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   BOOST_TEST_REQUIRE(chain.push_action_no_produce(eosio::chain::action({}, "rmmember"_n, {}, participants_payload({"alice"_n})), "rmmember"_n.to_uint64_t()));
+
+   BOOST_TEST(chain.control->proposed_security_group_participants() == participants_t{"bob"_n});
+   BOOST_CHECK(chain.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size(), 0); // 
+   BOOST_CHECK(chain2.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
+   BOOST_TEST(chain2.control->proposed_security_group_participants() == participants_t{"bob"_n});
+   BOOST_CHECK(chain2.control->in_active_security_group(participants_t({"alice"_n, "bob"_n})));
+
+   chain2.push_block(chain.produce_block());
+
+   BOOST_CHECK_EQUAL(chain.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain.control->active_security_group().participants == participants_t{"bob"_n});
+   BOOST_CHECK_EQUAL(chain2.control->proposed_security_group_participants().size() , 0);
+   BOOST_TEST(chain2.control->active_security_group().participants == participants_t{"bob"_n});
+}
+
 BOOST_AUTO_TEST_CASE(test_security_group_intrinsic) {
 
    eosio::testing::tester chain1;
