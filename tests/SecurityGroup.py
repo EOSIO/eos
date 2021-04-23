@@ -151,7 +151,7 @@ class SecurityGroup(object):
             assert nonParticipantHead < producerHead, "Participants (that are not producers themselves) should not advance head to {}, but it has advanced to {}".format(producerHead, nonParticipantHead)
 
     def getLatestPublishTransId(self):
-        publishTransId = Node.getTransId(self.publishTrans)
+        return Node.getTransId(self.publishTrans)
 
     # verify that the participants' and nonParticipants' nodes are consistent based on the publish transaction
     def verifySecurityGroup(self, publishTrans = None):
