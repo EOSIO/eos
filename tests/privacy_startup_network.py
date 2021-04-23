@@ -25,6 +25,12 @@ import os
 # blocks.  Then it adds all but one api nodes and verifies they are in sync with producers, then all
 # nodes are added and verifies that all nodes are in sync.
 #
+# NOTE: A relay node is a node that an entity running a producer uses to prevent outside nodes from
+# affecting the producing node. An API Node is a node that is setup for the general community to
+# connect to and will have more p2p connections. This script doesn't necessarily setup the API nodes
+# the way that they are setup in the real world, but it is referencing them this way to explain what
+# the test is intending to verify.
+#
 ###############################################################
 
 Print=Utils.Print
