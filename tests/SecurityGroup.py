@@ -85,7 +85,9 @@ class SecurityGroup(object):
             "[[{}]]".format(','.join(['"{}"'.format(node.getParticipant()) for node in nodes]))
 
     # sends actions to add/remove the provided nodes to/from the network's security group
-    def editSecurityGroup(self, addNodes=[], removeNodes=[]):
+    def editSecurityGroup(self, addNodes=[], removeNodes=[], node=None):
+        if node is None:
+            node = self.defaultNode
 
         def copyIfNeeded(nodes):
             # doing deep copy in case the passed in list IS one of our lists, which will be adjusted
@@ -101,16 +103,16 @@ class SecurityGroup(object):
 
         if addAction:
             Utils.Print("adding {} to the security group".format(addAction))
-            trans = self.defaultNode.pushMessage(self.contractAccount.name, "add", addAction, "--permission eosio@active")
+            trans = node.pushMessage(self.contractAccount.name, "add", addAction, "--permission eosio@active")
             Utils.Print("add trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
 
         if removeAction:
             Utils.Print("removing {} from the security group".format(removeAction))
-            trans = self.defaultNode.pushMessage(self.contractAccount.name, "remove", removeAction, "--permission eosio@active")
+            trans = node.pushMessage(self.contractAccount.name, "remove", removeAction, "--permission eosio@active")
             Utils.Print("remove trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
 
         self.publishProcessNum += 1
-        self.publishTrans = self.defaultNode.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")[1]
+        self.publishTrans = node.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")[1]
         Utils.Print("publish action trans: {}".format(json.dumps(self.publishTrans, indent=4, sort_keys=True)))
         return self.publishTrans
 
