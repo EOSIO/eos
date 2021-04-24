@@ -1879,7 +1879,7 @@ struct controller_impl {
          block_state_ptr bsp = block_state_future.get();
          const auto& b = bsp->block;
 
-         if( conf.terminate_at_block > 0 && conf.terminate_at_block < b->block_num() ) {
+         if( conf.terminate_at_block > 0 && ( (conf.read_mode != db_read_mode::IRREVERSIBLE && conf.terminate_at_block < b->block_num() ) ||  ( conf.read_mode == db_read_mode::IRREVERSIBLE && conf.terminate_at_block <= self.last_irreversible_block_num() ) )  ) {
             ilog("Reached configured maximum block ${num}; terminating", ("num", conf.terminate_at_block) );
             shutdown();
             return bsp;
