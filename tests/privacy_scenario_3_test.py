@@ -97,9 +97,7 @@ try:
     # record block number (rbn1) transaction was added in
     trans_block_num = trans["processed"]["block_num"]
     Print("security group update [[\"node3\"]] published on block ".format(trans_block_num))
-
-    prod1.waitForIrreversibleBlock(trans_block_num)
-    prod2.waitForIrreversibleBlock(trans_block_num)
+    securityGroup.verifyParticipantsTransactionFinalized(trans["transaction_id"])
 
     cluster.launchUnstarted(cachePopen=True)
 
@@ -220,8 +218,8 @@ try:
     # node1 and node2 start to receive blocks
     Print("Node1 head = {}".format(apiNode1.getHeadBlockNum()))
     Print("Node2 head = {}".format(apiNode2.getHeadBlockNum()))
-    assert apiNode1.waitForHeadToAdvance(timeout=60)
-    assert apiNode2.waitForHeadToAdvance(timeout=60)
+    assert apiNode1.waitForHeadToAdvance(timeout=120)
+    assert apiNode2.waitForHeadToAdvance(timeout=120)
 
     # remove node2 back to security group *
     trans = securityGroup.editSecurityGroup(removeNodes=[apiNode2])

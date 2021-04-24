@@ -60,8 +60,7 @@ killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
-cluster=Cluster(host=TestHelper.LOCAL_HOST, port=port, walletd=True)
-walletMgr=WalletMgr(True, port=walletPort)
+cluster=Cluster(host=TestHelper.LOCAL_HOST, port=port, walletd=True, walletMgr=WalletMgr(True, port=walletPort))
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
@@ -74,9 +73,6 @@ Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
-    cluster.setWalletMgr(walletMgr)
-    Print("SERVER: {}".format(TestHelper.LOCAL_HOST))
-    Print("PORT: {}".format(port))
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
@@ -97,7 +93,7 @@ try:
     # adjust prodCount to ensure that lib trails more than 1 block behind head
     prodCount = 1 if pnodes > 1 else 2
 
-    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo) is False:
+    if cluster.launch(pnodes=pnodes, totalNodes=totalNodes, prodCount=prodCount, onlyBios=False, dontBootstrap=dontBootstrap, configSecurityGroup=True, topo=topo, printInfo=True) is False:
         cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -132,6 +128,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, cluster.walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

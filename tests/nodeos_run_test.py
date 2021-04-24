@@ -60,8 +60,6 @@ Utils.setIrreversibleTimeout(timeout)
 try:
     TestHelper.printSystemInfo("BEGIN")
     cluster.setWalletMgr(walletMgr)
-    Print("SERVER: %s" % (server))
-    Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
@@ -69,7 +67,7 @@ try:
         Print("Stand up cluster")
         specificExtraNodeosArgs={ 0 : " --backing-store=chainbase",
                                   1 : " --backing-store=rocksdb" }
-        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
+        if cluster.launch(totalNodes=3, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, specificExtraNodeosArgs=specificExtraNodeosArgs, printInfo=True) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
