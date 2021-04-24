@@ -4,6 +4,7 @@ VERSION=1
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres || :
+pip3 install requests
 curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/106b4b8a421dda33c79a4018c3c3816234076331/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
 # install clang from source

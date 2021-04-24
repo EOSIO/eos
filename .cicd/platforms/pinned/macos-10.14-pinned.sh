@@ -3,6 +3,7 @@ set -eo pipefail
 VERSION=1
 brew update
 brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl@1.1 jq libpq postgres || :
+pip3 install requests
 # libpqxx 7.3+ installations on mojave try to import libs not present in the sdk. pin to libpqxx 7.2.1 instead.
 curl -LO  https://raw.githubusercontent.com/Homebrew/homebrew-core/d14398187084e1d3fd1763ec13cea1044946a51f/Formula/libpqxx.rb
 brew install -f ./libpqxx.rb
