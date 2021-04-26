@@ -25,12 +25,12 @@ namespace bfs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
-    uint32_t fetch_block_num(TESTER& chain, uint32_t block_num, bool return_signed_block){
+    std::optional<uint32_t> fetch_block_num(TESTER& chain, uint32_t block_num, bool return_signed_block){
         std::shared_ptr<std::vector<char>> pBuffer;
 
         pBuffer = chain.control->fetch_block_buffer_by_number(block_num, return_signed_block);
         if (!pBuffer)
-            return block_num +1;
+            return std::nullopt;
 
         //unpack
         fc::datastream<const char*> ds((*pBuffer).data(), (*pBuffer).size());
@@ -82,14 +82,14 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
             auto head_num = chain.control->head_block_num();
 
             //fetch a block that is in a catalog file
-            BOOST_CHECK(fetch_block_num(chain, 60, true) == 60);
-            BOOST_CHECK(fetch_block_num(chain, 60, false) == 60);
+            BOOST_CHECK(fetch_block_num(chain, 60, true).value() == 60);
+            BOOST_CHECK(fetch_block_num(chain, 60, false).value() == 60);
             //fetch a block that is in the blocks.log file
-            BOOST_CHECK(fetch_block_num(chain, 145, true) == 145);
-            BOOST_CHECK(fetch_block_num(chain, 145, false) == 145);
+            BOOST_CHECK(fetch_block_num(chain, 145, true).value() == 145);
+            BOOST_CHECK(fetch_block_num(chain, 145, false).value() == 145);
             //fetch a block that doesn't exist locally
-            BOOST_CHECK(fetch_block_num(chain, 200, true) != 200);
-            BOOST_CHECK(fetch_block_num(chain, 200, false) != 200);
+            BOOST_CHECK(fetch_block_num(chain, 200, true) == std::nullopt);
+            BOOST_CHECK(fetch_block_num(chain, 200, false) == std::nullopt);
         }FC_LOG_AND_RETHROW()
 
     }
@@ -124,30 +124,18 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
             BOOST_CHECK(bfs::exists( blocks_dir / "blocks.index" ));
 
             //fetch a block that is in blocks.log file
-            BOOST_CHECK(fetch_block_num(chain, 5, true) == 5);
-            BOOST_CHECK(fetch_block_num(chain, 5, false) == 5);
+            BOOST_CHECK(fetch_block_num(chain, 5, true).value() == 5);
+            BOOST_CHECK(fetch_block_num(chain, 5, false).value() == 5);
             //fetch the head block
-            BOOST_CHECK(fetch_block_num(chain, 10, true) == 10);
-            BOOST_CHECK(fetch_block_num(chain, 10, false) == 10);
+            BOOST_CHECK(fetch_block_num(chain, 10, true).value() == 10);
+            BOOST_CHECK(fetch_block_num(chain, 10, false).value() == 10);
             //fetch a block that doesn't exist locally
-            BOOST_CHECK(fetch_block_num(chain, 20, true) != 20);
-            BOOST_CHECK(fetch_block_num(chain, 20, false) != 20);
+            BOOST_CHECK(fetch_block_num(chain, 20, true) == std::nullopt);
+            BOOST_CHECK(fetch_block_num(chain, 20, false) == std::nullopt);
 
         }FC_LOG_AND_RETHROW()
     }
-/*
-    void write_blocks(TESTER &chain){
-        chain.produce_blocks(10);
-    }
 
-    void read_block(TESTER& chain, uint32_t search_block_num, bool return_signed_block){
-        try{
-            uint32_t result_num = fetch_block_num(chain, search_block_num, return_signed_block);
-            if (result_num != search_block_num){
-                throw;
-            }
-        }FC_LOG_AND_RETHROW()
-    }
     BOOST_AUTO_TEST_CASE(multi_threaded_test) {
         try {
             auto io_serv = std::make_shared<boost::asio::io_service>();
@@ -164,7 +152,7 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
                     },
                     true);
 
-            constexpr int num_threads = 5;
+            constexpr int num_threads = 10;
             std::array<std::thread, num_threads> threads;;
             for (auto i = 0; i < num_threads; ++i)
             {
@@ -173,20 +161,29 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
                 });
             }
 
-            boost::asio::post(*io_serv,  std::bind(write_blocks, std::ref(chain)));
-            while (chain.control->head_block_num() <= 1)
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            chain.produce_block();
 
+            std::mutex mx;
             for (auto i  = 0; i < num_threads*2; ++i){
-                //boost::asio::post(*io_serv,  std::bind(write_blocks, std::ref(chain))); // Assertion failed on https://github.com/EOSIO/eos/blob/epe-437-retrieve-blocks-during-sync/libraries/chain/controller.cpp#L1324
+                boost::asio::post(*io_serv,  [&chain, &mx](){
+                    std::lock_guard<std::mutex> g(mx);
+                    chain.produce_blocks(10);
+                });
 
                 std::srand(std::time(nullptr));   // use current time as seed for random generator
-                uint32_t search_block_num;
-                do{
-                    search_block_num = (std::rand() % chain.control->head_block_num())+1;
-                }while (search_block_num <= 0);
+
                 bool return_signed_block = std::rand() % 2;
-                boost::asio::post(*io_serv,  std::bind(read_block, std::ref(chain), search_block_num, return_signed_block));
+                boost::asio::post(*io_serv,  [&](){
+                    try{
+                        uint32_t search_block_num = (std::rand() % chain.control->head_block_num())+1; // blocks number starts at 1.
+                        std::lock_guard<std::mutex> g(mx);
+                        auto result_num = fetch_block_num(chain, search_block_num, return_signed_block);
+                        if (result_num && (result_num.value() != search_block_num)){
+                            throw;
+                        }
+                    }FC_LOG_AND_RETHROW()
+                });
+
             }
 
             work_ptr.reset();
@@ -197,34 +194,5 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
         }FC_LOG_AND_RETHROW()
     }
-*/
-/*
-    BOOST_AUTO_TEST_CASE(multi_threaded_test2) {
-        try {
-            namespace bfs = boost::filesystem;
-            fc::temp_directory temp_dir;
-            TESTER chain(
-                    temp_dir,
-                    [](controller::config& config) {
-                        config.blog.archive_dir        = "archive";
-                        config.blog.stride             = 20;
-                        config.blog.max_retained_files = 5;
-                    },
-                    true);
-
-             for (auto i  = 0; i < 10; ++i){
-                boost::asio::post(chain.control->get_thread_pool().get_executor(), std::bind(write_blocks, std::ref(chain))); // Assertion failed on https://github.com/EOSIO/eos/blob/epe-437-retrieve-blocks-during-sync/libraries/chain/controller.cpp#L1324
-
-                std::srand(std::time(nullptr));   // use current time as seed for random generator
-                uint32_t search_block_num;
-                do{
-                    search_block_num = (std::rand() % chain.control->head_block_num())+1;
-                }while (search_block_num <= 0);
-                bool return_signed_block = std::rand() % 2;
-                boost::asio::post(chain.control->get_thread_pool().get_executor(), std::bind(read_block, std::ref(chain), search_block_num, return_signed_block));
-            }
-        }FC_LOG_AND_RETHROW()
-    }
-*/
 
 BOOST_AUTO_TEST_SUITE_END()
