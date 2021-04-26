@@ -139,8 +139,11 @@ try:
         done = False
         # keep adding and removing nodes till we are done
         while not done:
+            preInfo = securityGroup.defaultNode.getInfo()
             # waiting for a block change to prevent duplicate publish transactions
             securityGroup.defaultNode.waitForNextBlock()
+            postInfo = securityGroup.defaultNode.getInfo()
+            Utils.Print("Pre-info: \n{}\n\nPost-info: \n{}\n".format(json.dumps(preInfo, indent=4, sort_keys=True), json.dumps(postInfo, indent=4, sort_keys=True)))
 
             while not done and len(securityGroup.participants) > pnodes:
                 publishTrans = securityGroup.removeFromSecurityGroup()
