@@ -1744,3 +1744,23 @@ class Node(object):
 
     def getParticipant(self):
         return self.participant
+
+    @staticmethod
+    def verifyInSync(nodes, maxDelayForABlock = 1):
+        if Utils.Debug: Utils.Print("Ensure all nodes are in-sync")
+        lib = nodes[0].getInfo()["last_irreversible_block_num"]
+        headBlockNum = nodes[0].getBlockNum()
+        headBlock = nodes[0].getBlock(headBlockNum)
+        if Utils.Debug: Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
+        headBlockId = headBlock["id"]
+        for nodeNum in range(1,len(nodes)):
+            node = nodes[nodeNum]
+            assert node.waitForBlock(headBlockNum, timeout = maxDelayForABlock, reportInterval = 1) != None, \
+                   "Node {} not in sync with node {}, failed to get block number {}".format(nodes[0].nodeId, node.nodeId, headBlockNum)
+            node.getBlock(headBlockId)  # if it isn't there it will throw an exception
+            assert node.waitForBlock(lib, blockType=BlockType.lib), \
+                   "Node {} is failing to advance its lib ({}) with node {} ({})".format(node.nodeId, node.getInfo()["last_irreversible_block_num"], node.nodeId, lib)
+
+        if Utils.Debug: Utils.Print("Ensure all nodes are in-sync")
+        assert nodes[0].waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, \
+               "Node {} failed to advance lib ahead one block to: {}".format(nodes[0].nodeId, lib + 1)
