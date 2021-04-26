@@ -132,6 +132,7 @@ try:
         # alternate adding/removing participants to ensure the security group doesn't change
         initialBlockNum = None
         blockNum = None
+        lib = None
         def is_done():
             # want to ensure that we can identify the range of libs the security group was changed in
             return blockNum - initialBlockNum > 12
@@ -139,11 +140,11 @@ try:
         done = False
         # keep adding and removing nodes till we are done
         while not done:
-            preInfo = securityGroup.defaultNode.getInfo()
-            # waiting for a block change to prevent duplicate publish transactions
-            securityGroup.defaultNode.waitForNextBlock()
-            postInfo = securityGroup.defaultNode.getInfo()
-            Utils.Print("Pre-info: \n{}\n\nPost-info: \n{}\n".format(json.dumps(preInfo, indent=4, sort_keys=True), json.dumps(postInfo, indent=4, sort_keys=True)))
+            currentLib = securityGroup.defaultNode.getBlockNum(blockType=BlockType.lib)
+            if lib and currentLib != lib:
+                # waiting for lib block change to prevent duplicate publish transactions
+                securityGroup.defaultNode.waitForBlock(currentLib + 1, blockType=BlockType.lib)
+            lib = currentLib
 
             while not done and len(securityGroup.participants) > pnodes:
                 publishTrans = securityGroup.removeFromSecurityGroup()

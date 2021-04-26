@@ -502,7 +502,7 @@ class Node(object):
         num=self.getBlockNum(blockType=blockType)
         if isinstance(timeout, WaitSpec):
             timeout.convert(num, num+1)
-        lam = lambda: self.getHeadBlockNum() > num
+        lam = lambda: self.getBlockNum(blockType=blockType) > num
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
