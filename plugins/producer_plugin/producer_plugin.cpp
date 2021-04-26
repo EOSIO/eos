@@ -1415,7 +1415,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
 
-   if( chain.get_terminate_at_block() > 0 && ( ( chain.get_config().read_mode != db_read_mode::IRREVERSIBLE && chain.get_terminate_at_block() < hbs->block_num ) || ( chain.get_config().read_mode == db_read_mode::IRREVERSIBLE && chain.get_terminate_at_block() <= chain.last_irreversible_block_num() ) ) ) {
+   if( chain.get_terminate_at_block() > 0 &&
+       ( ( chain.get_config().read_mode != db_read_mode::IRREVERSIBLE && chain.get_terminate_at_block() < hbs->block_num ) ||
+         ( chain.get_config().read_mode == db_read_mode::IRREVERSIBLE && chain.get_terminate_at_block() <= chain.last_irreversible_block_num() ) ) ) {
       ilog("Reached configured maximum block ${num}; terminating", ("num", chain.get_terminate_at_block()));
       app().quit();
       return start_block_result::failed;
