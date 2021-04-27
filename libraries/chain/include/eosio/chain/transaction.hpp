@@ -127,6 +127,24 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
+      account_name authorizer()const {
+         auto authorizer = first_authorizer();
+
+         // Check for the existence of a extension of the type resource_payer, for the possibility
+         // of changing the default account to authorize
+         auto extensions = validate_and_extract_extensions();
+
+         if(!extensions.empty()) {
+            auto itr = extensions.lower_bound(resource_payer::extension_id());
+            if(itr != extensions.end()) {
+               const auto& resource_payer_info = std::get<resource_payer>(itr->second);
+               authorizer = resource_payer_info.payer;
+            }
+         }
+
+         return authorizer;
+      }
+
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };
 
