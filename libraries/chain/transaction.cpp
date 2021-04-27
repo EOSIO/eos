@@ -82,6 +82,29 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return fc::time_point::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
+account_name transaction::resource_payer()const {
+   account_name resource_payer;
+
+   // Check for the existence of an extension of the type resource_payer
+   auto extensions = validate_and_extract_extensions();
+   bool payer_info_in_extension = false;
+
+   if(!extensions.empty()) {
+      auto itr = extensions.lower_bound(resource_payer::extension_id());
+      if(itr != extensions.end()) {
+         const auto& resource_payer_info = std::get<eosio::chain::resource_payer>(itr->second);
+         resource_payer = resource_payer_info.payer;
+         payer_info_in_extension = true;
+      }
+   }
+
+   if(!payer_info_in_extension) {
+      resource_payer = first_authorizer();
+   }
+
+   return resource_payer;
+}
+
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
 
