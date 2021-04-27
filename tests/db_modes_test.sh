@@ -31,8 +31,7 @@ done
 EOSIO_STUFF_DIR=$(mktemp -d)
 trap "rm -rf $EOSIO_STUFF_DIR" EXIT
 NODEOS_LAUNCH_PARAMS="./programs/nodeos/nodeos -d $EOSIO_STUFF_DIR --config-dir $EOSIO_STUFF_DIR \
---chain-state-db-size-mb 8 --chain-state-db-guard-size-mb 0 --reversible-blocks-db-size-mb 1 \
---reversible-blocks-db-guard-size-mb 0 -e -peosio"
+--chain-state-db-size-mb 8 --chain-state-db-guard-size-mb 0 -e -peosio"
 
 run_nodeos() {
    if (( $VERBOSE == 0 )); then
