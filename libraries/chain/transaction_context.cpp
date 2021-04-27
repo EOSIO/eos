@@ -113,13 +113,44 @@ namespace eosio { namespace chain {
          }
       }
 
+      // check for resource_payer extension
+      bool has_res_pyr = false;
+      resource_payer res_pyr;
+      if( trx.transaction_extensions.size() > 0 ) {
+          std::find_if( trx.transaction_extensions.begin(), trx.transaction_extensions.end(),
+                        [&](auto& elem) {
+                           bool ret = elem.first ==  transaction_extension_id::resource_payer_id;
+                           if (ret) {
+                              fc::raw::unpack(elem.second, res_pyr);
+                              has_res_pyr = true;
+                           }
+                           return ret;
+                        } );
+      }
+
+      // Possibly lower net_limit to the optional limit set in resource_payer extension
+      if( has_res_pyr && res_pyr.max_net_bytes <= net_limit ) {
+         net_limit = res_pyr.max_net_bytes;
+         net_limit_due_to_block = false;
+      }
+
+      // Possibly lower objective_duration_limit to optional limit set in resource_payer extension
+      if( has_res_pyr && res_pyr.max_cpu_us > 0 && res_pyr.max_cpu_us <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(res_pyr.max_cpu_us);
+         // TODO resource limit exceptions (update billing_timer_exception_code in EPE-932)
+         // billing_timer_exception_code = TODO;
+         _deadline = start + objective_duration_limit;
+      }
+
       initial_objective_duration_limit = objective_duration_limit;
 
       if( explicit_billed_cpu_time )
          validate_cpu_usage_to_bill( billed_cpu_time_us, std::numeric_limits<int64_t>::max(), false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
-      if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
+      if ( has_res_pyr )
+         bill_to_accounts.insert( res_pyr.payer );
+      else if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
          bill_to_accounts.insert( trx.first_authorizer() );
       } else {
          for( const auto& act : trx.actions ) {
