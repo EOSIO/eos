@@ -405,6 +405,36 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
 } FC_LOG_AND_RETHROW()
 
 
+BOOST_AUTO_TEST_CASE( read_modes_with_terminatation ) try {
+   const int terminate_at_block_num = 200;
+   tester ca;
+   ca.produce_block();
+   ca.produce_block();
+   auto r = ca.create_accounts( {"dana"_n,"sama"_n,"pama"_n} );
+   ca.produce_block();
+   auto res = ca.set_producers( {"dana"_n,"sama"_n,"pama"_n} );
+   ca.produce_blocks(200);
+   auto head_block_num = ca.control->head_block_num();
+   auto last_irreversible_block_num = ca.control->last_irreversible_block_num();
+
+   tester head(setup_policy::none, db_read_mode::HEAD);
+   push_blocks(ca, head);
+   BOOST_CHECK_EQUAL(terminate_at_block_num, head.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(terminate_at_block_num, head.control->head_block_num());
+
+   tester read_only(setup_policy::none, db_read_mode::READ_ONLY);
+   push_blocks(ca, read_only);
+   BOOST_CHECK_EQUAL(terminate_at_block_num, read_only.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(terminate_at_block_num, read_only.control->head_block_num());
+
+   tester irreversible(setup_policy::none, db_read_mode::IRREVERSIBLE);
+   push_blocks(ca, irreversible);
+   BOOST_CHECK_EQUAL( terminate_at_block_num, irreversible.control->fork_db_pending_head_block_num());
+   BOOST_CHECK_EQUAL( terminate_at_block_num, irreversible.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL( terminate_at_block_num, irreversible.control->head_block_num());
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    auto does_account_exist = []( const tester& t, account_name n ) {
       const auto& db = t.control->db();
