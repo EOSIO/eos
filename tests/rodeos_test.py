@@ -171,7 +171,8 @@ try:
         loadSystemContract=False,
         specificExtraNodeosArgs={
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
-                "--state-history-stride {0} " 
+          # stride unless it holds all the required data files -- it will cause test to fail 
+          #      "--state-history-stride {0} " 
                 "--state-history-endpoint {1} "
                 "--plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryStride, stateHistoryEndpoint)})
 
