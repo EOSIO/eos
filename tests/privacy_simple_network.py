@@ -36,7 +36,7 @@ args = TestHelper.parse_args({"--port","-p","-n","--dump-error-details","--keep-
                               ,"--wallet-port"})
 port=args.port
 pnodes=args.p
-apiNodes=0        # minimum number of apiNodes that will be used in this test
+apiNodes=1        # minimum number of apiNodes that will be used in this test
 # bios is also treated as an API node, but doesn't count against totalnodes count
 minTotalNodes=pnodes+apiNodes
 totalNodes=args.n if args.n >= minTotalNodes else minTotalNodes
@@ -117,64 +117,69 @@ try:
         cluster.reportInfo()
 
 
-    # if we have more than 1 api node, we will add and remove all those nodes in bulk, if not it is just a repeat of the above test
-    if len(apiNodes) > 1:
-        Utils.Print("Add all api nodes to security group at the same time")
-        securityGroup.editSecurityGroup(addNodes=securityGroup.nonParticipants)
-        securityGroup.verifySecurityGroup()
+    Utils.Print("Add all api nodes to security group at the same time")
+    securityGroup.editSecurityGroup(addNodes=securityGroup.nonParticipants)
+    securityGroup.verifySecurityGroup()
 
-        cluster.reportInfo()
+    cluster.reportInfo()
 
-        # waiting for a block to change (2 blocks since transaction indication could be 1 behind) to prevent duplicate remove transactions
-        removeBlockNum = Node.getTransBlockNum(removeTrans)
-        securityGroup.defaultNode.waitForBlock(removeBlockNum + 2)
+    # waiting for a block to change (2 blocks since transaction indication could be 1 behind) to prevent duplicate remove transactions
+    removeBlockNum = Node.getTransBlockNum(removeTrans)
+    securityGroup.defaultNode.waitForBlock(removeBlockNum + 2)
 
-        # alternate adding/removing participants to ensure the security group doesn't change
-        initialBlockNum = None
-        blockNum = None
-        lib = None
-        def is_done():
-            # want to ensure that we can identify the range of libs the security group was changed in
-            return blockNum - initialBlockNum > 12
+    # alternate adding/removing participants to ensure the security group doesn't change
+    initialBlockNum = None
+    blockNums = []
+    lib = None
 
-        done = False
-        # keep adding and removing nodes till we are done
-        while not done:
-            currentLib = securityGroup.defaultNode.getBlockNum(blockType=BlockType.lib)
-            if lib and currentLib != lib:
-                # waiting for lib block change to prevent duplicate publish transactions
-                securityGroup.defaultNode.waitForBlock(currentLib + 1, blockType=BlockType.lib)
-            lib = currentLib
+    # draw out sending each
+    blocksPerProducer = 12
+    # space out each send so that by the time we have removed and added each api node (except one), that we have covered more than a
+    # full production window
+    numberOfSends = len(apiNodes) * 2 - 1
+    blocksToWait = (blocksPerProducer + numberOfSends - 1) / numberOfSends + 1
 
-            while not done and len(securityGroup.participants) > pnodes:
-                publishTrans = securityGroup.removeFromSecurityGroup()
-                blockNum = Node.getTransBlockNum(publishTrans)
-                if initialBlockNum is None:
-                    initialBlockNum = blockNum
-                done = is_done()
+    def wait():
+        securityGroup.defaultNode.waitForBlock(blockNums[-1] + blocksToWait, sleepTime=0.4)
 
-            while not done and len(securityGroup.nonParticipants) > 0:
-                publishTrans = securityGroup.moveToSecurityGroup()
-                blockNum = Node.getTransBlockNum(publishTrans)
-                done = is_done()
+    while len(securityGroup.participants) > pnodes:
+        publishTrans = securityGroup.removeFromSecurityGroup()
+        blockNums.append(Node.getTransBlockNum(publishTrans))
+        if initialBlockNum is None:
+            initialBlockNum = blockNums[-1]
+        wait()
 
-        Utils.Print("First adjustment to security group was in block num: {}, verifying no changes till block num: {} is finalized".format(initialBlockNum, blockNum))
-        securityGroup.verifySecurityGroup()
+    while True:
+        publishTrans = securityGroup.moveToSecurityGroup()
+        blockNums.append(Node.getTransBlockNum(publishTrans))
+        if len(securityGroup.nonParticipants) > 1:
+            wait()
+        else:
+            break
 
-        cluster.reportInfo()
+    Utils.Print("Adjustments to security group were made in block nums: [{}], verifying no changes till block num: {} is finalized".format(", ".join([str(x) for x in blockNums]), blockNums[-1]))
+    lastBlockNum = blockNums[0]
+    for blockNum in blockNums[1:]:
+        # because the transaction's block number is only a possible block number, assume that the second block really was sent in the next block
+        if blockNum + 1 - lastBlockNum >= blocksPerProducer:
+            Utils.Print("WARNING: Had a gap of {} blocks between publish actions due to sleep not being exact, so if the security group verification fails " +
+                        "it is likely due to that")
+        lastBlockNum = blockNum
+    securityGroup.verifySecurityGroup()
 
-        if len(securityGroup.nonParticipants) > 0:
-            Utils.Print("Add all remaining non-participants to security group at the same time, so all api nodes can be removed as one group")
-            securityGroup.editSecurityGroup(addNodes=securityGroup.nonParticipants)
-            securityGroup.verifySecurityGroup()
+    cluster.reportInfo()
 
-            cluster.reportInfo()
+    Utils.Print("Add all remaining non-participants to security group at the same time, so all api nodes can be removed as one group next")
+    securityGroup.editSecurityGroup(addNodes=securityGroup.nonParticipants)
+    securityGroup.verifySecurityGroup()
 
-        Utils.Print("Remove all api nodes from security group at the same time")
-        securityGroup.editSecurityGroup(removeNodes=apiNodes)
-        securityGroup.verifySecurityGroup()
+    cluster.reportInfo()
 
-        cluster.reportInfo()
+    Utils.Print("Remove all api nodes from security group at the same time")
+    securityGroup.editSecurityGroup(removeNodes=apiNodes)
+    securityGroup.verifySecurityGroup()
+
+    cluster.reportInfo()
 
     testSuccessful=True
 finally:
