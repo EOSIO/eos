@@ -325,9 +325,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("persistent-storage-mbytes-snapshot-batch", bpo::value<uint32_t>()->default_value(config::default_persistent_storage_mbytes_batch),
           "Rocksdb batch size threshold before writing read in snapshot data to database.")
 
-         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(0),
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>(),
           "(DEPRECATED: no longer used) Maximum size (in MiB) of the reversible blocks database")
-         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(0),
+         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>(),
           "(DEPRECATED: no longer used) Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
           "Percentage of actual signature recovery cpu to bill. Whole number percentages, e.g. 50 for 50%")
