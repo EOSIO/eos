@@ -498,15 +498,11 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3):
         num=self.getBlockNum(blockType=blockType)
-        if isinstance(timeout, WaitSpec):
-            timeout.convert(num, num+1)
-        lam = lambda: self.getBlockNum(blockType=blockType) > num
-        ret=Utils.waitForTruth(lam, timeout)
-        return ret
+        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime)
 
-    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, reportInterval=None, errorContext=None):
+    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
         currentTime=time.time()
         if isinstance(timeout, WaitSpec):
