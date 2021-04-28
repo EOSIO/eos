@@ -331,17 +331,6 @@ namespace eosio { namespace chain {
    };
 
    /**
-     *  Defines a type used for defining transaction hooks
-     *  Transaction hooks are a way for system contracts to inspect / make modifications to the transaction
-     *  at a certain point, for example prior to its execution.
-     */
-   struct transaction_hook{
-      uint32_t          type;
-      account_name      contract;
-      action_name       action;
-   };
-
-   /**
     *  Extentions are prefixed with type and are a buffer that can be
     *  interpreted by code that is aware and ignored by unaware code.
     */
@@ -489,5 +478,4 @@ namespace chainbase {
    }
 }
 
-FC_REFLECT(eosio::chain::transaction_hook, (type)(contract)(action))
 FC_REFLECT_EMPTY( eosio::chain::void_t )
