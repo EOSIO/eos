@@ -127,6 +127,8 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
+      account_name resource_payer()const;
+
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };
 
