@@ -266,7 +266,7 @@ namespace eosio {
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
-      mutable std::shared_mutex             connections_mtx; // protects both connections and security_group
+      mutable std::shared_mutex             connections_mtx;
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       security_group_manager security_group;
 
@@ -884,7 +884,7 @@ namespace eosio {
          if(my_impl->ssl_enabled) {
             account_name participant = participant_name_ ? *participant_name_ : account_name{};
             
-            std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
+            std::shared_lock<std::shared_mutex> sg_guard(my_impl->security_group.mtx_);
             bool participating = my_impl->security_group.is_in_security_group(participant);
 
             fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
@@ -3657,7 +3657,7 @@ namespace eosio {
       }
    }
 
-   // called from any thread
+   // called from application thread
    void net_plugin_impl::update_security_group(const block_state_ptr& bs) {
       // update cache
       //
@@ -3669,7 +3669,7 @@ namespace eosio {
       if(security_group.current_version() == update.version) {
          return;
       }
-      std::lock_guard<std::shared_mutex> connection_guard(connections_mtx);
+      std::lock_guard<std::shared_mutex> sg_guard(security_group.mtx_);
       if(!security_group.update_cache(update.version, update.participants)) {
          return;
       }
