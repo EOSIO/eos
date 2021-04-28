@@ -132,8 +132,9 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
    irreversible_id = result.last_irreversible.block_id;
    if (!first || head < first)
       first = head;
-   if (write_now)
-      end_write(write_now);
+  
+      end_write(true);
+    
    if (near)
       db->flush(false, false);
 }
