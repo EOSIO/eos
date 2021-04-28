@@ -2,10 +2,12 @@
 ## Overview
 
 The `resource_monitor_plugin` monitors space usage in the computing system where `nodeos` is running. Specifically, every `resource-monitor-interval-seconds` seconds,
-it measures the space used by the file systems mounted by `data-dir`, `state-dir`,
-`blocks-log-dir`, `snapshots-dir`, `state-history-dir`, and `trace-dir`. 
+it measures the individual space used by each of the file systems mounted
+by `data-dir`, `state-dir`, `blocks-log-dir`, `snapshots-dir`,
+`state-history-dir`, and `trace-dir`.
 When space usage in any of the monitored file system is within `5%` of the threshold
-specified by `resource-monitor-space-threshold`, a warning is printed out. 
+specified by `resource-monitor-space-threshold`, a warning containing the file system
+path and percentage of space has used is printed out.
 When space usage exceedes the threshold,
 if `resource-monitor-not-shutdown-on-threshold-exceeded` is not set,
 `nodeos` gracefully shuts down; if `resource-monitor-not-shutdown-on-threshold-exceeded` is set, `nodeos` prints out warnings perioidically
