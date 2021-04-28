@@ -49,7 +49,7 @@ void variant_snapshot_reader::validate() const {
 
    uint64_t got_version = version.as_uint64();
    EOS_ASSERT(got_version >= minimum_snapshot_version && got_version<= current_snapshot_version, snapshot_validation_exception,
-         "Variant snapshot is an unsuppored version.  Expected : [${min_version}, ${current}] , Got: ${actual}",
+         "Variant snapshot is an unsupported version.  Expected : [${min_version}, ${current}] , Got: ${actual}",
          ("min_version", minimum_snapshot_version) ("current", current_snapshot_version)("actual",got_version));
 
    EOS_ASSERT(o.contains("sections"), snapshot_validation_exception,
@@ -221,7 +221,7 @@ void istream_snapshot_reader::validate() const {
       uint32_t version;
       snapshot.read((char*)&version, sizeof(version));
       EOS_ASSERT(version > 0 && version <= current_snapshot_version, snapshot_exception,
-                 "Binary snapshot is an unsuppored version.  version is ${actual} while code supports version(s) [1,${max}]",
+                 "Binary snapshot is an unsupported version.  version is ${actual} while code supports version(s) [1,${max}]",
                  ("max", current_snapshot_version)("actual", version));
 
       while (validate_section()) {}
