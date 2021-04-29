@@ -12,7 +12,7 @@ RUN yum update -y && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
-    dnf --enablerepo=PowerTools install -y doxygen ocaml
+    dnf --enablerepo=powertools install -y doxygen ocaml
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
     tar -xzf cmake-3.18.0.tar.gz && \
@@ -21,7 +21,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.
     make -j$(nproc) && make install && \
     rm -rf cmake-3.18.0.tar.gz cmake-3.18.2
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
