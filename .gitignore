@@ -88,5 +88,3 @@ var/lib/node_*
 .DS_Store
 
 !*.swagger.*
-
-ZScaler*
