@@ -898,7 +898,7 @@ namespace eosio {
       }
 
       std::string certificate_subject(ssl::verify_context &ctx) {
-         X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+         X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
          if (!cert)
             return "";
          
@@ -913,7 +913,7 @@ namespace eosio {
          return {subject_str};
       }
 
-      bool verify_certificate(bool preverified, ssl::verify_context &ctx) {
+      bool verify_certificate(bool preverified, ssl::verify_context& ctx) {
          peer_dlog(this, "preverified: [${p}] certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
          //certificate depth means number of certificate issuers verified current certificate
          //openssl provides those one by one starting from root certificate
@@ -926,12 +926,32 @@ namespace eosio {
          }
 
          //return pointer is managed by openssl
-         X509 *cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+         X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
          if (!cert) {
             peer_dlog(this, "X509_STORE_CTX_get_current_cert returned null certificate");
             return false;
          }
 
+         extract_participant_name(cert);
+
+         //we keep connection if peer has valid certificate but participant name is not authorized
+         //however that connection doesn't receive updates
+         return preverified;
+      }
+
+      void reset_socket() {
+         socket.reset_socket();
+         if (my_impl->ssl_enabled) {
+            socket.ssl_socket()->set_verify_callback(
+               [this](auto bverified, auto& ctx){ 
+                  return verify_certificate(bverified, ctx); 
+               });
+         }
+      }
+
+   private:
+      void extract_participant_name(X509* cert)
+      {
          //max subject size is 256 bytes
          char buf[256];
          //return pointer is managed by openssl
@@ -948,20 +968,6 @@ namespace eosio {
             else {
                peer_dlog(this, "received unauthorized participant: ${s}", ("s", organization));
             }
-         }
-
-         //we keep connection if peer has valid certificate but participant name is not authorized
-         //however that connection doesn't receive updates
-         return preverified;
-      }
-
-      void reset_socket() {
-         socket.reset_socket();
-         if (my_impl->ssl_enabled) {
-            socket.ssl_socket()->set_verify_callback(
-               [this](auto bverified, auto& ctx){ 
-                  return verify_certificate(bverified, ctx); 
-               });
          }
       }
    };
@@ -4064,7 +4070,13 @@ namespace eosio {
          }
 
          //if we have certificate option that TLS must be enabled
-         if ( options.count("p2p-tls-own-certificate-file") ) {
+         const bool tls_own_certificate_file = options.count("p2p-tls-own-certificate-file");
+         EOS_ASSERT(tls_own_certificate_file == options.count("p2p-tls-private-key-file") &&
+                    tls_own_certificate_file == options.count("p2p-tls-security-group-ca-file"),
+                    ssl_incomplete_configuration,
+                    "\"p2p-tls-own-certificate-file\", \"p2p-tls-private-key-file\", and \"p2p-tls-security-group-ca-file\" either all "
+                    "need to be provided or none of them provided.");
+         if ( tls_own_certificate_file ) {
             auto certificate = options["p2p-tls-own-certificate-file"].as<bfs::path>();
             auto pkey        = options["p2p-tls-private-key-file"].as<bfs::path>();
             auto ca_cert     = options["p2p-tls-security-group-ca-file"].as<bfs::path>();
