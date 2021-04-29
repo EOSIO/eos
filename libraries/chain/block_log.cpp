@@ -593,21 +593,26 @@ namespace eosio { namespace chain {
 
          uint64_t get_block_pos(uint32_t block_num);
 
+         // thread safe
          void reset(uint32_t first_block_num, std::variant<genesis_state, chain_id_type>&& chain_context);
 
+         // thread safe
          void flush();
 
+         // thread safe
          uint64_t append(const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
 
          // create futures for append, must call in order of blocks
          std::future<std::tuple<signed_block_ptr, std::vector<char>>>
             create_append_future(boost::asio::io_context& thread_pool,
                                  const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
+         // thread safe
          uint64_t append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f);
 
          // thread safe
          uint64_t write_log_entry(const std::vector<char>& block_buffer);
 
+         // thread safe
          void split_log();
          bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
 
@@ -769,6 +774,7 @@ namespace eosio { namespace chain {
       try {
          EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
+         std::unique_lock<std::mutex> g(blog_mutex);
          block_file.seek_end(0);
          index_file.seek_end(0);
          EOS_ASSERT(index_file.tellp() == sizeof(uint64_t) * (b->block_num() - preamble.first_block_num),
@@ -792,6 +798,7 @@ namespace eosio { namespace chain {
       try {
          EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
+         std::unique_lock<std::mutex> g(blog_mutex);
          block_file.seek_end(0);
          index_file.seek_end(0);
          auto[b, buffer] = f.get();
@@ -831,6 +838,7 @@ namespace eosio { namespace chain {
    }
 
    void detail::block_log_impl::split_log() {
+      std::unique_lock<std::mutex> g(blog_mutex);
       block_file.close();
       index_file.close();
       
@@ -846,11 +854,13 @@ namespace eosio { namespace chain {
    }
 
    void detail::block_log_impl::flush() {
+      std::unique_lock<std::mutex> g(blog_mutex);
       block_file.flush();
       index_file.flush();
    }
 
    void detail::block_log_impl::reset(uint32_t first_bnum, std::variant<genesis_state, chain_id_type>&& chain_context) {
+      std::unique_lock<std::mutex> g(blog_mutex);
 
       block_file.open(fc::cfile::truncate_rw_mode);
       index_file.open(fc::cfile::truncate_rw_mode);
