@@ -2,7 +2,6 @@
 #include <eosio/chain/types.hpp>
 
 #include <boost/container/flat_set.hpp>
-#include <shared_mutex>
 
 #include <atomic>
 
@@ -24,7 +23,6 @@ namespace eosio {
       bool is_in_security_group(chain::account_name participant) const {
          return cache_.empty() || (cache_.find(participant) != cache_.end());
       }
-      mutable std::shared_mutex mtx_;
    private:
       uint32_t version_ {0};        ///! The security group version
       participant_list_t cache_;    ///! Cache of participants in the security group

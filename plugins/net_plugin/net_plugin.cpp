@@ -266,7 +266,7 @@ namespace eosio {
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
-      mutable std::shared_mutex             connections_mtx;
+      mutable std::shared_mutex             connections_mtx; // protects both connections and security_group
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       security_group_manager security_group;
 
@@ -883,9 +883,13 @@ namespace eosio {
       inline void setup_participant() {
          if(my_impl->ssl_enabled) {
             account_name participant = participant_name_ ? *participant_name_ : account_name{};
-            
-            std::shared_lock<std::shared_mutex> sg_guard(my_impl->security_group.mtx_);
-            bool participating = my_impl->security_group.is_in_security_group(participant);
+
+            auto is_participating = [](account_name part) {
+               std::shared_lock<std::shared_mutex> connection_guard(my_impl->connections_mtx);
+               return my_impl->security_group.is_in_security_group(part);
+            };
+
+            const bool participating = is_participating(participant);
 
             fc_dlog( logger, "[${peer}] participant: [${name}] participating: [${enabled}]", 
                      ("peer", peer_name())("name", participant_name())("enabled", participating));
@@ -3669,11 +3673,14 @@ namespace eosio {
       if(security_group.current_version() == update.version) {
          return;
       }
-      std::lock_guard<std::shared_mutex> sg_guard(security_group.mtx_);
-      if(!security_group.update_cache(update.version, update.participants)) {
-         return;
+      else {
+         std::lock_guard<std::shared_mutex> connection_guard(my_impl->connections_mtx);
+         if(!security_group.update_cache(update.version, update.participants)) {
+            return;
+         }
       }
 
+      std::shared_lock<std::shared_mutex> connection_guard(my_impl->connections_mtx);
       // update connections
       //
       fc_dlog( logger, "SecurityGroup changed to version: ${v}", ("v", security_group.current_version()) );
