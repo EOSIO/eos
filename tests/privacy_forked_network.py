@@ -88,7 +88,7 @@ try:
     producerOrder = []
     node = producers[0]
     head = node.getBlockNum()
-    start = head - (12 * pnodes / 2)
+    start = head - int(12 * pnodes / 2)
     lastProd = node.getBlockProducerByNum(start)
     nextProd = None
     blockNum = start
