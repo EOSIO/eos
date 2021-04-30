@@ -9,10 +9,22 @@
 
 extern "C" {
 #include <tss2_esys.h>
-#include <tss2_rc.h>
 #include <tss2_mu.h>
-#include <tss2_tctildr.h>
+#if __has_include(<tss2_tctildr.h>)
+#  define HAS_TCTILDR
+#  include <tss2_tctildr.h>
+#endif
 }
+
+#if __has_include(<tss2_rc.h>)
+  extern "C" {
+# include <tss2_rc.h>
+  }
+#else
+  std::string Tss2_RC_Decode(const TSS2_RC rc) {
+      return std::to_string(rc);
+  }
+#endif
 
 namespace eosio::tpm {
 
@@ -77,15 +89,21 @@ public:
       TSS2_RC rc;
 
       if(!tcti.empty()) {
+#ifdef HAS_TCTILDR
          rc = Tss2_TctiLdr_Initialize(tcti.c_str(), &tcti_ctx);
          FC_ASSERT(!rc, "Failed to initialize tss tcti \"${s}\": ${m}", ("s", tcti)("m", Tss2_RC_Decode(rc)));
+#else
+         FC_ASSERT(false, "Non-default tcti definitions not supported with tpm2-tss library in use");
+#endif
       }
 
       TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
       rc = Esys_Initialize(&esys_ctx, tcti_ctx, &abi_version);
       if(rc) {
+#ifdef HAS_TCTILDR
          if(tcti_ctx)
             Tss2_TctiLdr_Finalize(&tcti_ctx);
+#endif
          FC_ASSERT(!rc, "Failed to initialize tss esys: ${m}", ("m", Tss2_RC_Decode(rc)));
       }
    }
@@ -93,8 +111,10 @@ public:
    ~esys_context() {
       if(esys_ctx)
          Esys_Finalize(&esys_ctx);
+#ifdef HAS_TCTILDR
       if(tcti_ctx)
          Tss2_TctiLdr_Finalize(&tcti_ctx);
+#endif
    }
 
    ESYS_CONTEXT* ctx() const {
