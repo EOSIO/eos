@@ -162,8 +162,8 @@ namespace eosio { namespace chain {
           {gpo.proposed_security_group_participants.begin(), gpo.proposed_security_group_participants.end()}};
    }
 
-   inline void set_gpo_extension(global_property_object&                        gpo,
-                                 snapshot_global_property_object::extension_t&& extension) {
+   inline void set_gpo_extension(global_property_object&                             gpo,
+                                 const snapshot_global_property_object::extension_t& extension) {
       std::visit(
           [&gpo](auto& ext) {
              gpo.proposed_security_group_block_num    = ext.proposed_security_group_block_num;
@@ -199,7 +199,7 @@ namespace eosio { namespace chain {
             value.chain_id           = row.chain_id;
             value.kv_configuration   = row.kv_configuration;
             value.wasm_configuration = row.wasm_configuration;
-            set_gpo_extension(value, std::move(row.extension));
+            set_gpo_extension(value, row.extension);
          }
       };
    }

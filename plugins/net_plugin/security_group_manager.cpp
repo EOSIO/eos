@@ -7,7 +7,7 @@ namespace eosio {
       if(version == version_)
          return false;
       EOS_ASSERT(version == version_ +1, eosio::chain::plugin_exception,
-                 "The active security group version should only increase ever increase by one. Current version: "
+                 "The active security group version should only ever increase by one. Current version: "
                  "${current}, new version: ${new}", ("current", version_)("new", version));
       version_ = version;
       cache_ = participant_list;
