@@ -286,9 +286,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              [&block_state, this](const auto& req) {
                 // send get_blocks_result_v1 when the request is get_blocks_request_v0 and
                 // send send_block_result_v2 when the request is get_blocks_request_ v1. 
-                typename std::decay_t<decltype(req)>::response_type result;
-                result.head = { block_state->block_num, block_state->id };
-                send_update(block_state->block, std::move(result));
+                if (block_state->block) {
+                  typename std::decay_t<decltype(req)>::response_type result;
+                  result.head = { block_state->block_num, block_state->id };
+                  send_update(block_state->block, std::move(result));
+                }
              },
              *current_request);
       }
