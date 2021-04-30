@@ -135,8 +135,11 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
   
       end_write(true);
     
-   if (near)
+   if (!(result.this_block->block_num % 100)) {
       db->flush(false, false);
+      ilog("called flush");
+   }
+
 }
 
 void rodeos_db_snapshot::check_write(const ship_protocol::get_blocks_result_base& result) {
@@ -221,6 +224,7 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
    view_state.kv_state.bypass_receiver_check = true; // TODO: can we enable recevier check in the future
    view_state.kv_state.enable_write          = true;
    uint32_t num                              = deltas.unpack_size();
+   auto start                                = std::chrono::high_resolution_clock::now();   
    for (uint32_t i = 0; i < num; ++i) {
       ship_protocol::table_delta delta;
       deltas.unpack_next(delta);
@@ -228,7 +232,7 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
       std::visit(
          [&](auto& delta_any_v) {
          store_delta({ view_state }, delta_any_v, head == 0, [&]() {
-            if (delta_any_v.rows.size() > 10000 && !(num_processed % 10000)) {
+            if (delta_any_v.rows.size() > 1000 && !(num_processed % 1000)) {
                if (shutdown())
                   throw std::runtime_error("shutting down");
                ilog("block ${b} ${t} ${n} of ${r}",
@@ -242,6 +246,12 @@ void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vec
          });
       }, delta);
    }
+   auto end = std::chrono::high_resolution_clock::now();
+   if (std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() > 1000000){
+      db->flush(false, false);
+      ilog("calling flush from write deltas");
+   }
+
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0& result,
