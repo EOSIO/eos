@@ -82,11 +82,11 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
             chain::packed_transaction_v0 v0;
             fc::raw::unpack(ds, v0);
             auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
-            handle_message( delivery_tag, message.replyTo(), std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move( ptr ) );
          } else if ( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction>()) ) {
             auto ptr = std::make_shared<chain::packed_transaction>();
             fc::raw::unpack(ds, *ptr);
-            handle_message( delivery_tag, message.replyTo(), std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move( ptr ) );
          } else {
             FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
@@ -121,7 +121,10 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 private:
 
    // called from amqp thread
-   void handle_message( const amqp_handler::delivery_tag_t& delivery_tag, const std::string& reply_to, chain::packed_transaction_ptr trx ) {
+   void handle_message( const amqp_handler::delivery_tag_t& delivery_tag,
+                        const std::string& reply_to,
+                        const std::string& correlation_id,
+                        chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
 
@@ -130,8 +133,8 @@ private:
       fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, reply_to, trx]
-                (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) {
+                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, reply_to, correlation_id, trx]
+                (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
             auto trx_span = fc_create_span_from_token(token, "Processed");
             fc_add_tag(trx_span, "trx_id", trx->id());
 
@@ -139,7 +142,7 @@ private:
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
                if( !reply_to.empty() ) {
-                  my->trace_plug.publish_error( reply_to, trx->id().str(), eptr->code(), eptr->to_string() );
+                  my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
                }
                fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
@@ -149,7 +152,7 @@ private:
             } else {
                auto& trace = std::get<chain::transaction_trace_ptr>(result);
                if( !reply_to.empty() ) {
-                  my->trace_plug.publish_result( reply_to, trx, trace );
+                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), trx, trace );
                }
                fc_add_tag(trx_span, "block_num", trace->block_num);
                fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());

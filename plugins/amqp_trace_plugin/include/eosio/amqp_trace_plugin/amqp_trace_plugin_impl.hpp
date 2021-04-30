@@ -23,13 +23,14 @@ struct amqp_trace_plugin_impl : std::enable_shared_from_this<amqp_trace_plugin_i
 public:
 
    // called from any thread
-   void publish_error( std::string routing_key, std::string tid, int64_t error_code, std::string error_message );
+   void publish_error( std::string routing_key, std::string correlation_id, int64_t error_code, std::string error_message );
 
    // called on application thread
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t);
 
    // called from any thread
-   void publish_result( std::string routing_key, const chain::packed_transaction_ptr& trx, const chain::transaction_trace_ptr& trace );
+   void publish_result( std::string routing_key, std::string correlation_id,
+                        const chain::packed_transaction_ptr& trx, const chain::transaction_trace_ptr& trace );
 };
 
 std::istream& operator>>(std::istream& in, amqp_trace_plugin_impl::reliable_mode& m);
