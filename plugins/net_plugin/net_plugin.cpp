@@ -4070,11 +4070,13 @@ namespace eosio {
 
          //if we have certificate option that TLS must be enabled
          const bool tls_own_certificate_file = options.count("p2p-tls-own-certificate-file");
-         EOS_ASSERT(tls_own_certificate_file == options.count("p2p-tls-private-key-file") &&
-                    tls_own_certificate_file == options.count("p2p-tls-security-group-ca-file"),
+         EOS_ASSERT(tls_own_certificate_file == options.count("p2p-tls-private-key-file"),
                     ssl_incomplete_configuration,
-                    "\"p2p-tls-own-certificate-file\", \"p2p-tls-private-key-file\", and \"p2p-tls-security-group-ca-file\" either all "
-                    "need to be provided or none of them provided.");
+                    "\"p2p-tls-own-certificate-file\" and \"p2p-tls-private-key-file\" either both need to be provided "
+                    "or neither of them provided.");
+         EOS_ASSERT(!options.count("p2p-tls-security-group-ca-file") || tls_own_certificate_file,
+                    ssl_incomplete_configuration,
+                    "\"p2p-tls-security-group-ca-file\" cannot be provided without \"p2p-tls-own-certificate-file\" and \"p2p-tls-private-key-file\".");
          if ( tls_own_certificate_file ) {
             auto certificate = options["p2p-tls-own-certificate-file"].as<bfs::path>();
             auto pkey        = options["p2p-tls-private-key-file"].as<bfs::path>();
