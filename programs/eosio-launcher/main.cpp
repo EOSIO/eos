@@ -46,6 +46,7 @@ using namespace eosio::launcher::config;
 
 const string block_dir = "blocks";
 const string shared_mem_dir = "state";
+const int bios_node_num = -1;
 
 struct local_identity {
   vector <fc::ip::address> addrs;
@@ -403,8 +404,8 @@ struct launcher_def {
    bfs::path data_dir_base;
    bool skip_transaction_signatures = false;
    string eosd_extra_args;
-   std::map<uint,string> specific_nodeos_args;
-   std::map<uint,string> specific_nodeos_installation_paths;
+   std::map<int,string> specific_nodeos_args;
+   std::map<int,string> specific_nodeos_installation_paths;
    testnet_def network;
    string gelf_endpoint;
    vector <string> aliases;
@@ -486,9 +487,9 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("genesis,g",bpo::value<string>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), (string(node_executable_name) + " does not require transaction signatures.").c_str())
     (node_executable_name, bpo::value<string>(&eosd_extra_args), ("forward " + string(node_executable_name) + " command line argument(s) to each instance of " + string(node_executable_name) + ", enclose arg(s) in quotes").c_str())
-    ("specific-num", bpo::value<vector<uint>>()->composing(), ("forward " + string(node_executable_name) + " command line argument(s) (using \"--specific-" + string(node_executable_name) + "\" flag) to this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--specific-" + string(node_executable_name) +"\" flag each time it is used").c_str())
+    ("specific-num", bpo::value<vector<int>>()->composing(), ("forward " + string(node_executable_name) + " command line argument(s) (using \"--specific-" + string(node_executable_name) + "\" flag) to this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--specific-" + string(node_executable_name) +"\" flag each time it is used. Use -1 for bios node.").c_str())
     (("specific-" + string(node_executable_name)).c_str(), bpo::value<vector<string>>()->composing(), ("forward " + string(node_executable_name) + " command line argument(s) to its paired specific instance of " + string(node_executable_name) + "(using \"--specific-num\"), enclose arg(s) in quotes").c_str())
-    ("spcfc-inst-num", bpo::value<vector<uint>>()->composing(), ("Specify a specific version installation path (using \"--spcfc-inst-"+ string(node_executable_name) + "\" flag) for launching this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--spcfc-inst-" + string(node_executable_name) + "\" flag each time it is used").c_str())
+    ("spcfc-inst-num", bpo::value<vector<int>>()->composing(), ("Specify a specific version installation path (using \"--spcfc-inst-"+ string(node_executable_name) + "\" flag) for launching this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--spcfc-inst-" + string(node_executable_name) + "\" flag each time it is used. Use -1 for bios node.").c_str())
     (("spcfc-inst-" + string(node_executable_name)).c_str(), bpo::value<vector<string>>()->composing(), ("Provide a specific version installation path to its paired specific instance of " + string(node_executable_name) + "(using \"--spcfc-inst-num\")").c_str())
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
@@ -514,9 +515,9 @@ inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
 }
 
 template <typename T>
-void retrieve_paired_array_parameters (const variables_map &vmap, const std::string& num_selector, const std::string& paired_selector, std::map<uint,T>& selector_map) {
+void retrieve_paired_array_parameters (const variables_map &vmap, const std::string& num_selector, const std::string& paired_selector, std::map<int,T>& selector_map) {
    if (vmap.count(num_selector)) {
-     const auto specific_nums = vmap[num_selector].as<vector<uint>>();
+     const auto specific_nums = vmap[num_selector].as<vector<int>>();
      const auto specific_args = vmap[paired_selector].as<vector<string>>();
      if (specific_nums.size() != specific_args.size()) {
        cerr << "ERROR: every " << num_selector << " argument must be paired with a " << paired_selector << " argument" << endl;
@@ -526,8 +527,13 @@ void retrieve_paired_array_parameters (const variables_map &vmap, const std::str
      for(uint i = 0; i < specific_nums.size(); ++i)
      {
        const auto& num = specific_nums[i];
-       if (num >= total_nodes) {
+       if (num >= static_cast<int>(total_nodes)) {
          cerr << "\"--" << num_selector << "\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
+         exit (-1);
+       }
+       else if (num < bios_node_num) {
+         cerr << "\"--" << num_selector << "\" provided value= " << num << " is negative, and the only negative value allowed is "
+              << bios_node_num << "(bios indicator)" << endl;
          exit (-1);
        }
        selector_map[num] = specific_args[i];
@@ -621,26 +627,6 @@ launcher_def::initialize (const variables_map &vmap) {
   else if (total_nodes < prod_nodes + unstarted_nodes) {
     cerr << "ERROR: if provided, \"--nodes\" must be equal or greater than the number of nodes indicated by \"--pnodes\" and \"--unstarted-nodes\"." << endl;
     exit (-1);
-  }
-
-  if (vmap.count("specific-num")) {
-    const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
-    const auto specific_args = vmap["specific-" + string(node_executable_name)].as<vector<string>>();
-    if (specific_nums.size() != specific_args.size()) {
-      cerr << "ERROR: every specific-num argument must be paired with a specific-" << node_executable_name << " argument" << endl;
-      exit (-1);
-    }
-    // don't include bios
-    const auto allowed_nums = total_nodes - 1;
-    for(uint i = 0; i < specific_nums.size(); ++i)
-    {
-      const auto& num = specific_nums[i];
-      if (num >= allowed_nums) {
-        cerr << "\"--specific-num\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
-        exit (-1);
-      }
-      specific_nodeos_args[num] = specific_args[i];
-    }
   }
 
   char* erd_env_var = getenv ("EOSIO_HOME");
@@ -1517,9 +1503,9 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   node_rt_info info;
   info.remote = !host->is_local();
 
+  const auto node_num = (instance.name == "bios") ? bios_node_num : boost::lexical_cast<uint16_t,string>(instance.get_node_num());
   string install_path;
-  if (instance.name != "bios" && !specific_nodeos_installation_paths.empty()) {
-     const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());
+  if (!specific_nodeos_installation_paths.empty()) {
      if (specific_nodeos_installation_paths.count(node_num)) {
         install_path = specific_nodeos_installation_paths[node_num] + "/";
      }
@@ -1531,8 +1517,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (!eosd_extra_args.empty()) {
     eosdcmd += eosd_extra_args + " ";
   }
-  if (instance.name != "bios" && !specific_nodeos_args.empty()) {
-     const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());
+  if (!specific_nodeos_args.empty()) {
      if (specific_nodeos_args.count(node_num)) {
         eosdcmd += specific_nodeos_args[node_num] + " ";
      }

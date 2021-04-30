@@ -40,7 +40,7 @@
         "test":
         [
             {
-                "commit": "16074742f8cfd481b029073e6f01bb920a1bad38" // test backwards-compatibility
+                "commit": "85ac2aae5f52c68b6b1d764b997bb020f3c496f8" // test backwards-compatibility
             }
         ]
     }

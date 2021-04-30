@@ -6,7 +6,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
-    graphviz bzip2-devel openssl-devel gmp-devel ocaml \
+    graphviz bzip2-devel openssl openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
