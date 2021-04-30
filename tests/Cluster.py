@@ -173,7 +173,7 @@ class Cluster(object):
         if not os.path.isdir(privacyDir):
             if Utils.Debug: Utils.Print("creating dir {} in dir: {}".format(privacyDir, os.getcwd()))
             os.mkdir(privacyDir)
-
+        
         old_cwd=os.getcwd()
         os.chdir(privacyDir)
         if Utils.Debug: Utils.Print("change to dir: {}".format(os.getcwd()))
@@ -189,7 +189,7 @@ class Cluster(object):
             f.write("{}".format(rtn))
         os.chdir(old_cwd)
         if Utils.Debug: Utils.Print("changed back to dir: {}".format(os.getcwd()))
-
+    
     @staticmethod
     def getPrivacyArguments(privacyDir, index):
         """
@@ -271,10 +271,10 @@ class Cluster(object):
         if configSecurityGroup:
             self.securityGroupEnabled = True
             Cluster.generateCertificates("privacy", totalNodes + 1)
-
+            
             if specificExtraNodeosArgs is None:
                 specificExtraNodeosArgs = {}
-
+            
             for node in range(totalNodes):
                 arguments = Cluster.getPrivacyArguments("privacy", node)
                 if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
@@ -727,13 +727,12 @@ class Cluster(object):
         return ret
 
     @staticmethod
-    def getClientVersion(fullVersion=False):
+    def getClientVersion():
         """Returns client version (string)"""
         p = re.compile(r'^v?(.+)\n$')
         try:
             cmd="%s version client" % (Utils.EosClientPath)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-            if fullVersion: cmd="%s version full" % (Utils.EosClientPath)
             response=Utils.checkOutput(cmd.split())
             assert(response)
             assert(isinstance(response, str))
@@ -1638,7 +1637,7 @@ class Cluster(object):
                     os.kill(node.pid, signal.SIGKILL)
             except OSError as _:
                 pass
-
+        
         if cleanup:
             self.cleanup()
 
