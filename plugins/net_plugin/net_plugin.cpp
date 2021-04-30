@@ -913,7 +913,7 @@ namespace eosio {
          return {subject_str};
       }
 
-      bool verify_certificate(bool preverified, ssl::verify_context& ctx) {
+      bool process_certificate(bool preverified, ssl::verify_context& ctx) {
          peer_dlog(this, "preverified: [${p}] certificate subject: ${s}", ("p", preverified)("s", certificate_subject(ctx)));
          //certificate depth means number of certificate issuers verified current certificate
          //openssl provides those one by one starting from root certificate
@@ -944,7 +944,7 @@ namespace eosio {
          if (my_impl->ssl_enabled) {
             socket.ssl_socket()->set_verify_callback(
                [this](auto bverified, auto& ctx){ 
-                  return verify_certificate(bverified, ctx); 
+                  return process_certificate(bverified, ctx); 
                });
          }
       }
@@ -3847,7 +3847,6 @@ namespace eosio {
       ssl_context->set_options(ssl::context::default_workarounds | 
                            ssl::context::no_sslv2 |
                            ssl::context::no_sslv3 );
-      ssl_context->set_password_callback([](auto,auto){ return "test"; });
 
       error_code ec;
 
