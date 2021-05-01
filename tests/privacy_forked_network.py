@@ -95,6 +95,7 @@ try:
     while True:
         prod = node.getBlockProducerByNum(blockNum)
         if prod != lastProd:
+            Utils.Print("Started looking for producers at block {}, stopped at {}. Will skip producer: {} and send for producer: {}".format(start, blockNum, lastProd, prod))
             nextProd = prod
             # reset to use to determine
             start = blockNum
@@ -107,6 +108,9 @@ try:
         if lastProd in producer.getProducers():
             selectedProducers = [x for x in producers if x != producer]
             break
+
+    # wait for a whole cycle + an extra producer (in case we just missed the start)
+    assert producers[0].waitForProducer(nextProd, atStart=True, timeout=12*(pnodes+1)/2) != None, ""
 
     Utils.Print("Add all producers except 1 to security group")
     securityGroup.editSecurityGroup(selectedProducers)

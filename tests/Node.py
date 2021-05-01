@@ -1204,7 +1204,7 @@ class Node(object):
 
     def getBlockProducer(self, timeout=None, exitOnError=True, blockType=BlockType.head):
         blockNum=self.getBlockNum(blockType=blockType)
-        block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
+        block=self.getBlock(blockNum, exitOnError=exitOnError)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
     def getNextCleanProductionCycle(self, trans):
@@ -1764,3 +1764,19 @@ class Node(object):
         if Utils.Debug: Utils.Print("Ensure all nodes are in-sync")
         assert nodes[0].waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, \
                "Node {} failed to advance lib ahead one block to: {}".format(nodes[0].nodeId, lib + 1)
+
+    def waitForProducer(self, producer, atStart=False, timeout=None):
+        """Wait for head block with the provided producer."""
+        assert(isinstance(producer, str))
+        lastProd = None
+        if atStart:
+            lastProd = self.getBlockProducer()
+        def found():
+            currentProd = self.getBlockProducer()
+            nonlocal lastProd
+            if currentProd == producer and currentProd != lastProd:
+                return True
+            lastProd = currentProd
+            return False
+        ret=Utils.waitForTruth(found, timeout)
+        return ret

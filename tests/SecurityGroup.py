@@ -151,9 +151,9 @@ class SecurityGroup(object):
             assert nonParticipantPostLIB < publishBlock, "Participants not in security group should not have advanced LIB to {}, but it has advanced to {}".format(publishBlock, nonParticipantPostLIB)
             nonParticipantHead = nonParticipant.getBlockNum()
             if nonParticipantHead > headAtTransFinalization:
-                producer = nonParticipants.getBlockProducerBy(nonParticipantHead)
+                producer = nonParticipant.getBlockProducerByNum(nonParticipantHead)
                 assert producer in expectedProducers, "Participants should not advance head to {} unless they are producing their own blocks. It has advanced to {} \
-                with producer {}, which is not one of the non-participant producers: [{}]".format(producerHead, nonParticipantHead, ", ".join(expectedProducers))
+                with producer {}, which is not one of the non-participant producers: [{}]".format(headAtTransFinalization, nonParticipantHead, ", ".join(expectedProducers))
 
     def getLatestPublishTransId(self):
         return Node.getTransId(self.publishTrans)
