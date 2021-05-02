@@ -9,6 +9,7 @@
 #include <fc/io/cfile.hpp>
 #include <boost/asio.hpp>
 #include <ctime>
+#include "test_cfd_transaction.hpp"
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -25,7 +26,8 @@ namespace bfs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
 
-    std::optional<uint32_t> fetch_block_num(TESTER& chain, uint32_t block_num, bool return_signed_block){
+    template<typename T>
+    std::optional<uint32_t> fetch_block_num(T& chain, uint32_t block_num, bool return_signed_block){
         std::shared_ptr<std::vector<char>> pBuffer;
 
         pBuffer = chain.control->fetch_block_buffer_by_number(block_num, return_signed_block);
@@ -78,8 +80,6 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
             BOOST_CHECK(bfs::exists( blocks_dir / "blocks-101-120.index" ));
             BOOST_CHECK(bfs::exists( blocks_dir / "blocks-121-140.log" ));
             BOOST_CHECK(bfs::exists( blocks_dir / "blocks-121-140.index" ));
-
-            auto head_num = chain.control->head_block_num();
 
             //fetch a block that is in a catalog file
             BOOST_CHECK(fetch_block_num(chain, 60, true).value() == 60);
@@ -134,6 +134,35 @@ BOOST_AUTO_TEST_SUITE(block_buffer_fetch_tests)
             BOOST_CHECK(fetch_block_num(chain, 20, false) == std::nullopt);
 
         }FC_LOG_AND_RETHROW()
+    }
+
+    BOOST_AUTO_TEST_CASE(fetch_block_with_pruned_trx_test) {
+        try{
+            fc::temp_directory temp_dir;
+            auto [ config, gen]  = tester::default_config(temp_dir);
+            config.read_mode = db_read_mode::SPECULATIVE;
+            config.blog.stride = UINT32_MAX;
+            tester chain(config, gen);
+            chain.execute_setup_policy(setup_policy::full);
+
+            eosio::chain::transaction_trace_ptr trace;
+            deploy_test_api(chain);
+            chain.produce_blocks(10);
+            trace = push_test_cfd_transaction(chain);
+            chain.produce_blocks(10);
+
+            // prune trx
+            block_log                        blog(chain.get_config().blog);
+            std::vector<transaction_id_type> ids{trace->id};
+            BOOST_CHECK(blog.prune_transactions(trace->block_num, ids) == 1);
+
+            BOOST_CHECK(fetch_block_num(chain, trace->block_num, true).value() == trace->block_num);
+
+            // can't convert a signed_block with pruned cfd to a signed_block_v0
+            BOOST_CHECK(fetch_block_num(chain, trace->block_num, false) == std::nullopt);
+
+        }FC_LOG_AND_RETHROW()
+
     }
 
     BOOST_AUTO_TEST_CASE(multi_threaded_test) {
