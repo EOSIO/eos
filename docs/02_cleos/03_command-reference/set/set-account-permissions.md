@@ -40,7 +40,7 @@ The following information shows the different positionals and options you can us
 ## Requirements
 * Install the currently supported version of `cleos.`
 [[info | Note]] | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
-* You have access to a blockchain.
+* You have access to an EOSIO blockchain.
 * You have an EOSIO account and access to the account private key.
 
 ## Examples
