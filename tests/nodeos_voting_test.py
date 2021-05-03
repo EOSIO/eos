@@ -202,7 +202,7 @@ try:
 
     for i in range(0, totalNodes):
         node=cluster.getNode(i)
-        node.producers=Cluster.parseProducers(i)
+        node.producers=node.getProducers()
         for prod in node.producers:
             trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
 

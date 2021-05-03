@@ -54,14 +54,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    uint16_t                                                   endpoint_port    = 8080;
    std::unique_ptr<tcp::acceptor>                             acceptor;
 
-   signed_block_ptr_variant get_block(uint32_t block_num) {
-      try {
-         return chain_plug->chain().fetch_block_by_number(block_num);
-      } catch (...) {
-      }
-      return {};
-   }
-
    std::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
       std::optional<chain::block_id_type> result;
 
@@ -213,15 +205,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update();
       }
 
-      void set_result_block_header(get_blocks_result_v1&, uint32_t) {}
-      void set_result_block_header(get_blocks_result_v2& result, uint32_t block_num) {
+      void set_result_block_header(get_blocks_result_v1&, const signed_block_ptr& block) {}
+      void set_result_block_header(get_blocks_result_v2& result, const signed_block_ptr& block) {
          bool fetch_block_header = std::get<get_blocks_request_v1>(*current_request).fetch_block_header;
          if (fetch_block_header) {
-            std::visit([&result](auto block_ptr) {
-               if (block_ptr) {
-                  result.block_header = static_cast<const signed_block_header&>(*block_ptr);
-               }
-            }, plugin->get_block(block_num));
+            result.block_header = static_cast<const signed_block_header&>(*block); 
          }
       }
 
@@ -233,7 +221,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename T>
       std::enable_if_t<std::is_same_v<get_blocks_result_v1,T> || std::is_same_v<get_blocks_result_v2,T>>
-      send_update(T&& result) {
+      send_update(const signed_block_ptr& block, T&& result) {
          need_to_send_update = true;
          if (!send_queue.empty() || !max_messages_in_flight() )
             return;
@@ -254,7 +242,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (prev_block_id) 
                   result.prev_block = block_position{block_num - 1, *prev_block_id};
                if (block_req.fetch_block) {
-                  result.block = plugin->get_block(block_num);
+                  result.block = signed_block_ptr_variant{block};
                }
                if (block_req.fetch_traces && plugin->trace_log) {
                   result.traces = plugin->trace_log->get_log_entry(block_num);
@@ -262,7 +250,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (block_req.fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(block_num);
                }
-               set_result_block_header(result, block_num);
+               set_result_block_header(result, block);
             }
             ++block_num;
          }
@@ -293,14 +281,16 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }, result.block );
       }
 
-      void send_update_for_block(block_position position) {
+      void send_update_for_block(const block_state_ptr& block_state) {
          std::visit(
-             [&position, this](const auto& req) {
+             [&block_state, this](const auto& req) {
                 // send get_blocks_result_v1 when the request is get_blocks_request_v0 and
                 // send send_block_result_v2 when the request is get_blocks_request_ v1. 
-                typename std::decay_t<decltype(req)>::response_type result;
-                result.head = position;
-                send_update(std::move(result));
+                if (block_state->block) {
+                  typename std::decay_t<decltype(req)>::response_type result;
+                  result.head = { block_state->block_num, block_state->id };
+                  send_update(block_state->block, std::move(result));
+                }
              },
              *current_request);
       }
@@ -310,7 +300,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (!send_queue.empty() || !max_messages_in_flight())
             return;
 
-         send_update_for_block({block_state->block_num, block_state->id});
+         send_update_for_block(block_state);
       }
 
       void send_update(bool changed = false) {
@@ -320,7 +310,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              !max_messages_in_flight())
             return;
          auto& chain = plugin->chain_plug->chain();
-         send_update_for_block({chain.head_block_num(), chain.head_block_id()});
+         send_update_for_block(chain.head_block_state());
       }
 
       template <typename F>

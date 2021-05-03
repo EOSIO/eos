@@ -502,9 +502,15 @@ void session<Parent>::commit() {
             updates.emplace(p.first, p.second.value);
          }
       }
-
-      ds.erase(deletes);
-      ds.write(updates);
+      
+      if (deletes.size() > 0) {
+         ds.erase(deletes);
+      }
+      
+      if (updates.size() > 0) {
+         ds.write(updates);
+      }
+      
       clear();
    };
 
