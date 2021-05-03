@@ -26,5 +26,10 @@ See the following reference guides for command line usage and related options:
 ```shell
 cleos --wallet-url http://keosd-host:8900 COMMAND
 ```
+
+**Where**
+* `--wallet-url http://keosd-host:8900` = The http address and port number of the `keosd` instance.
+* COMMAND = The `cleos` command to run. 
+
 ## Summary
 In conclusion, by following these instructions you are able to connect to a specified `keosd` instance. 

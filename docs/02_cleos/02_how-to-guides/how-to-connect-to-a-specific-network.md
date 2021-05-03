@@ -26,5 +26,9 @@ See the following reference guides for command line usage and related options:
 ```shell
 cleos -url http://nodeos-host:8888 COMMAND
 ```
+**Where**
+* `-url http://nodeos-host:8888` = The http address and port number of the `nodeos` instance.
+* COMMAND = The `cleos` command to run. 
+
 ## Summary
 In conclusion, by following these instructions you are able to connect to a specified `nodeos` instance. 
