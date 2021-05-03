@@ -23,8 +23,9 @@ The following information shows the different positionals and options you can us
 
 ## Requirements
 * Install the currently supported version of `cleos.`
-[[info | Note]] | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
-* You have access to a blockchain.
+[[info | Note]] 
+| The `cleos` tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will install the `cleos` and `keosd` command line tools. 
+* You have access to an EOSIO blockchain.
 
 ## Examples
 
@@ -130,4 +131,4 @@ cleos get account eosio --json
 ```
 
 ## See Also
-- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.
+- [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
