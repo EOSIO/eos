@@ -727,11 +727,12 @@ class Cluster(object):
         return ret
 
     @staticmethod
-    def getClientVersion():
+    def getClientVersion(fullVersion=False):
         """Returns client version (string)"""
         p = re.compile(r'^v?(.+)\n$')
         try:
             cmd="%s version client" % (Utils.EosClientPath)
+            if fullVersion: cmd="%s version full" % (Utils.EosClientPath) 
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             response=Utils.checkOutput(cmd.split())
             assert(response)
