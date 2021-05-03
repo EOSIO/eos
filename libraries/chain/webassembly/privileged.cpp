@@ -290,8 +290,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
    bool interface::set_transaction_resource_payer( const name payer, const uint64_t max_net_bytes, const uint64_t max_cpu_us ) {
       //  check if the payer has signed
-      // FIXME: fix the if condition
-      if ( true || has_auth ( payer ) )
+      if ( has_auth ( payer ) )
       {
          context.trx_context.set_resource_payer( payer );
          context.trx_context.set_sponsored_max_net( max_net_bytes );
