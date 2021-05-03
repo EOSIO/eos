@@ -143,7 +143,10 @@ class SecurityGroup(object):
 
         # verify each nonParticipant in the list has not advanced its lib to the publish block, since the block that would cause it to become finalized would
         # never have been forwarded to a nonParticipant
-        expectedProducers = [x.getProducers() for x in self.nonParticipants]
+        expectedProducers = []
+        for x in self.nonParticipants:
+            expectedProducers.extend(x.getProducers());
+
         for nonParticipant in self.nonParticipants:
             if nonParticipant.pid is None:
                 continue
@@ -152,8 +155,9 @@ class SecurityGroup(object):
             nonParticipantHead = nonParticipant.getBlockNum()
             if nonParticipantHead > headAtTransFinalization:
                 producer = nonParticipant.getBlockProducerByNum(nonParticipantHead)
-                assert producer in expectedProducers, "Participants should not advance head to {} unless they are producing their own blocks. It has advanced to {} \
-                with producer {}, which is not one of the non-participant producers: [{}]".format(headAtTransFinalization, nonParticipantHead, ", ".join(expectedProducers))
+                assert producer in expectedProducers, \
+                       "Participants should not advance head to {} unless they are producing their own blocks. It has advanced to {} with producer {}, \
+                        which is not one of the non-participant producers: [{}]".format(headAtTransFinalization, nonParticipantHead, producer, ", ".join(expectedProducers))
 
     def getLatestPublishTransId(self):
         return Node.getTransId(self.publishTrans)
