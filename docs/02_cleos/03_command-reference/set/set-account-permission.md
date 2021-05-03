@@ -5,7 +5,7 @@ cleos set account permission [OPTIONS] account permission [authority] [parent]
 * [OPTIONS] = See Options in Command Usage section below.
 * account = The name of the account you want to set.
 * permission = The name of the permission you want to set.
-* authority =  Where used is the public key, JSON string or filename defining the authority.
+* authority =  May be a public key, JSON string or filename defining the authority.
 * parent = The parent of this permission, defaults to `active`.
 
 **Note**: The arguments and options enclosed in square brackets are optional.
@@ -41,14 +41,14 @@ The following information shows the different positionals and options you can us
 - `--delay-sec` _UINT_ Set the delay_sec seconds, defaults to 0s
 
 ## Requirements
-* Install the currently supported version of `cleos.`
-[[info | Note]] | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
-* You have access to a blockchain.
-* You have an EOSIO account and access to the account private key.
+* Install the currently supported version of `cleos`.
+[[info | Note]] | `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools.  
+* You have access to an EOSIO blockchain.
+* You have an EOSIO account and access to the account's private key.
 
 ## Examples
 
-1. Update the active permission key
+1. Update the `active` permission key
 ```shell
 cleos set account permission alice active EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC -p alice@owner
 ```
@@ -64,7 +64,7 @@ executed transaction: ab5752ecb017f166d56e7f4203ea02631e58f06f2e0b67103b71874f60
 #         eosio <= eosio::updateauth            {"account":"alice","permission":"active","parent":"owner","auth":{"threshold":1,"keys":[{"key":"E...
 ```
 
-2. Add the eosio.code permission to the contract account active permission to enable calling inline actions by the contract account active permission.
+2. Add the `eosio.code` permission to the contract account `active` permission to enable calling inline actions by the contract account's `active` permission.
 
 ```shell
 cleos set account permission alice active --add-code -p alice@active
@@ -83,4 +83,4 @@ executed transaction: ab5752ecb017f166d56e7f4203ea02631e58f06f2e0b67103b71874f60
 
 
 ## See Also
-- [Accounts and Permissions](https://developers.eos.io/welcome/latest/protocol/accounts_and_permissions) protocol document.
+- [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.

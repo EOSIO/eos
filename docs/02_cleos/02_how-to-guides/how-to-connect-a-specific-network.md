@@ -1,5 +1,5 @@
 ## Overview
-This guide provides instructions on how to connect to specifc blockchain network when using `cleos`. `Cleos` can connect to a specific node by using the `--url` optional argument, followed by the http address and port number.
+This guide provides instructions on how to connect to specific EOSIO blockchain network when using `cleos`. `Cleos` can connect to a specific node by using the `--url` optional argument, followed by the http address and port number.
 
 The examples use the `--url`optional argument to send commands to the specified blockchain.   
 
@@ -11,15 +11,15 @@ Make sure you meet the following requirements:
 
 * Install the currently supported version of `cleos`.
 [[info | Note]]
-| The `cleos` tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
-* You have access to a blockchain and the http afddress and port number of a `nodeos` daemon. 
+| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools. 
+* You have access to an EOSIO blockchain and the http afddress and port number of a `nodeos` daemon. 
 
-## Command Reference
+## Reference
 See the following reference guides for command line usage and related options:
 
 * [cleos](../index.md) command
 
-## Connection procedure
+## Example
 
 1. Add the -url option to a command
 
@@ -27,4 +27,4 @@ See the following reference guides for command line usage and related options:
 cleos -url http://nodeos-host:8888 COMMAND
 ```
 ## Summary
-In conclusion, by following these instructions you are able to connect to a specified nodeos instance. 
+In conclusion, by following these instructions you are able to connect to a specified `nodeos` instance. 

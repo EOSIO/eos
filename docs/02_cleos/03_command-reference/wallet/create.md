@@ -34,7 +34,7 @@ The following information shows the different positionals and options you can us
 ## Requirements
 * Install the currently supported version of `cleos` and `keosd`.
 [[info | Note]]
-| The `cleos` tool and `keosd` wallet is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos comand line tool and the keosd key store or wallet. 
+| `Cleos` and `keosd` are bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools. 
 
 ## Examples
 1. Create a new wallet called `default` and output the wallet password to the screen
