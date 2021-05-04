@@ -253,9 +253,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (prev_block_id) 
                   result.prev_block = block_position{block_num - 1, *prev_block_id};
                if (block_req.fetch_block) {
-                  auto block = get_block();
-                  if (block)
-                     result.block = signed_block_ptr_variant{block};
+                  result.block = signed_block_ptr_variant{get_block()};
                }
                if (block_req.fetch_traces && plugin->trace_log) {
                   result.traces = plugin->trace_log->get_log_entry(block_num);
