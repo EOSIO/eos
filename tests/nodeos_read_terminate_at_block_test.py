@@ -16,9 +16,9 @@ import subprocess
 import shutil
 
 ###############################################################
-# nodeos_irreversible_mode_test
+# nodeos_read_terminate_at_block_test
 #
-# Many smaller tests centered around irreversible mode
+# A few tests centered around read mode of irreversible, speculative and head with terminate-at-block set
 #
 ###############################################################
 
