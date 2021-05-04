@@ -24,10 +24,6 @@ amqp_trace_plugin::amqp_trace_plugin()
 
 amqp_trace_plugin::~amqp_trace_plugin() {}
 
-void amqp_trace_plugin::publish_error( std::string tid, int64_t error_code, std::string error_message ) {
-   my->publish_error( std::string(), std::move(tid), error_code, std::move(error_message) );
-}
-
 void amqp_trace_plugin::set_program_options(options_description& cli, options_description& cfg) {
    auto op = cfg.add_options();
    op("amqp-trace-address", bpo::value<std::string>(),
