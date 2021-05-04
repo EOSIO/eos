@@ -52,6 +52,8 @@ namespace eosio { namespace chain {
       uint64_t max_memory_bytes;
    };
 
+   using resource_payer_t = struct resource_payer;
+
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
