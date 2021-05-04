@@ -169,7 +169,7 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    }
 }
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot, bool use_resource_payer_cpu_limit, bool use_resource_payer_net_limit ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
 
@@ -202,12 +202,21 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
 
          auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
 
-         EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
-                     tx_cpu_usage_exceeded,
-                     "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                     ("n", name(a))
-                     ("cpu_used_in_window",cpu_used_in_window)
-                     ("max_user_use_in_window",max_user_use_in_window) );
+         if ( use_resource_payer_cpu_limit ) {
+            EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
+                        resource_payer_cpu_exceeded,
+                        "resource payer account '${n}' has insufficient cpu resources for this transaction",
+                        ("n", name(a))
+                        ("cpu_used_in_window",cpu_used_in_window)
+                        ("max_user_use_in_window",max_user_use_in_window) );
+         } else {
+            EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
+                        tx_cpu_usage_exceeded,
+                        "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                        ("n", name(a))
+                        ("cpu_used_in_window",cpu_used_in_window)
+                        ("max_user_use_in_window",max_user_use_in_window) );
+         }
       }
 
       if( net_weight >= 0 && state.total_net_weight > 0) {
@@ -221,12 +230,21 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
 
          auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
 
-         EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
-                     tx_net_usage_exceeded,
-                     "authorizing account '${n}' has insufficient net resources for this transaction",
-                     ("n", name(a))
-                     ("net_used_in_window",net_used_in_window)
-                     ("max_user_use_in_window",max_user_use_in_window) );
+         if ( use_resource_payer_net_limit ) {
+            EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
+                        resource_payer_net_exceeded,
+                        "resource payer account '${n}' has insufficient net resources for this transaction",
+                        ("n", name(a))
+                        ("net_used_in_window",net_used_in_window)
+                        ("max_user_use_in_window",max_user_use_in_window) );
+         } else {
+            EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
+                        tx_net_usage_exceeded,
+                        "authorizing account '${n}' has insufficient net resources for this transaction",
+                        ("n", name(a))
+                        ("net_used_in_window",net_used_in_window)
+                        ("max_user_use_in_window",max_user_use_in_window) );
+         }
 
       }
    }
