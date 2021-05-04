@@ -9,7 +9,7 @@
 #include <eosio/chain/types.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/io/cfile.hpp>
-
+#include <appbase/application.hpp>
 namespace eosio {
 
 /*
@@ -123,8 +123,10 @@ class state_history_log {
          last_block_id = header.block_id;
       }
       catch(const chain::plugin_exception& e) {
-         wlog( "chain::plugin_exception: ${details}", ("details", e.to_detail_string()) );
-         EOS_THROW(chain::controller_emit_signal_exception, "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch the process")
+         elog( "chain::plugin_exception: ${details}", ("details", e.to_detail_string()) );
+         elog("State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+              "the process");
+         appbase::app().quit();
       }
    }
 
