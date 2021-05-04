@@ -141,19 +141,16 @@ private:
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
-               if( !reply_to.empty() ) {
-                  my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
-               }
                fc_add_tag(trx_span, "error", eptr->to_string());
                dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
                if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
                   my->amqp_trx->ack( delivery_tag );
                }
+               if( !reply_to.empty() ) {
+                  my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
+               }
             } else {
                auto& trace = std::get<chain::transaction_trace_ptr>(result);
-               if( !reply_to.empty() ) {
-                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), trx, trace );
-               }
                fc_add_tag(trx_span, "block_num", trace->block_num);
                fc_add_tag(trx_span, "block_time", trace->block_time.to_time_point());
                fc_add_tag(trx_span, "elapsed", trace->elapsed.count());
@@ -162,12 +159,20 @@ private:
                }
                if( trace->except ) {
                   fc_add_tag(trx_span, "error", trace->except->to_string());
+                  dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", trace->except->to_string()) );
+                  if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
+                     my->amqp_trx->ack( delivery_tag );
+                  }
+               } else {
+                  dlog( "accept_transaction ${id}", ("id", trx->id()) );
+                  if( my->acked == ack_mode::executed ) {
+                     my->amqp_trx->ack( delivery_tag );
+                  } else if( my->acked == ack_mode::in_block ) {
+                     my->tracked_delivery_tags[trace->block_num] = delivery_tag;
+                  }
                }
-               dlog( "accept_transaction ${id}", ("id", trx->id()) );
-               if( my->acked == ack_mode::executed ) {
-                  my->amqp_trx->ack( delivery_tag );
-               } else if ( my->acked == ack_mode::in_block ) {
-                  my->tracked_delivery_tags[trace->block_num] = delivery_tag;
+               if( !reply_to.empty() ) {
+                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), trx, trace );
                }
             }
          } );
