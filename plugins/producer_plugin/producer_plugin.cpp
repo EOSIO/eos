@@ -447,6 +447,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
+         bool is_transaction_sponsorship_fp_activated = chain.is_builtin_activated(builtin_protocol_feature_t::transaction_sponsorship);
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
@@ -454,13 +455,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                 chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
 
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired,
-                                                          next{std::move(next)}, trx]() mutable {
+                                                          next{std::move(next)}, is_transaction_sponsorship_fp_activated, trx]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}]() mutable {
-                  auto exception_handler = [self, &next, trx{std::move(trx)}](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}, is_transaction_sponsorship_fp_activated]() mutable {
+                  auto exception_handler = [self, &next, trx{std::move(trx)}, is_transaction_sponsorship_fp_activated](fc::exception_ptr ex) {
                      fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
-                            ("txid", trx->id())("a",trx->get_transaction().resource_payer())("why",ex->what()));
+                            ("txid", trx->id())("a",trx->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated))("why",ex->what()));
                      next(ex);
 
                      if (_trx_trace_failure_log.is_enabled(fc::log_level::debug)) {
@@ -486,8 +487,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          bool exhausted = false;
          chain::controller& chain = chain_plug->chain();
+         bool is_transaction_sponsorship_fp_activated = chain.is_builtin_activated(builtin_protocol_feature_t::transaction_sponsorship);
 
-         auto send_response = [this, &trx, &chain, &next](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+         auto send_response = [this, &trx, &chain, &next, is_transaction_sponsorship_fp_activated](const std::variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
 
             if (std::holds_alternative<fc::exception_ptr>(response)) {
@@ -497,7 +499,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
-                        ("a", trx->packed_trx()->get_transaction().resource_payer())
+                        ("a", trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated))
                         ("why",std::get<fc::exception_ptr>(response)->what()));
 
                   if (_trx_trace_failure_log.is_enabled(fc::log_level::debug)) {
@@ -510,7 +512,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
-                          ("a", trx->packed_trx()->get_transaction().resource_payer())
+                          ("a", trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated))
                           ("why",std::get<fc::exception_ptr>(response)->what()));
 
                   if (_trx_trace_failure_log.is_enabled(fc::log_level::debug)) {
@@ -527,7 +529,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                             ("block_num", chain.head_block_num() + 1)
                             ("prod", get_pending_block_producer())
                             ("txid", trx->id())
-                            ("a", trx->packed_trx()->get_transaction().resource_payer()));
+                            ("a", trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated)));
 
                     if (_trx_trace_success_log.is_enabled(fc::log_level::debug)) {
                         auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response));
@@ -541,7 +543,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                     fc_dlog(_trx_successful_trace_log,
                             "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}, auth: ${a}",
                             ("txid", trx->id())
-                            ("a", trx->packed_trx()->get_transaction().resource_payer()));
+                            ("a", trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated)));
 
                     if (_trx_trace_success_log.is_enabled(fc::log_level::debug)) {
                         auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response));
@@ -590,7 +592,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                                               || ( persist_until_expired && _disable_subjective_api_billing )
                                               || ( !persist_until_expired && _disable_subjective_p2p_billing );
 
-            auto resource_payer = trx->packed_trx()->get_transaction().resource_payer();
+            auto resource_payer = trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated);
             uint32_t sub_bill = 0;
             if( !disable_subjective_billing )
                sub_bill = _subjective_billing.get_subjective_bill( resource_payer, fc::time_point::now() );
@@ -1905,6 +1907,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
    if( !_unapplied_transactions.empty() ) {
       account_failures account_fails;
       chain::controller& chain = chain_plug->chain();
+      bool is_transaction_sponsorship_fp_activated = chain.is_builtin_activated(builtin_protocol_feature_t::transaction_sponsorship);
       const auto& rl = chain.get_resource_limits_manager();
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
@@ -1925,7 +1928,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             auto start = fc::time_point::now();
             auto trx_deadline = start + fc::milliseconds( _max_transaction_time_ms );
 
-            auto resource_payer = trx->packed_trx()->get_transaction().resource_payer();
+            auto resource_payer = trx->packed_trx()->get_transaction().resource_payer(is_transaction_sponsorship_fp_activated);
             if( account_fails.failure_limit( resource_payer ) ) {
                ++num_failed;
                itr = _unapplied_transactions.erase( itr );
