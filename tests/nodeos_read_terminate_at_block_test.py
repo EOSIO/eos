@@ -46,46 +46,6 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-def backupBlksDir(nodeId):
-   dataDir = Utils.getNodeDataDir(nodeId)
-   sourceDir = os.path.join(dataDir, "blocks")
-   destinationDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
-   shutil.copytree(sourceDir, destinationDir)
-
-def recoverBackedupBlksDir(nodeId):
-   dataDir = Utils.getNodeDataDir(nodeId)
-   # Delete existing one and copy backed up one
-   existingBlocksDir = os.path.join(dataDir, "blocks")
-   backedupBlocksDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
-   shutil.rmtree(existingBlocksDir, ignore_errors=True)
-   shutil.copytree(backedupBlocksDir, existingBlocksDir)
-
-def getLatestSnapshot(nodeId):
-   snapshotDir = os.path.join(Utils.getNodeDataDir(nodeId), "snapshots")
-   snapshotDirContents = os.listdir(snapshotDir)
-   assert len(snapshotDirContents) > 0
-   snapshotDirContents.sort()
-   return os.path.join(snapshotDir, snapshotDirContents[-1])
-
-
-def removeReversibleBlks(nodeId):
-   dataDir = Utils.getNodeDataDir(nodeId)
-   reversibleBlks = os.path.join(dataDir, "blocks", "reversible")
-   shutil.rmtree(reversibleBlks, ignore_errors=True)
-
-def removeState(nodeId):
-   dataDir = Utils.getNodeDataDir(nodeId)
-   state = os.path.join(dataDir, "state")
-   shutil.rmtree(state, ignore_errors=True)
-
-def getHeadLibAndForkDbHead(node: Node):
-   info = node.getInfo()
-   assert info is not None, "Fail to retrieve info from the node, the node is currently having a problem"
-   head = int(info["head_block_num"])
-   lib = int(info["last_irreversible_block_num"])
-   forkDbHead =  int(info["fork_db_head_block_num"])
-   return head, lib, forkDbHead
-
 # Wait for some time until LIB advance
 def waitForBlksProducedAndLibAdvanced():
    requiredConfirmation = int(2 / 3 * numOfProducers) + 1
@@ -95,47 +55,7 @@ def waitForBlksProducedAndLibAdvanced():
    timeToWait = maxNumOfBlksReqToConfirmLib / 2 + bufferTime
    time.sleep(timeToWait)
 
-# Ensure that the relaunched node received blks from producers, in other words head and lib is advancing
-def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
-   head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
-   waitForBlksProducedAndLibAdvanced()
-   headAfterWaiting, libAfterWaiting, forkDbHeadAfterWaiting = getHeadLibAndForkDbHead(nodeToTest)
-   assert headAfterWaiting > head and libAfterWaiting > lib and forkDbHeadAfterWaiting > forkDbHead, \
-      "Either Head ({} -> {})/ Lib ({} -> {})/ Fork Db Head ({} -> {}) is not advancing".format(head, headAfterWaiting, lib, libAfterWaiting, forkDbHead, forkDbHeadAfterWaiting)
-
-# Confirm the head lib and fork db of irreversible mode
-# Under any condition of irreversible mode:
-# - forkDbHead >= head == lib
-# headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
-# When comparing with the the state before node is switched:
-# - head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
-def confirmHeadLibAndForkDbHeadOfIrrModeTermAtBlock(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
-   head, lib, forkDbHead = getHeadLibAndForkDbHeadWithoutThrow(nodeToTest)
-   assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
-   assert head == termAtBlockNum, "Head ({}) should be equal to termAtBlockNum ({})".format(head, termAtBlockNum)
-   assert forkDbHead >= head, "Fork db head ({}) should be larger or equal to the head ({})".format(forkDbHead, head)
-
-
-# Confirm the head lib and fork db of speculative mode
-# Under any condition of speculative mode:
-# - forkDbHead == head >= lib
-# headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
-# When comparing with the the state before node is switched:
-# - head == forkDbHeadBeforeSwitchMode == forkDbHead and lib == headBeforeSwitchMode == libBeforeSwitchMode
-def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
-   head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
-   assert head >= lib, "Head should be larger or equal to lib (head: {}, lib: {})".format(head, lib)
-   assert head == forkDbHead, "Head ({}) should be equal to fork db head ({})".format(head, forkDbHead)
-
-   if headLibAndForkDbHeadBeforeSwitchMode:
-      headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
-      assert head == forkDbHeadBeforeSwitchMode, "Head ({}) should be equal to fork db head before switch mode ({})".format(head, forkDbHeadBeforeSwitchMode)
-      assert lib == headBeforeSwitchMode and lib == libBeforeSwitchMode, \
-         "Lib ({}) should be equal to head before switch mode ({}) and lib before switch mode ({})".format(lib, headBeforeSwitchMode, libBeforeSwitchMode)
-      assert forkDbHead == forkDbHeadBeforeSwitchMode, \
-         "Fork db head ({}) should be equal to fork db head before switch mode ({}) ".format(forkDbHead, forkDbHeadBeforeSwitchMode)
-
-
+# This function is special for "terminate-at-block" argument, if no this argument just use node.relaunch (see Node.py)
 def nodeRelaunch(node: Node, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
     assert(node.pid is None)
