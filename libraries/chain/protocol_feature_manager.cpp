@@ -241,6 +241,17 @@ Allows privileged contracts to add/remove participants for mutual TLS enforcemen
 */
             {}
          } )
+         (  builtin_protocol_feature_t::transaction_sponsorship, builtin_protocol_feature_spec{
+            "TRANSACTION_SPONSORSHIP",
+            fc::variant("85f2ae466bc816cda52aab87a72fe7934eda2ec41c5fdfe35f47eab5933667e7").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: TRANSACTION_SPONSORSHIP
+
+Allows a 3rd party account to pay (sponsor) for the resources on the transactions of another account.
+*/
+            {}
+         } )
    ;
 
 
