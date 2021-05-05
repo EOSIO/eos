@@ -19,9 +19,6 @@ class amqp_trace_plugin : public appbase::plugin<amqp_trace_plugin> {
    void plugin_shutdown();
    void handle_sighup() override;
 
-   // can be called from any thread
-   void publish_error( std::string transaction_id, int64_t error_code, std::string error_message );
-
  private:
    std::shared_ptr<struct amqp_trace_plugin_impl> my;
    std::optional<boost::signals2::scoped_connection> applied_transaction_connection;
