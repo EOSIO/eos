@@ -124,9 +124,14 @@ class state_history_log {
       }
       catch(const chain::plugin_exception& e) {
          elog( "chain::plugin_exception: ${details}", ("details", e.to_detail_string()) );
-         elog("State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
-              "the process");
+         // Both app().quit() and exception throwing are required. Without app().quit(),
+         // the exception would be caught and drop before reaching main(). The exception is
+         // to ensure the block won't be commited. 
          appbase::app().quit();
+         EOS_THROW(
+             chain::state_history_write_exception,
+             "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+             "the process");
       }
    }
 
