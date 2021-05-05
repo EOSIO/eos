@@ -183,11 +183,11 @@ public:
                            i.next = next;
                            self->queue_.push_front( std::move( i ) );
                         };
-                        if( !self->allow_speculative_execution && !self->prod_plugin_->is_producing_block() ) {
-                           retry_later( trx, next );
-                        } else {
+//                        if( !self->allow_speculative_execution && !self->prod_plugin_->is_producing_block() ) {
+//                           retry_later( trx, next );
+//                        } else {
                            self->prod_plugin_->execute_incoming_transaction( trx, next, retry_later );
-                        }
+//                        }
                         self->queue_.unpause();
                      } );
                   } else {
