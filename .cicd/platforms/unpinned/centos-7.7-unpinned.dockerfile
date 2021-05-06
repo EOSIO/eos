@@ -6,7 +6,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
-    graphviz bzip2-devel openssl-devel gmp-devel ocaml \
+    graphviz bzip2-devel openssl openssl-devel gmp-devel ocaml \
     python python-devel rh-python36 file libusbx-devel \
     libcurl-devel patch vim-common jq llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
     glibc-locale-source glibc-langpack-en && \
@@ -21,7 +21,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
     tar -xjf boost_1_71_0.tar.bz2 && \

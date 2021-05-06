@@ -294,6 +294,14 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
+         const security_group_info_t& active_security_group() const;
+         flat_set<account_name> proposed_security_group_participants() const;
+
+         int64_t add_security_group_participants(const flat_set<account_name>& participants);
+         int64_t remove_security_group_participants(const flat_set<account_name>& participants);
+
+         bool in_active_security_group(const flat_set<account_name>& participants) const;
+
          bool light_validation_allowed() const;
          bool skip_auth_check()const;
          bool skip_trx_checks()const;

@@ -17,6 +17,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/WalletMgr.py ${CMAKE_CURRENT_BINARY_DIR}/WalletMgr.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Node.py ${CMAKE_CURRENT_BINARY_DIR}/Node.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Cluster.py ${CMAKE_CURRENT_BINARY_DIR}/Cluster.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/SecurityGroup.py ${CMAKE_CURRENT_BINARY_DIR}/SecurityGroup.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/TestHelper.py ${CMAKE_CURRENT_BINARY_DIR}/TestHelper.py COPYONLY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/dawn_515/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/dawn_515/test.sh COPYONLY)
@@ -62,6 +63,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_BINARY_DIR}/blockvault_tests.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/generate-certificates.sh ${CMAKE_CURRENT_BINARY_DIR}/generate-certificates.sh COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_startup_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_startup_network.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_simple_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_simple_network.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_tls_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_tls_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_forked_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_forked_network.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -118,6 +124,14 @@ add_test(NAME light_validation_sync_test COMMAND tests/light_validation_sync_tes
 set_property(TEST light_validation_sync_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME eosio_blocklog_prune_test COMMAND tests/eosio_blocklog_prune_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST eosio_blocklog_prune_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_startup_network COMMAND tests/privacy_startup_network.py -p 2 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_startup_network PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_simple_network COMMAND tests/privacy_simple_network.py -p 2 -n 3 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_simple_network PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_tls_test COMMAND tests/privacy_tls_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_tls_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_forked_network COMMAND tests/privacy_forked_network.py -p 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_forked_network PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

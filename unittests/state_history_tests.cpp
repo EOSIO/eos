@@ -858,7 +858,7 @@ BOOST_AUTO_TEST_CASE(test_deltas_global_property_history) {
       BOOST_REQUIRE(result.first);
       auto &it_global_property = result.second;
       BOOST_REQUIRE_EQUAL(it_global_property->rows.obj.size(), 1);
-      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v1, eosio::ship_protocol::global_property>(it_global_property);
+      auto global_properties = chain.deserialize_data<eosio::ship_protocol::global_property_v2, eosio::ship_protocol::global_property>(it_global_property);
       auto configuration = std::get<eosio::ship_protocol::chain_config_v1>(global_properties[0].configuration);
       BOOST_REQUIRE_EQUAL(configuration.max_transaction_delay, 60);
    }
@@ -931,6 +931,11 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
 
+      std::string key = string(key_values[0].key.pos, key_values[0].key.remaining());
+      std::string val = string(key_values[0].value.pos, key_values[0].value.remaining());
+      BOOST_REQUIRE_EQUAL(fc::to_hex(key.data(), key.size()), "00");
+      BOOST_REQUIRE_EQUAL(fc::to_hex(val.data(), val.size()), "7897");
+
       chain.produce_block();
 
       result = chain.find_table_delta("key_value");
@@ -938,10 +943,18 @@ BOOST_AUTO_TEST_CASE(test_deltas_kv) {
 
       result = chain.find_table_delta("key_value", true);
       BOOST_REQUIRE(result.first);
+
+      key_values = chain.deserialize_data<eosio::ship_protocol::key_value_v0, eosio::ship_protocol::key_value>(result.second);
+      BOOST_REQUIRE_EQUAL(key_values.size(), 1);
       BOOST_REQUIRE_EQUAL(result.second->rows.obj[0].first, 2);
 
       BOOST_REQUIRE_EQUAL(key_values[0].contract.to_string(), "kvtable");
       BOOST_REQUIRE_EQUAL(key_values[0].payer.to_string(), "kvtable");
+
+      key = string(key_values[0].key.pos, key_values[0].key.remaining());
+      val = string(key_values[0].value.pos, key_values[0].value.remaining());
+      BOOST_REQUIRE_EQUAL(fc::to_hex(key.data(), key.size()), "00");
+      BOOST_REQUIRE_EQUAL(fc::to_hex(val.data(), val.size()), "7897");
 
       chain.produce_block();
 
