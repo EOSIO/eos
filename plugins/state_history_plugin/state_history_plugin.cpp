@@ -415,16 +415,33 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          trace_log->add_transaction(p, t);
    }
 
+   void store(const block_state_ptr& block_state) {
+      try {
+         if (trace_log)
+            trace_log->store(chain_plug->chain().db(), block_state);
+         if (chain_state_log)
+            chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+         return;
+      }
+      FC_LOG_AND_DROP()
+
+      // Both app().quit() and exception throwing are required. Without app().quit(),
+      // the exception would be caught and drop before reaching main(). The exception is
+      // to ensure the block won't be committed.
+      appbase::app().quit();
+      EOS_THROW(
+          chain::state_history_write_exception,
+          "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+          "the process");
+   }
+
    void on_accepted_block(const block_state_ptr& block_state) {
       auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
       auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
       fc_add_tag(blk_span, "block_id", block_state->id);
       fc_add_tag(blk_span, "block_num", block_state->block_num);
       fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());
-      if (trace_log)
-         trace_log->store(chain_plug->chain().db(), block_state);
-      if (chain_state_log)
-         chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+      this->store(block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
