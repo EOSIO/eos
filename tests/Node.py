@@ -323,7 +323,7 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId, delayedRetry=True):
+    def getBlockNumByTransId(self, transId, delayedRetry=True, blocksAhead=1):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
@@ -333,7 +333,7 @@ class Node(object):
         key=""
         try:
             key="[trx][trx][ref_block_num]"
-            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            refBlockNum=trans["trx"]["trx"]["ref_block_num"] 
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))
@@ -348,7 +348,8 @@ class Node(object):
             raise
 
         if Utils.Debug: Utils.Print("Reference block num %d, Head block num: %d" % (refBlockNum, headBlockNum))
-        for blockNum in range(refBlockNum, headBlockNum+1):
+        for blockNum in range(refBlockNum, headBlockNum + blocksAhead):
+            self.waitForBlock(blockNum, sleepTime=0.5)
             if self.isTransInBlock(str(transId), blockNum):
                 if Utils.Debug: Utils.Print("Found transaction %s in block %d" % (transId, blockNum))
                 return blockNum
@@ -359,14 +360,14 @@ class Node(object):
         """Check if transaction (transId) is in a block."""
         assert(transId)
         assert(isinstance(transId, (str,int)))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         return True if blockId else False
 
     def isTransFinalized(self, transId):
         """Check if transaction (transId) has been finalized."""
         assert(transId)
         assert(isinstance(transId, str))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         if not blockId:
             return False
 

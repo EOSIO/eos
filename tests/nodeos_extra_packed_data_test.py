@@ -184,7 +184,7 @@ try:
         attemptCnt = 10
         trxBlock = None
         while trxBlock is None and attemptCnt > 0:
-            trxBlock = node.getBlockIdByTransId(trx_id)
+            trxBlock = node.getBlockNumByTransId(trx_id)
             attemptCnt = attemptCnt - 1
         
         assert trxBlock, Print("Transaction %s wasn't posted" % (trx_id))
