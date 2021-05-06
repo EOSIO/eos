@@ -1,6 +1,9 @@
 #pragma once
 
-#include <eosio/testing/tester.hpp>
+#include <vector>
+
+#include <eosio/chain/asset.hpp>
+#include <fc/io/fstream.hpp>
 
 #define CORE_SYM_NAME "${CORE_SYMBOL_NAME}"
 #define CORE_SYM_PRECISION 4
@@ -18,9 +21,17 @@ struct core_sym {
 };
 
 // CN -> contract C++ name, C -> contract name, D -> top level directory
-#define MAKE_READ_WASM_ABI(CN,C, D) \
-   static std::vector<uint8_t> CN ## _wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm"); } \
-   static std::vector<char> CN ## _abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi"); }
+#define MAKE_READ_WASM_ABI(CN,C, D)                                                         \
+   static std::vector<uint8_t> CN ## _wasm() {                                              \
+      std::string s;                                                                        \
+      fc::read_file_contents("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm", s); \
+      return std::vector<uint8_t>(s.begin(), s.end());                                      \
+   }                                                                                        \
+   static std::vector<char> CN ## _abi() {                                                  \
+      std::string s;                                                                        \
+      fc::read_file_contents("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi", s);  \
+      return std::vector<char>(s.begin(), s.end());                                         \
+   }
 
 namespace eosio {
    namespace testing {
