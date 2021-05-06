@@ -1051,6 +1051,9 @@ namespace eosio { namespace chain {
       for (auto& trx : entry.block.transactions) {
          num_trx_pruned += std::visit(pruner, trx.trx);
       }
+      if (num_trx_pruned > 0){
+         entry.block.prune_state = signed_block::prune_state_type::incomplete;
+      }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);
       return num_trx_pruned;
