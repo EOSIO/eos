@@ -85,7 +85,7 @@ try:
 
     prod1_head    = prod1.getHeadBlockNum()
     # on this point head should be already ahead of API node #1, but let's add idle wait just to ensure
-    prod1.waitForBlock(prod1_head + 20)
+    prod1.waitForBlock(prod1_head + 20, errorContext="prod1 stopped producing blocks")
 
     apiNode1 = cluster.getNode(2)
     apiNode1_head = apiNode1.getHeadBlockNum()
@@ -104,7 +104,7 @@ try:
 
     cluster.launchUnstarted(cachePopen=True)
     # waiting to make sure that the launched node has had a chance to start so we know it isn't syncing
-    prod1.waitForBlock(prod1.getHeadBlockNum() + 25)
+    prod1.waitForBlock(prod1.getHeadBlockNum() + 25, errorContext="prod1 stopped producing blocks")
     apiNode2 = cluster.getNode(3)
     # after last recorded block number (rbn2) is made irreversible, verify
     # starting node2 results in connection being made, but no blocks or transactions being sent
@@ -145,7 +145,7 @@ try:
             break
         Print("API Node2 head block = {}".format(apiNode2Head))
         assert apiNode2Head == 1
-        apiNode1.waitForNextBlock(sleepTime=0.5)
+        apiNode1.waitForNextBlock(sleepTime=0.5, errorContext="API Node1 unexpectedly stopped syncing")
         breakTimeout = breakTimeout - 1
     
     assert breakTimeout, Print("API Node1 out of sync")
@@ -162,7 +162,7 @@ try:
     # after last recorded block number (rbn3) is made irreversible, verify 
     # node2 connects to node1
     # node2 starts syncing
-    assert apiNode2.waitForBlock(trans_block_num, reportInterval=1) is not None
+    apiNode2.waitForBlock(trans_block_num, reportInterval=1, errorContext="API Node2 didn't start syncing")
 
     # after node2 is in sync with node1, verify
     # incoming blocks are sent back to node1 --> for this purpose we use apiNode2 to edit security group
@@ -237,7 +237,7 @@ try:
         assert curApiNode1_head == apiNode1_head
         assert curApiNode2_head == apiNode2_head
         
-        prod1.waitForNextBlock(sleepTime=0.5)
+        prod1.waitForNextBlock(sleepTime=0.5, errorContext="prod1 didn't advance")
         breakTimeout = breakTimeout - 1
 
     # after last recorded block number (rbn5) is made irreversible, verify
@@ -251,9 +251,9 @@ try:
     apiNode2.kill(signal.SIGTERM)
     apiNode2.relaunch(cachePopen=True)
     #######################################################################
-    assert apiNode2.waitForBlock(trans_block_num, timeout=240, blockType=BlockType.lib, reportInterval=1) is not None
+    apiNode2.waitForBlock(trans_block_num, timeout=240, blockType=BlockType.lib, reportInterval=1, errorContext="API Node2 didn't sync after restart")
     Print("API Node2 LIB block is now {}".format(trans_block_num))
-    apiNode2.waitForHeadToAdvance()
+    assert apiNode2.waitForHeadToAdvance()
 
     # remove node2 from security group *
     trans = securityGroup.editSecurityGroup(removeNodes=[apiNode2])
@@ -266,11 +266,15 @@ try:
     apiNode2_head = apiNode2.getHeadBlockNum()
     Print("API Node1 head = {} API Node2 head = {}".format(apiNode2_head, apiNode1.getHeadBlockNum()))
     apiNode2_Advancing = False
-    while apiNode1.getIrreversibleBlockNum() < trans_block_num:
+    breakTimeout = 100
+    while breakTimeout > 0:
         temp = apiNode2.getHeadBlockNum()
+        if apiNode1.getIrreversibleBlockNum() >= trans_block_num:
+            break
         if apiNode2_head < temp:
             apiNode2_Advancing = True
             apiNode2_head = temp
+        breakTimeout = breakTimeout - 1
         time.sleep(0.5)
     
     Print("API Node1 head = {} API Node2 head = {}".format(apiNode2_head, apiNode1.getHeadBlockNum()))

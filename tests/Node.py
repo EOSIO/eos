@@ -500,9 +500,9 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, errorContext=None):
         num=self.getBlockNum(blockType=blockType)
-        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime)
+        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime, errorContext=errorContext)
 
     def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
