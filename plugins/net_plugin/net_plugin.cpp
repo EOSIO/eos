@@ -217,7 +217,7 @@ namespace eosio {
    public:
       unique_ptr<tcp::acceptor>        acceptor;
       ssl_context_ptr                  ssl_context;
-      bool                             ssl_enabled;
+      bool                             ssl_enabled{false};
       std::atomic<uint32_t>            current_connection_id{0};
 
       unique_ptr< sync_manager >       sync_master;
