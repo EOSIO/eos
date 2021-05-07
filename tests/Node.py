@@ -6,6 +6,7 @@ import os
 import re
 import json
 import signal
+import requests
 
 from datetime import datetime
 from datetime import timedelta
@@ -322,7 +323,7 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId, delayedRetry=True):
+    def getBlockNumByTransId(self, transId, delayedRetry=True, blocksAhead=1):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
@@ -332,7 +333,7 @@ class Node(object):
         key=""
         try:
             key="[trx][trx][ref_block_num]"
-            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            refBlockNum=trans["trx"]["trx"]["ref_block_num"] 
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))
@@ -347,7 +348,8 @@ class Node(object):
             raise
 
         if Utils.Debug: Utils.Print("Reference block num %d, Head block num: %d" % (refBlockNum, headBlockNum))
-        for blockNum in range(refBlockNum, headBlockNum+1):
+        for blockNum in range(refBlockNum, headBlockNum + blocksAhead):
+            self.waitForBlock(blockNum, sleepTime=0.5)
             if self.isTransInBlock(str(transId), blockNum):
                 if Utils.Debug: Utils.Print("Found transaction %s in block %d" % (transId, blockNum))
                 return blockNum
@@ -358,14 +360,14 @@ class Node(object):
         """Check if transaction (transId) is in a block."""
         assert(transId)
         assert(isinstance(transId, (str,int)))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         return True if blockId else False
 
     def isTransFinalized(self, transId):
         """Check if transaction (transId) has been finalized."""
         assert(transId)
         assert(isinstance(transId, str))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         if not blockId:
             return False
 
@@ -498,9 +500,9 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, errorContext=None):
         num=self.getBlockNum(blockType=blockType)
-        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime)
+        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime, errorContext=errorContext)
 
     def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
@@ -560,8 +562,8 @@ class Node(object):
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head):
-        return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
+    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default()):
+        return self.waitForBlock(blockNum, timeout=timeout, blockType=BlockType.lib)
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False, dontSend=False, expiration=None, skipSign=False):
@@ -1117,7 +1119,7 @@ class Node(object):
     def kill(self, killSignal):
         if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
         assert (self.pid is not None)
-        Utils.Print("Killing node pid: {}", self.pid)
+        Utils.Print("Killing node pid: {}".format(self.pid))
         try:
             if self.popenProc is not None:
                Utils.Print("self.popenProc is not None")
@@ -1721,29 +1723,49 @@ class Node(object):
             startBlockNum = latestBlockNum + 1
         return False
 
-    @staticmethod
-    def parseProducers(nodeNum):
-        """Parse node config file for producers."""
-
-        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
+    def getConfigString(self):
+        configFile=Utils.getNodeConfigDir(self.nodeId, "config.ini")
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
-        configStr=None
-        with open(configFile, 'r') as f:
-            configStr=f.read()
 
+        configStr = None
+        with open(configFile, 'r') as f:
+            configStr = f.read()
+        
+        return configStr
+
+    def getProducers(self):
+        """Parse node config file for producers."""
+        
         pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
-        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
+        producerMatches=re.findall(pattern, self.getConfigString(), re.MULTILINE)
         if producerMatches is None:
             if Utils.Debug: Utils.Print("Failed to find producers.")
             return None
 
         return producerMatches
 
-    def getProducers(self):
-        return Node.parseProducers(self.nodeId)
 
     def getParticipant(self):
         return self.participant
+
+    def getConnections(self):
+        """this method needs net_api_plugin"""
+
+        response = requests.get("http://{}:{}/v1/net/connections".format(self.host, self.port))
+        if Utils.Debug: Utils.Print("net connections response status: {}".format(response.status_code))
+        assert response.status_code == 201
+        jsonObj = json.loads(response.text)
+        if Utils.Debug: Utils.Print("net connections response: {}".format(json.dumps(jsonObj, indent=4, sort_keys=True)))
+        return jsonObj
+
+    def getListenEndpoint(self):
+        pattern=r"^\s*p2p-listen-endpoint\s*=\s*([a-z:0-9\.]+)"
+        match = re.search(pattern, self.getConfigString(), re.MULTILINE)
+
+        assert match and len(match.groups())
+        if Utils.Debug: Utils.Print("getListenEndpoint: entire match: {}".format(match.group()))
+        if Utils.Debug: Utils.Print("getListenEndpoint: returning {}".format(match.group(1)))
+        return match.group(1)
 
     @staticmethod
     def verifyInSync(nodes, maxDelayForABlock = 1):

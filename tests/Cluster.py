@@ -83,7 +83,7 @@ class Cluster(object):
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899
-                 , defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+                 , defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, walletMgr=None):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -100,7 +100,7 @@ class Cluster(object):
         self.localCluster=localCluster
         self.wallet=None
         self.walletd=walletd
-        self.walletMgr=None
+        self.walletMgr=walletMgr
         self.host=host
         self.port=port
         self.walletHost=walletHost
@@ -1720,7 +1720,13 @@ class Cluster(object):
         with open(startFile, 'r') as file:
             cmd=file.read()
             Utils.Print("unstarted local node cmd: %s" % (cmd))
-        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr)
+        pattern=Cluster.pgrepEosServerPattern(nodeId)
+        m=re.search(pattern, cmd, re.MULTILINE)
+        if m is None:
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
+        participant = Cluster.extractParticipant(m.group(2))
+        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, participant=participant)
         if Utils.Debug: Utils.Print("Unstarted Node>", instance)
         return instance
 
@@ -1853,13 +1859,6 @@ class Cluster(object):
             first=lowestMaxes[0]+1
             lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])
 
-    def getAllNodes(self):
-        nodes = []
-        nodes.extend(self.getNodes())
-        if self.biosNode is not None:
-            nodes.append(self.biosNode)
-        return nodes
-
     def reportInfo(self, nodes=None):
         Utils.Print("\n\n\n*****************************")
         Utils.Print("All Nodes current info:")
@@ -1934,6 +1933,6 @@ class Cluster(object):
         if self.securityGroupEnabled:
             for node in self.getAllNodes():
                 Utils.Print("Creating securityGroup with participant: {}".format(node.getParticipant()))
-            return SecurityGroup(self.getAllNodes(), self.eosioAccount, defaultNode=self.nodes[0])
+            return SecurityGroup(self.getAllNodes() + self.unstartedNodes, self.eosioAccount, defaultNode=self.nodes[0])
 
         return None

@@ -67,6 +67,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/generate-certificates.sh ${CMAKE_CURR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_startup_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_startup_network.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_simple_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_simple_network.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_tls_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_tls_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_scenario_3_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_scenario_3_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_forked_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_forked_network.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
@@ -130,6 +131,8 @@ add_test(NAME privacy_simple_network COMMAND tests/privacy_simple_network.py -p 
 set_property(TEST privacy_simple_network PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_tls_test COMMAND tests/privacy_tls_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_tls_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_scenario_3_test COMMAND tests/privacy_scenario_3_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_scenario_3_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_forked_network COMMAND tests/privacy_forked_network.py -p 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_forked_network PROPERTY LABELS nonparallelizable_tests)
 
@@ -201,7 +204,7 @@ set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
 set_property(TEST plugin_http_api_test PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME trace_plugin_test COMMAND tests/trace_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 100)
+set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 150)
 set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(se_tests)

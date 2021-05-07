@@ -85,7 +85,9 @@ class SecurityGroup(object):
             "[[{}]]".format(','.join(['"{}"'.format(node.getParticipant()) for node in nodes]))
 
     # sends actions to add/remove the provided nodes to/from the network's security group
-    def editSecurityGroup(self, addNodes=[], removeNodes=[]):
+    def editSecurityGroup(self, addNodes=[], removeNodes=[], node=None):
+        if node is None:
+            node = self.defaultNode
 
         def copyIfNeeded(nodes):
             # doing deep copy in case the passed in list IS one of our lists, which will be adjusted
@@ -102,17 +104,25 @@ class SecurityGroup(object):
         assert addAction or removeAction, "Called editSecurityGroup and there were neither nodes to add nore remove"
         if addAction:
             Utils.Print("adding {} to the security group".format(addAction))
-            trans = self.defaultNode.pushMessage(self.contractAccount.name, "add", addAction, "--permission eosio@active")
+            succeeded, trans = node.pushMessage(self.contractAccount.name, "add", addAction, "--permission eosio@active")
+            assert succeeded
             Utils.Print("add trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
 
         if removeAction:
             Utils.Print("removing {} from the security group".format(removeAction))
-            trans = self.defaultNode.pushMessage(self.contractAccount.name, "remove", removeAction, "--permission eosio@active")
+            succeeded, trans = node.pushMessage(self.contractAccount.name, "remove", removeAction, "--permission eosio@active")
+            assert succeeded
             Utils.Print("remove trans: {}".format(json.dumps(trans, indent=4, sort_keys=True)))
+        
+        # this is to prevent scenario when 1st transaction block was dropped and transaction appeared in later block
+        # 100% to avoid flackiness there should be LIB wait but for speed we use here just 3 blocks.
+        # if you'll find this part flacky, increase number of blocks
+        node.waitForBlock(int(trans["processed"]["block_num"]) + 3)
 
         self.publishProcessNum += 1
-        self.publishTrans = self.defaultNode.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")[1]
+        succeeded, self.publishTrans = node.pushMessage(self.contractAccount.name, "publish", "[{}]".format(self.publishProcessNum), "--permission eosio@active")
         Utils.Print("publish action trans: {}".format(json.dumps(self.publishTrans, indent=4, sort_keys=True)))
+        assert succeeded
         return self.publishTrans
 
     # verify that the transaction ID is found, and finalized, in every node in the participants list
@@ -133,7 +143,7 @@ class SecurityGroup(object):
     def verifyNonParticipants(self, transId, headAtTransFinalization):
         Utils.Print("Verify non-participants don't receive blocks")
         assert transId
-        publishBlock = self.defaultNode.getBlockIdByTransId(transId)
+        publishBlock = self.defaultNode.getBlockNumByTransId(transId)
 
         # first ensure that enough time has passed that the nonParticipant is not just trailing behind
         prodLib = self.defaultNode.getBlockNum(blockType=BlockType.lib)
