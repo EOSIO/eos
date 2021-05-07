@@ -148,8 +148,6 @@ namespace eosio { namespace chain {
           }};
 
       for (const transaction_receipt &r : transactions){
-         if (!std::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(std::get<packed_transaction>(r.trx).get_prunable_data().prunable_data))
-             return {};
          result.transactions.emplace_back(transaction_receipt_v0{r, std::visit(visitor, r.trx)});
       }
       return result;
