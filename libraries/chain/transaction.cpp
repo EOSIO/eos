@@ -82,23 +82,27 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return fc::time_point::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
-account_name transaction::resource_payer()const {
+account_name transaction::resource_payer(bool is_resource_payer_fp_activated)const {
    account_name resource_payer;
 
-   // Check for the existence of an extension of the type resource_payer
-   auto extensions = validate_and_extract_extensions();
-   bool payer_info_in_extension = false;
+   bool payer_was_set = false;
 
-   if(!extensions.empty()) {
-      auto itr = extensions.lower_bound(resource_payer::extension_id());
-      if(itr != extensions.end()) {
-         const auto& resource_payer_info = std::get<eosio::chain::resource_payer>(itr->second);
-         resource_payer = resource_payer_info.payer;
-         payer_info_in_extension = true;
+   if(is_resource_payer_fp_activated) {
+      // Check for the existence of an extension of the type resource_payer
+      auto extensions = validate_and_extract_extensions();
+
+
+      if(!extensions.empty()) {
+         auto itr = extensions.lower_bound(resource_payer::extension_id());
+         if(itr != extensions.end()) {
+            const auto& resource_payer_info = std::get<eosio::chain::resource_payer>(itr->second);
+            resource_payer = resource_payer_info.payer;
+            payer_was_set = true;
+         }
       }
    }
 
-   if(!payer_info_in_extension) {
+   if(!payer_was_set) {
       resource_payer = first_authorizer();
    }
 

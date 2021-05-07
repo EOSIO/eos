@@ -127,7 +127,7 @@ class WalletMgr(object):
                             portStatus="AVAILABLE"
                         else:
                             portStatus="NOT AVAILABLE"
-                    if Utils.Debug: Utils.Print("%s was not accepted, delaying for %d seconds and trying again. port %d is %s. %s - {%s}" % (cmdDesc, delay, self.port, pgrepCmd, psOut))
+                    if Utils.Debug: Utils.Print("%s was not accepted, delaying for %d seconds and trying again. port %d is %s. %s - {%s}" % (cmdDesc, delay, self.port, portStatus, pgrepCmd, psOut))
                     time.sleep(delay)
                     continue
 
@@ -153,6 +153,7 @@ class WalletMgr(object):
         if accounts:
             self.importKeys(accounts,wallet)
 
+        Utils.Print("Wallet \"%s\" password=%s." % (name, p.encode("utf-8")))
         return wallet
 
     def importKeys(self, accounts, wallet, ignoreDupKeyWarning=False):

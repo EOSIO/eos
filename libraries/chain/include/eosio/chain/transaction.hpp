@@ -129,7 +129,7 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      account_name resource_payer()const;
+      account_name resource_payer(bool)const;
       std::optional<resource_payer_t> resource_payer_info() const;
       bool has_resource_payer() const;
 
