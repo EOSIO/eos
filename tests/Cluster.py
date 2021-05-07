@@ -584,8 +584,7 @@ class Cluster(object):
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile or configSecurityGroup:
-            delayProductionTransfer = 35 if configSecurityGroup else None # when TLS delay is analyzed, then this delay and ignoring of useBiosBootFile can be removed
-            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf, delayProductionTransfer=delayProductionTransfer)
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
