@@ -78,12 +78,13 @@ try:
     Utils.Print("\n\n\n\n\nNext Round of Info:")
     cluster.reportInfo()
 
+    cluster.biosNode.kill(signal.SIGTERM)
+
     producers = [cluster.getNode(x) for x in range(pnodes) ]
 
     securityGroup = cluster.getSecurityGroup()
     cluster.reportInfo()
 
-    cluster.biosNode.kill(signal.SIGTERM)
 
     producerOrder = []
     node = producers[0]
