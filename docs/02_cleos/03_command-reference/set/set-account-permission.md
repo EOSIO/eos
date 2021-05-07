@@ -81,6 +81,21 @@ executed transaction: ab5752ecb017f166d56e7f4203ea02631e58f06f2e0b67103b71874f60
 #         eosio <= eosio::updateauth            {"account":"alice","permission":"active","parent":"owner","auth":{"threshold":1,"keys":[{"key":"E...
 ```
 
+3. Add a custom permission to the **alice** account
+```shell
+cleos set account permission alice customp EOS58wmANoBtT7RdPgMRCGDb37tcCQswfwVpj6NzC55D247tTMU9D active -p alice@active
+```
+**Where**
+`alice` = The name of the account you are adding a custom permssion to.
+`customp`= The name of the custom permission.
+`EOS58wmANoBtT7RdPgMRCGDb37tcCQswfwVpj6NzC55D247tTMU9D` = The public key of the custom permssion. 
+`active` = The parent of the custom permssion.
+`-p alice@active` = The permission used to authorize the transaction.
+
+**Example Output**
+```shell
+executed transaction: 69c5297571ce3503edb9a1fd8a2f2a5cc1805ad19197a8751ca09093487c3cf8  160 bytes  134 us
+#         eosio <= eosio::updateauth            {"account":"alice","permission":"customp","parent":"active","auth":{"threshold":1,"keys":[{"key":"EOS...```
 
 ## See Also
 - [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
