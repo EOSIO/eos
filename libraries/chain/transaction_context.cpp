@@ -116,7 +116,7 @@ namespace eosio { namespace chain {
       // check for resource_payer extension
       bool has_res_pyr = false;
       resource_payer res_pyr;
-      if( control.is_builtin_activated(builtin_protocol_feature_t::transaction_sponsorship) ) {
+      if( control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) ) {
          if (trx.transaction_extensions.size() > 0) {
             std::find_if(trx.transaction_extensions.begin(), trx.transaction_extensions.end(),
                          [&](auto &elem) {

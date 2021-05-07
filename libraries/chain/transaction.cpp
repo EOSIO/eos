@@ -82,12 +82,12 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return fc::time_point::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
-account_name transaction::resource_payer(bool is_transaction_sponsorship_fp_activated)const {
+account_name transaction::resource_payer(bool is_resource_payer_fp_activated)const {
    account_name resource_payer;
 
    bool payer_was_set = false;
 
-   if(is_transaction_sponsorship_fp_activated) {
+   if(is_resource_payer_fp_activated) {
       // Check for the existence of an extension of the type resource_payer
       auto extensions = validate_and_extract_extensions();
 
