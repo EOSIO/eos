@@ -3436,11 +3436,11 @@ namespace eosio {
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
 
-         auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
-         auto blk_span = fc_create_span( blk_trace, "Accepted" );
-         fc_add_tag( blk_span, "block_id", bs->id );
-         fc_add_tag( blk_span, "block_num", bs->block_num );
-         fc_add_tag( blk_span, "block_time", bs->block->timestamp.to_time_point() );
+         // auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
+         // auto blk_span = fc_create_span( blk_trace, "Accepted" );
+         // fc_add_tag( blk_span, "block_id", bs->id );
+         // fc_add_tag( blk_span, "block_num", bs->block_num );
+         // fc_add_tag( blk_span, "block_time", bs->block->timestamp.to_time_point() );
 
          dispatcher->bcast_block( bs->block, bs->id );
       });

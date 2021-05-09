@@ -70,6 +70,14 @@ struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    void start();
 };
 
+namespace {
+   std::string to_string(const eosio::checksum256& cs) {
+      auto bytes = cs.extract_as_byte_array();
+      return fc::to_hex((const char*)bytes.data(), bytes.size());
+   }
+} // namespace
+
+
 struct cloner_session : ship_client::connection_callbacks, std::enable_shared_from_this<cloner_session> {
    cloner_plugin_impl*                  my = nullptr;
    std::shared_ptr<cloner_config>       config;
@@ -161,6 +169,12 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->head && result.this_block->block_num > rodeos_snapshot->head + 1)
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
+      auto trace_id  = result.this_block->block_id.data()[3];
+      auto token     = fc::zipkin_span::token{ trace_id, trace_id };
+      auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
+      fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+      fc_add_tag( blk_span, "block_num", result.this_block->block_num );
+
       rodeos_snapshot->start_block(result);
       if (result.this_block->block_num <= rodeos_snapshot->head)
          reported_block = false;
@@ -173,10 +187,17 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
                     "i", result.this_block->block_num <= result.last_irreversible.block_num ? "irreversible" : ""));
       reported_block = true;
 
-      rodeos_snapshot->write_block_info(result);
-      rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
+      {
+         auto write_block_info_span = fc_create_span(blk_span, "write_block_info");
+         rodeos_snapshot->write_block_info(result);
+      }
+      {
+         auto write_deltas_span = fc_create_span(blk_span, "write_deltas");
+         rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
+      }
 
       if (filter) {
+         auto filter_span = fc_create_span(blk_span, "filter");
          if (my->streamer)
             my->streamer->start_block(result.this_block->block_num);
          filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {

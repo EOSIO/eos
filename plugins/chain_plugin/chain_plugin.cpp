@@ -3024,7 +3024,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -3177,7 +3177,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());
