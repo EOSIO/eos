@@ -133,7 +133,7 @@ private:
       fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, reply_to, correlation_id, trx]
+                [my=shared_from_this(), token=fc_get_token(trx_trace), delivery_tag, reply_to, correlation_id, trx]
                 (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
             auto trx_span = fc_create_span_from_token(token, "Processed");
             fc_add_tag(trx_span, "trx_id", trx->id());
