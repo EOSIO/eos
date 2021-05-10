@@ -453,20 +453,19 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      // auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
-      // auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+      auto ship_trace  = fc_create_trace_with_id("SHiP-Accepted", block_state->id);
 
-      auto trace_id  = block_state->id._hash[3];
-      auto token     = fc::zipkin_span::token{ trace_id, trace_id };
-      auto blk_span  = fc_create_span_from_token(token, "SHiP-Accepted");
-
-      fc_add_tag(blk_span, "block_id", block_state->id);
-      fc_add_tag(blk_span, "block_num", block_state->block_num);
-      fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());
-      if (trace_log)
+      fc_add_tag(ship_trace, "block_id", block_state->id);
+      fc_add_tag(ship_trace, "block_num", block_state->block_num);
+      fc_add_tag(ship_trace, "block_time", block_state->block->timestamp.to_time_point());
+      if (trace_log) {
+         auto trace_log_span = fc_create_span(ship_trace, "store_trace_log");
          trace_log->store(chain_plug->chain().db(), block_state);
-      if (chain_state_log)
+      }
+      if (chain_state_log) {
+         auto delta_log_span = fc_create_span(ship_trace, "store_delta_log");
          chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+      }
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
