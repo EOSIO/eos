@@ -11,7 +11,7 @@ struct block_log_config {
    bfs::path retained_dir;
    bfs::path archive_dir;
    uint32_t  stride                  = UINT32_MAX;
-   uint16_t  max_retained_files      = 10;
+   uint32_t  max_retained_files      = UINT32_MAX;
    bool      fix_irreversible_blocks = false;
 };
 
