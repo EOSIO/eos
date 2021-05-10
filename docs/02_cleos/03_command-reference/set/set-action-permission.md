@@ -6,7 +6,7 @@ cleos set action permission [OPTIONS] account code type requirement
 * account = The account to set/delete a permission authority for.
 * code = The account that owns the code for the action.
 * type =  The name of the action, note permissions must be set per action.
-* requirement = To remove a permission use NULL, To set or update the permission use the name of the permission name required for executing the given action.
+* requirement = To remove a permission use NULL, To set or update the permission use the name of the permission required for executing the given action.
 
 **Note**: The arguments and options enclosed in square brackets are optional.
 
