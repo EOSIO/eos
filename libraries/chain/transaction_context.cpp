@@ -231,6 +231,9 @@ namespace eosio { namespace chain {
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
       const transaction& trx = packed_trx.get_transaction();
+      if( !control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) && trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
+      }
 
       published = control.pending_block_time();
       init( initial_net_usage );
@@ -241,6 +244,9 @@ namespace eosio { namespace chain {
                                                  bool skip_recording )
    {
       const transaction& trx = packed_trx.get_transaction();
+      if( !control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) && trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
 
       const auto& cfg = control.get_global_properties().configuration;
 
@@ -271,6 +277,9 @@ namespace eosio { namespace chain {
                                                                    bool skip_recording )
    {
       const transaction& trx = packed_trx.get_transaction();
+      if( !control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) && trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
 
       explicit_net_usage = true;
       net_usage = (static_cast<uint64_t>(explicit_net_usage_words) * 8);
@@ -389,14 +398,14 @@ namespace eosio { namespace chain {
 
       update_billed_cpu_time( now );
 
-      auto res_pyr = packed_trx.get_transaction().resource_payer_info();
+      auto res_pyr = packed_trx.get_transaction().resource_payer_info( control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
 
       validate_cpu_usage_to_bill( billed_cpu_time_us, account_cpu_limit, true, res_pyr );
 
       rl.add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
                                 block_timestamp_type(control.pending_block_time()).slot,
                                 res_pyr && use_resource_payer_cpu_limit,
-                                res_pyr && use_resource_payer_net_limit ); // Should never fail
+                                res_pyr && use_resource_payer_net_limit );
    }
 
    void transaction_context::squash() {
@@ -454,7 +463,8 @@ namespace eosio { namespace chain {
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
       } else if( deadline_exception_code == resource_payer_cpu_exceeded::code_value ) {
          EOS_THROW( resource_payer_cpu_exceeded,
-                     "transaction was unable to complete within resource payer CPU limit ${billing_timer}us",
+                     "transaction was unable to complete within resource payer CPU limit ${billing_timer}us, "
+                     "now ${now}, deadline ${deadline}, start ${start}",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
       }
       EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );

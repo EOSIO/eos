@@ -205,14 +205,16 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          if ( use_resource_payer_cpu_limit ) {
             EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
                         resource_payer_cpu_exceeded,
-                        "resource payer account '${n}' has insufficient cpu resources for this transaction",
+                        "resource payer account '${n}' has insufficient cpu resources for this transaction, "
+                        "used '${cpu_used_in_window}', max '${max_user_use_in_window}'",
                         ("n", name(a))
                         ("cpu_used_in_window",cpu_used_in_window)
                         ("max_user_use_in_window",max_user_use_in_window) );
          } else {
             EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
                         tx_cpu_usage_exceeded,
-                        "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                        "authorizing account '${n}' has insufficient cpu resources for this transaction, "
+                        "used '${cpu_used_in_window}', max '${max_user_use_in_window}'",
                         ("n", name(a))
                         ("cpu_used_in_window",cpu_used_in_window)
                         ("max_user_use_in_window",max_user_use_in_window) );
@@ -233,14 +235,16 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          if ( use_resource_payer_net_limit ) {
             EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
                         resource_payer_net_exceeded,
-                        "resource payer account '${n}' has insufficient net resources for this transaction",
+                        "resource payer account '${n}' has insufficient net resources for this transaction, "
+                        "used '${net_used_in_window}', max '${max_user_use_in_window}'",
                         ("n", name(a))
                         ("net_used_in_window",net_used_in_window)
                         ("max_user_use_in_window",max_user_use_in_window) );
          } else {
             EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
                         tx_net_usage_exceeded,
-                        "authorizing account '${n}' has insufficient net resources for this transaction",
+                        "authorizing account '${n}' has insufficient net resources for this transaction, "
+                        "used '${net_used_in_window}', max '${max_user_use_in_window}'",
                         ("n", name(a))
                         ("net_used_in_window",net_used_in_window)
                         ("max_user_use_in_window",max_user_use_in_window) );

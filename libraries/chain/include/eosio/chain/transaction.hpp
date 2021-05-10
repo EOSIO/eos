@@ -47,9 +47,9 @@ namespace eosio { namespace chain {
 
       account_name payer;
 
-      uint64_t max_net_bytes;
-      uint64_t max_cpu_us;
-      uint64_t max_memory_bytes;
+      uint64_t max_net_bytes = 0;
+      uint64_t max_cpu_us = 0;
+      uint64_t max_memory_bytes = 0;
    };
 
    using resource_payer_t = struct resource_payer;
