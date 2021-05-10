@@ -18,6 +18,7 @@ from testUtils import Account
 from testUtils import BlockLogAction
 from Node import BlockType
 from Node import Node
+from SecurityGroup import SecurityGroup
 from WalletMgr import WalletMgr
 
 # Protocol Feature Setup Policy
@@ -82,7 +83,7 @@ class Cluster(object):
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899
-                 , defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+                 , defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, walletMgr=None):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -99,7 +100,7 @@ class Cluster(object):
         self.localCluster=localCluster
         self.wallet=None
         self.walletd=walletd
-        self.walletMgr=None
+        self.walletMgr=walletMgr
         self.host=host
         self.port=port
         self.walletHost=walletHost
@@ -120,6 +121,8 @@ class Cluster(object):
         self.filesToCleanup=[]
         self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
         self.biosNode = None
+
+        self.securityGroupEnabled = False
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -159,6 +162,46 @@ class Cluster(object):
                 self.alternateVersionLabels[label]=path
                 if Utils.Debug: Utils.Print("Version label \"%s\" maps to \"%s\"" % (label, path))
 
+    @staticmethod
+    def generateCertificates(directoryName, certNumber):
+        """
+        Generates TLS certificates
+        directoryName: directory where to save certificates, it will be created in Utils.ConfigDir
+        """
+        #path is relative
+        privacyDir=os.path.join(Utils.ConfigDir, directoryName)
+        if not os.path.isdir(privacyDir):
+            if Utils.Debug: Utils.Print("creating dir {} in dir: {}".format(privacyDir, os.getcwd()))
+            os.mkdir(privacyDir)
+        
+        old_cwd=os.getcwd()
+        os.chdir(privacyDir)
+        if Utils.Debug: Utils.Print("change to dir: {}".format(os.getcwd()))
+        genCertScript=os.path.join(old_cwd, "tests", "generate-certificates.sh")
+        cmd = "{} --days 1 --CA-org Block.one --CA-CN test-domain --org-mask node{{NUMBER}} --cn-mask test-domain{{NUMBER}} --group-size {} --use-RSA".format(genCertScript, certNumber)
+        rtn = Utils.runCmdReturnStr(cmd, silentErrors=False)
+
+        with open("generate.log", 'w') as f:
+            f.write("executed cmd: {}".format(cmd))
+            f.write("=========================")
+            f.write("OUTPUT")
+            f.write("=========================")
+            f.write("{}".format(rtn))
+        os.chdir(old_cwd)
+        if Utils.Debug: Utils.Print("changed back to dir: {}".format(os.getcwd()))
+    
+    @staticmethod
+    def getPrivacyArguments(privacyDir, index):
+        """
+        Generates TLS arguments for nodeos
+        """
+        privacyDir=os.path.join(Utils.ConfigDir, privacyDir)
+        participantName = Node.participantName(index+1)
+        certAuth = os.path.join(privacyDir, "CA_cert.pem")
+        nodeCert = os.path.join(privacyDir, "{}.crt".format(participantName))
+        nodeKey = os.path.join(privacyDir, "{}_key.pem".format(participantName))
+        return "--p2p-tls-own-certificate-file {} --p2p-tls-private-key-file {} --p2p-tls-security-group-ca-file {}".format(nodeCert, nodeKey, certAuth)
+
     # launch local nodes and set self.nodes
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
@@ -166,7 +209,8 @@ class Cluster(object):
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, sharedProducers=0, extraNodeosArgs="", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
-               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True, manualProducerNodeConf={}):
+               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True, manualProducerNodeConf={},
+               configSecurityGroup=False, printInfo=False):
         """Launch cluster.
         pnodes: producer nodes count
         unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
@@ -189,8 +233,14 @@ class Cluster(object):
         associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
         loadSystemContract: indicate whether the eosio.system contract should be loaded (setting this to False causes useBiosBootFile to be treated as False)
         manualProducerNodeConf: additional producer public keys which is not automatically generated by launcher
+        configSecurityGroup: configure the network for TLS and setup a certificate authority so the security group can be used
+        printInfo: prints information about cluster
         """
-        assert(isinstance(topo, str))
+        if printInfo:
+            Utils.Print("SERVER: {}".format(self.host))
+            Utils.Print("PORT: {}".format(self.port))
+
+        assert(isinstance(topo, (str,dict)))
         assert PFSetupPolicy.isValid(pfSetupPolicy)
         if alternateVersionLabelsFile is not None:
             assert(isinstance(alternateVersionLabelsFile, str))
@@ -213,6 +263,28 @@ class Cluster(object):
             raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
         if pnodes + unstartedNodes > totalNodes:
             raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d) + unstartedNodes(%d)." % (totalNodes, pnodes, unstartedNodes))
+
+        def insertSpecificExtraNodeosArgs(node, insertStr):
+            arg = specificExtraNodeosArgs.get(node, "")
+            specificExtraNodeosArgs[node] = arg + " " + insertStr
+
+        if configSecurityGroup:
+            self.securityGroupEnabled = True
+            Cluster.generateCertificates("privacy", totalNodes + 1)
+            
+            if specificExtraNodeosArgs is None:
+                specificExtraNodeosArgs = {}
+            
+            for node in range(totalNodes):
+                arguments = Cluster.getPrivacyArguments("privacy", node)
+                if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
+                insertSpecificExtraNodeosArgs(node, arguments)
+
+            arguments = Cluster.getPrivacyArguments("privacy", totalNodes)
+            if Utils.Debug: Utils.Print("adding arguments: {}".format(arguments))
+            biosNodeNum = -1
+            insertSpecificExtraNodeosArgs(biosNodeNum, arguments)
+
 
         if self.walletMgr is None:
             self.walletMgr=WalletMgr(True)
@@ -254,12 +326,11 @@ class Cluster(object):
             specificExtraNodeosArgs = {}
 
         for node, conf in manualProducerNodeConf.items():
-            arg = specificExtraNodeosArgs.get(node, "")
             account = conf['key']
-            arg = arg + " --plugin eosio::producer_plugin --signature-provider {}=KEY:{} ".format(account.ownerPublicKey, account.ownerPrivateKey)
+            arg = "--plugin eosio::producer_plugin --signature-provider {}=KEY:{} ".format(account.ownerPublicKey, account.ownerPrivateKey)
             for name in conf['names']:
                 arg = arg + "--producer-name {} ".format(name)
-            specificExtraNodeosArgs[node] = arg
+            insertSpecificExtraNodeosArgs(node, arg)
 
         Utils.Print("specificExtraNodeosArgs=", specificExtraNodeosArgs)
 
@@ -304,25 +375,66 @@ class Cluster(object):
                 cmdArr.append("--spcfc-inst-nodeos")
                 cmdArr.append(path)
 
-        # must be last cmdArr.append before subprocess.call, so that everything is on the command line
-        # before constructing the shape.json file for "bridge"
-        if topo=="bridge":
-            shapeFilePrefix="shape_bridge"
-            shapeFile=shapeFilePrefix+".json"
+        def createDefaultShapeFile(newFile, cmdArr):
             cmdArrForOutput=copy.deepcopy(cmdArr)
+            cmdArrForOutput.append("--shape")
+            cmdArrForOutput.append("ring")
             cmdArrForOutput.append("--output")
-            cmdArrForOutput.append(shapeFile)
-            s=" ".join(cmdArrForOutput)
+            cmdArrForOutput.append(newFile)
+            s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArrForOutput.copy()])
             if Utils.Debug: Utils.Print("cmd: %s" % (s))
             if 0 != subprocess.call(cmdArrForOutput):
-                Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
+                Utils.Print("ERROR: Launcher failed to create shape file \"{}\".".format(newFile))
                 return False
 
-            Utils.Print("opening %s shape file: %s, current dir: %s" % (topo, shapeFile, os.getcwd()))
-            f = open(shapeFile, "r")
-            shapeFileJsonStr = f.read()
-            f.close()
-            shapeFileObject = json.loads(shapeFileJsonStr)
+            Utils.Print("opening shape file: {}, current dir: {}".format(newFile, os.getcwd()))
+            with open(newFile, 'r') as f:
+                newFileJsonStr = f.read()
+            return json.loads(newFileJsonStr)
+
+        testnetPrefix = "testnet_"
+        def getTestnetNodeNum(nodeName):
+            p=re.compile(r'^{}(\d+)$'.format(testnetPrefix))
+            m=p.match(nodeName)
+            return int(m.group(1))
+
+        if isinstance(topo, dict):
+            if Utils.Debug: Utils.Print("Creating custom shape topology with the following node connections: {}".format(json.dumps(topo, indent=4, sort_keys=True)))
+            customShapeFile=os.path.join(Utils.ConfigDir, "customShape.json")
+            customShapeFileObject = createDefaultShapeFile(customShapeFile, cmdArr)
+            nodeArray = customShapeFileObject["nodes"]
+            for nodePair in nodeArray:
+                assert(len(nodePair)==2)
+                nodeName=nodePair[0]
+                nodeObject=nodePair[1]
+                if nodeName == "bios":
+                    continue
+                nodeNum=getTestnetNodeNum(nodeName)
+                customShapePeers = []
+                if nodeNum not in topo:
+                    if Utils.Debug: Utils.Print("node name: {} was not included in the topo structure: {}".format(nodeName, topo))
+                    nodeObject["peers"] = customShapePeers
+                    continue
+                peers = topo[nodeNum]
+                Utils.Print("nodeNum: {}, peers: {}".format(nodeNum, peers))
+                for peer in peers:
+                    Utils.Print("peer: {}".format(peer))
+                    assert(peer < totalNodes)
+                    customShapePeers.append("{}{:02}".format(testnetPrefix, peer))
+                nodeObject["peers"] = customShapePeers
+
+            with open(customShapeFile, 'w') as f:
+                f.write(json.dumps(customShapeFileObject, indent=4, sort_keys=True))
+
+            cmdArr.append("--shape")
+            cmdArr.append(customShapeFile)
+
+        # must be last cmdArr.append before subprocess.call, so that everything is on the command line
+        # before constructing the shape.json file for "bridge"
+        elif topo=="bridge":
+            shapeFilePrefix="shape_bridge"
+            shapeFile=shapeFilePrefix+".json"
+            shapeFileObject = createDefaultShapeFile(shapeFile, cmdArr)
             Utils.Print("shapeFileObject=%s" % (shapeFileObject))
             # retrieve the nodes, which as a map of node name to node definition, which the fc library prints out as
             # an array of array, the first level of arrays is the pair entries of the map, the second is an array
@@ -351,11 +463,6 @@ class Cluster(object):
 
             Utils.Print("producers=%s" % (producers))
             shapeFileNodeMap = {}
-            def getNodeNum(nodeName):
-                p=re.compile(r'^testnet_(\d+)$')
-                m=p.match(nodeName)
-                return int(m.group(1))
-
             for shapeFileNodePair in shapeFileNodes:
                 assert(len(shapeFileNodePair)==2)
                 nodeName=shapeFileNodePair[0]
@@ -365,7 +472,7 @@ class Cluster(object):
                 if nodeName=="bios":
                     biosNodeObject=shapeFileNode
                     continue
-                nodeNum=getNodeNum(nodeName)
+                nodeNum=getTestnetNodeNum(nodeName)
                 Utils.Print("nodeNum=%d, shapeFileNode=%s" % (nodeNum, shapeFileNode))
                 assert("producers" in shapeFileNode)
                 shapeFileNodeProds=shapeFileNode["producers"]
@@ -456,6 +563,8 @@ class Cluster(object):
         if onlyBios:
             self.nodes=[biosNode]
 
+        self.totalNodes = totalNodes
+
         # ensure cluster node are inter-connected by ensuring everyone has block 1
         Utils.Print("Cluster viability smoke test. Validate every cluster node has block 1. ")
         if not self.waitOnClusterBlockNumSync(1):
@@ -474,7 +583,7 @@ class Cluster(object):
         Utils.Print("Bootstrap cluster.")
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
-        if onlyBios or not useBiosBootFile:
+        if onlyBios or not useBiosBootFile or configSecurityGroup:
             self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
@@ -617,16 +726,17 @@ class Cluster(object):
         return ret
 
     @staticmethod
-    def getClientVersion(verbose=False):
+    def getClientVersion(fullVersion=False):
         """Returns client version (string)"""
-        p = re.compile(r'^Build version:\s(\w+)\n$')
+        p = re.compile(r'^v?(.+)\n$')
         try:
             cmd="%s version client" % (Utils.EosClientPath)
-            if verbose: Utils.Print("cmd: %s" % (cmd))
+            if fullVersion: cmd="%s version full" % (Utils.EosClientPath) 
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             response=Utils.checkOutput(cmd.split())
             assert(response)
             assert(isinstance(response, str))
-            if verbose: Utils.Print("response: <%s>" % (response))
+            if Utils.Debug: Utils.Print("response: <%s>" % (response))
             m=p.match(response)
             if m is None:
                 Utils.Print("ERROR: client version regex mismatch")
@@ -950,24 +1060,6 @@ class Cluster(object):
         return producerKeys
 
     @staticmethod
-    def parseProducers(nodeNum):
-        """Parse node config file for producers."""
-
-        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
-        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
-        configStr=None
-        with open(configFile, 'r') as f:
-            configStr=f.read()
-
-        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
-        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
-        if producerMatches is None:
-            if Utils.Debug: Utils.Print("Failed to find producers.")
-            return None
-
-        return producerMatches
-
-    @staticmethod
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
 
@@ -1081,7 +1173,7 @@ class Cluster(object):
 
         return biosNode
 
-    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True, manualProducerNodeConf=[]):
+    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True, manualProducerNodeConf=[], delayProductionTransfer=None):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -1211,6 +1303,10 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                 Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
                 opts="--permission eosio@active"
+
+                if delayProductionTransfer:
+                    time.sleep(delayProductionTransfer)
+
                 # pylint: disable=redefined-variable-type
                 trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
                 if trans is None or not trans[0]:
@@ -1412,6 +1508,21 @@ class Cluster(object):
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
 
+    @staticmethod
+    def extractParticipant(pgrepStr):
+        pattern = r"\s--p2p-tls-own-certificate-file(?:\s+.*?/|\s+)(node[1-5](?:.[1-5])*).crt"
+        m = re.search(pattern, pgrepStr, re.MULTILINE)
+        if m is not None:
+            Utils.Print("FOUND participant: {}, pgrepStr: {}".format(m.group(1), pgrepStr))
+            return m.group(1)
+
+        pattern = r"\s--p2p-tls-own-certificate-file"
+        m = re.search(pattern, pgrepStr, re.MULTILINE)
+        if m is not None:
+            Utils.Print("FOUND participant start: {}".format(m.group(0)))
+
+        return None
+
     # Populate a node matched to actual running instance
     def discoverLocalNode(self, nodeNum, psOut=None, timeout=None):
         if psOut is None:
@@ -1424,7 +1535,8 @@ class Cluster(object):
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
-        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+        participant = Cluster.extractParticipant(m.group(2))
+        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, participant=participant)
         if Utils.Debug: Utils.Print("Node>", instance)
         return instance
 
@@ -1437,7 +1549,8 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
         else:
-            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+            participant = Cluster.extractParticipant(m.group(2))
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, participant=participant)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1502,7 +1615,7 @@ class Cluster(object):
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
-    def killall(self, kill=True, silent=True, allInstances=False):
+    def killall(self, kill=True, silent=True, allInstances=False, cleanup=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
         signalNum=9 if kill else 15
         cmd="%s -k %d" % (Utils.EosLauncherPath, signalNum)
@@ -1524,6 +1637,9 @@ class Cluster(object):
                     os.kill(node.pid, signal.SIGKILL)
             except OSError as _:
                 pass
+        
+        if cleanup:
+            self.cleanup()
 
     def bounce(self, nodes, silent=True):
         """Bounces nodeos instances as indicated by parameter nodes.
@@ -1603,7 +1719,13 @@ class Cluster(object):
         with open(startFile, 'r') as file:
             cmd=file.read()
             Utils.Print("unstarted local node cmd: %s" % (cmd))
-        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr)
+        pattern=Cluster.pgrepEosServerPattern(nodeId)
+        m=re.search(pattern, cmd, re.MULTILINE)
+        if m is None:
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
+        participant = Cluster.extractParticipant(m.group(2))
+        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, participant=participant)
         if Utils.Debug: Utils.Print("Unstarted Node>", instance)
         return instance
 
@@ -1735,3 +1857,81 @@ class Cluster(object):
         while len(lowestMaxes)>0 and compareCommon(blockLogs, blockNameExtensions, first, lowestMaxes[0]):
             first=lowestMaxes[0]+1
             lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])
+
+    def reportInfo(self, nodes=None):
+        Utils.Print("\n\n\n*****************************")
+        Utils.Print("All Nodes current info:")
+        if nodes is None:
+            nodes = self.getAllNodes()
+        assert isinstance(nodes, list)
+        for node in nodes:
+            Utils.Print("Info: {}".format(json.dumps(node.getInfo(), indent=4, sort_keys=True)))
+        Utils.Print("\n*****************************")
+
+    def verifyInSync(self, sourceNodeNum=0, specificNodes=None):
+        assert isinstance(sourceNodeNum, int)
+        desc = "provided " if specificNodes else ""
+
+        if specificNodes is None:
+            specificNodes = self.getAllNodes()
+        assert sourceNodeNum < len(specificNodes)
+        Utils.Print("Ensure all {}nodes are in-sync".format(desc))
+        source = specificNodes[sourceNodeNum]
+        lib = source.getInfo()["last_irreversible_block_num"]
+        headBlockNum = source.getBlockNum()
+        headBlock = source.getBlock(headBlockNum)
+        Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
+        headBlockId = headBlock["id"]
+        error = None
+        for node in specificNodes:
+            if node.waitForBlock(headBlockNum, reportInterval = 1) is None:
+                error = "Node failed to get block number {}. Current node info: {}".format(headBlockNum, json.dumps(node.getInfo(), indent=4, sort_keys=True))
+                break
+
+            if node.waitForNextBlock() is None:
+                error = "Node failed to advance head. Current node info: {}".format(json.dumps(node.getInfo(), indent=4, sort_keys=True))
+                break
+
+            if node.getBlock(headBlockId) is None:
+                error = "Producer node has block number: {}, but it is not id: {}. Block: {}".format(headBlockNum, headBlockId, json.dumps(node.getBlock(headBlockNum), indent=4, sort_keys=True))
+                break
+
+            if node.waitForBlock(lib, blockType=BlockType.lib) is None:
+                error = "Producer node is failing to advance its lib ({}) with producer {} ({})".format(node.getInfo()["last_irreversible_block_num"], producerNum, lib)
+                break
+
+            Utils.Print("Ensure all nodes are advancing lib")
+            if node.waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) == None:
+                error = "Producer node failed to advance lib ahead one block to: {}".format(lib + 1)
+                break
+
+        if error:
+            self.reportInfo()
+            Utils.errorExit(error)
+
+    def getParticipantNum(self, nodeToIdentify):
+        for num, node in zip(range(len(self.nodes)), self.nodes):
+            if node == nodeToIdentify:
+                return num
+        assert nodeToIdentify == self.biosNode
+        return self.totalNodes
+
+    def getProducingNodeIndex(self, blockProducer):
+        featureProdNum = 0
+        while featureProdNum < pnodes:
+            if blockProducer in self.nodes[featureProdNum].getProducers():
+                return featureProdNum
+
+            featureProdNum += 1
+
+        assert blockProducer in self.biosNode.getProducers(), "Checked all nodes but could not find producer: {}".format(blockProducer)
+        return "bios"
+
+    def getSecurityGroup(self, require=True):
+        assert not require or self.securityGroupEnabled, "Need to launch Cluster with configSecurityGroup=True to create a SecurityGroup"
+        if self.securityGroupEnabled:
+            for node in self.getAllNodes():
+                Utils.Print("Creating securityGroup with participant: {}".format(node.getParticipant()))
+            return SecurityGroup(self.getAllNodes() + self.unstartedNodes, self.eosioAccount, defaultNode=self.nodes[0])
+
+        return None

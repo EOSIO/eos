@@ -551,10 +551,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                }
                if (_pending_block_mode == pending_block_mode::producing) {
-                  fc_dlog(_trx_successful_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
-                          ("block_num", chain.head_block_num() + 1)
-                          ("prod", get_pending_block_producer())
-                          ("txid", trx->id()));
+                    fc_dlog(_trx_successful_trace_log,
+                            "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}, auth: ${a}",
+                            ("block_num", chain.head_block_num() + 1)
+                            ("prod", get_pending_block_producer())
+                            ("txid", trx->id())
+                            ("a", trx->packed_trx()->get_transaction().first_authorizer()));
 
                   if (_trx_trace_success_log.is_enabled(fc::log_level::debug)) {
                        auto entire_trace = chain_plug->get_entire_trx_trace(std::get<transaction_trace_ptr>(response) );

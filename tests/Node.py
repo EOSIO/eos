@@ -6,6 +6,7 @@ import os
 import re
 import json
 import signal
+import requests
 
 from datetime import datetime
 from datetime import timedelta
@@ -29,7 +30,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None):
+    def __init__(self, host, port, nodeId, pid=None, cmd=None, walletMgr=None, participant=None):
         self.host=host
         self.port=port
         self.pid=pid
@@ -48,6 +49,8 @@ class Node(object):
         self.transCache={}
         self.walletMgr=walletMgr
         self.missingTransaction=False
+        self.participant=participant
+        if participant is not None: Utils.Print("Creating participant: {}".format(participant))
         self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
 
     def eosClientArgs(self):
@@ -55,7 +58,11 @@ class Node(object):
         return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
-        return "Host: %s, Port:%d, NodeNum:%s, Pid:%s" % (self.host, self.port, self.nodeId, self.pid)
+        participantStr = ", Participant: {}".format(self.participant) if self.participant else ""
+        return "Host: {}, Port:{}, NodeNum: {}, Pid: {}{}".format(self.host, self.port, self.nodeId, self.pid, participantStr)
+
+    def __eq__(self, obj):
+        return isinstance(obj, Node) and str(self) == str(obj)
 
     @staticmethod
     def validateTransaction(trans):
@@ -230,6 +237,10 @@ class Node(object):
         msg="(block %s=%s)" % (numOrId, blockNumOrId)
         return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
 
+    def getHeadOrLib(self, blockType=BlockType.head, silentErrors=False, exitOnError=False):
+        blockNum = self.getBlockNum(blockType=blockType)
+        return self.getBlock(blockNum, silentErrors=silentErrors, exitOnError=exitOnError)
+
     def isBlockPresent(self, blockNum, blockType=BlockType.head):
         """Does node have head_block_num/last_irreversible_block_num >= blockNum"""
         assert isinstance(blockNum, int)
@@ -312,7 +323,7 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId, delayedRetry=True):
+    def getBlockNumByTransId(self, transId, delayedRetry=True, blocksAhead=1):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
@@ -322,7 +333,7 @@ class Node(object):
         key=""
         try:
             key="[trx][trx][ref_block_num]"
-            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            refBlockNum=trans["trx"]["trx"]["ref_block_num"] 
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))
@@ -337,7 +348,8 @@ class Node(object):
             raise
 
         if Utils.Debug: Utils.Print("Reference block num %d, Head block num: %d" % (refBlockNum, headBlockNum))
-        for blockNum in range(refBlockNum, headBlockNum+1):
+        for blockNum in range(refBlockNum, headBlockNum + blocksAhead):
+            self.waitForBlock(blockNum, sleepTime=0.5)
             if self.isTransInBlock(str(transId), blockNum):
                 if Utils.Debug: Utils.Print("Found transaction %s in block %d" % (transId, blockNum))
                 return blockNum
@@ -348,14 +360,14 @@ class Node(object):
         """Check if transaction (transId) is in a block."""
         assert(transId)
         assert(isinstance(transId, (str,int)))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         return True if blockId else False
 
     def isTransFinalized(self, transId):
         """Check if transaction (transId) has been finalized."""
         assert(transId)
         assert(isinstance(transId, str))
-        blockId=self.getBlockIdByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId)
         if not blockId:
             return False
 
@@ -488,15 +500,11 @@ class Node(object):
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head):
+    def waitForNextBlock(self, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, errorContext=None):
         num=self.getBlockNum(blockType=blockType)
-        if isinstance(timeout, WaitSpec):
-            timeout = timeout.seconds(num, num+1)
-        lam = lambda: self.getHeadBlockNum() > num
-        ret=Utils.waitForTruth(lam, timeout)
-        return ret
+        return self.waitForBlock(num+1, timeout=timeout, blockType=blockType, sleepTime=sleepTime, errorContext=errorContext)
 
-    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, reportInterval=None, errorContext=None):
+    def waitForBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head, sleepTime=3, reportInterval=None, errorContext=None):
         currentBlockNum=self.getBlockNum(blockType=blockType)
         currentTime=time.time()
         if isinstance(timeout, WaitSpec):
@@ -529,12 +537,12 @@ class Node(object):
                 currentBlockNum = self.node.getBlockNum(blockType=blockType)
                 self.advanced = False
                 if self.lastBlockNum is None or self.lastBlockNum < currentBlockNum:
-                    self.advanced = True
+                    self.advanced = True if self.lastBlockNum is not None else False
                 elif self.lastBlockNum > currentBlockNum:
                     Utils.Print("waitForBlock is waiting to reach block number: %d and the block number has rolled back from %d to %d." %
                                 (self.blockNum, self.lastBlockNum, currentBlockNum))
                 self.lastBlockNum = currentBlockNum
-                self.passed = self.lastBlockNum > self.blockNum
+                self.passed = self.lastBlockNum >= self.blockNum
                 return self.passed
 
             def __enter__(self):
@@ -554,8 +562,8 @@ class Node(object):
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default(), blockType=BlockType.head):
-        return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
+    def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default()):
+        return self.waitForBlock(blockNum, timeout=timeout, blockType=BlockType.lib)
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False, dontSend=False, expiration=None, skipSign=False):
@@ -821,6 +829,7 @@ class Node(object):
     # returns tuple with indication if transaction was successfully sent and either the transaction or else the exception output
     def pushMessage(self, account, action, data, opts, silentErrors=False, signatures=None):
         cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
+        Utils.Print("cmd: {}".format(cmd))
         cmdArr=cmd.split()
         # not using __sign_str, since cmdArr messes up the string
         if signatures is not None:
@@ -1110,7 +1119,7 @@ class Node(object):
     def kill(self, killSignal):
         if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
         assert (self.pid is not None)
-        Utils.Print("Killing node pid: {}", self.pid)
+        Utils.Print("Killing node pid: {}".format(self.pid))
         try:
             if self.popenProc is not None:
                Utils.Print("self.popenProc is not None")
@@ -1195,9 +1204,9 @@ class Node(object):
         block=self.getBlock(blockNum, exitOnError=exitOnError)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
-    def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
+    def getBlockProducer(self, timeout=None, exitOnError=True, blockType=BlockType.head):
         blockNum=self.getBlockNum(blockType=blockType)
-        block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
+        block=self.getBlock(blockNum, exitOnError=exitOnError)
         return Node.getBlockAttribute(block, "producer", blockNum, exitOnError=exitOnError)
 
     def getNextCleanProductionCycle(self, trans):
@@ -1410,12 +1419,23 @@ class Node(object):
                     break
         return protocolFeatureDigestDict
 
-    def waitForHeadToAdvance(self, blocksToAdvance=1, timeout=None):
-        currentHead = self.getHeadBlockNum()
+    def waitForHeadToAdvance(self, blocksToAdvance=1, timeout=None, reportInterval=None):
+        originalHead = self.getHeadBlockNum()
+        targetHead = originalHead + blocksToAdvance
         if timeout is None:
             timeout = 6 + blocksToAdvance / 2
+        count = 0
         def isHeadAdvancing():
-            return self.getHeadBlockNum() >= currentHead + blocksToAdvance
+            nonlocal count
+            nonlocal reportInterval
+            nonlocal targetHead
+            head = self.getHeadBlockNum()
+            count += 1
+            done = head >= targetHead
+            if not done and reportInterval and count % reportInterval == 0:
+                Utils.Print("waitForHeadToAdvance to {}, currently at {}".format(targetHead, head))
+
+            return done
         return Utils.waitForTruth(isHeadAdvancing, timeout)
 
     def waitForLibToAdvance(self, timeout=30):
@@ -1424,16 +1444,76 @@ class Node(object):
             return self.getIrreversibleBlockNum() > currentLib
         return Utils.waitForTruth(isLibAdvancing, timeout)
 
-    # Require producer_api_plugin
-    def activatePreactivateFeature(self):
-        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
-        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]["feature_digest"]
-        assert preactivateFeatureDigest
+    def waitUntilBeginningOfProdTurn(self, producerName, timeout=30, sleepTime=0.4):
+        beginningOfProdTurnHead = 0
+        def isDesiredProdTurn():
+            nonlocal beginningOfProdTurnHead
+            beginningOfProdTurnHead = self.getHeadBlockNum()
+            res =  self.getBlock(beginningOfProdTurnHead)["producer"] == producerName and \
+                   self.getBlock(beginningOfProdTurnHead-1)["producer"] != producerName
+            return res
+        ret = Utils.waitForTruth(isDesiredProdTurn, timeout, sleepTime)
+        assert ret != None, "Expected producer to arrive within {} seconds".format(timeout)
+        return beginningOfProdTurnHead
 
-        self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
+    # Require producer_api_plugin
+    def activateFeatures(self, features, blocksToAdvance=2):
+        assert blocksToAdvance >= 0
+        featureDigests = []
+        for feature in features:
+            protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
+            assert feature in protocolFeatureDigestDict
+            featureDigest = protocolFeatureDigestDict[feature]["feature_digest"]
+            assert featureDigest
+            featureDigests.append(featureDigest)
+
+        self.scheduleProtocolFeatureActivations(featureDigests)
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        assert self.waitForHeadToAdvance(blocksToAdvance=2), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
+        assert self.waitForHeadToAdvance(blocksToAdvance=blocksToAdvance), print("ERROR: TIMEOUT WAITING FOR activating features: {}".format(",".join(features)))
+
+    def activateAndVerifyFeatures(self, features):
+        self.activateFeatures(features, blocksToAdvance=0)
+        headBlockNum = self.getBlockNum()
+        blockNum = headBlockNum
+        producers = {}
+        while True:
+            block = self.getBlock(blockNum)
+            blockHeaderState = self.getBlockHeaderState(blockNum)
+            if self.containsFeatures(features, blockHeaderState):
+                return
+
+            producer = block["producer"]
+            producers[producer] += 1
+
+            # feature should be in block for this node's producers, if it is at least 2 blocks after we sent the activate
+            minBlocksForGuarantee = 2
+            assert producer not in self.getProducers() or blockNum - headBlockNum < minBlocksForGuarantee, \
+                   "It is {} blocks past the block when we activated the features and block num {} was produced by this \
+                   node, so features should have been set.".format(blockNum - headBlockNum, blockNum)
+            self.waitForBlock(blockNum + 1)
+            blockNum = self.getBlockNum()
+
+
+
+    # Require producer_api_plugin
+    def activatePreactivateFeature(self):
+        return self.activateFeatures(["PREACTIVATE_FEATURE"])
+
+    def containsFeatures(self, features, blockHeaderState=None):
+        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
+        if blockHeaderState is None:
+            blockHeaderState = self.getLatestBlockHeaderState()
+        for feature in features:
+            featureDigest = protocolFeatureDict[feature]["feature_digest"]
+            assert featureDigest, "{}'s Digest should not be empty".format(feature)
+            activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
+            if featureDigest not in activatedProtocolFeatures:
+                return False
+        return True
+
+    def containsPreactivateFeature(self):
+        return self.containsFeatures(["PREACTIVATE_FEATURE"])
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
@@ -1469,13 +1549,26 @@ class Node(object):
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
-        cmdDesc = "get block {} --header-state".format(headBlockNum)
-        latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
-        return latestBlockHeaderState
+        return self.getBlockHeaderState(headBlockNum)
 
-    def getActivatedProtocolFeatures(self):
-        latestBlockHeaderState = self.getLatestBlockHeaderState()
-        return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
+    def getBlockHeaderState(self, blockNum, errorOnNone=True):
+        cmdDesc = "get block {} --header-state".format(blockNum)
+        blockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+        if blockHeaderState is None and errorOnNone:
+            info = self.getInfo()
+            lib = info["last_irreversible_block_num"]
+            head = info["head_block_num"]
+            assert head == lib + 1, "getLatestBlockHeaderState failed to retrieve the latest block. This should be investigated."
+            Utils.errorExit("Called getLatestBlockHeaderState, which can only retrieve blocks in reversible database, but the test setup only has one producer so there" +
+                            " is only 1 block in the reversible database. Test should be redesigned to aquire this information via another interface.")
+        return blockHeaderState
+
+    def getActivatedProtocolFeatures(self, blockHeaderState=None):
+        if blockHeaderState is None:
+            blockHeaderState = self.getLatestBlockHeaderState()
+        if "activated_protocol_features" not in blockHeaderState or "protocol_features" not in blockHeaderState["activated_protocol_features"]:
+            Utils.errorExit("getLatestBlockHeaderState did not return expected output, should contain [\"activated_protocol_features\"][\"protocol_features\"]: {}".format(latestBlockHeaderState))
+        return blockHeaderState["activated_protocol_features"]["protocol_features"]
 
     def modifyBuiltinPFSubjRestrictions(self, featureCodename, subjectiveRestriction={}):
         jsonPath = os.path.join(Utils.getNodeConfigDir(self.nodeId),
@@ -1528,6 +1621,28 @@ class Node(object):
                     files.append(os.path.join(path, entry.name))
         files.sort()
         return files
+
+    @staticmethod
+    def participantName(nodeNumber):
+        # this function converts number to eos name string
+        # eos name can have only numbers 1-5
+        # e.g. 0 -> 1, 6 -> 5.1, 12 -> 5.5.2
+        def normalizeNumber(number):
+            assert(number > 0)
+            if number <= 5:
+                return str(number)
+            cnt = number
+            ret = "5"
+            while cnt > 5:
+                cnt = cnt - 5
+                if cnt > 5:
+                    ret = "{}.5".format(ret)
+                else:
+                    ret = "{}.{}".format(ret, cnt)
+                assert(len(ret) <= 13)
+
+            return ret
+        return "node{}".format(normalizeNumber(nodeNumber))
 
     def analyzeProduction(self, specificBlockNum=None, thresholdMs=500):
         dataDir=Utils.getNodeDataDir(self.nodeId)
@@ -1607,3 +1722,83 @@ class Node(object):
             retry = retry - 1
             startBlockNum = latestBlockNum + 1
         return False
+
+    def getConfigString(self):
+        configFile=Utils.getNodeConfigDir(self.nodeId, "config.ini")
+        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
+
+        configStr = None
+        with open(configFile, 'r') as f:
+            configStr = f.read()
+        
+        return configStr
+
+    def getProducers(self):
+        """Parse node config file for producers."""
+        
+        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
+        producerMatches=re.findall(pattern, self.getConfigString(), re.MULTILINE)
+        if producerMatches is None:
+            if Utils.Debug: Utils.Print("Failed to find producers.")
+            return None
+
+        return producerMatches
+
+
+    def getParticipant(self):
+        return self.participant
+
+    def getConnections(self):
+        """this method needs net_api_plugin"""
+
+        response = requests.get("http://{}:{}/v1/net/connections".format(self.host, self.port))
+        if Utils.Debug: Utils.Print("net connections response status: {}".format(response.status_code))
+        assert response.status_code == 201
+        jsonObj = json.loads(response.text)
+        if Utils.Debug: Utils.Print("net connections response: {}".format(json.dumps(jsonObj, indent=4, sort_keys=True)))
+        return jsonObj
+
+    def getListenEndpoint(self):
+        pattern=r"^\s*p2p-listen-endpoint\s*=\s*([a-z:0-9\.]+)"
+        match = re.search(pattern, self.getConfigString(), re.MULTILINE)
+
+        assert match and len(match.groups())
+        if Utils.Debug: Utils.Print("getListenEndpoint: entire match: {}".format(match.group()))
+        if Utils.Debug: Utils.Print("getListenEndpoint: returning {}".format(match.group(1)))
+        return match.group(1)
+
+    @staticmethod
+    def verifyInSync(nodes, maxDelayForABlock = 1):
+        if Utils.Debug: Utils.Print("Ensure all nodes are in-sync")
+        lib = nodes[0].getInfo()["last_irreversible_block_num"]
+        headBlockNum = nodes[0].getBlockNum()
+        headBlock = nodes[0].getBlock(headBlockNum)
+        if Utils.Debug: Utils.Print("headBlock: {}".format(json.dumps(headBlock, indent=4, sort_keys=True)))
+        headBlockId = headBlock["id"]
+        for nodeNum in range(1,len(nodes)):
+            node = nodes[nodeNum]
+            assert node.waitForBlock(headBlockNum, timeout = maxDelayForABlock, reportInterval = 1) != None, \
+                   "Node {} not in sync with node {}, failed to get block number {}".format(nodes[0].nodeId, node.nodeId, headBlockNum)
+            node.getBlock(headBlockId)  # if it isn't there it will throw an exception
+            assert node.waitForBlock(lib, blockType=BlockType.lib), \
+                   "Node {} is failing to advance its lib ({}) with node {} ({})".format(node.nodeId, node.getInfo()["last_irreversible_block_num"], node.nodeId, lib)
+
+        if Utils.Debug: Utils.Print("Ensure all nodes are in-sync")
+        assert nodes[0].waitForBlock(lib + 1, blockType=BlockType.lib, reportInterval = 1) != None, \
+               "Node {} failed to advance lib ahead one block to: {}".format(nodes[0].nodeId, lib + 1)
+
+    def waitForProducer(self, producer, atStart=False, timeout=None):
+        """Wait for head block with the provided producer."""
+        assert(isinstance(producer, str))
+        lastProd = None
+        if atStart:
+            lastProd = self.getBlockProducer()
+        def found():
+            currentProd = self.getBlockProducer()
+            nonlocal lastProd
+            if currentProd == producer and currentProd != lastProd:
+                return True
+            lastProd = currentProd
+            return False
+        ret=Utils.waitForTruth(found, timeout)
+        return ret

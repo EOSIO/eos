@@ -3,6 +3,7 @@
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/versioned_unpack_stream.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -47,6 +48,11 @@ using signer_callback_type = std::function<std::vector<signature_type>(const dig
 
 struct block_header_state;
 
+struct security_group_info_t {
+   uint32_t                                 version = 0;
+   boost::container::flat_set<account_name> participants;
+};
+
 namespace detail {
    struct block_header_state_common {
       uint32_t                          block_num = 0;
@@ -80,6 +86,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
    block_timestamp_type                 timestamp;
    uint32_t                             active_schedule_version = 0;
    uint16_t                             confirmed = 1;
+   security_group_info_t                security_group;
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
@@ -110,11 +117,17 @@ protected:
                                                                const vector<digest_type>& )>& validator )&&;
 };
 
+
+
 /**
  *  @struct block_header_state
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state : public detail::block_header_state_common {
+
+   /// this version is coming from chain_snapshot_header.version
+   static constexpr uint32_t minimum_snapshot_version_with_state_extension = 6; 
+
    block_id_type                        id;
    signed_block_header                  header;
    detail::schedule_info                pending_schedule;
@@ -125,11 +138,22 @@ struct block_header_state : public detail::block_header_state_common {
    /// duplication of work
    flat_multimap<uint16_t, block_header_extension> header_exts;
 
+   struct state_extension_v0 {
+      security_group_info_t security_group_info;
+   };
+
+   // For future extension, one should use
+   //
+   // struct state_extension_v1 : state_extension_v0 { new_field_t new_field };
+   // using state_extension_t = std::variant<state_extension_v0, state_extension_v1> state_extension;
+
+   using state_extension_t = std::variant<state_extension_v0>;
+   state_extension_t state_extension;
+
    block_header_state() = default;
 
-   explicit block_header_state( detail::block_header_state_common&& base )
-   :detail::block_header_state_common( std::move(base) )
-   {}
+   explicit block_header_state(detail::block_header_state_common&& base)
+       : detail::block_header_state_common(std::move(base)) {}
 
    explicit block_header_state( legacy::snapshot_block_header_state_v2&& snapshot );
 
@@ -152,7 +176,16 @@ struct block_header_state : public detail::block_header_state_common {
    void                   sign( const signer_callback_type& signer );
    void                   verify_signee()const;
 
-   const vector<digest_type>& get_new_protocol_feature_activations()const;
+   const vector<digest_type>& get_new_protocol_feature_activations() const;
+
+   void set_security_group_info(security_group_info_t&& new_info) {
+      std::visit([&new_info](auto& v) {  v.security_group_info = std::move(new_info); }, state_extension);
+   }
+
+   const security_group_info_t& get_security_group_info() const {
+      return std::visit([](const auto& v) -> const security_group_info_t& { return v.security_group_info; },
+                        state_extension);
+   }
 };
 
 using block_header_state_ptr = std::shared_ptr<block_header_state>;
@@ -177,6 +210,12 @@ FC_REFLECT( eosio::chain::detail::schedule_info,
             (schedule)
 )
 
+FC_REFLECT(eosio::chain::security_group_info_t, (version)(participants))
+
+FC_REFLECT( eosio::chain::block_header_state::state_extension_v0,
+            (security_group_info)
+)
+
 // @ignore header_exts
 FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::block_header_state_common),
                      (id)
@@ -184,8 +223,8 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
                      (pending_schedule)
                      (activated_protocol_features)
                      (additional_signatures)
+                     (state_extension)
 )
-
 
 FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2::schedule_info,
           ( schedule_lib_num )
@@ -209,3 +248,50 @@ FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2,
           ( pending_schedule )
           ( activated_protocol_features )
 )
+
+namespace fc {
+namespace raw {
+namespace detail {
+
+// C++20 Concept 
+//
+// template <typename T> 
+// concept VersionedStream = requires (T t) {
+//    t.version;
+// }
+//
+
+template <typename VersionedStream, typename Class>
+struct unpack_block_header_state_derived_visitor : fc::reflector_init_visitor<Class> {
+
+   unpack_block_header_state_derived_visitor(Class& _c, VersionedStream& _s)
+       : fc::reflector_init_visitor<Class>(_c)
+       , s(_s) {}
+
+   template <typename T, typename C, T(C::*p)>
+   inline void operator()(const char* name) const {
+      try {
+         if constexpr (std::is_same_v<eosio::chain::block_header_state::state_extension_t,
+                                      std::decay_t<decltype(this->obj.*p)>>)
+            if (s.version < eosio::chain::block_header_state::minimum_snapshot_version_with_state_extension)
+               return;
+
+         fc::raw::unpack(s, this->obj.*p);
+      }
+      FC_RETHROW_EXCEPTIONS(warn, "Error unpacking field ${field}", ("field", name))
+   }
+
+ private:
+   VersionedStream& s;
+};
+
+template <typename VersionedStream>
+struct unpack_object_visitor<VersionedStream, eosio::chain::block_header_state>
+    : unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state> {
+   using Base = unpack_block_header_state_derived_visitor<VersionedStream, eosio::chain::block_header_state>;
+   using Base::Base;
+};
+
+} // namespace detail
+} // namespace raw
+} // namespace fc
