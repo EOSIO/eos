@@ -99,3 +99,4 @@ executed transaction: 69c5297571ce3503edb9a1fd8a2f2a5cc1805ad19197a8751ca0909348
 
 ## See Also
 - [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
+- [Creating and Linking Custom Permissions](https://developers.eos.io/welcome/v2.1/smart-contract-guides/linking-custom-permission) tutorial.

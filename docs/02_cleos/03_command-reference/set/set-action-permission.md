@@ -5,19 +5,19 @@ cleos set action permission [OPTIONS] account code type requirement
 * [OPTIONS] = See Options in Command Usage section below.
 * account = The account to set/delete a permission authority for.
 * code = The account that owns the code for the action.
-* type =  The name of the action, note permssions must be set per action.
-* requirement = To remove a permission use NULL, To set or update the permission use the permission name required for executing the given action.
+* type =  The name of the action, note permissions must be set per action.
+* requirement = To remove a permission use NULL, To set or update the permission use the name of the permission name required for executing the given action.
 
 **Note**: The arguments and options enclosed in square brackets are optional.
 
 ## Description
-Set parmaters dealing with account permissions
+Set parameters dealing with account permissions
 
 ## Command Usage
 The following information shows the different positionals and options you can use with the `cleos set action permission` command:
 
 ### Positionals:
-- `account` _TEXT_ REQUIRED The account to set/delete a permission authority for
+- `account` _TEXT_ REQUIRED The account to set/delete a permission authority 
 - `code` _TEXT_ REQUIRED The account that owns the code for the action
 - `type` _TEXT_ REQUIRED The type of the action
 - `requirement` _TEXT_ REQUIRED [delete] NULL, [set/update] The permission name require for executing the given action
@@ -46,7 +46,7 @@ The following information shows the different positionals and options you can us
 
 ## Examples
 
-1. Set permissions on a _hi_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permssion and _customp1_ permission are authorized:  
+1. Set permission on a _hi_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permssion and _customp1_ permission are authorized:  
 ```shell
 cleos set action permission bob scontract1 hi customp1 -p bob@active
 ```
@@ -86,7 +86,7 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 cleos set action permission bob scontract1 hi NULL -p bob@active
 ```
 **Where**
-`bob` = The name of the account to link the custom permssion authority.
+`bob` = The name of the account to link the custom permission authority.
 `scontract1`= The name of the account which owns the smart contract.
 `hi` = The name of the action to link to a permssion. 
 `NULL` = Remove the permission.
