@@ -47,9 +47,9 @@ namespace eosio { namespace chain {
 
       account_name payer;
 
-      uint64_t max_net_bytes;
-      uint64_t max_cpu_us;
-      uint64_t max_memory_bytes;
+      uint64_t max_net_bytes = 0;
+      uint64_t max_cpu_us = 0;
+      uint64_t max_memory_bytes = 0;
    };
 
    using resource_payer_t = struct resource_payer;
@@ -130,8 +130,7 @@ namespace eosio { namespace chain {
       }
 
       account_name resource_payer(bool)const;
-      std::optional<resource_payer_t> resource_payer_info() const;
-      bool has_resource_payer() const;
+      std::optional<resource_payer_t> resource_payer_info( bool is_protocol_feature_activated ) const;
 
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };

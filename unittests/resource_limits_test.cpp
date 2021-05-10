@@ -590,7 +590,21 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       tester t( setup_policy::preactivate_feature_and_new_bios );
 
       auto txn = populate<eosio::chain::signed_transaction>();
-      auto res_pyr = txn.resource_payer_info();
+
+      // get resource payer info without activating resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr == std::nullopt, true);
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
 
       if (res_pyr) {
          t.produce_blocks(2);
@@ -627,7 +641,21 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       tester t( setup_policy::preactivate_feature_and_new_bios );
 
       auto txn = populate<eosio::chain::signed_transaction>();
-      auto res_pyr = txn.resource_payer_info();
+
+      // get resource payer info without activating resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr == std::nullopt, true);
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
 
       if (res_pyr) {
          t.produce_blocks(2);

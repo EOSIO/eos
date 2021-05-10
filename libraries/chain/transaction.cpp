@@ -109,13 +109,13 @@ account_name transaction::resource_payer(bool is_resource_payer_fp_activated)con
    return resource_payer;
 }
 
-std::optional<resource_payer_t> transaction::resource_payer_info() const {
+std::optional<resource_payer_t> transaction::resource_payer_info( bool is_protocol_feature_activated ) const {
 
    // Check for the existence of an extension of the type resource_payer
    bool has_res_pyr = false;
    resource_payer_t res_pyr;
 
-   if( transaction_extensions.size() > 0 ) {
+   if( is_protocol_feature_activated && transaction_extensions.size() > 0 ) {
        std::find_if( transaction_extensions.begin(), transaction_extensions.end(),
                      [&](auto& elem) {
                         bool ret = elem.first == transaction_extension_id::resource_payer_id;
@@ -128,21 +128,6 @@ std::optional<resource_payer_t> transaction::resource_payer_info() const {
    }
 
    return has_res_pyr ? std::optional<resource_payer_t>(res_pyr) : std::nullopt;
-}
-
-bool transaction::has_resource_payer() const {
-
-   // Check for the existence of an extension of the type resource_payer
-
-   if( transaction_extensions.size() > 0 ) {
-       auto iter = std::find_if( transaction_extensions.begin(), transaction_extensions.end(),
-                                 [&](auto& elem) {
-                                    return elem.first == transaction_extension_id::resource_payer_id;
-                                 } );
-       return iter != transaction_extensions.end();
-   }
-
-   return false;
 }
 
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
