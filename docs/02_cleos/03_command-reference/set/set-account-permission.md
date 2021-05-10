@@ -86,10 +86,10 @@ executed transaction: ab5752ecb017f166d56e7f4203ea02631e58f06f2e0b67103b71874f60
 cleos set account permission alice customp EOS58wmANoBtT7RdPgMRCGDb37tcCQswfwVpj6NzC55D247tTMU9D active -p alice@active
 ```
 **Where**
-`alice` = The name of the account you are adding a custom permssion to.
+`alice` = The name of the account you are adding a custom permission to.
 `customp`= The name of the custom permission.
-`EOS58wmANoBtT7RdPgMRCGDb37tcCQswfwVpj6NzC55D247tTMU9D` = The public key of the custom permssion. 
-`active` = The parent of the custom permssion.
+`EOS58wmANoBtT7RdPgMRCGDb37tcCQswfwVpj6NzC55D247tTMU9D` = The public key of the custom permission. 
+`active` = The parent of the custom permission.
 `-p alice@active` = The permission used to authorize the transaction.
 
 **Example Output**
@@ -99,3 +99,4 @@ executed transaction: 69c5297571ce3503edb9a1fd8a2f2a5cc1805ad19197a8751ca0909348
 
 ## See Also
 - [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
+- [Creating and Linking Custom Permissions](https://developers.eos.io/welcome/v2.1/smart-contract-guides/linking-custom-permission) tutorial.
