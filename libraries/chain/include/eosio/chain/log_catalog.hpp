@@ -48,7 +48,7 @@ struct log_catalog {
 
    bfs::path    retained_dir;
    bfs::path    archive_dir;
-   size_type    max_retained_files = 10;
+   size_type    max_retained_files = UINT32_MAX;
    collection_t collection;
    size_type    active_index = npos;
    LogData      log_data;
@@ -218,10 +218,14 @@ struct log_catalog {
       snprintf(buf, bufsize, "%s-%d-%d", name, start_block_num, end_block_num);
       bfs::path new_path = retained_dir / buf;
       rename_bundle(dir / name, new_path);
-
+      size_type items_to_erase = 0;
+      this->collection.emplace(start_block_num, mapped_type{end_block_num, new_path});
       if (this->collection.size() >= max_retained_files) {
-         const auto items_to_erase =
-             max_retained_files > 0 ? this->collection.size() - max_retained_files + 1 : this->collection.size();
+         if(max_retained_files < UINT32_MAX){
+            items_to_erase = 
+               max_retained_files > 0 ? this->collection.size() - max_retained_files : this->collection.size();
+         }
+
          for (auto it = this->collection.begin(); it < this->collection.begin() + items_to_erase; ++it) {
             auto orig_name = it->second.filename_base;
             if (archive_dir.empty()) {
@@ -238,8 +242,6 @@ struct log_catalog {
                                   ? npos
                                   : this->active_index - items_to_erase;
       }
-      if (max_retained_files > 0)
-         this->collection.emplace(start_block_num, mapped_type{end_block_num, new_path});
    }
 
    /// Truncate the catalog so that the log/index bundle containing the block with \c block_num
