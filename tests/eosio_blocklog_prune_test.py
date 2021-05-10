@@ -173,7 +173,7 @@ try:
         Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
         Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
 
-    assert headAdvanced or lvnPostInfo["head_block_num"] > cfTrxBlockNum, "the light validation node stops syncing"
+    assert headAdvanced or lvnPostInfo["head_block_num"] >= cfTrxBlockNum, "the light validation node stops syncing"
 
     fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
     Utils.Print("Ensure full validation node stops syncing")
@@ -186,7 +186,7 @@ try:
         Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
         Utils.Print("Post full validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPost2Info, indent=1), json.dumps(fvnPost2Info, indent=1), json.dumps(lvnPost2Info, indent=1)))
 
-    assert (not headAdvanced) or (fvnPost2Info["head_block_num"]<=cfTrxBlockNum), "the full validation node is still syncing"
+    assert (not headAdvanced) or (fvnPost2Info["head_block_num"] < cfTrxBlockNum), "the full validation node is still syncing"
 
     testSuccessful = True
 finally:
