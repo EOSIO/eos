@@ -3455,12 +3455,12 @@ namespace eosio {
             auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
 
-            auto blk_trace = fc_create_trace_with_id("Block", id);
-            auto blk_span = fc_create_span(blk_trace, "PreAccepted");
-            fc_add_tag(blk_span, "block_id", id);
-            fc_add_tag(blk_span, "block_num", block->block_num());
-            fc_add_tag(blk_span, "block_time", block->timestamp.to_time_point());
-            fc_add_tag(blk_span, "producer", block->producer.to_string());
+            // auto blk_trace = fc_create_trace_with_id("Block", id);
+            // auto blk_span = fc_create_span(blk_trace, "PreAccepted");
+            // fc_add_tag(blk_span, "block_id", id);
+            // fc_add_tag(blk_span, "block_num", block->block_num());
+            // fc_add_tag(blk_span, "block_time", block->timestamp.to_time_point());
+            // fc_add_tag(blk_span, "producer", block->producer.to_string());
 
             dispatcher->bcast_block( block, id );
          });
