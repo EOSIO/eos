@@ -489,8 +489,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          auto duration = start - last_report_start;
          ilog("METRICS ship accept block - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", block_state->block_num)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size()));
       }
-      // auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
-      // auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+      auto ship_trace  = fc_create_trace_with_id("SHiP-Accepted", block_state->id);
 
       auto trace_id  = block_state->id._hash[3];
       auto token     = fc::zipkin_span::token{ trace_id, trace_id };
@@ -502,10 +501,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       std::optional<fc::time_point> time1;
       std::optional<fc::time_point> time2;
       if (trace_log) {
+         auto trace_log_span = fc_create_span(ship_trace, "store_trace_log");
          trace_log->store(chain_plug->chain().db(), block_state);
          time1 = fc::time_point::now();
       }
       if (chain_state_log) {
+         auto delta_log_span = fc_create_span(ship_trace, "store_delta_log");
          chain_state_log->store(chain_plug->chain().kv_db(), block_state);
          time2 = fc::time_point::now();
       }
