@@ -277,14 +277,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          std::visit( [plugin=this->plugin]( auto&& ptr ) {
             if( ptr ) {
-               if (fc::zipkin_config::is_enabled()) {
-                  auto id = ptr->calculate_id();
-                  auto blk_trace = fc_create_trace_with_id( "Block", id );
-                  auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
-                  fc_add_tag( blk_span, "block_id", id );
-                  fc_add_tag( blk_span, "block_num", ptr->block_num() );
-                  fc_add_tag( blk_span, "block_time", ptr->timestamp.to_time_point() );
-               }
+               // if (fc::zipkin_config::is_enabled()) {
+               //    auto id = ptr->calculate_id();
+               //    auto blk_trace = fc_create_trace_with_id( "Block", id );
+               //    auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
+               //    fc_add_tag( blk_span, "block_id", id );
+               //    fc_add_tag( blk_span, "block_num", ptr->block_num() );
+               //    fc_add_tag( blk_span, "block_time", ptr->timestamp.to_time_point() );
+               // }
                auto bn = ptr->block_num();
                auto now = fc::time_point::now();
                auto received = rodeos_testing::timing::single()->received_block_latest(bn, now); // just in case something else occurs out of expected order
@@ -489,8 +489,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          auto duration = start - last_report_start;
          ilog("METRICS ship accept block - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", block_state->block_num)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size()));
       }
-      auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
-      auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+      // auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
+      // auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
+
+      auto trace_id  = block_state->id._hash[3];
+      auto token     = fc::zipkin_span::token{ trace_id, trace_id };
+      auto blk_span  = fc_create_span_from_token(token, "SHiP-Accepted");
+
       fc_add_tag(blk_span, "block_id", block_state->id);
       fc_add_tag(blk_span, "block_num", block_state->block_num);
       fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());

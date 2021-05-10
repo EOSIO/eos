@@ -175,7 +175,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->head && result.this_block->block_num > rodeos_snapshot->head + 1)
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
-      auto trace_id  = result.this_block->block_id.data()[3];
+      auto trace_id  = boost::endian::endian_reverse(result.this_block->block_id.data()[3]);
       auto token     = fc::zipkin_span::token{ trace_id, trace_id };
       auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
