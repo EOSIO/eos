@@ -208,7 +208,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void set_result_block_header(get_blocks_result_v1&, const signed_block_ptr& block) {}
       void set_result_block_header(get_blocks_result_v2& result, const signed_block_ptr& block) {
          bool fetch_block_header = std::get<get_blocks_request_v1>(*current_request).fetch_block_header;
-         if (fetch_block_header) {
+         if (fetch_block_header && block) {
             result.block_header = static_cast<const signed_block_header&>(*block); 
          }
       }
@@ -221,7 +221,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename T>
       std::enable_if_t<std::is_same_v<get_blocks_result_v1,T> || std::is_same_v<get_blocks_result_v2,T>>
-      send_update(const signed_block_ptr& block, T&& result) {
+      send_update(const block_state_ptr& head_block_state, T&& result) {
          need_to_send_update = true;
          if (!send_queue.empty() || !max_messages_in_flight() )
             return;
@@ -236,13 +236,24 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
             auto& block_num = block_req.start_block_num;
             auto block_id  = plugin->get_block_id(block_num);
+
+            auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
+               try {
+                  if (head_block_state->block_num == block_num)
+                     return head_block_state->block;
+                  return chain.fetch_block_by_number(block_num);
+               } catch (...) {
+                  return {};
+               }
+            };
+
             if (block_id) {
                result.this_block  = block_position{block_num, *block_id};
                auto prev_block_id = plugin->get_block_id(block_num - 1);
                if (prev_block_id) 
                   result.prev_block = block_position{block_num - 1, *prev_block_id};
                if (block_req.fetch_block) {
-                  result.block = signed_block_ptr_variant{block};
+                  result.block = signed_block_ptr_variant{get_block()};
                }
                if (block_req.fetch_traces && plugin->trace_log) {
                   result.traces = plugin->trace_log->get_log_entry(block_num);
@@ -250,7 +261,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (block_req.fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(block_num);
                }
-               set_result_block_header(result, block);
+               set_result_block_header(result, get_block());
             }
             ++block_num;
          }
@@ -281,15 +292,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }, result.block );
       }
 
-      void send_update_for_block(const block_state_ptr& block_state) {
+      void send_update_for_block(const block_state_ptr& head_block_state) {
          std::visit(
-             [&block_state, this](const auto& req) {
+             [&head_block_state, this](const auto& req) {
                 // send get_blocks_result_v1 when the request is get_blocks_request_v0 and
-                // send send_block_result_v2 when the request is get_blocks_request_ v1. 
-                if (block_state->block) {
+                // send send_block_result_v2 when the request is get_blocks_request_v1. 
+                if (head_block_state->block) {
                   typename std::decay_t<decltype(req)>::response_type result;
-                  result.head = { block_state->block_num, block_state->id };
-                  send_update(block_state->block, std::move(result));
+                  result.head = { head_block_state->block_num, head_block_state->id };
+                  send_update(head_block_state, std::move(result));
                 }
              },
              *current_request);
@@ -404,16 +415,33 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          trace_log->add_transaction(p, t);
    }
 
+   void store(const block_state_ptr& block_state) {
+      try {
+         if (trace_log)
+            trace_log->store(chain_plug->chain().db(), block_state);
+         if (chain_state_log)
+            chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+         return;
+      }
+      FC_LOG_AND_DROP()
+
+      // Both app().quit() and exception throwing are required. Without app().quit(),
+      // the exception would be caught and drop before reaching main(). The exception is
+      // to ensure the block won't be committed.
+      appbase::app().quit();
+      EOS_THROW(
+          chain::state_history_write_exception,
+          "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+          "the process");
+   }
+
    void on_accepted_block(const block_state_ptr& block_state) {
       auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
       auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
       fc_add_tag(blk_span, "block_id", block_state->id);
       fc_add_tag(blk_span, "block_num", block_state->block_num);
       fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());
-      if (trace_log)
-         trace_log->store(chain_plug->chain().db(), block_state);
-      if (chain_state_log)
-         chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+      this->store(block_state);
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
