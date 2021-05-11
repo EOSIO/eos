@@ -1,0 +1,89 @@
+version: "3.9"
+services:
+   mysql:
+      image: openzipkin/zipkin-mysql
+      environment:
+         - MYSQL_ROOT_PASSWORD=rootpassword
+         - MYSQL_DATABASE=zipkin
+         - MYSQL_USER=zipkin
+         - MYSQL_PASSWORD=zipkin
+  
+   zipkin:
+      image: openzipkin/zipkin
+      environment:
+        - STORAGE_TYPE=mysql
+        - MYSQL_HOST=mysql
+        - MYSQL_PASS=zipkin
+      ports:
+        - 9411:9411
+      depends_on:
+        - mysql
+
+   producer: 
+      image: ${DOCKER_REPO:-docker.io}/eos-boxed
+      build: .
+      command:
+         - nodeos 
+         - --enable-stale-production 
+         - --producer-name=eosio              
+         - --plugin=eosio::producer_plugin  
+         - --config-dir
+         - /etc/eosio
+      volumes:
+         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract                 
+      depends_on:
+         - zipkin
+      
+   ship:
+      image: ${DOCKER_REPO:-docker.io}/eos-boxed
+      build: .
+      command:
+         - nodeos               
+         - --plugin=eosio::state_history_plugin                                   
+         - --trace-history 
+         - --read-mode=irreversible 
+         - --chain-state-history 
+         - --disable-replay-opts 
+         - --validation-mode=light 
+         - --p2p-peer-address=producer:9876 
+         - --state-history-endpoint=0.0.0.0:8080
+         - --config-dir=/etc/eosio
+         - --telemetry-url=http://zipkin:9411/api/v2/spans 
+         - --telemetry-service-name=ship  
+      depends_on:
+         - zipkin
+         - producer
+
+   rodeos:
+      image: ${DOCKER_REPO:-docker.io}/eos-boxed
+      build: .
+      command: 
+         - ./wait-for-it.sh 
+         - ship:8080
+         - --
+         - rodeos 
+         - --data-dir=/var/rodeos/data
+         - --rdb-threads=12              
+         - --eos-vm-oc-cache-size-mb=200 
+         - --clone-connect-to=ship:8080  
+         - --eos-vm-oc-compile-threads=8 
+         - --eos-vm-oc-enable  
+         - --telemetry-url=http://zipkin:9411/api/v2/spans 
+         - --telemetry-service-name=rodeos            
+      depends_on:
+         - zipkin
+         - ship
+
+   bootstrap:
+      image: ${DOCKER_REPO:-docker.io}/eos-boxed
+      build: .
+      command:
+         - ./boot.sh 
+      volumes:
+         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
+      deploy:
+         restart_policy:
+            condition: none
+      depends_on:
+         - producer
+

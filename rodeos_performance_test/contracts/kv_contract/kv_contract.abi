@@ -1,0 +1,48 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "batchinsert",
+            "base": "",
+            "fields": [
+                {
+                    "name": "batch_size",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "setkvparam",
+            "base": "",
+            "fields": [
+                {
+                    "name": "db",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "batchinsert",
+            "type": "batchinsert",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setkvparam",
+            "type": "setkvparam",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "batchinsert",
+            "result_type": "uint64"
+        }
+    ]
+}

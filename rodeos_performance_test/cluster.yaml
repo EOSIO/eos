@@ -1,0 +1,30 @@
+version: "3.9"
+x-manager-node: &manager-node
+    placement:
+        constraints:
+          - "node.role==manager"
+services:
+   bootstrap:
+      deploy:
+        <<: *manager-node
+        restart_policy:
+          condition: none
+   mysql:
+      deploy:
+        <<: *manager-node
+   zipkin:
+      deploy:
+        <<: *manager-node
+   producer: 
+      deploy:
+        <<: *manager-node
+   ship:
+      deploy:
+         placement:
+            constraints:
+               - "node.name==node-1"
+   rodeos:
+      deploy:
+         placement:
+            constraints:
+               - "node.name==node-2"

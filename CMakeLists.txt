@@ -265,3 +265,12 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 
 include(package)
 include(doxygen)
+
+if(EXISTS /etc/os-release) 
+  file(STRINGS /etc/os-release IS_UBUNTU_20_04 REGEX "PRETTY_NAME=\"Ubuntu 20.04 LTS\"")
+  find_program(Docker_EXECUTABLE docker)
+  message("IS_UBUNTU_20_04=${IS_UBUNTU_20_04}")
+  if(IS_UBUNTU_20_04 AND Docker_EXECUTABLE)
+    add_subdirectory(rodeos_performance_test)
+  endif()
+endif()
