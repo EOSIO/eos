@@ -25,6 +25,7 @@ The following step shows you how to link a permission:
 ```shell
 cleos set action permission alice scontract hi customp -p alice@active
 ```
+
 **Where**
 * `alice` = The name of the account containing the permission to link.
 * `scontract`= The name of the account which owns the smart contract.
