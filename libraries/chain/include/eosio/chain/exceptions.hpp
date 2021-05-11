@@ -382,6 +382,12 @@ namespace eosio { namespace chain {
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( disk_usage_exceeded, resource_exhausted_exception,
                                     3080009, "Account using more than allotted DISK usage" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_net_exceeded, resource_exhausted_exception,
+                                    3080010, "Transaction exceeded the resource payer network usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_cpu_exceeded, resource_exhausted_exception,
+                                    3080011, "Transaction exceeded the resource payer CPU usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( resource_payer_memory_exceeded, resource_exhausted_exception,
+                                    3080012, "FOR FUTURE USE - Transaction exceeded the resource payer RAM usage limit" )
 
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -498,7 +504,8 @@ namespace eosio { namespace chain {
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )
       FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,          controller_emit_signal_exception,
                                    3140001, "Block does not match checkpoint" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( state_history_write_exception, controller_emit_signal_exception,
+                                   3140002, "State history write error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                           chain_exception,
                                  3015000, "ABI exception" )
