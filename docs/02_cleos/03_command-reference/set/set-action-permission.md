@@ -50,12 +50,13 @@ The following information shows the different positionals and options you can us
 ```shell
 cleos set action permission bob scontract1 hi customp1 -p bob@active
 ```
+
 **Where**
-`bob` = The name of the account to link the custom permission authority.
-`scontract1`= The name of the account which owns the smart contract.
-`hi` = The name of the action to link to a permission. 
-`customp1` = The permission used to authorize the transaction.
-`-p bob@active` = The permission used to authorize setting the permissions.
+* `bob` = The name of the account to link the custom permission authority.
+* `scontract1`= The name of the account which owns the smart contract.
+* `hi` = The name of the action to link to a permission. 
+* `customp1` = The permission used to authorize the transaction.
+* `-p bob@active` = The permission used to authorize setting the permissions.
 
 **Example Output**
 ```shell
@@ -67,12 +68,13 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 ```shell
 cleos set action permission bob scontract1 bye customp2 -p bob@active
 ```
+
 **Where**
-`bob` = The name of the account to link the custom permission authority.
-`scontract1`= The name of the account which owns the smart contract.
-`bye` = The name of the action to link to a permission. 
-`customp2` = The permission used to authorize the transaction.
-`-p bob@active` = The permission used to authorize setting the permissions.
+* `bob` = The name of the account to link the custom permission authority.
+* `scontract1`= The name of the account which owns the smart contract.
+* `bye` = The name of the action to link to a permission. 
+* `customp2` = The permission used to authorize the transaction.
+* `-p bob@active` = The permission used to authorize setting the permissions.
 
 **Example Output**
 ```shell
@@ -86,11 +88,11 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 cleos set action permission bob scontract1 hi NULL -p bob@active
 ```
 **Where**
-`bob` = The name of the account to link the custom permission authority.
-`scontract1`= The name of the account which owns the smart contract.
-`hi` = The name of the action to link to a permission. 
-`NULL` = Remove the permission.
-`-p bob@active` = The permission used to authorize the transaction.
+* `bob` = The name of the account to link the custom permission authority.
+* `scontract1`= The name of the account which owns the smart contract.
+* `hi` = The name of the action to link to a permission. 
+* `NULL` = Remove the permission.
+* `-p bob@active` = The permission used to authorize the transaction.
 
 **Example Output**
 ```shell
