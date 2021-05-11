@@ -46,7 +46,8 @@ The following information shows the different positionals and options you can us
 
 ## Examples
 
-1. Set permission on a _hi_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp1_ permission are authorized:  
+1. Set permission on a _hi_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp1_ permission are authorized:
+
 ```shell
 cleos set action permission bob scontract1 hi customp1 -p bob@active
 ```
@@ -63,10 +64,12 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 #         eosio <= eosio::linkauth              {"account":"bob","code":"scontract1","type":"hi","requirement":"customp1"}
 ```
 
-2. permissions on a _bye_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp2_ permission are authorized:  
+2. permissions on a _bye_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp2_ permission are authorized:
+
 ```shell
 cleos set action permission bob scontract1 bye customp2 -p bob@active
 ```
+
 **Where**
 * `bob` = The name of the account to link the custom permission authority.
 * `scontract1`= The name of the account which owns the smart contract.
@@ -80,11 +83,12 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 #         eosio <= eosio::linkauth              {"account":"bob","code":"scontract1","type":"bye","requirement":"customp2"}
 ```
 
-3. To remove the customp1 permission from the _hi_ action
+3. To remove the customp1 permission from the _hi_ action:
 
 ```shell
 cleos set action permission bob scontract1 hi NULL -p bob@active
 ```
+
 **Where**
 * `bob` = The name of the account to link the custom permission authority.
 * `scontract1`= The name of the account which owns the smart contract.
@@ -97,7 +101,6 @@ cleos set action permission bob scontract1 hi NULL -p bob@active
 executed transaction: 50fe754760a1b8bd0e56f57570290a3f5daa509c090deb54c81a721ee7048201  120 bytes  242 us
 #         eosio <= eosio::unlinkauth            {"account":"bob","code":"scontract1","type":"hi"}
 ```
-
 ## See Also
 - [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
 - [Creating and Linking Custom Permissions](https://developers.eos.io/welcome/v2.1/smart-contract-guides/linking-custom-permission) tutorial.

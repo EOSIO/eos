@@ -18,13 +18,14 @@ See the following reference guides for command line usage and related options:
 * [cleos set action permission](../03_command-reference/set/set-action-permission.md) command
 ## link Procedure
 
-The following step shows you how to link a permission
+The following step shows you how to link a permission:
 
 1. Run the following command to link _alices_ account permission _customp_ with the _hi_ action deployed to the _scontract_ account:
 
 ```shell
 cleos set action permission alice scontract hi customp -p alice@active
 ```
+
 **Where**
 * `alice` = The name of the account containing the permission to link.
 * `scontract`= The name of the account which owns the smart contract.
