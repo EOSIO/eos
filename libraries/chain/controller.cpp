@@ -1179,6 +1179,7 @@ struct controller_impl {
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
+
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
@@ -1216,6 +1217,11 @@ struct controller_impl {
 
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
+
+            if (self.is_builtin_activated(builtin_protocol_feature_t::resource_payer)) {
+               EOS_ASSERT(trn.contains_auth(trn.resource_payer(true)), transaction_exception, "resource payer has not authorized" );
+            }
+
             if( trx->implicit ) {
                EOS_ASSERT( !explicit_net_usage_words, transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
