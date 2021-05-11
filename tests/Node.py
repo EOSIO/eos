@@ -549,7 +549,7 @@ class Node(object):
         with RequireBlockNum(self, blockNum) as lam:
 
             reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-            ret=Utils.waitForTruth(lam, timeout, reporter=reporter, sleepTime=sleepTime)
+            ret=Utils.waitForTruth(lam, timeout, reporter=reporter)
 
         assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
