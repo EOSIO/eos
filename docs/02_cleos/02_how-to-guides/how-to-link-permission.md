@@ -37,6 +37,7 @@ cleos set action permission alice scontract hi customp -p alice@active
 executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf74a838  128 bytes  141 us
 #         eosio <= eosio::linkauth              {"account":"alice","code":"scontract","type":"hi","requirement":"customp"}
 ```
+
 ## Summary
 In conclusion, by following these instructions you are able to link a permission to a smart contract action.
 
