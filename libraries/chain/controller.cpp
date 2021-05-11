@@ -2770,6 +2770,10 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    return signed_block_ptr();
 }
 
+std::shared_ptr<std::vector<char>> controller::fetch_block_buffer_by_number(uint32_t block_num, bool return_signed_block)const { try {
+    return my->blog.get_block_buffer_by_number(block_num, return_signed_block);
+}FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = fetch_block_state_by_number( block_num );
    if( blk_state ) {

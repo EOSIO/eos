@@ -1465,6 +1465,8 @@ namespace eosio {
       }
    }
 
+   using send_buffer_type = std::shared_ptr<std::vector<char>>;
+
    bool connection::enqueue_sync_block() {
       if( !peer_requested ) {
          return false;
@@ -1476,34 +1478,66 @@ namespace eosio {
          peer_requested.reset();
          fc_ilog( logger, "completing enqueue_sync_block ${num} to ${p}", ("num", num)("p", peer_name()) );
       }
+
       connection_wptr weak = shared_from_this();
-      app().post( priority::medium, [num, weak{std::move(weak)}]() {
-         connection_ptr c = weak.lock();
-         if( !c ) return;
-         controller& cc = my_impl->chain_plug->chain();
-         signed_block_ptr sb;
-         try {
-            sb = cc.fetch_block_by_number( num );
-         } FC_LOG_AND_DROP();
-         if( sb ) {
-            c->strand.post( [c, sb{std::move(sb)}]() {
-               c->enqueue_block( sb, true );
-            });
-         } else {
-            c->strand.post( [c, num]() {
-               peer_ilog( c, "enqueue sync, unable to fetch block ${num}", ("num", num) );
-               c->send_handshake();
-            });
-         }
-      });
+      controller &cc = my_impl->chain_plug->chain();
+      send_buffer_type pBuffer;
+      bool return_signed_block = (weak.lock()->protocol_version >= proto_pruned_types ? true : false);
+      try{
+          pBuffer = cc.fetch_block_buffer_by_number(num, return_signed_block);
+      } FC_LOG_AND_DROP();
+
+      if (pBuffer){
+          //Prefix header information to pBuffer
+          uint32_t block_size = (*pBuffer).size();
+          send_buffer_type send_buffer;
+          uint32_t which; // see net_message in net_plugin/protocol.hpp
+          if (return_signed_block)
+              which = 9;  // signed_block_which
+          else
+              which = 7;  // signed_block_v0_which
+          const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+          const uint32_t payload_size = which_size + block_size;
+          const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+          constexpr size_t header_size = 4;   // see message_header_size
+          const size_t buffer_size = header_size + payload_size;
+          send_buffer = std::make_shared<std::vector<char>>(buffer_size);
+          fc::datastream<char*> datastream( send_buffer->data(), buffer_size );
+          datastream.write( header, header_size );
+          fc::raw::pack( datastream, unsigned_int( which ) );
+          datastream.write(pBuffer->data(), block_size);
+
+          weak.lock()->enqueue_buffer(send_buffer, no_reason, true);
+      }else{
+          app().post( priority::medium, [num, weak{std::move(weak)}]() {
+              connection_ptr c = weak.lock();
+              if( !c ) return;
+              controller& cc = my_impl->chain_plug->chain();
+              signed_block_ptr sb = nullptr;
+              block_state_ptr blk_state;
+              try {
+                  blk_state = cc.fetch_block_state_by_number( num );
+                  if (blk_state)
+                      sb = blk_state->block;
+              } FC_LOG_AND_DROP();
+              if( sb ) {
+                  c->strand.post( [c, sb{std::move(sb)}]() {
+                      c->enqueue_block( sb, true );
+                  });
+              } else {
+                  c->strand.post( [c, num]() {
+                      peer_ilog( c, "enqueue sync, unable to fetch block ${num}", ("num", num) );
+                      c->send_handshake();
+                  });
+              }
+          });
+      }
 
       return true;
    }
 
    //------------------------------------------------------------------------
-
-   using send_buffer_type = std::shared_ptr<std::vector<char>>;
-
+   
    struct buffer_factory {
 
       /// caches result for subsequent calls, only provide same net_message instance for each invocation
@@ -3990,6 +4024,7 @@ namespace eosio {
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
+         my->p2p_reject_incomplete_blocks = options.at("p2p-reject-incomplete-blocks").as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
          my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() );

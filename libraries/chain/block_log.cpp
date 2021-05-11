@@ -10,6 +10,7 @@
 #include <fc/scoped_exit.hpp>
 #include <future>
 #include <regex>
+#include <mutex>
 
 namespace eosio { namespace chain {
 
@@ -238,6 +239,34 @@ namespace eosio { namespace chain {
    struct bad_block_exception {
       std::exception_ptr inner;
    };
+
+   template <typename Stream>
+   std::shared_ptr<std::vector<char>> read_packed_block(Stream&& ds, uint32_t version, uint32_t* pBlockSize) {
+
+       std::shared_ptr<std::vector<char>> data_buff;
+       if (version >= pruned_transaction_version) {
+           // block size - 4 bytes
+           uint32_t sz;
+           fc::raw::unpack(ds, sz);
+
+           // compression status - 1 byte
+           uint8_t  compression;
+           fc::raw::unpack(ds, compression);
+           EOS_ASSERT(compression == static_cast<uint8_t>(packed_transaction::cf_compression_type::none),
+                      block_log_exception, "Only \"none\" compression type is supported.");
+
+           // block data size
+           *pBlockSize = sz - 4 -1 - 8; //block size: 4 bytes; compression status: 1 byte; pos size: 8 bytes
+       }else{
+           EOS_ASSERT(*pBlockSize > 0,block_log_exception, "Wrong size of signed_block_v0 was calculated.");
+       }
+
+       // save block data into a buffer
+       data_buff = std::make_shared<std::vector<char>>(*pBlockSize);
+       ds.read(data_buff->data(), *pBlockSize);
+
+       return data_buff;
+   }
 
    template <typename Stream>
    std::unique_ptr<signed_block> read_block(Stream&& ds, uint32_t version, uint32_t expect_block_num = 0) {
@@ -551,6 +580,7 @@ namespace eosio { namespace chain {
          uint32_t                  future_version;
          const size_t              stride;
          static uint32_t           default_version;
+         mutable std::mutex        blog_mutex;
 
          explicit block_log_impl(const block_log::config_type& config);
 
@@ -575,14 +605,23 @@ namespace eosio { namespace chain {
                                  const signed_block_ptr& b, packed_transaction::cf_compression_type segment_compression);
          uint64_t append(std::future<std::tuple<signed_block_ptr, std::vector<char>>> f);
 
+         // thread safe
          uint64_t write_log_entry(const std::vector<char>& block_buffer);
 
          void split_log();
          bool recover_from_incomplete_block_head(block_log_data& log_data, block_log_index& index);
 
-         block_id_type                 read_block_id_by_num(uint32_t block_num);
-         std::unique_ptr<signed_block> read_block_by_num(uint32_t block_num);
-         void                          read_head();
+         // thread safe
+         block_id_type                          read_block_id_by_num(uint32_t block_num);
+         // thread safe
+         std::unique_ptr<signed_block>          read_block_by_num(uint32_t block_num);
+         // thread safe
+         void                                   read_head();
+
+         // thread safe
+         std::shared_ptr<std::vector<char>> read_block_buffer_by_num(uint32_t block_num, bool return_signed_block);
+         std::shared_ptr<std::vector<char>> handle_version_mismatch(std::shared_ptr<std::vector<char>> pBuffer,
+                                                                    uint32_t blog_version, bool return_signed_block);
       };
       uint32_t block_log_impl::default_version = block_log::max_supported_version;
    } // namespace detail
@@ -600,7 +639,6 @@ namespace eosio { namespace chain {
    detail::block_log_impl::block_log_impl(const block_log::config_type& config)
    : stride( config.stride )
    {
-
       if (!fc::is_directory(config.log_dir))
          fc::create_directories(config.log_dir);
       
@@ -712,6 +750,8 @@ namespace eosio { namespace chain {
    }
 
    uint64_t detail::block_log_impl::write_log_entry(const std::vector<char>& block_buffer) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = block_file.tellp();
 
       block_file.write(block_buffer.data(), block_buffer.size());
@@ -842,7 +882,90 @@ namespace eosio { namespace chain {
       my->head.reset();
    }
 
+
+   std::shared_ptr<std::vector<char>> detail::block_log_impl::read_block_buffer_by_num(uint32_t block_num, bool return_signed_block) {
+
+       std::unique_lock<std::mutex> g(blog_mutex);
+
+       std::shared_ptr<std::vector<char>> pBuffer = nullptr;
+       uint32_t blog_version = 0;
+       uint32_t block_size = 0;
+
+       uint64_t pos = get_block_pos(block_num);
+       if (pos != block_log::npos) {
+           blog_version = preamble.version;
+
+           block_file.seek(pos);
+           if (blog_version  >= pruned_transaction_version){
+               pBuffer = read_packed_block(block_file, blog_version, &block_size);
+           }else{
+               //calculate and pass block size, which is needed when reading a packed block from a block log file with version less than pruned_transaction_version
+               uint64_t next_pos = get_block_pos(block_num + 1);
+               if (next_pos != block_log::npos){
+                   block_size = (next_pos - pos) - sizeof(uint64_t);
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
+               }else if (head && block_num == head->block_num()){ //head block
+                   block_file.seek_end(0);
+                   block_size = (block_file.tellp() - pos) - sizeof(uint64_t);
+                   block_file.seek(pos); // restore position of the block needed
+                   pBuffer = read_packed_block(block_file, blog_version, &block_size);
+               }
+           }
+       }else {//search in catalog files
+           auto[ds, version] = catalog.ro_stream_for_block(block_num);
+           if (ds.remaining()){
+               blog_version = version;
+               pBuffer = read_packed_block(ds, blog_version, &block_size);
+           }
+       }
+
+       if (pBuffer){
+           if ((blog_version >= pruned_transaction_version && !return_signed_block)
+           || (blog_version < pruned_transaction_version && return_signed_block)){
+               //block log version and protocol version mismatch
+               pBuffer = handle_version_mismatch(pBuffer, blog_version, return_signed_block);
+           }
+           dlog("*** reading a serialized block from a log file ***");
+           return pBuffer;
+       }
+       return {}; // archived or deleted
+   }
+
+   std::shared_ptr<std::vector<char>> detail::block_log_impl::handle_version_mismatch(std::shared_ptr<std::vector<char>> pBuffer,
+                                                                                      uint32_t blog_version, bool return_signed_block){
+       fc::datastream<const char*> ds((*pBuffer).data(), (*pBuffer).size());
+       if (return_signed_block && blog_version < pruned_transaction_version){
+           //unpack
+           signed_block_v0 block_v0;
+           fc::raw::unpack(ds, block_v0);
+           //convert to signed_block
+           signed_block sb(std::move(block_v0), true);
+           size_t pack_size = fc::raw::pack_size(sb);
+           //pack
+           auto send_buf=std::make_shared<std::vector<char>>(pack_size);
+           fc::datastream<char*> pack_ds(send_buf->data(), send_buf->size());
+           fc::raw::pack(pack_ds, sb);
+           return send_buf;
+       }else{
+           //unpack
+           signed_block sb;
+           sb.unpack(ds, packed_transaction::cf_compression_type::none);
+           //convert to signed_block_v0
+           auto block_ptr = sb.to_signed_block_v0();
+           if (!block_ptr)
+               return {};
+           size_t pack_size = fc::raw::pack_size(*block_ptr);
+           //pack
+           auto send_buf=std::make_shared<std::vector<char>>(pack_size);
+           fc::datastream<char*> pack_ds(send_buf->data(), send_buf->size());
+           fc::raw::pack(pack_ds, *block_ptr);
+           return send_buf;
+       }
+   }
+
    std::unique_ptr<signed_block> detail::block_log_impl::read_block_by_num(uint32_t block_num) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = get_block_pos(block_num);
       if (pos != block_log::npos) {
          block_file.seek(pos);
@@ -856,6 +979,8 @@ namespace eosio { namespace chain {
    }
 
    block_id_type detail::block_log_impl::read_block_id_by_num(uint32_t block_num) {
+      std::unique_lock<std::mutex> g(blog_mutex);
+
       uint64_t pos = get_block_pos(block_num);
       if (pos != block_log::npos) {
          block_file.seek(pos);
@@ -868,6 +993,9 @@ namespace eosio { namespace chain {
       return {};
    }
 
+   std::shared_ptr<std::vector<char>> block_log::get_block_buffer_by_number(uint32_t block_num, bool return_signed_block) const {
+       return my->read_block_buffer_by_num(block_num, return_signed_block);
+   }
    std::unique_ptr<signed_block> block_log::read_signed_block_by_num(uint32_t block_num) const {
       return my->read_block_by_num(block_num);
    }
@@ -888,6 +1016,7 @@ namespace eosio { namespace chain {
    void detail::block_log_impl::read_head() {
       uint64_t pos;
 
+      std::unique_lock<std::mutex> g(blog_mutex);
       block_file.seek_end(-sizeof(pos));
       block_file.read((char*)&pos, sizeof(pos));
       if (pos != block_log::npos) {
@@ -1085,6 +1214,9 @@ namespace eosio { namespace chain {
       size_t num_trx_pruned = 0;
       for (auto& trx : entry.block.transactions) {
          num_trx_pruned += std::visit(pruner, trx.trx);
+      }
+      if (num_trx_pruned > 0){
+         entry.block.prune_state = signed_block::prune_state_type::incomplete;
       }
       strm.skip(offset_to_block_start(version));
       entry.block.pack(strm, entry.meta.compression);
