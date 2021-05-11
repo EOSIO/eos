@@ -244,13 +244,7 @@ try:
     # node1 and node2 start to receive blocks
     assert apiNode1.waitForLibToAdvance()
     Print("After {} became LIB API Node1 head = {} API Node2 head = {}".format(trans_block_num, apiNode1.getHeadBlockNum(), apiNode2.getHeadBlockNum()))
-    #######################################################################
-    # Workaround.
-    # Restart shouldn't be needed here but due to bug in net_plugin we have to.
-    # this supposed to be fixed in nodeos and removed
-    apiNode2.kill(signal.SIGTERM)
-    apiNode2.relaunch(cachePopen=True)
-    #######################################################################
+    
     apiNode2.waitForBlock(trans_block_num, timeout=240, blockType=BlockType.lib, reportInterval=1, errorContext="API Node2 didn't sync after restart")
     Print("API Node2 LIB block is now {}".format(trans_block_num))
     assert apiNode2.waitForHeadToAdvance()
