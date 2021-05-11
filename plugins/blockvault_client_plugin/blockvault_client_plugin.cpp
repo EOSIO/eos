@@ -32,7 +32,6 @@ void blockvault_client_plugin::set_program_options(options_description&, options
 }
 
 void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
-   ilog("initializing blockvault_client plugin");
 #ifdef HAS_PQXX
    try {
       if (options.count("block-vault-backend")) {
@@ -43,6 +42,9 @@ void blockvault_client_plugin::plugin_initialize(const variables_map& options) {
          } else if (uri.size()) {
             elog("unknown block-vault-backend option, skipping it");
          }
+      }
+      else {
+         ilog("no block-vault-backend option is specified, skipping it");
       }
    }
    FC_RETHROW_EXCEPTIONS ( error, "blockvault_client plugin initialization error, please double check if the specified `--block-vault-backend` value is correct")

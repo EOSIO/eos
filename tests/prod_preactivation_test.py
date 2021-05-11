@@ -42,8 +42,7 @@ walletPort=args.wallet_port
 
 Utils.Debug=debug
 localTest=True
-cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-walletMgr=WalletMgr(True, port=walletPort)
+cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletMgr=WalletMgr(True, port=walletPort))
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
@@ -54,9 +53,6 @@ ClientName="cleos"
 
 try:
     TestHelper.printSystemInfo("BEGIN prod_preactivation_test.py")
-    cluster.setWalletMgr(walletMgr)
-    Print("SERVER: %s" % (server))
-    Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
@@ -64,7 +60,8 @@ try:
         Print("Stand up cluster")
         if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios,
                          dontBootstrap=dontBootstrap, useBiosBootFile=False,
-                         pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin  --http-max-response-time-ms 990000 ") is False:
+                         pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin  --http-max-response-time-ms 990000 ",
+                         printInfo=True) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
 
@@ -171,6 +168,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, cluster.walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

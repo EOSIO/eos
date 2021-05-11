@@ -6,6 +6,7 @@
 
 #include <climits>
 #include <cerrno>
+#include <limits>
 
 // Include the David Gay's dtoa code.
 // #define strtod and dtoa to avoid conflicting with the C standard library versions

@@ -53,8 +53,8 @@ cluster=Cluster(host=server,
                 port=port, 
                 walletd=True,
                 defproduceraPrvtKey=defproduceraPrvtKey, 
-                defproducerbPrvtKey=defproducerbPrvtKey)
-walletMgr=WalletMgr(True, port=walletPort)
+                defproducerbPrvtKey=defproducerbPrvtKey,
+                walletMgr=WalletMgr(True, port=walletPort))
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
@@ -67,9 +67,6 @@ Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
-    cluster.setWalletMgr(walletMgr)
-    Print("SERVER: %s" % (server))
-    Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
@@ -93,7 +90,8 @@ try:
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
-                          associatedNodeLabels=associatedNodeLabels) is False:
+                          associatedNodeLabels=associatedNodeLabels,
+                          printInfo=True) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -101,10 +99,10 @@ try:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
         Print("Stand up %s" % (WalletdName))
-        walletMgr.killall(allInstances=killAll)
-        walletMgr.cleanup()
+        cluster.walletMgr.killall(allInstances=killAll)
+        cluster.walletMgr.cleanup()
         print("Stand up walletd")
-        if walletMgr.launch() is False:
+        if cluster.walletMgr.launch() is False:
             cmdError("%s" % (WalletdName))
             errorExit("Failed to stand up eos walletd.")
     
@@ -128,14 +126,14 @@ try:
     walletAccounts=copy.deepcopy(cluster.defProducerAccounts)
     if dontLaunch:
         del walletAccounts["eosio"]
-    testWallet = walletMgr.create(testWalletName, walletAccounts.values())
+    testWallet = cluster.walletMgr.create(testWalletName, walletAccounts.values())
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
     all_acc = accounts + list( cluster.defProducerAccounts.values() )
     for account in all_acc:
         Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
-        if not walletMgr.importKey(account, testWallet):
+        if not cluster.walletMgr.importKey(account, testWallet):
             cmdError("%s wallet import" % (ClientName))
             errorExit("Failed to import key for account %s" % (account.name))
     
@@ -186,7 +184,7 @@ try:
         attemptCnt = 10
         trxBlock = None
         while trxBlock is None and attemptCnt > 0:
-            trxBlock = node.getBlockIdByTransId(trx_id)
+            trxBlock = node.getBlockNumByTransId(trx_id)
             attemptCnt = attemptCnt - 1
         
         assert trxBlock, Print("Transaction %s wasn't posted" % (trx_id))
@@ -199,4 +197,4 @@ try:
     
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, cluster.walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)

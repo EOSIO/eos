@@ -330,7 +330,6 @@ namespace eosio { namespace chain {
       }
    };
 
-
    /**
     *  Extentions are prefixed with type and are a buffer that can be
     *  interpreted by code that is aware and ignored by unaware code.
