@@ -109,6 +109,27 @@ account_name transaction::resource_payer(bool is_resource_payer_fp_activated)con
    return resource_payer;
 }
 
+std::optional<resource_payer_t> transaction::resource_payer_info( bool is_protocol_feature_activated ) const {
+
+   // Check for the existence of an extension of the type resource_payer
+   bool has_res_pyr = false;
+   resource_payer_t res_pyr;
+
+   if( is_protocol_feature_activated && transaction_extensions.size() > 0 ) {
+       std::find_if( transaction_extensions.begin(), transaction_extensions.end(),
+                     [&](auto& elem) {
+                        bool ret = elem.first == transaction_extension_id::resource_payer_id;
+                        if (ret) {
+                           fc::raw::unpack(elem.second, res_pyr);
+                           has_res_pyr = true;
+                        }
+                        return ret;
+                     } );
+   }
+
+   return has_res_pyr ? std::optional<resource_payer_t>(res_pyr) : std::nullopt;
+}
+
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
 

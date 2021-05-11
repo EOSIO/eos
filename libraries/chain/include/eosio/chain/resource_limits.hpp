@@ -75,7 +75,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
-         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
+         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal, bool use_resource_payer_cpu_limit = false, bool use_resource_payer_net_limit = false );
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta, const storage_usage_trace& trace );
          void verify_account_ram_usage( const account_name accunt )const;
