@@ -1,0 +1,105 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "get",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "my_struct",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint32"
+                },
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "gender",
+                    "type": "uint32"
+                },
+                {
+                    "name": "age",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "put",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint32"
+                },
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "gender",
+                    "type": "uint32"
+                },
+                {
+                    "name": "age",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "setup",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "get",
+            "type": "get",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "put",
+            "type": "put",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setup",
+            "type": "setup",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {
+        "roqf": {
+            "type": "my_struct",
+            "primary_index": {
+                "name": "id",
+                "type": "uint32"
+            },
+            "secondary_indices": {}
+        },
+        "roqm": {
+            "type": "my_struct",
+            "primary_index": {
+                "name": "id",
+                "type": "uint32"
+            },
+            "secondary_indices": {}
+        }
+    },
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "get",
+            "result_type": "my_struct[]"
+        }
+    ]
+}
