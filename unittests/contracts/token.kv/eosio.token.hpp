@@ -11,7 +11,7 @@
 using namespace eosio;
 using namespace std;
 
-struct currency_stats_record {
+struct [[eosio::table("currency_stats"), eosio::contract("eosio.token")]] currency_stats_record {
     asset supply;
     asset max_supply;
     name  issuer;
@@ -20,20 +20,20 @@ struct currency_stats_record {
     auto by_code() const { return supply.symbol.code().raw(); }
 };
 
-struct stats_table : kv_table<currency_stats_record> {
+struct [[eosio::table("stats_table"), eosio::contract("eosio.token")]] stats_table : kv_table<currency_stats_record> {
     KV_NAMED_INDEX("by.iss.code", by_issuer_code);
     KV_NAMED_INDEX("by.code", by_code);
     stats_table() { init("eosio.token"_n, "stat"_n, eosio::kv_ram, by_issuer_code, by_code); }
 };
 
-struct account_record {
+struct [[eosio::table("account_record"), eosio::contract("eosio.token")]]  account_record {
     name account_name;
     asset balance;
 
     auto by_account_code() const { return std::tuple(account_name.value, balance.symbol.code().raw()); }
 };
 
-struct accounts_table : kv_table<account_record> {
+struct [[eosio::table("accounts_table"), eosio::contract("eosio.token")]] accounts_table : kv_table<account_record> {
     KV_NAMED_INDEX("by.acc.code", by_account_code);
     accounts_table() { init("eosio.token"_n, "accounts"_n, eosio::kv_ram, by_account_code); }
 };

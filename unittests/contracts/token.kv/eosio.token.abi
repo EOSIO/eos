@@ -4,6 +4,30 @@
     "types": [],
     "structs": [
         {
+            "name": "account_record",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account_name",
+                    "type": "name"
+                },
+                {
+                    "name": "balance",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "accounts_table",
+            "base": "kv_table_account_record",
+            "fields": [
+                {
+                    "name": "by_account_code",
+                    "type": "index_tuple_declval_const_eosio__kv_table_struct_account_record___value_type_*_()))"
+                }
+            ]
+        },
+        {
             "name": "close",
             "base": "",
             "fields": [
@@ -32,6 +56,38 @@
             ]
         },
         {
+            "name": "currency_stats_record",
+            "base": "",
+            "fields": [
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "max_supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "issuer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "foo_table",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "foo",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "issue",
             "base": "",
             "fields": [
@@ -50,6 +106,71 @@
             ]
         },
         {
+            "name": "key_type",
+            "base": "bytes",
+            "fields": []
+        },
+        {
+            "name": "kv_index",
+            "base": "",
+            "fields": [
+                {
+                    "name": "index_name",
+                    "type": "name"
+                },
+                {
+                    "name": "table_name",
+                    "type": "name"
+                },
+                {
+                    "name": "contract_name",
+                    "type": "name"
+                },
+                {
+                    "name": "tbl",
+                    "type": "*"
+                },
+                {
+                    "name": "prefix",
+                    "type": "partial_key"
+                },
+                {
+                    "name": "key_function",
+                    "type": "function_*)"
+                }
+            ]
+        },
+        {
+            "name": "kv_table_base",
+            "base": "",
+            "fields": [
+                {
+                    "name": "contract_name",
+                    "type": "name"
+                },
+                {
+                    "name": "table_name",
+                    "type": "name"
+                },
+                {
+                    "name": "db_name",
+                    "type": "uint64"
+                },
+                {
+                    "name": "primary_index_name",
+                    "type": "name"
+                },
+                {
+                    "name": "primary_index",
+                    "type": "*"
+                },
+                {
+                    "name": "secondary_indices",
+                    "type": "*[]"
+                }
+            ]
+        },
+        {
             "name": "open",
             "base": "",
             "fields": [
@@ -64,6 +185,11 @@
             ]
         },
         {
+            "name": "partial_key",
+            "base": "key_type",
+            "fields": []
+        },
+        {
             "name": "retire",
             "base": "",
             "fields": [
@@ -74,6 +200,20 @@
                 {
                     "name": "memo",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "stats_table",
+            "base": "kv_table_currency_stats_record",
+            "fields": [
+                {
+                    "name": "by_issuer_code",
+                    "type": "index_tuple_declval_const_eosio__kv_table_struct_currency_stats_record___value_type_*_()))"
+                },
+                {
+                    "name": "by_code",
+                    "type": "index_decay_t_decltype(std__invoke(&value_type__by_code__std__declval_const_value_type_*_()))_"
                 }
             ]
         },
@@ -96,6 +236,16 @@
                 {
                     "name": "memo",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "type",
+            "base": "",
+            "fields": [
+                {
+                    "name": "__lx",
+                    "type": "[16]"
                 }
             ]
         }
@@ -132,7 +282,43 @@
             "ricardian_contract": ""
         }
     ],
-    "tables": [],
+    "tables": [
+        {
+            "name": "account_record",
+            "type": "account_record",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "accounts_table",
+            "type": "accounts_table",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "currency_stats",
+            "type": "currency_stats_record",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "foo_table",
+            "type": "foo_table",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stats_table",
+            "type": "stats_table",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
     "ricardian_clauses": [],
     "variants": [],
     "action_results": []
