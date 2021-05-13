@@ -1253,12 +1253,13 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
             return None
 
-        eosioKVTokenAccount=copy.deepcopy(eosioAccount)
-        eosioKVTokenAccount.name="token.kv"
-        trans=biosNode.createAccount(eosioKVTokenAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioKVTokenAccount.name))
-            return None
+        if tokenType == TokenType.kv:
+            eosioKVTokenAccount=copy.deepcopy(eosioAccount)
+            eosioKVTokenAccount.name="token.kv"
+            trans=biosNode.createAccount(eosioKVTokenAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioKVTokenAccount.name))
+                return None
 
         eosioRamAccount=copy.deepcopy(eosioAccount)
         eosioRamAccount.name="eosio.ram"
