@@ -376,6 +376,7 @@ try:
     # block number to start expecting node killed after
     preKillBlockNum=nonProdNode.getBlockNum()
     preKillBlockProducer=nonProdNode.getBlockProducerByNum(preKillBlockNum)
+    Print("preKillBlockProducer = {}".format(preKillBlockProducer))
     # kill at last block before defproducerl, since the block it is killed on will get propagated
     killAtProducer="defproducerk"
     nonProdNode.killNodeOnProducer(producer=killAtProducer, whereInSequence=(inRowCountPerProducer-1))
@@ -407,8 +408,13 @@ try:
             (headBlockNum, libNumAroundDivergence)=getMinHeadAndLib(prodNodes)
 
         # track the block number and producer from each producing node
-        blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
-        blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
+        # we use timeout 70 here because of case when chain break, call to getBlockProducerByNum
+        # and call of producer_plugin::schedule_delayed_production_loop happens nearly immediately
+        # for 10 producers wait cycle is 10 * (12*0.5) = 60 seconds.
+        # for 11 producers wait cycle is 11 * (12*0.5) = 66 seconds.
+        blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum, timeout=70)
+        blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum, timeout=70)
+        Print("blockNum = {} blockProducer0 = {} blockProducer1 = {}".format(blockNum, blockProducer0, blockProducer1))
         blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
@@ -417,12 +423,15 @@ try:
         if not prodChanged:
             if preKillBlockProducer!=blockProducer0:
                 prodChanged=True
+                Print("prodChanged = True")
 
         #since it is killing for the last block of killAtProducer, we look for the next producer change
         if not nextProdChange and prodChanged and blockProducer1==killAtProducer:
             nextProdChange=True
+            Print("nextProdChange = True")
         elif nextProdChange and blockProducer1!=killAtProducer:
             nextProdChange=False
+            Print("nextProdChange = False")
             if blockProducer0!=blockProducer1:
                 Print("Divergence identified at block %s, node_00 producer: %s, node_01 producer: %s" % (blockNum, blockProducer0, blockProducer1))
                 actualLastBlockNum=blockNum
@@ -430,6 +439,7 @@ try:
             else:
                 missedTransitionBlock=blockNum
                 transitionCount+=1
+                Print("missedTransitionBlock = {} transitionCount = ".format(missedTransitionBlock, transitionCount))
                 # allow this to transition twice, in case the script was identifying an earlier transition than the bridge node received the kill command
                 if transitionCount>1:
                     Print("At block %d and have passed producer: %s %d times and we have not diverged, stopping looking and letting errors report" % (blockNum, killAtProducer, transitionCount))
