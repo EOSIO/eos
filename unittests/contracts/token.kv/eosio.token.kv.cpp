@@ -1,4 +1,4 @@
-#include "eosio.token.hpp"
+#include "token.kv.hpp"
 
 using namespace eosio;
 using namespace std;

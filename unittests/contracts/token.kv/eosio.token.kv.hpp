@@ -23,7 +23,7 @@ struct currency_stats_record {
 struct stats_table : kv_table<currency_stats_record> {
     KV_NAMED_INDEX("by.iss.code", by_issuer_code);
     KV_NAMED_INDEX("by.code", by_code);
-    stats_table() { init("eosio.token"_n, "stat"_n, eosio::kv_ram, by_issuer_code, by_code); }
+    stats_table() { init("token.kv"_n, "stat"_n, eosio::kv_ram, by_issuer_code, by_code); }
 };
 
 struct account_record {
@@ -35,10 +35,10 @@ struct account_record {
 
 struct accounts_table : kv_table<account_record> {
     KV_NAMED_INDEX("by.acc.code", by_account_code);
-    accounts_table() { init("eosio.token"_n, "accounts"_n, eosio::kv_ram, by_account_code); }
+    accounts_table() { init("token.kv"_n, "accounts"_n, eosio::kv_ram, by_account_code); }
 };
 
-class [[eosio::contract("eosio.token")]]  token_kv_contract : public eosio::contract {
+class [[eosio::contract("token.kv")]]  token_kv_contract : public eosio::contract {
     private:
          template<typename T>
          auto& global() {
@@ -58,4 +58,3 @@ class [[eosio::contract("eosio.token")]]  token_kv_contract : public eosio::cont
         ACT void open(const name& owner, const symbol& symbol);
         ACT void close(const name& owner, const symbol& symbol);
 };
-
