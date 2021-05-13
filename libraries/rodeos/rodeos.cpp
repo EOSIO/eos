@@ -6,6 +6,8 @@
 
 #include <fc/log/trace.hpp>
 
+uint64_t rodeos_block_timestamp = 0;
+
 namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;
@@ -160,6 +162,8 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
    info.schedule_version   = block.schedule_version;
    info.new_producers      = block.new_producers;
    info.producer_signature = block.producer_signature;
+
+   rodeos_block_timestamp  = block.timestamp.to_time_point().elapsed.count();
 
    block_info_kv table{ kv_environment{ view_state } };
    table.put(info);
