@@ -5,11 +5,13 @@ import signal
 import time
 from Cluster import Cluster
 from Cluster import NamedAccounts
+from Cluster import TokenType
 from core_symbol import CORE_SYMBOL
 from WalletMgr import WalletMgr
 from Node import Node
 from TestHelper import TestHelper
 from TestHelper import AppArgs
+from testUtils import Account
 
 import json
 
@@ -81,18 +83,35 @@ try:
     cluster.cleanup()
     Print("Stand up cluster")
 
-    if not amqpAddr:
-        launched = cluster.launch(pnodes=totalProducerNodes,
-                                  totalNodes=totalNodes, totalProducers=totalProducers,
-                                  useBiosBootFile=False, topo="ring")
-    else:
-        launched = cluster.launch(pnodes=totalProducerNodes,
-                                  totalNodes=totalNodes, totalProducers=totalProducers,
-                                  useBiosBootFile=False, topo="ring",
-                                  extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr))
+    extraNodeosArgs=""
+    if amqpAddr:
+        extraNodeosArgs=" --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --amqp-trx-speculative-execution --amqp-trx-ack-mode=executed --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr)
+
+    launched = cluster.launch(pnodes=totalProducerNodes,
+                              totalNodes=totalNodes, totalProducers=totalProducers,
+                              useBiosBootFile=False, topo="ring",
+                              extraNodeosArgs=extraNodeosArgs, tokenType=TokenType.kv)
     if launched is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
+
+    contract = "token.kv"
+    contractAccount = Account(contract)
+    Utils.Print("push create action to %s contract" % (contract))
+    action="create"
+    data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\"}" % (contract, CORE_SYMBOL)
+    opts="--permission %s@active" % (contract)
+    trans=cluster.biosNode.pushMessage(contract, action, data, opts)
+    if trans is None or not trans[0]:
+        Utils.errorExit("Failed to push create action to {} contract.".format(contract))
+
+    Utils.Print("push issue action to %s contract" % (contract))
+    action="issue"
+    data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (contract, CORE_SYMBOL)
+    opts="--permission %s@active" % (contract)
+    trans=cluster.biosNode.pushMessage(contract, action, data, opts)
+    if trans is None or not trans[0]:
+        Utils.errorExit("Failed to push issue action to {} contract.".format(contract))
 
     # ***   create accounts to vote in desired producers   ***
 
@@ -148,10 +167,25 @@ try:
     Print("Create new accounts took %s sec" % (nextTime - startTime))
     startTime = nextTime
 
-    Print("Transfer funds to new accounts via %s" % (cluster.eosioAccount.name))
+    def transfer(node, contract, fromAccount, toAccount, funds):
+        contract="token.kv"
+        action="transfer"
+        data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (fromAccount.name, toAccount.name, funds, "init eosio transfer")
+        opts="--permission {}@active".format(fromAccount.name)
+        trans=node.pushMessage(contract, action, data, opts)
+        if trans is None or not trans[0]:
+            Utils.errorExit("ERROR: Failed to transfer funds from {} to {}].".format(fromAccount.name, toAccount.name))
+        return trans[1]
+
+
+    Print("Transfer funds to new accounts via %s" % (contract))
+    transferAmount="1000.0000 {0}".format(CORE_SYMBOL)
     for account in accounts:
-        transferAmount="1000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
+        Print("Transfer %s funds %s from account %s to %s" % (contract, transferAmount, contract, account.name))
+        trans = transfer(node, contract, contractAccount, account, transferAmount)
+        checkTransIds.append(Node.getTransId(trans))
+    for account in accounts:
+        Print("Transfer %s funds %s from account %s to %s" % (cluster.eosioAccount.name, transferAmount, contract, account.name))
         trans = node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer", waitForTransBlock=False, reportStatus=False, sign = True)
         checkTransIds.append(Node.getTransId(trans))
 
@@ -285,7 +319,7 @@ try:
                     # delay and see if transfer is accepted now
                     Utils.Print("Transfer rejected, delay 1 second and see if it is then accepted")
                     time.sleep(1)
-                trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True, dontSend = args.send_duplicates)
+                trans=transfer(node, contract, fromAccount, toAccount, transferAmount)
                 attempts += 1
 
             if args.send_duplicates:
