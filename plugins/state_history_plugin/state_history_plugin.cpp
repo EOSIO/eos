@@ -168,6 +168,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          sending = true;
          derived_session().socket_stream->binary(sent_abi);
          sent_abi = true;
+	 /*
          derived_session().socket_stream->async_write( //
              boost::asio::buffer(send_queue[0]),
              [self = derived_session().shared_from_this()](boost::system::error_code ec, size_t) {
@@ -177,6 +178,21 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    self->send();
                 });
              });
+	     */
+
+	 //ilog("starting sync write");
+         derived_session().socket_stream->write( //
+             boost::asio::buffer(send_queue[0]));
+             //boost::asio::buffer(send_queue[0]));
+         //ilog("done sync write");
+
+         boost::system::error_code ec = boost::system::errc::make_error_code(boost::system::errc::success);
+         callback(ec, "write", [&] {
+             send_queue.erase(send_queue.begin());
+                   //ilog("sync write inside callback");
+             sending = false;
+             send();
+         });
       }
 
       using result_type = void;
@@ -325,7 +341,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename F>
       void callback(boost::system::error_code ec, const char* what, F f) {
-         app().post( priority::medium, [=]() {
+         //app().post( priority::medium, [=]() {
+         app().post( priority::high, [=]() {
             if( plugin->stopping )
                return;
             if( ec )

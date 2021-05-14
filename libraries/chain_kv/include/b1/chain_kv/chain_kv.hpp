@@ -306,6 +306,19 @@ struct database {
 
       rocksdb::Options options;
       options.create_if_missing                    = create_if_missing;
+
+      options.IncreaseParallelism(20);
+      options.max_open_files = 768;
+
+      options.compaction_style = rocksdb::kCompactionStyleLevel;
+      options.level0_file_num_compaction_trigger = 10;
+      options.level0_slowdown_writes_trigger = 20;
+      options.level0_stop_writes_trigger = 40;
+      options.write_buffer_size = 256 * 1024 * 1024;
+      options.target_file_size_base = 256 * 1024 * 1024;
+      options.max_bytes_for_level_base = 256 * 1024 * 1024;  // L1 max size
+
+      /*
       options.level_compaction_dynamic_level_bytes = true;
       options.bytes_per_sync                       = 1048576;
 
@@ -321,6 +334,7 @@ struct database {
       table_options.format_version               = 4;
       table_options.index_block_restart_interval = 16;
       options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+      */
 
       rocksdb::DB* p;
       check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");

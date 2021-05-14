@@ -14,6 +14,10 @@
 
 namespace b1::ship_client {
 
+uint64_t msg_read_duration = 0;  // Total time to read a message
+uint64_t msg_finished_read_time = 0; // Time when a block is completely read
+size_t msg_size = 0;
+
 namespace ship = eosio::ship_protocol;
 
 enum request_flags {
@@ -96,7 +100,11 @@ struct connection : connection_base {
 
    void start_read() {
       auto in_buffer = std::make_shared<flat_buffer>();
-      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer](error_code ec, size_t) {
+      auto block_entering = fc::time_point::now().time_since_epoch().count();
+      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer, block_entering](error_code ec, size_t size) {
+         msg_finished_read_time = fc::time_point::now().time_since_epoch().count();
+	 msg_read_duration = (msg_finished_read_time - block_entering)/1000;
+	 msg_size = size;
          enter_callback(ec, "async_read", [&] {
             if (!have_abi)
                receive_abi(in_buffer);

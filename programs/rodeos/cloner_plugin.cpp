@@ -14,7 +14,13 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 
+extern uint64_t rodeos_block_timestamp;
+
 namespace b1 {
+
+extern uint64_t ship_client::msg_read_duration;
+extern uint64_t ship_client::msg_finished_read_time;
+extern size_t ship_client::msg_size;
 
 using namespace appbase;
 using namespace std::literals;
@@ -191,6 +197,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          return false;
 
       rodeos_snapshot->end_block(result, false);
+
+      auto now = fc::time_point::now().time_since_epoch().count();
+      ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}, duration: ${d}, read time: ${r}",
+         ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
+
       return true;
    }
 

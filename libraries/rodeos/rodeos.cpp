@@ -6,6 +6,8 @@
 
 #include <fc/log/trace.hpp>
 
+uint64_t rodeos_block_timestamp = 0;
+
 namespace b1::rodeos {
 
 namespace ship_protocol = eosio::ship_protocol;
@@ -87,6 +89,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
    if (!result.this_block)
       throw std::runtime_error("get_blocks_result this_block is empty");
 
+   /*
    if (result.this_block->block_num <= head) {
       ilog("switch forks at block ${b}; database contains revisions ${f} - ${h}",
            ("b", result.this_block->block_num)("f", undo_stack->first_revision())("h", undo_stack->revision()));
@@ -97,18 +100,23 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
       while (undo_stack->revision() >= result.this_block->block_num) //
          undo_stack->undo(true);
    }
+   */
 
    if (head_id != eosio::checksum256{} && (!result.prev_block || result.prev_block->block_id != head_id))
       throw std::runtime_error("prev_block does not match");
 
+   /*
    if (result.this_block->block_num <= result.last_irreversible.block_num) {
       undo_stack->commit(std::min(result.last_irreversible.block_num, head));
       undo_stack->set_revision(result.this_block->block_num, false);
    } else {
+   */
       end_write(false);
+      /*
       undo_stack->commit(std::min(result.last_irreversible.block_num, head));
       undo_stack->push(false);
    }
+   */
    writing_block = result.this_block->block_num;
 }
 
@@ -130,8 +138,8 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
       first = head;
    if (write_now)
       end_write(write_now);
-   if (near)
-      db->flush(false, false);
+   //if (near)
+      //db->flush(false, false);
 }
 
 void rodeos_db_snapshot::check_write(const ship_protocol::get_blocks_result_base& result) {
@@ -160,6 +168,8 @@ void rodeos_db_snapshot::write_block_info(uint32_t block_num, const eosio::check
    info.schedule_version   = block.schedule_version;
    info.new_producers      = block.new_producers;
    info.producer_signature = block.producer_signature;
+
+   rodeos_block_timestamp  = block.timestamp.to_time_point().elapsed.count();
 
    block_info_kv table{ kv_environment{ view_state } };
    table.put(info);
