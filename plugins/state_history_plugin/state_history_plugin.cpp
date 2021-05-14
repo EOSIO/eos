@@ -237,7 +237,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void send_update(const block_state_ptr& head_block_state,  get_blocks_result_v1&& result) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !max_messages_in_flight() )
+         if (!max_messages_in_flight() )
             return;
          get_blocks_request_v0& block_req =  *current_request;
          
@@ -245,41 +245,40 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
                block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
-         if (block_req.start_block_num <= current &&
-             block_req.start_block_num < block_req.end_block_num) {
+         if (block_req.start_block_num > current ||
+             block_req.start_block_num >= block_req.end_block_num) 
+                return;
 
-            auto& block_num = block_req.start_block_num;
-            auto block_id  = plugin->get_block_id(block_num);
+         auto& block_num = block_req.start_block_num;
+         auto block_id  = plugin->get_block_id(block_num);
 
-            auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
-               try {
-                  if (head_block_state->block_num == block_num)
-                     return head_block_state->block;
-                  return chain.fetch_block_by_number(block_num);
-               } catch (...) {
-                  return {};
-               }
-            };
-
-            if (block_id) {
-               result.this_block  = block_position{block_num, *block_id};
-               auto prev_block_id = plugin->get_block_id(block_num - 1);
-               if (prev_block_id) 
-                  result.prev_block = block_position{block_num - 1, *prev_block_id};
-               if (block_req.fetch_block) {
-                  result.block = get_block();
-               }
-               if (block_req.fetch_traces && plugin->trace_log) {
-                  result.traces = plugin->trace_log->get_log_entry(block_num);
-               }
-               if (current_request->fetch_deltas && plugin->chain_state_log) {
-                  result.deltas = plugin->chain_state_log->get_log_entry(block_num);
-               }
-               fc_ilog(_log, "result.traces.bytes_count=${t_count} result.deltas.bytes_count=${d_count}",
-                  ("t_count", result.traces.data_size())("d_count", result.deltas.data_size()) );
+         auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
+            try {
+               if (head_block_state->block_num == block_num)
+                  return head_block_state->block;
+               return chain.fetch_block_by_number(block_num);
+            } catch (...) {
+               return {};
             }
-            ++current_request->start_block_num;
+         };
+
+         if (block_id) {
+            result.this_block  = block_position{block_num, *block_id};
+            auto prev_block_id = plugin->get_block_id(block_num - 1);
+            if (prev_block_id) 
+               result.prev_block = block_position{block_num - 1, *prev_block_id};
+            if (block_req.fetch_block) {
+               result.block = get_block();
+            }
+            if (block_req.fetch_traces && plugin->trace_log) {
+               result.traces = plugin->trace_log->get_log_entry(block_num);
+            }
+            if (current_request->fetch_deltas && plugin->chain_state_log) {
+               result.deltas = plugin->chain_state_log->get_log_entry(block_num);
+            }
          }
+         ++current_request->start_block_num;
+         
          fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
@@ -291,14 +290,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          std::visit( [plugin=this->plugin]( auto&& ptr ) {
             if( ptr ) {
-               // if (fc::zipkin_config::is_enabled()) {
-               //    auto id = ptr->calculate_id();
-               //    auto blk_trace = fc_create_trace_with_id( "Block", id );
-               //    auto blk_span = fc_create_span( blk_trace, "SHiP-Send" );
-               //    fc_add_tag( blk_span, "block_id", id );
-               //    fc_add_tag( blk_span, "block_num", ptr->block_num() );
-               //    fc_add_tag( blk_span, "block_time", ptr->timestamp.to_time_point() );
-               // }
                auto bn = ptr->block_num();
                auto now = fc::time_point::now();
                auto received = rodeos_testing::timing::single()->received_block_latest(bn, now); // just in case something else occurs out of expected order
@@ -312,19 +303,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }, result.block );
       }
 
-      void send_update_for_block(const block_state_ptr& head_block_state) {
+      void send_update(const block_state_ptr& head_block_state) {
          if (head_block_state->block) {
             get_blocks_result_v1 result;
             result.head = { head_block_state->block_num, head_block_state->id };
             send_update(head_block_state, std::move(result)); 
          }    
-      }
-
-      void send_update(const block_state_ptr& block_state) override {
-         need_to_send_update = true;
-         if (!send_queue.empty() || !max_messages_in_flight())
-            return;
-         send_update_for_block(block_state);
       }
 
       void send_update(bool changed = false) {
@@ -334,7 +318,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              !max_messages_in_flight())
             return;
          auto& chain = plugin->chain_plug->chain();
-         send_update_for_block(chain.head_block_state());
+         send_update(chain.head_block_state());
       }
 
       template <typename F>
