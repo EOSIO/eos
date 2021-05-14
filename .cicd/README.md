@@ -6,8 +6,8 @@ The [eosio](https://buildkite.com/EOSIO/eosio) pipeline is the primary CI/CD pip
 
 ## Index
 1. [Configuration](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#configuration)
-1. [Variables](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#variables)
-1. [Examples](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#examples)
+   1. [Variables](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#variables)
+   1. [Examples](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#examples)
 1. [Pipelines](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#pipelines)
 1. [See Also](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#see-also)
 
