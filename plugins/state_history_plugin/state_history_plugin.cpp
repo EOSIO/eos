@@ -47,6 +47,16 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
+   mutable std::mutex               received_mtx;
+   std::unordered_map<uint32_t, fc::time_point> received;
+   void received_block(uint32_t block_num, const fc::time_point& time) {
+      std::lock_guard<std::mutex> g( received_mtx );
+      received.emplace(block_num, time);
+   }
+   fc::time_point received_block(uint32_t block_num) {
+      std::lock_guard<std::mutex> g( received_mtx );
+      return received[block_num];
+   }
    chain_plugin*                                              chain_plug = nullptr;
    std::optional<state_history_traces_log>                    trace_log;
    std::optional<state_history_chain_state_log>               chain_state_log;
@@ -247,7 +257,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
             ++current_request->start_block_num;
          }
-         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
+         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${hethisad}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
 
@@ -256,7 +266,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          need_to_send_update = current_request->start_block_num <= current &&
                                current_request->start_block_num < current_request->end_block_num;
 
-         std::visit( []( auto&& ptr ) {
+         std::visit( [plugin=this->plugin]( auto&& ptr ) {
             if( ptr ) {
                if (fc::zipkin_config::is_enabled()) {
                   auto id = ptr->calculate_id();
@@ -266,6 +276,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                   fc_add_tag( blk_span, "block_num", ptr->block_num() );
                   fc_add_tag( blk_span, "block_time", ptr->timestamp.to_time_point() );
                }
+               auto bn = ptr->block_num();
+               auto now = fc::time_point::now();
+               auto start_send = plugin->received_block(bn);
+               auto latency = now - ptr->timestamp.to_time_point();
+               auto duration = now - start_send;
+               ilog("METRICS post ship send - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn",bn)("l", latency.count())("d", duration.count()));
             }
          }, result.block );
       }
@@ -453,6 +469,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
+      auto start = fc::time_point::now();
       auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
       auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
       fc_add_tag(blk_span, "block_id", block_state->id);
@@ -462,6 +479,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          trace_log->store(chain_plug->chain().db(), block_state);
       if (chain_state_log)
          chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+      auto now = fc::time_point::now();
+      auto bn = block_state->block->block_num();
+      received_block(bn, now);
+      auto latency = now - block_state->block->timestamp.to_time_point();
+      auto duration = now - start;
+      ilog("METRICS ship pre send - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn", bn)("l", latency.count())("d", duration.count()));
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
