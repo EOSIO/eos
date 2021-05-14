@@ -23,7 +23,7 @@ for REG in ${EOSIO_REGS[@]}; do
     DOCKER_TAG_COMMIT="docker tag '$IMAGE' '$REG:$BUILDKITE_COMMIT'"
     echo "$ $DOCKER_TAG_COMMIT"
     eval $DOCKER_TAG_COMMIT
-    if [[ ! -z "$SANITIZED_TAG" ]]; then
+    if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
         DOCKER_TAG="docker tag '$IMAGE' '$REG:$SANITIZED_TAG'"
         echo "$ $DOCKER_TAG"
         eval $DOCKER_TAG
@@ -38,7 +38,7 @@ for REG in ${EOSIO_REGS[@]}; do
     DOCKER_PUSH_COMMIT="docker push '$REG:$BUILDKITE_COMMIT'"
     echo "$ $DOCKER_PUSH_COMMIT"
     eval $DOCKER_PUSH_COMMIT
-    if [[ ! -z "$SANITIZED_TAG" ]]; then
+    if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
         DOCKER_PUSH_TAG="docker push '$REG:$SANITIZED_TAG'"
         echo "$ $DOCKER_PUSH_TAG"
         eval $DOCKER_PUSH_TAG
@@ -53,7 +53,7 @@ for REG in ${EOSIO_REGS[@]}; do
     CLEAN_IMAGE_COMMIT="docker rmi '$REG:$BUILDKITE_COMMIT' || :"
     echo "$ $CLEAN_IMAGE_COMMIT"
     eval $CLEAN_IMAGE_COMMIT
-    if [[ ! -z "$SANITIZED_TAG" ]]; then
+    if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
         DOCKER_REM="docker rmi '$REG:$SANITIZED_TAG' || :"
         echo "$ $DOCKER_REM"
         eval $DOCKER_REM
