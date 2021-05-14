@@ -10,9 +10,9 @@ SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 echo "+++ :docker: Build Docker Container"
 DOCKERHUB_REGISTRY='docker.io/eosio/eosio'
 IMAGE="${DOCKERHUB_REGISTRY}:${BUILDKITE_COMMIT:-latest}"
-DOCKER_BUILD_GEN="docker build -t '$IMAGE' -f ./docker/dockerfile ."
-echo "$ $DOCKER_BUILD_GEN"
-eval $DOCKER_BUILD_GEN
+DOCKER_BUILD="docker build -t '$IMAGE' -f ./docker/dockerfile ."
+echo "$ $DOCKER_BUILD"
+eval $DOCKER_BUILD
 # docker tag
 echo '--- :label: Tag Container'
 REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
@@ -54,11 +54,11 @@ for REG in ${REGISTRIES[@]}; do
     echo "$ $CLEAN_IMAGE_COMMIT"
     eval $CLEAN_IMAGE_COMMIT
     if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
-        DOCKER_REM="docker rmi '$REG:$SANITIZED_TAG' || :"
-        echo "$ $DOCKER_REM"
-        eval $DOCKER_REM
+        DOCKER_RMI="docker rmi '$REG:$SANITIZED_TAG' || :"
+        echo "$ $DOCKER_RMI"
+        eval $DOCKER_RMI
     fi
 done
-DOCKER_GEN="docker rmi '$IMAGE' || :"
-echo "$ $DOCKER_GEN"
-eval $DOCKER_GEN
+DOCKER_RMI="docker rmi '$IMAGE' || :"
+echo "$ $DOCKER_RMI"
+eval $DOCKER_RMI
