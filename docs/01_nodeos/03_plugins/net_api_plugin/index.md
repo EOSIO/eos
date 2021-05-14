@@ -1,6 +1,5 @@
 ## Description
-
-The `net_api_plugin` exposes functionality from the `net_plugin` to the RPC API interface managed by the `http_plugin`.
+The `net_api_plugin` allows node operators to manage the p2p connections of a producing node. The `net_api_plugin` exposes functionality from the `net_plugin` to the RPC API interface managed by the `http_plugin`.
 
 The `net_api_plugin` provides four RPC API endpoints:
 
