@@ -68,8 +68,7 @@ SKIP_SYNC_TESTS='true'
 ```
 
 ## Pipelines
-There are several eosio pipelines that are exist and executed via pull requests, triggered from other builds, or scheduled to run on a regular basis:
-
+There are several eosio pipelines that exist and are triggered by pull requests, pipelines, or schedules:
 
 Pipeline | Details
 ---|---
