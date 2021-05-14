@@ -1,25 +1,19 @@
 #!/bin/bash
-
 set -euo pipefail
-
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 echo ":done: download successful"
 SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 [[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
-
 # do docker build
 echo ":docker::build: Building image..."
 DOCKERHUB_REGISTRY="docker.io/eosio/eosio"
-
 BUILD_TAG=${BUILDKITE_BUILD_NUMBER:-latest}
 DOCKER_BUILD_GEN="docker build -t eosio_image:$BUILD_TAG -f ./docker/dockerfile ."
 echo "$ $DOCKER_BUILD_GEN"
 eval $DOCKER_BUILD_GEN
-
 #tag and push on each destination AWS & DOCKERHUB
-
 EOSIO_REGS=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
 for REG in ${EOSIO_REGS[@]}; do
     DOCKER_TAG_COMMIT="docker tag eosio_image:$BUILD_TAG $REG:$BUILDKITE_COMMIT"
@@ -47,7 +41,6 @@ for REG in ${EOSIO_REGS[@]}; do
         eval $DOCKER_REM
     fi
 done
-
 DOCKER_GEN="docker rmi eosio_image:$BUILD_TAG || :"
 echo "Clean up base image"
 eval $DOCKER_GEN
