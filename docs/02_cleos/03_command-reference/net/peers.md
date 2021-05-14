@@ -15,10 +15,10 @@ Returns a list with the status of all peer connections. This command allows a no
 The following information shows the different positionals and options you can use with the `cleos net peers` command:
 
 ### Positionals
-* `host` _TEXT_ REQUIRED - The hostname:port to disconnect from.
+* `host` _TEXT_ REQUIRED - The hostname:port to disconnect from
 
 ### Options
-* `-h,--help` - Print this help message and exit.
+* `-h,--help` - Print this help message and exit
 
 ## Requirements
 Make sure you meet the following requirements:
@@ -45,16 +45,16 @@ cleos -u http://127.0.0.1:8001 net peers
     "last_handshake": {
       "network_version": 1210,
       "chain_id": "60fb0eb4742886af8a0e147f4af6fd363e8e8d8f18bdf73a10ee0134fec1c551",
-      "node_id": "f6c768c8609ffeb1b6b81e4cd7cf3a485b16f6525d3aa65e608ac97653a29ff6",
+      "node_id": "58ed23173cd4ed89ae90c2e65f5c29bb51e233e78d730d72220b6d84543bfc08",
       "key": "EOS1111111111111111111111111111111114T1Anm",
-      "time": "1620935836749878000",
+      "time": "1621013128445696000",
       "token": "0000000000000000000000000000000000000000000000000000000000000000",
       "sig": "SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne",
-      "p2p_address": "127.0.0.1:9003 - f6c768c",
-      "last_irreversible_block_num": 125,
-      "last_irreversible_block_id": "0000007d082ab6192e17c5d72c702999aaa72dcd198f8a1368aa433b08469a0d",
-      "head_num": 126,
-      "head_id": "0000007e741296acf83ec771a61bc01f49d25e17e1cc088cdd82df42af7fdd4a",
+      "p2p_address": "127.0.0.1:9005 - 58ed231",
+      "last_irreversible_block_num": 127,
+      "last_irreversible_block_id": "0000007f97323fae098048ae41f22a99238afc5db56cad17f50304919d21e1c2",
+      "head_num": 128,
+      "head_id": "0000008072eb0fc043770e44a5db5dedfbd86db9aa5c41b28618f1b9343c2d22",
       "os": "osx",
       "agent": "EOS Test Agent",
       "generation": 4
@@ -66,16 +66,16 @@ cleos -u http://127.0.0.1:8001 net peers
     "last_handshake": {
       "network_version": 1210,
       "chain_id": "60fb0eb4742886af8a0e147f4af6fd363e8e8d8f18bdf73a10ee0134fec1c551",
-      "node_id": "c200a0e509db18d55ea66b014f20eaf4608220a21a43130fbd9e33cc975bc1fd",
+      "node_id": "2101bd8d770e8eabb3e69cb981db4350b494a04cd5b7a7cea0cd3070aa722306",
       "key": "EOS1111111111111111111111111111111114T1Anm",
-      "time": "1620935837960123000",
+      "time": "1621013129884873000",
       "token": "0000000000000000000000000000000000000000000000000000000000000000",
       "sig": "SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne",
-      "p2p_address": "127.0.0.1:9010 - c200a0e",
-      "last_irreversible_block_num": 128,
-      "last_irreversible_block_id": "00000080ac79cafa0835367576bca3490340758303da9dbd01126d1cb094dc64",
-      "head_num": 129,
-      "head_id": "00000081bb2d7a8f14e45a48532e08bfa8d377ee5422c779ab14fdef0de3e6b6",
+      "p2p_address": "127.0.0.1:9017 - 2101bd8",
+      "last_irreversible_block_num": 129,
+      "last_irreversible_block_id": "0000008117074454dbaa7e8662c6f3d6918e776cc063c45f52b37bdc945ddc5d",
+      "head_num": 130,
+      "head_id": "0000008248cc3498b4bbf14a183711d9a73a36517a8069367a343bd4060fed14",
       "os": "osx",
       "agent": "EOS Test Agent",
       "generation": 3
@@ -91,16 +91,16 @@ cleos -u http://127.0.0.1:8001 net peers
     "last_handshake": {
       "network_version": 1210,
       "chain_id": "60fb0eb4742886af8a0e147f4af6fd363e8e8d8f18bdf73a10ee0134fec1c551",
-      "node_id": "e351c9b9ccfde7a295b6a503cea80bf4bc3c667eca8b5954a9fa0188fdef8f35",
+      "node_id": "d9eb85085d09581521d0ec53b87a9657d0176c74fdf8657c56b09a91b3821c6f",
       "key": "EOS1111111111111111111111111111111114T1Anm",
-      "time": "1620935836805188000",
+      "time": "1621013127894327000",
       "token": "0000000000000000000000000000000000000000000000000000000000000000",
       "sig": "SIG_K1_111111111111111111111111111111111111111111111111111111111111111116uk5ne",
-      "p2p_address": "127.0.0.1:9004 - e351c9b",
+      "p2p_address": "127.0.0.1:9002 - d9eb850",
       "last_irreversible_block_num": 125,
-      "last_irreversible_block_id": "0000007d082ab6192e17c5d72c702999aaa72dcd198f8a1368aa433b08469a0d",
+      "last_irreversible_block_id": "0000007d9a3b9cf6a61776ba1bbce226754aefcad664338d2acb5be34cc53a5b",
       "head_num": 126,
-      "head_id": "0000007e741296acf83ec771a61bc01f49d25e17e1cc088cdd82df42af7fdd4a",
+      "head_id": "0000007eccafd4f32a437b5fd8b111b326e2da8d0bcb832036984841b81ab64e",
       "os": "osx",
       "agent": "EOS Test Agent",
       "generation": 4
