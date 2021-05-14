@@ -17,10 +17,15 @@ Most EOSIO pipelines are run any time you push a commit or tag to an open pull r
 ### Variables
 Most pipelines in the organization have several environment variables that can be used to configure how the pipeline runs. These environment variables can be specified when manually triggering a build via the Buildkite UI.
 
-Configure which operating systems are built, tested, and packaged:
+Configure which platforms are run:
 ```bash
 SKIP_LINUX='true|false'              # skip all steps on Linux distros
 SKIP_MAC='true|false'                # skip all steps on Mac hardware
+```
+These will override more specific operating system declarations, and primarily exist to disable one of our two buildfleets should one be sick or the finite macOS agents are congested.
+
+Configure which operating systems are built, tested, and packaged:
+```bash
 SKIP_AMAZON_LINUX_2='true|false'     # skip all steps for Amazon Linux 2
 SKIP_CENTOS_7_7='true|false'         # skip all steps for Centos 7
 SKIP_CENTOS_8='true|false'           # skip all steps for Centos 8
