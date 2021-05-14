@@ -19,35 +19,35 @@ Most pipelines in the organization have several environment variables that can b
 
 Configure which operating systems are built, tested, and packaged:
 ```bash
-SKIP_LINUX='true|false'              # true skips all build/test/packaging steps on Linux distros
-SKIP_MAC='true|false'                # true skips all build/test/packaging steps on Mac hardware
-SKIP_AMAZON_LINUX_2='true|false'     # true skips all build/test/packaging steps for Amazon Linux 2
-SKIP_CENTOS_7_7='true|false'         # true skips all build/test/packaging steps for Centos 7
-SKIP_CENTOS_8='true|false'           # true skips all build/test/packaging steps for Centos 8
-SKIP_MACOS_10_14='true|false'        # true skips all build/test/packaging steps for MacOS 10.14
-SKIP_MACOS_10_15='true|false'        # true skips all build/test/packaging steps for MacOS 10.15
-SKIP_MACOS_11='true|false'           # true skips all build/test/packaging steps for MacOS 11
-SKIP_UBUNTU_16_04='true|false'       # true skips all build/test/packaging steps for Ubuntu 16.04
-SKIP_UBUNTU_18_04='true|false'       # true skips all build/test/packaging steps for Ubuntu 18.04
-SKIP_UBUNTU_20_04='true|false'       # true skips all build/test/packaging steps for Ubuntu 20.04
+SKIP_LINUX='true|false'              # skip all steps on Linux distros
+SKIP_MAC='true|false'                # skip all steps on Mac hardware
+SKIP_AMAZON_LINUX_2='true|false'     # skip all steps for Amazon Linux 2
+SKIP_CENTOS_7_7='true|false'         # skip all steps for Centos 7
+SKIP_CENTOS_8='true|false'           # skip all steps for Centos 8
+SKIP_MACOS_10_14='true|false'        # skip all steps for MacOS 10.14
+SKIP_MACOS_10_15='true|false'        # skip all steps for MacOS 10.15
+SKIP_MACOS_11='true|false'           # skip all steps for MacOS 11
+SKIP_UBUNTU_16_04='true|false'       # skip all steps for Ubuntu 16.04
+SKIP_UBUNTU_18_04='true|false'       # skip all steps for Ubuntu 18.04
+SKIP_UBUNTU_20_04='true|false'       # skip all steps for Ubuntu 20.04
 ```
 
 Configure which steps are executed for each operating system:
 ```bash
-SKIP_BUILD='true|false'              # true skips all build steps for all distros
-SKIP_UNIT_TESTS='true|false'         # true skips all unit test executions for all distros
-SKIP_WASM_SPEC_TESTS='true|false'    # true skips all wasm spec test executions for all distros
-SKIP_SERIAL_TESTS='true|false'       # true skips all integration test executions for all distros
-SKIP_LONG_RUNNING_TESTS='true|false' # true skips all long running test executions for all distros
-SKIP_MULTIVERSION_TEST='true|false'  # true skips all multiversion tests
-SKIP_SYNC_TESTS='true|false'         # true skips all sync tests
-SKIP_PACKAGE_BUILDER='true|false'    # true skips all package building steps for all distros
+SKIP_BUILD='true|false'              # skip all build steps
+SKIP_UNIT_TESTS='true|false'         # skip all unit tests
+SKIP_WASM_SPEC_TESTS='true|false'    # skip all wasm spec tests
+SKIP_SERIAL_TESTS='true|false'       # skip all integration tests
+SKIP_LONG_RUNNING_TESTS='true|false' # skip all long running tests
+SKIP_MULTIVERSION_TEST='true|false'  # skip all multiversion tests
+SKIP_SYNC_TESTS='true|false'         # skip all sync tests
+SKIP_PACKAGE_BUILDER='true|false'    # skip all packaging steps
 ```
 
 Configure how the steps are executed:
 ```bash
 PINNED='true|false'                  # controls compiler/dependency pinning
-TIMEOUT='##'                         # controls timeout in minutes for all steps
+TIMEOUT='##'                         # set timeout in minutes for all steps
 ```
 
 ### Examples
