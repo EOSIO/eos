@@ -15,8 +15,8 @@ echo "$ $DOCKER_BUILD_GEN"
 eval $DOCKER_BUILD_GEN
 # docker tag
 echo '--- :label: Tag Container'
-EOSIO_REGS=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
-for REG in ${EOSIO_REGS[@]}; do
+REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
+for REG in ${REGISTRIES[@]}; do
     DOCKER_TAG_BRANCH="docker tag '$IMAGE' '$REG:$SANITIZED_BRANCH'"
     echo "$ $DOCKER_TAG_BRANCH"
     eval $DOCKER_TAG_BRANCH
@@ -31,7 +31,7 @@ for REG in ${EOSIO_REGS[@]}; do
 done
 # docker push
 echo '--- :arrow_up: Push Container'
-for REG in ${EOSIO_REGS[@]}; do
+for REG in ${REGISTRIES[@]}; do
     DOCKER_PUSH_BRANCH="docker push '$REG:$SANITIZED_BRANCH'"
     echo "$ $DOCKER_PUSH_BRANCH"
     eval $DOCKER_PUSH_BRANCH
@@ -46,7 +46,7 @@ for REG in ${EOSIO_REGS[@]}; do
 done
 # docker rmi
 echo '--- :put_litter_in_its_place: Cleanup'
-for REG in ${EOSIO_REGS[@]}; do
+for REG in ${REGISTRIES[@]}; do
     CLEAN_IMAGE_BRANCH="docker rmi '$REG:$SANITIZED_BRANCH' || :"
     echo "$ $CLEAN_IMAGE_BRANCH"
     eval $CLEAN_IMAGE_BRANCH
