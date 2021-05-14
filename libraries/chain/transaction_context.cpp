@@ -406,6 +406,8 @@ namespace eosio { namespace chain {
                                 block_timestamp_type(control.pending_block_time()).slot,
                                 res_pyr && use_resource_payer_cpu_limit,
                                 res_pyr && use_resource_payer_net_limit );
+
+      trace->bill_to_accounts = bill_to_accounts;
    }
 
    void transaction_context::squash() {
