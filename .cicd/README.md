@@ -5,10 +5,14 @@ The [eosio](https://buildkite.com/EOSIO/eosio) pipeline is the primary CI/CD pip
 <summary>More Info</summary>
 
 ## Index
+1. [Configuration](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#configuration)
 1. [Variables](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#variables)
 1. [Examples](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#examples)
 1. [Pipelines](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#pipelines)
 1. [See Also](https://github.com/EOSIO/eos/blob/develop/.cicd/README.md#see-also)
+
+## Configuration
+Most EOSIO pipelines are run any time you push a commit or tag to an open pull request in [eos](https://github.com/EOSIO/eos), any time you merge a pull request, and nightly. The [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) pipeline only runs when you merge a pull request because it takes so long. Long-running tests are also run in the [eosio](https://buildkite.com/EOSIO/eosio) nightly builds, which have `RUN_ALL_TESTS='true'` set.
 
 ### Variables
 Most pipelines in the organization have several environment variables that can be used to configure how the pipeline runs. These environment variables can be specified when manually triggering a build via the Buildkite UI.
