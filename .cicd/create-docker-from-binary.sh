@@ -9,22 +9,22 @@ SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 # docker build
 echo "+++ :docker: Build Docker Container"
 DOCKERHUB_REGISTRY="docker.io/eosio/eosio"
-BUILD_TAG=${BUILDKITE_BUILD_NUMBER:-latest}
-DOCKER_BUILD_GEN="docker build -t eosio_image:$BUILD_TAG -f ./docker/dockerfile ."
+IMAGE="${DOCKERHUB_REGISTRY}:${BUILDKITE_COMMIT:-latest}"
+DOCKER_BUILD_GEN="docker build -t '$IMAGE' -f ./docker/dockerfile ."
 echo "$ $DOCKER_BUILD_GEN"
 eval $DOCKER_BUILD_GEN
 # docker tag
 echo '--- :label: Tag Container'
 EOSIO_REGS=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
 for REG in ${EOSIO_REGS[@]}; do
-    DOCKER_TAG_COMMIT="docker tag eosio_image:$BUILD_TAG $REG:$BUILDKITE_COMMIT"
-    DOCKER_TAG_BRANCH="docker tag eosio_image:$BUILD_TAG $REG:$SANITIZED_BRANCH"
+    DOCKER_TAG_COMMIT="docker tag '$IMAGE' $REG:$BUILDKITE_COMMIT"
+    DOCKER_TAG_BRANCH="docker tag '$IMAGE' $REG:$SANITIZED_BRANCH"
     echo "$ $DOCKER_TAG_COMMIT"
     eval $DOCKER_TAG_COMMIT 
     echo "$ $DOCKER_TAG_BRANCH"
     eval $DOCKER_TAG_BRANCH
     if [[ ! -z "$SANITIZED_TAG" ]]; then
-        DOCKER_TAG="docker tag eosio_image:$BUILD_TAG $REG:$SANITIZED_TAG"
+        DOCKER_TAG="docker tag '$IMAGE' $REG:$SANITIZED_TAG"
         echo "$ $DOCKER_TAG"
         eval $DOCKER_TAG
     fi
@@ -59,6 +59,6 @@ for REG in ${EOSIO_REGS[@]}; do
         eval $DOCKER_REM
     fi
 done
-DOCKER_GEN="docker rmi eosio_image:$BUILD_TAG || :"
+DOCKER_GEN="docker rmi '$IMAGE' || :"
 echo "$ $DOCKER_GEN"
 eval $DOCKER_GEN
