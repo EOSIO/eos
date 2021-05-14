@@ -82,13 +82,13 @@ There are several eosio pipelines that exist and are triggered by pull requests,
 Pipeline | Details
 ---|---
 [eosio](https://buildkite.com/EOSIO/eosio) | Primary pipeline for the EOSIO/eos Github repo. It is triggered when a pull request is created.
+[eosio-base-images](https://buildkite.com/EOSIO/eosio-base-images) | Pipeline that ensures all MacOS VM and Docker container builders can be built. It is scheduled for periodic execution.
+[eosio-big-sur-beta](https://buildkite.com/EOSIO/eosio-big-sur-beta) | Pipeline that performs a build only using MacOS 11 builders. It is scheduled for periodic execution.
+[eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | Pipeline that ensure the build scripts function. It is scheduled for periodic execution.
 [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) | Pipeline that performs a build without a pinned compiler. It is triggered when a pull request is created.
 [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) | Pipeline that only executes the long running tests. It is triggered after a pull request is merged.
-[eosio-base-images](https://buildkite.com/EOSIO/eosio-base-images) | Pipeline that ensures all MacOS VM and Docker container builders can be built. It is scheduled for periodic execution.
-[eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | Pipeline that ensure the build scripts function. It is scheduled for periodic execution.
-[eosio-big-sur-beta](https://buildkite.com/EOSIO/eosio-big-sur-beta) | Pipeline that performs a build only using MacOS 11 builders. It is scheduled for periodic execution.
-[eosio-sync-from-genesis](https://buildkite.com/EOSIO/eosio-sync-from-genesis) | Pipeline that ensures built code can sync properly. It is triggered during pull request builds.
 [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) | Pipeline that ensures that built binaries can resume from previous binary versions. It is triggered during pull request builds.
+[eosio-sync-from-genesis](https://buildkite.com/EOSIO/eosio-sync-from-genesis) | Pipeline that ensures built code can sync properly. It is triggered during pull request builds.
 
 </details>
 
