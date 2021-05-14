@@ -51,7 +51,7 @@ SKIP_PACKAGE_BUILDER='true|false'    # skip all packaging steps
 
 Configure how the steps are executed:
 ```bash
-PINNED='true|false'                  # controls compiler/dependency pinning
+PINNED='true|false'                  # use specific versions of dependencies instead of whatever version is provided by default on a given platform
 TIMEOUT='##'                         # set timeout in minutes for all steps
 ```
 
