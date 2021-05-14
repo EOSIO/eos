@@ -11,9 +11,12 @@ namespace rodeos_testing {
          received.emplace(block_num, std::make_pair(time, time));
       }
 
-      void received_block_latest(uint32_t block_num, const fc::time_point& time) {
+      std::pair<fc::time_point, fc::time_point> received_block_latest(uint32_t block_num, const fc::time_point& time) {
          std::lock_guard<std::mutex> g( received_mtx );
-         received[block_num].second = fc::time_point::now();
+         auto& block_time = received[block_num];
+         const auto ret = block_time;
+         block_time.second = fc::time_point::now();
+         return ret;
       }
 
       std::pair<fc::time_point, fc::time_point> received_block(uint32_t block_num) {
