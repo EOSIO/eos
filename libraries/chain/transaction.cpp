@@ -82,12 +82,12 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return fc::time_point::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
-account_name transaction::resource_payer(bool is_resource_payer_fp_activated)const {
+account_name transaction::resource_payer(bool is_resource_payer_pf_activated)const {
    account_name resource_payer;
 
    bool payer_was_set = false;
 
-   if(is_resource_payer_fp_activated) {
+   if(is_resource_payer_pf_activated) {
       // Check for the existence of an extension of the type resource_payer
       auto extensions = validate_and_extract_extensions();
 
@@ -109,13 +109,13 @@ account_name transaction::resource_payer(bool is_resource_payer_fp_activated)con
    return resource_payer;
 }
 
-std::optional<resource_payer_t> transaction::resource_payer_info( bool is_protocol_feature_activated ) const {
+std::optional<resource_payer_t> transaction::resource_payer_info( bool is_resource_payer_pf_activated ) const {
 
    // Check for the existence of an extension of the type resource_payer
    bool has_res_pyr = false;
    resource_payer_t res_pyr;
 
-   if( is_protocol_feature_activated && transaction_extensions.size() > 0 ) {
+   if( is_resource_payer_pf_activated && transaction_extensions.size() > 0 ) {
        std::find_if( transaction_extensions.begin(), transaction_extensions.end(),
                      [&](auto& elem) {
                         bool ret = elem.first == transaction_extension_id::resource_payer_id;

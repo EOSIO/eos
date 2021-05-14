@@ -64,6 +64,7 @@ namespace eosio { namespace chain {
       std::optional<fc::exception>               except;
       std::optional<uint64_t>                    error_code;
       std::exception_ptr                         except_ptr;
+      flat_set<account_name>                     bill_to_accounts;
    };
 
    /**
@@ -124,4 +125,5 @@ FC_REFLECT( eosio::chain::action_trace,
 // @ignore except_ptr
 FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
-                                             (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code) )
+                                             (action_traces)(account_ram_delta)(failed_dtrx_trace)(except)(error_code)
+                                             (bill_to_accounts) )

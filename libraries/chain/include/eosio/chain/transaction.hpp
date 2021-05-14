@@ -130,7 +130,7 @@ namespace eosio { namespace chain {
       }
 
       account_name resource_payer(bool)const;
-      std::optional<resource_payer_t> resource_payer_info( bool is_protocol_feature_activated ) const;
+      std::optional<resource_payer_t> resource_payer_info( bool is_resource_payer_pf_activated ) const;
 
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };

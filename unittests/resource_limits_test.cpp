@@ -615,7 +615,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
          txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
 
-         t.push_transaction(txn);
+         auto res = t.push_transaction(txn);
+
+         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+         BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+         BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
 
          initialize_account(res_pyr->payer);
          initialize_account( "all"_n );
@@ -666,7 +670,11 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
          txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
 
-         t.push_transaction(txn);
+         auto res = t.push_transaction(txn);
+
+         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+         BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+         BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
 
          initialize_account(res_pyr->payer);
          initialize_account( "all"_n );

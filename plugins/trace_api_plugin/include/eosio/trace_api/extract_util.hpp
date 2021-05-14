@@ -35,7 +35,9 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
       r.id = t.trace->failed_dtrx_trace->id; // report the failed trx id since that is the id known to user
    }
 
-   if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1>  || std::is_same_v<TransactionTrace, transaction_trace_v2>){
+   if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v1>  ||
+                std::is_same_v<TransactionTrace, transaction_trace_v2>  ||
+                std::is_same_v<TransactionTrace, transaction_trace_v3>) {
       if (t.trace->receipt) {
          r.status = t.trace->receipt->status;
          r.cpu_usage_us = t.trace->receipt->cpu_usage_us;
@@ -46,7 +48,14 @@ inline TransactionTrace to_transaction_trace( const cache_trace& t ) {
       r.trx_header = static_cast<const chain::transaction_header&>( t.trx->get_transaction() );
    }
 
-   using action_trace_t = std::conditional_t<std::is_same_v<TransactionTrace, transaction_trace_v2>, action_trace_v1, action_trace_v0>;
+   if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v3>){
+      for(auto &account : t.trace->bill_to_accounts)
+         r.bill_to_accounts.push_back(account);
+   }
+
+   using action_trace_t = std::conditional_t<std::is_same_v<TransactionTrace, transaction_trace_v2>||
+                                             std::is_same_v<TransactionTrace, transaction_trace_v3>
+                                             , action_trace_v1, action_trace_v0>;
 
    r.actions = std::vector<action_trace_t>();
    std::get<std::vector<action_trace_t>>(r.actions).reserve( t.trace->action_traces.size());
