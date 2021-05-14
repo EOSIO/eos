@@ -31,7 +31,6 @@ services:
          - /etc/eosio
       volumes:
          - ./contracts/kv_contract:/root/eosio/contracts/kv_contract    
-         - ./build:/home/huangming/eos/build 
       depends_on:
          - zipkin
       

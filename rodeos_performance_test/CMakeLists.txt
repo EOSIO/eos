@@ -7,7 +7,7 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../contracts/contracts/eosio.boot/bin/eosi
           ${CMAKE_CURRENT_SOURCE_DIR}/../contracts/contracts/eosio.boot/bin/eosio.boot.wasm
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.boot)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../unittests/contracts/eosio.token DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/unittests/eosio.token)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../unittests/contracts/eosio.token DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/unittests/contracts)
 
 configure_file(boot.sh boot.sh COPYONLY)
 configure_file(config.ini config.ini COPYONLY)
