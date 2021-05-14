@@ -6,6 +6,7 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.msig/ DESTINATION ${CMAKE_CURRENT_BI
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.system/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.system/)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.token/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.token/)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.wrap/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.wrap/)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/token.kv/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/token.kv/)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/old_versions/v1.6.0-rc3/eosio.bios/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/old_versions/v1.6.0-rc3/eosio.bios/)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios/)
