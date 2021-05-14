@@ -30,7 +30,8 @@ services:
          - --config-dir
          - /etc/eosio
       volumes:
-         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract                 
+         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract    
+         - ./build:/home/huangming/eos/build 
       depends_on:
          - zipkin
       
@@ -41,7 +42,6 @@ services:
          - nodeos               
          - --plugin=eosio::state_history_plugin                                   
          - --trace-history 
-         - --read-mode=irreversible 
          - --chain-state-history 
          - --disable-replay-opts 
          - --validation-mode=light 
@@ -81,6 +81,7 @@ services:
          - ./boot.sh 
       volumes:
          - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
+         - ./boot.sh:/root/eosio/boot.sh
       deploy:
          restart_policy:
             condition: none
