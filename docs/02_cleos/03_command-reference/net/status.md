@@ -5,7 +5,7 @@ cleos net status [OPTIONS] host
 
 **Where:**
 * [OPTIONS] = See **Options** in the [**Command Usage**](command-usage) section below.
-* host = The hostname:port to query status of connection.
+* host = The hostname:port to query status of connection
 
 **Note:** The arguments and options enclosed in square brackets are optional.
 
@@ -16,10 +16,10 @@ Returns the status of a connected peer. This command allows a node operator to c
 The following information shows the different positionals and options you can use with the `cleos net status` command:
 
 ### Positionals
-* `host` _TEXT_ REQUIRED - The hostname:port to query status of connection.
+* `host` _TEXT_ REQUIRED - The hostname:port to query status of connection
 
 ### Options
-* `-h,--help` - Print this help message and exit.
+* `-h,--help` - Print this help message and exit
 
 ## Requirements
 Make sure you meet the following requirements:
