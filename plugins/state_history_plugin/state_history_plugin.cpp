@@ -281,7 +281,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                auto start_send = plugin->received_block(bn);
                auto latency = now - ptr->timestamp.to_time_point();
                auto duration = now - start_send;
-               ilog("METRICS post ship send - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn",bn)("l", latency.count())("d", duration.count()));
+               ilog("METRICS post ship send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn",bn)("l", latency.count())("d", duration.count())("nt", ptr->transactions.size()));
             }
          }, result.block );
       }
@@ -484,7 +484,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       received_block(bn, now);
       auto latency = now - block_state->block->timestamp.to_time_point();
       auto duration = now - start;
-      ilog("METRICS ship pre send - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn", bn)("l", latency.count())("d", duration.count()));
+      ilog("METRICS ship pre send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", bn)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size()));
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {

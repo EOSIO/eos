@@ -3450,7 +3450,7 @@ namespace eosio {
       auto now = fc::time_point::now();
       auto latency = now - bs->block->timestamp.to_time_point();
       auto duration = now - start;
-      ilog("METRICS accepted - pre net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn",bn)("l", latency.count())("d", duration.count()));
+      ilog("METRICS accepted - pre net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn",bn)("l", latency.count())("d", duration.count())("nt",bs->block->transactions.size()));
       dispatcher->strand.post( [this, bs, start{std::move(start)}]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
 
@@ -3464,7 +3464,7 @@ namespace eosio {
          auto now = fc::time_point::now();
          auto latency = now - bs->block->timestamp.to_time_point();
          auto duration = now - start;
-         ilog("METRICS accepted - post net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us",("bn", bs->block->block_num())("l", latency.count())("d", duration.count()));
+         ilog("METRICS accepted - post net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", bs->block->block_num())("l", latency.count())("d", duration.count())("nt",bs->block->transactions.size()));
       });
    }
 
