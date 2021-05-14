@@ -25,7 +25,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
         DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
         echo "$ $DOCKER_TAG_COMMAND"
         eval $DOCKER_TAG_COMMAND
-        if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+        if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
             DOCKER_TAG_COMMAND="docker tag '$IMAGE' '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
             echo "$ $DOCKER_TAG_COMMAND"
             eval $DOCKER_TAG_COMMAND
@@ -40,7 +40,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
         DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_BRANCH'"
         echo "$ $DOCKER_PUSH_COMMAND"
         eval $DOCKER_PUSH_COMMAND
-        if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+        if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
             DOCKER_PUSH_COMMAND="docker push '$REGISTRY:$PREFIX-$SANITIZED_TAG'"
             echo "$ $DOCKER_PUSH_COMMAND"
             eval $DOCKER_PUSH_COMMAND
@@ -58,7 +58,7 @@ for REGISTRY in ${CONTRACT_REGISTRIES[*]}; do
         DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$BUILDKITE_COMMIT' || :"
         echo "$ $DOCKER_RMI_COMMAND"
         eval $DOCKER_RMI_COMMAND
-        if [[ ! -z "$BUILDKITE_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
+        if [[ ! -z "$SANITIZED_TAG" && "$SANITIZED_BRANCH" != "$SANITIZED_TAG" ]]; then
             DOCKER_RMI_COMMAND="docker rmi '$REGISTRY:$PREFIX-$SANITIZED_TAG' || :"
             echo "$ $DOCKER_RMI_COMMAND"
             eval $DOCKER_RMI_COMMAND
