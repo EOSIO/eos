@@ -40,7 +40,8 @@ The following information shows the different positionals and options you can us
 
 ## Requirements
 * Install the currently supported version of `cleos`.
-[[info | Note]] | `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools.  
+[[info | Note]] 
+| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools.  
 * You have access to an EOSIO blockchain.
 * You have an EOSIO account and access to the account's private key.
 
@@ -64,7 +65,7 @@ executed transaction: 4eb4cf3aea232d46e0e949bc273c3f0575be5bdba7b61851ab51d927cf
 #         eosio <= eosio::linkauth              {"account":"bob","code":"scontract1","type":"hi","requirement":"customp1"}
 ```
 
-2. permissions on a _bye_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp2_ permission are authorized:
+2. Set permissions on a _bye_ action deployed to the _scontract1_ account so that the _bob_ account's `active` permission and _customp2_ permission are authorized:
 
 ```shell
 cleos set action permission bob scontract1 bye customp2 -p bob@active
