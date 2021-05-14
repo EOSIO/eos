@@ -4,7 +4,9 @@ echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 PREFIX='base-ubuntu-18.04'
 SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
+echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
+[[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
 echo '$ echo ${#CONTRACT_REGISTRIES[*]} # array length'
 echo ${#CONTRACT_REGISTRIES[*]}
 echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
