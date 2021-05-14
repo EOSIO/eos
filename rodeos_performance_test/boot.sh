@@ -37,12 +37,8 @@ cleos push action eosio setkvparams '[{"max_key_size":64, "max_value_size":1024,
 sleep 1s
 cleos set contract eosio contracts/kv_contract 
 cleos push action eosio setkvparam '["eosio.kvram"]' --permission eosio
-curl --data-binary '["eosio","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]' $BIOS_ENDPOINT/v1/txn_test_gen/create_test_accounts
+curl --data-binary '["eosio","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]' $BIOS_ENDPOINT/v1/txn_test_gen/create_test_accounts || :
 
-readarray syskey <<< $(cleos create key --to-console)
-pubsyskey=${syskey[1]#"Public key: "}
-prisyskey=${syskey[0]#"Private key: "}
-cleos wallet import -n ignition --private-key $prisyskey
-cleos create account eosio txn.test.b $pubsyskey $pubsyskey
-cleos set contract txn.test.b contracts/kv_contract -p txn.test.b@active
-curl --data-binary '["", 20, 20]' $BIOS_ENDPOINT/v1/txn_test_gen/start_generation
+cleos wallet import -n ignition --private-key 5KExyeiK338cxYQo36AmKYrHxRDF9rR4JHFXUR9oZxXbKue7gdL
+cleos set contract txn.test.b contracts/kv_contract 
+curl --data-binary '["", 20, 20]' $BIOS_ENDPOINT/v1/txn_test_gen/start_generation || :
