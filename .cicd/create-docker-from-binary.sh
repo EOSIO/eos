@@ -4,9 +4,8 @@ set -euo pipefail
 
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 echo ":done: download successful"
-
-SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
-SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | sed 's.^/..' | tr '/' '_')
+SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
+SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 echo "$SANITIZED_BRANCH"
 echo "$SANITIZED_TAG"
 
