@@ -1,11 +1,6 @@
 # eosio
 The [eosio](https://buildkite.com/EOSIO/eosio) pipeline is the primary CI/CD pipeline for members of the EOSIO organization developing on the EOSIO/eos repository. The [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) pipeline is also executed regularly. The difference in these two pipelines is whether the compiler and other dependencies are pinned to specific versions. The eosio pipeline uses pinned compilers/dependencies while the eosio-build-unpinned pipeline avoids pinning dependencies as much as possible.
 
-## See Also
-- [Buildkite Documentation](https://github.com/EOSIO/devdocs/wiki/Buildkite) (internal)
-- [EOSIO Resume from State Documentation](https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md) (internal)
-- [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) (internal)
-
 <details>
 <summary>More Info</summary>
 
@@ -13,6 +8,7 @@ The [eosio](https://buildkite.com/EOSIO/eosio) pipeline is the primary CI/CD pip
 1. [Variables](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#variables)
 1. [Examples](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#examples)
 1. [Pipelines](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#pipelines)
+1. [See Also](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#see-also)
 
 ### Variables
 Most pipelines in the organization have several environment variables that can be used to configure how the pipeline runs. These environment variables can be specified when manually triggering a build via the Buildkite UI.
@@ -87,3 +83,8 @@ Pipeline | Details
 [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) | Pipeline that ensures that built binaries can resume from previous binary versions. It is triggered during pull request builds.
 
 </details>
+
+## See Also
+- [Buildkite Documentation](https://github.com/EOSIO/devdocs/wiki/Buildkite) (internal)
+- [EOSIO Resume from State Documentation](https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md) (internal)
+- [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) (internal)
