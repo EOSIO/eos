@@ -67,7 +67,7 @@ SKIP_MULTIVERSION_TEST='true'
 SKIP_SYNC_TESTS='true'
 ```
 
-### Pipelines
+## Pipelines
 There are several eosio pipelines that are exist and executed via pull requests, triggered from other builds, or scheduled to run on a regular basis:
 
 
