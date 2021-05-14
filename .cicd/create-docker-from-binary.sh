@@ -8,8 +8,6 @@ SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
 SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 [[ -z "$SANITIZED_TAG" ]] || echo "Branch '$BUILDKITE_TAG' sanitized as '$SANITIZED_TAG'."
-echo "$SANITIZED_BRANCH"
-echo "$SANITIZED_TAG"
 
 # do docker build
 echo ":docker::build: Building image..."
