@@ -3,8 +3,8 @@ set -eo pipefail
 echo '--- :evergreen_tree: Configuring Environment'
 . ./.cicd/helpers/general.sh
 PREFIX='base-ubuntu-18.04'
-SANITIZED_BRANCH=$(echo "$BUILDKITE_BRANCH" | sed 's.^/..' | sed 's/[:/]/_/g')
-SANITIZED_TAG=$(echo "$BUILDKITE_TAG" | sed 's.^/..' | tr '/' '_')
+SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
+SANITIZED_TAG="$(sanitize "$BUILDKITE_TAG")"
 echo '$ echo ${#CONTRACT_REGISTRIES[*]} # array length'
 echo ${#CONTRACT_REGISTRIES[*]}
 echo '$ echo ${CONTRACT_REGISTRIES[*]} # array'
