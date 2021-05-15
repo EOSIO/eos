@@ -80,7 +80,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    struct session_base {
-      virtual void send_update(const block_state_ptr& block_state) = 0;
+      virtual void send_update(const block_state_ptr& block_state, ::std::optional<::fc::zipkin_span>&& span) = 0;
       virtual void close() = 0;
       virtual ~session_base() = default;
 
@@ -110,7 +110,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          derived_session().socket_stream->async_accept([self = derived_session().shared_from_this()](boost::system::error_code ec) {
             self->callback(ec, "async_accept", [self] {
                self->start_read();
-               self->send(state_history_plugin_abi);
+               auto send_abi_span = fc_create_trace("send-abi");
+               self->send(state_history_plugin_abi, std::move(send_abi_span));
             });
          });
       }
@@ -131,38 +132,42 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              });
       }
 
-      void send(const char* s) {
+      void send(const char* s, ::std::optional<::fc::zipkin_span>&& span) {
          send_queue.push_back({s, s + strlen(s)});
-         send();
+         send(std::move(span));
       }
 
       template <typename T>
-      void send(T obj) {
+      void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
          send_queue.push_back(fc::raw::pack(state_result{std::move(obj)}));
-         send();
+         send(std::move(span));
       }
 
-      void send() {
+      void send(::std::optional<::fc::zipkin_span>&& span) {
          if (sending)
             return;
          if (send_queue.empty())
-            return send_update();
+            return send_update(std::move(span));
          sending = true;
          derived_session().socket_stream->binary(sent_abi);
          sent_abi = true;
+         auto write_span = fc_create_span(span, "async_write");
          derived_session().socket_stream->async_write( //
              boost::asio::buffer(send_queue[0]),
-             [self = derived_session().shared_from_this()](boost::system::error_code ec, size_t) {
-                self->callback(ec, "async_write", [self] {
+             [self = derived_session().shared_from_this(), span = std::move(span),
+              write_span = std::move(write_span)](boost::system::error_code ec, size_t) {
+                auto token = fc_get_token(span);
+                self->callback(ec, "async_write", [self, token] {
                    self->send_queue.erase(self->send_queue.begin());
                    self->sending = false;
-                   self->send();
+                   self->send(fc_create_span_from_token(token, "nested send"));
                 });
              });
       }
 
       using result_type = void;
       void operator()(get_status_request_v0&) {
+         auto request_span = fc_create_trace("get_status_request");
          fc_ilog(_log, "got get_status_request_v0");
          auto&                chain = plugin->chain_plug->chain();
          get_status_result_v0 result;
@@ -178,11 +183,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             result.chain_state_end_block   = plugin->chain_state_log->end_block();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
-         send(std::move(result));
+         send(std::move(result), std::move(request_span));
       }
 
       void operator()(get_blocks_request_v0& req) {
          fc_ilog(_log, "received get_blocks_request_v0 = ${req}", ("req",req) );
+         auto request_span = fc_create_trace("get_blocks_request");
          for (auto& cp : req.have_positions) {
             if (req.start_block_num <= cp.block_num)
                continue;
@@ -194,12 +200,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                fc_dlog(_log, "block ${block_num} is not available", ("block_num", cp.block_num));
             } else if (*id != cp.block_id) {
                fc_dlog(_log, "the id for block ${block_num} in block request have_positions does not match the existing", ("block_num", cp.block_num));
-            }         
+            }
          }
          req.have_positions.clear();
          fc_dlog(_log, "  get_blocks_request_v0 start_block_num set to ${num}", ("num", req.start_block_num));
          current_request = req;
-         send_update(true);
+         send_update(std::move(request_span), true);
       }
 
       void operator()(get_blocks_ack_request_v0& req) {
@@ -208,8 +214,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             fc_dlog(_log, " no current get_blocks_request_v0, discarding the get_blocks_ack_request_v0");
             return;
          }
+         auto request_span = fc_create_trace("get_blocks_ack_request");
          current_request->max_messages_in_flight += req.num_messages;
-         send_update();
+         send_update(std::move(request_span));
       }
 
       uint32_t max_messages_in_flight() const {
@@ -218,22 +225,27 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          return 0;
       }
 
-      void send_update(const block_state_ptr& head_block_state,  get_blocks_result_v1&& result) {
+      void send_update(const block_state_ptr& head_block_state,  get_blocks_result_v1&& result, ::std::optional<::fc::zipkin_span>&& span) {
          need_to_send_update = true;
          if (!max_messages_in_flight() )
             return;
+         
          get_blocks_request_v0& block_req =  *current_request;
          
          auto& chain              = plugin->chain_plug->chain();
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          uint32_t current =
                block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
-         if (block_req.start_block_num > current ||
-             block_req.start_block_num >= block_req.end_block_num) 
-                return;
+
+         if (block_req.start_block_num > current && block_req.start_block_num >= block_req.end_block_num)
+            return;
 
          auto& block_num = block_req.start_block_num;
          auto block_id  = plugin->get_block_id(block_num);
+
+         auto send_update_span = fc_create_span(span, "ship-send-update");
+         fc_add_tag( send_update_span, "head_block_num", result.head.block_num );
+         fc_add_tag(send_update_span, "block_num", block_num);
 
          auto get_block = [&chain, block_num, head_block_state]() -> signed_block_ptr {
             try {
@@ -266,29 +278,26 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
 
-         send(std::move(result));
+         send(std::move(result), std::move(send_update_span));
          --block_req.max_messages_in_flight;
          need_to_send_update = block_req.start_block_num <= current &&
                                block_req.start_block_num < block_req.end_block_num;
 
       }
 
-      void send_update(const block_state_ptr& head_block_state) {
+      void send_update(const block_state_ptr& head_block_state, ::std::optional<::fc::zipkin_span>&& span) override {
          if (head_block_state->block) {
             get_blocks_result_v1 result;
             result.head = { head_block_state->block_num, head_block_state->id };
-            send_update(head_block_state, std::move(result)); 
+            send_update(head_block_state, std::move(result), std::move(span)); 
          }    
       }
 
-      void send_update(bool changed = false) {
-         if (changed)
-            need_to_send_update = true;
-         if (!send_queue.empty() || !need_to_send_update || 
-             !max_messages_in_flight())
-            return;
-         auto& chain = plugin->chain_plug->chain();
-         send_update(chain.head_block_state());
+      void send_update(::std::optional<::fc::zipkin_span>&& span, bool changed = false) {
+         if (changed || need_to_send_update) {
+            auto& chain = plugin->chain_plug->chain();
+            send_update(chain.head_block_state(), std::move(span));
+         }
       }
 
       template <typename F>
@@ -453,17 +462,18 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto ship_trace  = fc_create_trace_with_id("SHiP-Accepted", block_state->id);
+      auto block_span = fc_create_trace_with_id("Block", block_state->id);
+      auto ship_accept_span = fc_create_span_with_id("SHiP-Accepted", "ship"_n.to_uint64_t() , block_state->id);
 
-      fc_add_tag(ship_trace, "block_id", block_state->id);
-      fc_add_tag(ship_trace, "block_num", block_state->block_num);
-      fc_add_tag(ship_trace, "block_time", block_state->block->timestamp.to_time_point());
+      fc_add_tag(ship_accept_span, "block_id", block_state->id);
+      fc_add_tag(ship_accept_span, "block_num", block_state->block_num);
+      fc_add_tag(ship_accept_span, "block_time", block_state->block->timestamp.to_time_point());
       if (trace_log) {
-         auto trace_log_span = fc_create_span(ship_trace, "store_trace_log");
+         auto trace_log_span = fc_create_span(ship_accept_span, "store_trace_log");
          trace_log->store(chain_plug->chain().db(), block_state);
       }
       if (chain_state_log) {
-         auto delta_log_span = fc_create_span(ship_trace, "store_delta_log");
+         auto delta_log_span = fc_create_span(ship_accept_span, "store_delta_log");
          chain_state_log->store(chain_plug->chain().kv_db(), block_state);
       }
       for (auto& s : sessions) {
@@ -471,7 +481,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (p) {
             if (p->current_request && block_state->block_num < p->current_request->start_block_num)
                p->current_request->start_block_num = block_state->block_num;
-            p->send_update(block_state);
+            p->send_update(block_state, std::move(ship_accept_span));
          }
       }
    }

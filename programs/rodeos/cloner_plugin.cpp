@@ -170,7 +170,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
       auto trace_id  = boost::endian::endian_reverse(result.this_block->block_id.data()[3]);
-      auto token     = fc::zipkin_span::token{ trace_id, trace_id };
+      using namespace eosio::literals;
+      auto token     = fc::zipkin_span::token{ "ship"_n.value, trace_id };
       auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
