@@ -14,8 +14,6 @@ export RETRY="$(buildkite-agent meta-data get pipeline-upload-retries --default 
 if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     echo "This documentation is also available on [GitHub]($DOCS_URL)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
     cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
-elif [[ "$BUILDKITE" == 'true' ]]; then
-    printf "    # Skipping \033]1339;url=$DOCS_URL;content=documentation\a upload for job retry number $RETRY.\n"
 fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
@@ -100,6 +98,7 @@ oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
 # start with a wait step
+echo 'steps:'
 echo '  - wait'
 echo ''
 # build steps
