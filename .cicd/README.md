@@ -1,5 +1,7 @@
 # eosio
-The [eosio](https://buildkite.com/EOSIO/eosio) pipeline is the primary CI/CD pipeline for members of the EOSIO organization developing on the EOSIO/eos repository. The [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) pipeline is also executed regularly. The difference in these two pipelines is whether the compiler and other dependencies are pinned to specific versions. The eosio pipeline uses pinned compilers/dependencies while the eosio-build-unpinned pipeline avoids pinning dependencies as much as possible.
+The [eosio](https://buildkite.com/EOSIO/eosio) and [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) pipelines are the primary pipelines for the [eos](https://github.com/EOSIO/eos) repository, running with specific or default versions of our dependencies, respectively. Both run against every commit to a base branch or pull request, along with the [eosio-code-coverage](https://buildkite.com/EOSIO/eosio-code-coverage) pipeline.
+
+The [eosio](https://buildkite.com/EOSIO/eosio) pipeline further triggers the [eosio-sync-from-genesis](https://buildkite.com/EOSIO/eosio-sync-from-genesis) and [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) pipelines on each build, and the the [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) pipeline on merge commits. Each of these pipelines are described in more detail below and in their respective READMEs.
 
 <details>
 <summary>More Info</summary>
