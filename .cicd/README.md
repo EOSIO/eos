@@ -97,6 +97,8 @@ Pipeline | Details
 </details>
 
 ## See Also
-- [Buildkite Documentation](https://github.com/EOSIO/devdocs/wiki/Buildkite) (internal)
-- [EOSIO Resume from State Documentation](https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md) (internal)
-- [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) (internal)
+- Buildkite
+  - [DevDocs](https://github.com/EOSIO/devdocs/wiki/Buildkite)
+  - [eosio-resume-from-state Documentation](https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md)
+  - [Run Your First Build](https://buildkite.com/docs/tutorials/getting-started#run-your-first-build)
+- [#help-automation](https://blockone.slack.com/archives/CMTAZ9L4D) Slack Channel
