@@ -84,11 +84,11 @@ There are several eosio pipelines that exist and are triggered by pull requests,
 
 Pipeline | Details
 ---|---
-[eosio](https://buildkite.com/EOSIO/eosio) | [eos](https://github.com/EOSIO/eos) build, tests, and packaging with pinned dependencies; runs on every pull request and base branch commit
+[eosio](https://buildkite.com/EOSIO/eosio) | [eos](https://github.com/EOSIO/eos) build, tests, and packaging with pinned dependencies; runs on every pull request and base branch commit, and nightly
 [eosio-base-images](https://buildkite.com/EOSIO/eosio-base-images) | Pipeline that ensures all MacOS VM and Docker container builders can be built. It is scheduled for periodic execution.
 [eosio-big-sur-beta](https://buildkite.com/EOSIO/eosio-big-sur-beta) | Pipeline that performs a build only using MacOS 11 builders. It is scheduled for periodic execution.
 [eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | Pipeline that ensure the build scripts function. It is scheduled for periodic execution.
-[eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) | [eos](https://github.com/EOSIO/eos) build and tests with platform-provided dependencies; runs on every pull request and base branch commit
+[eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) | [eos](https://github.com/EOSIO/eos) build and tests with platform-provided dependencies; runs on every pull request and base branch commit, and nightly
 [eosio-code-coverage](https://buildkite.com/EOSIO/eosio-code-coverage) | assess [eos](https://github.com/EOSIO/eos) unit test coverage; runs on every pull request and base branch commit
 [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) | Pipeline that only executes the long running tests. It is triggered after a pull request is merged.
 [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) | Pipeline that ensures that built binaries can resume from previous binary versions. It is triggered during pull request builds.
