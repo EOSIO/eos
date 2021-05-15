@@ -89,6 +89,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    std::shared_ptr<ship_client::connection_base> connection;
    bool                                          reported_block = false;
    std::unique_ptr<rodeos_filter>                filter         = {}; // todo: remove
+   fc::time_point                                end_block_time;
 
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
@@ -156,6 +157,10 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return result;
    }
 
+   static uint64_t to_trace_id(const eosio::checksum256& id) { 
+      return fc::zipkin_span::to_id(fc::sha256{ reinterpret_cast<const char*>(id.extract_as_byte_array().data()), 32 }); 
+   }
+
    template <typename Get_Blocks_Result>
    bool process_received(Get_Blocks_Result& result, eosio::input_stream bin) {
       if (!result.this_block)
@@ -169,9 +174,14 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->head && result.this_block->block_num > rodeos_snapshot->head + 1)
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
-      auto trace_id  = boost::endian::endian_reverse(result.this_block->block_id.data()[3]);
+      if (end_block_time.time_since_epoch().count()) {
+         auto wait_block_span = fc_create_trace_with_start_time("wait_block_span", end_block_time);
+         fc_add_tag( wait_block_span, "block_id", to_string( result.this_block->block_id ) );
+         fc_add_tag( wait_block_span, "block_num", result.this_block->block_num );
+      }
+
       using namespace eosio::literals;
-      auto token     = fc::zipkin_span::token{ "ship"_n.value, trace_id };
+      auto token     = fc::zipkin_span::token{ "ship"_n.value, to_trace_id(result.this_block->block_id) };
       auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
@@ -213,6 +223,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          return false;
 
       rodeos_snapshot->end_block(result, false);
+      end_block_time = fc::time_point::now();
       return true;
    }
 
