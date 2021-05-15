@@ -89,6 +89,7 @@ Pipeline | Details
 [eosio-big-sur-beta](https://buildkite.com/EOSIO/eosio-big-sur-beta) | Pipeline that performs a build only using MacOS 11 builders. It is scheduled for periodic execution.
 [eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | Pipeline that ensure the build scripts function. It is scheduled for periodic execution.
 [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) | Pipeline that performs a build without a pinned compiler. It is triggered when a pull request is created.
+[eosio-code-coverage](https://buildkite.com/EOSIO/eosio-code-coverage) | assess [eos](https://github.com/EOSIO/eos) unit test coverage; runs on every pull request and base branch commit
 [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) | Pipeline that only executes the long running tests. It is triggered after a pull request is merged.
 [eosio-resume-from-state](https://buildkite.com/EOSIO/eosio-resume-from-state) | Pipeline that ensures that built binaries can resume from previous binary versions. It is triggered during pull request builds.
 [eosio-sync-from-genesis](https://buildkite.com/EOSIO/eosio-sync-from-genesis) | Pipeline that ensures built code can sync properly. It is triggered during pull request builds.
