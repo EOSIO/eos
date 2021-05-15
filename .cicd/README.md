@@ -87,7 +87,7 @@ Pipeline | Details
 [eosio](https://buildkite.com/EOSIO/eosio) | [eos](https://github.com/EOSIO/eos) build, tests, and packaging with pinned dependencies; runs on every pull request and base branch commit, and nightly
 [eosio-base-images](https://buildkite.com/EOSIO/eosio-base-images) | pack EOSIO dependencies into docker and Anka base-images nightly
 [eosio-big-sur-beta](https://buildkite.com/EOSIO/eosio-big-sur-beta) | build and test [eos](https://github.com/EOSIO/eos) on macOS 11 "Big Sur" weekly
-[eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | Pipeline that ensure the build scripts function. It is scheduled for periodic execution.
+[eosio-build-scripts](https://buildkite.com/EOSIO/eosio-build-scripts) | run [eos](https://github.com/EOSIO/eos) build scripts nightly on empty operating systems
 [eosio-build-unpinned](https://buildkite.com/EOSIO/eosio-build-unpinned) | [eos](https://github.com/EOSIO/eos) build and tests with platform-provided dependencies; runs on every pull request and base branch commit, and nightly
 [eosio-code-coverage](https://buildkite.com/EOSIO/eosio-code-coverage) | assess [eos](https://github.com/EOSIO/eos) unit test coverage; runs on every pull request and base branch commit
 [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) | runs tests that need more time on merge commits
