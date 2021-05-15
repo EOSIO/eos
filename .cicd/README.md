@@ -28,6 +28,7 @@ These will override more specific operating system declarations, and primarily e
 
 Configure which operating systems are built, tested, and packaged:
 ```bash
+RUN_ALL_TESTS='true'                 # run all tests in the current build (including LRTs, overridden by SKIP* variables)
 SKIP_AMAZON_LINUX_2='true|false'     # skip all steps for Amazon Linux 2
 SKIP_CENTOS_7_7='true|false'         # skip all steps for Centos 7.7
 SKIP_CENTOS_8='true|false'           # skip all steps for Centos 8
