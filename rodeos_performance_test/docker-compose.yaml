@@ -36,10 +36,12 @@ services:
       image: ${DOCKER_REPO:-docker.io}/eos-boxed
       build: .
       command:
+         - ./wait-for-it.sh 
+         - zipkin:9411
+         - --
          - nodeos               
          - --plugin=eosio::state_history_plugin                                   
          - --trace-history 
-         - --read-mode=irreversible 
          - --chain-state-history 
          - --disable-replay-opts 
          - --validation-mode=light 
@@ -47,7 +49,8 @@ services:
          - --state-history-endpoint=0.0.0.0:8080
          - --config-dir=/etc/eosio
          - --telemetry-url=http://zipkin:9411/api/v2/spans 
-         - --telemetry-service-name=ship  
+         - --telemetry-service-name=ship 
+         - --telemetry-timeout-us=10000000
       depends_on:
          - zipkin
          - producer
@@ -67,7 +70,8 @@ services:
          - --eos-vm-oc-compile-threads=8 
          - --eos-vm-oc-enable  
          - --telemetry-url=http://zipkin:9411/api/v2/spans 
-         - --telemetry-service-name=rodeos            
+         - --telemetry-service-name=rodeos 
+         - --telemetry-timeout-us=10000000           
       depends_on:
          - zipkin
          - ship
