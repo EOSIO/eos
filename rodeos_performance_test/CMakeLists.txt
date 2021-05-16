@@ -15,7 +15,7 @@ configure_file(boot.sh boot.sh COPYONLY)
 configure_file(config.ini config.ini COPYONLY)
 configure_file(wait-for-it.sh wait-for-it.sh COPYONLY)
 
-execute_process(COMMAND curl http://169.254.169.254/latest/meta-data/public-ipv4 OUTPUT_VARIABLE DOCKER_REPO)
+execute_process(COMMAND curl http://169.254.169.254/latest/meta-data/public-ipv4 OUTPUT_VARIABLE MANAGER_IP)
 
 add_custom_target(test_docker_image ALL
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/nodeos ${CMAKE_CURRENT_BINARY_DIR}/bin/nodeos
@@ -24,7 +24,7 @@ add_custom_target(test_docker_image ALL
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/keosd ${CMAKE_CURRENT_BINARY_DIR}/bin/keosd
     COMMAND ${Docker_EXECUTABLE} build --build-arg BUILD_DIR=${CMAKE_BINARY_DIR} 
                                        --tag eos-boxed 
-                                       --tag ${DOCKER_REPO}/eos-boxed 
+                                       --tag ${MANAGER_IP}:5000/eos-boxed 
                                        --file ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile 
                                        ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile)

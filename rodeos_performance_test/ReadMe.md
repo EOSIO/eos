@@ -17,7 +17,6 @@ $ sudo chmod +x /usr/local/bin/docker-compose
 
 1. Start the local deployment with docker-compose
 ```
-$ export DOCKER_REPO=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
 $ docker-compose up -d
 ```
 
@@ -25,10 +24,12 @@ $ docker-compose up -d
 ```
 docker-compose ps
 ```
-3. To access the Zipkin UI from your local machine, you need ssh port forwarding *from your local machine*
+
+3. If you are runing the docker-compose on the remote machine, you need ssh port forwarding *from your local machine* to access the Zipkin UI
 ```
-$ ssh -L 127.0.0.1:9411:127.0.0.1:9411 root@${MANAGER_IP}
+$ ssh -L 127.0.0.1:9411:127.0.0.1:9411 $remote_user@$remote_ip
 ```
+
 4. Open your browser to visit http://127.0.0.1:9411
 
 5. Bring the local deployment down
@@ -111,6 +112,7 @@ $ docker node update --label-add name=node-2 csuy1nxb0es6zbo3t6j8osu9z
 To distribute the web app’s image across the swarm, it needs to be pushed to the registry you set up earlier. With Compose, this is very simple:
 
 ```
+$ export DOCKER_REPO=$MANAGER_IP:5000
 $ docker-compose push
 ```
 
@@ -118,7 +120,6 @@ $ docker-compose push
 
 1. Create the stack with docker stack deploy:
 ```
-$ export DOCKER_REPO=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
 $ docker stack apply -c docker-compose.yaml -c cluster.yaml rodeos-test
 ```
 
