@@ -1,5 +1,6 @@
 #include <eosio/chain/types.hpp>
 
+#include <eosio/chain/eosio_contract.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
 #include <eosio/chain/controller.hpp>
@@ -205,16 +206,6 @@ namespace eosio {
 
    class net_plugin_impl : public std::enable_shared_from_this<net_plugin_impl> {
    public:
-      mutable std::mutex               received_mtx;
-      std::unordered_map<uint32_t, fc::time_point> received;
-      void received_block(uint32_t block_num, fc::time_point&& time) {
-         std::lock_guard<std::mutex> g( received_mtx );
-         received.emplace(block_num, std::move(time));
-      }
-      fc::time_point received_block(uint32_t block_num) {
-         std::lock_guard<std::mutex> g( received_mtx );
-         return received[block_num];
-      }
       unique_ptr<tcp::acceptor>        acceptor;
       std::atomic<uint32_t>            current_connection_id{0};
 
@@ -3238,7 +3229,8 @@ namespace eosio {
          }
       }
       app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(), now{std::move(now)}]() mutable {
-         my_impl->received_block(ptr->block_num(), std::move(now));
+         const auto bn = ptr->block_num();
+         rodeos_testing::timing::single()->received_block(bn, now);
          c->process_signed_block( id, std::move( ptr ) );
       });
    }
@@ -3446,12 +3438,12 @@ namespace eosio {
       update_chain_info();
       controller& cc = chain_plug->chain();
       auto bn = bs->block->block_num();
-      auto start = received_block(bn);
       auto now = fc::time_point::now();
+      auto start = rodeos_testing::timing::single()->received_block_latest(bn, now).second;
       auto latency = now - bs->block->timestamp.to_time_point();
       auto duration = now - start;
       ilog("METRICS accepted - pre net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn",bn)("l", latency.count())("d", duration.count())("nt",bs->block->transactions.size()));
-      dispatcher->strand.post( [this, bs, start{std::move(start)}]() {
+      dispatcher->strand.post( [this, bs, start{std::move(now)}]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
 
          auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
@@ -3465,6 +3457,7 @@ namespace eosio {
          auto latency = now - bs->block->timestamp.to_time_point();
          auto duration = now - start;
          ilog("METRICS accepted - post net broadcast - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", bs->block->block_num())("l", latency.count())("d", duration.count())("nt",bs->block->transactions.size()));
+         rodeos_testing::timing::single()->received_block_latest(bs->block->block_num(), now);
       });
    }
 

@@ -4,6 +4,7 @@
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
+#include <eosio/chain/eosio_contract.hpp>
 #include <fc/log/trace.hpp>
 
 #include <boost/asio/bind_executor.hpp>
@@ -47,16 +48,6 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   mutable std::mutex               received_mtx;
-   std::unordered_map<uint32_t, fc::time_point> received;
-   void received_block(uint32_t block_num, const fc::time_point& time) {
-      std::lock_guard<std::mutex> g( received_mtx );
-      received.emplace(block_num, time);
-   }
-   fc::time_point received_block(uint32_t block_num) {
-      std::lock_guard<std::mutex> g( received_mtx );
-      return received[block_num];
-   }
    chain_plugin*                                              chain_plug = nullptr;
    std::optional<state_history_traces_log>                    trace_log;
    std::optional<state_history_chain_state_log>               chain_state_log;
@@ -294,10 +285,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                }
                auto bn = ptr->block_num();
                auto now = fc::time_point::now();
-               auto start_send = plugin->received_block(bn);
+               auto received = rodeos_testing::timing::single()->received_block_latest(bn, now); // just in case something else occurs out of expected order
+               auto start_send = received.second;
+               auto start_block = received.first;
                auto latency = now - ptr->timestamp.to_time_point();
                auto duration = now - start_send;
-               ilog("METRICS post ship send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn",bn)("l", latency.count())("d", duration.count())("nt", ptr->transactions.size()));
+               auto total_duration = now - start_block;
+               ilog("METRICS post ship send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}, total duration: ${td}",("bn",bn)("l", latency.count())("d", duration.count())("nt", ptr->transactions.size())("td",total_duration));
             }
          }, result.block );
       }
@@ -486,22 +480,43 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
+      auto last_report_start = rodeos_testing::timing::single()->received_block(block_state->block_num).second;
       auto start = fc::time_point::now();
+      {
+         auto latency = start - block_state->block->timestamp.to_time_point();
+         auto duration = start - last_report_start;
+         ilog("METRICS ship accept block - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", block_state->block_num)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size()));
+      }
       auto blk_trace = fc_create_trace_with_id("Block", block_state->id);
       auto blk_span = fc_create_span(blk_trace, "SHiP-Accepted");
       fc_add_tag(blk_span, "block_id", block_state->id);
       fc_add_tag(blk_span, "block_num", block_state->block_num);
       fc_add_tag(blk_span, "block_time", block_state->block->timestamp.to_time_point());
-      if (trace_log)
+      std::optional<fc::time_point> time1;
+      std::optional<fc::time_point> time2;
+      if (trace_log) {
          trace_log->store(chain_plug->chain().db(), block_state);
-      if (chain_state_log)
+         time1 = fc::time_point::now();
+      }
+      if (chain_state_log) {
          chain_state_log->store(chain_plug->chain().kv_db(), block_state);
+         time2 = fc::time_point::now();
+      }
       auto now = fc::time_point::now();
       auto bn = block_state->block->block_num();
-      received_block(bn, now);
+      rodeos_testing::timing::single()->received_block_latest(bn, now);
       auto latency = now - block_state->block->timestamp.to_time_point();
       auto duration = now - start;
-      ilog("METRICS ship pre send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}",("bn", bn)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size()));
+      int64_t  dur1 = 0;
+      int64_t  dur2 = 0;
+      if (time1) {
+         dur1 = (*time1 - start).count();
+      }
+      if (time2) {
+         auto start2 = (time1) ? *time1 : start;
+         dur2 = (*time2 - start2).count();
+      }
+      ilog("METRICS ship pre send - block num: ${bn}, latency: ${l} us, duration: ${d} us, num txn: ${nt}, trace log: ${tl}, chain state log: ${csl}",("bn", bn)("l", latency.count())("d", duration.count())("nt",block_state->block->transactions.size())("tl",dur1)("csl",dur2));
       for (auto& s : sessions) {
          auto& p = s.second;
          if (p) {
