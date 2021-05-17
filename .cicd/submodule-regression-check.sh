@@ -19,9 +19,12 @@ while read -r a b; do
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
 
 echo "getting submodule info for $BASE_BRANCH"
-GIT_CHECKOUT="git checkout --recursive '$BASE_BRANCH' 1> /dev/null"
+GIT_CHECKOUT="git checkout '$BASE_BRANCH' 1> /dev/null"
 echo "$ $GIT_CHECKOUT"
 eval $GIT_CHECKOUT
+GIT_SUBMODULE="git submodule update --init 1> /dev/null"
+echo "$ $GIT_SUBMODULE"
+eval $GIT_SUBMODULE
 
 while read -r a b; do
     BASE_MAP[$a]=$b
