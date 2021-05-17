@@ -286,6 +286,10 @@ try:
     history = []
     startTime = time.perf_counter()
     startRound = None
+
+    # limit the amount of debug output, since there is so much
+    originalDebug=Utils.Debug
+    Utils.Debug=False
     for round in range(0, numRounds):
         # ensure we are not sending too fast
         startRound = time.perf_counter()
@@ -301,7 +305,7 @@ try:
 
         transferAmount = Node.currencyIntToStr(round + 1, CORE_SYMBOL)
 
-        Print("Sending round %d, transfer: %s" % (round, transferAmount))
+        Print("Sending round {}, transfer: {}, sent: {}".format(round, transferAmount, len(history)))
         for accountIndex in range(0, args.total_accounts):
             fromAccount = accounts[accountIndex]
             toAccountIndex = accountIndex + 1 if accountIndex + 1 < args.total_accounts else 0
@@ -354,6 +358,7 @@ try:
     newestBlockNum = None
     newestBlockNumTransId = None
     newestBlockNumTransOrder = None
+    lowestBlockNum = None
     lastBlockNum = None
     lastTransId = None
     transOrder = 0
@@ -402,10 +407,14 @@ try:
             newestBlockNum = blockNum
             newestBlockNumTransId = transId
             newestBlockNumTransOrder = transOrder
+            lowestBlockNum = blockNum
         elif blockNum > newestBlockNum:
             newestBlockNum = blockNum
             newestBlockNumTransId = transId
             newestBlockNumTransOrder = transOrder
+
+        if blockNum < lowestBlockNum:
+            lowestBlockNum = blockNum
 
         lastTransId = transId
         transOrder += 1
@@ -413,6 +422,9 @@ try:
 
     nextTime = time.perf_counter()
     Print("Validating transfers took %s sec" % (nextTime - startTranferValidationTime))
+    numBlocks = newestBlockNum - lowestBlockNum + 1
+    Print("Averaged {} transactions per block".format(int(len(history)/numBlocks)))
+    Utils.Debug=originalDebug
 
     delayedReportError = False
     if len(missingTransactions) > 0:
