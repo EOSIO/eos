@@ -190,7 +190,7 @@ add_test(NAME nodeos_high_transaction_lr_test COMMAND tests/nodeos_high_transact
 set_property(TEST nodeos_high_transaction_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME nodeos_repeat_transaction_lr_test COMMAND tests/nodeos_high_transaction_test.py -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 1000 --max-transactions-per-second 500 --send-duplicates WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running_tests)
+set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS dont_run_tests)
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
