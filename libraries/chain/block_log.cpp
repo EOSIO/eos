@@ -1036,7 +1036,7 @@ namespace eosio { namespace chain {
          const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
          EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
 
-         // handle the case that the distance between original_pos and the end of the buf is less than 8 bytes
+         // handle the case that the distance between `buf+buffer_index` and `the end of the buffer` is less than 8 bytes
          uint64_t complete_pos_content;
          bool re_write = false;
          uint64_t re_write_offset;
@@ -1054,7 +1054,7 @@ namespace eosio { namespace chain {
             }else{
                 re_write = true;
                 re_write_offset = detail::reverse_iterator::_buf_len - buffer_index;
-                // read pos_content from original log file instead of buf
+                // read pos_content from original log file instead of the buffer
                 status = fseek(original_block_log.blk_in, original_pos, SEEK_SET);
                 const auto num_read = fread(&complete_pos_content, sizeof(uint64_t), 1, original_block_log.blk_in);
                 EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
