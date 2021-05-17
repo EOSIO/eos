@@ -12,6 +12,9 @@
 #include <fc/log/trace.hpp>
 
 #include <boost/signals2/connection.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 namespace {
 
@@ -63,6 +66,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::string amqp_trx_queue;
    ack_mode acked = ack_mode::executed;
    std::map<uint32_t, eosio::amqp_handler::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
+   std::string block_uuid;
+   std::set<std::string> tracked_reply_to;
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -100,6 +105,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    }
 
    void on_block_start( uint32_t bn ) {
+      block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
       trx_queue_ptr->on_block_start();
    }
 
@@ -116,6 +122,10 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          }
       }
       trx_queue_ptr->on_block_stop();
+      for( auto& e : tracked_reply_to ) {
+         trace_plug.publish_block_uuid( std::move( e ), block_uuid, bsp->id );
+      }
+      tracked_reply_to.clear();
    }
 
 private:
@@ -147,6 +157,7 @@ private:
                   my->amqp_trx->ack( delivery_tag );
                }
                if( !reply_to.empty() ) {
+                  my->tracked_reply_to.emplace( reply_to );
                   my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
                }
             } else {
@@ -172,7 +183,8 @@ private:
                   }
                }
                if( !reply_to.empty() ) {
-                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), trx, trace );
+                  my->tracked_reply_to.emplace( reply_to );
+                  my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), my->block_uuid, trx, trace );
                }
             }
          } );

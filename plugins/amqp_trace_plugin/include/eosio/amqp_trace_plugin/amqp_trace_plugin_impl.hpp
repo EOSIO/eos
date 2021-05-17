@@ -29,8 +29,11 @@ public:
    void on_applied_transaction(const chain::transaction_trace_ptr& trace, const chain::packed_transaction_ptr& t);
 
    // called from any thread
-   void publish_result( std::string routing_key, std::string correlation_id,
+   void publish_result( std::string routing_key, std::string correlation_id, std::string block_uuid,
                         const chain::packed_transaction_ptr& trx, const chain::transaction_trace_ptr& trace );
+
+   // called from any thread
+   void publish_block_uuid( std::string routing_key, std::string block_uuid, const chain::block_id_type& block_id );
 };
 
 std::istream& operator>>(std::istream& in, amqp_trace_plugin_impl::reliable_mode& m);
