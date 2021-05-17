@@ -7,11 +7,11 @@ The [eosio](https://buildkite.com/EOSIO/eosio) pipeline further triggers the [eo
 <summary>See More</summary>
 
 ## Index
-1. [Configuration](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#configuration)
-    1. [Variables](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#variables)
-    1. [Examples](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#examples)
-1. [Pipelines](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#pipelines)
-1. [See Also](https://github.com/EOSIO/eos/blob/release/2.1.x/.cicd/README.md#see-also)
+1. [Configuration](README.md#configuration)
+   1. [Variables](README.md#variables)
+   1. [Examples](README.md#examples)
+1. [Pipelines](README.md#pipelines)
+1. [See Also](README.md#see-also)
 
 ## Configuration
 Most EOSIO pipelines are run any time you push a commit or tag to an open pull request in [eos](https://github.com/EOSIO/eos), any time you merge a pull request, and nightly. The [eosio-lrt](https://buildkite.com/EOSIO/eosio-lrt) pipeline only runs when you merge a pull request because it takes so long. Long-running tests are also run in the [eosio](https://buildkite.com/EOSIO/eosio) nightly builds, which have `RUN_ALL_TESTS='true'` set.
