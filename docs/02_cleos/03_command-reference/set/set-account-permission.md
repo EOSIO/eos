@@ -42,7 +42,8 @@ The following information shows the different positionals and options you can us
 
 ## Requirements
 * Install the currently supported version of `cleos`.
-[[info | Note]] | `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools.  
+[[info | Note]] 
+| `Cleos` is bundled with the EOSIO software. [Installing EOSIO](../../../00_install/index.md) will also install the `cleos` and `keosd` comand line tools.  
 * You have access to an EOSIO blockchain.
 * You have an EOSIO account and access to the account's private key.
 
