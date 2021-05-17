@@ -115,23 +115,27 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
           : plugin(std::move(plugin)) {}
 
       void send_thread_fun() {
-         std::unique_lock<std::mutex> lk(this->mx);
-         this->cv.wait(lk, [this] { return this->plugin->atomic_stopping.load(); });
-         if (this->plugin->atomic_stopping)
-            return;
-         send_queue_t sending_queue;
-         sending_queue.swap(this->send_queue);
-         lk.release();
-         if (sending_queue.size()) {
-            std::vector<boost::asio::const_buffer>      bufs2;
-            std::vector<std::optional<fc::zipkin_span>> spans;
-            bufs2.reserve(sending_queue.size());
-            spans.reserve(sending_queue.size());
-            for (const auto& item : sending_queue) {
-               bufs2.emplace_back(boost::asio::buffer(item.first));
-               spans.emplace_back(fc_create_span_from_token(item.second, "send"));
+         fc_ilog(_log, "send thread started");
+         while (true) {
+            std::unique_lock<std::mutex> lk(this->mx);
+            this->cv.wait(lk);
+            if (this->plugin->atomic_stopping) {
+               return;
             }
-            this->derived_session().socket_stream->write(bufs2);
+            else if (this->send_queue.size()) {
+               send_queue_t sending_queue;
+               sending_queue.swap(this->send_queue);
+               lk.unlock();
+               std::vector<boost::asio::const_buffer>      bufs2;
+               std::vector<std::optional<fc::zipkin_span>> spans;
+               bufs2.reserve(sending_queue.size());
+               spans.reserve(sending_queue.size());
+               for (const auto& item : sending_queue) {
+                  bufs2.emplace_back(boost::asio::buffer(item.first));
+                  spans.emplace_back(fc_create_span_from_token(item.second, "send"));
+               }
+               this->derived_session().socket_stream->write(bufs2);
+            }
          }
       }
 
@@ -153,7 +157,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          derived_session().socket_stream->async_accept([self = derived_session().shared_from_this()](
                                                            boost::system::error_code ec) {
             self->callback(ec, "async_accept", [self] {
-               ilog("before write");
                self->socket_stream->binary(false);
                self->socket_stream->async_write(
                    boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
@@ -194,8 +197,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), fc_get_token(span));
             send();
          } else {
-            std::unique_lock<std::mutex> lk(mx);
-            send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), fc_get_token(span));
+            {
+               std::lock_guard<std::mutex> lk(mx);
+               send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), fc_get_token(span));
+            }
             cv.notify_one();
          }
       }
@@ -425,12 +430,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename F>
       void callback(boost::system::error_code ec, const char* what, F f) {
-         //app().post( priority::medium, [=]() {
-         app().post( priority::high, [=]() {
-            if( plugin->stopping )
+         if( plugin->stopping )
                return;
             if( ec )
                return on_fail( ec, what );
+         app().post( priority::high, [=]() {
             catch_and_close( f );
          } );
       }
