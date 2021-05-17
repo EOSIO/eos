@@ -1290,7 +1290,7 @@ class Cluster(object):
 
         if tokenType == TokenType.kv:
             contract="eosio.bios"
-            contractDir="contracts/contracts/%s/bin" % (contract)
+            contractDir="contracts/contracts/%s" % (contract)
             Utils.Print("Publish %s contract" % (contract))
             trans=biosNode.publishContract(eosioAccount, contractDir, "{}.wasm".format(contract), "{}.abi".format(contract), waitForTransBlock=True)
             if trans is None:
