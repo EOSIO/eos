@@ -1036,18 +1036,40 @@ namespace eosio { namespace chain {
          const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
          EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
 
+         // handle the case that the distance between original_pos and the end of the buf is less than 8 bytes
+         uint64_t complete_pos_content;
+         bool re_write = false;
+         uint64_t re_write_offset;
+
          // walk this memory section to adjust block position to match the adjusted location
          // of the block start and store in the new index file
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
-            uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
-            const auto start_of_this_block = pos_content;
-            pos_content = start_of_this_block - pos_delta;
-            index.write(pos_content);
-            original_pos = start_of_this_block - pos_size;
+            if (buffer_index + pos_size <= detail::reverse_iterator::_buf_len){
+                uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
+                const auto start_of_this_block = pos_content;
+                pos_content = start_of_this_block - pos_delta;
+                index.write(pos_content);
+                original_pos = start_of_this_block - pos_size;
+            }else{
+                re_write = true;
+                re_write_offset = detail::reverse_iterator::_buf_len - buffer_index;
+                // read pos_content from original log file instead of buf
+                status = fseek(original_block_log.blk_in, original_pos, SEEK_SET);
+                const auto num_read = fread(&complete_pos_content, sizeof(uint64_t), 1, original_block_log.blk_in);
+                EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
+                index.write(complete_pos_content - pos_delta);
+                original_pos = complete_pos_content - pos_size;
+            }
          }
          new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - read_size);
          new_block_file.write(buf, read_size);
+         if (re_write){
+             re_write = false;
+             new_block_file.seek((new_block_file_first_block_pos + to_write_remaining - read_size) + read_size - re_write_offset);
+             uint64_t pos = complete_pos_content - pos_delta;
+             new_block_file.write((char*)&pos, sizeof(uint64_t));
+         }
       }
       index.complete();
       fclose(original_block_log.blk_in);
