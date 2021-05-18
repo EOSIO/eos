@@ -52,7 +52,7 @@ enum class send_mode_t {
    sync,
    async,
    threaded_sync
-} send_mode = threaded_sync;
+} send_mode = send_mode_t::threaded_sync;
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;

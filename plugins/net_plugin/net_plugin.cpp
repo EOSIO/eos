@@ -3224,11 +3224,19 @@ namespace eosio {
             return;
          }
       }
-      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(), now{std::move(now)}]() mutable {
+      auto block_span = fc_create_trace_with_id("Block", id);
+      // auto token     = fc::zipkin_span::token{ (uint64_t)rand(), id._hash[3] };
+      fc_add_tag(block_span, "block_num", ptr->block_num());
+      // auto block_span  = fc_create_span_from_token(token, "handle_message");
+
+      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(), block_span = std::move(block_span)]() mutable
+                 {
+                    auto span = fc_create_span(block_span, "processing_singed_block");
          const auto bn = ptr->block_num();
          rodeos_testing::timing::single()->received_block(bn, now);
-         c->process_signed_block( id, std::move( ptr ) );
-      });
+                    c->process_signed_block(id, std::move(ptr));
+                 }
+      );
    }
 
    // called from application thread
