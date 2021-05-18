@@ -3260,7 +3260,11 @@ namespace eosio {
       }
       if( msg.reason == wrong_version ) {
          if( !retry ) no_retry = fatal_other; // only retry once on wrong version
-      } else {
+      } 
+      else if ( msg.reason == benign_other ) {
+         if ( retry ) fc_dlog( logger, "received benign_other reason, retrying to connect");
+      }
+      else {
          retry = false;
       }
       flush_queues();
