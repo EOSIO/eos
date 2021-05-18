@@ -23,12 +23,18 @@ services:
       image: ${DOCKER_REPO:-docker.io}/eos-boxed
       build: .
       command:
+         - ./wait-for-it.sh 
+         - zipkin:9411
+         - --
          - nodeos 
          - --enable-stale-production 
          - --producer-name=eosio              
          - --plugin=eosio::producer_plugin  
          - --config-dir
          - /etc/eosio
+         - --telemetry-url=http://zipkin:9411/api/v2/spans 
+         - --telemetry-service-name=producer 
+         - --telemetry-timeout-us=10000000
       depends_on:
          - zipkin
       
@@ -45,15 +51,13 @@ services:
          - --chain-state-history 
          - --disable-replay-opts 
          - --validation-mode=light 
-         - --p2p-peer-address=producer:9876 
+         - --p2p-peer-address=producer:9876:blk
          - --state-history-endpoint=0.0.0.0:8080
          - --config-dir=/etc/eosio
          - --telemetry-url=http://zipkin:9411/api/v2/spans 
          - --telemetry-service-name=ship 
          - --telemetry-timeout-us=10000000
          - --send-mode=threaded_sync
-         # - --send-mode=sync
-         # - --send-mode=async
       depends_on:
          - zipkin
          - producer

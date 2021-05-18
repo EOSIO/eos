@@ -19,6 +19,7 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
+#include <fc/log/trace.hpp>
 
 #include <new>
 
@@ -1650,6 +1651,13 @@ struct controller_impl {
             });
          }
 
+         std::optional<::fc::zipkin_span> span;
+         if (add_to_fork_db&& ::fc::zipkin_config::is_enabled()) {
+            span.emplace("block", fc::zipkin_span::to_id(bsp->id), 0);
+            fc_add_tag( span, "block_id",  bsp->id.str() );
+            fc_add_tag( span, "block_num", bsp->block_num );
+         }
+         
          emit( self.accepted_block, bsp );
 
          if( add_to_fork_db ) {
