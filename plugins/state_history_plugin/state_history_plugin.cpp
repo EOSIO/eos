@@ -212,10 +212,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          sending = true;
 
          switch (send_mode) {
-         case send_mode_t::sync: 
-            {
-            auto send_span = fc_create_span_from_token(send_queue[0].second, "send");
-            derived_session().socket_stream->write(boost::asio::buffer(send_queue[0].first));
+         case send_mode_t::sync:
+            if (true) {
+               auto send_span = fc_create_span_from_token(send_queue[0].second, "send");
+               derived_session().socket_stream->write(boost::asio::buffer(send_queue[0].first));
             }
             send_queue.erase(send_queue.begin());
             sending = false;
@@ -233,7 +233,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    self->sending = false;
                    self->callback(ec, "async_write", [self] { self->send(); });
                 });
-             });
          } break;
          default:
             break;
