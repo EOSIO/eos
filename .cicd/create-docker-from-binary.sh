@@ -1,6 +1,7 @@
 #!/bin/bash
 echo '--- :evergreen_tree: Configuring Environment'
 set -euo pipefail
+. ./.cicd/helpers/general.sh
 buildkite-agent artifact download '*.deb' --step ':ubuntu: Ubuntu 18.04 - Package Builder' .
 SANITIZED_BRANCH="$(sanitize "$BUILDKITE_BRANCH")"
 echo "Branch '$BUILDKITE_BRANCH' sanitized as '$SANITIZED_BRANCH'."
