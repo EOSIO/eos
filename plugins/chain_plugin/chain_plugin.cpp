@@ -179,7 +179,6 @@ public:
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_blockvault_sync_method(app().get_method<incoming::methods::blockvault_sync>())
    ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
-   ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
 
    bfs::path                        blocks_dir;
@@ -211,7 +210,6 @@ public:
    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
    incoming::methods::blockvault_sync::method_type&        incoming_blockvault_sync_method;
    incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
-   incoming::methods::transaction_sync::method_type& incoming_transaction_sync_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
