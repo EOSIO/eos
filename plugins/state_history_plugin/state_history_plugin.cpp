@@ -50,9 +50,8 @@ auto catch_and_log(F f) {
 enum class send_mode_t {
    sync,
    async,
-   async_scatter,
    threaded_sync
-} send_mode = send_mode_t::async_scatter;
+} send_mode = threaded_sync;
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
@@ -125,15 +124,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                send_queue_t sending_queue;
                sending_queue.swap(this->send_queue);
                lk.unlock();
-               std::vector<boost::asio::const_buffer>      bufs2;
-               std::vector<std::optional<fc::zipkin_span>> spans;
-               bufs2.reserve(sending_queue.size());
-               spans.reserve(sending_queue.size());
                for (const auto& item : sending_queue) {
-                  bufs2.emplace_back(boost::asio::buffer(item.first));
-                  spans.emplace_back(fc_create_span_from_token(item.second, "send"));
+                  auto span = fc_create_span_from_token(item.second, "send");
+                  this->derived_session().socket_stream->write(boost::asio::buffer(item.first));
                }
-               this->derived_session().socket_stream->write(bufs2);
             }
          }
       }
@@ -198,9 +192,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          } else {
             {
                std::lock_guard<std::mutex> lk(mx);
-               send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), fc_get_token(span));
+               auto                        token = fc_get_token(span);
+               send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), token);
             }
             cv.notify_one();
+            callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {
+               self->send_update(::std::optional<::fc::zipkin_span>{});
+            });
          }
       }
 
@@ -230,25 +228,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                 [self      = derived_session().shared_from_this(),
                  send_span = std::move(send_span)](boost::system::error_code ec, size_t) {
                    self->send_queue.erase(self->send_queue.begin());
-                   self->sending = false;
-                   self->callback(ec, "async_write", [self] { self->send(); });
-                });
-         } break;
-         case send_mode_t::async_scatter: {
-            send_queue_t sending_queue;
-            std::swap(sending_queue, send_queue);
-            std::vector<boost::asio::const_buffer>      bufs2;
-            std::vector<std::optional<fc::zipkin_span>> spans;
-            bufs2.reserve(sending_queue.size());
-            spans.reserve(sending_queue.size());
-            for (const auto& item : sending_queue) {
-               bufs2.emplace_back(boost::asio::buffer(item.first));
-               spans.emplace_back(fc_create_span_from_token(item.second, "send"));
-            }
-
-            derived_session().socket_stream->async_write( //
-                bufs2, [self = derived_session().shared_from_this(), queue = std::move(sending_queue),
-                        spans = std::move(spans)](boost::system::error_code ec, size_t) {
                    self->sending = false;
                    self->callback(ec, "async_write", [self] { self->send(); });
                 });
@@ -367,9 +346,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
          ++current_request->start_block_num;
          
-         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}}} to send queue", 
+         fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
-               ("this_block", result.this_block ? result.this_block->block_num : fc::variant()));
+               ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
+               ("id", block_id ? block_id->_hash[3] : 0 ));
 
          send(std::move(result), std::move(send_update_span));
          --block_req.max_messages_in_flight;
@@ -558,7 +538,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      auto block_span = fc_create_trace_with_id("Block", block_state->id);
       auto ship_accept_span = fc_create_span_with_id("SHiP-Accepted", "ship"_n.to_uint64_t() , block_state->id);
 
       fc_add_tag(ship_accept_span, "block_id", block_state->id);
@@ -717,8 +696,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          send_mode = send_mode_t::threaded_sync;
       else if (mode == "async")
          send_mode = send_mode_t::async;
-      else
-         send_mode = send_mode_t::async_scatter;
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
