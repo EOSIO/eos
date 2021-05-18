@@ -99,6 +99,7 @@ def startNode(nodeIndex, account):
     if not nodeIndex: otherOpts += (
         '    --plugin eosio::history_plugin'
         '    --plugin eosio::history_api_plugin'
+        '    --plugin eosio::net_api_plugin'
     )
     cmd = (
         args.nodeos +
@@ -416,6 +417,7 @@ parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", defau
 parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--nodeos', metavar='', help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos')
 parser.add_argument('--keosd', metavar='', help="Path to keosd binary", default='../../build/programs/keosd/keosd')
+#parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='~/Work/eosio.contracts-1.9/build/contracts')
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/')
 parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", default='./nodes/')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
