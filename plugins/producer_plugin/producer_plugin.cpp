@@ -206,7 +206,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
       incoming::methods::blockvault_sync::method_type::handle   _incoming_blockvault_sync_provider;
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
-      incoming::methods::transaction_sync::method_type::handle  _incoming_transaction_sync_provider;
 
       transaction_id_with_expiry_index                          _blacklisted_transactions;
       pending_snapshot_index                                    _pending_snapshot_index;
@@ -442,33 +441,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          _unapplied_transactions.add_aborted( chain.abort_block() );
 
          schedule_production_loop();
-      }
-
-      void on_incoming_transaction_sync(const packed_transaction_ptr &trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) {
-         chain::controller& chain = chain_plug->chain();
-         const auto max_trx_time_ms = _max_transaction_time_ms.load();
-         fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
-
-         auto result = transaction_metadata::create_no_recover_keys(trx, read_only ? transaction_metadata::trx_type::read_only : transaction_metadata::trx_type::input);
-
-         try {
-            if( !process_incoming_transaction_async( result, persist_until_expired, next ) ) {
-               if( _pending_block_mode == pending_block_mode::producing ) {
-                  schedule_maybe_produce_block( true );
-               } else {
-                  restart_speculative_block();
-               }
-            }
-         } catch ( fc::exception_ptr ex) {
-            fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                    ("txid", trx->id())("why",ex->what()));
-            next(ex);
-
-            if (_trx_trace_failure_log.is_enabled(fc::log_level::debug)) {
-               auto entire_trx = chain_plug->get_entire_trx(trx->get_transaction());
-               fc_dlog(_trx_trace_failure_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${entire_trx}", ("entire_trx", entire_trx));
-            }
-         }
       }
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, bool read_only, next_function<transaction_trace_ptr> next) {
