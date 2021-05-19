@@ -1140,7 +1140,7 @@ void register_callbacks() {
    rhf_t::add<&callbacks::ripemd160>("env", "ripemd160");
 }
 
-static void run(const char* wasm, const std::vector<std::string>& args) {
+static int run(const char* wasm, const std::vector<std::string>& args) {
    eosio::vm::wasm_allocator wa;
    auto                      code = eosio::vm::read_wasm(wasm);
    backend_t                 backend(code, nullptr);
@@ -1153,7 +1153,11 @@ static void run(const char* wasm, const std::vector<std::string>& args) {
 
    rhf_t::resolve(backend.get_module());
    backend.initialize(&cb);
-   backend(cb, "env", "start", 0);
+   auto returned_stack_elem = backend.call_with_return(cb, "env", "start", 0);
+   if (returned_stack_elem.has_value()) {
+      return returned_stack_elem->to_i32();
+   }
+   return 0;
 }
 
 const char usage[] = "usage: eosio-tester [-h or --help] [-v or --verbose] file.wasm [args for wasm]\n";
@@ -1184,8 +1188,7 @@ int main(int argc, char* argv[]) {
    try {
       std::vector<std::string> args{ argv + next_arg + 1, argv + argc };
       register_callbacks();
-      run(argv[next_arg], args);
-      return 0;
+      return run(argv[next_arg], args);
    } catch (::assert_exception& e) {
       std::cerr << "tester wasm asserted: " << e.what() << "\n";
    } catch (eosio::vm::exception& e) {
