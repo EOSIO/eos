@@ -1221,7 +1221,10 @@ class Node(object):
         # The voted schedule should be promoted now, then need to wait for that to become irreversible
         votingTallyWindow=120  #could be up to 120 blocks before the votes were tallied
         promotedBlockNum=self.getHeadBlockNum()+votingTallyWindow
-        self.waitForIrreversibleBlock(promotedBlockNum, timeout=rounds/2)
+        # There was waitForIrreversibleBlock but due to bug it was waiting for head and not lib.
+        # leaving waitForIrreversibleBlock here slows down voting test by few minutes so since
+        # it was fine with head block for few years, switching to waitForBlock instead
+        self.waitForBlock(promotedBlockNum, timeout=rounds/2)
 
         ibnSchedActive=self.getIrreversibleBlockNum()
 
