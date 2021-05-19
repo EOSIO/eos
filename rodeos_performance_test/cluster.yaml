@@ -22,9 +22,9 @@ services:
       deploy:
          placement:
             constraints:
-               - "node.name==node-1"
+               - "node.labels.name==node-1"
    rodeos:
       deploy:
          placement:
             constraints:
-               - "node.name==node-2"
+               - "node.labels.name==node-2"

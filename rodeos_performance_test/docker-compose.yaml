@@ -69,14 +69,7 @@ services:
          /bin/sh -c "
             ./wait-for-it.sh zipkin:9411 ## do not use wait-for-it.sh to wait for ship:8080, it would cause the the websocket listening endpoint to be in unrecoverable state. 
             sleep 10   
-            rodeos --data-dir=/var/rodeos/data \
-                   --rdb-threads=12  \
-                   --eos-vm-oc-cache-size-mb=200  \
-                   --clone-connect-to=ship:8080  \
-                   --eos-vm-oc-compile-threads=8  \
-                   --telemetry-url=http://zipkin:9411/api/v2/spans  \
-                   --telemetry-service-name=rodeos  \
-                   --telemetry-timeout-us=10000000
+            rodeos --clone-connect-to=ship:8080 --data-dir=/var/rodeos/data --rdb-threads=12 --telemetry-url=http://zipkin:9411/api/v2/spans --telemetry-service-name=rodeos --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8                 
          "       
       depends_on:
          - zipkin
