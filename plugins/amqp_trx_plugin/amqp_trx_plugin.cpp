@@ -187,7 +187,9 @@ private:
                   } else if( my->acked == ack_mode::in_block ) {
                      my->tracked_delivery_tags[trace->block_num] = delivery_tag;
                   }
-                  my->tracked_block_uuid_rks.emplace( std::move( block_uuid_rk ) );
+                  if( !block_uuid_rk.empty() ) {
+                     my->tracked_block_uuid_rks.emplace( std::move( block_uuid_rk ) );
+                  }
                }
                if( !reply_to.empty() ) {
                   my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), my->block_uuid, trx, trace );
