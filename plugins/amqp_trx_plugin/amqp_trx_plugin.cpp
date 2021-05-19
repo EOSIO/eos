@@ -67,7 +67,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    ack_mode acked = ack_mode::executed;
    std::map<uint32_t, eosio::amqp_handler::delivery_tag_t> tracked_delivery_tags; // block, highest delivery_tag for block
    std::string block_uuid;
-   std::set<std::string> tracked_reply_to;
+   std::set<std::string> tracked_block_uuid_rks;
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
@@ -83,15 +83,16 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          fc::datastream<const char*> ds( message.body(), message.bodySize() );
          fc::unsigned_int which;
          fc::raw::unpack(ds, which);
+         std::string block_uuid_rk = message.headers().get("block-uuid-msg");
          if( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction_v0>()) ) {
             chain::packed_transaction_v0 v0;
             fc::raw::unpack(ds, v0);
             auto ptr = std::make_shared<chain::packed_transaction>( std::move( v0 ), true );
-            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move(block_uuid_rk), std::move( ptr ) );
          } else if ( which == fc::unsigned_int(fc::get_index<transaction_msg, chain::packed_transaction>()) ) {
             auto ptr = std::make_shared<chain::packed_transaction>();
             fc::raw::unpack(ds, *ptr);
-            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move( ptr ) );
+            handle_message( delivery_tag, message.replyTo(), message.correlationID(), std::move(block_uuid_rk), std::move( ptr ) );
          } else {
             FC_THROW_EXCEPTION( fc::out_of_range_exception, "Invalid which ${w} for consume of transaction_type message", ("w", which) );
          }
@@ -106,11 +107,14 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    void on_block_start( uint32_t bn ) {
       block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
+      tracked_block_uuid_rks.clear();
       trx_queue_ptr->on_block_start();
    }
 
    void on_block_abort( uint32_t bn ) {
       trx_queue_ptr->on_block_stop();
+      tracked_block_uuid_rks.clear();
+      block_uuid.clear();
    }
 
    void on_accepted_block( const chain::block_state_ptr& bsp ) {
@@ -122,10 +126,10 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          }
       }
       trx_queue_ptr->on_block_stop();
-      for( auto& e : tracked_reply_to ) {
+      for( auto& e : tracked_block_uuid_rks ) {
          trace_plug.publish_block_uuid( std::move( e ), block_uuid, bsp->id );
       }
-      tracked_reply_to.clear();
+      tracked_block_uuid_rks.clear();
       block_uuid.clear();
    }
 
@@ -135,6 +139,7 @@ private:
    void handle_message( const amqp_handler::delivery_tag_t& delivery_tag,
                         const std::string& reply_to,
                         const std::string& correlation_id,
+                        std::string block_uuid_rk,
                         chain::packed_transaction_ptr trx ) {
       const auto& tid = trx->id();
       dlog( "received packed_transaction ${id}", ("id", tid) );
@@ -144,7 +149,8 @@ private:
       fc_add_tag(trx_span, "trx_id", tid);
 
       trx_queue_ptr->push( trx,
-                [my=shared_from_this(), token=trx_trace.get_token(), delivery_tag, reply_to, correlation_id, trx]
+                [my=shared_from_this(), token=trx_trace.get_token(),
+                 delivery_tag, reply_to, correlation_id, block_uuid_rk=std::move(block_uuid_rk), trx]
                 (const std::variant<fc::exception_ptr, chain::transaction_trace_ptr>& result) mutable {
             auto trx_span = fc_create_span_from_token(token, "Processed");
             fc_add_tag(trx_span, "trx_id", trx->id());
@@ -181,9 +187,9 @@ private:
                   } else if( my->acked == ack_mode::in_block ) {
                      my->tracked_delivery_tags[trace->block_num] = delivery_tag;
                   }
+                  my->tracked_block_uuid_rks.emplace( std::move( block_uuid_rk ) );
                }
                if( !reply_to.empty() ) {
-                  my->tracked_reply_to.emplace( reply_to );
                   my->trace_plug.publish_result( std::move(reply_to), std::move(correlation_id), my->block_uuid, trx, trace );
                }
             }
