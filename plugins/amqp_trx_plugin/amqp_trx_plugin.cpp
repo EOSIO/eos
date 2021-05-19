@@ -126,6 +126,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          trace_plug.publish_block_uuid( std::move( e ), block_uuid, bsp->id );
       }
       tracked_reply_to.clear();
+      block_uuid.clear();
    }
 
 private:
@@ -157,7 +158,6 @@ private:
                   my->amqp_trx->ack( delivery_tag );
                }
                if( !reply_to.empty() ) {
-                  my->tracked_reply_to.emplace( reply_to );
                   my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
                }
             } else {
