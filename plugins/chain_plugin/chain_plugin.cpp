@@ -3231,12 +3231,13 @@ void read_only::get_contract_query(const read_only::get_contract_query_params& p
                const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
                const auto& receipts = db.get_read_mode() == db_read_mode::SPECULATIVE ? db.get_pending_trx_receipts() : deque<transaction_receipt>();
                vector<transaction_id_type>  pending_transactions;
+               pending_transactions.reserve(receipts.size());
                for( transaction_receipt const& receipt : receipts ) {
                   if( std::holds_alternative<transaction_id_type>(receipt.trx) ) {
                      pending_transactions.push_back(std::get<transaction_id_type>(receipt.trx));
                   }
                   else {
-                     pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).packed_digest());
+                     pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
                   }
                }
                next(read_only::get_contract_query_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
