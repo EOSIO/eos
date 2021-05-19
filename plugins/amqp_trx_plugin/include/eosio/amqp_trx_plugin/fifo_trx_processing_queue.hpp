@@ -174,20 +174,7 @@ public:
                   if( trx_meta ) {
                      dlog( "posting trx: ${id}", ("id", trx_meta->id()) );
                      app().post( priority::low, [self, trx{std::move( trx_meta )}, next{std::move( i.next )}]() {
-                        auto retry_later = [self]( const chain::transaction_metadata_ptr& trx,
-                                                   const producer_plugin::next_function<chain::transaction_trace_ptr>& next ) {
-                           std::promise<chain::transaction_metadata_ptr> p;
-                           q_item i;
-                           i.fut = p.get_future();
-                           p.set_value( trx );
-                           i.next = next;
-                           self->queue_.push_front( std::move( i ) );
-                        };
-//                        if( !self->allow_speculative_execution && !self->prod_plugin_->is_producing_block() ) {
-//                           retry_later( trx, next );
-//                        } else {
-                           self->prod_plugin_->execute_incoming_transaction( trx, next, retry_later );
-//                        }
+                        self->prod_plugin_->execute_incoming_transaction( trx, next );
                         self->queue_.unpause();
                      } );
                   } else {

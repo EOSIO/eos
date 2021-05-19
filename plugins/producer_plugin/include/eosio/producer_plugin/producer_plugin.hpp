@@ -97,11 +97,8 @@ public:
    chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
    void log_failed_transaction(const transaction_id_type& trx_id, const char* reason) const;
 
-   using retry_later_function_t =
-         std::function<void(const chain::transaction_metadata_ptr& trx, const next_function<chain::transaction_trace_ptr>& next)>;
    bool execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
-                                     next_function<chain::transaction_trace_ptr> next,
-                                     retry_later_function_t retry_later);
+                                     next_function<chain::transaction_trace_ptr> next);
    /// @return configured maximum transaction time max-transaction-time. thread-safe
    fc::microseconds get_max_transaction_time() const;
 
