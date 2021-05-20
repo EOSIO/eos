@@ -68,7 +68,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BIN
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_test.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_multi_ship_kill_restart.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_multi_ship_kill_restart.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rodeos_wasmQL_http_timeout.py ${CMAKE_CURRENT_BINARY_DIR}/rodeos_wasmQL_http_timeout.py COPYONLY)
-
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -200,6 +200,8 @@ set_property(TEST rodeos_idle_restart_rodeos_unix-socket_eos-vm-oc_test PROPERTY
 # TODO add restart_rodeos_ship_eos-vm-oc when it becomes stable
 add_test(NAME rodeos_idle_restart_rodeos_producer_eos-vm-oc_test COMMAND tests/rodeos_idle_test.py -v --clean-run --dump-error-detail --reps 2 --node-order _rodeos-k2,_prod-k2,+rodeos-n,+prod-n,_prod-k15,_rodeos-k15,+rodeos-n,+prod-n --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST rodeos_idle_restart_rodeos_producer_eos-vm-oc_test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
 
 # TODO add test restart all three  (rodeos, producer, ship) shutdown then brought back up
 
