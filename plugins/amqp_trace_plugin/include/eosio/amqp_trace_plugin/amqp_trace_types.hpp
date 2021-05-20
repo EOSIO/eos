@@ -10,9 +10,21 @@ struct transaction_trace_exception {
    std::string error_message;
 };
 
-using transaction_trace_msg = std::variant<eosio::transaction_trace_exception, eosio::ship_protocol::transaction_trace>;
+struct transaction_trace_message {
+   std::string block_uuid;
+   eosio::ship_protocol::transaction_trace trace;
+};
+
+struct block_uuid_message {
+   std::string block_uuid;
+   eosio::checksum256 block_id;
+};
+
+using transaction_trace_msg = std::variant<eosio::transaction_trace_exception, eosio::transaction_trace_message, block_uuid_message>;
 
 EOSIO_REFLECT( eosio::transaction_trace_exception, error_code, error_message );
+EOSIO_REFLECT( eosio::transaction_trace_message, block_uuid, trace );
+EOSIO_REFLECT( eosio::block_uuid_message, block_uuid,  block_id );
 
 } // namespace eosio
 

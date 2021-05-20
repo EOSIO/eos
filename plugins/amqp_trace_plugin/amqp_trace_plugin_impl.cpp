@@ -62,7 +62,7 @@ void amqp_trace_plugin_impl::publish_error( std::string routing_key, std::string
 void amqp_trace_plugin_impl::on_applied_transaction( const chain::transaction_trace_ptr& trace,
                                                      const chain::packed_transaction_ptr& t ) {
    try {
-      publish_result( std::string(), std::string{}, t, trace );
+      publish_result( std::string{}, std::string{}, std::string{}, t, trace );
    }
    FC_LOG_AND_DROP()
 }
@@ -70,18 +70,21 @@ void amqp_trace_plugin_impl::on_applied_transaction( const chain::transaction_tr
 // called from application thread
 void amqp_trace_plugin_impl::publish_result( std::string routing_key,
                                              std::string correlation_id,
+                                             std::string block_uuid,
                                              const chain::packed_transaction_ptr& trx,
                                              const chain::transaction_trace_ptr& trace ) {
    try {
       // reliable_amqp_publisher ensures that any post_on_io_context() is called before its dtor returns
       amqp_trace->post_on_io_context(
-            [&amqp_trace = *amqp_trace, trx, trace, rk=std::move(routing_key), cid=std::move(correlation_id), mode=pub_reliable_mode]() {
+            [&amqp_trace = *amqp_trace, trx, trace,
+             rk=std::move(routing_key), cid=std::move(correlation_id), uuid=std::move(block_uuid),
+             mode=pub_reliable_mode]() mutable {
          if( !trace->except ) {
             dlog( "chain accepted transaction, bcast ${id}", ("id", trace->id) );
          } else {
             dlog( "trace except : ${m}", ("m", trace->except->to_string()) );
          }
-         transaction_trace_msg msg{ eosio::state_history::convert( *trace ) };
+         transaction_trace_msg msg{ transaction_trace_message{ std::move(uuid), eosio::state_history::convert( *trace ) } };
          std::vector<char> buf = convert_to_bin( msg );
          if( mode == reliable_mode::queue) {
             amqp_trace.publish_message_raw( rk, cid, std::move( buf ) );
@@ -97,5 +100,31 @@ void amqp_trace_plugin_impl::publish_result( std::string routing_key,
    }
    FC_LOG_AND_DROP()
 }
+
+void amqp_trace_plugin_impl::publish_block_uuid( std::string routing_key,
+                                                 std::string block_uuid,
+                                                 const chain::block_id_type& block_id ) {
+   try {
+      // reliable_amqp_publisher ensures that any post_on_io_context() is called before its dtor returns
+      amqp_trace->post_on_io_context(
+            [&amqp_trace = *amqp_trace,
+                  rk=std::move(routing_key), uuid=std::move(block_uuid), block_id, mode=pub_reliable_mode]() mutable {
+               transaction_trace_msg msg{ block_uuid_message{ std::move(uuid), eosio::state_history::convert( block_id ) } };
+               std::vector<char> buf = convert_to_bin( msg );
+               if( mode == reliable_mode::queue) {
+                  amqp_trace.publish_message_raw( rk, {}, std::move( buf ) );
+               } else {
+                  amqp_trace.publish_message_direct( rk, {}, std::move( buf ),
+                                                     [mode]( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                        if( mode == reliable_mode::exit )
+                                                           appbase::app().quit();
+                                                     } );
+               }
+            });
+   }
+   FC_LOG_AND_DROP()
+}
+
 
 } // namespace eosio
