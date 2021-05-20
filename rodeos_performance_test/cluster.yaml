@@ -9,9 +9,6 @@ services:
         <<: *manager-node
         restart_policy:
           condition: none
-   mysql:
-      deploy:
-        <<: *manager-node
    zipkin:
       deploy:
         <<: *manager-node

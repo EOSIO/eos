@@ -1,23 +1,23 @@
 version: "3.9"
 services:
-   mysql:
-      image: openzipkin/zipkin-mysql
-      environment:
-         - MYSQL_ROOT_PASSWORD=rootpassword
-         - MYSQL_DATABASE=zipkin
-         - MYSQL_USER=zipkin
-         - MYSQL_PASSWORD=zipkin
-  
    zipkin:
-      image: openzipkin/zipkin
+      image: jaegertracing/all-in-one
+      container_name: jaeger
+      command: ["--collector.zipkin.host-port=:9411"]
       environment:
-        - STORAGE_TYPE=mysql
-        - MYSQL_HOST=mysql
-        - MYSQL_PASS=zipkin
+         - JAEGER_SAMPLER_TYPE=const
+         - JAEGER_SAMPLER_PARAM=1
+         - JAEGER_REPORTER_LOG_SPANS=true
+      restart: on-failure
       ports:
-        - 9411:9411
-      depends_on:
-        - mysql
+         - 5775:5775/udp
+         - 5778:5778
+         - 6831:6831/udp
+         - 6832:6832/udp
+         - 9411:9411
+         - 14268:14268
+         - 16686:16686
+         - 14269:14269
 
    producer: 
       image: ${EOS_IMAGE:-eos-boxed:latest}
@@ -74,7 +74,6 @@ services:
 
    bootstrap:
       image: ${EOS_IMAGE:-eos-boxed:latest}
-      build: .
       command:
          - ./boot.sh 
       depends_on:

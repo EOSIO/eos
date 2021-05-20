@@ -1651,11 +1651,11 @@ struct controller_impl {
             });
          }
 
-         std::optional<::fc::zipkin_span> span;
+         std::optional<::fc::zipkin_span> trace;
          if (add_to_fork_db&& ::fc::zipkin_config::is_enabled()) {
-            span.emplace("block", fc::zipkin_span::to_id(bsp->id), 0);
-            fc_add_tag( span, "block_id",  bsp->id.str() );
-            fc_add_tag( span, "block_num", bsp->block_num );
+            trace.emplace(fc::zipkin_span::to_id(bsp->id), "block", fc::zipkin_span::to_id(bsp->id), 0);
+            fc_add_tag( trace, "block_id",  bsp->id.str() );
+            fc_add_tag( trace, "block_num", bsp->block_num );
          }
          
          emit( self.accepted_block, bsp );
