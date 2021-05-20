@@ -1,0 +1,329 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "activate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "authority",
+            "base": "",
+            "fields": [
+                {
+                    "name": "threshold",
+                    "type": "uint32"
+                },
+                {
+                    "name": "keys",
+                    "type": "key_weight[]"
+                },
+                {
+                    "name": "accounts",
+                    "type": "permission_level_weight[]"
+                },
+                {
+                    "name": "waits",
+                    "type": "wait_weight[]"
+                }
+            ]
+        },
+        {
+            "name": "canceldelay",
+            "base": "",
+            "fields": [
+                {
+                    "name": "canceling_auth",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "trx_id",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "deleteauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "key_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "public_key"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "linkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                },
+                {
+                    "name": "requirement",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "newaccount",
+            "base": "",
+            "fields": [
+                {
+                    "name": "creator",
+                    "type": "name"
+                },
+                {
+                    "name": "name",
+                    "type": "name"
+                },
+                {
+                    "name": "owner",
+                    "type": "authority"
+                },
+                {
+                    "name": "active",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "onerror",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sender_id",
+                    "type": "uint128"
+                },
+                {
+                    "name": "sent_trx",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "permission_level",
+            "base": "",
+            "fields": [
+                {
+                    "name": "actor",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "permission_level_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "permission",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "reqactivated",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "setabi",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "abi",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "setcode",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "vmtype",
+                    "type": "uint8"
+                },
+                {
+                    "name": "vmversion",
+                    "type": "uint8"
+                },
+                {
+                    "name": "code",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "unlinkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "updateauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                },
+                {
+                    "name": "parent",
+                    "type": "name"
+                },
+                {
+                    "name": "auth",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "wait_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "wait_sec",
+                    "type": "uint32"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "activate",
+            "type": "activate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "canceldelay",
+            "type": "canceldelay",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deleteauth",
+            "type": "deleteauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "linkauth",
+            "type": "linkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "newaccount",
+            "type": "newaccount",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "onerror",
+            "type": "onerror",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "reqactivated",
+            "type": "reqactivated",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setabi",
+            "type": "setabi",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setcode",
+            "type": "setcode",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unlinkauth",
+            "type": "unlinkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateauth",
+            "type": "updateauth",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}

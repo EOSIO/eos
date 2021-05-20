@@ -22,9 +22,9 @@ BOOST_AUTO_TEST_CASE( subjective_bill_test ) {
    transaction_id_type id4 = sha256::hash( "4" );
    transaction_id_type id5 = sha256::hash( "5" );
    transaction_id_type id6 = sha256::hash( "6" );
-   account_name a = N("a");
-   account_name b = N("b");
-   account_name c = N("c");
+   account_name a = "a"_n;
+   account_name b = "b"_n;
+   account_name c = "c"_n;
 
    const auto now = time_point::now();
    const auto halftime = now + fc::milliseconds(subjective_billing::expired_accumulator_average_window * subjective_billing::subjective_time_interval_ms / 2);

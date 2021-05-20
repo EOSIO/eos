@@ -11,7 +11,7 @@ struct initialize_message {
 };
 
 struct initalize_response_message {
-   fc::optional<std::string> error_message; //no error message? everything groovy
+   std::optional<std::string> error_message; //no error message? everything groovy
 };
 
 struct code_tuple {
@@ -41,9 +41,9 @@ struct code_compilation_result_message {
 struct compilation_result_unknownfailure {};
 struct compilation_result_toofull {};
 
-using wasm_compilation_result = fc::static_variant<code_descriptor,  //a successful compile
-                                                  compilation_result_unknownfailure,
-                                                  compilation_result_toofull>;
+using wasm_compilation_result = std::variant<code_descriptor,  //a successful compile
+                                             compilation_result_unknownfailure,
+                                             compilation_result_toofull>;
 
 struct wasm_compilation_result_message {
    code_tuple code;
@@ -51,13 +51,12 @@ struct wasm_compilation_result_message {
    size_t cache_free_bytes;
 };
 
-using eosvmoc_message = fc::static_variant<initialize_message,
-                                           initalize_response_message,
-                                           compile_wasm_message,
-                                           evict_wasms_message,
-                                           code_compilation_result_message,
-                                           wasm_compilation_result_message
-                                          >;
+using eosvmoc_message = std::variant<initialize_message,
+                                     initalize_response_message,
+                                     compile_wasm_message,
+                                     evict_wasms_message,
+                                     code_compilation_result_message,
+                                     wasm_compilation_result_message>;
 }}}
 
 FC_REFLECT(eosio::chain::eosvmoc::initialize_message, )

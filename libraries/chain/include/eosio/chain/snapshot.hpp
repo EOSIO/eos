@@ -71,7 +71,7 @@ namespace eosio { namespace chain {
       struct abstract_snapshot_row_writer {
          virtual void write(ostream_wrapper& out) const = 0;
          virtual void write(fc::sha256::encoder& out) const = 0;
-         virtual variant to_variant() const = 0;
+         virtual fc::variant to_variant() const = 0;
          virtual std::string row_type_name() const = 0;
       };
 
@@ -94,7 +94,7 @@ namespace eosio { namespace chain {
          }
 
          fc::variant to_variant() const override {
-            variant var;
+            fc::variant var;
             fc::to_variant(data, var);
             return var;
          }

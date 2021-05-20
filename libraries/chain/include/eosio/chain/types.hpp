@@ -8,16 +8,17 @@
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
-#include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
 #include <fc/crypto/private_key.hpp>
+
+#include <boost/version.hpp>
+#include <boost/container/deque.hpp>
 
 #include <memory>
 #include <vector>
@@ -47,7 +48,6 @@ namespace eosio { namespace chain {
    using                               std::vector;
    using                               std::unordered_map;
    using                               std::string;
-   using                               std::deque;
    using                               std::shared_ptr;
    using                               std::weak_ptr;
    using                               std::unique_ptr;
@@ -62,11 +62,9 @@ namespace eosio { namespace chain {
    using                               std::all_of;
 
    using                               fc::path;
-   using                               fc::smart_ref;
    using                               fc::variant_object;
    using                               fc::variant;
    using                               fc::enum_type;
-   using                               fc::optional;
    using                               fc::unsigned_int;
    using                               fc::signed_int;
    using                               fc::time_point_sec;
@@ -75,7 +73,7 @@ namespace eosio { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_multimap;
    using                               fc::flat_set;
-   using                               fc::static_variant;
+   using                               std::variant;
    using                               fc::ecc::range_proof_type;
    using                               fc::ecc::range_proof_info;
    using                               fc::ecc::commitment_type;
@@ -84,10 +82,20 @@ namespace eosio { namespace chain {
    using private_key_type = fc::crypto::private_key;
    using signature_type   = fc::crypto::signature;
 
+#if BOOST_VERSION >= 107100
+   // configurable boost deque performs much better than std::deque in our use cases
+   using block_1024_option_t = boost::container::deque_options< boost::container::block_size<1024u> >::type;
+   template<typename T>
+   using deque = boost::container::deque< T, void, block_1024_option_t >;
+#else
+   template<typename T>
+   using deque = std::deque<T>;
+#endif
+
    struct void_t{};
 
    using chainbase::allocator;
-   using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
+   using shared_string = chainbase::shared_string;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
@@ -105,17 +113,10 @@ namespace eosio { namespace chain {
          shared_blob() = delete;
          shared_blob(shared_blob&&) = default;
 
-         shared_blob(const shared_blob& s)
-         :shared_string(s.get_allocator())
-         {
-            assign(s.c_str(), s.size());
-         }
+         shared_blob(const shared_blob& s) = default;
 
 
-         shared_blob& operator=(const shared_blob& s) {
-            assign(s.c_str(), s.size());
-            return *this;
-         }
+         shared_blob& operator=(const shared_blob& s) = default;
 
          shared_blob& operator=(shared_blob&& ) = default;
 
@@ -127,6 +128,71 @@ namespace eosio { namespace chain {
          shared_blob(const allocator_type& a)
          :shared_string(a)
          {}
+   };
+
+   /* Compares equivalent to any blob that has this as a prefix. */
+   struct blob_prefix {
+      std::string_view _data;
+      const char* data() const { return _data.data(); }
+      std::size_t size() const { return _data.size(); }
+   };
+
+   /**
+    * Compare vector, string, string_view, shared_blob (unsigned)
+    */
+   template<typename A, typename B>
+   inline int compare_blob(const A& a, const B& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
+      auto r = memcmp(
+         a.data(),
+         b.data(),
+         std::min(a.size(), b.size()));
+      if (r)
+         return r;
+      if (a.size() < b.size())
+         return -1;
+      if (a.size() > b.size())
+         return 1;
+      return 0;
+   }
+
+   template<typename A>
+   inline int compare_blob(const A& a, const blob_prefix& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*a.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*a.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() < b.size())
+         return -1;
+      return 0;
+   }
+
+   template<typename B>
+   inline int compare_blob(const blob_prefix& a, const B& b) {
+      static_assert(
+         std::is_same_v<std::decay_t<decltype(*b.data())>, char> ||
+         std::is_same_v<std::decay_t<decltype(*b.data())>, unsigned char>);
+      int r = std::memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+      if (r) return r;
+      if (a.size() > b.size())
+         return 1;
+      return 0;
+   }
+
+   /**
+    * Compare vector, string, string_view, shared_blob (unsigned)
+    */
+   struct unsigned_blob_less {
+      template<typename A, typename B>
+      bool operator()(const A& a, const B& b) const {
+         return compare_blob(a, b) < 0;
+      }
    };
 
    using action_name      = name;
@@ -190,6 +256,8 @@ namespace eosio { namespace chain {
       account_ram_correction_object_type,
       code_object_type,
       database_header_object_type,
+      kv_object_type,
+      kv_db_config_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -255,6 +323,7 @@ namespace eosio { namespace chain {
    using int128_t            = __int128;
    using uint128_t           = unsigned __int128;
    using bytes               = vector<char>;
+   using digests_t           = deque<digest_type>;
 
    struct sha256_less {
       bool operator()( const fc::sha256& lhs, const fc::sha256& rhs ) const {
@@ -338,7 +407,7 @@ namespace eosio { namespace chain {
       struct decompose<> {
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             return {};
          }
@@ -351,7 +420,7 @@ namespace eosio { namespace chain {
 
          template<typename ResultVariant>
          static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
-         -> fc::optional<extract_match>
+         -> std::optional<extract_match>
          {
             if( id == head_t::extension_id() ) {
                result = fc::raw::unpack<head_t>( data );
@@ -394,5 +463,23 @@ namespace eosio { namespace chain {
    template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 } }  // eosio::chain
+
+namespace chainbase {
+   // chainbase::shared_cow_string
+   template<typename DataStream> inline DataStream& operator<<( DataStream& s, const chainbase::shared_cow_string& v )  {
+      FC_ASSERT( v.size() <= MAX_SIZE_OF_BYTE_ARRAYS );
+      fc::raw::pack( s, fc::unsigned_int((uint32_t)v.size()));
+      if( v.size() ) s.write( v.data(), v.size() );
+      return s;
+   }
+
+   template<typename DataStream> inline DataStream& operator>>( DataStream& s, chainbase::shared_cow_string& v )  {
+      fc::unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value <= MAX_SIZE_OF_BYTE_ARRAYS );
+      FC_ASSERT( v.size() == 0 );
+      v.resize_and_fill(size.value, [&s](char* buf, std::size_t sz) { s.read(buf, sz); });
+      return s;
+   }
+}
 
 FC_REFLECT_EMPTY( eosio::chain::void_t )

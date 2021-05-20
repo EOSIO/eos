@@ -135,7 +135,7 @@ struct compressed_file_impl {
          });
 
          // special case when there is a seek point that is exact
-         if ( iter != seek_point_map.end() && std::get<0>(*iter) == loc ) {
+         if ( iter != seek_point_map.end() && std::get<0>(*iter) == static_cast<unsigned long>(loc) ) {
             file.seek(std::get<1>(*iter));
             return;
          }
@@ -233,7 +233,7 @@ bool compressed_file::process( const fc::path& input_path, const fc::path& outpu
    auto output_buffer = std::vector<uint8_t>(buffer_size);
 
    auto bytes_remaining_before_sync = seek_point_stride;
-   int next_sync_point = 0;
+   unsigned int next_sync_point = 0;
 
    // process a single chunk of input completely,
    // this may sometime loop multiple times if the compressor state combined with input data creates more than a

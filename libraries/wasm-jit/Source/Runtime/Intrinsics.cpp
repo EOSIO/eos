@@ -11,9 +11,8 @@ namespace Intrinsics
 	struct Singleton
 	{
 		std::map<std::string,Intrinsics::Function*> functionMap;
-		Platform::Mutex* mutex;
 
-		Singleton(): mutex(Platform::createMutex()) {}
+		Singleton() {}
 		Singleton(const Singleton&) = delete;
 
 		static Singleton& get()
@@ -35,14 +34,12 @@ namespace Intrinsics
 	:	name(inName)
 	{
 		function = new Runtime::FunctionInstance(nullptr,type,nativeFunction);
-		Platform::Lock lock(Singleton::get().mutex);
 		Singleton::get().functionMap[getDecoratedName(inName,type)] = this;
 	}
 
 	Function::~Function()
 	{
       {
-         Platform::Lock Lock(Singleton::get().mutex);
          Singleton::get().functionMap.erase(Singleton::get().functionMap.find(getDecoratedName(name,function->type)));
       }
       delete function;
@@ -51,7 +48,6 @@ namespace Intrinsics
 	Runtime::ObjectInstance* find(const std::string& name,const IR::ObjectType& type)
 	{
 		std::string decoratedName = getDecoratedName(name,type);
-		Platform::Lock Lock(Singleton::get().mutex);
 		Runtime::ObjectInstance* result = nullptr;
 		switch(type.kind)
 		{
@@ -84,7 +80,6 @@ namespace Intrinsics
 	
 	std::vector<Runtime::ObjectInstance*> getAllIntrinsicObjects()
 	{
-		Platform::Lock lock(Singleton::get().mutex);
 		std::vector<Runtime::ObjectInstance*> result;
 		for(auto mapIt : Singleton::get().functionMap) { result.push_back(mapIt.second->function); }
 		return result;

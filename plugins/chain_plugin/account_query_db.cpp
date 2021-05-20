@@ -16,6 +16,7 @@
 #include <shared_mutex>
 
 using namespace eosio;
+using namespace eosio::chain::literals;
 using namespace boost::multi_index;
 using namespace boost::bimaps;
 
@@ -68,7 +69,7 @@ namespace {
       if (p->action_traces.empty())
          return false;
       const auto& act = p->action_traces[0].act;
-      if (act.account != eosio::chain::config::system_account_name || act.name != N(onblock) ||
+      if (act.account != eosio::chain::config::system_account_name || act.name != "onblock"_n ||
           act.authorization.size() != 1)
          return false;
       const auto& auth = act.authorization[0];
@@ -91,7 +92,7 @@ namespace {
    };
 
    template<typename Output, typename Input>
-   auto make_optional_authorizer(const Input& authorizer) -> fc::optional<Output> {
+   auto make_optional_authorizer(const Input& authorizer) -> std::optional<Output> {
       if constexpr (std::is_same_v<Input, Output>) {
          return authorizer;
       } else {
@@ -309,7 +310,7 @@ namespace eosio::chain_apis {
          permission_set_t deleted;
 
          /**
-          * process traces to find `updateauth` and `deleteauth` calls maintaining a final set of
+          * process traces to find `updateauth`, `deleteauth` and `newaccount` calls maintaining a final set of
           * permissions to either update or delete.  Intra-block changes are discarded
           */
          auto process_trace = [&](const chain::transaction_trace_ptr& trace) {
@@ -327,9 +328,9 @@ namespace eosio::chain_apis {
                   auto itr = deleted.emplace(chain::permission_level{data.account, data.permission}).first;
                   updated.erase(*itr);
                } else if (at.act.name == chain::newaccount::get_name()) {
-                   auto data = at.act.data_as<chain::newaccount>();
-                   updated.emplace(chain::permission_level{data.name, N(owner)});
-                   updated.emplace(chain::permission_level{data.name, N(active)});
+                  auto data = at.act.data_as<chain::newaccount>();
+                  updated.emplace(chain::permission_level{data.name, "owner"_n});
+                  updated.emplace(chain::permission_level{data.name, "active"_n});
                }
             }
          };
@@ -339,10 +340,10 @@ namespace eosio::chain_apis {
 
          for( const auto& r : bsp->block->transactions ) {
             chain::transaction_id_type id;
-            if( r.trx.contains<chain::transaction_id_type>()) {
-               id = r.trx.get<chain::transaction_id_type>();
+            if( std::holds_alternative<chain::transaction_id_type>( r.trx ) ) {
+               id = std::get<chain::transaction_id_type>( r.trx );
             } else {
-               id = r.trx.get<chain::packed_transaction>().id();
+               id = std::get<chain::packed_transaction>( r.trx ).id();
             }
 
             const auto it = cached_trace_map.find( id );

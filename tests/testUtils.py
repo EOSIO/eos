@@ -31,6 +31,7 @@ class EnumType:
     def __str__(self):
         return self.type
 
+###########################################################################################
 
 class ReturnType(EnumType):
     pass
@@ -47,8 +48,66 @@ addEnum(BlockLogAction, "make_index")
 addEnum(BlockLogAction, "trim")
 addEnum(BlockLogAction, "smoke_test")
 addEnum(BlockLogAction, "return_blocks")
+addEnum(BlockLogAction, "prune_transactions")
+addEnum(BlockLogAction, "fix_irreversible_blocks")
 
 ###########################################################################################
+
+class WaitSpec:
+
+    def __init__(self, value, leeway=None):
+        self.toCalculate = True if value == -1 else False
+        if value is not None:
+            assert isinstance(value, (int))
+            assert value >= -1
+        self.value = value
+        self.leeway = leeway if leeway is not None else WaitSpec.default_leeway
+
+    def __str__(self):
+        append = "[calculated based on block production]" if self.toCalculate else ""
+        desc = None
+        if self.value is None:
+            desc = "defaulted"
+        elif self.value >= 0:
+            desc = "%d sec" % (self.value)
+        else:
+            desc = ""
+        return "WaitSpec timeout %s%s" % (desc, append)
+
+    def convert(self, startBlockNum, endBlockNum):
+        if self.value is None or self.value != -1:
+            return
+
+        timeout = self.leeway
+        if (endBlockNum > startBlockNum):
+            # calculation is performing worst case (irreversible block progression) which at worst will waste 5 seconds
+            blocksPerWindow = 12
+            blockWindowsToWait = (endBlockNum - startBlockNum + blocksPerWindow - 1) / blocksPerWindow
+            secondsPerWindow = blocksPerWindow / 2
+            timeout += blockWindowsToWait * secondsPerWindow
+
+        self.value = timeout
+
+    def asSeconds(self):
+        assert self.value != -1, "Called method with WaitSpec for calculating the appropriate timeout (WaitSpec.convert)," +\
+                                 " but convert method was never called. This means that either one of the methods the WaitSpec" +\
+                                 " is passed to needs to call convert, or else WaitSpec.calculate(...) should not have been passed."
+        retVal = self.value if self.value is not None else WaitSpec.default_seconds
+        return retVal
+
+    @staticmethod
+    def calculate(leeway=None):
+        return WaitSpec(value=-1, leeway=leeway)
+
+    @staticmethod
+    def default(leeway=None):
+        return WaitSpec(value=None, leeway=leeway)
+
+    default_seconds = 60
+    default_leeway = 10
+
+###########################################################################################
+
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
@@ -63,23 +122,44 @@ class Utils:
     EosServerPath="programs/nodeos/"+ EosServerName
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
-    MongoPath="mongo"
     ShuttingDown=False
-    CheckOutputDeque=deque(maxlen=10)
 
     EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
 
     FileDivider="================================================================="
-    DataDir="var/lib/"
+    DataRoot="var"
+    DataDir="%s/lib/" % (DataRoot)
     ConfigDir="etc/eosio/"
 
     TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
 
     @staticmethod
+    def timestamp():
+        return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+    @staticmethod
+    def checkOutputFileWrite(time, cmd, output, error):
+        stop=Utils.timestamp()
+        if not hasattr(Utils, "checkOutputFile"):
+            if not os.path.isdir(Utils.DataRoot):
+                if Utils.Debug: Utils.Print("creating dir %s in dir: %s" % (Utils.DataRoot, os.getcwd()))
+                os.mkdir(Utils.DataRoot)
+            filename="%s/subprocess_results.log" % (Utils.DataRoot)
+            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (filename, os.getcwd()))
+            Utils.checkOutputFile=open(filename,"w")
+
+        Utils.checkOutputFile.write(Utils.FileDivider + "\n")
+        Utils.checkOutputFile.write("start={%s}\n" % (time))
+        Utils.checkOutputFile.write("cmd={%s}\n" % (" ".join(cmd)))
+        Utils.checkOutputFile.write("cout={%s}\n" % (output))
+        Utils.checkOutputFile.write("cerr={%s}\n" % (error))
+        Utils.checkOutputFile.write("stop={%s}\n" % (stop))
+
+    @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
-        stdout.write(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f "))
+        stdout.write(Utils.timestamp() + " ")
         stdout.write(s)
         print(*args, **kwargs)
 
@@ -156,12 +236,24 @@ class Utils:
 
     @staticmethod
     def checkOutput(cmd, ignoreError=False):
+        popen = Utils.delayedCheckOutput(cmd)
+        return Utils.checkDelayedOutput(popen, cmd, ignoreError=ignoreError)
+
+    @staticmethod
+    def delayedCheckOutput(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE):
         if (isinstance(cmd, list)):
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
         else:
-            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            popen=subprocess.Popen(cmd, stdout=stdout, stderr=stderr, shell=True)
+        return popen
+
+    @staticmethod
+    def checkDelayedOutput(popen, cmd, ignoreError=False):
+        assert isinstance(popen, subprocess.Popen)
+        assert isinstance(cmd, (str,list))
+        start=Utils.timestamp()
         (output,error)=popen.communicate()
-        Utils.CheckOutputDeque.append((output,error,cmd))
+        Utils.checkOutputFileWrite(start, cmd, output, error)
         if popen.returncode != 0 and not ignoreError:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
@@ -181,20 +273,29 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForTruth(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
-            timeout=60
+            timeout=WaitSpec.default()
+        if isinstance(timeout, WaitSpec):
+            timeout = timeout.asSeconds()
 
-        endTime=time.time()+timeout
+        currentTime=time.time()
+        endTime=currentTime+timeout
         needsNewLine=False
+        failReturnVal=None
         try:
-            while endTime > time.time():
+            while endTime > currentTime:
                 ret=lam()
-                if ret is not None:
+                if ret:
                     return ret
+                # save this to return the not Truth state for the passed in method
+                failReturnVal=ret
+                remaining = endTime - currentTime
+                if sleepTime > remaining:
+                    sleepTime = remaining
                 if Utils.Debug:
                     Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                (sleepTime, endTime - time.time()))
+                                (sleepTime, remaining))
                 else:
                     stdout.write('.')
                     stdout.flush()
@@ -202,17 +303,13 @@ class Utils:
                 if reporter is not None:
                     reporter()
                 time.sleep(sleepTime)
+                currentTime=time.time()
         finally:
             if needsNewLine:
                 Utils.Print()
 
-        return None
+        return failReturnVal
 
-    @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
-        myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
-        return False if ret is None else ret
 
     @staticmethod
     def filterJsonObjectOrArray(data):
@@ -253,14 +350,13 @@ class Utils:
             raise
 
     @staticmethod
-    def runCmdReturnStr(cmd, trace=False):
+    def runCmdReturnStr(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
-        return Utils.runCmdArrReturnStr(cmdArr)
-
+        return Utils.runCmdArrReturnStr(cmdArr, trace=trace, silentErrors=silentErrors)
 
     @staticmethod
-    def runCmdArrReturnStr(cmdArr, trace=False):
-        retStr=Utils.checkOutput(cmdArr)
+    def runCmdArrReturnStr(cmdArr, trace=False, silentErrors=False):
+        retStr=Utils.checkOutput(cmdArr,ignoreError=silentErrors)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
@@ -313,11 +409,12 @@ class Utils:
         return "pgrep %s %s" % (pgrepOpts, serverName)
 
     @staticmethod
-    def getBlockLog(blockLogLocation, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
+    def getBlockLog(nodeDataDir, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
+        blockLogLocation = os.path.join(nodeDataDir, "blocks")
         assert(isinstance(blockLogLocation, str))
         outputFileStr=" --output-file %s " % (outputFile) if outputFile is not None else ""
         firstStr=" --first %s " % (first) if first is not None else ""
-        lastStr=" --last %s " % (last) if last is not None else ""
+        lastStr = " --last %s " % (last) if last is not None else ""
 
         blockLogActionStr=None
         returnType=ReturnType.raw
@@ -328,19 +425,23 @@ class Utils:
             blockLogActionStr=" --make-index "
         elif blockLogAction==BlockLogAction.trim:
             blockLogActionStr=" --trim "
+        elif blockLogAction==BlockLogAction.fix_irreversible_blocks:
+            blockLogActionStr=" --fix-irreversible-blocks "
         elif blockLogAction==BlockLogAction.smoke_test:
-            blockLogActionStr=" --smoke-test "
+            blockLogActionStr = " --smoke-test "
+        elif blockLogAction == BlockLogAction.prune_transactions:
+            blockLogActionStr = " --state-history-dir {}/state-history --prune-transactions ".format(nodeDataDir)
         else:
             unhandledEnumType(blockLogAction)
 
-        cmd="%s --blocks-dir %s --as-json-array %s%s%s%s" % (Utils.EosBlockLogPath, blockLogLocation, outputFileStr, firstStr, lastStr, blockLogActionStr)
+        cmd="%s --blocks-dir %s --as-json-array %s%s%s%s %s" % (Utils.EosBlockLogPath, blockLogLocation, outputFileStr, firstStr, lastStr, blockLogActionStr, extraArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         try:
             if returnType==ReturnType.json:
                 rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             else:
-                rtn=Utils.runCmdReturnStr(cmd)
+                rtn=Utils.runCmdReturnStr(cmd, silentErrors=silentErrors)
         except subprocess.CalledProcessError as ex:
             if throwException:
                 raise
@@ -422,6 +523,29 @@ class Utils:
 
         return "comparison of %s type is not supported, context=%s" % (typeName,context)
 
+    @staticmethod
+    def addAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) + float(delta[0]), 4), asset[1])
+
+    @staticmethod
+    def deduceAmount(assetStr: str, deltaStr: str) -> str:
+        asset = assetStr.split()
+        if len(asset) != 2:
+            return None
+        delta = deltaStr.split()
+        if len(delta) != 2:
+            return None
+        if asset[1] != delta[1]:
+            return None
+        return "{0} {1}".format(round(float(asset[0]) - float(delta[0]), 4), asset[1])
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods

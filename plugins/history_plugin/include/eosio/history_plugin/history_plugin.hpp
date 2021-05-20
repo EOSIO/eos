@@ -10,7 +10,6 @@ namespace eosio {
    using std::shared_ptr;
    using namespace appbase;
    using chain::name;
-   using fc::optional;
    using chain::uint128_t;
 
    typedef shared_ptr<class history_plugin_impl> history_ptr;
@@ -27,9 +26,9 @@ class read_only {
 
 
       struct get_actions_params {
-         chain::account_name account_name;
-         optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
-         optional<int32_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
+         chain::account_name     account_name;
+         std::optional<int32_t>  pos; /// a absolute sequence positon -1 is the end/last action
+         std::optional<int32_t>  offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
       };
 
       struct ordered_action_result {
@@ -43,7 +42,7 @@ class read_only {
       struct get_actions_result {
          vector<ordered_action_result> actions;
          uint32_t                      last_irreversible_block;
-         optional<bool>                time_limit_exceeded_error;
+         std::optional<bool>           time_limit_exceeded_error;
       };
 
 
@@ -52,7 +51,7 @@ class read_only {
 
       struct get_transaction_params {
          string                        id;
-         optional<uint32_t>            block_num_hint;
+         std::optional<uint32_t>       block_num_hint;
       };
 
       struct get_transaction_result {

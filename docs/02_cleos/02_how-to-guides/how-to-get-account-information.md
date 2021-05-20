@@ -6,8 +6,11 @@ Query infomation of an EOSIO account
 
 * Install the currently supported version of `cleos`
 
-* Understand the following:
-  * What is an account
+[[info | Note]]
+| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
+
+* Acquire functional understanding of [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
+
 
 ## Steps
 
@@ -16,8 +19,9 @@ Execute the command below:
 ```sh
 cleos get account ACCOUNT_NAME
 ```
+Where ACCOUNT_NAME = name of the existing account in the EOSIO blockchain.
 
-This should produce similar output as below:
+**Example Output**
 
 ```console
 created: 2018-06-01T12:00:00.000

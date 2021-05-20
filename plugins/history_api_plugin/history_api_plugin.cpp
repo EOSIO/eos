@@ -15,19 +15,19 @@ history_api_plugin::~history_api_plugin(){}
 void history_api_plugin::set_program_options(options_description&, options_description&) {}
 void history_api_plugin::plugin_initialize(const variables_map&) {}
 
-#define CALL(api_name, api_handle, api_namespace, call_name) \
+#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, params_type) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
-             if (body.empty()) body = "{}"; \
-             fc::variant result( api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()) ); \
+             auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
+             fc::variant result( api_handle.call_name( std::move(params) ) ); \
              cb(200, std::move(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 
-#define CHAIN_RO_CALL(call_name) CALL(history, ro_api, history_apis::read_only, call_name)
+#define CHAIN_RO_CALL(call_name, params_type) CALL_WITH_400(history, ro_api, history_apis::read_only, call_name, params_type)
 //#define CHAIN_RW_CALL(call_name) CALL(history, rw_api, history_apis::read_write, call_name)
 
 void history_api_plugin::plugin_startup() {
@@ -37,10 +37,10 @@ void history_api_plugin::plugin_startup() {
 
    app().get_plugin<http_plugin>().add_api({
 //      CHAIN_RO_CALL(get_transaction),
-      CHAIN_RO_CALL(get_actions),
-      CHAIN_RO_CALL(get_transaction),
-      CHAIN_RO_CALL(get_key_accounts),
-      CHAIN_RO_CALL(get_controlled_accounts)
+      CHAIN_RO_CALL(get_actions, http_params_types::params_required),
+      CHAIN_RO_CALL(get_transaction, http_params_types::params_required),
+      CHAIN_RO_CALL(get_key_accounts, http_params_types::params_required),
+      CHAIN_RO_CALL(get_controlled_accounts, http_params_types::params_required)
    });
 }
 

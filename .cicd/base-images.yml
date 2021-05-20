@@ -45,6 +45,29 @@ steps:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     timeout: 180
+
+  - label: ":darwin: macOS 10.15 - Base Image Pinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/pinned/macos-10.15-pinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
     
   - label: ":ubuntu: Ubuntu 16.04 - Base Image Pinned"
     command:
@@ -98,6 +121,29 @@ steps:
       - EOSIO/anka#v0.6.1:
           debug: true
           vm-name: "10.14.6_6C_14G_80G"
+          no-volume: true
+          always-pull: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    agents: "queue=mac-anka-node-fleet"
+    timeout: 180
+
+  - label: ":darwin: macOS 10.15 - Base Image Unpinned"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
+      - "cd eos && ./.cicd/platforms/unpinned/macos-10.15-unpinned.sh"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
           no-volume: true
           always-pull: true
           wait-network: true

@@ -2,22 +2,33 @@
 content_title: Storage and Read Modes
 ---
 
-The EOSIO platform stores blockchain information in various data structures at various stages of a transaction's lifecycle. Some of these are described below. The producing node is the `nodeos` instance run by the block producer who is currently creating blocks for the blockchain (which changes every 6 seconds, producing 12 blocks in sequence before switching to another producer.)
+The EOSIO platform stores blockchain information in various data structures at various stages of a transaction's lifecycle. Some of these are described below. The producing node is the `nodeos` instance run by the block producer who is currently creating blocks for the blockchain (which changes every 6 seconds, producing 12 blocks in sequence before switching to another producer).
 
 ## Blockchain State and Storage
 
-Every `nodeos` instance creates some internal files to housekeep the blockchain state. These files reside in the `~/eosio/nodeos/data` installation directory and their purpose is described below:
+Every `nodeos` instance creates some internal files to store the blockchain state. These files reside in the `~/eosio/nodeos/data` installation directory and their purpose is described below:
 
 * The `blocks.log` is an append only log of blocks written to disk and contains all the irreversible blocks. These blocks contain final, confirmed transactions.
 * `reversible_blocks` is a memory mapped file and contains blocks that have been written to the blockchain but have not yet become irreversible. These blocks contain valid pushed transactions that still await confirmation to become final via the consensus protocol. The head block is the last block written to the blockchain, stored in `reversible_blocks`.
-* The `chain state` or `chain database` is currently stored and cached in a memory mapped file. It contains the blockchain state associated with each block, including account details, deferred transactions, and data stored using multi index tables in smart contracts. The last 65,536 block IDs are also cached to support Transaction as Proof of Stake (TaPOS). The transaction ID/expiration is also cached until the transaction expires.
-
+* The `chain state` or `chain database` is stored either in `chainbase` or in `rocksdb`, dependant on the `nodeos` `chain_plugin` configuration option `backing-store`. It contains the blockchain state associated with each block, including account details, deferred transactions, and data stored using multi index tables in smart contracts. The last 65,536 block IDs are also cached to support Transaction as Proof of Stake (TaPOS). The transaction ID/expiration is also cached until the transaction expires.
 * The `pending block` is an in memory block containing transactions as they are processed and pushed into the block; this will/may eventually become the head block. If the `nodeos` instance is the producing node, the pending block is distributed to other `nodeos` instances.
-* Outside the chain state, block data is cached in RAM until it becomes final/irreversible; especifically the signed block itself. After the last irreversible block (LIB) catches up to the block, that block is then retrieved from the irreversible blocks log.
+* Outside the `chain state`, block data is cached in RAM until it becomes final/irreversible; specifically the signed block itself. After the last irreversible block (LIB) catches up to the block, that block is then retrieved from the irreversible blocks log.
+
+### Configurable state storage
+
+`Nodeos` stores the transaction history and current state. The transaction history is stored in the `blocks.log` file on disk. Current state, which is changed by the execution of transactions, is currently stored using chainbase or RocksDB (as of EOSIO 2.1). EOSIO 2.1 introduces configurable state storage and currently supports these backing stores:
+
+* Chainbase
+* RocksDB
+
+Chainbase is a proprietary in-memory transactional database, built by Block.one, which uses memory mapped files for persistence. 
+
+RocksDB is an open source persistent key value store. Storing state in memory is fast, however limited by the amount of available RAM. RocksDB utilises low latency storage such as flash drives and high-speed disk drives to persist data and memory caches for fast data access. For some deployments, RocksDB may be a better state store. See [the RocksDB website](https://rocksdb.org/) for more information.
+
 
 ## EOSIO Interfaces
 
-EOSIO provides a set of [services](../../) and [interfaces](https://developers.eos.io/manuals/eosio.cdt/latest/files) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for various purposes. For example, `eosio.token` contract keeps balances for all users in the chain database. Each instance of `nodeos` keeps the database in memory, so contracts can read and write data with ease.
+EOSIO provides a set of [services](../../) and [interfaces](https://developers.eos.io/manuals/eosio.cdt/latest/files) that enable contract developers to persist state across action, and consequently transaction, boundaries. Contracts may use these services and interfaces for various purposes. For example, `eosio.token` contract keeps balances for all users in the `chain database`. Each instance of `nodeos` maintains the `chain database` in an efficient data store, so contracts can read and write data with ease.
 
 ### Nodeos RPC API
 

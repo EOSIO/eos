@@ -1,0 +1,2 @@
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/trace_history.index ${CMAKE_CURRENT_BINARY_DIR}/trace_history.index COPYONLY )
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/trace_history.log ${CMAKE_CURRENT_BINARY_DIR}/trace_history.log COPYONLY )

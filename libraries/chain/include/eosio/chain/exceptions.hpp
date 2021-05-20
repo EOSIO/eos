@@ -125,7 +125,7 @@
        { if( code() == CODE ) throw *this;\
          else fc::exception::dynamic_rethrow_exception(); \
        } \
-       fc::optional<uint64_t> error_code; \
+       std::optional<uint64_t> error_code; \
    };
 
 namespace eosio { namespace chain {
@@ -159,8 +159,8 @@ namespace eosio { namespace chain {
     *   |- reversible_blocks_exception
     *   |- block_log_exception
     *   |- resource_limit_exception
-    *   |- mongo_db_exception
     *   |- contract_api_exception
+    *   |- state_history_exception
     */
 
     FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception, chain_exception,
@@ -273,10 +273,14 @@ namespace eosio { namespace chain {
                                     3040015, "Invalid transaction extension" )
       FC_DECLARE_DERIVED_EXCEPTION( ill_formed_deferred_transaction_generation_context, transaction_exception,
                                     3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
-      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
-                                    3040017, "Transaction includes disallowed extensions (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhaustion, transaction_exception,
                                     3040018, "Transaction exceeded transient resource limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_prune_exception, transaction_exception,
+                                    3040019, "Prunable data not found" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_no_signature, transaction_exception,
+                                    3040020, "Transaction signatures pruned" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_no_context_free_data, transaction_exception,
+                                    3040021, "Transaction context free data pruned" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -306,7 +310,11 @@ namespace eosio { namespace chain {
                                     3050011, "eosio_assert_code assertion failure uses restricted error code value" )
       FC_DECLARE_DERIVED_EXCEPTION( inline_action_too_big_nonprivileged, action_validate_exception,
                                     3050012, "Inline action exceeds maximum size limit for a non-privileged account" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( unauthorized_disk_usage_increase, action_validate_exception,
+                                    3050013, "Action attempts to increase disk usage of account without authorization" )
+      FC_DECLARE_DERIVED_EXCEPTION( action_return_value_exception, action_validate_exception,
+                                    3050014, "action return value size too big" )
+      
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
 
@@ -320,6 +328,16 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( bad_database_version_exception, database_exception,
                                     3060005, "Database is an unknown or unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_revision_mismatch_exception, database_exception,
+                                    3060006, "Chainbase and chain-kv databases are at different revisions" )
+      FC_DECLARE_DERIVED_EXCEPTION( database_move_kv_disk_exception, database_exception,
+                                    3060007, "Cannot change backing store when existing state has already stored data in a different backing store; use resync, replay, or snapshot to move these to the new backing store" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_rocksdb_bad_value_size_exception, database_exception,
+                                    3060008, "The size of value returned from RocksDB is less than payer's size" )
+      FC_DECLARE_DERIVED_EXCEPTION( bad_composite_key_exception, database_exception,
+                                    3060009, "Retrieved composite key from key/value store that was formatted incorrectly" )
+      FC_DECLARE_DERIVED_EXCEPTION( db_rocksdb_invalid_operation_exception, database_exception,
+                                    3060010, "Requested operation not valid for database state." )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
@@ -362,6 +380,8 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( disk_usage_exceeded, resource_exhausted_exception,
+                                    3080009, "Account using more than allotted DISK usage" )
 
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -400,8 +420,6 @@ namespace eosio { namespace chain {
                                     3100004, "Corrupted reversible block database was fixed" )
       FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,        misc_exception,
                                     3100005, "Extracted genesis state from blocks.log" )
-      FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,  misc_exception,
-                                    3100006, "Subjective exception thrown during block production" )
       FC_DECLARE_DERIVED_EXCEPTION( multiple_voter_info,                    misc_exception,
                                     3100007, "Multiple voter info detected" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,                    misc_exception,
@@ -480,7 +498,8 @@ namespace eosio { namespace chain {
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )
       FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,          controller_emit_signal_exception,
                                    3140001, "Block does not match checkpoint" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( state_history_write_exception, controller_emit_signal_exception,
+                                   3140002, "State history write error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                           chain_exception,
                                  3015000, "ABI exception" )
@@ -516,6 +535,10 @@ namespace eosio { namespace chain {
                                     3015015, "Duplicate variant definition in the ABI" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,  abi_exception,
                                     3015016, "ABI has an unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_results_def_exception,  abi_exception,
+                                    3015017, "Duplicate action results definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION(duplicate_abi_kv_table_def_exception, abi_exception,
+                                   3015018, "Duplicate kv_table definition in the ABI")
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -539,6 +562,18 @@ namespace eosio { namespace chain {
                                     3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_db_id,          contract_exception,
+                                    3160011, "Bad key-value database ID" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_bad_iter,          contract_exception,
+                                    3160012, "Bad key-value iterator" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_limit_exceeded,          contract_exception,
+                                    3160013, "The key or value is too large" )
+      FC_DECLARE_DERIVED_EXCEPTION( kv_unknown_parameters_version,          contract_exception,
+                                    3160014, "Unknown kv_parameters version" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_config_unknown_version,          contract_exception,
+                                    3160015, "Unknown wasm_config version" )
+      FC_DECLARE_DERIVED_EXCEPTION( config_parse_error,                   contract_exception,
+                                    3160015, "Parsing config error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
@@ -564,6 +599,8 @@ namespace eosio { namespace chain {
                                     3170011, "The signer returned no valid block signatures" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_multiple_block_signatures,  producer_exception,
                                     3170012, "The signer returned multiple signatures but that is not supported" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_validation_error,  producer_exception,
+                                    3170013, "Block Validation Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
@@ -605,13 +642,6 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
 
-   FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
-                                 3220000, "Mongo DB exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_insert_fail, mongo_db_exception,
-                                 3220001, "Fail to insert new data to Mongo DB" )
-      FC_DECLARE_DERIVED_EXCEPTION( mongo_db_update_fail, mongo_db_exception,
-                                 3220002, "Fail to update existing data in Mongo DB" )
-
    FC_DECLARE_DERIVED_EXCEPTION( contract_api_exception,    chain_exception,
                                  3230000, "Contract API exception" )
       FC_DECLARE_DERIVED_EXCEPTION( crypto_api_exception,   contract_api_exception,
@@ -625,13 +655,31 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_decompress_exception,   snapshot_exception,
+                                    3240002, "Snapshot decompress error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
                                  3250000, "Protocol feature exception" )
       FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_validation_exception, protocol_feature_exception,
                                     3250001, "Protocol feature validation exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, protocol_feature_exception,
-                                    3250002, "Protocol feature exception (invalid block)" )
       FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_iterator_exception, protocol_feature_exception,
                                     3250003, "Protocol feature iterator exception" )
+
+   // Any derived types of subjective_block_production_exception need to update controller::failure_is_subjective
+   FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception, chain_exception,
+                                 3260000, "Subjective exception thrown during block production" )
+
+   // Objective block validation exceptions are throw out of transaction processing to stop block production
+   FC_DECLARE_DERIVED_EXCEPTION( objective_block_validation_exception, chain_exception,
+                                 3270000, "Objective exception thrown during block validation" )
+      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, objective_block_validation_exception,
+                                    3270001, "Transaction includes disallowed extensions (invalid block)" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, objective_block_validation_exception,
+                                    3270002, "Protocol feature exception (invalid block)" )
+      FC_DECLARE_DERIVED_EXCEPTION( pruned_context_free_data_bad_block_exception, objective_block_validation_exception,
+                                    3270003, "Context free data pruned (invalid block)" )
+ 
+   FC_DECLARE_DERIVED_EXCEPTION( state_history_exception,    chain_exception,
+                                 3280000, "State history exception" )
+
 } } // eosio::chain

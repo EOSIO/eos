@@ -44,28 +44,22 @@ namespace eosio { namespace chain {
    }
 
    transaction_context::transaction_context( controller& c,
-                                             const signed_transaction& t,
-                                             const transaction_id_type& trx_id,
+                                             const packed_transaction& t,
                                              transaction_checktime_timer&& tmr,
                                              fc::time_point s )
    :control(c)
-   ,trx(t)
-   ,id(trx_id)
-   ,undo_session()
+   ,packed_trx(t)
+   ,undo_session(!c.skip_db_sessions() ? c.kv_db().make_session() : c.kv_db().make_no_op_session())
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
    ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
    {
-      if (!c.skip_db_sessions()) {
-         undo_session = c.mutable_db().start_undo_session(true);
-      }
-      trace->id = id;
+      trace->id = packed_trx.id();
       trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
-      executed.reserve( trx.total_actions() );
    }
 
    void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
@@ -76,10 +70,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::init(uint64_t initial_net_usage)
+   void transaction_context::init( uint64_t initial_net_usage )
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -102,6 +95,7 @@ namespace eosio { namespace chain {
          _deadline = start + objective_duration_limit;
       }
 
+      const transaction& trx = packed_trx.get_transaction();
       // Possibly lower net_limit to optional limit set in the transaction header
       uint64_t trx_specified_net_usage_limit = static_cast<uint64_t>(trx.max_net_usage_words.value) * 8;
       if( trx_specified_net_usage_limit > 0 && trx_specified_net_usage_limit <= net_limit ) {
@@ -149,7 +143,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = net_limit;
 
-      // Possible lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
+      // Possibly lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
       auto new_eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(account_net_limit + cfg.net_usage_leeway) );
       if( new_eager_net_limit < eager_net_limit ) {
          eager_net_limit = new_eager_net_limit;
@@ -198,18 +192,20 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.transaction_extensions.size() > 0 ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
       }
 
       published = control.pending_block_time();
-      init( initial_net_usage);
+      init( initial_net_usage );
    }
 
    void transaction_context::init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.transaction_extensions.size() > 0 ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
       }
@@ -236,20 +232,41 @@ namespace eosio { namespace chain {
                                + static_cast<uint64_t>(config::transaction_id_net_usage);
       }
 
+      init_for_input_trx_common( initial_net_usage, skip_recording );
+   }
+
+   void transaction_context::init_for_input_trx_with_explicit_net( uint32_t explicit_net_usage_words,
+                                                                   bool skip_recording )
+   {
+      const transaction& trx = packed_trx.get_transaction();
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
+
+      explicit_net_usage = true;
+      net_usage = (static_cast<uint64_t>(explicit_net_usage_words) * 8);
+
+      init_for_input_trx_common( 0, skip_recording );
+   }
+
+   void transaction_context::init_for_input_trx_common( uint64_t initial_net_usage, bool skip_recording )
+   {
       published = control.pending_block_time();
       is_input = true;
+      const transaction& trx = packed_trx.get_transaction();
       if (!control.skip_trx_checks()) {
          control.validate_expiration(trx);
          control.validate_tapos(trx);
          validate_referenced_accounts( trx, enforce_whiteblacklist && control.is_producing_block() );
       }
-      init( initial_net_usage);
+      init( initial_net_usage );
       if (!skip_recording)
-         record_transaction( id, trx.expiration ); /// checks for dupes
+         record_transaction( packed_trx.id(), trx.expiration ); /// checks for dupes
    }
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      const transaction& trx = packed_trx.get_transaction();
       if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
          disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
       }
@@ -267,6 +284,7 @@ namespace eosio { namespace chain {
    void transaction_context::exec() {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
+      const transaction& trx = packed_trx.get_transaction();
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
             schedule_action( act, act.account, true, 0, 0 );
@@ -294,6 +312,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( is_input ) {
+         const transaction& trx = packed_trx.get_transaction();
          auto& am = control.get_mutable_authorization_manager();
          for( const auto& act : trx.actions ) {
             for( const auto& auth : act.authorization ) {
@@ -329,10 +348,10 @@ namespace eosio { namespace chain {
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
-      net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
-
       eager_net_limit = net_limit;
-      check_net_usage();
+
+      round_up_net_usage(); // Round up to nearest multiple of word size (8 bytes).
+      check_net_usage();    // Check that NET usage satisfies limits (even when explicit_net_usage is true).
 
       auto now = fc::time_point::now();
       trace->elapsed = now - start;
@@ -346,29 +365,27 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::squash() {
-      if (undo_session) undo_session->squash();
+      undo_session.squash();
    }
 
    void transaction_context::undo() {
-      if (undo_session) undo_session->undo();
+      undo_session.undo();
    }
 
    void transaction_context::check_net_usage()const {
-      if (!control.skip_trx_checks()) {
-         if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
-            if ( net_limit_due_to_block ) {
-               EOS_THROW( block_net_usage_exceeded,
-                          "not enough space left in block: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            }  else if (net_limit_due_to_greylist) {
-               EOS_THROW( greylist_net_usage_exceeded,
-                          "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            } else {
-               EOS_THROW( tx_net_usage_exceeded,
-                          "transaction net usage is too high: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            }
+      if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
+         if ( net_limit_due_to_block ) {
+            EOS_THROW( block_net_usage_exceeded,
+                        "not enough space left in block: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         }  else if (net_limit_due_to_greylist) {
+            EOS_THROW( greylist_net_usage_exceeded,
+                        "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         } else {
+            EOS_THROW( tx_net_usage_exceeded,
+                        "transaction net usage is too high: ${net_usage} > ${net_limit}",
+                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          }
       }
    }
@@ -504,9 +521,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace ) {
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta );
+      rl.add_pending_ram_usage( account, ram_delta, trace );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
@@ -625,6 +642,15 @@ namespace eosio { namespace chain {
 
    void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
+
+      if (recurse_depth == 0) {
+         if (auto dm_logger = control.get_deep_mind_logger()) {
+            fc_dlog(*dm_logger, "CREATION_OP ROOT ${action_id}",
+               ("action_id", get_action_id())
+            );
+         }
+      }
+
       acontext.exec();
    }
 
@@ -632,6 +658,7 @@ namespace eosio { namespace chain {
    void transaction_context::schedule_transaction() {
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
       // whether that be by successfully executing, soft failure, hard failure, or expiration.
+      const transaction& trx = packed_trx.get_transaction();
       if( trx.delay_sec.value == 0 ) { // Do not double bill. Only charge if we have not already charged for the delay.
          const auto& cfg = control.get_global_properties().configuration;
          add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
@@ -640,9 +667,10 @@ namespace eosio { namespace chain {
 
       auto first_auth = trx.first_authorizer();
 
+      std::string event_id;
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
-        gto.trx_id      = id;
+        gto.trx_id      = packed_trx.id();
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
@@ -650,10 +678,27 @@ namespace eosio { namespace chain {
         gto.delay_until = gto.published + delay;
         gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         trx_size = gto.set( trx );
+
+        if (auto dm_logger = control.get_deep_mind_logger()) {
+            event_id = STORAGE_EVENT_ID("${id}", ("id", gto.id));
+
+            auto packed_signed_trx = fc::raw::pack(packed_trx.to_packed_transaction_v0()->get_signed_transaction());
+            fc_dlog(*dm_logger, "DTRX_OP PUSH_CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
+               ("action_id", get_action_id())
+               ("sender", gto.sender)
+               ("sender_id", gto.sender_id)
+               ("payer", gto.payer)
+               ("published", gto.published)
+               ("delay", gto.delay_until)
+               ("expiration", gto.expiration)
+               ("trx_id", gto.trx_id)
+               ("trx", fc::to_hex(packed_signed_trx.data(), packed_signed_trx.size()))
+            );
+         }
       });
 
       int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
-      add_ram_usage( cgto.payer, ram_delta );
+      add_ram_usage( cgto.payer, ram_delta, storage_usage_trace(get_action_id(), std::move(event_id), "deferred_trx", "push", "deferred_trx_pushed") );
       trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 
@@ -675,12 +720,14 @@ namespace eosio { namespace chain {
       const auto& db = control.db();
       const auto& auth_manager = control.get_authorization_manager();
 
-      for( const auto& a : trx.context_free_actions ) {
-         auto* code = db.find<account_object, by_name>(a.account);
-         EOS_ASSERT( code != nullptr, transaction_exception,
-                     "action's code account '${account}' does not exist", ("account", a.account) );
-         EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
-                     "context-free actions cannot have authorizations" );
+      if( !trx.context_free_actions.empty() && !control.skip_trx_checks() ) {
+         for( const auto& a : trx.context_free_actions ) {
+            auto* code = db.find<account_object, by_name>( a.account );
+            EOS_ASSERT( code != nullptr, transaction_exception,
+                        "action's code account '${account}' does not exist", ("account", a.account) );
+            EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
+                        "context-free actions cannot have authorizations" );
+         }
       }
 
       flat_set<account_name> actors;

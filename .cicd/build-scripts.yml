@@ -21,7 +21,18 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
-    
+
+  - label: ":centos: CentOS 8 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
   - label: ":darwin: macOS 10.14 - Build Pinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
@@ -29,12 +40,42 @@ steps:
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
     agents: "queue=mac-anka-large-node-fleet"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
     plugins:
       - EOSIO/anka#v0.6.1:
           debug: true
           vm-name: "10.14.6_6C_14G_80G"
+          no-volume: true
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    timeout: 180
+
+
+  - label: ":darwin: macOS 10.15 - Build Pinned"
+    env:
+      REPO: "git@github.com:EOSIO/eos.git"
+      TEMPLATE: "10.15.5_6C_14G_80G"
+      TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+    agents: "queue=mac-anka-large-node-fleet"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "cd eos && ./scripts/eosio_build.sh -P -y"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
           no-volume: true
           modify-cpu: 12
           modify-ram: 24
@@ -75,6 +116,21 @@ steps:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
 
+  - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:20.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
       - docker#v3.3.0:
@@ -90,6 +146,17 @@ steps:
     plugins:
       - docker#v3.3.0:
           image: "centos:7.7.1908"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+
+  - label: ":centos: CentOS 8 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
           always-pull: true
     agents:
       queue: "automation-eks-eos-builder-fleet"
@@ -125,6 +192,35 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+
+  - label: ":darwin: macOS 10.15 - Build UnPinned"
+    env:
+      REPO: "git@github.com:EOSIO/eos.git"
+      TEMPLATE: "10.15.5_6C_14G_80G"
+      TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+    agents: "queue=mac-anka-large-node-fleet"
+    command:
+      - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
+      - "cd eos && ./scripts/eosio_build.sh -y"
+    plugins:
+      - EOSIO/anka#v0.6.1:
+          debug: true
+          vm-name: "10.15.5_6C_14G_80G"
+          no-volume: true
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          wait-network: true
+          pre-execute-sleep: 5
+          pre-execute-ping-sleep: github.com
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          failover-registries:
+          - "registry_1"
+          - "registry_2"
+          inherit-environment-vars: true
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
+    timeout: 180
     
   - label: ":ubuntu: Ubuntu 18.04 - Build UnPinned"
     plugins:
@@ -135,5 +231,20 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     command:
       - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
+
+  - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
+    env:
+      DEBIAN_FRONTEND: "noninteractive" 
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:20.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime"
+      - "apt update && apt upgrade -y && apt install -y git g++"
       - "./scripts/eosio_build.sh -y"
     timeout: 180

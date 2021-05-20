@@ -103,7 +103,10 @@ def startNode(nodeIndex, account):
     cmd = (
         args.nodeos +
         '    --max-irreversible-block-age -1'
-        '    --max-transaction-time=1000'
+        # max-transaction-time must be less than block time
+        # (which is defined in .../chain/include/eosio/chain/config.hpp
+        # as block_interval_ms = 500)
+        '    --max-transaction-time=200'
         '    --contracts-console'
         '    --genesis-json ' + os.path.abspath(args.genesis) +
         '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
@@ -286,7 +289,7 @@ def stepStartWallet():
     importKeys()
 def stepStartBoot():
     startNode(0, {'name': 'eosio', 'pvt': args.private_key, 'pub': args.public_key})
-    sleep(1.5)
+    sleep(10.0)
 def stepInstallSystemContracts():
     run(args.cleos + 'set contract eosio.token ' + args.contracts_dir + '/eosio.token/')
     run(args.cleos + 'set contract eosio.msig ' + args.contracts_dir + '/eosio.msig/')
@@ -300,23 +303,34 @@ def stepSetSystemContract():
     # feature (codename PREACTIVATE_FEATURE) to be activated and for an updated version of the system 
     # contract that makes use of the functionality introduced by that feature to be deployed. 
 
-    # activate PREACTIVATE_FEATURE before installing eosio.system
+    # activate PREACTIVATE_FEATURE before installing eosio.boot
     retry('curl -X POST http://127.0.0.1:%d' % args.http_port + 
         '/v1/producer/schedule_protocol_feature_activations ' +
         '-d \'{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}\'')
     sleep(3)
 
-    # install eosio.system the older version first
-    retry(args.cleos + 'set contract eosio ' + args.old_contracts_dir + '/eosio.system/')
+    # install eosio.boot which supports the native actions and activate 
+    # action that allows activating desired protocol features prior to 
+    # deploying a system contract with more features such as eosio.bios 
+    # or eosio.system
+    retry(args.cleos + 'set contract eosio ' + args.contracts_dir + '/eosio.boot/')
     sleep(3)
 
     # activate remaining features
+    # KV_DATABASE
+    retry(args.cleos + 'push action eosio activate \'["825ee6288fb1373eab1b5187ec2f04f6eacb39cb3a97f356a07c91622dd61d16"]\' -p eosio@active')
+    # ACTION_RETURN_VALUE
+    retry(args.cleos + 'push action eosio activate \'["c3a6138c5061cf291310887c0b5c71fcaffeab90d5deb50d3b9e687cead45071"]\' -p eosio@active')
+    # CONFIGURABLE_WASM_LIMITS
+    retry(args.cleos + 'push action eosio activate \'["bf61537fd21c61a60e542a5d66c3f6a78da0589336868307f94a82bccea84e88"]\' -p eosio@active')
+    # BLOCKCHAIN_PARAMETERS
+    retry(args.cleos + 'push action eosio activate \'["5443fcf88330c586bc0e5f3dee10e7f63c76c00249c87fe4fbf7f38c082006b4"]\' -p eosio@active')
     # GET_SENDER
-    retry(args.cleos + 'push action eosio activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p eosio@active')
     # FORWARD_SETCODE
-    retry(args.cleos + 'push action eosio activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p eosio@active')
     # ONLY_BILL_FIRST_AUTHORIZER
-    retry(args.cleos + 'push action eosio activate \'["8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"]\' -p eosio')
+    retry(args.cleos + 'push action eosio activate \'["8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"]\' -p eosio@active')
     # RESTRICT_ACTION_TO_SELF
     retry(args.cleos + 'push action eosio activate \'["ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"]\' -p eosio@active')
     # DISALLOW_EMPTY_PRODUCER_SCHEDULE
@@ -337,10 +351,10 @@ def stepSetSystemContract():
     retry(args.cleos + 'push action eosio activate \'["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]\' -p eosio@active')
     sleep(1)
 
-    run(args.cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
-
     # install eosio.system latest version
     retry(args.cleos + 'set contract eosio ' + args.contracts_dir + '/eosio.system/')
+    # setpriv is only available after eosio.system is installed
+    run(args.cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
     sleep(3)
 
 def stepInitSystemContract():
@@ -402,8 +416,7 @@ parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", defau
 parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--nodeos', metavar='', help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos')
 parser.add_argument('--keosd', metavar='', help="Path to keosd binary", default='../../build/programs/keosd/keosd')
-parser.add_argument('--contracts-dir', metavar='', help="Path to latest contracts directory", default='../../build/contracts/')
-parser.add_argument('--old-contracts-dir', metavar='', help="Path to 1.8.x contracts directory", default='../../build/contracts/')
+parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/')
 parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", default='./nodes/')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
@@ -434,7 +447,8 @@ for (flag, command, function, inAll, help) in commands:
         
 args = parser.parse_args()
 
-args.cleos += '--url http://127.0.0.1:%d ' % args.http_port
+# Leave a space in front of --url in case the user types cleos alone
+args.cleos += ' --url http://127.0.0.1:%d ' % args.http_port
 
 logFile = open(args.log_path, 'a')
 

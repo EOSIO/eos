@@ -44,14 +44,14 @@ namespace eosio {
 
    struct by_action_sequence_num;
    struct by_account_action_seq;
-   struct by_trx_id;
+   struct by_trx_id_act_seq;
 
    using action_history_index = chainbase::shared_multi_index_container<
       action_history_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<action_history_object, action_history_object::id_type, &action_history_object::id>>,
          ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>,
-         ordered_unique<tag<by_trx_id>,
+         ordered_unique<tag<by_trx_id_act_seq>,
             composite_key< action_history_object,
                member<action_history_object, transaction_id_type, &action_history_object::trx_id>,
                member<action_history_object, uint64_t, &action_history_object::action_sequence_num >
@@ -141,7 +141,7 @@ namespace eosio {
          std::set<filter_entry> filter_on;
          std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
-         fc::optional<scoped_connection> applied_transaction_connection;
+         std::optional<scoped_connection> applied_transaction_connection;
 
           bool filter(const action_trace& act) {
             bool pass_on = false;
@@ -226,26 +226,26 @@ namespace eosio {
          void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
             chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
-            if( at.act.name == N(newaccount) )
+            if( at.act.name == "newaccount"_n )
             {
                const auto create = at.act.data_as<chain::newaccount>();
-               add(db, create.owner.keys, create.name, N(owner));
-               add(db, create.owner.accounts, create.name, N(owner));
-               add(db, create.active.keys, create.name, N(active));
-               add(db, create.active.accounts, create.name, N(active));
+               add(db, create.owner.keys, create.name, "owner"_n);
+               add(db, create.owner.accounts, create.name, "owner"_n);
+               add(db, create.active.keys, create.name, "active"_n);
+               add(db, create.active.accounts, create.name, "active"_n);
             }
-            else if( at.act.name == N(updateauth) )
+            else if( at.act.name == "updateauth"_n )
             {
                const auto update = at.act.data_as<chain::updateauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
+               remove<public_key_history_multi_index, by_account_permission_name>(db, update.account, update.permission);
                remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
                add(db, update.auth.keys, update.account, update.permission);
                add(db, update.auth.accounts, update.account, update.permission);
             }
-            else if( at.act.name == N(deleteauth) )
+            else if( at.act.name == "deleteauth"_n )
             {
                const auto del = at.act.data_as<chain::deleteauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
+               remove<public_key_history_multi_index, by_account_permission_name>(db, del.account, del.permission);
                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
             }
          }
@@ -258,9 +258,10 @@ namespace eosio {
 
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
-                  aho.packed_action_trace.resize(ps);
-                  datastream<char*> ds( aho.packed_action_trace.data(), ps );
-                  fc::raw::pack( ds, at );
+                  aho.packed_action_trace.resize_and_fill(ps, [&at](char* data, std::size_t size) {
+                     fc::datastream<char*> ds( data, size );
+                     fc::raw::pack( ds, at );
+                  });
                   aho.action_sequence_num = at.receipt->global_sequence;
                   aho.block_num = chain.head_block_num() + 1;
                   aho.block_time = chain.pending_block_time();
@@ -351,7 +352,7 @@ namespace eosio {
          db.add_index<public_key_history_multi_index>();
 
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> t ) {
                   my->on_applied_transaction( std::get<0>(t) );
                } ));
       } FC_LOG_AND_RETHROW()
@@ -462,7 +463,7 @@ namespace eosio {
          };
 
          const auto& db = chain.db();
-         const auto& idx = db.get_index<action_history_index, by_trx_id>();
+         const auto& idx = db.get_index<action_history_index, by_trx_id_act_seq>();
          auto itr = idx.lower_bound( boost::make_tuple( input_id ) );
 
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
@@ -491,18 +492,24 @@ namespace eosio {
 
             auto blk = chain.fetch_block_by_number( result.block_num );
             if( blk || chain.is_building_block() ) {
-               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               const auto& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
-                    if (receipt.trx.contains<packed_transaction>()) {
-                        auto &pt = receipt.trx.get<packed_transaction>();
+                    if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                        auto &pt = std::get<packed_transaction>(receipt.trx);
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
+                            fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+                            fc::mutable_variant_object tmp(v.get_object());
+                            const auto* sigs = pt.get_signatures();
+                            tmp("signatures", sigs != nullptr ? *sigs : vector<signature_type>());
+                            const auto* context_free_data = pt.get_context_free_data();
+                            tmp("context_free_data", context_free_data != nullptr ? *context_free_data : vector<bytes>());
+                            r("trx", std::move(tmp) );
                             result.trx = move(r);
                             break;
                         }
                     } else {
-                        auto &id = receipt.trx.get<transaction_id_type>();
+                        auto &id = std::get<transaction_id_type>(receipt.trx);
                         if (id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             result.trx = move(r);
@@ -516,8 +523,8 @@ namespace eosio {
             bool found = false;
             if (blk) {
                for (const auto& receipt: blk->transactions) {
-                  if (receipt.trx.contains<packed_transaction>()) {
-                     auto& pt = receipt.trx.get<packed_transaction>();
+                  if (std::holds_alternative<packed_transaction>(receipt.trx)) {
+                     auto& pt = std::get<packed_transaction>(receipt.trx);
                      const auto& id = pt.id();
                      if( txn_id_matched(id) ) {
                         result.id = id;
@@ -525,13 +532,19 @@ namespace eosio {
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time )));
+                        fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
+                        fc::mutable_variant_object tmp(v.get_object());
+                        const auto* sigs = pt.get_signatures();
+                        tmp("signatures", sigs != nullptr ? *sigs : vector<signature_type>());
+                        const auto* context_free_data = pt.get_context_free_data();
+                        tmp("context_free_data", context_free_data != nullptr ? *context_free_data : vector<bytes>());
+                        r("trx", std::move(tmp) );
                         result.trx = move(r);
                         found = true;
                         break;
                      }
                   } else {
-                     auto& id = receipt.trx.get<transaction_id_type>();
+                     auto& id = std::get<transaction_id_type>(receipt.trx);
                      if( txn_id_matched(id) ) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
