@@ -1380,7 +1380,7 @@ bool chain_plugin::accept_block(const signed_block_ptr& block, const block_id_ty
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
-   my->incoming_transaction_async_method(trx, false, false, std::move(next));
+   my->incoming_transaction_async_method(trx, false, false, false, std::move(next));
 }
 
 controller& chain_plugin::chain() { return *my->chain; }
@@ -2768,7 +2768,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       fc_add_tag(trx_span, "trx_id", input_trx->id());
       fc_add_tag(trx_span, "method", "push_transaction");
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false,
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
             [this, token=trx_trace.get_token(), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
@@ -2911,7 +2911,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "trx_id", input_trx->id());
       fc_add_tag(trx_span, "method", "send_transaction");
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false,
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
             [this, token=trx_trace.get_token(), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -3198,7 +3198,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       fc_add_tag(trx_span, "trx_id", input_trx->id());
       fc_add_tag(trx_span, "method", "send_transaction");
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, true,
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
             [this, token=trx_trace.get_token(), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
