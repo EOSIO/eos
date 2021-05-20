@@ -29,6 +29,8 @@ function(GENERATE_VERSION_METADATA)
    set(_VERSION_SUFFIX_ ${V_SUFFIX})
    set(_VERSION_HASH_   ${V_HASH})
    set(_VERSION_DIRTY_  ${V_DIRTY})
+   set(_VERSION_ARCH_     ${V_ARCH})
+   set(_VERSION_COMPILER_ ${V_COMPILER})
    
    # Modify and substitute the `.cpp.in` file for a `.cpp` in the build directory.
    configure_file(
