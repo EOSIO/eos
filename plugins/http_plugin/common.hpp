@@ -1,0 +1,257 @@
+#pragma once
+
+#include <eosio/http_plugin/http_plugin.hpp>
+#include <fc/utility.hpp>
+
+#include <string>
+#include <set>
+#include <map>
+#include <atomic>
+#include <optional>
+
+#include <fc/time.hpp>
+#include <fc/io/raw.hpp>
+#include <fc/log/logger_config.hpp>
+
+#include <boost/asio.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/beast/version.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/dispatch.hpp>
+#include <boost/asio/signal_set.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/make_unique.hpp>
+#include <boost/optional.hpp>
+
+namespace eosio {
+    using std::string;
+    using std::map;
+    using std::set;
+
+    namespace beast = boost::beast;                 // from <boost/beast.hpp>
+    namespace http = boost::beast::http;                   // from <boost/beast/http.hpp>
+    namespace asio = boost::asio;
+    namespace ssl = boost::asio::ssl;
+    using boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
+
+
+    namespace detail {
+        /**
+         * virtualized wrapper for the various underlying connection functions needed in req/resp processng
+        */
+        struct abstract_conn {
+            virtual ~abstract_conn() = default;
+            virtual bool verify_max_bytes_in_flight() = 0;
+            virtual bool verify_max_requests_in_flight() = 0;
+            virtual void handle_exception() = 0;
+
+            virtual void send_response(std::optional<std::string> body, int code) = 0;
+        };
+
+        using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
+
+        /**
+         * internal url handler that contains more parameters than the handlers provided by external systems
+         */
+        using internal_url_handler = std::function<void(abstract_conn_ptr, string, string, url_response_callback)>;
+
+        /**
+         * Helper method to calculate the "in flight" size of a fc::variant
+         * This is an estimate based on fc::raw::pack if that process can be successfully executed
+         *
+         * @param v - the fc::variant
+         * @return in flight size of v
+         */
+        static size_t in_flight_sizeof( const fc::variant& v ) {
+            try {
+            return fc::raw::pack_size( v );
+            } catch(...) {}
+            return 0;
+        }
+
+        /**
+         * Helper method to calculate the "in flight" size of a std::optional<T>
+         * When the optional doesn't contain value, it will return the size of 0
+         *
+         * @param o - the std::optional<T> where T is typename
+         * @return in flight size of o
+         */
+        template<typename T>
+        static size_t in_flight_sizeof( const std::optional<T>& o ) {
+            if( o ) {
+            return in_flight_sizeof( *o );
+            }
+            return 0;
+        }
+
+        /**
+         * Helper method to calculate the "in flight" size of a string
+         * @param s - the string
+         * @return in flight size of s
+         */
+        static size_t in_flight_sizeof( const string& s ) {
+            return s.size();
+        }
+    }
+
+    // key -> priority, url_handler
+    typedef map<string,detail::internal_url_handler> url_handlers_type;
+
+    struct http_plugin_state {
+        string                         access_control_allow_origin;
+        string                         access_control_allow_headers;
+        string                         access_control_max_age;
+        bool                           access_control_allow_credentials = false;
+        size_t                         max_body_size{1024*1024};
+
+        std::atomic<size_t>                            bytes_in_flight{0};
+        std::atomic<int32_t>                           requests_in_flight{0};
+        size_t                                         max_bytes_in_flight = 0;
+        int32_t                                        max_requests_in_flight = -1;
+        fc::microseconds                               max_response_time{30*1000};
+
+        bool                     validate_host = true;
+        set<string>              valid_hosts;
+
+        bool verbose_http_errors = false;
+
+        url_handlers_type  url_handlers;
+        bool                     use_beast = false;
+        bool                     keep_alive = false;
+    };
+
+    /**
+     * Helper type that wraps an object of type T and records its "in flight" size to
+     * http_plugin_impl::bytes_in_flight using RAII semantics
+     *
+     * @tparam T - the contained Type
+     */
+    template<typename T>
+    struct in_flight {
+        in_flight(T&& object, http_plugin_state& plugin_state)
+        :_object(std::move(object))
+        ,_plugin_state(plugin_state)
+        {
+            _count = detail::in_flight_sizeof(_object);
+            _plugin_state.bytes_in_flight += _count;
+        }
+
+        ~in_flight() {
+            if (_count) {
+                _plugin_state.bytes_in_flight -= _count;
+            }
+        }
+
+        // No copy constructor, but allow move
+        in_flight(const in_flight&) = delete;
+        in_flight(in_flight&& from)
+        :_object(std::move(from._object))
+        ,_count(from._count)
+        ,_plugin_state(std::move(from._plugin_state))
+        {
+            from._count = 0;
+        }
+
+        // No copy assignment, but allow move
+        in_flight& operator=(const in_flight&) = delete;
+        in_flight& operator=(in_flight&& from) {
+            _object = std::move(from._object);
+            _count = from._count;
+            _plugin_state = from._plugin_state;
+            from._count = 0;
+        }
+
+        /**
+         * const accessor
+         * @return const reference to the contained object
+         */
+        const T& obj() const {
+            return _object;
+        }
+
+        /**
+         * mutable accessor (can be moved from)
+         * @return mutable reference to the contained object
+         */
+        T& obj() {
+            return _object;
+        }
+
+        T _object;
+        size_t _count;
+        http_plugin_state& _plugin_state;
+    };
+
+    /**
+     * convenient wrapper to make an in_flight<T>
+     */
+    template<typename T>
+    auto make_in_flight(T&& object, http_plugin_state& plugin_state) {
+    return std::make_shared<in_flight<T>>(std::forward<T>(object), plugin_state);
+    }
+
+    /**
+     * Construct a lambda appropriate for url_response_callback that will
+     * JSON-stringify the provided response
+     *
+     * @param con - pointer for the connection this response should be sent to
+     * @return lambda suitable for url_response_callback
+     */
+    template<typename T>
+    auto make_http_response_handler( asio::io_context &ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
+    return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
+         {
+            auto tracked_response = make_in_flight(std::move(response), plugin_state);
+            if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
+                return;
+            }
+
+            // post  back to an HTTP thread to to allow the response handler to be called from any thread
+            boost::asio::post( ioc, // my->thread_pool->get_executor()
+                                [&plugin_state, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
+                try {
+                    if( tracked_response->obj().has_value() ) {
+                    std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
+                    auto tracked_json = make_in_flight( std::move( json ), plugin_state );
+                    abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
+                    } else {
+                    abstract_conn_ptr->send_response( {}, code );
+                    }
+                } catch( ... ) {
+                    abstract_conn_ptr->handle_exception();
+                }
+            });
+        };// end lambda
+    }
+
+    auto make_http_response_handler( asio::io_context &ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
+    return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
+         {
+            auto tracked_response = make_in_flight(std::move(response), plugin_state);
+            if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
+                return;
+            }
+
+            // post  back to an HTTP thread to to allow the response handler to be called from any thread
+            boost::asio::post( ioc, // my->thread_pool->get_executor()
+                                [&plugin_state, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
+                try {
+                    if( tracked_response->obj().has_value() ) {
+                    std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
+                    auto tracked_json = make_in_flight( std::move( json ), plugin_state );
+                    abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
+                    } else {
+                    abstract_conn_ptr->send_response( {}, code );
+                    }
+                } catch( ... ) {
+                    abstract_conn_ptr->handle_exception();
+                }
+            });
+        };// end lambda
+    }
+   
+} // end namespace eosio

@@ -24,14 +24,15 @@
 #include <memory>
 #include <regex>
 
+#include "common.hpp"
+#include "beast_http_listener.hpp"
+
 const fc::string logger_name("http_plugin");
 fc::logger logger;
 
 namespace eosio {
 
    static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
-
-   namespace asio = boost::asio;
 
    using std::map;
    using std::vector;
@@ -43,6 +44,8 @@ namespace eosio {
    using boost::asio::ip::address_v4;
    using boost::asio::ip::address_v6;
    using std::shared_ptr;
+   using std::unique_ptr;
+   using std::make_unique;
    using websocketpp::connection_hdl;
 
    enum https_ecdh_curve_t {
@@ -123,66 +126,10 @@ namespace eosio {
 
           static const long timeout_open_handshake = 0;
       };
-
-      /**
-       * virtualized wrapper for the various underlying connection functions needed in req/resp processng
-       */
-      struct abstract_conn {
-         virtual ~abstract_conn() = default;
-         virtual bool verify_max_bytes_in_flight() = 0;
-         virtual bool verify_max_requests_in_flight() = 0;
-         virtual void handle_exception() = 0;
-
-         virtual void send_response(std::optional<std::string> body, int code) = 0;
-      };
-
-      using abstract_conn_ptr = std::shared_ptr<abstract_conn>;
-
+      
       template<typename T>
       using connection_ptr = typename websocketpp::server<T>::connection_ptr;
-
-      /**
-       * internal url handler that contains more parameters than the handlers provided by external systems
-       */
-      using internal_url_handler = std::function<void(abstract_conn_ptr, string, string, url_response_callback)>;
-
-      /**
-       * Helper method to calculate the "in flight" size of a string
-       * @param s - the string
-       * @return in flight size of s
-       */
-      static size_t in_flight_sizeof( const string& s ) {
-         return s.size();
-      }
-
-      /**
-       * Helper method to calculate the "in flight" size of a fc::variant
-       * This is an estimate based on fc::raw::pack if that process can be successfully executed
-       *
-       * @param v - the fc::variant
-       * @return in flight size of v
-       */
-      static size_t in_flight_sizeof( const fc::variant& v ) {
-         try {
-            return fc::raw::pack_size( v );
-         } catch(...) {}
-         return 0;
-      }
-
-      /**
-       * Helper method to calculate the "in flight" size of a std::optional<T>
-       * When the optional doesn't contain value, it will return the size of 0
-       *
-       * @param o - the std::optional<T> where T is typename
-       * @return in flight size of o
-       */
-      template<typename T>
-      static size_t in_flight_sizeof( const std::optional<T>& o ) {
-         if( o ) {
-            return in_flight_sizeof( *o );
-         }
-         return 0;
-      }
+   
    }
 
    using websocket_server_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
@@ -202,26 +149,14 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          http_plugin_impl& operator=(const http_plugin_impl&) = delete;
          http_plugin_impl& operator=(http_plugin_impl&&) = delete;
-
-         // key -> priority, url_handler
-         map<string,detail::internal_url_handler>  url_handlers;
+         
          std::optional<tcp::endpoint>  listen_endpoint;
-         string                         access_control_allow_origin;
-         string                         access_control_allow_headers;
-         string                         access_control_max_age;
-         bool                           access_control_allow_credentials = false;
-         size_t                         max_body_size{1024*1024};
-
+         
          websocket_server_type    server;
 
          uint16_t                                       thread_pool_size = 2;
          std::optional<eosio::chain::named_thread_pool> thread_pool;
-         std::atomic<size_t>                            bytes_in_flight{0};
-         std::atomic<int32_t>                           requests_in_flight{0};
-         size_t                                         max_bytes_in_flight = 0;
-         int32_t                                        max_requests_in_flight = -1;
-         fc::microseconds                               max_response_time{30*1000};
-
+         
          std::optional<tcp::endpoint>  https_listen_endpoint;
          string                        https_cert_chain;
          string                        https_key;
@@ -232,15 +167,18 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          std::optional<asio::local::stream_protocol::endpoint> unix_endpoint;
          websocket_local_server_type unix_server;
 
-         bool                     validate_host = true;
-         set<string>              valid_hosts;
+         shared_ptr<beast_http_listener<plain_session> >  beast_server;
+         // unique_ptr<beast_http_listener<ssl_session> >    beast_https_server;
+         shared_ptr<beast_http_listener<plain_session> >  beast_https_server;
 
+         shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
+        
          bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
-            return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
+            return !plugin_state->validate_host || header_host_port == endpoint_local_host_port || plugin_state->valid_hosts.find(header_host_port) != plugin_state->valid_hosts.end();
          }
 
          bool host_is_valid( const std::string& host, const string& endpoint_local_host_port, bool secure) {
-            if (!validate_host) {
+            if (!plugin_state->validate_host) {
                return true;
             }
 
@@ -358,8 +296,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          template<typename T>
          bool verify_max_bytes_in_flight( const T& con ) {
-            auto bytes_in_flight_size = bytes_in_flight.load();
-            if( bytes_in_flight_size > max_bytes_in_flight ) {
+            auto bytes_in_flight_size = plugin_state->bytes_in_flight.load();
+            if( bytes_in_flight_size > plugin_state->max_bytes_in_flight ) {
                fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
                string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
                report_429_error(con, what);
@@ -371,11 +309,11 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          template<typename T>
          bool verify_max_requests_in_flight( const T& con ) {
-            if (max_requests_in_flight < 0)
+            if (plugin_state->max_requests_in_flight < 0)
                 return true;
 
-            auto requests_in_flight_num = requests_in_flight.load();
-            if( requests_in_flight_num > max_requests_in_flight ) {
+            auto requests_in_flight_num = plugin_state->requests_in_flight.load();
+            if( requests_in_flight_num > plugin_state->max_requests_in_flight ) {
                fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
                string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
                report_429_error(con, what);
@@ -396,11 +334,11 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             :_conn(std::move(conn))
             ,_impl(std::move(impl))
             {
-                _impl->requests_in_flight += 1;
+                _impl->plugin_state->requests_in_flight += 1;
             }
 
             ~abstract_conn_impl() override {
-                _impl->requests_in_flight -= 1;
+                _impl->plugin_state->requests_in_flight -= 1;
             }
 
             // No copy constructor and no move
@@ -446,75 +384,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             return std::make_shared<abstract_conn_impl<T>>(std::move(conn), std::move(impl));
          }
 
-         /**
-          * Helper type that wraps an object of type T and records its "in flight" size to
-          * http_plugin_impl::bytes_in_flight using RAII semantics
-          *
-          * @tparam T - the contained Type
-          */
-         template<typename T>
-         struct in_flight {
-            in_flight(T&& object, http_plugin_impl_ptr impl)
-            :_object(std::move(object))
-            ,_impl(std::move(impl))
-            {
-               _count = detail::in_flight_sizeof(_object);
-               _impl->bytes_in_flight += _count;
-            }
-
-            ~in_flight() {
-               if (_count) {
-                  _impl->bytes_in_flight -= _count;
-               }
-            }
-
-            // No copy constructor, but allow move
-            in_flight(const in_flight&) = delete;
-            in_flight(in_flight&& from)
-            :_object(std::move(from._object))
-            ,_count(from._count)
-            ,_impl(std::move(from._impl))
-            {
-               from._count = 0;
-            }
-
-            // No copy assignment, but allow move
-            in_flight& operator=(const in_flight&) = delete;
-            in_flight& operator=(in_flight&& from) {
-               _object = std::move(from._object);
-               _count = from._count;
-               _impl = std::move(from._impl);
-               from._count = 0;
-            }
-
-            /**
-             * const accessor
-             * @return const reference to the contained object
-             */
-            const T& obj() const {
-               return _object;
-            }
-
-            /**
-             * mutable accessor (can be moved from)
-             * @return mutable reference to the contained object
-             */
-            T& obj() {
-               return _object;
-            }
-
-            T _object;
-            size_t _count;
-            http_plugin_impl_ptr _impl;
-         };
-
-         /**
-          * convenient wrapper to make an in_flight<T>
-          */
-         template<typename T>
-         static auto make_in_flight(T&& object, http_plugin_impl_ptr impl) {
-            return std::make_shared<in_flight<T>>(std::forward<T>(object), std::move(impl));
-         }
+         
 
          /**
           * Make an internal_url_handler that will run the url_handler on the app() thread and then
@@ -530,7 +400,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             auto next_ptr = std::make_shared<url_handler>(std::move(next));
             return [my=std::move(my), priority, next_ptr=std::move(next_ptr)]
                        ( detail::abstract_conn_ptr conn, string r, string b, url_response_callback then ) {
-               auto tracked_b = make_in_flight<string>(std::move(b), my);
+               auto tracked_b = make_in_flight<string>(std::move(b), *(my->plugin_state));
                if (!conn->verify_max_bytes_in_flight()) {
                   return;
                }
@@ -569,39 +439,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              };
          }
 
-         /**
-          * Construct a lambda appropriate for url_response_callback that will
-          * JSON-stringify the provided response
-          *
-          * @param con - pointer for the connection this response should be sent to
-          * @return lambda suitable for url_response_callback
-          */
-         template<typename T>
-         auto make_http_response_handler( const detail::abstract_conn_ptr& abstract_conn_ptr) {
-            return [my=shared_from_this(), abstract_conn_ptr]( int code, std::optional<fc::variant> response ) {
-               auto tracked_response = make_in_flight(std::move(response), my);
-               if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
-                  return;
-               }
-
-               // post  back to an HTTP thread to to allow the response handler to be called from any thread
-               boost::asio::post( my->thread_pool->get_executor(),
-                                  [my, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
-                  try {
-                     if( tracked_response->obj().has_value() ) {
-                        std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + my->max_response_time );
-                        auto tracked_json = make_in_flight( std::move( json ), my );
-                        abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
-                     } else {
-                        abstract_conn_ptr->send_response( {}, code );
-                     }
-                  } catch( ... ) {
-                     abstract_conn_ptr->handle_exception();
-                  }
-               });
-            };
-         }
-
          template<class T>
          void handle_http_request(detail::connection_ptr<T> con) {
             try {
@@ -610,16 +447,16 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                if(!allow_host<T>(req, con))
                   return;
 
-               if( !access_control_allow_origin.empty()) {
-                  con->append_header( "Access-Control-Allow-Origin", access_control_allow_origin );
+               if( !plugin_state->access_control_allow_origin.empty()) {
+                  con->append_header( "Access-Control-Allow-Origin", plugin_state->access_control_allow_origin );
                }
-               if( !access_control_allow_headers.empty()) {
-                  con->append_header( "Access-Control-Allow-Headers", access_control_allow_headers );
+               if( !plugin_state->access_control_allow_headers.empty()) {
+                  con->append_header( "Access-Control-Allow-Headers", plugin_state->access_control_allow_headers );
                }
-               if( !access_control_max_age.empty()) {
-                  con->append_header( "Access-Control-Max-Age", access_control_max_age );
+               if( !plugin_state->access_control_max_age.empty()) {
+                  con->append_header( "Access-Control-Max-Age", plugin_state->access_control_max_age );
                }
-               if( access_control_allow_credentials ) {
+               if( plugin_state->access_control_allow_credentials ) {
                   con->append_header( "Access-Control-Allow-Credentials", "true" );
                }
 
@@ -635,15 +472,18 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                if( !verify_max_bytes_in_flight( con ) || !verify_max_requests_in_flight( con ) ) return;
 
                std::string resource = con->get_uri()->get_resource();
-               auto handler_itr = url_handlers.find( resource );
-               if( handler_itr != url_handlers.end()) {
+               auto handler_itr = plugin_state->url_handlers.find( resource );
+               if( handler_itr != plugin_state->url_handlers.end()) {
                   std::string body = con->get_request_body();
-                  handler_itr->second( abstract_conn_ptr, std::move( resource ), std::move( body ), make_http_response_handler<T>(abstract_conn_ptr) );
+                  handler_itr->second( abstract_conn_ptr, 
+                                       std::move( resource ), 
+                                       std::move( body ), 
+                                       make_http_response_handler(thread_pool->get_executor(), *plugin_state, abstract_conn_ptr) );
                } else {
                   fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
-                  con->set_body( fc::json::to_string( results, fc::time_point::now() + max_response_time ));
+                  con->set_body( fc::json::to_string( results, fc::time_point::now() + plugin_state->max_response_time ));
                   con->set_status( websocketpp::http::status_code::not_found );
                   con->send_http_response();
                }
@@ -658,7 +498,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                ws.clear_access_channels(websocketpp::log::alevel::all);
                ws.init_asio( &thread_pool->get_executor() );
                ws.set_reuse_addr(true);
-               ws.set_max_http_body_size(max_body_size);
+               ws.set_max_http_body_size(plugin_state->max_body_size);
                // captures `this` & ws, my needs to live as long as server is handling requests
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
@@ -674,8 +514,51 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          void add_aliases_for_endpoint( const tcp::endpoint& ep, const string& host, const string& port ) {
             auto resolved_port_str = std::to_string(ep.port());
-            valid_hosts.emplace(host + ":" + port);
-            valid_hosts.emplace(host + ":" + resolved_port_str);
+            plugin_state->valid_hosts.emplace(host + ":" + port);
+            plugin_state->valid_hosts.emplace(host + ":" + resolved_port_str);
+         }
+
+         void create_beast_server(bool useSSL) {
+            auto ioc = &thread_pool->get_executor();
+            // beast_ssl_ctx = {ssl::context::tlsv12}
+            auto ctx = std::make_shared<ssl::context>(ssl::context::tlsv12);
+            
+            if(useSSL) {
+               try { 
+                  ctx->set_options(asio::ssl::context::default_workarounds |
+                                 asio::ssl::context::no_sslv2 |
+                                 asio::ssl::context::no_sslv3 |
+                                 asio::ssl::context::no_tlsv1 |
+                                 asio::ssl::context::no_tlsv1_1 |
+                                 asio::ssl::context::single_dh_use);
+
+                  ctx->use_certificate_chain_file(https_cert_chain);
+                  ctx->use_private_key_file(https_key, asio::ssl::context::pem);
+
+                  //going for the A+! Do a few more things on the native context to get ECDH in use
+
+                  fc::ec_key ecdh = EC_KEY_new_by_curve_name(https_ecdh_curve == SECP384R1 ? NID_secp384r1 : NID_X9_62_prime256v1);
+                  if (!ecdh)
+                     EOS_THROW(chain::http_exception, "Failed to set NID_secp384r1");
+                  if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
+                     EOS_THROW(chain::http_exception, "Failed to set ECDH PFS");
+
+                  if(SSL_CTX_set_cipher_list(ctx->native_handle(), \
+                     "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:" \
+                     "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
+                     EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
+               } catch (const fc::exception& e) {
+                  fc_elog( logger, "https server initialization error: ${w}", ("w", e.to_detail_string()) );
+               } catch(std::exception& e) {
+                  fc_elog( logger, "https server initialization error: ${w}", ("w", e.what()) );
+               }
+
+               // beast_https_server = make_unique<beast_http_listener<ssl_session> >(ioc, ctx);
+               beast_https_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
+            }
+            else {
+               beast_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
+            }
          }
    };
 
@@ -724,29 +607,29 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             "Configure https ECDH curve to use: secp384r1 or prime256v1")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
-                my->access_control_allow_origin = v;
+                my->plugin_state->access_control_allow_origin = v;
                 fc_ilog( logger, "configured http with Access-Control-Allow-Origin: ${o}",
-                         ("o", my->access_control_allow_origin) );
+                         ("o", my->plugin_state->access_control_allow_origin) );
              }),
-             "Specify the Access-Control-Allow-Origin to be returned on each request.")
+             "Specify the Access-Control-Allow-Origin to be returned on each requeplugin_state->")
 
             ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
-                my->access_control_allow_headers = v;
+                my->plugin_state->access_control_allow_headers = v;
                 fc_ilog( logger, "configured http with Access-Control-Allow-Headers : ${o}",
-                         ("o", my->access_control_allow_headers) );
+                         ("o", my->plugin_state->access_control_allow_headers) );
              }),
-             "Specify the Access-Control-Allow-Headers to be returned on each request.")
+             "Specify the Access-Control-Allow-Headers to be returned on each requeplugin_state->")
 
             ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
-                my->access_control_max_age = v;
+                my->plugin_state->access_control_max_age = v;
                 fc_ilog( logger, "configured http with Access-Control-Max-Age : ${o}",
-                         ("o", my->access_control_max_age) );
+                         ("o", my->plugin_state->access_control_max_age) );
              }),
              "Specify the Access-Control-Max-Age to be returned on each request.")
 
             ("access-control-allow-credentials",
              bpo::bool_switch()->notifier([this](bool v) {
-                my->access_control_allow_credentials = v;
+                my->plugin_state->access_control_allow_credentials = v;
                 if( v ) fc_ilog( logger, "configured http with Access-Control-Allow-Credentials: true" );
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
@@ -766,15 +649,19 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
             ("http-threads", bpo::value<uint16_t>()->default_value( my->thread_pool_size ),
              "Number of worker threads in http thread pool")
+            ("http-use-beast", bpo::value<bool>()->default_value(false),
+             "If set to true, use boost::beast as opposed to websocketpp")
+            ("http-keep-alive", bpo::value<bool>()->default_value(false),
+             "If set to true, keep HTTP connections alive.  Requires http-use-beast to be true")
             ;
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
       try {
-         my->validate_host = options.at("http-validate-host").as<bool>();
+         my->plugin_state->validate_host = options.at("http-validate-host").as<bool>();
          if( options.count( "http-alias" )) {
             const auto& aliases = options["http-alias"].as<vector<string>>();
-            my->valid_hosts.insert(aliases.begin(), aliases.end());
+            my->plugin_state->valid_hosts.insert(aliases.begin(), aliases.end());
          }
 
          tcp::resolver resolver( app().get_io_service());
@@ -835,17 +722,20 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             }
          }
 
-         my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
+         my->plugin_state->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
+         my->plugin_state->verbose_http_errors = verbose_http_errors;
 
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
          EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                      "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
 
-         my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
-         my->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
-         my->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
+         my->plugin_state->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
+         my->plugin_state->max_requests_in_flight = options.at( "http-max-in-flight-requests" ).as<int32_t>();
+         my->plugin_state->max_response_time = fc::microseconds( options.at("http-max-response-time-ms").as<uint32_t>() * 1000 );
 
+         my->plugin_state->use_beast = options.at("http-use-beast").as<bool>();
+         my->plugin_state->keep_alive = options.at("http-keep-alive").as<bool>();
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
    }
@@ -859,11 +749,20 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             my->thread_pool.emplace( "http", my->thread_pool_size );
             if(my->listen_endpoint) {
                try {
-                  my->create_server_for_endpoint(*my->listen_endpoint, my->server);
+                  if(my->plugin_state->use_beast) {
+                     my->create_beast_server(false);
 
-                  fc_ilog( logger, "start listening for http requests" );
-                  my->server.listen(*my->listen_endpoint);
-                  my->server.start_accept();
+                     fc_ilog( logger, "start listening for http requests (boost::beast)" );
+
+                     my->beast_server->listen(*my->listen_endpoint);
+                     my->beast_server->start_accept();
+                  } else {
+                     my->create_server_for_endpoint(*my->listen_endpoint, my->server);
+
+                     fc_ilog( logger, "start listening for http requests (websocketpp)" );
+                     my->server.listen(*my->listen_endpoint);
+                     my->server.start_accept();
+                  }
                } catch ( const fc::exception& e ){
                   fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
                   throw;
@@ -880,7 +779,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                try {
                   my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
                   my->unix_server.init_asio( &my->thread_pool->get_executor() );
-                  my->unix_server.set_max_http_body_size(my->max_body_size);
+                  my->unix_server.set_max_http_body_size(my->plugin_state->max_body_size);
                   my->unix_server.listen(*my->unix_endpoint);
                   // captures `this`, my needs to live as long as unix_server is handling requests
                   my->unix_server.set_http_handler([this](connection_hdl hdl) {
@@ -901,14 +800,23 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
             if(my->https_listen_endpoint) {
                try {
-                  my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
-                  my->https_server.set_tls_init_handler([this](const websocketpp::connection_hdl& hdl) -> ssl_context_ptr{
-                     return my->on_tls_init();
-                  });
+                  if(my->plugin_state->use_beast) {
+                     my->create_beast_server(true);
 
-                  fc_ilog( logger, "start listening for https requests" );
-                  my->https_server.listen(*my->https_listen_endpoint);
-                  my->https_server.start_accept();
+                     fc_ilog( logger, "start listening for https requests (boost::beast)" );
+                     my->beast_https_server->listen(*my->https_listen_endpoint);
+                     my->beast_https_server->start_accept();
+                  } 
+                  else { // websocketpp
+                     my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
+                     my->https_server.set_tls_init_handler([this](const websocketpp::connection_hdl& hdl) -> ssl_context_ptr{
+                        return my->on_tls_init();
+                     });
+
+                     fc_ilog( logger, "start listening for https requests (websocketpp)" );
+                     my->https_server.listen(*my->https_listen_endpoint);
+                     my->https_server.start_accept();
+                  }
                } catch ( const fc::exception& e ){
                   fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
                   throw;
@@ -920,7 +828,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   throw;
                }
             }
-
+            
             add_api({{
                std::string("/v1/node/get_supported_apis"),
                [&](const string&, string body, url_response_callback cb) mutable {
@@ -933,6 +841,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   }
                }
             }});
+            
          } catch (...) {
             fc_elog(logger, "http_plugin startup fails, shutting down");
             app().quit();
@@ -952,25 +861,30 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
 
+      if(my->beast_server)
+         my->beast_server->stop_listening();
+      if(my->beast_https_server)
+         my->beast_https_server->stop_listening();
+
       if( my->thread_pool ) {
          my->thread_pool->stop();
          my->thread_pool.reset();
       }
 
       // release http_plugin_impl_ptr shared_ptrs captured in url handlers
-      my->url_handlers.clear();
+      my->plugin_state->url_handlers.clear();
 
       app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler, int priority) {
       fc_ilog( logger, "add api url: ${c}", ("c", url) );
-      my->url_handlers[url] = my->make_app_thread_url_handler(priority, handler, my);
+      my->plugin_state->url_handlers[url] = my->make_app_thread_url_handler(priority, handler, my);
    }
 
    void http_plugin::add_async_handler(const string& url, const url_handler& handler) {
       fc_ilog( logger, "add api url: ${c}", ("c", url) );
-      my->url_handlers[url] = my->make_http_thread_url_handler(handler);
+      my->plugin_state->url_handlers[url] = my->make_http_thread_url_handler(handler);
    }
 
    void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb ) {
@@ -1032,7 +946,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
       get_supported_apis_result result;
 
-      for (const auto& handler : my->url_handlers) {
+      for (const auto& handler : my->plugin_state->url_handlers) {
          if (handler.first != "/v1/node/get_supported_apis")
             result.apis.emplace_back(handler.first);
       }
@@ -1041,7 +955,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
    }
 
    fc::microseconds http_plugin::get_max_response_time()const {
-      return my->max_response_time;
+      return my->plugin_state->max_response_time;
    }
 
    std::istream& operator>>(std::istream& in, https_ecdh_curve_t& curve) {
