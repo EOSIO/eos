@@ -147,11 +147,10 @@ $ docker node update --label-add name=node-2 csuy1nxb0es6zbo3t6j8osu9z
 ```
 
 ### Push the generated image to the registry
-To distribute the web app’s image across the swarm, it needs to be pushed to the registry you set up earlier. With Compose, this is very simple:
+To distribute the EOS image across the swarm, it needs to be pushed to the registry you set up earlier. 
 
 ```
-$ export DOCKER_REPO=$MANAGER_IP:5443
-$ docker-compose push
+$ source ./push_latest_image.sh
 ```
 
 ### Deploy the stack to the swarm

@@ -127,6 +127,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                lk.unlock();
                for (const auto& item : sending_queue) {
                   auto span = fc_create_span_from_token(item.second, "send");
+                  fc_add_tag(span, "buffer_size", item.first.size());
                   this->derived_session().socket_stream->write(boost::asio::buffer(item.first));
                }
             }
