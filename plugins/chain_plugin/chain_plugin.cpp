@@ -3564,7 +3564,7 @@ void read_only::get_contract_query(const read_only::get_contract_query_params& p
                   output = *trx_trace_ptr;
                }
                const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
-               const auto& receipts = db.get_read_mode() == db_read_mode::SPECULATIVE ? db.get_pending_trx_receipts() : deque<transaction_receipt>();
+               const auto& receipts = db.get_pending_trx_receipts();
                vector<transaction_id_type>  pending_transactions;
                pending_transactions.reserve(receipts.size());
                for( transaction_receipt const& receipt : receipts ) {
