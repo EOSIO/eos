@@ -180,7 +180,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
-bool   tx_contract_query_print_json = false;
+bool   tx_ro_print_json = false;
 bool   tx_use_old_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
@@ -445,14 +445,14 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          try {
-            if (tx_contract_query_print_json)
+            if (tx_ro_print_json)
             {
                 packed_transaction_v0 pt_v0(trx, compression);
                 name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
                 auto args = fc::mutable_variant_object()
                         ("account_name", account_name)
                         ("transaction", pt_v0);
-                return call(get_contract_query_func, args);
+                return call(push_ro_txns_func, args);
             }
             else
                 return call(send_txn_func, packed_transaction_v0(trx, compression));
@@ -647,9 +647,9 @@ void send_actions(std::vector<chain::action>&& actions, const std::vector<public
       out << jsonstr;
       out.close();
    }
-   if( tx_print_json || tx_contract_query_print_json) {
-      if (tx_contract_query_print_json){
-          tx_contract_query_print_json = false; // reset
+   if( tx_print_json || tx_ro_print_json) {
+      if (tx_ro_print_json){
+          tx_ro_print_json = false;
       }
       if (jsonstr.length() == 0) {
          jsonstr = fc::json::to_pretty_string( result );
@@ -3052,27 +3052,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-    // get contract_query
-    string con_account;
-    string query;
-    string args;
-    auto getContractQuery =get->add_subcommand("contract_query", localized("Read-only query a contract"));
-    getContractQuery->add_option( "account", con_account, localized("The account to query contract for") )->required();
-    getContractQuery->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
-    getContractQuery->add_option("args", args, localized("Optional arguments") );
-
-    add_standard_transaction_options_plus_signing(getContractQuery);
-    getContractQuery->callback([&]{
-        fc::variant action_args_var;
-        if( !args.empty() ) {
-            action_args_var = json_from_file_or_string(args, fc::json::parse_type::relaxed_parser);
-        }
-        tx_contract_query_print_json = true;
-        auto accountPermissions = get_account_permissions(tx_permission);
-        send_actions({chain::action{accountPermissions, name(con_account), name(query),
-                                    variant_to_bin( name(con_account), name(query), action_args_var ) }}, signing_keys_opt.get_keys());
-    });
-
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "));
@@ -3937,6 +3916,27 @@ int main( int argc, char** argv ) {
       fc::variant trx_var = json_from_file_or_string(trxsJson);
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
+   });
+
+   // push read-only transaction
+   string con_account;
+   string query;
+   string args;
+   auto pushReadonlyTrx =push->add_subcommand("ro_transaction", localized("Push a read-only transaction"));
+   pushReadonlyTrx->add_option( "account", con_account, localized("The account to query contract for") )->required();
+   pushReadonlyTrx->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
+   pushReadonlyTrx->add_option("args", args, localized("Optional arguments") );
+
+   add_standard_transaction_options_plus_signing(pushReadonlyTrx);
+   pushReadonlyTrx->callback([&]{
+       fc::variant action_args_var;
+       if( !args.empty() ) {
+           action_args_var = json_from_file_or_string(args, fc::json::parse_type::relaxed_parser);
+       }
+       tx_ro_print_json = true;
+       auto accountPermissions = get_account_permissions(tx_permission);
+       send_actions({chain::action{accountPermissions, name(con_account), name(query),
+                                   variant_to_bin( name(con_account), name(query), action_args_var ) }}, signing_keys_opt.get_keys());
    });
 
 
