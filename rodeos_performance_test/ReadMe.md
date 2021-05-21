@@ -25,12 +25,12 @@ $ docker-compose up -d
 docker-compose ps
 ```
 
-3. If you are runing the docker-compose on the remote machine, you need ssh port forwarding *from your local machine* to access the Zipkin UI
+3. If you are runing the docker-compose on the remote machine, you need ssh port forwarding *from your local machine* to access the jaeger UI
 ```
-$ ssh -L 127.0.0.1:9411:127.0.0.1:9411 $remote_user@$remote_ip
+$ ssh -L 127.0.0.1:16686:127.0.0.1:16686 $remote_user@$remote_ip
 ```
 
-4. Open your browser to visit http://127.0.0.1:9411
+4. Open your browser to visit http://127.0.0.1:16686
 
 5. Bring the local deployment down
 ```
@@ -172,7 +172,7 @@ cviczxp37r5h   rodeos-test_producer.1    34.212.138.85:5443/eos-boxed:latest   i
 ow36qmzjrhnu   rodeos-test_zipkin.1      openzipkin/zipkin:latest              ip-172-31-3-140   Running         Running 20 seconds ago
 ```
 
-3. Following the previous steps to do port forwarding and open zipkin
+3. Following the previous steps to do port forwarding and open jaeger
 
 4. Bring the stack down with docker stack rm:
 ```

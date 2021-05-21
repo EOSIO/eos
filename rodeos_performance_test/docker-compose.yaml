@@ -1,29 +1,23 @@
+
+
 version: "3.9"
 services:
-   zipkin:
+   jaeger:
       image: jaegertracing/all-in-one
       container_name: jaeger
       command: ["--collector.zipkin.host-port=:9411"]
       environment:
-         - JAEGER_SAMPLER_TYPE=const
-         - JAEGER_SAMPLER_PARAM=1
          - JAEGER_REPORTER_LOG_SPANS=true
       restart: on-failure
       ports:
-         - 5775:5775/udp
-         - 5778:5778
-         - 6831:6831/udp
-         - 6832:6832/udp
-         - 9411:9411
          - 14268:14268
-         - 16686:16686
-         - 14269:14269
+         - 127.0.0.1:16686:16686
 
    producer: 
       image: ${EOS_IMAGE:-eos-boxed:latest}
       command:
          - ./wait-for-it.sh 
-         - zipkin:9411
+         - jaeger:9411
          - --
          - nodeos 
          - --enable-stale-production 
@@ -31,17 +25,16 @@ services:
          - --plugin=eosio::producer_plugin  
          - --config-dir
          - /etc/eosio
-         - --telemetry-url=http://zipkin:9411/api/v2/spans 
+         - --telemetry-url=http://jaeger:9411/api/v2/spans 
          - --telemetry-service-name=producer 
-         - --telemetry-timeout-us=10000000
       depends_on:
-         - zipkin
+         - jaeger
       
    ship:
       image: ${EOS_IMAGE:-eos-boxed:latest}
       command:
          - ./wait-for-it.sh 
-         - zipkin:9411
+         - jaeger:9411
          - --
          - nodeos               
          - --plugin=eosio::state_history_plugin                                   
@@ -52,24 +45,23 @@ services:
          - --p2p-peer-address=producer:9876:blk
          - --state-history-endpoint=0.0.0.0:8080
          - --config-dir=/etc/eosio
-         - --telemetry-url=http://zipkin:9411/api/v2/spans 
+         - --telemetry-url=http://jaeger:9411/api/v2/spans 
          - --telemetry-service-name=ship 
-         - --telemetry-timeout-us=10000000
          - --send-mode=threaded_sync
       depends_on:
-         - zipkin
+         - jaeger
          - producer
 
    rodeos:
       image: ${EOS_IMAGE:-eos-boxed:latest}
       command: >
          /bin/sh -c "
-            ./wait-for-it.sh zipkin:9411 ## do not use wait-for-it.sh to wait for ship:8080, it would cause the the websocket listening endpoint to be in unrecoverable state. 
+            ./wait-for-it.sh jaeger:9411 ## do not use wait-for-it.sh to wait for ship:8080, it would cause the the websocket listening endpoint to be in unrecoverable state. 
             sleep 10   
-            rodeos --clone-connect-to=ship:8080 --data-dir=/var/rodeos/data --rdb-threads=12 --telemetry-url=http://zipkin:9411/api/v2/spans --telemetry-service-name=rodeos --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8                 
+            rodeos --clone-connect-to=ship:8080 --data-dir=/var/rodeos/data --rdb-threads=12 --telemetry-url=http://jaeger:9411/api/v2/spans --telemetry-service-name=rodeos --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8                 
          "       
       depends_on:
-         - zipkin
+         - jaeger
          - ship
 
    bootstrap:

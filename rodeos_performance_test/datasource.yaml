@@ -1,0 +1,32 @@
+# config file version
+apiVersion: 1
+
+deleteDatasources:
+  - name: loki
+  - name: jaeger
+
+datasources:
+- name: loki
+  type: loki
+  access: proxy
+  orgId: 1
+  url: http://loki:3100
+  basicAuth: false
+  isDefault: true
+  version: 1
+  editable: false
+  jsonData:
+    derivedFields:
+    - datasourceUid: jaeger
+      matcherRegex: traceID=(\w+)
+      name: TraceID
+      url: $${__value.raw}
+- name: jaeger
+  type: jaeger
+  uid: jaeger
+  access: 'browser'
+  url: http://jaeger:16686
+  isDefault: false
+  version: 1
+  editable: false
+  basicAuth: false

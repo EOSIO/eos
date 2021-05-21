@@ -9,7 +9,7 @@ services:
         <<: *manager-node
         restart_policy:
           condition: none
-   zipkin:
+   jaeger:
       deploy:
         <<: *manager-node
    producer: 

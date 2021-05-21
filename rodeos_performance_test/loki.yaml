@@ -1,0 +1,50 @@
+x-logging:
+  logging: &logging
+    driver: loki
+    options:
+      loki-url: "http://localhost:3100/loki/api/v1/push"
+
+version: "3.9"
+services:
+  loki:
+    image: grafana/loki:latest
+    container_name: grafana-loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    restart: unless-stopped
+    volumes:
+        - ./loki-config.yaml:/etc/loki/loki-config.yaml
+    ports:
+        - 127.0.0.1:3100:3100
+    depends_on:
+        - jaeger
+    environment:
+        - JAEGER_AGENT_HOST=jaeger
+        - JAEGER_AGENT_PORT=6831
+        - JAEGER_SAMPLER_TYPE=const
+        - JAEGER_SAMPLER_PARAM=1
+   
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+        - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
+    depends_on:
+        - loki
+    ports:
+        - 3000:3000
+
+  producer: 
+    logging: *logging
+    
+  ship:
+    logging: *logging
+
+  rodeos:
+    logging: *logging
+
+  bootstrap:
+    logging: *logging
+
+
+
