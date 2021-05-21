@@ -2056,6 +2056,9 @@ namespace eosio {
                   ("ep", c->peer_name())("lib", msg.last_irreversible_block_num)("head", msg.head_num)
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
+         if (c->sent_handshake_count > 0) {
+            c->send_handshake(true);
+         }
          return;
       }
       if (lib_num > msg.head_num ) {

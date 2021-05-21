@@ -559,7 +559,7 @@ class Node(object):
             reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
             ret=Utils.waitForTruth(lam, timeout, reporter=reporter, sleepTime=sleepTime)
 
-        assert ret is not None or errorContext is None, Utils.errorExit("%s." % (errorContext))
+        assert ret or errorContext is None, Utils.errorExit("%s." % (errorContext))
         return ret
 
     def waitForIrreversibleBlock(self, blockNum, timeout=WaitSpec.default()):
