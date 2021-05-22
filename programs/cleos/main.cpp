@@ -181,6 +181,8 @@ bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 bool   tx_ro_print_json = false;
+bool   tx_rtn_failure_trace = false;
+bool   tx_read_only = false;
 bool   tx_use_old_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
@@ -3926,6 +3928,8 @@ int main( int argc, char** argv ) {
    pushReadonlyTrx->add_option( "account", con_account, localized("The account to query contract for") )->required();
    pushReadonlyTrx->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
    pushReadonlyTrx->add_option("args", args, localized("Optional arguments") );
+   pushReadonlyTrx->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
+   pushReadonlyTrx->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
 
    add_standard_transaction_options_plus_signing(pushReadonlyTrx);
    pushReadonlyTrx->callback([&]{
