@@ -175,7 +175,8 @@ try:
 
     assert headAdvanced or lvnPostInfo["head_block_num"] >= cfTrxBlockNum, "the light validation node stops syncing"
 
-    fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
+    #lib will be cfTrxBlockNum-2 and head cfTrxBlockNum-1 because of when we will receive incomplete block we won't advance lib
+    fullValidationNode.waitForBlock(cfTrxBlockNum-2, blockType=BlockType.lib, timeout=WaitSpec.calculate(leeway=timeForNodesToWorkOutReconnect), errorContext="fullValidationNode LIB did not advance")
     Utils.Print("Ensure full validation node stops syncing")
     headAdvanced = fullValidationNode.waitForHeadToAdvance()
     if headAdvanced:
