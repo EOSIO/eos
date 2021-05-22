@@ -116,8 +116,9 @@ struct state_history_config {
 };
 
 class state_history_log {
- private:
+ protected:
    using cfile_stream        = fc::datastream<fc::cfile>;
+ private:
    const char* const    name = "";
    cfile_stream         index;
    uint32_t             _begin_block = 0;
@@ -140,33 +141,32 @@ class state_history_log {
    using file_position_type = uint64_t;
    using config_type        = state_history_config;
 
+   struct log_entry_type {
+      chain::block_id_type               id;
+      chain::block_id_type               prev_id;
+      std::shared_ptr<std::vector<char>> data;
+   };
+
    state_history_log(const char* const name, const state_history_config& conf);
+   ~state_history_log();
 
    block_num_type begin_block() const {
       block_num_type result = catalog.first_block_num();
       return result != 0 ? result : _begin_block;
    }
    block_num_type end_block() const { return _end_block; }
-
-   template <typename F>
-   void write_entry(state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
-
-      auto [block_num, start_pos] = write_entry_header(header, prev_id);
-      try {
-         write_payload(write_log);
-         write_entry_position(header, start_pos, block_num);
-      } catch (...) {
-         write_log.close();
-         boost::filesystem::resize_file(write_log.get_file_path(), start_pos);
-         write_log.open("rb+");
-         throw;
-      }
-   }
-
    std::optional<chain::block_id_type> get_block_id(block_num_type block_num);
 
  protected:
+   void store_entry(const chain::block_id_type& id, const chain::block_id_type& prev_id, std::vector<char>&& data);
+   void write_entry(const log_entry_type& entry);
    void get_entry_header(block_num_type block_num, state_history_log_header& header);
+
+   boost::container::flat_map<uint32_t, log_entry_type> entries;
+   std::mutex                                           mx;
+   std::condition_variable                              cv;
+   std::thread                                          thr;
+   std::atomic<bool>                                    ending = false;
 
  private:
    void               read_header(state_history_log_header& header, bool assert_version = true);
@@ -184,6 +184,8 @@ class state_history_log {
     **/
    std::pair<block_num_type,file_position_type> write_entry_header(const state_history_log_header& header, const chain::block_id_type& prev_id);
    void write_entry_position(const state_history_log_header& header, file_position_type pos, block_num_type block_num);
+
+   virtual void write_payload(cfile_stream& stream, const std::vector<char>& data) = 0;
 }; // state_history_log
 
 class state_history_traces_log : public state_history_log {
@@ -201,7 +203,7 @@ class state_history_traces_log : public state_history_log {
       cache.add_transaction(trace, transaction);
    }
 
-   chain::bytes get_log_entry(block_num_type block_num);
+   std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
    void block_start(uint32_t block_num) { cache.clear(); }
 
@@ -211,15 +213,19 @@ class state_history_traces_log : public state_history_log {
     *  @param[in,out] ids The ids to been pruned and returns the ids not found in the specified block
     **/
    void prune_transactions(block_num_type block_num, std::vector<chain::transaction_id_type>& ids);
+ private:
+   void write_payload(cfile_stream& stream, const std::vector<char>& data) override;
 };
 
 class state_history_chain_state_log : public state_history_log {
  public:
    state_history_chain_state_log(const state_history_config& conf);
 
-   chain::bytes get_log_entry(block_num_type block_num);
+   std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
    void store(const chain::combined_database& db, const chain::block_state_ptr& block_state);
+ private:
+   void write_payload(cfile_stream& stream, const std::vector<char>& data) override;
 };
 
 } // namespace eosio
