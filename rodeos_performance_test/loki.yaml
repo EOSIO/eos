@@ -3,6 +3,11 @@ x-logging:
     driver: loki
     options:
       loki-url: "http://localhost:3100/loki/api/v1/push"
+      loki-batch-size: "400"
+      no-file: "false"
+      keep-file: "true"
+      max-size: "5m"
+      max-file: "3"
 
 version: "3.9"
 services:
@@ -12,7 +17,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yaml
     restart: unless-stopped
     volumes:
-        - ./loki-config.yaml:/etc/loki/loki-config.yaml
+        - ./configs/loki-config.yaml:/etc/loki/loki-config.yaml
     ports:
         - 127.0.0.1:3100:3100
     depends_on:
@@ -24,11 +29,15 @@ services:
         - JAEGER_SAMPLER_PARAM=1
    
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana
     container_name: grafana
     restart: unless-stopped
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
     volumes:
-        - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
+        - ./configs/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
     depends_on:
         - loki
     ports:

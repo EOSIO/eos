@@ -185,9 +185,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          fc_add_tag( wait_block_span, "block_id", to_string( result.this_block->block_id ) );
          fc_add_tag( wait_block_span, "block_num", result.this_block->block_num );
       }
-
+      
       using namespace eosio::literals;
-      auto token     = fc::zipkin_span::token{ "ship"_n.value, to_trace_id(result.this_block->block_id) };
+      auto trace_id  = to_trace_id(result.this_block->block_id);
+      ilog("rodeos-received start traceID=${tid}", ("tid", fc::to_hex( reinterpret_cast<const char*>(&trace_id), sizeof( trace_id ) )));
+      auto token     = fc::zipkin_span::token{ "ship"_n.value, trace_id };
       auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
@@ -231,8 +233,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       rodeos_snapshot->end_block(result, false);
 
       auto now = fc::time_point::now().time_since_epoch().count();
-      ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}, duration: ${d}, read time: ${r}",
-         ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
+      // ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}, duration: ${d}, read time: ${r}",
+      //    ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
+
+      ilog("rodeos-received done traceID=${tid}, latency=${l}, duration=${d}",
+           ("tid", fc::to_hex(reinterpret_cast<const char*>(&trace_id), sizeof(trace_id)))(
+                 "l", now > rodeos_block_timestamp ? (now - rodeos_block_timestamp) / 1000
+                                                   : 0)("d", (now - ship_client::msg_finished_read_time) / 1000));
 
       end_block_time = fc::time_point::now();
       return true;
