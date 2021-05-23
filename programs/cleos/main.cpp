@@ -468,8 +468,9 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return result;
          } else {
             try {
-               if (tx_ro_print_json)
+               if (tx_read_only)
                {
+                  tx_ro_print_json = true;
                   packed_transaction_v0 pt_v0(trx, compression);
                   name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
                   auto args = fc::mutable_variant_object()
@@ -477,8 +478,10 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
                           ("transaction", pt_v0);
                   return call(push_ro_txns_func, args);
                }
-               else
-                  return call(send_txn_func, packed_transaction_v0(trx, compression));
+               else {
+                  return call(send_txn_func, packed_transaction_v0(trx, compression));  
+                  EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can only be used along with --read-only" );
+               }
             } catch( chain::missing_chain_api_plugin_exception& ) {
                std::cerr << "New RPC send_transaction may not be supported. "
                             "Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -3948,6 +3951,8 @@ int main( int argc, char** argv ) {
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
    trxSubcommand->add_option("--signature", extra_sig_opt_callback, localized("append a signature to the transaction; repeat this option to append multiple signatures"))->type_size(0, 1000);
    add_standard_transaction_options_plus_signing(trxSubcommand);
+   trxSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
+   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
@@ -3973,30 +3978,6 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
-
-   // push read-only transaction
-   string con_account;
-   string query;
-   string args;
-   auto pushReadonlyTrx =push->add_subcommand("ro_transaction", localized("Push a read-only transaction"));
-   pushReadonlyTrx->add_option( "account", con_account, localized("The account to query contract for") )->required();
-   pushReadonlyTrx->add_option( "query", query, localized("The query to retrieve an action of the contract") )->required();
-   pushReadonlyTrx->add_option("args", args, localized("Optional arguments") );
-   pushReadonlyTrx->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
-   pushReadonlyTrx->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
-
-   add_standard_transaction_options_plus_signing(pushReadonlyTrx);
-   pushReadonlyTrx->callback([&]{
-       fc::variant action_args_var;
-       if( !args.empty() ) {
-           action_args_var = json_from_file_or_string(args, fc::json::parse_type::relaxed_parser);
-       }
-       tx_ro_print_json = true;
-       auto accountPermissions = get_account_permissions(tx_permission);
-       send_actions({chain::action{accountPermissions, name(con_account), name(query),
-                                   variant_to_bin( name(con_account), name(query), action_args_var ) }}, signing_keys_opt.get_keys());
-   });
-
 
    // multisig subcommand
    auto msig = app.add_subcommand("multisig", localized("Multisig contract commands"));
