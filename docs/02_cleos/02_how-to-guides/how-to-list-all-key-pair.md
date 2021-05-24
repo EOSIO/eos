@@ -105,6 +105,6 @@ Failed to connect to keosd at unix:///Users/xxx.xxx/eosio-wallet/keosd.sock; is 
 ```
 
 To fix this error, make sure the `keosd` utility is running on your machine:
-```ssh
-keosd $
+```sh
+keosd
 ```
