@@ -98,9 +98,7 @@ This feature is being released as a "developer preview" and is not yet ready for
 
 ## Upgrading from previous versions of EOSIO
 
-### Upgrading From v2.0.x
-
-Node operators running version v2.0.x should be able to upgrade to v2.1.0 using a snapshot. In addition, moving from a chainbase-backed node to a RocksDB-backed node or the reverse will also require a snapshot to migrate.
+Refer to this section on the [Upgrade Guide: Upgrading from previous versions of EOSIO](../20_upgrade-guide/index.md#upgrading-from-previous-versions-of-eosio).
 
 
 ## Deprecation and Removal Notices
