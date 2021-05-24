@@ -9,7 +9,7 @@
 #include <eosio/chain/types.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/io/cfile.hpp>
-
+#include <appbase/application.hpp>
 namespace eosio {
 
 /*
@@ -87,39 +87,52 @@ class state_history_log {
 
    template <typename F>
    void write_entry(const state_history_log_header& header, const chain::block_id_type& prev_id, F write_payload) {
-      auto block_num = chain::block_header::num_from_id(header.block_id);
-      EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::plugin_exception,
-                 "missed a block in ${name}.log", ("name", name));
+      try {
+         auto block_num = chain::block_header::num_from_id(header.block_id);
+         EOS_ASSERT(_begin_block == _end_block || block_num <= _end_block, chain::plugin_exception,
+                  "missed a block in ${name}.log", ("name", name));
 
-      if (_begin_block != _end_block && block_num > _begin_block) {
-         if (block_num == _end_block) {
-            EOS_ASSERT(prev_id == last_block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
-                       ("name", name));
-         } else {
-            state_history_log_header prev;
-            get_entry(block_num - 1, prev);
-            EOS_ASSERT(prev_id == prev.block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
-                       ("name", name));
+         if (_begin_block != _end_block && block_num > _begin_block) {
+            if (block_num == _end_block) {
+               EOS_ASSERT(prev_id == last_block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+                        ("name", name));
+            } else {
+               state_history_log_header prev;
+               get_entry(block_num - 1, prev);
+               EOS_ASSERT(prev_id == prev.block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+                        ("name", name));
+            }
          }
+
+         if (block_num < _end_block)
+            truncate(block_num);
+         log.seek_end(0);
+         uint64_t pos = log.tellp();
+         write_header(header);
+         write_payload(log);
+         uint64_t end = log.tellp();
+         EOS_ASSERT(end == pos + state_history_log_header_serial_size + header.payload_size, chain::plugin_exception,
+                  "wrote payload with incorrect size to ${name}.log", ("name", name));
+         log.write((char*)&pos, sizeof(pos));
+
+         index.seek_end(0);
+         index.write((char*)&pos, sizeof(pos));
+         if (_begin_block == _end_block)
+            _begin_block = block_num;
+         _end_block    = block_num + 1;
+         last_block_id = header.block_id;
       }
-
-      if (block_num < _end_block)
-         truncate(block_num);
-      log.seek_end(0);
-      uint64_t pos = log.tellp();
-      write_header(header);
-      write_payload(log);
-      uint64_t end = log.tellp();
-      EOS_ASSERT(end == pos + state_history_log_header_serial_size + header.payload_size, chain::plugin_exception,
-                 "wrote payload with incorrect size to ${name}.log", ("name", name));
-      log.write((char*)&pos, sizeof(pos));
-
-      index.seek_end(0);
-      index.write((char*)&pos, sizeof(pos));
-      if (_begin_block == _end_block)
-         _begin_block = block_num;
-      _end_block    = block_num + 1;
-      last_block_id = header.block_id;
+      catch(const chain::plugin_exception& e) {
+         elog( "chain::plugin_exception: ${details}", ("details", e.to_detail_string()) );
+         // Both app().quit() and exception throwing are required. Without app().quit(),
+         // the exception would be caught and drop before reaching main(). The exception is
+         // to ensure the block won't be commited. 
+         appbase::app().quit();
+         EOS_THROW(
+             chain::state_history_write_exception,
+             "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+             "the process");
+      }
    }
 
    // returns cfile positioned at payload

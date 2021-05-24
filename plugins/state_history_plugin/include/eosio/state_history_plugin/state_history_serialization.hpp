@@ -99,7 +99,7 @@ template <typename ST>
 void history_pack_big_bytes(datastream<ST>& ds, const eosio::chain::bytes& v) {
    history_pack_varuint64(ds, v.size());
    if (v.size())
-      ds.write(&v.front(), (uint32_t)v.size());
+      ds.write(&v.front(), v.size());
 }
 
 template <typename ST>

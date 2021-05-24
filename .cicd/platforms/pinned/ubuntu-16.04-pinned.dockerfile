@@ -44,7 +44,7 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
