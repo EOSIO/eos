@@ -112,8 +112,12 @@ try:
     node.publishContract(readtestaccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
 
     Print("Running setup as read-only query")
-    cmd="get contract_query %s setup '[]' -p %s@active" % (readtestaccount.name, readtestaccount.name)
-    node.processCleosCmd(cmd, cmd, False)
+    trx = {
+           "actions": [{"account": readtestaccount.name, "name": "setup",
+                        "authorization": [{"actor": readtestaccount.name, "permission": "active"}],
+                        "data": ""}]
+          }
+    node.pushTransaction(trx, opts='--read-only', permissions=readtestaccount.name)
 
     Print("Verifying kv tables not written")
     cmd="get kv_table %s roqm id" % readtestaccount.name
@@ -131,8 +135,14 @@ try:
     success, transaction = node.pushMessage(readtestaccount.name, 'setup', "{}", '-p readtest1111@active')
 
     Print("Querying combined kv tables")
-    cmd="get contract_query %s get '[]' -p %s@active" % (readtestaccount.name, readtestaccount.name)
-    transaction = node.processCleosCmd(cmd, cmd, False)
+    trx = {
+           "actions": [{"account": readtestaccount.name, "name": "get",
+                        "authorization": [{"actor": readtestaccount.name, "permission": "active"}],
+                        "data": ""}]
+          }
+    success, transaction = node.pushTransaction(trx, opts='--read-only --return-failure-trace', permissions=readtestaccount.name)
+
+    assert success
     assert 8 == len(transaction['result']['action_traces'][0]['return_value_data']), 'Combined kv tables roqm and roqf should contain 8 rows'
 
     testSuccessful=True
