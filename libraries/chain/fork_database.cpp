@@ -9,6 +9,7 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <fc/io/fstream.hpp>
 #include <fstream>
+#include <eosio/chain/versioned_unpack_stream.hpp>
 
 namespace eosio { namespace chain {
    using boost::multi_index_container;
@@ -17,7 +18,7 @@ namespace eosio { namespace chain {
    const uint32_t fork_database::magic_number = 0x30510FDB;
 
    const uint32_t fork_database::min_supported_version = 1;
-   const uint32_t fork_database::max_supported_version = 1;
+   const uint32_t fork_database::max_supported_version = 2;
 
    // work around block_state::is_valid being private
    inline bool block_state_is_valid( const block_state& bs ) {
@@ -122,14 +123,23 @@ namespace eosio { namespace chain {
                        ("max", max_supported_version)
             );
 
+            // The unpack_strm here is used only to unpack `block_header_state` and `block_state`. However, those two
+            // classes are written to unpack based on the snapshot version; therefore,  we orient it to the snapshot version.
+
+            const bool              has_block_header_state_extension = version > min_supported_version;
+            versioned_unpack_stream unpack_strm(
+                ds, has_block_header_state_extension
+                        ? block_header_state::minimum_snapshot_version_with_state_extension
+                        : block_header_state::minimum_snapshot_version_with_state_extension - 1);
+
             block_header_state bhs;
-            fc::raw::unpack( ds, bhs );
+            fc::raw::unpack( unpack_strm, bhs );
             reset( bhs );
 
             unsigned_int size; fc::raw::unpack( ds, size );
             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
                block_state s;
-               fc::raw::unpack( ds, s );
+               fc::raw::unpack( unpack_strm, s );
                // do not populate transaction_metadatas, they will be created as needed in apply_block with appropriate key recovery
                s.header_exts = s.block->validate_and_extract_header_extensions();
                my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
@@ -259,9 +269,9 @@ namespace eosio { namespace chain {
                   "cannot advance root to a block that has not yet been validated" );
 
 
-      vector<block_id_type> blocks_to_remove;
+      deque<block_id_type> blocks_to_remove;
       for( auto b = new_root; b; ) {
-         blocks_to_remove.push_back( b->header.previous );
+         blocks_to_remove.emplace_back( b->header.previous );
          b = get_block( blocks_to_remove.back() );
          EOS_ASSERT( b || blocks_to_remove.back() == my->root->id, fork_database_exception, "invariant violation: orphaned branch was present in forked database" );
       }
@@ -442,9 +452,9 @@ namespace eosio { namespace chain {
 
    /// remove all of the invalid forks built off of this id including this id
    void fork_database::remove( const block_id_type& id ) {
-      vector<block_id_type> remove_queue{id};
+      deque<block_id_type> remove_queue{id};
       const auto& previdx = my->index.get<by_prev>();
-      const auto head_id = my->head->id;
+      const auto& head_id = my->head->id;
 
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          EOS_ASSERT( remove_queue[i] != head_id, fork_database_exception,
@@ -452,7 +462,7 @@ namespace eosio { namespace chain {
 
          auto previtr = previdx.lower_bound( remove_queue[i] );
          while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
-            remove_queue.push_back( (*previtr)->id );
+            remove_queue.emplace_back( (*previtr)->id );
             ++previtr;
          }
       }

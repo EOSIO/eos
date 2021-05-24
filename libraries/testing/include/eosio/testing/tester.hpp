@@ -225,6 +225,7 @@ namespace eosio { namespace testing {
                                                const variant_object& data,
                                                uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                uint32_t delay_sec = 0 );
+         transaction_trace_ptr    push_action_no_produce(action&& act, uint64_t authorizer);
 
 
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
@@ -381,8 +382,6 @@ namespace eosio { namespace testing {
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
             cfg.state_size = 1024*1024*16;
             cfg.state_guard_size = 0;
-            cfg.reversible_cache_size = 1024*1024*8;
-            cfg.reversible_guard_size = 0;
             cfg.contracts_console = true;
             cfg.eosvmoc_config.cache_size = 1024*1024*8;
 
@@ -481,6 +480,10 @@ namespace eosio { namespace testing {
 
       tester(const std::function<void(controller&)>& control_setup, setup_policy policy = setup_policy::full,
              db_read_mode read_mode = db_read_mode::SPECULATIVE);
+
+      tester(const std::function<void(tester&)>& lambda) {
+         lambda(*this);
+      }
 
       using base_tester::produce_block;
 

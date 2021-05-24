@@ -23,13 +23,13 @@ using namespace boost::bimaps;
 namespace {
    /**
     * Structure to hold indirect reference to a `property_object` via {owner,name} as well as a non-standard
-    * index over `last_updated` for roll-back support
+    * index over `last_updated_height` (which is truncated at the LIB during initialization) for roll-back support
     */
    struct permission_info {
       // indexed data
       chain::name    owner;
       chain::name    name;
-      fc::time_point last_updated;
+      uint32_t       last_updated_height;
 
       // un-indexed data
       uint32_t       threshold;
@@ -38,10 +38,10 @@ namespace {
    };
 
    struct by_owner_name;
-   struct by_last_updated;
+   struct by_last_updated_height;
 
    /**
-    * Multi-index providing fast lookup for {owner,name} as well as {last_updated}
+    * Multi-index providing fast lookup for {owner,name} as well as {last_updated_height}
     */
    using permission_info_index_t = multi_index_container<
       permission_info,
@@ -54,8 +54,8 @@ namespace {
             >
          >,
          ordered_non_unique<
-            tag<by_last_updated>,
-            member<permission_info, fc::time_point, &permission_info::last_updated>
+            tag<by_last_updated_height>,
+            member<permission_info, uint32_t, &permission_info::last_updated_height>
          >
       >
    >;
@@ -144,8 +144,19 @@ namespace eosio::chain_apis {
          auto start = fc::time_point::now();
          const auto& index = controller.db().get_index<chain::permission_index>().indices().get<by_id>();
 
+         // build a initial time to block number map
+         const auto lib_num = controller.last_irreversible_block_num();
+         const auto head_num = controller.head_block_num();
+
+         for (uint32_t block_num = lib_num + 1; block_num <= head_num; block_num++) {
+            const auto block_p = controller.fetch_block_by_number(block_num);
+            EOS_ASSERT(block_p, chain::plugin_exception, "cannot fetch reversible block ${block_num}, required for account_db initialization", ("block_num", block_num));
+            time_to_block_num.emplace(block_p->timestamp.to_time_point(), block_num);
+         }
+
          for (const auto& po : index ) {
-            const auto& pi = permission_info_index.emplace( permission_info{ po.owner, po.name, po.last_updated, po.auth.threshold } ).first;
+            uint32_t last_updated_height = last_updated_time_to_height(po.last_updated);
+            const auto& pi = permission_info_index.emplace( permission_info{ po.owner, po.name, last_updated_height, po.auth.threshold } ).first;
             add_to_bimaps(*pi, po);
          }
          auto duration = fc::time_point::now() - start;
@@ -186,14 +197,14 @@ namespace eosio::chain_apis {
 
       bool is_rollback_required( const chain::block_state_ptr& bsp ) const {
          std::shared_lock read_lock(rw_mutex);
-         const auto t = bsp->block->timestamp.to_time_point();
-         const auto& index = permission_info_index.get<by_last_updated>();
+         const auto bnum = bsp->block->block_num();
+         const auto& index = permission_info_index.get<by_last_updated_height>();
 
          if (index.empty()) {
             return false;
          } else {
             const auto& pi = (*index.rbegin());
-            if (pi.last_updated < t) {
+            if (pi.last_updated_height < bnum) {
                return false;
             }
          }
@@ -201,22 +212,47 @@ namespace eosio::chain_apis {
          return true;
       }
 
+      uint32_t last_updated_time_to_height( const fc::time_point& last_updated) {
+         const auto lib_num = controller.last_irreversible_block_num();
+         const auto lib_time = controller.last_irreversible_block_time();
+
+         uint32_t last_updated_height = lib_num;
+         if (last_updated > lib_time) {
+            const auto iter = time_to_block_num.find(last_updated);
+            EOS_ASSERT(iter != time_to_block_num.end(), chain::plugin_exception, "invalid block time encountered in on-chain accounts ${time}", ("time", last_updated));
+            last_updated_height = iter->second;
+         }
+
+         return last_updated_height;
+      }
+
       /**
-       * Given a time_point, remove all permissions that were last updated at or after that time_point
-       * this will effectively remove any updates that happened at or after that time point
+       * Given a block number, remove all permissions that were last updated at or after that block number
+       * this will effectively roll back the database to just before the incoming block
        *
        * For each removed entry, this will create a new entry if there exists an equivalent {owner, name} permission
        * at the HEAD state of the chain.
        * @param bsp - the block to rollback before
        */
       void rollback_to_before( const chain::block_state_ptr& bsp ) {
-         const auto t = bsp->block->timestamp.to_time_point();
-         auto& index = permission_info_index.get<by_last_updated>();
+         const auto bnum = bsp->block->block_num();
+         auto& index = permission_info_index.get<by_last_updated_height>();
          const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
 
+         // roll back time-map
+         auto time_iter = time_to_block_num.rbegin();
+         while (time_iter != time_to_block_num.rend() && time_iter->second >= bnum) {
+            time_iter = decltype(time_iter){time_to_block_num.erase( std::next(time_iter).base() )};
+         }
+
+         auto curr_iter = index.rbegin();
          while (!index.empty()) {
-            const auto& pi = (*index.rbegin());
-            if (pi.last_updated < t) {
+            if (curr_iter == index.rend()) {
+               break;
+            }
+
+            const auto& pi = (*curr_iter);
+            if (pi.last_updated_height < bnum) {
                break;
             }
 
@@ -226,14 +262,18 @@ namespace eosio::chain_apis {
             auto itr = permission_by_owner.find(std::make_tuple(pi.owner, pi.name));
             if (itr == permission_by_owner.end()) {
                // this permission does not exist at this point in the chains history
-               index.erase(index.iterator_to(pi));
+               curr_iter = decltype(curr_iter)( index.erase(index.iterator_to(pi)) );
             } else {
                const auto& po = *itr;
-               index.modify(index.iterator_to(pi), [&po](auto& mutable_pi) {
-                  mutable_pi.last_updated = po.last_updated;
+
+               uint32_t last_updated_height = po.last_updated == bsp->header.timestamp ? bsp->block_num : last_updated_time_to_height(po.last_updated);
+
+               index.modify(index.iterator_to(pi), [&po, last_updated_height](auto& mutable_pi) {
+                  mutable_pi.last_updated_height = last_updated_height;
                   mutable_pi.threshold = po.auth.threshold;
                });
                add_to_bimaps(pi, po);
+               ++curr_iter;
             }
          }
       }
@@ -332,6 +372,11 @@ namespace eosio::chain_apis {
             std::unique_lock write_lock(rw_mutex);
 
             rollback_to_before(bsp);
+
+            // insert this blocks time into the time map
+            time_to_block_num.emplace(bsp->header.timestamp, bsp->block_num);
+
+            const auto bnum = bsp->block_num;
             auto& index = permission_info_index.get<by_owner_name>();
             const auto& permission_by_owner = controller.db().get_index<chain::permission_index>().indices().get<chain::by_owner>();
 
@@ -343,11 +388,11 @@ namespace eosio::chain_apis {
                auto itr = index.find(key);
                if (itr == index.end()) {
                   const auto& po = *source_itr;
-                  itr = index.emplace(permission_info{ po.owner, po.name, po.last_updated, po.auth.threshold }).first;
+                  itr = index.emplace(permission_info{ po.owner, po.name, bnum, po.auth.threshold }).first;
                } else {
                   remove_from_bimaps(*itr);
                   index.modify(itr, [&](auto& mutable_pi){
-                     mutable_pi.last_updated = source_itr->last_updated;
+                     mutable_pi.last_updated_height = bnum;
                      mutable_pi.threshold = source_itr->auth.threshold;
                   });
                }
@@ -440,6 +485,10 @@ namespace eosio::chain_apis {
       const chain::controller&   controller;               ///< the controller to read data from
       cached_trace_map_t         cached_trace_map;         ///< temporary cache of uncommitted traces
       onblock_trace_t            onblock_trace;            ///< temporary cache of on_block trace
+
+      using time_map_t = std::map<fc::time_point, uint32_t>;
+      time_map_t                 time_to_block_num;
+
 
 
       using name_bimap_t = bimap<multiset_of<weighted<chain::permission_level>>, multiset_of<permission_info::cref>>;

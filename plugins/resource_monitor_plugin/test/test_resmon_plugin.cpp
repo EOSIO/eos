@@ -1,6 +1,8 @@
 #define BOOST_TEST_MODULE test_resmom_plugin
 #include <boost/test/included/unit_test.hpp>
 
+#include <thread>
+
 #include <fc/variant_object.hpp>
 
 #include <eosio/resource_monitor_plugin/resource_monitor_plugin.hpp>

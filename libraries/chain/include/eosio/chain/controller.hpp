@@ -78,8 +78,6 @@ namespace eosio { namespace chain {
             path                     state_dir                  = chain::config::default_state_dir_name;
             uint64_t                 state_size                 = chain::config::default_state_size;
             uint64_t                 state_guard_size           = chain::config::default_state_guard_size;
-            uint64_t                 reversible_cache_size      = chain::config::default_reversible_cache_size;
-            uint64_t                 reversible_guard_size      = chain::config::default_reversible_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
             uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
@@ -164,7 +162,8 @@ namespace eosio { namespace chain {
           *
           */
          transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline,
-                                                 uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time );
+                                                 uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time,
+                                                 uint32_t subjective_cpu_bill_us );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
@@ -191,7 +190,6 @@ namespace eosio { namespace chain {
          boost::asio::io_context& get_thread_pool();
 
          const chainbase::database& db()const;
-         const chainbase::database& reversible_db() const;
 
          const fork_database& fork_db()const;
 
@@ -205,6 +203,7 @@ namespace eosio { namespace chain {
          const protocol_feature_manager&       get_protocol_feature_manager()const;
          uint32_t                              get_max_nonprivileged_inline_action_size()const;
          const config&                         get_config()const;
+         uint32_t get_first_block_num() const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
@@ -287,7 +286,6 @@ namespace eosio { namespace chain {
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
          void validate_db_available_size() const;
-         void validate_reversible_available_size() const;
 
          bool is_protocol_feature_activated( const digest_type& feature_digest )const;
          bool is_builtin_activated( builtin_protocol_feature_t f )const;
@@ -295,6 +293,14 @@ namespace eosio { namespace chain {
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
+
+         const security_group_info_t& active_security_group() const;
+         flat_set<account_name> proposed_security_group_participants() const;
+
+         int64_t add_security_group_participants(const flat_set<account_name>& participants);
+         int64_t remove_security_group_participants(const flat_set<account_name>& participants);
+
+         bool in_active_security_group(const flat_set<account_name>& participants) const;
 
          bool light_validation_allowed() const;
          bool skip_auth_check()const;

@@ -432,20 +432,11 @@ namespace impl {
                      binary_to_variant_context _ctx(*abi, ctx, type);
                      _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
-                     mvo("hex_data", act.data);
-                  } catch(...) {
-                     // any failure to serialize data, then leave as not serailzed
-                     mvo("data", act.data);
-                  }
-               } else {
-                  mvo("data", act.data);
+                  } catch(...) {}
                }
-            } else {
-               mvo("data", act.data);
             }
-         } catch(...) {
-            mvo("data", act.data);
-         }
+         }catch(...) {}
+         mvo("hex_data", act.data);
          out(name, std::move(mvo));
       }
 
@@ -829,7 +820,7 @@ namespace impl {
             }
          }
 
-         if( !valid_empty_data && act.data.empty() ) {
+         if( ( !valid_empty_data && act.data.empty() ) || !vo.contains( "data" )  ) {
             if( vo.contains( "hex_data" ) ) {
                const auto& data = vo["hex_data"];
                if( data.is_string() ) {
@@ -875,7 +866,6 @@ namespace impl {
          // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
          // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
          if (vo.contains("deferred_transaction_generation")) {
-            std::cerr << "has deferred_transaction_generation\n";
             deferred_transaction_generation_context deferred_transaction_generation;
             from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
             emplace_extension(
@@ -885,7 +875,6 @@ namespace impl {
             );
             // if both are present, they need to match
             if (vo.contains("transaction_extensions")) {
-               std::cerr << "also has transaction_extensions\n";
                extensions_type trx_extensions;
                from_variant(vo["transaction_extensions"], trx_extensions);
                EOS_ASSERT(trx.transaction_extensions == trx_extensions, packed_transaction_type_exception,
@@ -893,7 +882,6 @@ namespace impl {
             }
          }
          else if (vo.contains("transaction_extensions")) {
-            std::cerr << "has transaction_extensions\n";
             from_variant(vo["transaction_extensions"], trx.transaction_extensions);
          }
       }

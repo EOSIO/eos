@@ -1,0 +1,88 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [
+        {
+            "new_type_name": "participants_t",
+            "type": "name[]"
+        }
+    ],
+    "structs": [
+        {
+            "name": "add",
+            "base": "",
+            "fields": [
+                {
+                    "name": "participants",
+                    "type": "participants_t"
+                }
+            ]
+        },
+        {
+            "name": "clear",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "publish",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "remove",
+            "base": "",
+            "fields": [
+                {
+                    "name": "participants",
+                    "type": "participants_t"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "add",
+            "type": "add",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "clear",
+            "type": "clear",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "publish",
+            "type": "publish",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "remove",
+            "type": "remove",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "clear",
+            "result_type": "bool"
+        },
+        {
+            "name": "publish",
+            "result_type": "bool"
+        }
+    ]
+}

@@ -498,7 +498,8 @@ namespace eosio { namespace chain {
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )
       FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,          controller_emit_signal_exception,
                                    3140001, "Block does not match checkpoint" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( state_history_write_exception, controller_emit_signal_exception,
+                                   3140002, "State history write error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                           chain_exception,
                                  3015000, "ABI exception" )
@@ -681,4 +682,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( state_history_exception,    chain_exception,
                                  3280000, "State history exception" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( ssl_exception, chain_exception,
+                                 3290000, "SSL exception")
+
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_incomplete_configuration, ssl_exception,
+                                    3290001, "Incomplete SSL configuration")
+      FC_DECLARE_DERIVED_EXCEPTION( ssl_configuration_error, ssl_exception,
+                                    3290002, "SSL configuration error")
 } } // eosio::chain

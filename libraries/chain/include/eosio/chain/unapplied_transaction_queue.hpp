@@ -106,7 +106,7 @@ public:
          if( deadline <= fc::time_point::now() ) {
             return false;
          }
-         callback( itr->id(), itr->trx_type );
+         callback( itr->trx_meta->packed_trx(), itr->trx_type );
          if( itr->next ) {
             itr->next( std::static_pointer_cast<fc::exception>(
                   std::make_shared<expired_tx_exception>(

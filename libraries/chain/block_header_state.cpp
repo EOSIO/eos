@@ -167,6 +167,8 @@ namespace eosio { namespace chain {
          result.producer_to_last_implied_irb[proauth.producer_name] = dpos_proposed_irreversible_blocknum;
       }
 
+      result.security_group = get_security_group_info();
+
       return result;
    }
 
@@ -313,6 +315,8 @@ namespace eosio { namespace chain {
       }
 
       result.activated_protocol_features = std::move( new_activated_protocol_features );
+
+      result.set_security_group_info(std::move(security_group));
 
       return result;
    }
