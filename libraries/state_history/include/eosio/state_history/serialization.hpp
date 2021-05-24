@@ -720,19 +720,31 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v0& obj) {
    return ds;
 }
 
-
 template <typename ST>
-ST& operator<<(ST& ds, const eosio::state_history::optional_signed_block& obj) {
+void pack_for_blocks_result_v1(ST& ds, const eosio::state_history::signed_block_ptr_variant& obj) {
    uint8_t which = obj.index();
-
    std::visit([&ds, which](const auto& ptr) {
       fc::raw::pack(ds, bool(ptr));
       if (ptr) {
          fc::raw::pack(ds, which);
          fc::raw::pack(ds, *ptr);
+      } 
+   }, obj);
+}
+
+template <typename ST>
+void pack_for_blocks_result_v2(ST& ds, const eosio::state_history::signed_block_ptr_variant& obj) {
+   uint8_t which = obj.index();
+   std::visit([&ds, which](const auto& ptr) {
+      if (ptr) {
+         fc::datastream<std::vector<char>> strm;
+         fc::raw::pack(strm, which);
+         fc::raw::pack(strm, *ptr);
+         fc::raw::pack(ds, strm.storage());
+      } else {
+         fc::raw::pack(ds, unsigned_int(0));
       }
    }, obj);
-   return ds;
 }
 
 template <typename ST>
@@ -741,7 +753,21 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v1& obj) {
    fc::raw::pack(ds, obj.last_irreversible);
    fc::raw::pack(ds, obj.this_block);
    fc::raw::pack(ds, obj.prev_block);
-   fc::raw::pack(ds, obj.block);
+   pack_for_blocks_result_v1(ds, obj.block);
+   fc::raw::pack(ds, obj.traces);
+   fc::raw::pack(ds, obj.deltas);
+   return ds;
+}
+
+
+template <typename ST>
+ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v2& obj) {
+   fc::raw::pack(ds, obj.head);
+   fc::raw::pack(ds, obj.last_irreversible);
+   fc::raw::pack(ds, obj.this_block);
+   fc::raw::pack(ds, obj.prev_block);
+   pack_for_blocks_result_v2(ds, obj.block);
+   fc::raw::pack(ds, obj.block_header);
    fc::raw::pack(ds, obj.traces);
    fc::raw::pack(ds, obj.deltas);
    return ds;
