@@ -3179,7 +3179,15 @@ namespace eosio {
          peer_requested.reset();
          flush_queues();
       } else {
-         peer_requested = peer_sync_state( msg.start_block, msg.end_block, msg.start_block-1);
+         if (peer_requested) {
+            // This happens when peer already requested some range and sync is still in progress
+            // It could be higher in case of peer requested head catchup and current request is lib catchup
+            // So to make sure peer will receive all requested blocks we assign end_block to highest value
+            peer_requested->end_block = std::max(msg.end_block, peer_requested->end_block);
+         }
+         else {
+            peer_requested = peer_sync_state( msg.start_block, msg.end_block, msg.start_block-1);
+         }
          enqueue_sync_block();
       }
    }
@@ -3677,6 +3685,7 @@ namespace eosio {
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
+         my->p2p_reject_incomplete_blocks = options.at("p2p-reject-incomplete-blocks").as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
          my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() );

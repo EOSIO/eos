@@ -1,5 +1,6 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <boost/test/unit_test.hpp>
 
