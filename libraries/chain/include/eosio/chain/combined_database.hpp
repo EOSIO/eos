@@ -4,7 +4,6 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
-#include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/genesis_state.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/snapshot.hpp>
@@ -22,7 +21,6 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/protocol_state_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/controller.hpp>
@@ -129,8 +127,8 @@ namespace eosio { namespace chain {
       void read_from_snapshot(const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end,
                               eosio::chain::authorization_manager& authorization,
                               eosio::chain::resource_limits::resource_limits_manager& resource_limits,
-                              eosio::chain::fork_database& fork_db, eosio::chain::block_state_ptr& head,
-                              uint32_t& snapshot_head_block, const eosio::chain::chain_id_type& chain_id);
+                              eosio::chain::block_state_ptr& head, uint32_t& snapshot_head_block,
+                              const eosio::chain::chain_id_type& chain_id);
 
       auto &get_db(void) const { return db; }
       auto &get_kv_undo_stack(void) const { return kv_undo_stack; }

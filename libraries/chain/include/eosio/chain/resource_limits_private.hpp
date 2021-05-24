@@ -121,6 +121,71 @@ namespace eosio { namespace chain { namespace resource_limits {
          }
       };
 
+      /**
+       *  This class accumulates a value that decays over quantums based on inputs
+       *  The decay is linear between updates and exponential if the set of inputs has no gaps
+       *
+       *  The value stored is Precision times the sum of the inputs.
+       */
+      template<uint64_t Precision = config::rate_limiting_precision>
+      struct exponential_decay_accumulator
+      {
+         static_assert( Precision > 0, "Precision must be positive" );
+         static constexpr uint64_t max_raw_value = std::numeric_limits<uint64_t>::max() / Precision;
+
+         exponential_decay_accumulator()
+         : last_ordinal(0)
+         , value_ex(0)
+         {
+         }
+
+         uint32_t   last_ordinal;  ///< The ordinal of the last period which has contributed to the accumulator
+         uint64_t   value_ex;      ///< The current accumulated value pre-multiplied by Precision
+
+         /**
+          * return the extended value at a current or future ordinal
+          */
+         uint64_t value_ex_at( uint32_t ordinal, uint32_t window_size ) const {
+            if( last_ordinal < ordinal ) {
+               if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
+                  const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size
+                  const auto decay = make_ratio(
+                          (uint128_t)window_size - delta,
+                          (uint128_t)window_size
+                  );
+
+                  return downgrade_cast<uint64_t>((uint128_t)value_ex * decay);
+               } else {
+                  return 0;
+               }
+            } else {
+               return value_ex;
+            }
+         }
+
+         /**
+          * return the value at a current or future ordinal
+          */
+         uint64_t value_at( uint32_t ordinal, uint32_t window_size ) const {
+            return integer_divide_ceil(value_ex_at(ordinal, window_size), Precision);
+         }
+
+         void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
+         {
+            // check for some numerical limits before doing any state mutations
+            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+
+            uint128_t units_ex = (uint128_t)units * Precision;
+            if (last_ordinal < ordinal) {
+               value_ex = value_ex_at(ordinal, window_size);
+               last_ordinal = ordinal;
+            }
+
+            // saturate the value
+            uint128_t new_value_ex = std::min<uint128_t>(units_ex + (uint128_t)value_ex, std::numeric_limits<uint64_t>::max());
+            value_ex = downgrade_cast<uint64_t>(new_value_ex);
+         }
+      };
    }
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;

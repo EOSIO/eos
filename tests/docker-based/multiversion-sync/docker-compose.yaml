@@ -1,0 +1,65 @@
+version: "3.9"
+
+x-producer: &default-producer
+  image: ${BUILD_IMAGE:-eosio/ci-contracts-builder:base-ubuntu-18.04-develop}
+  command:
+    - producer.sh
+    - --config-dir
+    - /etc/eosio
+  healthcheck: &nodeos_health_check
+    # check if the head block advance in a 3s interval
+    test: ["CMD", "check_block_advance.sh", "head", "3"]
+    interval: 1m
+    timeout: 30s
+    retries: 1
+    start_period: 10s
+  volumes:
+    - ./config.ini:/etc/eosio/config.ini
+    - ./check_block_advance.sh:/usr/local/bin/check_block_advance.sh
+    - ./producer.sh:/usr/local/bin/producer.sh
+    - producer-keys:/etc/eosio/producers:rw
+
+services:
+  bios:
+    image: eosio/ci-contracts-builder:base-ubuntu-18.04-master
+    command:
+      - nodeos 
+      - --enable-stale-production 
+      - --producer-name 
+      - eosio 
+      - --plugin 
+      - eosio::producer_api_plugin 
+      - --config-dir
+      - /etc/eosio
+    healthcheck: 
+      <<: *nodeos_health_check
+    volumes:
+      - ./config.ini:/etc/eosio/config.ini
+      - ./check_block_advance.sh:/usr/local/bin/check_block_advance.sh
+
+  bootstrap:
+    image: eosio/ci-contracts-builder:base-ubuntu-18.04-master
+    command:
+      - bash 
+      - -c
+      - "boot.sh && sleep 60 && [[ 'defproducera defproducerb' == `producers_from_irreversible_blocks.sh bios` ]]"
+    volumes:
+      - ./boot.sh:/usr/local/bin/boot.sh
+      - ./producers_from_irreversible_blocks.sh:/usr/local/bin/producers_from_irreversible_blocks.sh
+      - producer-keys:/etc/eosio/producers:ro
+
+  defproducera:
+    hostname: defproducera
+    <<: *default-producer
+    environment:
+      peers: "bios:9876"
+
+  defproducerb:
+    hostname: defproducerb
+    <<: *default-producer
+    image: eosio/ci-contracts-builder:base-ubuntu-18.04-master
+    environment:
+      peers: "bios:9876;defproducera:9876"
+    
+volumes:
+  producer-keys:
