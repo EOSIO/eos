@@ -577,7 +577,7 @@ public:
 
    struct push_ro_transaction_params {
       name account_name;
-      bool return_failure_traces;
+      bool return_failure_traces = false;
       fc::variant transaction;
    };
 
