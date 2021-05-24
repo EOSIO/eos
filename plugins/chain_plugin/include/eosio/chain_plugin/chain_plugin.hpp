@@ -42,6 +42,8 @@ namespace eosio {
    using chain::abi_def;
    using chain::abi_serializer;
 
+class producer_plugin;
+
 namespace chain_apis {
 struct empty{};
 
@@ -83,12 +85,14 @@ class read_only {
    const fc::optional<account_query_db>& aqdb;
    const fc::microseconds abi_serializer_max_time;
    bool  shorten_abi_errors = true;
+   const producer_plugin* producer_plug;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db, const fc::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time)
-      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_only(const controller& db, const fc::optional<account_query_db>& aqdb, const fc::microseconds& abi_serializer_max_time, const producer_plugin* producer_plug)
+      : db(db), aqdb(aqdb), abi_serializer_max_time(abi_serializer_max_time), producer_plug(producer_plug) {
+   }
 
    void validate() const {}
 
@@ -167,6 +171,8 @@ public:
       fc::variant                refund_request;
       fc::variant                voter_info;
       fc::variant                rex_info;
+
+      optional<account_resource_limit> subjective_cpu_bill_limit;
    };
 
    struct get_account_params {
@@ -798,7 +804,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (tr
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
-            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info) )
+            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info)(subjective_cpu_bill_limit) )
 // @swap code_hash
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )
