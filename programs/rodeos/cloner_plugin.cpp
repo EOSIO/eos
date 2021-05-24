@@ -180,6 +180,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->head && result.this_block->block_num > rodeos_snapshot->head + 1)
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
+      uint64_t start_time = fc::time_point::now().time_since_epoch().count();
       if (end_block_time.time_since_epoch().count()) {
          auto wait_block_span = fc_create_trace_with_start_time("wait_block_span", end_block_time);
          fc_add_tag( wait_block_span, "block_id", to_string( result.this_block->block_id ) );
@@ -237,7 +238,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       //    ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
 
       fc_trace_log(blk_span, "rodeos-received done block_num=${block_num} latency=${l} us, duration=${d} us",
-                   ("block_num", result.this_block->block_num)("l", now > rodeos_block_timestamp ? (now - rodeos_block_timestamp): 0)("d", (now - ship_client::msg_finished_read_time)));
+                   ("block_num", result.this_block->block_num)("l", now > rodeos_block_timestamp ? (now - rodeos_block_timestamp): 0)("d", (now - start_time)));
 
       end_block_time = fc::time_point::now();
       return true;
