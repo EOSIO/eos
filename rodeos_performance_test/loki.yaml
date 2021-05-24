@@ -43,16 +43,24 @@ services:
     ports:
         - 3000:3000
 
-  producer: 
+  producer:
+    depends_on:
+        - loki 
     logging: *logging
     
   ship:
+    depends_on:
+        - loki
     logging: *logging
 
   rodeos:
+    depends_on:
+        - loki
     logging: *logging
 
   bootstrap:
+    depends_on:
+        - loki
     logging: *logging
 
 
