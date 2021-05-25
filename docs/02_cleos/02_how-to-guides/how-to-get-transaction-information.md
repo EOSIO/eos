@@ -5,27 +5,23 @@ This how-to guide provides instructions on how to retrieve infomation of an EOSI
 The example in this how-to retrieves transaction information associated with the creation of the account **bob**. 
 
 ## Before you begin
+
 Make sure you meet the following requirements:
 * Install the currently supported version of `cleos`.
-
 [[info | Note]]
 | `cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install `cleos`.
-
-
-
 * Understand how transactions work in an EOSIO blockchain. For more information on transactions, see the [Transactions Protocol](https://developers.eos.io/welcome/latest/protocol-guides/transactions_protocol) section.
 
 ## Command Reference
-See the following reference guide for command line usage and related options for the cleos command:
 
+See the following reference guide for `cleos` command line usage and related options:
 * [`cleos get transaction`](../03_command-reference/get/transaction.md) command and its parameters
-
 
 ## Procedure
 
 The following step shows how to retrieve transaction information associated with the creation of the account **bob**.
 
-1. Retrieve transaction information by:
+1. Retrieve transaction information by transaction ID:
 ```sh
 cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedadada9b1
 ```
@@ -33,10 +29,9 @@ cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedad
 
 **Example Output**
 
-The following example shows detailed information of the transaction:
+The `cleos` command returns detailed information of the transaction:
 
-```console
-cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedadada9b1
+```json
 {
   "id": "870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedadada9b1",
   "trx": {
@@ -180,22 +175,24 @@ cleos get transaction 870a6b6e3882061ff0f64016e1eedfdd9439e2499bf978c3fb29fcedad
 ```
 
 [[info]]
-| Be aware that you need to connect to a `nodeos` instance that enables history API plugin to query transaction information.
+| Be aware that you need to connect to a `nodeos` instance that enables both the [history plugin](../../01_nodeos/03_plugins/history_plugin/index.md) and [history API plugin](../../01_nodeos/03_plugins/history_api_plugin/index.md) to query transaction information.
 
 ## Summary
-By following these instructions, you are able to retrieve transaction information using a transaction ID. 
 
+By following these instructions, you are able to retrieve transaction information using a transaction ID. 
 
 ## Trobleshooting
 
-If the history API plugin is not enabled in the `nodeos` **config.ini file**, the `cleos get transaction id` command will result in an error as shown below:
+If the [history plugin](../../01_nodeos/03_plugins/history_plugin/index.md) and [history API plugin](../../01_nodeos/03_plugins/history_api_plugin/index.md) are not enabled in the `nodeos` **config.ini file**, the `cleos get transaction id` command will result in an error as shown below:
 
-```console
+```sh
 cleos get transaction 509eee3aa8988d533a336fec7a4c8b067ae3205cd97e2d27b3e9a2da61ef460c
+```
+```console
 Error 3110003: Missing History API Plugin
 Ensure that you have eosio::history_api_plugin added to your node's configuration!
 Error Details:
 History API plugin is not enabled
 ```
 
-To troubleshoot this error, enable the history API plugin and run the command again. 
+To troubleshoot this error, enable the [history plugin](../../01_nodeos/03_plugins/history_plugin/index.md) and [history API plugin](../../01_nodeos/03_plugins/history_api_plugin/index.md), then run the command again. 
