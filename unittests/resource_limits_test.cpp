@@ -746,7 +746,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
       txn.sign( t.get_private_key(payee_acct, "active"), t.control->get_chain_id() );
 
-      BOOST_REQUIRE_THROW(t.push_transaction(txn), transaction_exception);
+      BOOST_REQUIRE_THROW(t.push_transaction(txn), unsatisfied_authorization);
 
    } FC_LOG_AND_RETHROW()
 

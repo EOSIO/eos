@@ -1218,10 +1218,6 @@ struct controller_impl {
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
 
-            if (self.is_builtin_activated(builtin_protocol_feature_t::resource_payer)) {
-               EOS_ASSERT(trn.contains_auth(trn.resource_payer(true)), transaction_exception, "resource payer has not authorized" );
-            }
-
             if( trx->implicit ) {
                EOS_ASSERT( !explicit_net_usage_words, transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
@@ -1240,9 +1236,12 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
+               auto payer = trn.resource_payer_info(self.is_builtin_activated(builtin_protocol_feature_t::resource_payer));
+
                authorization.check_authorization(
                        trn.actions,
                        trx->recovered_keys(),
+                       payer,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
