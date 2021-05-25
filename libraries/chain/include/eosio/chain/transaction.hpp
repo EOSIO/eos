@@ -129,15 +129,6 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      bool contains_auth(const account_name n)const {
-         for( const auto& a : actions ) {
-            for( const auto& u : a.authorization ) {
-               if (u.actor == n) { return true; }
-            }
-         }
-         return n == account_name();
-      }
-
       account_name resource_payer(bool)const;
       std::optional<resource_payer_t> resource_payer_info( bool is_resource_payer_pf_activated ) const;
 
