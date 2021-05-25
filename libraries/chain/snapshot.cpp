@@ -47,9 +47,10 @@ void variant_snapshot_reader::validate() const {
    EOS_ASSERT(version.is_integer(), snapshot_validation_exception,
          "Variant snapshot version is not an integer");
 
-   EOS_ASSERT(version.as_uint64() == (uint64_t)current_snapshot_version, snapshot_validation_exception,
-         "Variant snapshot is an unsuppored version.  Expected : ${expected}, Got: ${actual}",
-         ("expected", current_snapshot_version)("actual",o["version"].as_uint64()));
+   uint64_t got_version = version.as_uint64();
+   EOS_ASSERT(got_version >= minimum_snapshot_version && got_version<= current_snapshot_version, snapshot_validation_exception,
+         "Variant snapshot is an unsupported version.  Expected : [${min_version}, ${current}] , Got: ${actual}",
+         ("min_version", minimum_snapshot_version) ("current", current_snapshot_version)("actual",got_version));
 
    EOS_ASSERT(o.contains("sections"), snapshot_validation_exception,
          "Variant snapshot has no sections");
@@ -217,12 +218,11 @@ void istream_snapshot_reader::validate() const {
                  "Binary snapshot has unexpected magic number!");
 
       // validate version
-      auto expected_version = current_snapshot_version;
-      decltype(expected_version) actual_version;
-      snapshot.read((char*)&actual_version, sizeof(actual_version));
-      EOS_ASSERT(actual_version == expected_version, snapshot_exception,
-                 "Binary snapshot is an unsuppored version.  Expected : ${expected}, Got: ${actual}",
-                 ("expected", expected_version)("actual", actual_version));
+      uint32_t version;
+      snapshot.read((char*)&version, sizeof(version));
+      EOS_ASSERT(version > 0 && version <= current_snapshot_version, snapshot_exception,
+                 "Binary snapshot is an unsupported version.  version is ${actual} while code supports version(s) [1,${max}]",
+                 ("max", current_snapshot_version)("actual", version));
 
       while (validate_section()) {}
    } catch( const std::exception& e ) {  \
@@ -328,7 +328,8 @@ void istream_snapshot_reader::set_section( const string& section_name ) {
 }
 
 bool istream_snapshot_reader::read_row( detail::abstract_snapshot_row_reader& row_reader ) {
-   row_reader.provide(snapshot);
+   versioned_unpack_stream unpack_strm(snapshot, chain_snapshot_version);
+   row_reader.provide(unpack_strm);
    return ++cur_row < num_rows;
 }
 

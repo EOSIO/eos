@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
-    autotools-dev python2.7 python2.7-dev python3 python3-dev \
+    autotools-dev python2.7 python2.7-dev python3 python3-dev python3-pip python3-requests \
     autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev \
     libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang-7 vim-common jq g++ gnupg && \
     apt-get clean && \
@@ -20,7 +20,7 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.
     make install && \
     rm -rf cmake-3.16.2.tar.gz cmake-3.16.2
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=/usr/local && \

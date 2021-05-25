@@ -61,7 +61,7 @@ try:
         loadSystemContract=False,
         specificExtraNodeosArgs={
             0: "--plugin eosio::state_history_plugin --trace-history --disable-replay-opts --sync-fetch-span 200 --state-history-endpoint 127.0.0.1:8080 --plugin eosio::net_api_plugin --enable-stale-production",
-            2: "--validation-mode light "})
+            2: "--validation-mode light --p2p-reject-incomplete-blocks 0"})
 
     producerNodeIndex = 0
     producerNode = cluster.getNode(producerNodeIndex)
@@ -173,7 +173,7 @@ try:
         Utils.Print("Pre waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPreInfo, indent=1), json.dumps(fvnPreInfo, indent=1), json.dumps(lvnPreInfo, indent=1)))
         Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
 
-    assert headAdvanced, "the light validation node stops syncing"
+    assert headAdvanced or lvnPostInfo["head_block_num"] >= cfTrxBlockNum, "the light validation node stops syncing"
 
     fullValidationNode.waitForBlock(cfTrxBlockNum-1, blockType=BlockType.lib, timeout=WaitSpec.calculate(), errorContext="fullValidationNode LIB did not advance")
     Utils.Print("Ensure full validation node stops syncing")
@@ -186,7 +186,7 @@ try:
         Utils.Print("Post light validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPostInfo, indent=1), json.dumps(fvnPostInfo, indent=1), json.dumps(lvnPostInfo, indent=1)))
         Utils.Print("Post full validation waiting info for each node:\nproducer: {}\nfull: {},\nlight: {}".format(json.dumps(pvnPost2Info, indent=1), json.dumps(fvnPost2Info, indent=1), json.dumps(lvnPost2Info, indent=1)))
 
-    assert not headAdvanced, "the full validation node is still syncing"
+    assert (not headAdvanced) or (fvnPost2Info["head_block_num"] < cfTrxBlockNum), "the full validation node is still syncing"
 
     testSuccessful = True
 finally:

@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev \
-    python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
+    python2.7 python2.7-dev python3 python3-pip python3-requests python3-dev autoconf libtool curl zlib1g-dev \
     sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
@@ -35,7 +35,7 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \

@@ -359,13 +359,16 @@ ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::chain_config>&
 
 template <typename ST>
 ST& operator<<(ST& ds, const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(1));
+   const fc::unsigned_int global_property_version = 2;
+   fc::raw::pack(ds, global_property_version);
    fc::raw::pack(ds, as_type<std::optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
    fc::raw::pack(ds, as_type<eosio::chain::chain_id_type>(obj.obj.chain_id));
-
+   fc::raw::pack(ds, as_type<eosio::chain::kv_database_config>(obj.obj.kv_configuration));
+   fc::raw::pack(ds, as_type<eosio::chain::wasm_config>(obj.obj.wasm_configuration));
+   fc::raw::pack(ds, eosio::chain::get_gpo_extension(obj.obj));
    return ds;
 }
 
@@ -720,19 +723,31 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v0& obj) {
    return ds;
 }
 
-
 template <typename ST>
-ST& operator<<(ST& ds, const eosio::state_history::optional_signed_block& obj) {
+void pack_for_blocks_result_v1(ST& ds, const eosio::state_history::signed_block_ptr_variant& obj) {
    uint8_t which = obj.index();
-
    std::visit([&ds, which](const auto& ptr) {
       fc::raw::pack(ds, bool(ptr));
       if (ptr) {
          fc::raw::pack(ds, which);
          fc::raw::pack(ds, *ptr);
+      } 
+   }, obj);
+}
+
+template <typename ST>
+void pack_for_blocks_result_v2(ST& ds, const eosio::state_history::signed_block_ptr_variant& obj) {
+   uint8_t which = obj.index();
+   std::visit([&ds, which](const auto& ptr) {
+      if (ptr) {
+         fc::datastream<std::vector<char>> strm;
+         fc::raw::pack(strm, which);
+         fc::raw::pack(strm, *ptr);
+         fc::raw::pack(ds, strm.storage());
+      } else {
+         fc::raw::pack(ds, unsigned_int(0));
       }
    }, obj);
-   return ds;
 }
 
 template <typename ST>
@@ -741,7 +756,21 @@ ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v1& obj) {
    fc::raw::pack(ds, obj.last_irreversible);
    fc::raw::pack(ds, obj.this_block);
    fc::raw::pack(ds, obj.prev_block);
-   fc::raw::pack(ds, obj.block);
+   pack_for_blocks_result_v1(ds, obj.block);
+   fc::raw::pack(ds, obj.traces);
+   fc::raw::pack(ds, obj.deltas);
+   return ds;
+}
+
+
+template <typename ST>
+ST& operator<<(ST& ds, const eosio::state_history::get_blocks_result_v2& obj) {
+   fc::raw::pack(ds, obj.head);
+   fc::raw::pack(ds, obj.last_irreversible);
+   fc::raw::pack(ds, obj.this_block);
+   fc::raw::pack(ds, obj.prev_block);
+   pack_for_blocks_result_v2(ds, obj.block);
+   fc::raw::pack(ds, obj.block_header);
    fc::raw::pack(ds, obj.traces);
    fc::raw::pack(ds, obj.deltas);
    return ds;

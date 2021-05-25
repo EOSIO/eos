@@ -225,6 +225,7 @@ namespace eosio { namespace testing {
                                                const variant_object& data,
                                                uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                uint32_t delay_sec = 0 );
+         transaction_trace_ptr    push_action_no_produce(action&& act, uint64_t authorizer);
 
 
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
@@ -479,6 +480,10 @@ namespace eosio { namespace testing {
 
       tester(const std::function<void(controller&)>& control_setup, setup_policy policy = setup_policy::full,
              db_read_mode read_mode = db_read_mode::SPECULATIVE);
+
+      tester(const std::function<void(tester&)>& lambda) {
+         lambda(*this);
+      }
 
       using base_tester::produce_block;
 

@@ -294,6 +294,14 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_authority> producers );
 
+         const security_group_info_t& active_security_group() const;
+         flat_set<account_name> proposed_security_group_participants() const;
+
+         int64_t add_security_group_participants(const flat_set<account_name>& participants);
+         int64_t remove_security_group_participants(const flat_set<account_name>& participants);
+
+         bool in_active_security_group(const flat_set<account_name>& participants) const;
+
          bool light_validation_allowed() const;
          bool skip_auth_check()const;
          bool skip_trx_checks()const;
@@ -365,7 +373,7 @@ namespace eosio { namespace chain {
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj, const abi_serializer::yield_function_t& yield ) {
+         fc::variant to_variant_with_abi( const T& obj, const abi_serializer::yield_function_t& yield ) const {
             fc::variant pretty_output;
             abi_serializer::to_variant( obj, pretty_output,
                                         [&]( account_name n ){ return get_abi_serializer( n, yield ); }, yield );
