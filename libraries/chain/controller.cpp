@@ -252,6 +252,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::kv_database>();
       set_activation_handler<builtin_protocol_feature_t::configurable_wasm_limits>();
       set_activation_handler<builtin_protocol_feature_t::blockchain_parameters>();
+      set_activation_handler<builtin_protocol_feature_t::security_group>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -322,7 +323,7 @@ struct controller_impl {
          EOS_ASSERT( root_id == log_head->calculate_id(), fork_database_exception, "fork database root does not match block log head" );
       } else {
          EOS_ASSERT( fork_db.root()->block_num == lib_num, fork_database_exception,
-                     "empty block log expects the first appended block to build off a block that is not the fork database root" );
+                     "empty block log expects the first appended block to build off a block that is not the fork database root. root block number: ${block_num}, lib: ${lib_num}", ("block_num", fork_db.root()->block_num) ("lib_num", lib_num) );
       }
 
       auto fork_head = (read_mode == db_read_mode::IRREVERSIBLE) ? fork_db.pending_head() : fork_db.head();
@@ -1274,8 +1275,8 @@ struct controller_impl {
             emit(self.applied_transaction, std::tie(trace, trx->packed_trx()));
 
 
-            if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
-               //this may happen automatically in destructor, but I prefere make it more explicit
+            if ( (read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete) || trx->read_only ) {
+               //this may happen automatically in destructor, but I prefer to make it more explicit
                trx_context.undo();
             } else {
                restore.cancel();
@@ -1430,6 +1431,29 @@ struct controller_impl {
                gp.proposed_schedule.version=0;
                gp.proposed_schedule.producers.clear();
             });
+         }
+
+         if (gpo.proposed_security_group_block_num) {
+            if (gpo.proposed_security_group_block_num <= pbhs.dpos_irreversible_blocknum) {
+
+               // Promote proposed security group to pending.
+               if( !replay_head_time ) {
+                  ilog( "promoting proposed security group (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} participants: ${participants} ",
+                        ("proposed_num", gpo.proposed_security_group_block_num)("n", pbhs.block_num)
+                        ("lib", pbhs.dpos_irreversible_blocknum)
+                        ("participants",  gpo.proposed_security_group_participants ) );
+               }
+
+               ++bb._pending_block_header_state.security_group.version;
+               bb._pending_block_header_state.security_group.participants = {
+                  gpo.proposed_security_group_participants.begin(),
+                  gpo.proposed_security_group_participants.end()};
+
+               db.modify(gpo, [&](auto& gp) { 
+                  gp.proposed_security_group_block_num = 0; 
+                  gp.proposed_security_group_participants.clear(); 
+               });
+            }
          }
 
          try {
@@ -1672,7 +1696,7 @@ struct controller_impl {
                   } else {
                      packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr
                      auto fut = transaction_metadata::start_recover_keys(
-                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum(), transaction_metadata::trx_type::input );
                      trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
                   }
                }
@@ -1736,6 +1760,9 @@ struct controller_impl {
          if( !use_bsp_cached ) {
             bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
          }
+
+         auto& pbsh = ab._pending_block_header_state;
+         bsp->set_security_group_info(std::move(pbsh.security_group));
          // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
 
@@ -2232,6 +2259,37 @@ struct controller_impl {
       return deep_mind_logger;
    }
 
+   int64_t propose_security_group(std::function<void(flat_set<account_name>&)> && modify_participants) {
+      const auto& gpo           = self.get_global_properties();
+      auto        cur_block_num = head->block_num + 1;
+
+      if (!self.is_builtin_activated(builtin_protocol_feature_t::security_group)) {
+         return -1;
+      }
+
+      flat_set<account_name> proposed_participants = gpo.proposed_security_group_block_num == 0
+                              ? self.active_security_group().participants
+                              : flat_set<account_name>{gpo.proposed_security_group_participants.begin(),
+                                                       gpo.proposed_security_group_participants.end()};
+
+      auto orig_participants_size = proposed_participants.size();
+
+      modify_participants(proposed_participants);
+
+      if (orig_participants_size == proposed_participants.size()) {
+         // no changes in the participants
+         return -1;
+      }
+
+      db.modify(gpo, [&proposed_participants, cur_block_num](auto& gp) {
+         gp.proposed_security_group_block_num    = cur_block_num;
+         gp.set_proposed_security_group_participants(proposed_participants.begin(),
+                                                     proposed_participants.end());
+      });
+
+      return 0;
+   }
+
 }; /// controller_impl
 
 const resource_limits_manager&   controller::get_resource_limits_manager()const
@@ -2677,8 +2735,8 @@ std::optional<block_id_type> controller::pending_producer_block_id()const {
 }
 
 const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
-   return my->pending->get_trx_receipts();
+   static deque<transaction_receipt> empty;
+   return my->pending ? my->pending->get_trx_receipts() : empty;
 }
 
 uint32_t controller::last_irreversible_block_num() const {
@@ -2815,6 +2873,44 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
       gp.proposed_schedule = sch.to_shared(gp.proposed_schedule.producers.get_allocator());
    });
    return version;
+}
+
+const security_group_info_t& controller::active_security_group() const {
+   if( !(my->pending) )
+      return  my->head->get_security_group_info();
+
+   return std::visit(
+       overloaded{
+           [](const building_block& bb) -> const security_group_info_t& { return bb._pending_block_header_state.security_group; },
+           [](const assembled_block& ab) -> const security_group_info_t& { return ab._pending_block_header_state.security_group; },
+           [](const completed_block& cb) -> const security_group_info_t& { return cb._block_state->get_security_group_info(); }},
+       my->pending->_block_stage);
+}
+
+flat_set<account_name> controller::proposed_security_group_participants() const {
+   return {get_global_properties().proposed_security_group_participants.begin(),
+           get_global_properties().proposed_security_group_participants.end()};
+}
+
+int64_t controller::add_security_group_participants(const flat_set<account_name>& participants) {
+   return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
+      pending_participants.insert(participants.begin(), participants.end());
+   });
+}
+
+int64_t controller::remove_security_group_participants(const flat_set<account_name>& participants) {
+   return participants.size() == 0 ? -1 : my->propose_security_group([&participants](auto& pending_participants) {
+      flat_set<account_name>::sequence_type tmp;
+      tmp.reserve(pending_participants.size());
+      std::set_difference(pending_participants.begin(), pending_participants.end(), participants.begin(),
+                          participants.end(), std::back_inserter(tmp));
+      pending_participants.adopt_sequence(std::move(tmp));
+   });
+}
+
+bool controller::in_active_security_group(const flat_set<account_name>& participants) const {
+   const auto& active = active_security_group().participants;
+   return std::includes(active.begin(), active.end(), participants.begin(), participants.end());
 }
 
 const producer_authority_schedule&    controller::active_producers()const {
@@ -3321,6 +3417,17 @@ void controller_impl::on_activation<builtin_protocol_feature_t::blockchain_param
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_parameters_packed" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "set_parameters_packed" );
+   } );
+}
+
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::security_group>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "add_security_group_participants" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "remove_security_group_participants" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "in_active_security_group" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_active_security_group" );
    } );
 }
 

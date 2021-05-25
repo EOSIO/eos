@@ -34,6 +34,19 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "get_blocks_request_v1", "fields": [
+                { "name": "start_block_num", "type": "uint32" },
+                { "name": "end_block_num", "type": "uint32" },
+                { "name": "max_messages_in_flight", "type": "uint32" },
+                { "name": "have_positions", "type": "block_position[]" },
+                { "name": "irreversible_only", "type": "bool" },
+                { "name": "fetch_block", "type": "bool" },
+                { "name": "fetch_traces", "type": "bool" },
+                { "name": "fetch_deltas", "type": "bool" },
+                { "name": "fetch_block_header", "type": "bool" }
+            ]
+        },
+        {
             "name": "get_blocks_ack_request_v0", "fields": [
                 { "name": "num_messages", "type": "uint32" }
             ]
@@ -58,6 +71,18 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "block", "type": "signed_block?" },
                 { "name": "traces", "type": "bytes" },
                 { "name": "deltas", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "get_blocks_result_v2", "fields": [
+                { "name": "head", "type": "block_position" },
+                { "name": "last_irreversible", "type": "block_position" },
+                { "name": "this_block", "type": "block_position?" },
+                { "name": "prev_block", "type": "block_position?" },
+                { "name": "block",         "type": "bytes" },
+                { "name": "block_header",  "type": "bytes" },
+                { "name": "traces",        "type": "bytes" },
+                { "name": "deltas",        "type": "bytes" }
             ]
         },
         {
@@ -453,6 +478,34 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name":  "kv_database_config" , "fields": [
+                { "type": "uint32", "name": "max_key_size" },
+                { "type": "uint32", "name": "max_value_size" },
+                { "type": "uint32", "name": "max_iterators" }
+            ]
+        },
+        {
+            "name":  "wasm_config" , "fields": [
+                { "type": "uint32", "name": "max_mutable_global_bytes" },
+                { "type": "uint32", "name": "max_table_elements" },
+                { "type": "uint32", "name": "max_section_elements" },
+                { "type": "uint32", "name": "max_linear_memory_init" },
+                { "type": "uint32", "name": "max_func_local_bytes" },
+                { "type": "uint32", "name": "max_nested_structures" },
+                { "type": "uint32", "name": "max_symbol_bytes" },
+                { "type": "uint32", "name": "max_module_bytes" },
+                { "type": "uint32", "name": "max_code_bytes" },
+                { "type": "uint32", "name": "max_pages" },
+                { "type": "uint32", "name": "max_call_depth" }
+            ]
+        },
+        {
+            "name":  "global_property_extension_v0", "fields": [
+                { "type": "uint32", "name": "proposed_security_group_block_num"},
+                { "type": "name[]", "name": "proposed_security_group_participants" }
+            ]
+        },
+        {
             "name": "global_property_v0", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
@@ -465,6 +518,17 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "producer_authority_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" },
                 { "type": "checksum256", "name": "chain_id" }
+            ]
+        },
+        {
+            "name": "global_property_v2", "fields": [
+                { "type": "uint32?", "name": "proposed_schedule_block_num" },
+                { "type": "producer_authority_schedule", "name": "proposed_schedule" },
+                { "type": "chain_config", "name": "configuration" },
+                { "type": "checksum256", "name": "chain_id" },
+                { "type": "kv_database_config", "name": "kv_configuration" },
+                { "type": "wasm_config" , "name": "wasm_configuration" },
+                { "type": "global_property_extension", "name": "extension"}
             ]
         },
         {
@@ -622,8 +686,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "new_type_name": "transaction_id", "type": "checksum256" }
     ],
     "variants": [
-        { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0"] },
-        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0", "get_blocks_result_v1"] },
+        { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0", "get_blocks_request_v1"] },
+        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0", "get_blocks_result_v1", "get_blocks_result_v2"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
@@ -648,7 +712,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "key_value", "types": ["key_value_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0", "chain_config_v1"] },
-        { "name": "global_property", "types": ["global_property_v0", "global_property_v1"] },
+        { "name": "global_property", "types": ["global_property_v0", "global_property_v1", "global_property_v2"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
         { "name": "protocol_state", "types": ["protocol_state_v0"] },
@@ -661,7 +725,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "resource_limits_ratio", "types": ["resource_limits_ratio_v0"] },
         { "name": "elastic_limit_parameters", "types": ["elastic_limit_parameters_v0"] },
         { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] },
-        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] }
+        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] },
+        { "name": "global_property_extension", "types": ["global_property_extension_v0"] }
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },

@@ -2,6 +2,7 @@
 
 #include <eosio/chain/database_utils.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/versioned_unpack_stream.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
 #include <ostream>
@@ -10,8 +11,10 @@ namespace eosio { namespace chain {
    /**
     * History:
     * Version 1: initial version with string identified sections and rows
+    * Version 2: support block_header_state with state extensions 
     */
-   static const uint32_t current_snapshot_version = 1;
+   static const uint32_t minimum_snapshot_version = 1;
+   static const uint32_t current_snapshot_version = 2;
 
    namespace detail {
       template<typename T>
@@ -156,7 +159,7 @@ namespace eosio { namespace chain {
 
    namespace detail {
       struct abstract_snapshot_row_reader {
-         virtual void provide(std::istream& in) const = 0;
+         virtual void provide(versioned_unpack_stream<std::istream>& in) const = 0;
          virtual void provide(const fc::variant&) const = 0;
          virtual std::string row_type_name() const = 0;
       };
@@ -195,8 +198,7 @@ namespace eosio { namespace chain {
          explicit snapshot_row_reader( T& data )
          :data(data) {}
 
-
-         void provide(std::istream& in) const override {
+         void provide(versioned_unpack_stream<std::istream>& in) const override {
             row_validation_helper::apply(data, [&in,this](){
                fc::raw::unpack(in, data);
             });
@@ -283,6 +285,8 @@ namespace eosio { namespace chain {
 
       virtual ~snapshot_reader(){};
 
+      uint32_t chain_snapshot_version = 0;
+
       protected:
          virtual bool has_section( const std::string& section_name ) = 0;
          virtual void set_section( const std::string& section_name ) = 0;
@@ -359,8 +363,7 @@ namespace eosio { namespace chain {
 
       private:
          bool validate_section() const;
-
-         std::istream&  snapshot;
+         std::istream&  snapshot;        
          std::streampos header_pos;
          uint64_t       num_rows;
          uint64_t       cur_row;
