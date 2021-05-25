@@ -261,6 +261,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                if (current_request->fetch_deltas && plugin->chain_state_log) {
                   result.deltas = plugin->chain_state_log->get_log_entry(current_request->start_block_num);
                }
+               fc_ilog(_log, "result.traces.bytes_count=${t_count} result.deltas.bytes_count=${d_count}",
+                  ("t_count", result.traces.data_size())("d_count", result.deltas.data_size()) );
             }
             ++current_request->start_block_num;
          }

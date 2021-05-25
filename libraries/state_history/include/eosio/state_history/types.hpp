@@ -69,6 +69,8 @@ class opaque {
       // which would be as large as the eos snapshot when the nodeos restarted from a snapshot.
       pack_big_bytes(ds, this->data);
    }
+
+   size_t data_size() const { return data.size(); }
 };
 
 struct augmented_transaction_trace {
