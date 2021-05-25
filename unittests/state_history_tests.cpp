@@ -335,6 +335,8 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.index" ));
 
+   BOOST_CHECK_EQUAL(chain.traces_log.begin_block(), 41);
+
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.index" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-61-80.log" ));
@@ -345,6 +347,8 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-101-120.index" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.index" ));
+
+   BOOST_CHECK_EQUAL(chain.chain_state_log.begin_block(), 41);
 
    BOOST_CHECK(get_traces(chain.traces_log, 10).empty());
    BOOST_CHECK(get_traces(chain.traces_log, 100).size());
@@ -556,10 +560,10 @@ BOOST_AUTO_TEST_CASE(test_state_result_abi) {
          auto& blocks_result_v1 = std::get<eosio::ship_protocol::get_blocks_result_v1>(result);
 
          std::vector<eosio::ship_protocol::transaction_trace> traces;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.traces.unpack(traces));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.traces, traces));
 
          std::vector<eosio::ship_protocol::table_delta> deltas;
-         BOOST_CHECK_NO_THROW(blocks_result_v1.deltas.unpack(deltas));
+         BOOST_CHECK_NO_THROW(unpack(blocks_result_v1.deltas, deltas));
       }
    }
 }
