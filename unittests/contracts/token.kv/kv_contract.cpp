@@ -13,7 +13,7 @@ struct kv_config {
 
 extern "C" __attribute__((eosio_wasm_import)) void set_kv_parameters_packed(const void* params, uint32_t size);
 
-#include <eosio/key_value.hpp>
+#include "eosio/key_value.hpp"
 //#include "eosio/key_value_singleton.hpp"
 
 using namespace eosio;
@@ -33,6 +33,7 @@ class [[eosio::contract]] kv_contract : public eosio::contract {
       uint64_t        key;
       uint64_t        init_id;
       uint64_t        next_id;
+      uint64_t        batch_size;
       uint64_t        data;
 
       uint64_t primary_key() const { return key; }
@@ -79,7 +80,9 @@ class [[eosio::contract]] kv_contract : public eosio::contract {
 
    [[eosio::action]]
    uint64_t batchsetup(int batch_size);
-   uint64_t temp(int batch_size);
+
+   [[eosio::action]]
+   void setbatchsize(int batch_size);
 
    [[eosio::action]]
    void oneline(uint64_t id, uint64_t data) {
@@ -119,13 +122,21 @@ class [[eosio::contract]] kv_contract : public eosio::contract {
                  const name&    to,
                  const asset&   quantity,
                  const string&  memo) {
-      return this->batchinsert(500);
-   }
+      numobjs numobjs_table( _self, _self.value );
+      auto itr = get_numobjs(numobjs_table, _self);
+      const auto batch_size = (itr->batch_size > 0) ? itr->batch_size : 500;
+      return this->batchinsert(batch_size);
+    }
 
     typedef eosio::multi_index< "numobjs"_n, numobj > numobjs;
+
+    numobjs::const_iterator get_numobjs(kv_contract::numobjs& table, name self);
+    void set_last_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t last_id);
+    void set_init_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t init_id);
+    void set_batch_size(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t batch_size);
 };
 
-kv_contract::numobjs::const_iterator get_numobjs(kv_contract::numobjs& table, name self) {
+kv_contract::numobjs::const_iterator kv_contract::get_numobjs(kv_contract::numobjs& table, name self) {
    const uint64_t the_only_key = 0;
    eosio::print("get_numobjs get key\n");
    auto itr = table.find(the_only_key);
@@ -135,6 +146,7 @@ kv_contract::numobjs::const_iterator get_numobjs(kv_contract::numobjs& table, na
          obj.key = the_only_key;
 	 obj.init_id = 0;
 	 obj.next_id = 0;
+	 obj.batch_size = 0;
 	 obj.data = 0;
       });
       itr = table.find(the_only_key); 
@@ -145,19 +157,26 @@ kv_contract::numobjs::const_iterator get_numobjs(kv_contract::numobjs& table, na
    return itr;
 }
 
-void set_last_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t last_id) {
-   table.modify(ref, self,  [&](auto& obj) {
+void kv_contract::set_last_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t last_id) {
+   table.modify(ref, self, [&](auto& obj) {
       obj.next_id = last_id;
       const uint64_t max = 0xffff'ffff'ffff'ffff;
       obj.data = (ref.data < max) ? ref.data + 1 : 0;
-      eosio::print("get_numobjs set_last_id init_id: ", obj.init_id, ", next_id: ", obj.next_id, ", data: ", obj.data, "\n");
+      eosio::print("set_last_id set_init_id init_id: ", obj.init_id, ", next_id: ", obj.next_id, ", data: ", obj.data, ", batch_size: ", obj.batch_size, "\n");
    });
 }
 
-void set_init_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t last_id) {
+void kv_contract::set_init_id(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t last_id) {
    table.modify(ref, self,  [&](auto& obj) {
       obj.init_id = last_id;
-      eosio::print("get_numobjs set_init_id init_id: ", obj.init_id, ", next_id: ", obj.next_id, ", data: ", obj.data, "\n");
+      eosio::print("set_init_id set_init_id init_id: ", obj.init_id, ", next_id: ", obj.next_id, ", data: ", obj.data, ", batch_size: ", obj.batch_size, "\n");
+   });
+}
+
+void set_batch_size(kv_contract::numobjs& table, name self, const kv_contract::numobj& ref, uint64_t batch_size) {
+   table.modify(ref, self,  [&](auto& obj) {
+      obj.batch_size = batch_size;
+      eosio::print("set_batch_size init_id: ", obj.init_id, ", next_id: ", obj.next_id, ", data: ", obj.data, ", batch_size: ", obj.batch_size, "\n");
    });
 }
 
@@ -170,7 +189,7 @@ uint64_t kv_contract::batchinsert(int batch_size) {
       auto itr = table.by_id.end();
       --itr;
       last_id = itr.value().id + 1;
-      eosio::print("last_id: ", last_id, "/n");
+      eosio::print("last_id: ", last_id, "\n");
    }
 
    uint64_t next_id = 0;
@@ -178,11 +197,15 @@ uint64_t kv_contract::batchinsert(int batch_size) {
    auto itr = get_numobjs(numobjs_table, _self);
    next_id = itr->next_id;
    data = itr->data;
-   eosio::print("next_id: ", next_id, ", data: ", data, "/n");
+   eosio::print("next_id: ", next_id, ", data: ", data, "\n");
 
    uint64_t amount_to_inc = 1;
    auto inc_id = [last_id,&amount_to_inc](uint64_t& id) {
       // don't write past the region of data we initialized
+      if (amount_to_inc >= last_id) {
+         amount_to_inc = 1;
+      }
+
       if (last_id - amount_to_inc < id) {
          const int64_t delta = last_id - id;
          id = amount_to_inc - delta;
@@ -211,7 +234,7 @@ uint64_t kv_contract::batchsetup(int batch_size) {
 
    auto itr = get_numobjs(numobjs_table, _self);
    uint64_t init_id = itr->init_id;
-   eosio::print("init_id: ", init_id, "/n");
+   eosio::print("init_id: ", init_id, "\n");
 
    acc_bal_entry entry;
    auto next = 0xffff;
@@ -244,4 +267,10 @@ uint64_t kv_contract::batchsetup(int batch_size) {
    set_init_id(numobjs_table, _self, *itr, init_id);
 
    return init_id;
+};
+
+void kv_contract::setbatchsize(int batch_size) {
+   numobjs numobjs_table( _self, _self.value );
+   auto itr = get_numobjs(numobjs_table, _self);
+   set_init_id(numobjs_table, _self, *itr, batch_size);
 }

@@ -40,6 +40,10 @@
                     "type": "uint64"
                 },
                 {
+                    "name": "batch_size",
+                    "type": "uint64"
+                },
+                {
                     "name": "data",
                     "type": "uint64"
                 }
@@ -56,6 +60,16 @@
                 {
                     "name": "data",
                     "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "setbatchsize",
+            "base": "",
+            "fields": [
+                {
+                    "name": "batch_size",
+                    "type": "int32"
                 }
             ]
         },
@@ -84,6 +98,11 @@
         {
             "name": "oneline",
             "type": "oneline",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setbatchsize",
+            "type": "setbatchsize",
             "ricardian_contract": ""
         },
         {
