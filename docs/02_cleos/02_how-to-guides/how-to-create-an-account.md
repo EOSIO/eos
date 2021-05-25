@@ -1,47 +1,49 @@
-## Goal
-Create a new EOSIO blockchain account 
+## Overview
 
-## Before you begin
+This how-to guide provides instructions on how to create a new EOSIO blockchain account using the `cleos` CLI tool. You can use accounts to deploy smart contracts and perform other related blockchain operations. Create one or multiple accounts as part of your development environment setup.
 
-* Install the currently supported version of `cleos`
+The example in this how-to guide creates a new account named **bob**, authorized by the default system account **eosio**, using the `cleos` CLI tool. 
 
+## Before you Begin
+
+Make sure you meet the following requirements:
+
+* Install the currently supported version of `cleos`.
 [[info | Note]]
 | The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
+* Learn about [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
+* Learn about Asymmetric Cryptography - [public key](https://developers.eos.io/welcome/v2.1/glossary/index#public-key) and [private key](https://developers.eos.io/welcome/v2.1/glossary/index#private-key) pairs.
+* Create public/private keypairs for the `owner` and `active` permissions of an account.
 
-* Acquire functional understanding of the following:
-  * [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
-  * Asymmetric cryptography (public and private keypair) 
+## Command Reference
 
-* Created an Owner and an Active key pair
-* [Import a private key](../02_how-to-guides/how-to-import-a-key.md) to the wallet which can authorize on behalf of a creator account
+See the following reference guide for `cleos` command line usage and related options:
+* [`cleos create account`](../03_command-reference/create/account.md) command and its parameters
 
-## Steps
+## Procedure
 
-**Command**
+The following step shows how to create a new account **bob** authorized by the default system account **eosio**.
 
-```sh
-cleos create account [creator account name] [new account name][OwnerKey] [ActiveKey]
-```
-Where:
+1. Run the following command to create the new account **bob**:
 
-[creator account name] = name of the existing account that authorizes the creation of a new account
-
-[new account name] = The name of the new account account adhering to EOSIO account naming conventions
-
-[OwnerKey] = The owner permissions linked to the ownership of the account
-
-[ActiveKey] = The active permissions linked with the creator account
-
-[[info | Recommend]]
-| `ActiveKey` is optional but recommended.
-
-[[info | Note]]
-| To create a new account in the EOSIO blockchain, an existing account, also referred to as a creator account, is required to authorize the creation of a new account. For a newly created EOSIO blockchain, the default system account used to create a new account is eosio.
-
-**Example Output**
 ```sh
 cleos create account eosio bob EOS87TQktA5RVse2EguhztfQVEh6XXxBmgkU8b4Y5YnGvtYAoLGNN
+```
+**Where**:
+* `eosio` = the system account that authorizes the creation of a new account
+* `bob` = the name of the new account conforming to [account naming conventions](https://developers.eos.io/welcome/v2.1/protocol-guides/accounts_and_permissions#2-accounts)
+* `EOS87TQ...AoLGNN` = the owner public key or permission level for the new account (**required**)
+[[info | Note]]
+| To create a new account in the EOSIO blockchain, an existing account, also referred to as a creator account, is required to authorize the creation of a new account. For a newly created EOSIO blockchain, the default system account used to create a new account is **eosio**.
+
+**Example Output**
+
+```console
 executed transaction: 4d65a274de9f809f9926b74c3c54aadc0947020bcfb6dd96043d1bcd9c46604c  200 bytes  166 us
 #         eosio <= eosio::newaccount            {"creator":"eosio","name":"bob","owner":{"threshold":1,"keys":[{"key":"EOS87TQktA5RVse2EguhztfQVEh6X...
 warning: transaction executed locally, but may not be confirmed by the network yet         ]
 ```
+
+### Summary
+
+By following these instructions, you are able to create a new EOSIO account in your blockchain environment.
