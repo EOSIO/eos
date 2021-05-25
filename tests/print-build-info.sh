@@ -4,13 +4,12 @@ set -eo pipefail
 # This includes verifying valid output in JSON shape and checking parameters (only boost for now).
 echo '##### Nodeos Print Build Info Test #####'
 # orient ourselves
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
-[[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
-echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
+[[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
+echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
+[[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$1"
 
 exec 9>&1 # enable tee to write to STDOUT as a file
-PRINT_BUILD_INFO="$EOSIO_ROOT/build/bin/nodeos --print-build-info 2>&1 | tee >(cat - >&9) || :"
+PRINT_BUILD_INFO="$BUILD_ROOT/bin/nodeos --print-build-info 2>&1 | tee >(cat - >&9) || :"
 echo "$ $PRINT_BUILD_INFO"
 OUTPUT="$(eval $PRINT_BUILD_INFO)"
 
@@ -46,7 +45,7 @@ if [[ "$PLATFORM_TYPE" == "pinned" ]]; then
         echo "Missing IMAGE_TAG variable."
         exit 1
     fi
-    FILE=$(ls $EOSIO_ROOT/.cicd/platforms/pinned/$IMAGE_TAG* | head)
+    FILE=$(ls $CMAKE_SOURCE_DIR/.cicd/platforms/pinned/$IMAGE_TAG* | head)
     BOOST=$(cat $FILE | grep boost | tr -d '\r\n' | sed -E 's/^.+boost_([0-9]+_[0-9]+_[0-9]+).+$/\1/' | head)
     BOOST_MAJOR=$(echo $BOOST | sed -E 's/^([0-9])+_[0-9]+_[0-9]+$/\1/')
     BOOST_MINOR=$(echo $BOOST | sed -E 's/^[0-9]+_([0-9]+)_[0-9]+$/\1/')

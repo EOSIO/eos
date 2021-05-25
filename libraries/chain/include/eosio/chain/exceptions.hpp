@@ -498,7 +498,8 @@ namespace eosio { namespace chain {
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )
       FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,          controller_emit_signal_exception,
                                    3140001, "Block does not match checkpoint" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( state_history_write_exception, controller_emit_signal_exception,
+                                   3140002, "State history write error" )
 
    FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                           chain_exception,
                                  3015000, "ABI exception" )
