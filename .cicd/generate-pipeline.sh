@@ -8,6 +8,13 @@ export PLATFORMS_JSON_ARRAY='[]'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
+# attach pipeline documentation
+export DOCS_URL="https://github.com/EOSIO/eos/blob/${BUILDKITE_COMMIT:-master}/.cicd/README.md"
+export RETRY="$(buildkite-agent meta-data get pipeline-upload-retries --default '0')"
+if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
+    echo "This documentation is also available on [GitHub]($DOCS_URL)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
+    cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
+fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
     PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
@@ -91,6 +98,7 @@ oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
 # start with a wait step
+echo 'steps:'
 echo '  - wait'
 echo ''
 # build steps
