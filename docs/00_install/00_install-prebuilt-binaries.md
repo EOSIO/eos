@@ -32,11 +32,6 @@ sudo apt install ./eosio_2.1.0-1-ubuntu-20.04_amd64.deb
 wget https://github.com/eosio/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubuntu-18.04_amd64.deb
 sudo apt install ./eosio_2.1.0-1-ubuntu-18.04_amd64.deb
 ```
-#### Ubuntu 16.04 Package Install
-```sh
-wget https://github.com/eosio/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubuntu-16.04_amd64.deb
-sudo apt install ./eosio_2.1.0-1-ubuntu-16.04_amd64.deb
-```
 #### Ubuntu Package Uninstall
 ```sh
 sudo apt remove eosio
