@@ -312,6 +312,59 @@ BOOST_AUTO_TEST_CASE(test_split_log) {
    BOOST_CHECK( ! chain.control->fetch_block_by_number(160));
 }
 
+BOOST_AUTO_TEST_CASE(test_split_log_zero_retained_file) {
+   fc::temp_directory temp_dir;
+   namespace bfs = boost::filesystem;
+   tester chain(
+      temp_dir,
+      [](controller::config& config) {
+         config.blog.retained_dir       = "retained";
+         config.blog.archive_dir        = "archive";
+         config.blog.stride             = 50;
+         config.blog.max_retained_files = 0;
+      },
+      true);
+   chain.produce_blocks(150);
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir =  blocks_dir / chain.get_config().blog.retained_dir;
+   auto archive_dir =  blocks_dir / chain.get_config().blog.archive_dir;
+
+   BOOST_CHECK(bfs::is_empty(retained_dir));
+
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-1-50.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-1-50.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( archive_dir / "blocks-101-150.index" ));
+}
+
+BOOST_AUTO_TEST_CASE(test_split_log_all_in_retained_new_default) {
+   fc::temp_directory temp_dir;
+   namespace bfs = boost::filesystem;
+   tester chain(
+      temp_dir,
+      [](controller::config& config) {
+         config.blog.retained_dir       = "retained";
+         config.blog.archive_dir        = "archive";
+         config.blog.stride             = 50;
+      },
+      true);
+   chain.produce_blocks(150);
+   auto blocks_dir = chain.get_config().blog.log_dir;
+   auto retained_dir =  blocks_dir / chain.get_config().blog.retained_dir;
+   auto archive_dir =  blocks_dir / chain.get_config().blog.archive_dir;
+
+   BOOST_CHECK(bfs::is_empty(archive_dir));
+
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-1-50.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-51-100.index" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.log" ));
+   BOOST_CHECK(bfs::exists( retained_dir / "blocks-101-150.index" ));
+}
+
 BOOST_AUTO_TEST_CASE(test_split_log_util1) {
    namespace bfs = boost::filesystem;
    fc::temp_directory temp_dir;

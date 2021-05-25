@@ -80,7 +80,7 @@ namespace eosio { namespace chain {
             uint64_t                 state_guard_size           = chain::config::default_state_guard_size;
             uint32_t                 sig_cpu_bill_pct           = chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size           = chain::config::default_controller_thread_pool_size;
-            uint16_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
+            uint32_t                 max_retained_block_files   = chain::config::default_max_retained_block_files;
             uint64_t                 blocks_log_stride          = chain::config::default_blocks_log_stride;
             backing_store_type       backing_store              = backing_store_type::CHAINBASE;
             uint16_t                 persistent_storage_num_threads = 0; // Will be set to number of cores dynamically or by user configuration;
