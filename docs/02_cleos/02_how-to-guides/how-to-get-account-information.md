@@ -1,23 +1,36 @@
-## Goal
+## Overview
 
-Query infomation of an EOSIO account
+This how-to guide provides instructions on how to query infomation of an EOSIO account. The example in this how-to guide retrieves information of the `eosio` account. 
 
 ## Before you begin
 
 * Install the currently supported version of `cleos`
 
-* Understand the following:
-  * What is an account
+[[info | Note]]
+| The cleos tool is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install the cleos tool. 
 
-## Steps
+* Acquire functional understanding of [EOSIO Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions)
 
-Execute the command below:
+## Command Reference
+
+See the following reference guide for command line usage and related options for the cleos command:
+
+* [`cleos get account`](../03_command-reference/get/account.md) command and its parameters
+
+## Procedure
+
+The following step shows how to query information of the `eosio` account:
+
+1. Run the following command:
 
 ```sh
-cleos get account ACCOUNT_NAME
+cleos get account eosio
 ```
+**Where**:
 
-This should produce similar output as below:
+* `eosio` = The name of the default system account in the EOSIO blockchain.
+
+**Example Output**
 
 ```console
 created: 2018-06-01T12:00:00.000
