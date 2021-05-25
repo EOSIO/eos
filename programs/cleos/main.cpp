@@ -180,6 +180,9 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   tx_ro_print_json = false;
+bool   tx_rtn_failure_trace = false;
+bool   tx_read_only = false;
 bool   tx_use_old_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
@@ -444,7 +447,19 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          return call(push_txn_func, packed_transaction_v0(trx, compression));
       } else {
          try {
-            return call(send_txn_func, packed_transaction_v0(trx, compression));
+            if (tx_read_only){
+                tx_ro_print_json = true;
+                packed_transaction_v0 pt_v0(trx, compression);
+                name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
+                auto args = fc::mutable_variant_object()
+                        ("account_name", account_name)
+                        ("return_failure_traces", tx_rtn_failure_trace)
+                        ("transaction", pt_v0);
+                return call(push_ro_txns_func, args);
+            }else {
+                EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can only be used along with --read-only" );
+                return call(send_txn_func, packed_transaction_v0(trx, compression));
+            }
          }
          catch (chain::missing_chain_api_plugin_exception &) {
             std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
@@ -636,7 +651,10 @@ void send_actions(std::vector<chain::action>&& actions, const std::vector<public
       out << jsonstr;
       out.close();
    }
-   if( tx_print_json ) {
+   if( tx_print_json || tx_ro_print_json) {
+      if (tx_ro_print_json){
+          tx_ro_print_json = false;
+      }
       if (jsonstr.length() == 0) {
          jsonstr = fc::json::to_pretty_string( result );
       }
@@ -3038,7 +3056,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "));
@@ -3881,6 +3898,8 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
    add_standard_transaction_options_plus_signing(trxSubcommand);
+   trxSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
+   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
@@ -3904,7 +3923,6 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
-
 
    // multisig subcommand
    auto msig = app.add_subcommand("multisig", localized("Multisig contract commands"));

@@ -1275,8 +1275,8 @@ struct controller_impl {
             emit(self.applied_transaction, std::tie(trace, trx->packed_trx()));
 
 
-            if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
-               //this may happen automatically in destructor, but I prefere make it more explicit
+            if ( (read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete) || trx->read_only ) {
+               //this may happen automatically in destructor, but I prefer to make it more explicit
                trx_context.undo();
             } else {
                restore.cancel();
@@ -1696,7 +1696,7 @@ struct controller_impl {
                   } else {
                      packed_transaction_ptr ptrx( b, &pt ); // alias signed_block_ptr
                      auto fut = transaction_metadata::start_recover_keys(
-                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum(), transaction_metadata::trx_type::input );
                      trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
                   }
                }
@@ -2735,8 +2735,8 @@ std::optional<block_id_type> controller::pending_producer_block_id()const {
 }
 
 const deque<transaction_receipt>& controller::get_pending_trx_receipts()const {
-   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
-   return my->pending->get_trx_receipts();
+   static deque<transaction_receipt> empty;
+   return my->pending ? my->pending->get_trx_receipts() : empty;
 }
 
 uint32_t controller::last_irreversible_block_num() const {
