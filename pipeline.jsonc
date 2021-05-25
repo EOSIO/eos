@@ -35,6 +35,7 @@
             "170=v1.7.0"
         ]
     },
+    // eosio-resume-from-state documentation: https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md
     "eosio-resume-from-state":
     {
         "test":
