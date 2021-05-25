@@ -129,15 +129,6 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      bool contains_auth(const account_name n)const {
-         for( const auto& a : actions ) {
-            for( const auto& u : a.authorization ) {
-               if (u.actor == n) { return true; }
-            }
-         }
-         return n == account_name();
-      }
-
       account_name resource_payer(bool)const;
 
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
