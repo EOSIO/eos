@@ -1,0 +1,78 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "activegroup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "add",
+            "base": "",
+            "fields": [
+                {
+                    "name": "nm",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "ingroup",
+            "base": "",
+            "fields": [
+                {
+                    "name": "nm",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "remove",
+            "base": "",
+            "fields": [
+                {
+                    "name": "nm",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "activegroup",
+            "type": "activegroup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "add",
+            "type": "add",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "ingroup",
+            "type": "ingroup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "remove",
+            "type": "remove",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": [
+        {
+            "name": "activegroup",
+            "result_type": "name[]"
+        },
+        {
+            "name": "ingroup",
+            "result_type": "bool"
+        }
+    ]
+}

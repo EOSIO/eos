@@ -1308,8 +1308,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(transaction_tests, TESTER_T, backing_store_ts) { t
       BOOST_CHECK(pkt.get_packed_transaction() == packed);
       ptrx = std::make_shared<packed_transaction>( pkt, true );
 
-      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), t.control->get_thread_pool(), t.control->get_chain_id(), time_limit );
-      auto r = t.control->push_transaction( fut.get(), fc::time_point::maximum(), t.DEFAULT_BILLED_CPU_TIME_US, true );
+      auto fut = transaction_metadata::start_recover_keys( std::move( ptrx ), t.control->get_thread_pool(), t.control->get_chain_id(), time_limit, transaction_metadata::trx_type::input );
+      auto r = t.control->push_transaction( fut.get(), fc::time_point::maximum(), t.DEFAULT_BILLED_CPU_TIME_US, true, 0 );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except) throw *r->except;
       tx_trace = r;

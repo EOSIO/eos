@@ -3,8 +3,8 @@ ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
-    libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
-    libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
+    libtool make bzip2 bzip2-devel openssl openssl-devel gmp-devel libstdc++ libcurl-devel \
+    libusbx-devel python3 python3-devel python-devel python-requests python3-requests libedit-devel doxygen \
     graphviz patch gcc gcc-c++ vim-common jq && \
     yum clean all && rm -rf /var/cache/yum
 # build cmake
@@ -35,7 +35,7 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
