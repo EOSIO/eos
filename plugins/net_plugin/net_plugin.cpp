@@ -2029,7 +2029,7 @@ namespace eosio {
       // sync need checks; (lib == last irreversible block)
       //
       // 0. my head block id == peer head id means we are all caught up block wise
-      // 1. my head block num < peer lib - start sync locally
+      // 1. my head block num < peer lib - send handshake (if not sent in handle_message) and wait for receipt of notice message to start syncing
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num < peer head block num - update sync state and send a catchup request
