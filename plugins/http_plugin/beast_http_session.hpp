@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <sstream>
 
 extern fc::logger logger;
 
@@ -308,8 +309,11 @@ namespace eosio {
                 fc_ilog( logger, "ignore_unused()" ); 
                 boost::ignore_unused(bytes_transferred);
 
-                if(ec)
+                if(ec) {
+                    ec_ = ec;
+                    handle_exception();
                     return fail(ec, "write");
+                }
 
                 if(close)
                 {
@@ -319,7 +323,7 @@ namespace eosio {
                 }
 
                 // We're done with the response so delete it
-                res_ = nullptr;
+                // res_ = nullptr;
 
                 fc_ilog( logger, "do_read()" ); 
 
@@ -356,16 +360,42 @@ namespace eosio {
 
                 res_.prepare_payload();
 
+               
+                // The lifetime of the message has to extend
+                // for the duration of the async operation so
+                // we use a shared_ptr to manage it.
+                /*
+                auto sp = std::make_shared<
+                    http::message<isRequest, Body, Fields>>(std::move(msg));
+
+                // Store a type-erased version of the shared
+                // pointer in the class to keep it alive.
+                self_.res_ = sp;
+                */               
+
+                // Write the response
+                http::async_write(
+                    derived().stream(),
+                    res_,
+                    beast::bind_front_handler(
+                        &beast_http_session::on_write,
+                        derived().shared_from_this(),
+                        true) // self._res.need_eof())
+                    );
+
                 // We need the serializer here because the serializer requires
                 // a non-const file_body, and the message oriented version of
                 // http::write only works with const messages.
                 
+                /*
+                http::response_serializer<http::string_body> sr{res_};
+                http::write(derived().stream_, sr, ec_);
+                // http::write(derived().stream_, res_, ec_);
                 
-                // http::serializer<false, std::string> sr{res_};
-                // http::write(derived().stream_, sr, ec_)
 
                 if(ec_)
                     handle_exception();
+                    */
             }
     }; // end class beast_http_session
 
