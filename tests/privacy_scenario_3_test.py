@@ -150,15 +150,7 @@ try:
     
     assert breakTimeout, Print("API Node1 out of sync")
     apiNode1.waitForTransFinalization(trans["transaction_id"])
-
-    #######################################################################
-    # Workaround.
-    # Restart shouldn't be needed here but due to bug in nodeos we have to.
-    # this supposed to be fixed in nodeos and removed
-    apiNode2.kill(signal.SIGTERM)
-    apiNode2.relaunch(cachePopen=True)
-    #######################################################################
-
+    
     # after last recorded block number (rbn3) is made irreversible, verify 
     # node2 connects to node1
     # node2 starts syncing
