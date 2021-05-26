@@ -79,6 +79,7 @@ namespace eosio { namespace chain {
          void
          check_authorization( const vector<action>&                actions,
                               const flat_set<public_key_type>&     provided_keys,
+                              std::optional<resource_payer_t>      payer,
                               const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
                               fc::microseconds                     provided_delay = fc::microseconds(0),
                               const std::function<void()>&         checktime = std::function<void()>(),
