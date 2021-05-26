@@ -237,7 +237,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       // ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}, duration: ${d}, read time: ${r}",
       //    ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
 
-      fc_trace_log(blk_span, "rodeos-received done block_num=${block_num} latency=${l} us, duration=${d} us",
+      fc_trace_log(blk_span, "rodeos-received done block_num=${block_num} latency=${l}us duration=${d}us",
                    ("block_num", result.this_block->block_num)("l", now > rodeos_block_timestamp ? (now - rodeos_block_timestamp): 0)("d", (now - start_time)));
 
       end_block_time = fc::time_point::now();
