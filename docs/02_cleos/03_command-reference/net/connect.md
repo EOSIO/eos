@@ -2,7 +2,6 @@
 ```sh
 cleos net connect [OPTIONS] host
 ```
-
 **Where:**
 * [OPTIONS] = See **Options** in the [**Command Usage**](command-usage) section below.
 * host = The hostname:port to connect to
@@ -30,22 +29,20 @@ Make sure you meet the following requirements:
 * You have access to a producing node instance with the [`net_api_plugin`](../../../01_nodeos/03_plugins/net_api_plugin/index.md) loaded.
 
 ## Examples
-The following examples demonstrate how to use the `cleos net connect` command:
+The following examples demonstrate the `cleos net connect` command:
 
-* Instruct default local node (listening at default http address `http://127.0.0.1:8888`) to connect to peer node listening at p2p address `localhost:9002`:
+**Example 1.** Instruct default local node (listening at default http address `http://127.0.0.1:8888`) to connect to peer node listening at p2p address `localhost:9002`:
 ```sh
 cleos net connect localhost:9002
 ```
-**Output:**
 ```console
 "added connection"
 ```
 
-* Instruct local node listening at http address `http://127.0.0.1:8001` to connect to peer node listening at p2p address `localhost:9002`:
+**Example 2.** Instruct local node listening at http address `http://127.0.0.1:8001` to connect to peer node listening at p2p address `localhost:9002`:
 ```sh
 cleos -u http://127.0.0.1:8001 net connect localhost:9002
 ```
-**Output:**
 ```console
 "added connection"
 ```
