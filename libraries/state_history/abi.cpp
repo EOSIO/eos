@@ -34,30 +34,55 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "get_blocks_request_v1", "fields": [
+                { "name": "start_block_num", "type": "uint32" },
+                { "name": "end_block_num", "type": "uint32" },
+                { "name": "max_messages_in_flight", "type": "uint32" },
+                { "name": "have_positions", "type": "block_position[]" },
+                { "name": "irreversible_only", "type": "bool" },
+                { "name": "fetch_block", "type": "bool" },
+                { "name": "fetch_traces", "type": "bool" },
+                { "name": "fetch_deltas", "type": "bool" },
+                { "name": "fetch_block_header", "type": "bool" }
+            ]
+        },
+        {
             "name": "get_blocks_ack_request_v0", "fields": [
                 { "name": "num_messages", "type": "uint32" }
             ]
         },
         {
-            "name": "get_blocks_result_v0", "fields": [
+            "name": "get_blocks_result_base", "fields": [
                 { "name": "head", "type": "block_position" },
                 { "name": "last_irreversible", "type": "block_position" },
                 { "name": "this_block", "type": "block_position?" },
-                { "name": "prev_block", "type": "block_position?" },
+                { "name": "prev_block", "type": "block_position?" }
+            ]
+        },
+        {
+            "name": "get_blocks_result_v0", "base": "get_blocks_result_base", "fields": [
                 { "name": "block", "type": "bytes?" },
                 { "name": "traces", "type": "bytes?" },
                 { "name": "deltas", "type": "bytes?" }
             ]
         },
         {
-            "name": "get_blocks_result_v1", "fields": [
+            "name": "get_blocks_result_v1", "base": "get_blocks_result_base", "fields": [
+                { "name": "block", "type": "signed_block_variant?" },
+                { "name": "traces", "type": "bytes" },
+                { "name": "deltas", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "get_blocks_result_v2", "fields": [
                 { "name": "head", "type": "block_position" },
                 { "name": "last_irreversible", "type": "block_position" },
                 { "name": "this_block", "type": "block_position?" },
                 { "name": "prev_block", "type": "block_position?" },
-                { "name": "block", "type": "signed_block?" },
-                { "name": "traces", "type": "bytes" },
-                { "name": "deltas", "type": "bytes" }
+                { "name": "block",         "type": "bytes" },
+                { "name": "block_header",  "type": "bytes" },
+                { "name": "traces",        "type": "bytes" },
+                { "name": "deltas",        "type": "bytes" }
             ]
         },
         {
@@ -148,6 +173,34 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "prunable_data_none", "fields": [
+                { "name": "prunable_digest", "type": "checksum256" }
+            ]
+        },
+        {
+            "name": "prunable_data_partial", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_segments", "type": "segment_type[]" }
+            ]
+        },
+        {
+            "name": "prunable_data_full", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_segments", "type": "bytes[]" }
+            ]
+        },
+        {
+            "name": "prunable_data_full_legacy", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "packed_context_free_data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "prunable_data_type", "fields": [
+                { "name": "prunable_data", "type": "prunable_data_t" }
+            ]
+        },
+        {
             "name": "partial_transaction_v0", "fields": [
                 { "name": "expiration", "type": "time_point_sec" },
                 { "name": "ref_block_num", "type": "uint16" },
@@ -190,17 +243,17 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "packed_transaction_v0", "fields": [
-                { "name": "signatures", "type": "signature[]" },
+            "name": "packed_transaction", "fields": [
                 { "name": "compression", "type": "uint8" },
-                { "name": "packed_context_free_data", "type": "bytes" },
+                { "name": "prunable_data", "type": "prunable_data_type" },
                 { "name": "packed_trx", "type": "bytes" }
             ]
         },
         {
-            "name": "packed_transaction_v1", "fields": [
+            "name": "packed_transaction_v0", "fields": [
+                { "name": "signatures", "type": "signature[]" },
                 { "name": "compression", "type": "uint8" },
-                { "name": "prunable_data", "type": "prunable_data_type" },
+                { "name": "packed_context_free_data", "type": "bytes" },
                 { "name": "packed_trx", "type": "bytes" }
             ]
         },
@@ -212,13 +265,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "transaction_receipt_v0", "base": "transaction_receipt_header", "fields": [
-                { "name": "trx", "type": "transaction_variant_v0" }
+            "name": "transaction_receipt", "base": "transaction_receipt_header", "fields": [
+                { "name": "trx", "type": "transaction_variant" }
             ]
         },
         {
-            "name": "transaction_receipt_v1", "base": "transaction_receipt_header", "fields": [
-                { "name": "trx", "type": "transaction_variant_v1" }
+            "name": "transaction_receipt_v0", "base": "transaction_receipt_header", "fields": [
+                { "name": "trx", "type": "transaction_variant_v0" }
             ]
         },
         {
@@ -254,7 +307,7 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "signed_block_v1", "base": "signed_block_header", "fields": [
                 { "name": "prune_state", "type": "uint8" },
-                { "name": "transactions", "type": "transaction_receipt_v1[]" },
+                { "name": "transactions", "type": "transaction_receipt[]" },
                 { "name": "block_extensions", "type": "extension[]" }
             ]
         },
@@ -593,48 +646,24 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32", "name": "account_cpu_usage_average_window" },
                 { "type": "uint32", "name": "account_net_usage_average_window" }
             ]
-        },
-        {
-            "name": "prunable_data_full_legacy", "fields": [
-                { "name": "signatures", "type": "signature[]" },
-                { "name": "packed_context_segments", "type": "bytes" }
-            ]
-        },
-        {
-            "name": "prunable_data_full", "fields": [
-                { "name": "signatures", "type": "signature[]" },
-                { "name": "context_free_segments", "type": "bytes[]" }
-            ]
-        },
-        {
-            "name": "prunable_data_partial", "fields": [
-                { "name": "signatures", "type": "signature[]" },
-                { "name": "context_free_segments", "type": "context_free_segment_type[]" }
-            ]
-        },
-        {
-            "name": "prunable_data_none", "fields": [
-                { "name": "prunable_digest", "type": "signature" }
-            ]
         }
     ],
     "types": [
         { "new_type_name": "transaction_id", "type": "checksum256" }
     ],
     "variants": [
-        { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0"] },
-        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0", "get_blocks_result_v1"] },
+        { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0", "get_blocks_request_v1"] },
+        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0", "get_blocks_result_v1", "get_blocks_result_v2"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0", "action_trace_v1"] },
         { "name": "partial_transaction", "types": ["partial_transaction_v0", "partial_transaction_v1"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
+        { "name": "transaction_variant", "types": ["checksum256", "packed_transaction"] },
         { "name": "transaction_variant_v0", "types": ["transaction_id", "packed_transaction_v0"] },
-        { "name": "transaction_variant_v1", "types": ["transaction_id", "packed_transaction_v1"] },
-        { "name": "signed_block", "types": ["signed_block_v0", "signed_block_v1"] },
-        { "name": "prunable_data_type", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
-        { "name": "context_free_segment_type", "types": ["signature", "bytes"] },
-
+        { "name": "signed_block_variant", "types": ["signed_block_v0", "signed_block_v1"] },
+        { "name": "segment_type", "types": ["checksum256", "bytes"] },
+        { "name": "prunable_data_t", "types": ["prunable_data_full_legacy", "prunable_data_none", "prunable_data_partial", "prunable_data_full"] },
         { "name": "table_delta", "types": ["table_delta_v0", "table_delta_v1"] },
         { "name": "account", "types": ["account_v0"] },
         { "name": "account_metadata", "types": ["account_metadata_v0"] },

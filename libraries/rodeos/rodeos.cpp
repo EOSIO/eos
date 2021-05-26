@@ -210,6 +210,30 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
+void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result_v2& result) {
+   check_write(result);
+   signed_block_header header;
+   if (!result.block_header.empty()) {
+      eosio::unpack( result.block_header, header );
+   } else if (!result.block.empty()) {
+      signed_block_variant sbv;
+      eosio::unpack( result.block, sbv );
+      header = std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, sbv);
+   } else {
+      return;
+   }
+
+   uint32_t block_num = result.this_block->block_num;
+
+   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
+   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
+   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+   fc_add_tag( blk_span, "block_num", block_num );
+   fc_add_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
+
+   write_block_info(block_num, result.this_block->block_id, header);
+}
+
 void rodeos_db_snapshot::write_deltas(uint32_t block_num, eosio::opaque<std::vector<ship_protocol::table_delta>> deltas,
                                       std::function<bool()> shutdown) {
    db_view_state view_state{ state_account, *db, *write_session, partition->contract_kv_prefix };
@@ -246,10 +270,20 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v0&
       return;
 
    uint32_t block_num = result.this_block->block_num;
-   write_deltas(block_num, eosio::opaque<std::vector<ship_protocol::table_delta>>(*result.deltas), shutdown);
+   write_deltas(block_num, eosio::as_opaque<std::vector<ship_protocol::table_delta>>(*result.deltas), shutdown);
 }
 
 void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v1& result,
+                                      std::function<bool()>                      shutdown) {
+   check_write(result);
+   if (result.deltas.empty())
+      return;
+
+   uint32_t block_num = result.this_block->block_num;
+   write_deltas(block_num, result.deltas, shutdown);
+}
+
+void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v2& result,
                                       std::function<bool()>                      shutdown) {
    check_write(result);
    if (result.deltas.empty())

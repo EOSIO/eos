@@ -1,5 +1,5 @@
 #define BOOST_TEST_MODULE blockvault_sync_strategy
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain_plugin/blockvault_sync_strategy.hpp>

@@ -671,13 +671,6 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
 
    bool start() {
       boost::system::error_code ec;
-      auto                      check_ec = [&](const char* what) {
-         if (!ec)
-            return;
-         elog("${w}: ${m}", ("w", what)("m", ec.message()));
-         FC_ASSERT(false, "unable to open listen socket");
-      };
-
       auto l = std::make_shared<listener>(http_config, shared_state, ioc);
       if (!l->run())
          return false;

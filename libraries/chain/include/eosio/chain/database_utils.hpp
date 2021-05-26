@@ -196,6 +196,19 @@ namespace fc {
       b = eosio::chain::shared_blob(_s.begin(), _s.end(), b.get_allocator());
    }
 
+   // implementation moved to fc in develop
+   inline
+   void to_variant( const blob& b, variant& v ) {
+      v = variant(base64_encode(b.data.data(), b.data.size()));
+   }
+
+   // implementation moved to fc in develop
+   inline
+   void from_variant( const variant& v, blob& b ) {
+      string _s = base64_decode(v.as_string());
+      b.data = std::vector<char>(_s.begin(), _s.end());
+   }
+
    template<typename T>
    void to_variant( const eosio::chain::shared_vector<T>& sv, variant& v ) {
       to_variant(std::vector<T>(sv.begin(), sv.end()), v);
