@@ -777,7 +777,10 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
       txn.sign( t.get_private_key(payee_acct, "active"), t.control->get_chain_id() );
 
-   t.push_transaction(txn);
+   auto res = t.push_transaction(txn);
+   BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+   BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+   BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
 
    } FC_LOG_AND_RETHROW()
 BOOST_AUTO_TEST_SUITE_END()
