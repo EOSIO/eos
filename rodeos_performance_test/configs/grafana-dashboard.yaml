@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+- name: dashboards
+  type: file
+  updateIntervalSeconds: 30
+  options:
+    path: /etc/dashboards
+    foldersFromFilesStructure: true

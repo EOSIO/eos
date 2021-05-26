@@ -21,9 +21,9 @@ services:
     ports:
         - 127.0.0.1:3100:3100
     depends_on:
-        - jaeger
+        - jaeger-agent
     environment:
-        - JAEGER_AGENT_HOST=jaeger
+        - JAEGER_AGENT_HOST=jaeger-agent
         - JAEGER_AGENT_PORT=6831
         - JAEGER_SAMPLER_TYPE=const
         - JAEGER_SAMPLER_PARAM=1
@@ -40,6 +40,8 @@ services:
         - ./configs/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml
     depends_on:
         - loki
+        - elasticsearch
+        - jaeger-agent
     ports:
         - 3000:3000
 

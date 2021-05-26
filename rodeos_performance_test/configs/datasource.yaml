@@ -12,7 +12,7 @@ datasources:
   orgId: 1
   url: http://loki:3100
   basicAuth: false
-  isDefault: true
+  isDefault: false
   version: 1
   editable: false
   jsonData:
@@ -25,8 +25,28 @@ datasources:
   type: jaeger
   uid: jaeger
   access: 'browser'
-  url: http://jaeger:16686
+  url: http://jaeger-query:16686
   isDefault: false
   version: 1
   editable: false
   basicAuth: false
+- name: Elasticsearch
+  type: elasticsearch
+  typeLogoUrl: "public/app/plugins/datasource/elasticsearch/img/elasticsearch.svg"
+  access: proxy
+  url: "http://elasticsearch:9200"
+  database: "[jaeger-span-]YYYY-MM-DD"
+  password: 
+  user: 
+  basicAuth: false
+  isDefault: true
+  jsonData: 
+    dataLinks:
+      - datasourceUid: jaeger
+        field: traceID
+        url: $${__value.raw}
+    esVersion: 70
+    interval: Daily
+    maxConcurrentShardRequests: 5
+    timeField: startTimeMillis
+  readOnly: false
