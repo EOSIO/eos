@@ -102,19 +102,23 @@ struct connection : connection_base {
       auto in_buffer = std::make_shared<flat_buffer>();
       auto block_entering = fc::time_point::now().time_since_epoch().count();
       derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer, block_entering](error_code ec, size_t size) {
+         
          msg_finished_read_time = fc::time_point::now().time_since_epoch().count();
-	 msg_read_duration = (msg_finished_read_time - block_entering)/1000;
-	 msg_size = size;
+	      msg_read_duration = (msg_finished_read_time - block_entering)/1000;
+	      msg_size = size;
+         
          enter_callback(ec, "async_read", [&] {
-            if (!have_abi)
+            if (!have_abi) {
                receive_abi(in_buffer);
+               start_read();
+            }
             else {
+               start_read();
                if (!receive_result(in_buffer)) {
                   close(false);
                   return;
                }
-            }
-            start_read();
+            }    
          });
       });
    }
