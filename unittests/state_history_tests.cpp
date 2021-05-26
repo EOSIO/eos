@@ -71,8 +71,8 @@ std::vector<eosio::ship_protocol::transaction_trace> get_traces(eosio::state_his
                                                                 block_num_type                   block_num) {
    auto                                                 entry = log.get_log_entry(block_num);
    std::vector<eosio::ship_protocol::transaction_trace> traces;
-   if (entry.size()) {
-      eosio::input_stream traces_bin{entry.data(), entry.data() + entry.size()};
+   if (entry->size()) {
+      eosio::input_stream traces_bin{entry->data(), entry->data() + entry->size()};
       BOOST_REQUIRE_NO_THROW(from_bin(traces, traces_bin));
    }
    return traces;
@@ -256,9 +256,9 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
 
    chain.produce_blocks(10);
 
-   eosio::chain::bytes                                   entry = log.get_log_entry(last_accepted_block_num);
+   auto                                                  entry = log.get_log_entry(last_accepted_block_num);
    std::vector<eosio::ship_protocol::table_delta>        deltas;
-   eosio::input_stream                                   deltas_bin{entry.data(), entry.data() + entry.size()};
+   eosio::input_stream                                   deltas_bin{entry->data(), entry->data() + entry->size()};
    BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
 }
 
@@ -352,11 +352,11 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(get_traces(chain.traces_log, 150).size());
    BOOST_CHECK(get_traces(chain.traces_log, 160).empty());
 
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(10).empty());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(100).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(140).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(150).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(160).empty());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(10)->empty());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(100)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(140)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(150)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(160)->empty());
 
    auto traces = get_traces(chain.traces_log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
@@ -481,7 +481,7 @@ BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
    new_chain.produce_blocks(50);
 
    BOOST_CHECK(get_traces(new_chain.traces_log, 10).size());
-   BOOST_CHECK(new_chain.chain_state_log.get_log_entry(10).size());
+   BOOST_CHECK(new_chain.chain_state_log.get_log_entry(10)->size());
 }
 
 

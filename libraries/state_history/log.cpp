@@ -43,6 +43,26 @@ state_history_log::state_history_log(const char* const name, const state_history
    this->stride               = config.stride;
    open_log(config.log_dir / (std::string(name) + ".log"));
    open_index(config.log_dir / (std::string(name) + ".index"));
+
+   thr = std::thread([this] {
+      while (!ending.load()) {
+         std::unique_lock lock(mx);
+         cv.wait(lock, [this]{ 
+            return ending.load() || !entries.empty(); 
+         });
+         
+         if (entries.size()) {
+            write_entry(entries.begin()->second);
+            entries.erase(entries.begin());
+         }
+      }
+   });
+}
+
+state_history_log::~state_history_log() {
+   ending = true;
+   cv.notify_one();
+   thr.join();
 }
 
 void state_history_log::read_header(state_history_log_header& header, bool assert_version) {
@@ -69,6 +89,7 @@ void state_history_log::get_entry_header(state_history_log::block_num_type block
 }
 
 std::optional<chain::block_id_type> state_history_log::get_block_id(state_history_log::block_num_type block_num) {
+   std::lock_guard lock(mx);
    auto result = catalog.id_for_block(block_num);
    if (!result && block_num >= _begin_block && block_num < _end_block) {
       state_history_log_header header;
@@ -288,21 +309,59 @@ void state_history_log::split_log() {
    index.open("w+b");
 }
 
-state_history_traces_log::state_history_traces_log(const state_history_config& config)
-    : state_history_log("trace_history", config) {}
+void state_history_log::store_entry(const chain::block_id_type& id, const chain::block_id_type& prev_id,
+                                    std::vector<char>&& data) {
+   block_num_type block_num = chain::block_header::num_from_id(id);
+   {
+      std::lock_guard<std::mutex> lk(mx);
+      entries.try_emplace(block_num, log_entry_type{id, prev_id, std::make_shared<std::vector<char>>(std::move(data))});
+   }
+   cv.notify_one();
+}
 
-chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
+void state_history_log::write_entry(const log_entry_type& entry) {
+   state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = entry.id};
+   auto [block_num, start_pos] = write_entry_header(header, entry.prev_id);
+   try {
+      mx.unlock();
+      this->write_payload(write_log, *entry.data);
+      mx.lock();
+      write_entry_position(header, start_pos, block_num);
+   } catch (...) {
+      write_log.close();
+      boost::filesystem::resize_file(write_log.get_file_path(), start_pos);
+      write_log.open("rb+");
+      throw;
+   }
+}
+
+state_history_traces_log::state_history_traces_log(const state_history_config& config)
+    : state_history_log("trace_history", config) {
+}
+
+std::shared_ptr<std::vector<char>> state_history_traces_log::get_log_entry(block_num_type block_num) {
+   
+   std::lock_guard<std::mutex> lk(mx);
+   
+   auto itr = entries.find(block_num);
+   if (itr != entries.end()) {
+      std::vector<state_history::transaction_trace> traces;
+      auto ds = fc::datastream<const char*>(itr->second.data->data(), itr->second.data->size());
+      state_history::trace_converter::unpack(ds, traces);
+      return std::make_shared<std::vector<char>>(fc::raw::pack(traces));
+   }
+   
 
    auto get_traces_bin = [block_num](auto& ds, uint32_t version, std::size_t size) {
       auto start_pos = ds.tellp();
       try {
          if (version == 0) {
-            return state_history::zlib_decompress(ds);
+            return std::make_shared<std::vector<char>>(state_history::zlib_decompress(ds));
          }
          else {
             std::vector<state_history::transaction_trace> traces;
             state_history::trace_converter::unpack(ds, traces);
-            return fc::raw::pack(traces);
+            return std::make_shared<std::vector<char>>(fc::raw::pack(traces));
          }
       } catch (fc::exception& ex) {
          std::vector<char> trace_data(size);
@@ -330,7 +389,7 @@ chain::bytes state_history_traces_log::get_log_entry(block_num_type block_num) {
    }
 
    if (block_num < begin_block() || block_num >= end_block())
-      return {};
+      return std::make_shared<std::vector<char>>();
    state_history_log_header header;
    get_entry_header(block_num, header);
    return get_traces_bin(read_log, get_ship_version(header.magic), header.payload_size);
@@ -361,12 +420,16 @@ void state_history_traces_log::prune_transactions(state_history_log::block_num_t
 
 void state_history_traces_log::store(const chainbase::database& db, const chain::block_state_ptr& block_state) {
 
-   state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = block_state->id};
-   auto                     trace = cache.prepare_traces(block_state);
+   auto trace = cache.prepare_traces(block_state);
 
-   this->write_entry(header, block_state->block->previous, [&](auto& stream) {
-      state_history::trace_converter::pack(stream, db, trace_debug_mode, trace, compression);
-   });
+   fc::datastream<std::vector<char>> raw_strm;
+   state_history::trace_converter::pack(raw_strm, db, trace_debug_mode, trace, compression);
+
+   this->store_entry(block_state->id, block_state->block->previous, std::move(raw_strm.storage()));
+}
+
+void state_history_traces_log::write_payload(state_history_log::cfile_stream& stream, const std::vector<char>& data) {
+   stream.write(data.data(), data.size());
 }
 
 bool state_history_traces_log::exists(bfs::path state_history_dir) {
@@ -377,18 +440,24 @@ bool state_history_traces_log::exists(bfs::path state_history_dir) {
 state_history_chain_state_log::state_history_chain_state_log(const state_history_config& config)
     : state_history_log("chain_state_history", config) {}
 
-chain::bytes state_history_chain_state_log::get_log_entry(block_num_type block_num) {
+std::shared_ptr<std::vector<char>> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
 
+   std::lock_guard<std::mutex> lk(mx);
+   auto itr = entries.find(block_num);
+   if (itr != entries.end()) {
+      return itr->second.data;
+   }
+   
    auto [ds, _] = catalog.ro_stream_for_block(block_num);
    if (ds.remaining()) {
-      return state_history::zlib_decompress(ds);
+      return std::make_shared<std::vector<char>>(state_history::zlib_decompress(ds));
    }
 
    if (block_num < begin_block() || block_num >= end_block())
-      return {};
+      return std::make_shared<std::vector<char>>();
    state_history_log_header header;
    get_entry_header(block_num, header);
-   return state_history::zlib_decompress(read_log);
+   return std::make_shared<std::vector<char>>(state_history::zlib_decompress(read_log));
 }
 
 void state_history_chain_state_log::store(const chain::combined_database& db,
@@ -399,9 +468,14 @@ void state_history_chain_state_log::store(const chain::combined_database& db,
 
    using namespace state_history;
    std::vector<table_delta> deltas = create_deltas(db, fresh);
-   state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = block_state->id};
 
-   this->write_entry(header, block_state->block->previous, [&deltas](auto& stream) { zlib_pack(stream, deltas); });
+   fc::datastream<std::vector<char>> raw_strm;
+   fc::raw::pack(raw_strm, deltas);
+   this->store_entry(block_state->id, block_state->block->previous, std::move(raw_strm.storage()));
+}
+
+void state_history_chain_state_log::write_payload(state_history_log::cfile_stream& stream, const std::vector<char>& data) {
+   state_history::zlib_pack_raw(stream, data);
 }
 
 } // namespace eosio
