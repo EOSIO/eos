@@ -498,12 +498,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("prod", get_pending_block_producer())
                         ("txid", trx->id())
                         ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                        ("why",std::get<fc::exception_ptr>(response)->what()));
+                        ("why",except_ptr->what()));
                } else {
                   fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                           ("txid", trx->id())
                           ("a", trx->packed_trx()->get_transaction().first_authorizer())
-                          ("why",std::get<fc::exception_ptr>(response)->what()));
+                          ("why",except_ptr->what()));
                }
             } else {
                if (_pending_block_mode == pending_block_mode::producing) {
