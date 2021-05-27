@@ -41,8 +41,8 @@ namespace eosio {
                                 std::shared_ptr<http_plugin_state> plugin_state) : 
                 ioc_(ioc)
                 , ctx_(ctx)
-                , acceptor_(asio::make_strand(*ioc))
                 , isListening_(false)
+                , acceptor_(asio::make_strand(*ioc))
                 , plugin_state_(plugin_state)
                 { fc_ilog( logger, "constructor called" ); }
 

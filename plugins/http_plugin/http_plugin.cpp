@@ -26,6 +26,7 @@
 
 #include "common.hpp"
 #include "beast_http_listener.hpp"
+#include "http_server_flex.hpp"
 
 const fc::string logger_name("http_plugin");
 fc::logger logger;
@@ -168,8 +169,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          websocket_local_server_type unix_server;
 
          shared_ptr<beast_http_listener<plain_session> >  beast_server;
-         // unique_ptr<beast_http_listener<ssl_session> >    beast_https_server;
-         shared_ptr<beast_http_listener<plain_session> >  beast_https_server;
+         shared_ptr<beast_http_listener<ssl_session> >    beast_https_server;
+         // shared_ptr<beast_http_listener<plain_session> >  beast_https_server;
 
          shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
         
@@ -554,7 +555,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                }
 
                // beast_https_server = make_unique<beast_http_listener<ssl_session> >(ioc, ctx);
-               beast_https_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
+               beast_https_server = make_shared<beast_http_listener<ssl_session> >(ioc, ctx, plugin_state);
             }
             else {
                beast_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
