@@ -9,7 +9,16 @@ services:
         <<: *manager-node
         restart_policy:
           condition: none
-   jaeger:
+   jaeger-collector:
+      deploy:
+        <<: *manager-node
+   jaeger-query:
+      deploy:
+        <<: *manager-node
+   jaeger-agent:
+      deploy:
+        <<: *manager-node
+   elasticsearch:
       deploy:
         <<: *manager-node
    producer: 

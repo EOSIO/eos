@@ -181,19 +181,14 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
       uint64_t start_time = fc::time_point::now().time_since_epoch().count();
-      if (end_block_time.time_since_epoch().count()) {
-         auto wait_block_span = fc_create_trace_with_start_time("wait_block_span", end_block_time);
-         fc_add_tag( wait_block_span, "block_id", to_string( result.this_block->block_id ) );
-         fc_add_tag( wait_block_span, "block_num", result.this_block->block_num );
-      }
       
       using namespace eosio::literals;
       auto trace_id  = to_trace_id(result.this_block->block_id);
       auto token     = fc::zipkin_span::token{ "ship"_n.value, trace_id };
-      auto blk_span  = fc_create_span_from_token(token, "rodeos-received");
+      auto blk_span  = fc_create_span_from_token(token, "process_received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
-      fc_trace_log(blk_span, "rodeos-received start block_num=${block_num}", ("block_num", result.this_block->block_num));
+      fc_trace_log(blk_span, "process_received block_num=${block_num}", ("block_num", result.this_block->block_num));
 
       rodeos_snapshot->start_block(result);
       if (result.this_block->block_num <= rodeos_snapshot->head)
@@ -233,14 +228,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
       rodeos_snapshot->end_block(result, false);
 
-      uint64_t now = fc::time_point::now().time_since_epoch().count();
-      // ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}, duration: ${d}, read time: ${r}",
-      //    ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
+      end_block_time   = fc::time_point::now();
+      uint64_t now     = end_block_time.time_since_epoch().count();
+      uint64_t latency = now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0;
+      ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}ms, duration: ${d}ms, read time: ${r}ms",
+         ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",latency) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
 
-      fc_trace_log(blk_span, "rodeos-received done block_num=${block_num} latency=${l}us duration=${d}us",
-                   ("block_num", result.this_block->block_num)("l", now > rodeos_block_timestamp ? (now - rodeos_block_timestamp): 0)("d", (now - start_time)));
-
-      end_block_time = fc::time_point::now();
+      fc_add_tag( blk_span, "latency", latency );
       return true;
    }
 
