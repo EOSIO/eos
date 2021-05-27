@@ -2,7 +2,6 @@
 ```sh
 cleos net status [OPTIONS] host
 ```
-
 **Where:**
 * [OPTIONS] = See **Options** in the [**Command Usage**](command-usage) section below.
 * host = The hostname:port to query status of connection
@@ -30,14 +29,12 @@ Make sure you meet the following requirements:
 * You have access to a producing node instance with the [`net_api_plugin`](../../../01_nodeos/03_plugins/net_api_plugin/index.md) loaded.
 
 ## Examples
-The following examples demonstrate how to use the `cleos net status` command:
+The following examples demonstrate the `cleos net status` command:
 
-* List the status of a connected peer listening at p2p address `localhost:9001` for a local node listening at http address `http://127.0.0.1:8002`:
-
+**Example 1.** List the status of a connected peer listening at p2p address `localhost:9001` for a local node listening at http address `http://127.0.0.1:8002`:
 ```sh
 cleos -u http://127.0.0.1:8002 net status localhost:9001
 ```
-**Output:**
 ```json
 {
   "peer": "localhost:9001",
