@@ -21,6 +21,7 @@ enum request_flags {
    request_block             = 2,
    request_traces            = 4,
    request_deltas            = 8,
+   request_block_header      = 16
 };
 
 struct connection_callbacks {
@@ -139,7 +140,7 @@ struct connection : connection_base {
    }
 
    void request_blocks(uint32_t start_block_num, const std::vector<ship::block_position>& positions, int flags) {
-      ship::get_blocks_request_v0 req;
+      ship::get_blocks_request_v1 req;
       req.start_block_num        = start_block_num;
       req.end_block_num          = 0xffff'ffff;
       req.max_messages_in_flight = 0xffff'ffff;
@@ -148,6 +149,7 @@ struct connection : connection_base {
       req.fetch_block            = flags & request_block;
       req.fetch_traces           = flags & request_traces;
       req.fetch_deltas           = flags & request_deltas;
+      req.fetch_block_header     = flags & request_block_header;
       send(req);
    }
 
