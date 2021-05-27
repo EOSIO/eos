@@ -42,20 +42,20 @@ The command asks for the private key. Enter it.
 ```
 
 **Example Output**
-```shell
-private key: imported private key for: EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC
+```console
+imported private key for: EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC
 ```
 
-**Example 2.**. Import a private key to a named wallet and pass the private key on the command line:
+**Example 2.** Import a private key to a named wallet and pass the private key on the command line:
 ```shell
 cleos wallet import --name my_wallet --private-key 5KDNWQvY2seBPVUz7MiiaEDGTwACfuXu78bwZu7w2UDM9A3u3Fs
 ```
 
-**Where**
+**Where:**
 `--name` my_wallet = Tells the `cleos wallet import` command to import the key to `my_wallet` 
 `--private-key` 5KDNWQvY2seBPVUz7MiiaEDGTwACfuXu78bwZu7w2UDM9A3u3Fs = Tells the `cleos wallet import` command the private key to import 
 
 **Example Output**
-```shell
+```console
 imported private key for: EOS5zG7PsdtzQ9achTdRtXwHieL7yyigBFiJDRAQonqBsfKyL3XhC
 ```
