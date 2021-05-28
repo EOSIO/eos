@@ -4,11 +4,23 @@ x-manager-node: &manager-node
         constraints:
           - "node.role==manager"
 services:
+   loki:
+      deploy:
+         mode: replicated
+         replicas: 1
+
+   grafana:
+      volumes:
+         - ./configs/grafana-dashboards/dashboard-swarm.json:/var/lib/grafana/dashboards/dashboard.json
+      deploy:
+        <<: *manager-node
+
    bootstrap:
       deploy:
         <<: *manager-node
         restart_policy:
           condition: none
+
    jaeger-collector:
       deploy:
         <<: *manager-node
