@@ -95,7 +95,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    std::shared_ptr<ship_client::connection_base> connection;
    bool                                          reported_block = false;
    std::unique_ptr<rodeos_filter>                filter         = {}; // todo: remove
-   fc::time_point                                end_block_time;
+   uint64_t                                      end_block_time = 0;
 
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
@@ -188,6 +188,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       auto blk_span  = fc_create_span_from_token(token, "process_received");
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
+      fc_add_tag( blk_span, "wait_time", end_block_time == 0 ? 0LL : (start_time - end_block_time) );
       fc_trace_log(blk_span, "process_received block_num=${block_num}", ("block_num", result.this_block->block_num));
 
       rodeos_snapshot->start_block(result);
@@ -228,8 +229,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
       rodeos_snapshot->end_block(result, false);
 
-      end_block_time   = fc::time_point::now();
-      uint64_t now     = end_block_time.time_since_epoch().count();
+      end_block_time   = fc::time_point::now().time_since_epoch().count();
+      uint64_t now     = end_block_time;
       uint64_t latency = now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0;
       ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}ms, duration: ${d}ms, read time: ${r}ms",
          ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",latency) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
