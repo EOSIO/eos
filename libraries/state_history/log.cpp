@@ -44,17 +44,23 @@ state_history_log::state_history_log(const char* const name, const state_history
    open_log(config.log_dir / (std::string(name) + ".log"));
    open_index(config.log_dir / (std::string(name) + ".index"));
 
-   thr = std::thread([this] {
+   thr = std::thread([this, num_buffered_entries = config.num_buffered_entries] {
       while (!ending.load()) {
          std::unique_lock lock(mx);
          cv.wait(lock, [this]{ 
             return ending.load() || !entries.empty(); 
          });
          
-         if (entries.size()) {
+         if (entries.size() > num_buffered_entries ) {
             write_entry(entries.begin()->second);
             entries.erase(entries.begin());
          }
+      }
+
+      // make sure we write everything before we leave this thread
+      if (entries.size()) {
+         write_entry(entries.begin()->second);
+         entries.erase(entries.begin());
       }
    });
 }

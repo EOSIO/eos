@@ -113,6 +113,7 @@ struct state_history_config {
    bfs::path archive_dir;
    uint32_t  stride             = UINT32_MAX;
    uint32_t  max_retained_files = 10;
+   uint32_t  num_buffered_entries = 2;
 };
 
 class state_history_log {
