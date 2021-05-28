@@ -25,12 +25,12 @@ $ docker-compose up -d
 docker-compose ps
 ```
 
-3. If you are runing the docker-compose on the remote machine, you need ssh port forwarding *from your local machine* to access the jaeger UI
+3. If you are runing the docker-compose on the remote machine, you need ssh port forwarding *from your local machine* to access the jaeger or grafana UI
 ```
-$ ssh -L 127.0.0.1:16686:127.0.0.1:16686 $remote_user@$remote_ip
+$ ssh -N $remote_user@$remote_ip -L 127.0.0.1:16686:127.0.0.1:16686 -L 127.0.0.1:3000:127.0.0.1:3000
 ```
 
-4. Open your browser to visit http://127.0.0.1:16686
+4. Open your browser to visit http://localhost:16686 for jaeger and http://localhost:3000 for grafana
 
 5. Bring the local deployment down
 ```
