@@ -10,6 +10,8 @@ services:
          replicas: 1
 
    grafana:
+      volumes:
+         - ./configs/grafana-dashboards/dashboard-swarm.json:/var/lib/grafana/dashboards/dashboard.json
       deploy:
         <<: *manager-node
 
