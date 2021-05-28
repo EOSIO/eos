@@ -70,6 +70,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_tls_test.py ${CMAKE_CURRENT_B
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_scenario_3_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_scenario_3_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_forked_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_forked_network.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -201,6 +202,8 @@ add_test(NAME nodeos_repeat_transaction_lr_test COMMAND tests/nodeos_high_transa
 set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST cleos_action_no_params PROPERTY LABELS cleos_test)
 
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
