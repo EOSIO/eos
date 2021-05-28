@@ -78,12 +78,20 @@ struct connection : connection_base {
    bool                                         have_abi  = false;
    abi_def_skip_table                           abi       = {};
    std::map<std::string, abi_type>              abi_types = {};
+   std::atomic<bool>                            stopping  = false;
+   std::thread                                  thr;
+
 
    connection(std::shared_ptr<connection_callbacks> callbacks)
        : callbacks(callbacks) {}
 
    ConnectionType& derived_connection() {
       return static_cast<ConnectionType&>(*this);
+   }
+
+   ~connection() {
+      stopping = true;
+      thr.join();
    }
 
    void ws_handshake(const std::string& host) {
@@ -98,26 +106,43 @@ struct connection : connection_base {
          });
    }
 
-   void start_read() {
-      auto in_buffer = std::make_shared<flat_buffer>();
-      auto block_entering = fc::time_point::now().time_since_epoch().count();
-      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer, block_entering](error_code ec, size_t size) {
-         
+   void read_thread_fun() {
+      
+      while( !stopping.load())  {
+         auto in_buffer = std::make_shared<flat_buffer>();
+         auto block_entering = fc::time_point::now().time_since_epoch().count();
+
+         error_code ec;
+         int        size = derived_connection().stream.read(*in_buffer, ec);
+
          msg_finished_read_time = fc::time_point::now().time_since_epoch().count();
 	      msg_read_duration = (msg_finished_read_time - block_entering)/1000;
 	      msg_size = size;
-         
-         enter_callback(ec, "async_read", [&] {
-            if (!have_abi) {
-               receive_abi(in_buffer);
-               start_read();
-            }
-            else {
-               start_read();
+
+         if (ec) {
+            on_fail(ec, "sync_read");
+            return;
+         }
+
+         boost::asio::post(derived_connection().stream.get_executor(),[self = derived_connection().shared_from_this(), this, in_buffer ]() {
+            catch_and_close([in_buffer, this]{
                if (!receive_result(in_buffer)) {
                   close(false);
                   return;
                }
+            });
+         });
+      }
+   }
+
+   void start_read() {
+      auto in_buffer = std::make_shared<flat_buffer>();
+      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer](error_code ec, size_t size) {
+         
+         enter_callback(ec, "async_read", [&] {
+            if (!have_abi) {
+               receive_abi(in_buffer);
+               thr = std::thread([self = derived_connection().shared_from_this(), this] { this->read_thread_fun(); });
             }    
          });
       });
