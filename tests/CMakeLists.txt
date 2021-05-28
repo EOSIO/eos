@@ -139,6 +139,8 @@ add_test(NAME privacy_forked_network COMMAND tests/privacy_forked_network.py -p 
 set_property(TEST privacy_forked_network PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST cleos_action_no_params PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -202,8 +204,6 @@ add_test(NAME nodeos_repeat_transaction_lr_test COMMAND tests/nodeos_high_transa
 set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST cleos_action_no_params PROPERTY LABELS cleos_test)
 
 add_test(NAME plugin_http_api_test COMMAND tests/plugin_http_api_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(plugin_http_api_test PROPERTIES TIMEOUT 40)
