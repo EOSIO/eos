@@ -9,6 +9,11 @@ x-logging:
        keep-file: "true"
        max-size: "5m"
        max-file: "3"
+       loki-relabel-config: |
+         - action: labelmap
+           regex: compose_(service)
+         - action: labelmap
+           regex: swarm_(service)
 
 version: "3.9"
 services:
@@ -110,6 +115,8 @@ services:
          - /etc/eosio
          - --telemetry-url=http://jaeger-collector:9411/api/v2/spans 
          - --telemetry-service-name=producer 
+      volumes:
+         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
       depends_on:
          - jaeger-collector
          - loki 
@@ -164,5 +171,6 @@ services:
          - loki 
       logging: *logging
       volumes:
+         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
          - ./boot.sh:/root/eosio/boot.sh
 

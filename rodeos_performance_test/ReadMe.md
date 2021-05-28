@@ -97,7 +97,6 @@ $ MANAGER_IP=34.212.138.85
 $ docker pull $MANAGER_IP:5443/busybox
 ```
 
-
 ### Create the swam
 
 Run the following command on the machine which is designated as the manager node
@@ -128,6 +127,12 @@ $ docker swarm join \
 This node joined a swarm as a worker.
 ```
 
+### Install loki-docker-driver on all machines
+
+```
+$ docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
+
 ### Label worker nodes
 
 On the manager node
@@ -150,14 +155,14 @@ $ docker node update --label-add name=node-2 csuy1nxb0es6zbo3t6j8osu9z
 To distribute the EOS image across the swarm, it needs to be pushed to the registry you set up earlier. 
 
 ```
-$ source ./push_latest_image.sh
+$ ./push_latest_image.sh
 ```
 
 ### Deploy the stack to the swarm
 
 1. Create the stack with docker stack deploy:
 ```
-$ docker stack deploy -c docker-compose.yaml -c cluster.yaml rodeos-test
+$ ./swarm_deploy.sh
 ```
 
 2. Check that it’s running with docker stack services rodeos-test:
@@ -178,6 +183,18 @@ ow36qmzjrhnu   rodeos-test_zipkin.1      openzipkin/zipkin:latest              i
 ```
 $ docker stack rm rodeos-test
 ```
+
+The command would return immediately before everything is down. You can still check the services status with
+```
+$ docker stack ps rodeos-test
+ID             NAME                          IMAGE                                       NODE              DESIRED STATE   CURRENT STATE           ERROR     PORTS
+kck8rgws417q   6o54orzi53z3q5saz0mj36ler.1   34.212.138.85:5443/eos-boxed:d59242030c36   ip-172-31-6-31    Remove          Running 9 seconds ago             
+eijcmk7a3vyp   8h1ngls93nlvd4pc11fepoafj.1   34.212.138.85:5443/eos-boxed:d59242030c36   ip-172-31-3-140   Remove          Running 9 seconds ago             
+s4pqt8znken0   pnyx2z2j4ubyk2tx7j8b7esbn.1   34.212.138.85:5443/eos-boxed:d59242030c36   ip-172-31-12-94   Remove          Running 9 seconds ago             
+98r1qdy09s1l   yxdku3omt08xp9i2swdtbj2h1.1   jaegertracing/jaeger-collector:latest       ip-172-31-3-140   Remove          Running 9 seconds ago     
+```
+
+Make sure every is destroyed before you deploy the next. 
 
 5. Bring the registry down with docker service rm:
 ```

@@ -832,7 +832,7 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "rate(({compose_service=\"producer\"} |= \"Produced block \")[10s])",
+          "expr": "rate(({service=~\".*producer\"} |= \"Produced block \")[10s])",
           "legendFormat": "producer",
           "metrics": [
             {
@@ -845,13 +845,13 @@
           "timeField": "startTimeMillis"
         },
         {
-          "expr": "rate(({compose_service=\"ship\"} |= \"handle_message \")[10s])",
+          "expr": "rate(({service=~\".*ship\"} |= \"handle_message \")[10s])",
           "hide": false,
           "legendFormat": "ship",
           "refId": "B"
         },
         {
-          "expr": "rate(({compose_service=\"rodeos\"} |= \"process_received block_num\")[10s])",
+          "expr": "rate(({service=~\".*rodeos\"} |= \"process_received block_num\")[10s])",
           "hide": false,
           "legendFormat": "rodeos",
           "refId": "C"
