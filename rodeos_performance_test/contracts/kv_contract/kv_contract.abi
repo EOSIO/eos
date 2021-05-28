@@ -14,52 +14,6 @@
             ]
         },
         {
-            "name": "batchsetup",
-            "base": "",
-            "fields": [
-                {
-                    "name": "batch_size",
-                    "type": "int32"
-                }
-            ]
-        },
-        {
-            "name": "numobj",
-            "base": "",
-            "fields": [
-                {
-                    "name": "key",
-                    "type": "uint64"
-                },
-                {
-                    "name": "init_id",
-                    "type": "uint64"
-                },
-                {
-                    "name": "next_id",
-                    "type": "uint64"
-                },
-                {
-                    "name": "data",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
-            "name": "oneline",
-            "base": "",
-            "fields": [
-                {
-                    "name": "id",
-                    "type": "uint64"
-                },
-                {
-                    "name": "data",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
             "name": "setkvparam",
             "base": "",
             "fields": [
@@ -77,39 +31,17 @@
             "ricardian_contract": ""
         },
         {
-            "name": "batchsetup",
-            "type": "batchsetup",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "oneline",
-            "type": "oneline",
-            "ricardian_contract": ""
-        },
-        {
             "name": "setkvparam",
             "type": "setkvparam",
             "ricardian_contract": ""
         }
     ],
-    "tables": [
-        {
-            "name": "numobjs",
-            "type": "numobj",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        }
-    ],
+    "tables": [],
     "ricardian_clauses": [],
     "variants": [],
     "action_results": [
         {
             "name": "batchinsert",
-            "result_type": "uint64"
-        },
-        {
-            "name": "batchsetup",
             "result_type": "uint64"
         }
     ]

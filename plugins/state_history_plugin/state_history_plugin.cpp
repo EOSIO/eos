@@ -196,6 +196,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                std::lock_guard<std::mutex> lk(mx);
                auto                        token = fc_get_token(span);
                send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), token);
+               fc_add_tag(span, "total_packet_size", send_queue.back().first.size());
             }
             cv.notify_one();
             callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {

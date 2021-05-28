@@ -163,4 +163,6 @@ services:
          - producer
          - loki 
       logging: *logging
+      volumes:
+         - ./boot.sh:/root/eosio/boot.sh
 

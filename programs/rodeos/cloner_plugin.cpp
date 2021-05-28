@@ -234,7 +234,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       ilog("Done with block ${m}, incoming size: ${s}, latency: ${l}ms, duration: ${d}ms, read time: ${r}ms",
          ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",latency) ("d",(now - ship_client::msg_finished_read_time)/1000) ("r", ship_client::msg_read_duration));
 
-      fc_add_tag( blk_span, "latency", latency );
+      fc_add_tag( blk_span, "latency", (result.this_block->block_num > 2 ? latency : 0) );
       return true;
    }
 

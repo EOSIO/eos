@@ -36,6 +36,280 @@
         "y": 0
       },
       "hiddenSeries": false,
+      "id": 16,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "script": "Integer.parseInt(doc['tag.num_transactions'].value)"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "operationName: block",
+          "refId": "A",
+          "timeField": "startTimeMillis"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Max number of transactions",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:278",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:279",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 14,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "traces",
+          "bucketAggs": [
+            {
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "script": "Integer.parseInt(doc['tag.traces_size'].value)"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "operationName: ship-send-update",
+          "refId": "traces size",
+          "timeField": "startTimeMillis"
+        },
+        {
+          "alias": "deltas",
+          "bucketAggs": [
+            {
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "hide": false,
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "script": "Integer.parseInt(doc['tag.deltas_size'].value)"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "operationName: ship-send-update",
+          "refId": "A",
+          "timeField": "startTimeMillis"
+        },
+        {
+          "alias": "Total",
+          "bucketAggs": [
+            {
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "hide": false,
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "script": "Integer.parseInt(doc['tag.total_packet_size'].value)"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "operationName: ship-send-update",
+          "refId": "B",
+          "timeField": "startTimeMillis"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Max Packet Sizes",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:174",
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:175",
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "hiddenSeries": false,
       "id": 12,
       "legend": {
         "avg": false,
@@ -77,12 +351,12 @@
             {
               "id": "1",
               "settings": {
-                "script": "Integer.parseInt(doc['tag.buffer_size'].value)"
+                "script": "Integer.parseInt(doc['tag.total_packet_size'].value)"
               },
               "type": "max"
             }
           ],
-          "query": "operationName: send",
+          "query": "operationName: ship-send-update",
           "refId": "A",
           "timeField": "startTimeMillis"
         },
@@ -102,12 +376,12 @@
             {
               "id": "1",
               "settings": {
-                "script": "Integer.parseInt(doc['tag.buffer_size'].value)"
+                "script": "Integer.parseInt(doc['tag.total_packet_size'].value)"
               },
               "type": "avg"
             }
           ],
-          "query": "operationName: send",
+          "query": "operationName: ship-send-update",
           "refId": "B",
           "timeField": "startTimeMillis"
         },
@@ -127,12 +401,12 @@
             {
               "id": "1",
               "settings": {
-                "script": "Integer.parseInt(doc['tag.buffer_size'].value)"
+                "script": "Integer.parseInt(doc['tag.total_packet_size'].value)"
               },
               "type": "min"
             }
           ],
-          "query": "operationName: send",
+          "query": "operationName: ship-send-update",
           "refId": "C",
           "timeField": "startTimeMillis"
         }
@@ -197,7 +471,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 10,
@@ -320,7 +594,7 @@
                 "config": {
                   "id": "greater",
                   "options": {
-                    "value": 100000
+                    "value": 100000000
                   }
                 },
                 "fieldName": "Max"
@@ -380,7 +654,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 32
       },
       "hiddenSeries": false,
       "id": 8,
@@ -420,7 +694,7 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "rate(({compose_service=\"producer\"} |= \"commit_block \")[10s])",
+          "expr": "rate(({compose_service=\"producer\"} |= \"Produced block \")[10s])",
           "legendFormat": "producer",
           "metrics": [
             {
@@ -455,24 +729,6 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "transformations": [
-        {
-          "id": "calculateField",
-          "options": {
-            "binary": {
-              "left": "Count",
-              "operator": "/",
-              "reducer": "sum",
-              "right": "10"
-            },
-            "mode": "binary",
-            "reduce": {
-              "reducer": "sum"
-            },
-            "replaceFields": true
-          }
-        }
-      ],
       "type": "graph",
       "xaxis": {
         "buckets": null,
@@ -522,7 +778,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 40
       },
       "hiddenSeries": false,
       "id": 2,

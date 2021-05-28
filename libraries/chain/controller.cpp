@@ -1656,7 +1656,8 @@ struct controller_impl {
             trace.emplace(fc::zipkin_span::to_id(bsp->id), "block", fc::zipkin_span::to_id(bsp->id), 0);
             fc_add_tag( trace, "block_id",  bsp->id.str() );
             fc_add_tag( trace, "block_num", bsp->block_num );
-            fc_trace_log(trace, "commit_block block_num=${block_num}", ("block_num", bsp->block_num ));
+            fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());
+            fc_trace_log(trace, "commit_block block_num=${block_num}", ("block_num", bsp->block_num));
          }
 
          emit( self.accepted_block, bsp );
