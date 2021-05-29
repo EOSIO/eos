@@ -9,6 +9,34 @@ services:
          mode: replicated
          replicas: 1
 
+   prometheus:
+      deploy:
+         placement:
+            constraints:
+            - node.role==manager
+         restart_policy:
+            condition: on-failure
+   
+   node-exporter:
+      deploy:
+         mode: global
+         restart_policy:
+            condition: on-failure
+   
+   alertmanager:
+      deploy:
+         placement:
+            constraints:
+               - node.role==manager
+         restart_policy:
+            condition: on-failure    
+   
+   cadvisor:
+      deploy:
+         mode: global
+         restart_policy:
+            condition: on-failure
+
    grafana:
       volumes:
          - ./configs/grafana-dashboards/dashboard-swarm.json:/var/lib/grafana/dashboards/dashboard.json

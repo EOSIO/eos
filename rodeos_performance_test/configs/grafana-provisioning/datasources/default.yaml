@@ -4,6 +4,7 @@ apiVersion: 1
 deleteDatasources:
   - name: loki
   - name: jaeger
+  - name: Prometheus
 
 datasources:
 - name: loki
@@ -50,3 +51,40 @@ datasources:
     maxConcurrentShardRequests: 5
     timeField: startTimeMillis
   readOnly: false
+- name: Prometheus
+  # <string, required> datasource type. Required
+  type: prometheus
+  # <string, required> access mode. direct or proxy. Required
+  access: proxy
+  # <string> url
+  url: http://prometheus:9090
+  # <string> database password, if used
+  password:
+  # <string> database user, if used
+  user:
+  # <string> database name, if used
+  database:
+  # <bool> enable/disable basic auth
+  basicAuth: false
+  # <string> basic auth username, if used
+  basicAuthUser:
+  # <string> basic auth password, if used
+  basicAuthPassword:
+  # <bool> enable/disable with credentials headers
+  withCredentials:
+  # <bool> mark as default datasource. Max one per org
+  isDefault: false
+  # <map> fields that will be converted to json and stored in json_data
+  jsonData:
+    graphiteVersion: "1.1"
+    tlsAuth: false
+    tlsAuthWithCACert: false
+  # <string> json object of data that will be encrypted.
+  secureJsonData:
+    tlsCACert: "..."
+    tlsClientCert: "..."
+    tlsClientKey: "..."
+  version: 1
+  # <bool> allow users to edit datasources from the UI.
+  editable: true
+
