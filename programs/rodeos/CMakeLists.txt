@@ -6,8 +6,13 @@ add_executable( ${RODEOS_EXECUTABLE_NAME}
   rocksdb_plugin.cpp
   wasm_ql_http.cpp
   wasm_ql_plugin.cpp
+  rdb_stdout_logger.cpp
   ${HEADERS}
 )
+
+if (CMAKE_BUILD_TYPE STREQUAL Release)
+set_source_files_properties(rdb_stdout_logger.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
+endif()
 
 if( UNIX AND NOT APPLE )
   set(rt_library rt )

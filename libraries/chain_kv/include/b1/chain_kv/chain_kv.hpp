@@ -306,7 +306,8 @@ struct database {
    std::unique_ptr<rocksdb::DB> rdb;
 
    database(const char* db_path, bool create_if_missing, std::optional<uint32_t> threads = {},
-            std::optional<int> max_open_files = {}, std::optional<boost::filesystem::path> options_file_name = {}) {
+            std::optional<int> max_open_files = {}, std::optional<boost::filesystem::path> options_file_name = {},
+            std::shared_ptr<rocksdb::Logger> logger = nullptr) {
       rocksdb::DB* p;
 
       if ( options_file_name ) {
@@ -314,7 +315,7 @@ struct database {
          rocksdb::DBOptions loaded_db_opt;
          std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
          check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadLatestOptions: ");
-
+         loaded_db_opt.info_log = logger;
          // open the db using the loaded options.
          std::vector<rocksdb::ColumnFamilyHandle*> handles;
          check(rocksdb::DB::Open(loaded_db_opt, db_path, loaded_cf_descs, &handles, &p), "database::database:rocksdb::DB::Open (options files): ");
@@ -332,7 +333,7 @@ struct database {
          options.write_buffer_size = 256 * 1024 * 1024;
          options.target_file_size_base = 256 * 1024 * 1024;
          options.max_bytes_for_level_base = 256 * 1024 * 1024;  // L1 max size
-
+         options.info_log = logger;
          /*
          options.level_compaction_dynamic_level_bytes = true;
          options.bytes_per_sync                       = 1048576;
