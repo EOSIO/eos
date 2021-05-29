@@ -315,6 +315,7 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
                             eosio::input_stream                                         bin,
                             const std::function<void(const char* data, uint64_t size)>& push_data) {
    // todo: timeout
+   ilog("REM rodeos_filter::process");
    snapshot.check_write(result);
    chaindb_state chaindb_state;
    db_view_state view_state{ name, *snapshot.db, *snapshot.write_session, snapshot.partition->contract_kv_prefix };
@@ -342,7 +343,9 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->initialize(&cb);
    try {
       eosio::vm::scoped_profile profile_runner(prof.get());
+      ilog("REM rodeos_filter::process running name: ${n}",("n", name.to_string()));
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
+      ilog("REM rodeos_filter::process running done");
 
       if (!filter_state->console.empty())
          ilog("filter ${n} console output: <<<\n${c}>>>", ("n", name.to_string())("c", filter_state->console));
