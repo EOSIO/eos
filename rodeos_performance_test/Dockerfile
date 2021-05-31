@@ -15,6 +15,7 @@ COPY contracts /root/eosio/contracts
 COPY boot.sh /root/eosio/boot.sh
 COPY wait-for-it.sh /root/eosio/wait-for-it.sh
 COPY config.ini /etc/eosio/config.ini
+COPY rocksdb.ini /etc/rodeos/rocksdb.ini
 ARG BUILD_DIR
 COPY unittests $BUILD_DIR/unittests
 WORKDIR /root/eosio

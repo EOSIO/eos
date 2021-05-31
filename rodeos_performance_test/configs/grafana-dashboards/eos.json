@@ -1068,8 +1068,8 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "count_over_time(({service=~\".*rodeos\",source=\"stdout\"} |= \"EVENT_LOG_v1\" |= \"compaction_started\")[5s])",
-          "legendFormat": "compaction started",
+          "expr": "sum by (event)(sum_over_time({service=~\".*rodeos\",source=\"stdout\"} |= \"EVENT_LOG_v1\" | regexp \"EVENT_LOG_v1 (?P<body>.+)\" | line_format \"{{ .body }}\" | json | event = \"compaction_finished\" | unwrap compaction_time_cpu_micros [10s]))",
+          "legendFormat": "compaction cpu time over 10s",
           "metrics": [
             {
               "id": "1",
@@ -1079,12 +1079,6 @@
           "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
-        },
-        {
-          "expr": "count_over_time(({service=~\".*rodeos\",source=\"stdout\"} |= \"EVENT_LOG_v1\" |= \"flush_started\")[5s])",
-          "hide": false,
-          "legendFormat": "flush started",
-          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -1108,7 +1102,7 @@
       "yaxes": [
         {
           "$$hashKey": "object:74",
-          "format": "short",
+          "format": "µs",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1146,5 +1140,5 @@
   "timezone": "",
   "title": "EOS dashboard",
   "uid": "OVp1EY3Gz",
-  "version": 2
+  "version": 1
 }

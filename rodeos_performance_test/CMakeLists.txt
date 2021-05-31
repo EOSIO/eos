@@ -7,13 +7,12 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../contracts/contracts/eosio.boot/bin/eosi
           ${CMAKE_CURRENT_SOURCE_DIR}/../contracts/contracts/eosio.boot/bin/eosio.boot.wasm
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/contracts/eosio.boot)
 
-file(COPY contracts/kv_contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/contracts)
-
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../unittests/contracts/eosio.token DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/unittests/contracts)
 
 configure_file(boot.sh boot.sh COPYONLY)
 configure_file(config.ini config.ini COPYONLY)
 configure_file(wait-for-it.sh wait-for-it.sh COPYONLY)
+configure_file(rocksdb.ini rocksdb.ini COPYONLY)
 
 add_custom_target(test_docker_image ALL
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/nodeos ${CMAKE_CURRENT_BINARY_DIR}/bin/nodeos

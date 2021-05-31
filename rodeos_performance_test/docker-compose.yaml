@@ -62,8 +62,8 @@ services:
       environment:
         - xpack.security.enabled=false
         - "discovery.type=single-node"
-      ports:
-        - 9200:9200
+      # ports:
+      #   - 9200:9200
 
    loki:
       image: grafana/loki:latest
@@ -82,6 +82,7 @@ services:
             - JAEGER_SAMPLER_TYPE=const
             - JAEGER_SAMPLER_PARAM=1
 
+   # based on the configuration from https://github.com/vegasbrianc/prometheus
    prometheus:
       image: prom/prometheus
       volumes:
@@ -94,8 +95,8 @@ services:
          - '--web.console.templates=/usr/share/prometheus/consoles'
          - '--web.enable-lifecycle'
          - '--web.enable-admin-api'
-      ports:
-         - 9090:9090
+      # ports:
+      #    - 9090:9090
       depends_on:
          - cadvisor
    
@@ -110,13 +111,13 @@ services:
          - '--path.sysfs=/host/sys'
          - --collector.filesystem.ignored-mount-points
          - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
-      ports:
-         - 9100:9100
+      # ports:
+      #    - 9100:9100
    
    alertmanager:
       image: prom/alertmanager
-      ports:
-         - 9093:9093
+      # ports:
+      #    - 9093:9093
       volumes:
          - "./configs/alertmanager/:/etc/alertmanager/"
       command:
@@ -130,8 +131,8 @@ services:
          - /var/run:/var/run:rw
          - /sys:/sys:ro
          - /var/lib/docker/:/var/lib/docker:ro
-      ports:
-         - 8080:8080
+      # ports:
+      #    - 8080:8080
         
    grafana:
       image: grafana/grafana
@@ -208,7 +209,7 @@ services:
             sleep 10   
             rodeos --clone-connect-to=ship:8080 --data-dir=/var/rodeos/data --rdb-threads=12 \
                    --telemetry-url=http://jaeger-collector:9411/api/v2/spans --telemetry-service-name=rodeos \
-                   --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8 --rdb-console-log                
+                   --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8 --rdb-console-log  --rdb-options-file-name=/etc/rodeos/rocksdb.ini           
          "       
       depends_on:
          - jaeger-collector
@@ -225,6 +226,6 @@ services:
          - loki 
       logging: *logging
       volumes:
-         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
+         - ./contracts/brian:/root/eosio/contracts/kv_contract
          - ./boot.sh:/root/eosio/boot.sh
 
