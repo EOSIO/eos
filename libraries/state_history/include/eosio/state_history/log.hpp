@@ -114,6 +114,7 @@ struct state_history_config {
    uint32_t  stride             = UINT32_MAX;
    uint32_t  max_retained_files = 10;
    uint32_t  num_buffered_entries = 2;
+   bool      threaded_write       = true;
 };
 
 class state_history_log {
