@@ -16,7 +16,8 @@ namespace b1::ship_client {
 
 uint64_t msg_read_duration = 0;  // Total time to read a message
 uint64_t msg_finished_read_time = 0; // Time when a block is completely read
-size_t msg_size = 0;
+size_t   msg_size               = 0;
+bool     threaded_receive       = true;
 
 namespace ship = eosio::ship_protocol;
 
@@ -91,7 +92,8 @@ struct connection : connection_base {
 
    ~connection() {
       stopping = true;
-      thr.join();
+      if (thr.joinable())
+         thr.join();
    }
 
    void ws_handshake(const std::string& host) {
@@ -137,12 +139,21 @@ struct connection : connection_base {
 
    void start_read() {
       auto in_buffer = std::make_shared<flat_buffer>();
-      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer](error_code ec, size_t size) {
-         
+      derived_connection().stream.async_read(*in_buffer, [self = derived_connection().shared_from_this(), this, in_buffer](error_code ec, size_t size) {      
          enter_callback(ec, "async_read", [&] {
             if (!have_abi) {
                receive_abi(in_buffer);
-               thr = std::thread([self = derived_connection().shared_from_this(), this] { this->read_thread_fun(); });
+               if (threaded_receive)
+                  thr = std::thread([self = derived_connection().shared_from_this(), this] { this->read_thread_fun(); });
+               else
+                  start_read();
+            }
+            else {
+               start_read();
+               if (!receive_result(in_buffer)) {
+                  close(false);
+                  return;
+               }
             }    
          });
       });

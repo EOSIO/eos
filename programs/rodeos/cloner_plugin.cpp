@@ -21,6 +21,7 @@ namespace b1 {
 extern uint64_t ship_client::msg_read_duration;
 extern uint64_t ship_client::msg_finished_read_time;
 extern size_t ship_client::msg_size;
+extern bool     ship_client::threaded_receive;
 
 using namespace appbase;
 using namespace std::literals;
@@ -298,6 +299,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
+   op("no-threaded-receive", bpo::bool_switch(), "Disable threaded receive");
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -356,6 +358,8 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
                                   options["telemetry-service-name"].as<std::string>(),
                                   options["telemetry-timeout-us"].as<uint32_t>() );
       }
+
+      ship_client::threaded_receive = ! options["no-threaded-receive"].as<bool>();
    }
    FC_LOG_AND_RETHROW()
 }
