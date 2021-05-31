@@ -316,6 +316,8 @@ struct database {
          std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
          check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadLatestOptions: ");
          loaded_db_opt.info_log = logger;
+         loaded_db_opt.env->SetBackgroundThreads(loaded_db_opt.max_background_jobs, rocksdb::Env::LOW);
+         loaded_db_opt.env->SetBackgroundThreads(1, rocksdb::Env::HIGH);
          // open the db using the loaded options.
          std::vector<rocksdb::ColumnFamilyHandle*> handles;
          check(rocksdb::DB::Open(loaded_db_opt, db_path, loaded_cf_descs, &handles, &p), "database::database:rocksdb::DB::Open (options files): ");
