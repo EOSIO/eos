@@ -60,8 +60,10 @@ struct rodeos_db_snapshot {
    void check_write(const eosio::ship_protocol::get_blocks_result_base& result);
    void write_block_info(const eosio::ship_protocol::get_blocks_result_v0& result);
    void write_block_info(const eosio::ship_protocol::get_blocks_result_v1& result);
+   void write_block_info(const eosio::ship_protocol::get_blocks_result_v2& result);
    void write_deltas(const eosio::ship_protocol::get_blocks_result_v0& result, std::function<bool()> shutdown);
    void write_deltas(const eosio::ship_protocol::get_blocks_result_v1& result, std::function<bool()> shutdown);
+   void write_deltas(const eosio::ship_protocol::get_blocks_result_v2& result, std::function<bool()> shutdown);
 
  private:
    void write_block_info(uint32_t block_num, const eosio::checksum256& id,

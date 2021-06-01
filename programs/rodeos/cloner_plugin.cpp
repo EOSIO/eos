@@ -202,6 +202,10 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return process_received(result, bin);
    }
 
+   bool received(get_blocks_result_v2& result, eosio::input_stream bin) override {
+      return process_received(result, bin);
+   }
+
    void closed(bool retry) override {
       if (my) {
          my->session.reset();
