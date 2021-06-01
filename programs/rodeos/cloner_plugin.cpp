@@ -222,13 +222,17 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
                my->streamer->stream_data(data, data_size);
             }
          });
-         if (my->streamer)
+         if (my->streamer) {
             my->streamer->stop_block(result.this_block->block_num);
+         }
       }
       if( app().is_quiting() )
          return false;
 
-      rodeos_snapshot->end_block(result, false);
+      {
+         auto end_block_span = fc_create_span(blk_span, "end_block");
+         rodeos_snapshot->end_block(result, false);
+      }
 
       end_block_time   = fc::time_point::now().time_since_epoch().count();
       uint64_t now     = end_block_time;
