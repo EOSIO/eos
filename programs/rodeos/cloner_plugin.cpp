@@ -126,7 +126,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
                                   " but nodeos has chain " + eosio::convert_to_json(status.chain_id));
       ilog("request blocks");
       connection->request_blocks(status, std::max(config->skip_to, rodeos_snapshot->head + 1), get_positions(),
-                                 ship_client::request_block_header | ship_client::request_traces |
+                                 ship_client::request_block | ship_client::request_traces |
                                        ship_client::request_deltas);
       return true;
    }

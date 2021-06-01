@@ -140,7 +140,7 @@ struct connection : connection_base {
    }
 
    void request_blocks(uint32_t start_block_num, const std::vector<ship::block_position>& positions, int flags) {
-      ship::get_blocks_request_v1 req;
+      ship::get_blocks_request_v0 req;
       req.start_block_num        = start_block_num;
       req.end_block_num          = 0xffff'ffff;
       req.max_messages_in_flight = 0xffff'ffff;
@@ -149,7 +149,8 @@ struct connection : connection_base {
       req.fetch_block            = flags & request_block;
       req.fetch_traces           = flags & request_traces;
       req.fetch_deltas           = flags & request_deltas;
-      req.fetch_block_header     = flags & request_block_header;
+      // Add when updating to ship::get_blocks_request_v1 which can happen once CDT abieos is updated to have ship::get_blocks_request_v1
+      // req.fetch_block_header     = flags & request_block_header;
       send(req);
    }
 
