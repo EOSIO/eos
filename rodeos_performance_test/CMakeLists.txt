@@ -13,6 +13,8 @@ configure_file(boot.sh boot.sh COPYONLY)
 configure_file(config.ini config.ini COPYONLY)
 configure_file(wait-for-it.sh wait-for-it.sh COPYONLY)
 configure_file(rocksdb.ini rocksdb.ini COPYONLY)
+configure_file(genesis.json genesis.json COPYONLY)
+
 
 add_custom_target(test_docker_image ALL
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/nodeos ${CMAKE_CURRENT_BINARY_DIR}/bin/nodeos

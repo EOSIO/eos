@@ -164,12 +164,10 @@ services:
          - --enable-stale-production 
          - --producer-name=eosio              
          - --plugin=eosio::producer_plugin  
-         - --config-dir
-         - /etc/eosio
+         - --config-dir=/etc/eosio
+         - --genesis-json=/etc/producer/genesis.json
          - --telemetry-url=http://jaeger-collector:9411/api/v2/spans 
          - --telemetry-service-name=producer 
-      volumes:
-         - ./contracts/kv_contract:/root/eosio/contracts/kv_contract
       depends_on:
          - jaeger-collector
          - loki 
@@ -191,6 +189,7 @@ services:
          - --p2p-peer-address=producer:9876:blk
          - --state-history-endpoint=0.0.0.0:8080
          - --config-dir=/etc/eosio
+         - --genesis-json=/etc/producer/genesis.json
          - --telemetry-url=http://jaeger-collector:9411/api/v2/spans 
          - --telemetry-service-name=ship 
          - --send-mode=threaded_sync
