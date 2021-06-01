@@ -142,8 +142,7 @@ namespace eosio {
                         return;
                     }
 
-                    // TODO: verfiy bytes in flight/requests in flight
-                    // auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, shared_from_this());
+                    // verfiy bytes in flight/requests in flight
                     if( !verify_max_bytes_in_flight() || !verify_max_requests_in_flight() ) return;
 
                     std::string resource = std::string(req.target());
@@ -185,6 +184,11 @@ namespace eosio {
                 : ioc_(ioc)
                 , plugin_state_(plugin_state)
             {
+                plugin_state_->requests_in_flight += 1;
+            }
+
+            virtual ~beast_http_session() {
+                plugin_state_->requests_in_flight -= 1;
             }
 
             void
@@ -256,29 +260,59 @@ namespace eosio {
             }
 
 
-        // TODO 
-        bool allow_host(const http::request<http::string_body>& req) {
-            /*
-            bool is_secure = con->get_uri()->get_secure();
-            const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
-            auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+            // TODO 
+            bool allow_host(const http::request<http::string_body>& req) {
+                /*
+                bool is_secure = con->get_uri()->get_secure();
+                const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+                auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
 
-            const auto& host_str = req.get_header("Host");
-            if (host_str.empty() || !host_is_valid(*plugin_state, host_str, local_socket_host_port, is_secure)) {
-               con->set_status(websocketpp::http::status_code::bad_request);
-               return false;
-            }
-            */
-            return true;
-         }
-
-            // TODO
-            virtual bool verify_max_bytes_in_flight() override {
+                const auto& host_str = req.get_header("Host");
+                if (host_str.empty() || !host_is_valid(*plugin_state, host_str, local_socket_host_port, is_secure)) {
+                con->set_status(websocketpp::http::status_code::bad_request);
+                return false;
+                }
+                */
                 return true;
             }
 
-            // TODO
+            void report_429_error(const std::string & what) {
+                /*
+                error_results::error_info ei;
+                ei.code = websocketpp::http::status_code::too_many_requests;
+                ei.name = "Busy";
+                ei.what = what;
+                error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
+                // con->set_body(  ));
+                // con->set_status( websocketpp::http::status_code::too_many_requests );
+                // con->send_response(fc::json::to_string( results, fc::time_point::maximum(), ec);
+                */
+                send_response(std::string(what), 
+                                static_cast<int>(http::status::too_many_requests));                
+            }
+
+            virtual bool verify_max_bytes_in_flight() override {
+                auto bytes_in_flight_size = plugin_state_->bytes_in_flight.load();
+                if( bytes_in_flight_size > plugin_state_->max_bytes_in_flight ) {
+                    fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
+                    string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
+                    report_429_error(what);
+                    return false;
+                }
+                return true;
+            }
+
             virtual bool verify_max_requests_in_flight() override {
+                if (plugin_state_->max_requests_in_flight < 0)
+                    return true;
+
+                auto requests_in_flight_num = plugin_state_->requests_in_flight.load();
+                if( requests_in_flight_num > plugin_state_->max_requests_in_flight ) {
+                    fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
+                    string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
+                    report_429_error(what);
+                    return false;
+                }
                 return true;
             }
 
