@@ -41,4 +41,11 @@ curl --data-binary '["eosio","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD
 
 cleos wallet import -n ignition --private-key 5KExyeiK338cxYQo36AmKYrHxRDF9rR4JHFXUR9oZxXbKue7gdL
 cleos set contract txn.test.b contracts/kv_contract 
+
+for ((i = 0 ; i <= 100 ; i++)); do
+  while ! cleos push action txn.test.b batchsetup '[10000]' -p txn.test.b@active; do
+    sleep 1
+  done
+done
+
 curl --data-binary '["", 20, 20]' $BIOS_ENDPOINT/v1/txn_test_gen/start_generation || :
