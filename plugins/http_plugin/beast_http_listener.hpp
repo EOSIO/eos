@@ -39,11 +39,11 @@ namespace eosio {
             beast_http_listener(asio::io_context* ioc, 
                                 std::shared_ptr<ssl::context> ctx, 
                                 std::shared_ptr<http_plugin_state> plugin_state) : 
-                ioc_(ioc)
+                isListening_(false)
+                , ioc_(ioc)
                 , ctx_(ctx)
-                , isListening_(false)
-                , acceptor_(asio::make_strand(*ioc))
                 , plugin_state_(plugin_state)
+                , acceptor_(asio::make_strand(*ioc))
                 { fc_ilog( logger, "constructor called" ); }
 
             virtual ~beast_http_listener() = default; 

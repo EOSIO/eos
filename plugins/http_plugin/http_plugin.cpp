@@ -26,7 +26,6 @@
 
 #include "common.hpp"
 #include "beast_http_listener.hpp"
-#include "http_server_flex.hpp"
 
 const fc::string logger_name("http_plugin");
 fc::logger logger;
@@ -174,24 +173,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
         
-         bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
-            return !plugin_state->validate_host || header_host_port == endpoint_local_host_port || plugin_state->valid_hosts.find(header_host_port) != plugin_state->valid_hosts.end();
-         }
-
-         bool host_is_valid( const std::string& host, const string& endpoint_local_host_port, bool secure) {
-            if (!plugin_state->validate_host) {
-               return true;
-            }
-
-            // normalise the incoming host so that it always has the explicit port
-            static auto has_port_expr = regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
-            if (std::regex_search(host, has_port_expr)) {
-               return host_port_is_valid( host, endpoint_local_host_port );
-            } else {
-               // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
-               return host_port_is_valid( host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port ), endpoint_local_host_port);
-            }
-         }
+         
 
          ssl_context_ptr on_tls_init() {
             ssl_context_ptr ctx = websocketpp::lib::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::sslv23_server);
@@ -276,7 +258,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
 
             const auto& host_str = req.get_header("Host");
-            if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
+            if (host_str.empty() || !host_is_valid(*plugin_state, host_str, local_socket_host_port, is_secure)) {
                con->set_status(websocketpp::http::status_code::bad_request);
                return false;
             }
@@ -556,9 +538,11 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
                // beast_https_server = make_unique<beast_http_listener<ssl_session> >(ioc, ctx);
                beast_https_server = make_shared<beast_http_listener<ssl_session> >(ioc, ctx, plugin_state);
+               fc_ilog( logger, "created beast HTTPS listener");
             }
             else {
                beast_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
+               fc_ilog( logger, "created beast HTTP listener");
             }
          }
    };

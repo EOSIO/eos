@@ -8,6 +8,7 @@
 #include <map>
 #include <atomic>
 #include <optional>
+#include <regex>
 
 #include <fc/time.hpp>
 #include <fc/io/raw.hpp>
@@ -252,6 +253,37 @@ namespace eosio {
                 }
             });
         };// end lambda
+    }
+
+    bool host_port_is_valid( const http_plugin_state& plugin_state, 
+                             const std::string& header_host_port, 
+                             const string& endpoint_local_host_port ) {
+        return !plugin_state.validate_host 
+                || header_host_port == endpoint_local_host_port 
+                || plugin_state.valid_hosts.find(header_host_port) != plugin_state.valid_hosts.end();
+    }
+
+    bool host_is_valid( const http_plugin_state& plugin_state, 
+                        const std::string& host, 
+                        const string& endpoint_local_host_port, 
+                        bool secure) {
+        if (!plugin_state.validate_host) {
+            return true;
+        }
+
+        // normalise the incoming host so that it always has the explicit port
+        static auto has_port_expr = std::regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
+        if (std::regex_search(host, has_port_expr)) {
+            return host_port_is_valid( plugin_state, host, endpoint_local_host_port );
+        } else {
+            // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
+            return host_port_is_valid( plugin_state, 
+                                       host + ":" 
+                                            + std::to_string(secure?
+                                                    websocketpp::uri_default_secure_port 
+                                                   : websocketpp::uri_default_port ), 
+                                       endpoint_local_host_port);
+        }
     }
    
 } // end namespace eosio

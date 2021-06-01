@@ -116,10 +116,9 @@ namespace eosio {
 
                 try {
                     // TODO implement allow_hosts
-                    /* 
-                    if(!allow_host<T>(req, con))
+                    if(!allow_host(req))
                         return;
-                    */
+
                     fc_ilog( logger, "set HTTP headers" ); 
 
                     if( !plugin_state_->access_control_allow_origin.empty()) {
@@ -145,7 +144,7 @@ namespace eosio {
 
                     // TODO: verfiy bytes in flight/requests in flight
                     // auto abstract_conn_ptr = make_abstract_conn_ptr<T>(con, shared_from_this());
-                    // if( !verify_max_bytes_in_flight( con ) || !verify_max_requests_in_flight( con ) ) return;
+                    if( !verify_max_bytes_in_flight() || !verify_max_requests_in_flight() ) return;
 
                     std::string resource = std::string(req.target());
                     // look for the URL handler to handle this reosouce
@@ -218,7 +217,7 @@ namespace eosio {
                 if(ec == http::error::end_of_stream)
                     return derived().do_eof();
 
-                if(ec)
+                if(ec && ec != asio::ssl::error::stream_truncated)
                     return fail(ec, "read");
 
                 // Send the response
@@ -256,6 +255,22 @@ namespace eosio {
                 do_read();
             }
 
+
+        // TODO 
+        bool allow_host(const http::request<http::string_body>& req) {
+            /*
+            bool is_secure = con->get_uri()->get_secure();
+            const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+            auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
+            const auto& host_str = req.get_header("Host");
+            if (host_str.empty() || !host_is_valid(*plugin_state, host_str, local_socket_host_port, is_secure)) {
+               con->set_status(websocketpp::http::status_code::bad_request);
+               return false;
+            }
+            */
+            return true;
+         }
 
             // TODO
             virtual bool verify_max_bytes_in_flight() override {
