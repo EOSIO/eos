@@ -63,11 +63,12 @@ state_history_log::state_history_log(const char* const name, const state_history
             write_entry(entries.begin()->second);
             entries.erase(entries.begin());
          }
+         printf("log thread ended\n");
       });
    }
 }
 
-state_history_log::~state_history_log() {
+void state_history_log::stop() {
    if (thr.joinable()) {
       ending = true;
       cv.notify_one();
@@ -365,6 +366,8 @@ state_history_traces_log::state_history_traces_log(const state_history_config& c
     : state_history_log("trace_history", config) {
 }
 
+state_history_traces_log::~state_history_traces_log() { stop(); }
+
 std::shared_ptr<std::vector<char>> state_history_traces_log::get_log_entry(block_num_type block_num) {
 
    auto get_entry_from_disk = [&] {
@@ -472,6 +475,8 @@ bool state_history_traces_log::exists(bfs::path state_history_dir) {
 
 state_history_chain_state_log::state_history_chain_state_log(const state_history_config& config)
     : state_history_log("chain_state_history", config) {}
+
+state_history_chain_state_log::~state_history_chain_state_log() { stop(); }
 
 std::shared_ptr<std::vector<char>> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
    auto get_entry_from_disk = [&] {

@@ -150,8 +150,8 @@ class state_history_log {
    };
 
    state_history_log(const char* const name, const state_history_config& conf);
-   virtual ~state_history_log();
-
+   virtual ~state_history_log(){}
+   
    block_num_type begin_block() const {
       block_num_type result = catalog.first_block_num();
       return result != 0 ? result : _begin_block;
@@ -163,6 +163,8 @@ class state_history_log {
    void store_entry(const chain::block_id_type& id, const chain::block_id_type& prev_id, std::vector<char>&& data);
    void write_entry(const log_entry_type& entry);
    void get_entry_header(block_num_type block_num, state_history_log_header& header);
+
+   void stop();
 
    boost::container::flat_map<uint32_t, log_entry_type> entries;
    std::mutex                                           mx;
@@ -198,6 +200,7 @@ class state_history_traces_log : public state_history_log {
    state_history::compression_type compression      = state_history::compression_type::zlib;
 
    state_history_traces_log(const state_history_config& conf);
+   ~state_history_traces_log();
 
    static bool exists(bfs::path state_history_dir);
 
@@ -222,6 +225,7 @@ class state_history_traces_log : public state_history_log {
 class state_history_chain_state_log : public state_history_log {
  public:
    state_history_chain_state_log(const state_history_config& conf);
+   ~state_history_chain_state_log();
 
    std::shared_ptr<std::vector<char>> get_log_entry(block_num_type block_num);
 
