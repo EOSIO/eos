@@ -56,7 +56,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
 #    apt-get clean && \
 #    rm -rf /var/lib/apt/lists/*
 # build libpq and postgres
-RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | | tar zxvf - && \
+RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
     cd postgres  && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres
