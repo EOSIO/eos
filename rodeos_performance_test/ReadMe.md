@@ -13,10 +13,21 @@ $ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.1/docke
 $ sudo chmod +x /usr/local/bin/docker-compose
 ```
 
+### Build EOS as usual 
+
+```
+$ cd eos
+$ cmake -DCMAKE_BUILD_TYPE=Release -S . -Bbuild -GNinja
+$ cd build; ninja
+```
+
+The build step would create the `eos-boxed` docker image.
+
 ### Test with Compose
 
-1. Start the local deployment with docker-compose
+1. Start the local deployment with docker-compose from the eos/rodeos_performance_test *source* directory
 ```
+$ cd eos/rodeos_performance_test 
 $ docker-compose up -d
 ```
 
