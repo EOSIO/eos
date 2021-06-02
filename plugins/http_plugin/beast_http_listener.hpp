@@ -106,17 +106,17 @@ namespace eosio {
 
         private:
             void do_accept() {
-                fc_ilog( logger, "shared_from_this()" ); 
+                //fc_ilog( logger, "shared_from_this()" ); 
                 auto sh_fr_ths = this->shared_from_this();
 
-                fc_ilog( logger, "acceptor_.async_accept()" ); 
+                //fc_ilog( logger, "acceptor_.async_accept()" ); 
                 // The new connection gets its own strand
                 acceptor_.async_accept(
                     asio::make_strand(*ioc_),
                     beast::bind_front_handler(
                         &beast_http_listener::on_accept,
                         sh_fr_ths));
-                fc_ilog( logger, "acceptor_.async_accept() done" ); 
+                //fc_ilog( logger, "acceptor_.async_accept() done" ); 
             }
 
             void on_accept(beast::error_code ec, tcp::socket socket) {

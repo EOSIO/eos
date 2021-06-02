@@ -90,7 +90,6 @@ namespace eosio {
                 auto const bad_request =
                 [](beast::string_view why, detail::abstract_conn& conn)
                 {
-                    //http::response<http::string_body> res{http::status::bad_request, req.version()};
                     conn.send_response(std::string(why), 
                                     static_cast<int>(http::status::bad_request));
                 };
@@ -103,7 +102,7 @@ namespace eosio {
                                 static_cast<int>(http::status::not_found)); 
                 };
 
-                fc_ilog( logger, "detect bad target" ); 
+                //fc_ilog( logger, "detect bad target" ); 
                 // Request path must be absolute and not contain "..".
                 if( req.target().empty() ||
                     req.target()[0] != '/' ||
@@ -119,7 +118,7 @@ namespace eosio {
                     if(!allow_host(req))
                         return;
 
-                    fc_ilog( logger, "set HTTP headers" ); 
+                    //fc_ilog( logger, "set HTTP headers" ); 
 
                     if( !plugin_state_->access_control_allow_origin.empty()) {
                         res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
@@ -137,7 +136,7 @@ namespace eosio {
                     // Respond to options request
                     if(req.method() == http::verb::options)
                     {
-                        fc_ilog( logger, "send_response(\"\")" ); 
+                        //fc_ilog( logger, "send_response(\"\")" ); 
                         send_response("", static_cast<int>(http::status::ok));
                         return;
                     }
@@ -151,7 +150,7 @@ namespace eosio {
                     if( handler_itr != plugin_state_->url_handlers.end()) {
                         // c
                         std::string body = req.body();
-                        fc_ilog( logger, "invoking handler_itr-second() " ); 
+                        //fc_ilog( logger, "invoking handler_itr-second() " ); 
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
@@ -169,14 +168,7 @@ namespace eosio {
         public:
             // shared_from_this() requires default constuctor
             beast_http_session() = default;  
-            /*
-            beast_http_session(const beast_http_session&) = delete;
-            beast_http_session(beast_http_session&&) = delete;
-
-            beast_http_session& operator=(const beast_http_session&) = delete;
-            beast_http_session& operator=(beast_http_session&&) = delete;
-            */
-
+      
             // Take ownership of the buffer
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,
@@ -194,12 +186,12 @@ namespace eosio {
             void
             do_read()
             {
-                fc_ilog( logger, "get_lowest_layer()" ); 
+                //fc_ilog( logger, "get_lowest_layer()" ); 
                 // Set the timeout.
                 beast::get_lowest_layer(
                     derived().stream()).expires_after(std::chrono::seconds(30));
 
-                fc_ilog( logger, "async_read()" ); 
+                //fc_ilog( logger, "async_read()" ); 
                 // Read a request
                 http::async_read(
                     derived().stream(),
@@ -234,7 +226,7 @@ namespace eosio {
                 beast::error_code ec,
                 std::size_t bytes_transferred)
             {
-                fc_ilog( logger, "ignore_unused()" ); 
+                //fc_ilog( logger, "ignore_unused()" ); 
                 boost::ignore_unused(bytes_transferred);
 
                 if(ec) {
@@ -253,7 +245,7 @@ namespace eosio {
                 // We're done with the response so delete it
                 // res_ = nullptr;
 
-                fc_ilog( logger, "do_read()" ); 
+                //fc_ilog( logger, "do_read()" ); 
 
                 // Read another request
                 do_read();
@@ -276,17 +268,7 @@ namespace eosio {
                 return true;
             }
 
-            void report_429_error(const std::string & what) {
-                /*
-                error_results::error_info ei;
-                ei.code = websocketpp::http::status_code::too_many_requests;
-                ei.name = "Busy";
-                ei.what = what;
-                error_results results{websocketpp::http::status_code::too_many_requests, "Busy", ei};
-                // con->set_body(  ));
-                // con->set_status( websocketpp::http::status_code::too_many_requests );
-                // con->send_response(fc::json::to_string( results, fc::time_point::maximum(), ec);
-                */
+            void report_429_error(const std::string & what) {                
                 send_response(std::string(what), 
                                 static_cast<int>(http::status::too_many_requests));                
             }
@@ -329,7 +311,7 @@ namespace eosio {
                 if(body.has_value())
                     res_.body() = *body;        
 
-                fc_ilog( logger, "res_.prepare_payload()" ); 
+                //fc_ilog( logger, "res_.prepare_payload()" ); 
 
                 res_.prepare_payload();
 
@@ -352,15 +334,7 @@ namespace eosio {
     {
         beast::tcp_stream stream_;
 
-        public:
-        /*
-            plain_session() = default;
-            plain_session(const plain_session&) = delete;
-            plain_session(plain_session&&) = delete;
-
-            plain_session& operator=(const plain_session&) = delete;
-            plain_session& operator=(plain_session&&) = delete;
-            */
+        public:      
 
             // Create the session
             plain_session(
@@ -418,14 +392,6 @@ namespace eosio {
         beast::ssl_stream<beast::tcp_stream> stream_;
 
         public:
-        /*
-            ssl_session() = default;
-            ssl_session(const ssl_session&) = delete;
-            ssl_session(ssl_session&&) = delete;
-
-            ssl_session& operator=(const ssl_session&) = delete;
-            ssl_session& operator=(ssl_session&&) = delete;
-        */
             // Create the session
             ssl_session(
                 tcp::socket&& socket,
@@ -434,9 +400,7 @@ namespace eosio {
                 asio::io_context* ioc)
                 : beast_http_session<ssl_session>(plugin_state, ioc),
                     stream_(std::move(socket), *ctx)
-            {
-                // stream_ = std::make_unique<beast::ssl_stream<beast::tcp_stream> >(std::move(socket), *ctx);
-            }
+            { }
 
             // Called by the base class
             beast::ssl_stream<beast::tcp_stream>&

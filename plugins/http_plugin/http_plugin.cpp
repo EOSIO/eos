@@ -634,10 +634,10 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
             ("http-threads", bpo::value<uint16_t>()->default_value( my->thread_pool_size ),
              "Number of worker threads in http thread pool")
-            ("http-use-beast", bpo::value<bool>()->default_value(false),
-             "If set to true, use boost::beast as opposed to websocketpp")
-            ("http-keep-alive", bpo::value<bool>()->default_value(false),
-             "If set to true, keep HTTP connections alive.  Requires http-use-beast to be true")
+            ("http-use-beast", bpo::value<bool>()->default_value(true),
+             "If set to false, use older custom websocketpp implementation in place of boost::beast")
+            ("http-keep-alive", bpo::value<bool>()->default_value(true),
+             "If set to false, do not keep HTTP connections alive, even if client requests.  Only meaningful if http-use-beast is true")
             ;
    }
 
