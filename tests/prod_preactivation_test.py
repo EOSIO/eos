@@ -22,13 +22,12 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--host","--port","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
+args = TestHelper.parse_args({"--host","--port","--defproducera_prvt_key","--defproducerb_prvt_key"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
                               ,"--sanity-test","--wallet-port"})
 server=args.host
 port=args.port
 debug=args.v
-enableMongo=args.mongodb
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -43,7 +42,7 @@ walletPort=args.wallet_port
 
 Utils.Debug=debug
 localTest=True
-cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
@@ -58,9 +57,6 @@ try:
     cluster.setWalletMgr(walletMgr)
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
-
-    if enableMongo and not cluster.isMongodDbRunning():
-        errorExit("MongoDb doesn't seem to be running.")
 
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
@@ -113,7 +109,7 @@ try:
     abiFile="%s.abi" % (contract)
 
     Print("publish a new bios contract %s should fails because env.is_feature_activated unresolveable" % (contractDir))
-    retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True, shouldFail=True)
+    retMap = node0.publishContract(cluster.eosioAccount, contractDir, wasmFile, abiFile, True, shouldFail=True)
 
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
         errorExit("bios contract not result in expected unresolveable error")
@@ -153,7 +149,7 @@ try:
 
     time.sleep(0.6)
     Print("publish a new bios contract %s should fails because node1 is not producing block yet" % (contractDir))
-    retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True, shouldFail=True)
+    retMap = node0.publishContract(cluster.eosioAccount, contractDir, wasmFile, abiFile, True, shouldFail=True)
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
         errorExit("bios contract not result in expected unresolveable error")
 
@@ -170,7 +166,7 @@ try:
        errorExit("No blocks produced by node 1")
 
     time.sleep(0.6)
-    retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True)
+    retMap = node0.publishContract(cluster.eosioAccount, contractDir, wasmFile, abiFile, True)
     Print("sucessfully set new contract with new intrinsic!!!")
 
     testSuccessful=True

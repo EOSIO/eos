@@ -6,8 +6,6 @@
             "^/coverage/",
             "^/.git/",
             "^/libraries/eos-vm/",
-            "^/libraries/fc/",
-            "^/libraries/wabt/",
             "^/libraries/wasm-jit/",
             "^/node_modules/",
             "^/unittests/"
@@ -35,15 +33,13 @@
             "170=v1.7.0"
         ]
     },
+    // eosio-resume-from-state documentation: https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md
     "eosio-resume-from-state":
     {
         "test":
         [
             {
-                "tag": "v2.0.0-rc2"
-            },
-            {
-                "tag": "v2.0.0-rc3"
+                "commit": "16074742f8cfd481b029073e6f01bb920a1bad38"
             }
         ]
     }

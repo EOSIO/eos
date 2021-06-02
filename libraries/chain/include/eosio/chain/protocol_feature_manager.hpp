@@ -23,6 +23,10 @@ enum class builtin_protocol_feature_t : uint32_t {
    ram_restrictions,
    webauthn_key,
    wtmsig_block_signatures,
+   action_return_value,
+   kv_database,
+   configurable_wasm_limits,
+   blockchain_parameters
 };
 
 struct protocol_feature_subjective_restrictions {
@@ -90,13 +94,13 @@ protected:
 };
 
 struct protocol_feature {
-   digest_type                           feature_digest;
-   digest_type                           description_digest;
-   flat_set<digest_type>                 dependencies;
-   time_point                            earliest_allowed_activation_time;
-   bool                                  preactivation_required = false;
-   bool                                  enabled = false;
-   optional<builtin_protocol_feature_t>  builtin_feature;
+   digest_type                               feature_digest;
+   digest_type                               description_digest;
+   flat_set<digest_type>                     dependencies;
+   time_point                                earliest_allowed_activation_time;
+   bool                                      preactivation_required = false;
+   bool                                      enabled = false;
+   std::optional<builtin_protocol_feature_t> builtin_feature;
 
    fc::variant to_variant( bool include_subjective_restrictions = true,
                            fc::mutable_variant_object* additional_fields = nullptr )const;
@@ -130,7 +134,7 @@ public:
 
    recognized_t is_recognized( const digest_type& feature_digest, time_point now )const;
 
-   optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const;
+   std::optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const;
 
    const protocol_feature& get_protocol_feature( const digest_type& feature_digest )const;
 
@@ -244,7 +248,7 @@ protected:
 class protocol_feature_manager {
 public:
 
-   protocol_feature_manager( protocol_feature_set&& pfs );
+   protocol_feature_manager( protocol_feature_set&& pfs, std::function<fc::logger*()> get_deep_mind_logger );
 
    class const_iterator : public std::iterator<std::bidirectional_iterator_tag, const protocol_feature> {
    protected:
@@ -313,7 +317,7 @@ public:
 
    const protocol_feature_set& get_protocol_feature_set()const { return _protocol_feature_set; }
 
-   optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
+   std::optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const {
       return _protocol_feature_set.get_builtin_digest( feature_codename );
    }
 
@@ -364,6 +368,9 @@ protected:
    vector<builtin_protocol_feature_entry> _builtin_protocol_features;
    size_t                                 _head_of_builtin_activation_list = builtin_protocol_feature_entry::no_previous;
    bool                                   _initialized = false;
+
+private:
+   std::function<fc::logger*()>           _get_deep_mind_logger;
 };
 
 } } // namespace eosio::chain
@@ -371,8 +378,10 @@ protected:
 FC_REFLECT(eosio::chain::protocol_feature_subjective_restrictions,
                (earliest_allowed_activation_time)(preactivation_required)(enabled))
 
+// @ignore _type
 FC_REFLECT(eosio::chain::protocol_feature_base,
-               (protocol_feature_type)(dependencies)(description_digest)(subjective_restrictions))
+               (protocol_feature_type)(description_digest)(dependencies)(subjective_restrictions))
 
+// @ignore _codename
 FC_REFLECT_DERIVED(eosio::chain::builtin_protocol_feature, (eosio::chain::protocol_feature_base),
                      (builtin_feature_codename))

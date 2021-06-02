@@ -2,6 +2,10 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/backing_store/kv_context.hpp>
+#include <eosio/chain/backing_store/db_context.hpp>
+#include <eosio/chain/backing_store/db_chainbase_iter_store.hpp>
+#include <eosio/chain/backing_store/db_secondary_key_helper.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -15,148 +19,6 @@ class controller;
 class transaction_context;
 
 class apply_context {
-   private:
-      template<typename T>
-      class iterator_cache {
-         public:
-            iterator_cache(){
-               _end_iterator_to_table.reserve(8);
-               _iterator_to_object.reserve(32);
-            }
-
-            /// Returns end iterator of the table.
-            int cache_table( const table_id_object& tobj ) {
-               auto itr = _table_cache.find(tobj.id);
-               if( itr != _table_cache.end() )
-                  return itr->second.second;
-
-               auto ei = index_to_end_iterator(_end_iterator_to_table.size());
-               _end_iterator_to_table.push_back( &tobj );
-               _table_cache.emplace( tobj.id, make_pair(&tobj, ei) );
-               return ei;
-            }
-
-            const table_id_object& get_table( table_id_object::id_type i )const {
-               auto itr = _table_cache.find(i);
-               EOS_ASSERT( itr != _table_cache.end(), table_not_in_cache, "an invariant was broken, table should be in cache" );
-               return *itr->second.first;
-            }
-
-            int get_end_iterator_by_table_id( table_id_object::id_type i )const {
-               auto itr = _table_cache.find(i);
-               EOS_ASSERT( itr != _table_cache.end(), table_not_in_cache, "an invariant was broken, table should be in cache" );
-               return itr->second.second;
-            }
-
-            const table_id_object* find_table_by_end_iterator( int ei )const {
-               EOS_ASSERT( ei < -1, invalid_table_iterator, "not an end iterator" );
-               auto indx = end_iterator_to_index(ei);
-               if( indx >= _end_iterator_to_table.size() ) return nullptr;
-               return _end_iterator_to_table[indx];
-            }
-
-            const T& get( int iterator ) {
-               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
-               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "dereference of end iterator" );
-               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
-               auto result = _iterator_to_object[iterator];
-               EOS_ASSERT( result, table_operation_not_permitted, "dereference of deleted object" );
-               return *result;
-            }
-
-            void remove( int iterator ) {
-               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
-               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "cannot call remove on end iterators" );
-               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
-
-               auto obj_ptr = _iterator_to_object[iterator];
-               if( !obj_ptr ) return;
-               _iterator_to_object[iterator] = nullptr;
-               _object_to_iterator.erase( obj_ptr );
-            }
-
-            int add( const T& obj ) {
-               auto itr = _object_to_iterator.find( &obj );
-               if( itr != _object_to_iterator.end() )
-                    return itr->second;
-
-               _iterator_to_object.push_back( &obj );
-               _object_to_iterator[&obj] = _iterator_to_object.size() - 1;
-
-               return _iterator_to_object.size() - 1;
-            }
-
-         private:
-            map<table_id_object::id_type, pair<const table_id_object*, int>> _table_cache;
-            vector<const table_id_object*>                  _end_iterator_to_table;
-            vector<const T*>                                _iterator_to_object;
-            map<const T*,int>                               _object_to_iterator;
-
-            /// Precondition: std::numeric_limits<int>::min() < ei < -1
-            /// Iterator of -1 is reserved for invalid iterators (i.e. when the appropriate table has not yet been created).
-            inline size_t end_iterator_to_index( int ei )const { return (-ei - 2); }
-            /// Precondition: indx < _end_iterator_to_table.size() <= std::numeric_limits<int>::max()
-            inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
-      }; /// class iterator_cache
-
-      template<typename>
-      struct array_size;
-
-      template<typename T, size_t N>
-      struct array_size< std::array<T,N> > {
-          static constexpr size_t size = N;
-      };
-
-      template <typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst, typename Enable = void>
-      class secondary_key_helper;
-
-      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
-      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
-         typename std::enable_if<std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value>::type >
-      {
-         public:
-            typedef SecondaryKey secondary_key_type;
-
-            static void set(secondary_key_type& sk_in_table, const secondary_key_type& sk_from_wasm) {
-               sk_in_table = sk_from_wasm;
-            }
-
-            static void get(secondary_key_type& sk_from_wasm, const secondary_key_type& sk_in_table ) {
-               sk_from_wasm = sk_in_table;
-            }
-
-            static auto create_tuple(const table_id_object& tab, const secondary_key_type& secondary) {
-               return boost::make_tuple( tab.id, secondary );
-            }
-      };
-
-      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
-      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
-         typename std::enable_if<!std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value &&
-                                 std::is_pointer<typename std::decay<SecondaryKeyProxy>::type>::value>::type >
-      {
-         public:
-            typedef SecondaryKey      secondary_key_type;
-            typedef SecondaryKeyProxy secondary_key_proxy_type;
-            typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
-
-            static constexpr size_t N = array_size<SecondaryKey>::size;
-
-            static void set(secondary_key_type& sk_in_table, secondary_key_proxy_const_type sk_from_wasm) {
-               std::copy(sk_from_wasm, sk_from_wasm + N, sk_in_table.begin());
-            }
-
-            static void get(secondary_key_proxy_type sk_from_wasm, const secondary_key_type& sk_in_table) {
-               std::copy(sk_in_table.begin(), sk_in_table.end(), sk_from_wasm);
-            }
-
-            static auto create_tuple(const table_id_object& tab, secondary_key_proxy_const_type sk_from_wasm) {
-               secondary_key_type secondary;
-               std::copy(sk_from_wasm, sk_from_wasm + N, secondary.begin());
-               return boost::make_tuple( tab.id, secondary );
-            }
-      };
-
    public:
       template<typename ObjectType,
                typename SecondaryKeyProxy = typename std::add_lvalue_reference<typename ObjectType::secondary_key_type>::type,
@@ -169,7 +31,7 @@ class apply_context {
             typedef SecondaryKeyProxy      secondary_key_proxy_type;
             typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
 
-            using secondary_key_helper_t = secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
+            using secondary_key_helper_t = backing_store::db_secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
 
             generic_index( apply_context& c ):context(c){}
 
@@ -189,11 +51,16 @@ class apply_context {
                   o.payer         = payer;
                });
 
+               std::string event_id;
                context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
+
+                  if (context.control.get_deep_mind_logger() != nullptr) {
+                     event_id = backing_store::db_context::table_event(t.code, t.scope, t.table, name(id));
+                  }
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType>, backing_store::db_context::secondary_add_trace(context.get_action_id(), std::move(event_id)) );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -201,10 +68,16 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
+
+               std::string event_id;
+               if (context.control.get_deep_mind_logger() != nullptr) {
+                  event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
+               }
+
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ), backing_store::db_context::secondary_rem_trace(context.get_action_id(), std::move(event_id)) );
 
 //               context.require_write_lock( table_obj.scope );
 
@@ -232,9 +105,14 @@ class apply_context {
 
                int64_t billing_size =  config::billable_size_v<ObjectType>;
 
+               std::string event_id;
+               if (context.control.get_deep_mind_logger() != nullptr) {
+                  event_id = backing_store::db_context::table_event(table_obj.code, table_obj.scope, table_obj.table, name(obj.primary_key));
+               }
+
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size) );
-                  context.update_db_usage( payer, +(billing_size) );
+                  context.update_db_usage( obj.payer, -(billing_size), backing_store::db_context::secondary_update_rem_trace(context.get_action_id(), std::string(event_id)) );
+                  context.update_db_usage( payer, +(billing_size), backing_store::db_context::secondary_update_add_trace(context.get_action_id(), std::move(event_id)) );
                }
 
                context.db.modify( obj, [&]( auto& o ) {
@@ -441,8 +319,8 @@ class apply_context {
             }
 
          private:
-            apply_context&              context;
-            iterator_cache<ObjectType>  itr_cache;
+            apply_context&                                     context;
+            backing_store::db_chainbase_iter_store<ObjectType> itr_cache;
       }; /// class generic_index
 
 
@@ -465,6 +343,9 @@ class apply_context {
       uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free );
       uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free );
 
+   private:
+      template <typename Exception>
+      void check_unprivileged_resource_usage(const char* resource, const flat_set<account_delta>& deltas);
 
    /// Authorization methods:
    public:
@@ -478,9 +359,9 @@ class apply_context {
        *
        * @throws missing_auth_exception If no sufficient permission was found
        */
-      void require_authorization(const account_name& account);
+      void require_authorization(const account_name& account) const;
       bool has_authorization(const account_name& account) const;
-      void require_authorization(const account_name& account, const permission_name& permission);
+      void require_authorization(const account_name& account, const permission_name& permission) const;
 
       /**
        * @return true if account exists, false if it does not
@@ -501,25 +382,28 @@ class apply_context {
    /// Console methods:
    public:
 
-      void console_append( const string& val ) {
+      void console_append( std::string_view val ) {
          _pending_console_output += val;
       }
 
    /// Database methods:
    public:
 
-      void update_db_usage( const account_name& payer, int64_t delta );
+      void update_db_usage( const account_name& payer, int64_t delta, const storage_usage_trace& trace );
 
-      int  db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
-      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
-      void db_remove_i64( int iterator );
-      int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
-      int  db_next_i64( int iterator, uint64_t& primary );
-      int  db_previous_i64( int iterator, uint64_t& primary );
-      int  db_find_i64( name code, name scope, name table, uint64_t id );
-      int  db_lowerbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_upperbound_i64( name code, name scope, name table, uint64_t id );
-      int  db_end_i64( name code, name scope, name table );
+      int  db_store_i64_chainbase( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      void db_update_i64_chainbase( int iterator, account_name payer, const char* buffer, size_t buffer_size );
+      void db_remove_i64_chainbase( int iterator );
+      int  db_get_i64_chainbase( int iterator, char* buffer, size_t buffer_size );
+      int  db_next_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_previous_i64_chainbase( int iterator, uint64_t& primary );
+      int  db_find_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_lowerbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_upperbound_i64_chainbase( name code, name scope, name table, uint64_t id );
+      int  db_end_i64_chainbase( name code, name scope, name table );
+
+# warning look into if we can make any of the db_** methods and idx***'s methods const and provide a const interface
+      backing_store::db_context& db_get_context();
 
    private:
 
@@ -527,8 +411,30 @@ class apply_context {
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void                   remove_table( const table_id_object& tid );
 
-      int  db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+   /// KV Database methods:
+   public:
+      int64_t  kv_erase(uint64_t contract, const char* key, uint32_t key_size);
+      int64_t  kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, account_name payer);
+      bool     kv_get(uint64_t contract, const char* key, uint32_t key_size, uint32_t& value_size);
+      uint32_t kv_get_data(uint32_t offset, char* data, uint32_t data_size);
+      uint32_t kv_it_create(uint64_t contract, const char* prefix, uint32_t size);
+      void     kv_it_destroy(uint32_t itr);
+      int32_t  kv_it_status(uint32_t itr);
+      int32_t  kv_it_compare(uint32_t itr_a, uint32_t itr_b);
+      int32_t  kv_it_key_compare(uint32_t itr, const char* key, uint32_t size);
+      int32_t  kv_it_move_to_end(uint32_t itr);
+      int32_t  kv_it_next(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_prev(uint32_t itr, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_lower_bound(uint32_t itr, const char* key, uint32_t size, uint32_t* found_key_size, uint32_t* found_value_size);
+      int32_t  kv_it_key(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+      int32_t  kv_it_value(uint32_t itr, uint32_t offset, char* dest, uint32_t size, uint32_t& actual_size);
+      kv_context& kv_get_backing_store() {
+         EOS_ASSERT( kv_backing_store, action_validate_exception, "KV APIs cannot access state (null backing_store)" );
+         return *kv_backing_store;
+      }
 
+   private:
+      void kv_check_iterator(uint32_t itr);
 
    /// Misc methods:
    public:
@@ -537,13 +443,13 @@ class apply_context {
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
       vector<account_name> get_active_producers() const;
-      bytes  get_packed_transaction();
 
       uint64_t next_global_sequence();
       uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta );
+      void add_ram_usage( account_name account, int64_t ram_delta, const storage_usage_trace& trace );
+
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
       bool is_context_free()const { return context_free; }
@@ -552,6 +458,9 @@ class apply_context {
       const action& get_action()const { return *act; }
 
       action_name get_sender() const;
+
+      uint32_t get_action_id() const;
+      void increment_action_id();
 
    /// Fields:
    public:
@@ -571,26 +480,29 @@ class apply_context {
       bool                          context_free = false;
 
    public:
+      std::vector<char>             action_return_value;
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
+      std::unique_ptr<kv_context>                                    kv_backing_store;
+      std::vector<std::unique_ptr<kv_iterator>>                      kv_iterators;
+      std::vector<size_t>                                            kv_destroyed_iterators;
+
    private:
 
-      iterator_cache<key_value_object>    keyval_cache;
-      vector< std::pair<account_name, uint32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<uint32_t>                    _inline_actions; ///< action_ordinals of queued inline actions
-      vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
-      std::string                         _pending_console_output;
-      flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
+      backing_store::db_chainbase_iter_store<key_value_object> db_iter_store;
+      vector< std::pair<account_name, uint32_t> >              _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<uint32_t>                                         _inline_actions; ///< action_ordinals of queued inline actions
+      vector<uint32_t>                                         _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
+      std::string                                              _pending_console_output;
+      flat_set<account_delta>                                  _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 
-      //bytes                               _cached_trx;
+      std::unique_ptr<backing_store::db_context>               _db_context;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
-
-//FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(deferred_transaction_requests)(deferred_transactions_count))

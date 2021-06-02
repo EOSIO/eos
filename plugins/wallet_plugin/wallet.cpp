@@ -15,7 +15,6 @@
 #include <fc/io/json.hpp>
 #include <fc/crypto/aes.hpp>
 #include <fc/crypto/hex.hpp>
-#include <fc/smart_ref_impl.hpp>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
@@ -116,18 +115,18 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   fc::optional<private_key_type>  try_get_private_key(const public_key_type& id)const
+   std::optional<private_key_type>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
       if( it != _keys.end() )
          return  it->second;
-      return fc::optional<private_key_type>();
+      return std::optional<private_key_type>();
    }
 
-   fc::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+   std::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
       auto it = _keys.find(public_key);
       if( it == _keys.end() )
-         return fc::optional<signature_type>{};
+         return std::optional<signature_type>();
       return it->second.sign(digest);
    }
 
@@ -397,7 +396,7 @@ private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
    return my->get_private_key( pubkey );
 }
 
-fc::optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+std::optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
    return my->try_sign_digest(digest, public_key);
 }
 

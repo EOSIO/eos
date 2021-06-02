@@ -16,7 +16,7 @@
 //the values ever slide which would be a PIC breaking event we'd want to know about at compile
 //time.
 #define EOS_VM_OC_CONTROL_BLOCK_OFFSET (-18944)
-#define EOS_VM_OC_MEMORY_STRIDE (UINT64_C(4329598976))
+#define EOS_VM_OC_MEMORY_STRIDE (UINT64_C(8589963264))
 
 #ifdef __cplusplus
 extern "C" {

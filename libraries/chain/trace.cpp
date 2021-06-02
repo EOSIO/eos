@@ -1,3 +1,4 @@
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain {

@@ -1,6 +1,6 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.2",
     "types": [],
     "structs": [
         {
@@ -24,6 +24,16 @@
             ]
         },
         {
+            "name": "erasenumobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "hashobj",
             "base": "",
             "fields": [
@@ -42,6 +52,16 @@
                 {
                     "name": "sec160",
                     "type": "checksum160"
+                }
+            ]
+        },
+        {
+            "name": "modifynumobj",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
                 }
             ]
         },
@@ -82,6 +102,16 @@
             "name": "addnumobj",
             "type": "addnumobj",
             "ricardian_contract": ""
+        },
+        {
+            "name": "erasenumobj",
+            "type": "erasenumobj",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modifynumobj",
+            "type": "modifynumobj",
+            "ricardian_contract": ""
         }
     ],
     "tables": [
@@ -100,6 +130,8 @@
             "key_types": []
         }
     ],
+    "kv_tables": {},
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "action_results": []
 }

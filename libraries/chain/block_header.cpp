@@ -15,7 +15,7 @@ namespace eosio { namespace chain {
       return fc::endian_reverse_u32(id._hash[0]);
    }
 
-   block_id_type block_header::id()const
+   block_id_type block_header::calculate_id()const
    {
       // Do not include signed_block_header attributes in id, specifically exclude producer_signature.
       block_id_type result = digest(); //fc::sha256::hash(*static_cast<const block_header*>(this));

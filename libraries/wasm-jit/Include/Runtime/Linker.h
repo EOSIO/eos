@@ -40,7 +40,7 @@ namespace Runtime
 		bool resolve(const std::string& moduleName,const std::string& exportName,IR::ObjectType type,Runtime::ObjectInstance*& outObject) override
 		{
 			if(!innerResolver) { innerResolver = innerResolverThunk(); }
-			return innerResolver->resolve(moduleName,exportName,type,outObject);		
+			return innerResolver->resolve(moduleName,exportName,type,outObject);
 		}
 
 	private:
@@ -54,7 +54,7 @@ namespace Runtime
 	{
 		bool resolve(const std::string& moduleName,const std::string& exportName,IR::ObjectType type,Runtime::ObjectInstance*& outObject) override
 		{
-			return false; 
+			return false;
 		}
 	};
 

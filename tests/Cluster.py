@@ -35,6 +35,38 @@ class PFSetupPolicy:
                policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                policy == PFSetupPolicy.FULL
 
+# Class for generating distinct names for many accounts
+class NamedAccounts:
+
+    def __init__(self, cluster, numAccounts):
+        Utils.Print("NamedAccounts %d" % (numAccounts))
+        self.numAccounts=numAccounts
+        self.accounts=cluster.createAccountKeys(numAccounts)
+        if self.accounts is None:
+            Utils.errorExit("FAILURE - create keys")
+        accountNum = 0
+        for account in self.accounts:
+            Utils.Print("NamedAccounts Name for %d" % (accountNum))
+            account.name=self.setName(accountNum)
+            accountNum+=1
+
+    def setName(self, num):
+        retStr="test"
+        digits=[]
+        maxDigitVal=5
+        maxDigits=8
+        temp=num
+        while len(digits) < maxDigits:
+            digit=(num % maxDigitVal)+1
+            num=int(num/maxDigitVal)
+            digits.append(digit)
+
+        digits.reverse()
+        retStr += "".join(map(str, digits))
+
+        Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
+        return retStr
+
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-public-methods
 class Cluster(object):
@@ -49,8 +81,8 @@ class Cluster(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899, enableMongo=False
-                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899
+                 , defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -58,32 +90,20 @@ class Cluster(object):
         port: eos server port
         walletHost: eos wallet host
         walletPort: wos wallet port
-        enableMongo: Include mongoDb support, configures eos mongo plugin
-        mongoHost: MongoDB host
-        mongoPort: MongoDB port
         defproduceraPrvtKey: Defproducera account private key
         defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
-        self.nodes={}
+        self.nodes=[]
         self.unstartedNodes=[]
         self.localCluster=localCluster
         self.wallet=None
         self.walletd=walletd
-        self.enableMongo=enableMongo
-        self.mongoHost=mongoHost
-        self.mongoPort=mongoPort
-        self.mongoDb=mongoDb
         self.walletMgr=None
         self.host=host
         self.port=port
         self.walletHost=walletHost
         self.walletPort=walletPort
-        self.mongoEndpointArgs=""
-        self.mongoUri=""
-        if self.enableMongo:
-            self.mongoUri="mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
-            self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
         self.staging=staging
         # init accounts
         self.defProducerAccounts={}
@@ -99,6 +119,7 @@ class Cluster(object):
         self.useBiosBootFile=False
         self.filesToCleanup=[]
         self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
+        self.biosNode = None
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -144,8 +165,8 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, sharedProducers=0, extraNodeosArgs=" --http-max-response-time-ms 990000 ", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
-               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
+               totalProducers=None, sharedProducers=0, extraNodeosArgs="", useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True, manualProducerNodeConf={}):
         """Launch cluster.
         pnodes: producer nodes count
         unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
@@ -167,6 +188,7 @@ class Cluster(object):
         alternateVersionLabelsFile: Supply an alternate version labels file to use with associatedNodeLabels.
         associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
         loadSystemContract: indicate whether the eosio.system contract should be loaded (setting this to False causes useBiosBootFile to be treated as False)
+        manualProducerNodeConf: additional producer public keys which is not automatically generated by launcher
         """
         assert(isinstance(topo, str))
         assert PFSetupPolicy.isValid(pfSetupPolicy)
@@ -223,20 +245,25 @@ class Cluster(object):
         nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
-        if self.enableMongo:
-            nodeosArgs += " --plugin eosio::mongo_db_plugin --mongodb-wipe --delete-all-blocks --mongodb-uri %s" % self.mongoUri
-        if extraNodeosArgs is not None:
-            assert(isinstance(extraNodeosArgs, str))
-            nodeosArgs += extraNodeosArgs
         if Utils.Debug:
             nodeosArgs += " --contracts-console"
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
             nodeosArgs += " --plugin eosio::producer_api_plugin"
 
-        if nodeosArgs:
-            cmdArr.append("--nodeos")
-            cmdArr.append(nodeosArgs)
+        if len(manualProducerNodeConf) > 0 and specificExtraNodeosArgs is None:
+            specificExtraNodeosArgs = {}
 
+        for node, conf in manualProducerNodeConf.items():
+            arg = specificExtraNodeosArgs.get(node, "")
+            account = conf['key']
+            arg = arg + " --plugin eosio::producer_plugin --signature-provider {}=KEY:{} ".format(account.ownerPublicKey, account.ownerPrivateKey)
+            for name in conf['names']:
+                arg = arg + "--producer-name {} ".format(name)
+            specificExtraNodeosArgs[node] = arg
+
+        Utils.Print("specificExtraNodeosArgs=", specificExtraNodeosArgs)
+
+        httpMaxResponseTimeSet = False
         if specificExtraNodeosArgs is not None:
             assert(isinstance(specificExtraNodeosArgs, dict))
             for nodeNum,arg in specificExtraNodeosArgs.items():
@@ -245,7 +272,20 @@ class Cluster(object):
                 cmdArr.append("--specific-num")
                 cmdArr.append(str(nodeNum))
                 cmdArr.append("--specific-nodeos")
+                if arg.find("--http-max-response-time-ms") != -1:
+                    httpMaxResponseTimeSet = True
                 cmdArr.append(arg)
+
+        if not httpMaxResponseTimeSet and extraNodeosArgs.find("--http-max-response-time-ms") == -1:
+            extraNodeosArgs+=" --http-max-response-time-ms 990000 "
+
+        if extraNodeosArgs is not None:
+            assert(isinstance(extraNodeosArgs, str))
+            nodeosArgs += extraNodeosArgs
+
+        if nodeosArgs:
+            cmdArr.append("--nodeos")
+            cmdArr.append(nodeosArgs)
 
         cmdArr.append("--max-block-cpu-usage")
         cmdArr.append(str(160000000))
@@ -278,6 +318,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
                 return False
 
+            Utils.Print("opening %s shape file: %s, current dir: %s" % (topo, shapeFile, os.getcwd()))
             f = open(shapeFile, "r")
             shapeFileJsonStr = f.read()
             f.close()
@@ -408,7 +449,7 @@ class Cluster(object):
             self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
 
         biosNode=self.discoverBiosNode(timeout=Utils.systemWaitTimeout)
-        if not biosNode or not Utils.waitForBool(biosNode.checkPulse, Utils.systemWaitTimeout):
+        if not biosNode or not Utils.waitForTruth(biosNode.checkPulse, Utils.systemWaitTimeout):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
@@ -434,7 +475,7 @@ class Cluster(object):
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract, manualProducerNodeConf)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
@@ -477,7 +518,8 @@ class Cluster(object):
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
         port=Cluster.__BiosPort if onlyBios else self.port
         host=Cluster.__BiosHost if onlyBios else self.host
-        node=Node(host, port, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        nodeNum="bios" if onlyBios else 0
+        node=Node(host, port, nodeNum, walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Node: %s", str(node))
 
         node.checkPulse(exitOnError=True)
@@ -516,11 +558,12 @@ class Cluster(object):
         for n in nArr:
             port=n["port"]
             host=n["host"]
-            node=Node(host, port, walletMgr=self.walletMgr)
+            node=Node(host, port, nodeId=len(nodes), walletMgr=self.walletMgr)
             if Utils.Debug: Utils.Print("Node:", node)
 
             node.checkPulse(exitOnError=True)
             nodes.append(node)
+
 
         self.nodes=nodes
         return True
@@ -570,7 +613,7 @@ class Cluster(object):
 
         printCount=0
         lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType, printCount)
-        ret=Utils.waitForBool(lam, timeout)
+        ret=Utils.waitForTruth(lam, timeout)
         return ret
 
     @staticmethod
@@ -688,7 +731,14 @@ class Cluster(object):
         return self.nodes[nodeId]
 
     def getNodes(self):
-        return self.nodes
+        return self.nodes[:]
+
+    def getAllNodes(self):
+        nodes = []
+        if self.biosNode is not None:
+            nodes.append(self.biosNode)
+        nodes += self.getNodes()
+        return nodes
 
     def launchUnstarted(self, numToLaunch=1, cachePopen=False):
         assert(isinstance(numToLaunch, int))
@@ -697,7 +747,7 @@ class Cluster(object):
         del self.unstartedNodes[:numToLaunch]
         for node in launchList:
             # the node number is indexed off of the started nodes list
-            node.launchUnstarted(len(self.nodes), cachePopen=cachePopen)
+            node.launchUnstarted(cachePopen=cachePopen)
             self.nodes.append(node)
 
     # Spread funds across accounts with transactions spread through cluster nodes.
@@ -1031,7 +1081,7 @@ class Cluster(object):
 
         return biosNode
 
-    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True):
+    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True, manualProducerNodeConf=[]):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -1079,7 +1129,7 @@ class Cluster(object):
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        trans=biosNode.publishContract(eosioAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
@@ -1110,6 +1160,19 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
+
+        for node, conf in manualProducerNodeConf.items():
+            account = conf['key']
+            for name in conf['names']:
+                account.name = name
+                trans=biosNode.createAccount(account, eosioAccount, 0)
+                if trans is None:
+                    Utils.Print("ERROR: Failed to create account %s" % (name))
+                    return None
+                Node.validateTransaction(trans)
+                if producerKeys.get(account.name) == None:
+                    accounts.append(account)
+                    producerKeys[account.name] = { "name": account.name, "public": account.ownerPublicKey, "private": account.ownerPrivateKey, "node": node }
 
         Utils.Print("Validating system accounts within bootstrap")
         biosNode.validateAccounts(accounts)
@@ -1162,7 +1225,7 @@ class Cluster(object):
 
             # wait for block production handover (essentially a block produced by anyone but eosio).
             lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
-            ret=Utils.waitForBool(lam)
+            ret=Utils.waitForTruth(lam)
             if not ret:
                 Utils.Print("ERROR: Block production handover failed.")
                 return None
@@ -1208,7 +1271,7 @@ class Cluster(object):
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        trans=biosNode.publishContract(eosioTokenAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
@@ -1264,7 +1327,7 @@ class Cluster(object):
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioAccount, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -1319,7 +1382,7 @@ class Cluster(object):
                 return None
             return None
 
-        return Utils.waitForObj(myFunc, timeout)
+        return Utils.waitForTruth(myFunc, timeout)
 
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
@@ -1361,7 +1424,7 @@ class Cluster(object):
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
-        instance=Node(self.host, self.port + nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        instance=Node(self.host, self.port + nodeNum, nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Node>", instance)
         return instance
 
@@ -1374,7 +1437,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
         else:
-            return Node(Cluster.__BiosHost, Cluster.__BiosPort, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1395,14 +1458,14 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchEosInstances(self, cachePopen=False):
+    def relaunchEosInstances(self, cachePopen=False, nodeArgs=""):
 
-        chainArg=self.__chainSyncStrategy.arg
+        chainArg=self.__chainSyncStrategy.arg + " " + nodeArgs
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
+            if node.killed and not node.relaunch(chainArg=chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
@@ -1417,23 +1480,11 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
-    @staticmethod
-    def __findFiles(path):
-        files=[]
-        it=os.scandir(path)
-        for entry in it:
-            if entry.is_file(follow_symlinks=False):
-                match=re.match("stderr\..+\.txt", entry.name)
-                if match:
-                    files.append(os.path.join(path, entry.name))
-        files.sort()
-        return files
-
     def dumpErrorDetails(self):
         fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Utils.getNodeDataDir("bios")
-        fileNames=Cluster.__findFiles(path)
+        fileNames=Node.findStderrFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
 
@@ -1444,16 +1495,17 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Utils.getNodeDataDir(i)
-            fileNames=Cluster.__findFiles(path)
+            fileNames=Node.findStderrFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
-    def killall(self, silent=True, allInstances=False):
+    def killall(self, kill=True, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
-        cmd="%s -k 9" % (Utils.EosLauncherPath)
+        signalNum=9 if kill else 15
+        cmd="%s -k %d" % (Utils.EosLauncherPath, signalNum)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
@@ -1499,17 +1551,6 @@ class Cluster(object):
             return False
         return True
 
-    def isMongodDbRunning(self):
-        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand="db.version()"
-        if Utils.Debug: Utils.Print("echo %s | %s" % (subcommand, cmd))
-        ret,outs,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
-        if ret is not 0:
-            Utils.Print("ERROR: Failed to check database version: %s" % (Node.byteArrToStr(errs)) )
-            return False
-        if Utils.Debug: Utils.Print("MongoDb response: %s" % (outs))
-        return True
-
     def waitForNextBlock(self, timeout=None):
         if timeout is None:
             timeout=Utils.systemWaitTimeout
@@ -1524,14 +1565,6 @@ class Cluster(object):
 
         for f in self.filesToCleanup:
             os.remove(f)
-
-        if self.enableMongo:
-            cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-            subcommand="db.dropDatabase()"
-            if Utils.Debug: Utils.Print("echo %s | %s" % (subcommand, cmd))
-            ret,_,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
-            if ret is not 0:
-                Utils.Print("ERROR: Failed to drop database: %s" % (Node.byteArrToStr(errs)) )
 
 
     # Create accounts and validates that the last transaction is received on root node
@@ -1570,8 +1603,7 @@ class Cluster(object):
         with open(startFile, 'r') as file:
             cmd=file.read()
             Utils.Print("unstarted local node cmd: %s" % (cmd))
-        p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$')
-        instance=Node(self.host, port=self.port+nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        instance=Node(self.host, port=self.port+nodeId, nodeId=nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr)
         if Utils.Debug: Utils.Print("Unstarted Node>", instance)
         return instance
 
@@ -1583,34 +1615,16 @@ class Cluster(object):
         return infos
 
     def reportStatus(self):
-        if hasattr(self, "biosNode") and self.biosNode is not None:
-            self.biosNode.reportStatus()
-        if hasattr(self, "nodes"):
-            for node in self.nodes:
-                try:
-                    node.reportStatus()
-                except:
-                    Utils.Print("No reportStatus")
+        nodes = self.getAllNodes()
+        for node in nodes:
+            try:
+                node.reportStatus()
+            except:
+                Utils.Print("No reportStatus for nodeId: %s" % (node.nodeId))
 
-    def printBlockLogIfNeeded(self):
-        printBlockLog=False
-        if hasattr(self, "nodes") and self.nodes is not None:
-            for node in self.nodes:
-                if node.missingTransaction:
-                    printBlockLog=True
-                    break
-
-        if hasattr(self, "biosNode") and self.biosNode is not None and self.biosNode.missingTransaction:
-            printBlockLog=True
-
-        if not printBlockLog:
-            return
-
-        self.printBlockLog()
-
-    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
-        blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
-        return Utils.getBlockLog(blockLogDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last,  throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
+    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, extraArgs="", throwException=False, silentErrors=False, exitOnError=False):
+        nodeDataDir=Utils.getNodeDataDir(nodeExtension)
+        return Utils.getBlockLog(nodeDataDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last, extraArgs=extraArgs, throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")

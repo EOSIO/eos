@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( kv_bios kv_bios kv_bios.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kv_bios.wasm ${CMAKE_CURRENT_BINARY_DIR}/kv_bios.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/kv_bios.abi  ${CMAKE_CURRENT_BINARY_DIR}/kv_bios.abi  COPYONLY )
+endif()

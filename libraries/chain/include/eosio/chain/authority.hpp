@@ -7,7 +7,7 @@
 
 namespace eosio { namespace chain {
 
-using shared_public_key_data = fc::static_variant<fc::ecc::public_key_shim, fc::crypto::r1::public_key_shim, shared_string>;
+using shared_public_key_data = std::variant<fc::ecc::public_key_shim, fc::crypto::r1::public_key_shim, shared_string>;
 
 struct shared_public_key {
    shared_public_key( shared_public_key_data&& p ) :
@@ -15,17 +15,17 @@ struct shared_public_key {
 
    operator public_key_type() const {
       fc::crypto::public_key::storage_type public_key_storage;
-      pubkey.visit(overloaded {
+      std::visit(overloaded {
          [&](const auto& k1r1) {
             public_key_storage = k1r1;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
             public_key_storage = pub;
          }
-      });
+      }, pubkey);
       return std::move(public_key_storage);
    }
 
@@ -36,40 +36,40 @@ struct shared_public_key {
    shared_public_key_data pubkey;
 
    friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
-      if(lhs.pubkey.which() != rhs.pubkey.which())
+      if(lhs.pubkey.index() != rhs.pubkey.index())
          return false;
 
-      return lhs.pubkey.visit<bool>(overloaded {
+      return std::visit(overloaded {
          [&](const fc::ecc::public_key_shim& k1) {
-            return k1._data == rhs.pubkey.get<fc::ecc::public_key_shim>()._data;
+            return k1._data == std::get<fc::ecc::public_key_shim>(rhs.pubkey)._data;
          },
          [&](const fc::crypto::r1::public_key_shim& r1) {
-            return r1._data == rhs.pubkey.get<fc::crypto::r1::public_key_shim>()._data;
+            return r1._data == std::get<fc::crypto::r1::public_key_shim>(rhs.pubkey)._data;
          },
          [&](const shared_string& wa) {
-            return wa == rhs.pubkey.get<shared_string>();
+            return wa == std::get<shared_string>(rhs.pubkey);
          }
-      });
+      }, lhs.pubkey);
    }
 
    friend bool operator==(const shared_public_key& l, const public_key_type& r) {
-      if(l.pubkey.which() != r._storage.which())
+      if(l.pubkey.index() != r._storage.index())
          return false;
 
-      return l.pubkey.visit<bool>(overloaded {
+      return std::visit(overloaded {
          [&](const fc::ecc::public_key_shim& k1) {
-            return k1._data == r._storage.get<fc::ecc::public_key_shim>()._data;
+            return k1._data == std::get<fc::ecc::public_key_shim>(r._storage)._data;
          },
          [&](const fc::crypto::r1::public_key_shim& r1) {
-            return r1._data == r._storage.get<fc::crypto::r1::public_key_shim>()._data;
+            return r1._data == std::get<fc::crypto::r1::public_key_shim>(r._storage)._data;
          },
          [&](const shared_string& wa) {
-            fc::datastream ds(wa.data(), wa.size());
+            fc::datastream<const char*> ds(wa.data(), wa.size());
             fc::crypto::webauthn::public_key pub;
             fc::raw::unpack(ds, pub);
-            return pub == r._storage.get<fc::crypto::webauthn::public_key>();
+            return pub == std::get<fc::crypto::webauthn::public_key>(r._storage);
          }
-      });
+      }, l.pubkey);
    }
 
    friend bool operator==(const public_key_type& l, const shared_public_key& r) {
@@ -105,19 +105,21 @@ struct shared_key_weight {
    }
 
    static shared_key_weight convert(chainbase::allocator<char> allocator, const key_weight& k) {
-      return k.key._storage.visit<shared_key_weight>(overloaded {
+      return std::visit(overloaded {
          [&](const auto& k1r1) {
             return shared_key_weight(k1r1, k.weight);
          },
          [&](const fc::crypto::webauthn::public_key& wa) {
             size_t psz = fc::raw::pack_size(wa);
-            shared_string wa_ss(psz, boost::container::default_init, std::move(allocator));
-            fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
-            fc::raw::pack(ds, wa);
+            shared_string wa_ss(std::move(allocator));
+            wa_ss.resize_and_fill( psz, [&wa]( char* data, std::size_t sz ) {
+               fc::datastream<char*> ds(data, sz);
+               fc::raw::pack(ds, wa);
+            });
 
             return shared_key_weight(std::move(wa_ss), k.weight);
          }
-      });
+      }, k.key._storage);
    }
 
    shared_public_key key;
@@ -299,6 +301,9 @@ inline bool validate( const Authority& auth ) {
 
 } } // namespace eosio::chain
 
+namespace fc {
+   void to_variant(const eosio::chain::shared_public_key& var, fc::variant& vo);
+} // namespace fc
 
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )

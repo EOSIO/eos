@@ -2,8 +2,10 @@
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/kv_chainbase_objects.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/testing/snapshot_suites.hpp>
 
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
@@ -11,9 +13,8 @@
 #include <contracts.hpp>
 #include <snapshots.hpp>
 
-using namespace eosio;
-using namespace testing;
-using namespace chain;
+using namespace eosio::testing;
+using namespace eosio::chain;
 
 chainbase::bfs::path get_parent_path(chainbase::bfs::path blocks_dir, int ordinal) {
    chainbase::bfs::path leaf_dir = blocks_dir.filename();
@@ -33,17 +34,17 @@ chainbase::bfs::path get_parent_path(chainbase::bfs::path blocks_dir, int ordina
 
 controller::config copy_config(const controller::config& config, int ordinal) {
    controller::config copied_config = config;
-   auto parent_path = get_parent_path(config.blocks_dir, ordinal);
-   copied_config.blocks_dir = parent_path / config.blocks_dir.filename().generic_string();
+   auto parent_path = get_parent_path(config.blog.log_dir, ordinal);
+   copied_config.blog.log_dir = parent_path / config.blog.log_dir.filename().generic_string();
    copied_config.state_dir = parent_path / config.state_dir.filename().generic_string();
    return copied_config;
 }
 
 controller::config copy_config_and_files(const controller::config& config, int ordinal) {
    controller::config copied_config = copy_config(config, ordinal);
-   fc::create_directories(copied_config.blocks_dir);
-   fc::copy(config.blocks_dir / "blocks.log", copied_config.blocks_dir / "blocks.log");
-   fc::copy(config.blocks_dir / config::reversible_blocks_dir_name, copied_config.blocks_dir / config::reversible_blocks_dir_name );
+   fc::create_directories(copied_config.blog.log_dir);
+   fc::copy(config.blog.log_dir / "blocks.log", copied_config.blog.log_dir / "blocks.log");
+   fc::copy(config.blog.log_dir / config::reversible_blocks_dir_name, copied_config.blog.log_dir / config::reversible_blocks_dir_name );
    return copied_config;
 }
 
@@ -52,7 +53,7 @@ public:
    enum config_file_handling { dont_copy_config_files, copy_config_files };
    snapshotted_tester(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal,
            config_file_handling copy_files_from_config = config_file_handling::dont_copy_config_files) {
-      FC_ASSERT(config.blocks_dir.filename().generic_string() != "."
+      FC_ASSERT(config.blog.log_dir.filename().generic_string() != "."
                 && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config");
 
       controller::config copied_config = (copy_files_from_config == copy_config_files)
@@ -77,99 +78,7 @@ public:
    bool validate() { return true; }
 };
 
-struct variant_snapshot_suite {
-   using writer_t = variant_snapshot_writer;
-   using reader_t = variant_snapshot_reader;
-   using write_storage_t = fc::mutable_variant_object;
-   using snapshot_t = fc::variant;
-
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const snapshot_t& storage)
-      :reader_t(storage)
-      {}
-   };
-
-
-   static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
-   }
-
-   static auto finalize(const std::shared_ptr<writer>& w) {
-      w->finalize();
-      return snapshot_t(*w->storage);
-   }
-
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(buffer);
-   }
-
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::json();
-   }
-};
-
-struct buffered_snapshot_suite {
-   using writer_t = ostream_snapshot_writer;
-   using reader_t = istream_snapshot_reader;
-   using write_storage_t = std::ostringstream;
-   using snapshot_t = std::string;
-   using read_storage_t = std::istringstream;
-
-   struct writer : public writer_t {
-      writer( const std::shared_ptr<write_storage_t>& storage )
-      :writer_t(*storage)
-      ,storage(storage)
-      {
-
-      }
-
-      std::shared_ptr<write_storage_t> storage;
-   };
-
-   struct reader : public reader_t {
-      explicit reader(const std::shared_ptr<read_storage_t>& storage)
-      :reader_t(*storage)
-      ,storage(storage)
-      {}
-
-      std::shared_ptr<read_storage_t> storage;
-   };
-
-
-   static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<write_storage_t>());
-   }
-
-   static auto finalize(const std::shared_ptr<writer>& w) {
-      w->finalize();
-      return w->storage->str();
-   }
-
-   static auto get_reader( const snapshot_t& buffer) {
-      return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
-   }
-
-   template<typename Snapshot>
-   static snapshot_t load_from_file() {
-      return Snapshot::bin();
-   }
-};
-
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
-
-using snapshot_suites = boost::mpl::list<variant_snapshot_suite, buffered_snapshot_suite>;
 
 namespace {
    void variant_diff_helper(const fc::variant& lhs, const fc::variant& rhs, std::function<void(const std::string&, const fc::variant&, const fc::variant&)>&& out){
@@ -268,15 +177,36 @@ namespace {
    }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
-{
-   tester chain;
+template<typename SnapshotSuite>
+void exhaustive_snapshot(const eosio::chain::backing_store_type main_store,
+                         const eosio::chain::backing_store_type sub_store) {
+   fc::temp_directory temp_dir;
+   tester chain(temp_dir, [main_store] (auto& config) { config.backing_store = main_store; }, true);
 
-   chain.create_account(N(snapshot));
+   // Create 2 accounts
+   chain.create_accounts({"snapshot"_n, "snapshot1"_n});
+
+   // Set code and increment the first account
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
+   chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+         ( "value", 1 )
+   );
+
+   // Set code and increment the second account
+   chain.produce_blocks(1);
+   chain.set_code("snapshot1"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot1"_n, contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   // increment the test contract
+   chain.push_action("snapshot1"_n, "increment"_n, "snapshot1"_n, mutable_variant_object()
+         ( "value", 1 )
+   );
+
+   chain.produce_blocks(1);
+
    chain.control->abort_block();
 
    static const int generation_count = 8;
@@ -284,15 +214,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
 
    for (int generation = 0; generation < generation_count; generation++) {
       // create a new snapshot child
-      auto writer = SNAPSHOT_SUITE::get_writer();
+      auto writer = SnapshotSuite::get_writer();
       chain.control->write_snapshot(writer);
-      auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+      auto snapshot = SnapshotSuite::finalize(writer);
 
       // create a new child at this snapshot
-      sub_testers.emplace_back(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), generation);
+      auto new_config                  = chain.get_config();
+      new_config.backing_store = sub_store;
+      sub_testers.emplace_back(new_config, SnapshotSuite::get_reader(snapshot), generation);
 
       // increment the test contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
+         ( "value", 1 )
+      );
+      chain.push_action("snapshot1"_n, "increment"_n, "snapshot1"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -307,20 +242,45 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
       // push that block to all sub testers and validate the integrity of the database after it.
       for (auto& other: sub_testers) {
          other.push_block(new_block);
+         verify_integrity_hash<SnapshotSuite>(*chain.control, *other.control);
          BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
       }
    }
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_cb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::CHAINBASE,
+                                       eosio::chain::backing_store_type::ROCKSDB);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_cb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::CHAINBASE);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot_rdb_to_rdb, SNAPSHOT_SUITE, snapshot_suites)
+{
+   exhaustive_snapshot<SNAPSHOT_SUITE>(eosio::chain::backing_store_type::ROCKSDB,
+                                       eosio::chain::backing_store_type::ROCKSDB);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -329,7 +289,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -352,7 +312,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    // push more blocks to build up a block log
    for (int itr = 0; itr < post_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
          ( "value", 1 )
       );
 
@@ -395,7 +355,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that chain's block_log has a genesis_state (and blocks starting at 1)
    controller::config copied_config = copy_config_and_files(chain.get_config(), ordinal++);
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   auto genesis = eosio::chain::block_log::extract_genesis_state(chain.get_config().blog.log_dir);
    BOOST_REQUIRE(genesis);
    tester from_block_log_chain(copied_config, *genesis);
    const auto from_block_log_head = from_block_log_chain.control->head_block_num();
@@ -410,12 +370,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -429,117 +389,153 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
 
+static auto get_extra_args() {
+   bool save_snapshot = false;
+   bool generate_log = false;
+
+   auto argc = boost::unit_test::framework::master_test_suite().argc;
+   auto argv = boost::unit_test::framework::master_test_suite().argv;
+   std::for_each(argv, argv + argc, [&](const std::string &a){
+      if (a == "--save-snapshot") {
+         save_snapshot = true;
+      } else if (a == "--generate-snapshot-log") {
+         generate_log = true;
+      }
+   });
+
+   return std::make_tuple(save_snapshot, generate_log);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
-   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
+   bool save_snapshot = false;
+   bool generate_log = false;
+   std::tie(save_snapshot, generate_log) = get_extra_args();
+   const auto source_log_dir = bfs::path(snapshot_file<snapshot::binary>::base_path);
 
-   ///< Begin deterministic code to generate blockchain for comparison
-   // TODO: create a utility that will write new bin/json gzipped files based on this
-   chain.create_account(N(snapshot));
-   chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
-   chain.produce_blocks(1);
-   chain.control->abort_block();
+   if (generate_log) {
+      ///< Begin deterministic code to generate blockchain for comparison
 
+      tester chain(setup_policy::none, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
+      chain.create_account("snapshot"_n);
+      chain.produce_blocks(1);
+      chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+      chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
+      chain.produce_blocks(1);
+      chain.control->abort_block();
+
+      // continue until all the above blocks are in the blocks.log
+      auto head_block_num = chain.control->head_block_num();
+      while (chain.control->last_irreversible_block_num() < head_block_num) {
+         chain.produce_blocks(1);
+      }
+
+      auto source = chain.get_config().blog.log_dir / "blocks.log";
+      auto dest = bfs::path(snapshot_file<snapshot::binary>::base_path) / "blocks.log";
+      bfs::copy_file(source, source_log_dir / "blocks.log", bfs::copy_option::overwrite_if_exists);
+      chain.close();
+   }
+
+   auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
+   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
+   bfs::create_directories(config.blog.log_dir);
+   bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
+   tester base_chain(config, *genesis);
+
+   std::string current_version = "v5";
+
+   int ordinal = 0;
+   for(std::string version : {"v2", "v3", "v4", "v5"})
    {
+      if(save_snapshot && version == current_version) continue;
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-      auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
-      int ordinal = 0;
-      snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++);
-      verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
-
+      auto old_snapshot = SNAPSHOT_SUITE::load_from_file("snap_" + version);
+      BOOST_TEST_CHECKPOINT("loading snapshot: " << version);
+      snapshotted_tester old_snapshot_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *old_snapshot_tester.control);
+      
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
-      v2_tester.control->write_snapshot(latest_writer);
+      old_snapshot_tester.control->write_snapshot(latest_writer);
+      auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+      
+      // load the latest snapshot
+      snapshotted_tester latest_tester(base_chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
+      verify_integrity_hash<SNAPSHOT_SUITE>(*base_chain.control, *latest_tester.control);
+   }
+   // This isn't quite fully automated.  The snapshots still need to be gzipped and moved to
+   // the correct place in the source tree.
+   if (save_snapshot)
+   {
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      base_chain.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
 
-      // load the latest snapshot
-      snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
-      verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_tester.control);
+      SNAPSHOT_SUITE::write_to_file("snap_" + current_version, latest);
    }
 }
 
+/*
+When WTMSIG changes were introduced in 1.8.x, the snapshot had to be able 
+to store more than a single producer key.
+This test intends to make sure that a snapshot from before that change could 
+be correctly loaded into a new version to facilitate upgrading from 1.8.x
+to v2.0.x without a replay.
+
+The original test simulated a snapshot from 1.8.x with an inflight schedule change, loaded it on the newer version and reconstructed the chain via 
+push_transaction. This is too fragile. 
+
+The fix is to save block.log and its corresponding snapshot with infight
+schedule changes, load the snapshot and replay the block.log on the new
+version, and verify their integrity.
+*/
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
-   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
-   tester chain(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE, {legacy_default_max_inline_action_size});
-   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
-   BOOST_REQUIRE(genesis);
-   BOOST_REQUIRE_EQUAL(genesis->compute_chain_id(), chain.control->get_chain_id());
-   const auto& gpo = chain.control->get_global_properties();
-   BOOST_REQUIRE_EQUAL(gpo.chain_id, chain.control->get_chain_id());
-   auto block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 3); // ensure that test setup stays consistent with original snapshot setup
-   chain.create_account(N(snapshot));
-   block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 4);
-
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 0);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 0);
-
-   auto res = chain.set_producers_legacy( {N(snapshot)} );
-   block = chain.produce_block();
-   BOOST_REQUIRE_EQUAL(block->block_num(), 5);
-   chain.control->abort_block();
-   ///< End deterministic code to generate blockchain for comparison
-
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 1);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 1);
-   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
-
    static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
-   auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
-   int ordinal = 0;
 
-   ////////////////////////////////////////////////////////////////////////
-   // Verify that the controller gets its chain_id from the snapshot
-   ////////////////////////////////////////////////////////////////////////
+   // consruct a chain by replaying the saved blocks.log
+   std::string source_log_dir_str = snapshot_file<snapshot::binary>::base_path;
+   source_log_dir_str += "prod_sched";
+   const auto source_log_dir = bfs::path(source_log_dir_str.c_str());
+   const uint32_t legacy_default_max_inline_action_size = 4 * 1024;
+   auto config = tester::default_config(fc::temp_directory(), legacy_default_max_inline_action_size).first;
+   auto genesis = eosio::chain::block_log::extract_genesis_state(source_log_dir);
+   bfs::create_directories(config.blog.log_dir);
+   bfs::copy(source_log_dir / "blocks.log", config.blog.log_dir / "blocks.log");
+   tester blockslog_chain(config, *genesis);
 
-   auto reader = SNAPSHOT_SUITE::get_reader(v2);
-   snapshotted_tester v2_tester(chain.get_config(), reader, ordinal++);
-   auto chain_id = chain::controller::extract_chain_id(*reader);
-   BOOST_REQUIRE_EQUAL(chain_id, v2_tester.control->get_chain_id());
-   BOOST_REQUIRE_EQUAL(chain.control->get_chain_id(), v2_tester.control->get_chain_id());
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
+   // consruct a chain by loading the saved snapshot
+   auto ordinal = 0;
+   auto old_snapshot = SNAPSHOT_SUITE::load_from_file("snap_v2_prod_sched");
+   snapshotted_tester snapshot_chain(blockslog_chain.get_config(), SNAPSHOT_SUITE::get_reader(old_snapshot), ordinal++);
 
-   // create a latest version snapshot from the loaded v2 snapthos
-   auto latest_from_v2_writer = SNAPSHOT_SUITE::get_writer();
-   v2_tester.control->write_snapshot(latest_from_v2_writer);
-   auto latest_from_v2 = SNAPSHOT_SUITE::finalize(latest_from_v2_writer);
+   // make sure blockslog_chain and snapshot_chain agree to each other 
+   verify_integrity_hash<SNAPSHOT_SUITE>(*blockslog_chain.control, *snapshot_chain.control);
+   
+   // extra round of testing
+   // create a latest snapshot
+   auto latest_writer = SNAPSHOT_SUITE::get_writer();
+   snapshot_chain.control->write_snapshot(latest_writer);
+   auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+   
+   // construct a chain from the latest snapshot
+   snapshotted_tester latest_chain(blockslog_chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), ordinal++);
 
-   // load the latest snapshot in a new tester and compare integrity
-   snapshotted_tester latest_from_v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest_from_v2), ordinal++);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*v2_tester.control, *latest_from_v2_tester.control);
-
-   const auto& v2_gpo = v2_tester.control->get_global_properties();
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.version, 1);
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers.size(), 1);
-   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
-
-   // produce block
-   auto new_block = chain.produce_block();
-   // undo the auto-pending from tester
-   chain.control->abort_block();
-
-   // push that block to all sub testers and validate the integrity of the database after it.
-   v2_tester.push_block(new_block);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
-
-   latest_from_v2_tester.push_block(new_block);
-   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *latest_from_v2_tester.control);
+   // make sure both chains agree
+   verify_integrity_hash<SNAPSHOT_SUITE>(*blockslog_chain.control, *latest_chain.control);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_block_log, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
-   const chainbase::bfs::path parent_path = chain.get_config().blocks_dir.parent_path();
+   const chainbase::bfs::path parent_path = chain.get_config().blog.log_dir.parent_path();
 
-   chain.create_account(N(snapshot));
+   chain.create_account("snapshot"_n);
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
-   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.set_code("snapshot"_n, contracts::snapshot_test_wasm());
+   chain.set_abi("snapshot"_n, contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -547,7 +543,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
 
    for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
       // increment the contract
-      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+      chain.push_action("snapshot"_n, "increment"_n, "snapshot"_n, mutable_variant_object()
                         ( "value", 1 )
                         );
 
@@ -581,6 +577,136 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    chain.control->abort_block();
    snap_chain.push_block(block);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
+}
+
+// Psudo code for the following WAST:
+//    kv_get(receiver, ...)
+//    uint64_t buff[1];
+//    kv_get_data(offset, buff, ...)
+//    buff[0] = buff[0]++;
+//    kv_set(receiver, key, key_size, buff, ...)
+static const char kv_snapshot_wast[] = R"=====(
+(module
+  (func $kv_get (import "env" "kv_get") (param i64 i32 i32 i32) (result i32))
+  (func $kv_get_data (import "env" "kv_get_data") (param i32 i32 i32) (result i32))
+  (func $kv_set (import "env" "kv_set") (param i64 i32 i32 i32 i32 i64) (result i64))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+    (drop (call $kv_get (get_local 0) (i32.const 0) (i32.const 8) (i32.const 8)))
+    (drop (call $kv_get_data (i32.const 0) (i32.const 0) (i32.const 8)))
+    (i64.store (i32.const 0) (i64.add (i64.load (i32.const 0)) (i64.const 1)))
+    (drop (call $kv_set (get_local 0) (i32.const 16) (i32.const 8) (i32.const 0) (i32.const 8) (get_local 0)))
+  )
+)
+)=====";
+
+static const char kv_snapshot_bios[] = R"=====(
+(module
+  (func $set_resource_limit (import "env" "set_resource_limit") (param i64 i64 i64))
+  (func $kv_set_parameters_packed (import "env" "set_kv_parameters_packed") (param i32 i32))
+  (memory 1)
+  (func (export "apply") (param i64 i64 i64)
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $kv_set_parameters_packed (i32.const 0) (i32.const 16))
+    (call $set_resource_limit (get_local 0) (i64.const 13376816793197215744) (i64.const -1))
+  )
+  (data (i32.const 4) "\00\04\00\00")
+  (data (i32.const 8) "\00\00\10\00")
+  (data (i32.const 12) "\80\00\00\00")
+)
+)=====";
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_kv_snapshot, SNAPSHOT_SUITE, snapshot_suites) {
+   for (backing_store_type origin_backing_store : { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+      for (backing_store_type resulting_backing_store: { backing_store_type::CHAINBASE, backing_store_type::ROCKSDB }) {
+         tester chain {setup_policy::full, db_read_mode::SPECULATIVE, std::optional<uint32_t>{}, std::optional<uint32_t>{}, origin_backing_store};
+
+         chain.create_accounts({"manager"_n});
+         auto get_ext = [](unsigned i) {
+            std::string ext;
+            do {
+               unsigned rem = i % 5;
+               i /= 5;
+               ext += std::to_string(rem + 1);
+            } while(i > 0);
+            std::reverse(ext.begin(), ext.end());
+            return ext;
+         };
+         std::vector<name> contracts;
+         for (unsigned i = 0; i < 10; ++i) {
+            name contract { std::string("snapshot") + get_ext(i) };
+            contracts.push_back(contract);
+         }
+         chain.create_accounts(contracts);
+
+         chain.set_code("manager"_n, kv_snapshot_bios);
+         chain.push_action("eosio"_n, "setpriv"_n, "eosio"_n, mutable_variant_object()("account", "manager")("is_priv", 1));
+
+         chain.produce_blocks(1);
+         {
+            signed_transaction trx;
+            trx.actions.push_back({{{"manager"_n, "active"_n}}, "manager"_n, "snapshot"_n, {}});
+            chain.set_transaction_headers(trx);
+            trx.sign(chain.get_private_key("manager"_n, "active"), chain.control->get_chain_id());
+            chain.push_transaction(trx);
+         }
+         chain.produce_blocks(1);
+
+         for (auto contract : contracts) {
+            chain.set_code(contract, kv_snapshot_wast);
+         }
+         chain.produce_blocks(1);
+         chain.control->abort_block();
+
+         static const int generation_count = 8;
+         std::list<snapshotted_tester> sub_testers;
+
+         for (int generation = 0; generation < generation_count; generation++) {
+            // create a new snapshot child
+            auto writer = SNAPSHOT_SUITE::get_writer();
+            chain.control->write_snapshot(writer);
+            auto snapshot = SNAPSHOT_SUITE::finalize(writer);
+            auto cfg = chain.get_config();
+
+            // Set backing_store for loading snapshot in the child
+            cfg.backing_store = resulting_backing_store;
+            
+            // create a new child at this snapshot
+            sub_testers.emplace_back(cfg, SNAPSHOT_SUITE::get_reader(snapshot), generation);
+
+            int contract_gen = 0;
+            for (auto contract : contracts) {
+               if (contract_gen++ > generation)
+                  break; // ensure that every entry in the KV tables are not just exactly the same data
+
+               // Calling apply method which will increment the
+               // current value stored
+               signed_transaction trx;
+               trx.actions.push_back({{{contract, "active"_n}}, contract, "eosio.kvram"_n, {}});
+               chain.set_transaction_headers(trx);
+               trx.sign(chain.get_private_key(contract, "active"), chain.control->get_chain_id());
+               chain.push_transaction(trx);
+            }
+
+            // produce block
+            auto new_block = chain.produce_block();
+
+#warning TODO: adding verification of the kv_object content and storing more than one key so that snapshot looping is tested
+
+            // undo the auto-pending from tester
+            chain.control->abort_block();
+
+            auto integrity_value = chain.control->calculate_integrity_hash();
+
+            // push that block to all sub testers and validate the integrity of the database after it.
+            for (auto& other: sub_testers) {
+               other.push_block(new_block);
+               verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *other.control);
+               BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
+            }
+         }
+      }
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

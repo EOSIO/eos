@@ -19,11 +19,10 @@ static appbase::abstract_plugin& _net_api_plugin = app().register_plugin<net_api
 
 using namespace eosio;
 
-#define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
+#define CALL_WITH_400(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [&api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
-             if (body.empty()) body = "{}"; \
              INVOKE \
              cb(http_response_code, fc::variant(result)); \
           } catch (...) { \
@@ -32,25 +31,20 @@ using namespace eosio;
        }}
 
 #define INVOKE_R_R(api_handle, call_name, in_param) \
-     auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
-
-#define INVOKE_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
-     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
+     auto params = parse_params<in_param, http_params_types::params_required>(body);\
+     fc::variant result( api_handle.call_name( std::move(params) ) );
 
 #define INVOKE_R_V(api_handle, call_name) \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      auto result = api_handle.call_name();
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
-     api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eosio::detail::net_api_plugin_empty result;
-
-#define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
-     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
+     auto params = parse_params<in_param, http_params_types::params_required>(body);\
+     api_handle.call_name( std::move(params) ); \
      eosio::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
+     body = parse_params<std::string, http_params_types::no_params_required>(body); \
      api_handle.call_name(); \
      eosio::detail::net_api_plugin_empty result;
 
@@ -64,13 +58,13 @@ void net_api_plugin::plugin_startup() {
     //        INVOKE_V_R(net_mgr, set_timeout, int64_t), 200),
     //   CALL(net, net_mgr, sign_transaction,
     //        INVOKE_R_R_R_R(net_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
-       CALL(net, net_mgr, connect,
+       CALL_WITH_400(net, net_mgr, connect,
             INVOKE_R_R(net_mgr, connect, std::string), 201),
-       CALL(net, net_mgr, disconnect,
+       CALL_WITH_400(net, net_mgr, disconnect,
             INVOKE_R_R(net_mgr, disconnect, std::string), 201),
-       CALL(net, net_mgr, status,
+       CALL_WITH_400(net, net_mgr, status,
             INVOKE_R_R(net_mgr, status, std::string), 201),
-       CALL(net, net_mgr, connections,
+       CALL_WITH_400(net, net_mgr, connections,
             INVOKE_R_V(net_mgr, connections), 201),
     //   CALL(net, net_mgr, open,
     //        INVOKE_V_R(net_mgr, open, std::string), 200),
@@ -95,10 +89,8 @@ void net_api_plugin::plugin_initialize(const variables_map& options) {
 
 
 #undef INVOKE_R_R
-#undef INVOKE_R_R_R_R
 #undef INVOKE_R_V
 #undef INVOKE_V_R
-#undef INVOKE_V_R_R
 #undef INVOKE_V_V
 #undef CALL
 

@@ -10,6 +10,7 @@
 #include <boost/tuple/tuple_io.hpp>
 
 #include <iosfwd>
+#include <optional>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
    BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
@@ -62,6 +63,7 @@ namespace eosio { namespace testing {
       old_bios_only,
       preactivate_feature_only,
       preactivate_feature_and_new_bios,
+      old_wasm_parser,
       full
    };
 
@@ -120,7 +122,7 @@ namespace eosio { namespace testing {
 
             char serialized_sig[4096];
             datastream<char*> sig_ds(serialized_sig, sizeof(serialized_sig));
-            fc::raw::pack(sig_ds, (uint8_t)signature::storage_type::position<webauthn::signature>());
+            fc::raw::pack(sig_ds, (uint8_t)get_index<signature::storage_type, webauthn::signature>());
             fc::raw::pack(sig_ds, sig);
             fc::raw::pack(sig_ds, auth_data);
             fc::raw::pack(sig_ds, json);
@@ -152,7 +154,11 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{});
+         void              init(const setup_policy policy = setup_policy::full,
+                                db_read_mode read_mode = db_read_mode::SPECULATIVE,
+                                std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+                                std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+                                std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
          void              init(controller::config config, const snapshot_reader_ptr& snapshot);
          void              init(controller::config config, const genesis_state& genesis);
          void              init(controller::config config);
@@ -162,14 +168,13 @@ namespace eosio { namespace testing {
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
-         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
+         void              open( protocol_feature_set&& pfs, std::optional<chain_id_type> expected_chain_id = {} );
          void              open( const snapshot_reader_ptr& snapshot );
          void              open( const genesis_state& genesis );
-         void              open( fc::optional<chain_id_type> expected_chain_id = {} );
+         void              open( std::optional<chain_id_type> expected_chain_id = {} );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
@@ -196,8 +201,8 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> get_scheduled_transactions() const;
          unapplied_transaction_queue& get_unapplied_transaction_queue() { return unapplied_transactions; }
 
-         transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
+         transaction_trace_ptr    push_transaction( const packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
+         transaction_trace_ptr    push_transaction( const signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
 
          [[nodiscard]]
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
@@ -335,14 +340,14 @@ namespace eosio { namespace testing {
          static action_result wasm_assert_code( uint64_t error_code ) { return "assertion failure with error code: " + std::to_string(error_code); }
 
          auto get_resolver() {
-            return [this]( const account_name& name ) -> optional<abi_serializer> {
+            return [this]( const account_name& name ) -> std::optional<abi_serializer> {
                try {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
                      return abi_serializer( abi, abi_serializer::create_yield_function( abi_serializer_max_time ) );
                   }
-                  return optional<abi_serializer>();
+                  return std::optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
             };
          }
@@ -380,6 +385,7 @@ namespace eosio { namespace testing {
 
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
+         void preactivate_builtin_protocol_features(const std::vector<builtin_protocol_feature_t>& features);
          void preactivate_all_builtin_protocol_features();
 
          static genesis_state default_genesis() {
@@ -390,9 +396,13 @@ namespace eosio { namespace testing {
             return genesis;
          }
 
-         static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
+         static std::pair<controller::config, genesis_state> default_config(
+               const fc::temp_directory& tempdir,
+               std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+               std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+               std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{}) {
             controller::config cfg;
-            cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+            cfg.blog.log_dir      = tempdir.path() / config::default_blocks_dir_name;
             cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
             cfg.state_size = 1024*1024*16;
             cfg.state_guard_size = 0;
@@ -402,9 +412,7 @@ namespace eosio { namespace testing {
             cfg.eosvmoc_config.cache_size = 1024*1024*8;
 
             for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-                  cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
+               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm;
                else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-jit"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_jit;
@@ -417,6 +425,9 @@ namespace eosio { namespace testing {
             }
             if (config_max_nonprivileged_inline_action_size) {
                cfg.max_nonprivileged_inline_action_size = *config_max_nonprivileged_inline_action_size;
+            }
+            if (config_backing_store) {
+               cfg.backing_store = *config_backing_store;
             }
             return {cfg, gen};
          }
@@ -448,8 +459,11 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE, optional<uint32_t> genesis_max_inline_action_size = optional<uint32_t>{}, optional<uint32_t> config_max_nonprivileged_inline_action_size = optional<uint32_t>{}) {
-         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size);
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE,
+             std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+             std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{},
+             std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{}) {
+         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size, config_backing_store);
       }
 
       tester(controller::config config, const genesis_state& genesis) {
@@ -490,6 +504,9 @@ namespace eosio { namespace testing {
          }
       }
 
+      tester(const std::function<void(controller&)>& control_setup, setup_policy policy = setup_policy::full,
+             db_read_mode read_mode = db_read_mode::SPECULATIVE);
+
       using base_tester::produce_block;
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -518,33 +535,27 @@ namespace eosio { namespace testing {
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
-            if (!skip_validate)
-               BOOST_REQUIRE_EQUAL( validate(), true );
+            if (!skip_validate && std::uncaught_exceptions() == 0)
+               BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
          }
       }
       controller::config vcfg;
 
-      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         auto def_conf = default_config(tempdir);
+      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>(),
+                        std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
 
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         vcfg.trusted_producers = trusted_producers;
-
-         validating_node = create_validating_node(vcfg, def_conf.second, true);
-
-         init(def_conf.first, def_conf.second);
-         execute_setup_policy(setup_policy::full);
-      }
+      void init_with_trusted_producers(const flat_set<account_name>& trusted_producers,
+                                       std::pair<controller::config, genesis_state> config_state,
+                                       std::optional<backing_store_type> config_backing_store);
 
       static void config_validator(controller::config& vcfg) {
-         FC_ASSERT( vcfg.blocks_dir.filename().generic_string() != "."
+         FC_ASSERT( vcfg.blog.log_dir.filename().generic_string() != "."
                     && vcfg.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
 
-         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
-         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+         vcfg.blog.log_dir = vcfg.blog.log_dir.parent_path() / std::string("v_").append( vcfg.blog.log_dir.filename().generic_string() );
+         vcfg.state_dir    = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
          vcfg.contracts_console = false;
       }
@@ -553,27 +564,16 @@ namespace eosio { namespace testing {
          unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
          validating_node->add_indices();
          if (use_genesis) {
-            validating_node->startup( []() { return false; }, genesis );
+            validating_node->startup( [](){}, []() { return false; }, genesis );
          }
          else {
-            validating_node->startup( []() { return false; } );
+            validating_node->startup( [](){}, []() { return false; } );
          }
          return validating_node;
       }
 
-      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
-         auto def_conf = default_config(tempdir);
-         vcfg = def_conf.first;
-         config_validator(vcfg);
-         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
-
-         if (use_genesis) {
-            init(def_conf.first, def_conf.second);
-         }
-         else {
-            init(def_conf.first);
-         }
-      }
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis,
+                        std::optional<backing_store_type> config_backing_store = std::optional<backing_store_type>{});
 
       template <typename Lambda>
       validating_tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
@@ -591,9 +591,11 @@ namespace eosio { namespace testing {
          }
       }
 
+      static backing_store_type alternate_type(backing_store_type type);
+
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          auto sb = _produce_block(skip_time, false);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;
@@ -604,14 +606,14 @@ namespace eosio { namespace testing {
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
-         auto bs = validating_node->create_block_state_future( sb );
+         auto bs = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bs, forked_branch_callback{}, trx_meta_cache_lookup{} );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          unapplied_transactions.add_aborted( control->abort_block() );
          auto sb = _produce_block(skip_time, true);
-         auto bsf = validating_node->create_block_state_future( sb );
+         auto bsf = validating_node->create_block_state_future( sb->calculate_id(), sb );
          validating_node->push_block( bsf, forked_branch_callback{}, trx_meta_cache_lookup{} );
 
          return sb;
@@ -636,7 +638,7 @@ namespace eosio { namespace testing {
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), control->get_chain_id());
         validating_node->add_indices();
-        validating_node->startup( []() { return false; } );
+        validating_node->startup( [](){}, []() { return false; } );
 
         return ok;
       }
@@ -644,6 +646,36 @@ namespace eosio { namespace testing {
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
       bool                     skip_validate = false;
+   };
+
+   class rocksdb_tester : public tester {
+   public:
+      rocksdb_tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE,
+             std::optional<uint32_t> genesis_max_inline_action_size = std::optional<uint32_t>{},
+             std::optional<uint32_t> config_max_nonprivileged_inline_action_size = std::optional<uint32_t>{}) {
+         init(policy, read_mode, genesis_max_inline_action_size, config_max_nonprivileged_inline_action_size,
+              backing_store_type::ROCKSDB);
+      }
+   };
+
+   class rocksdb_validating_tester : public validating_tester {
+   public:
+      virtual ~rocksdb_validating_tester() {}
+
+      rocksdb_validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>())
+      : validating_tester(trusted_producers, {backing_store_type::ROCKSDB}){}
+   };
+
+   /**
+    * Utility predicate to check whether an fc::exception code is equivalent to a given value
+    */
+   struct fc_exception_code_is {
+      fc_exception_code_is( int64_t code )
+            : expected( code ) {}
+
+      bool operator()( const fc::exception& ex );
+
+      int64_t expected;
    };
 
    /**
