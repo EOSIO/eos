@@ -13,6 +13,12 @@ $ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.1/docke
 $ sudo chmod +x /usr/local/bin/docker-compose
 ```
 
+- Install loki-docker-driver
+
+```
+$ docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
+
 ### Build EOS as usual 
 
 ```
