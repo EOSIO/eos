@@ -49,7 +49,7 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
 #    rm -rf /var/lib/apt/lists/*
 # build libpq and postgres
 RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
-    cd postgres  && \
+    cd postgres-REL_13_3 && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres
 #build libpqxx
