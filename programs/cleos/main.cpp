@@ -162,6 +162,7 @@ string default_url = "http://127.0.0.1:8888/";
 string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
 string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
+string amqp_reply_to;
 bool no_verify = false;
 vector<string> headers;
 
@@ -449,7 +450,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             result = fc::mutable_variant_object()
                   ( "transaction_id", id )
                   ( "status", "submitted" );
-            qp_trx.publish( "", std::move( id ), std::move( buf ) );
+            qp_trx.publish( "", std::move( id ), amqp_reply_to, std::move( buf ) );
             return result;
          } else {
             try {
@@ -2524,6 +2525,7 @@ int main( int argc, char** argv ) {
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
    app.add_option( "-r,--header", header_opt_callback, localized("Pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("Don't verify peer certificate when using HTTPS"));
