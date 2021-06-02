@@ -80,8 +80,8 @@ struct connection : connection_base {
    abi_def_skip_table                           abi       = {};
    std::map<std::string, abi_type>              abi_types = {};
    std::atomic<bool>                            stopping  = false;
+   std::atomic<uint32_t>                        num_queued_results = 0;
    std::thread                                  thr;
-
 
    connection(std::shared_ptr<connection_callbacks> callbacks)
        : callbacks(callbacks) {}
@@ -111,6 +111,13 @@ struct connection : connection_base {
    void read_thread_fun() {
       
       while( !stopping.load())  {
+         
+         while ( num_queued_results > 4 ) {
+            if (stopping.load())
+               return;
+            sleep(1);
+         }
+
          auto in_buffer = std::make_shared<flat_buffer>();
          auto block_entering = fc::time_point::now().time_since_epoch().count();
 
@@ -126,14 +133,18 @@ struct connection : connection_base {
             return;
          }
 
-         boost::asio::post(derived_connection().stream.get_executor(),[self = derived_connection().shared_from_this(), this, in_buffer ]() {
-            catch_and_close([in_buffer, this]{
-               if (!receive_result(in_buffer)) {
-                  close(false);
-                  return;
-               }
-            });
-         });
+         
+         ++num_queued_results;
+         boost::asio::post(derived_connection().stream.get_executor(),
+                           [self = derived_connection().shared_from_this(), this, in_buffer]() {
+                              --num_queued_results;
+                              catch_and_close([in_buffer, this] {
+                                 if (!receive_result(in_buffer)) {
+                                    close(false);
+                                    return;
+                                 }
+                              });
+                           });
       }
    }
 
