@@ -25,12 +25,30 @@ if (pqxx_FOUND)
       # Linking libpqxx from homebrew statically could generate `different visibility settings` warnings.
       # As a result, we'll just use link it dynamically for now. 
       ##################################################################################################
+      set(pq_lib PkgConfig::pq)
       set(pqxx_lib PkgConfig::pqxx )
+      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} eosio_chain)  #PkgConfig::pq
    else()
+      add_library(pq STATIC IMPORTED)
+      set_property(TARGET pq PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIRS}/libpq.a)
+      set_property(TARGET pq PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS})
+      set(pq_lib pq)
+
+      add_library(pgcom STATIC IMPORTED)
+      set_property(TARGET pgcom PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIRS}/libpgcommon.a)
+      set_property(TARGET pgcom PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS})
+      set(pgcom_lib pgcom)
+
+      add_library(pgport STATIC IMPORTED)
+      set_property(TARGET pgport PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIR}/libpgport.a)
+      set_property(TARGET pgport PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS} )
+      set(pgport_lib pgport)
+
       add_library(pqxx STATIC IMPORTED)
       set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
       set_property(TARGET pqxx PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pqxx_STATIC_INCLUDE_DIRS})
       set(pqxx_lib pqxx)
+      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)  #PkgConfig::pq
    endif()
 
    add_library(blockvault postgres_backend.cpp)
