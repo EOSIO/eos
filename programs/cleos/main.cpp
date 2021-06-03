@@ -514,7 +514,9 @@ void print_action( const fc::variant& at ) {
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
-   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+   string args;
+   if(act.contains("data"))
+      args = fc::json::to_string( act["data"], fc::time_point::maximum() );
    auto console = at["console"].as_string();
 
    /*
@@ -3135,14 +3137,16 @@ int main( int argc, char** argv ) {
               auto code = act["account"].as_string();
               auto func = act["name"].as_string();
               string args;
-              if( prettyact ) {
-                  args = fc::json::to_pretty_string( act["data"] );
-              }
-              else {
-                 args = fc::json::to_string( act["data"], fc::time_point::maximum() );
-                 if( !fullact ) {
-                    args = args.substr(0,60) + "...";
-                 }
+              if(act.contains("data")) {
+                  if( prettyact ) {
+                        args = fc::json::to_pretty_string( act["data"] );
+                  }
+                  else {
+                     args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+                     if( !fullact ) {
+                        args = args.substr(0,60) + "...";
+                     }
+                  }
               }
               out << std::setw(24) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
 
