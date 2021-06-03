@@ -566,7 +566,6 @@ public:
    }
 
    struct push_ro_transaction_params {
-      name account_name;
       bool return_failure_traces = false;
       fc::variant transaction;
    };
@@ -1141,6 +1140,6 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
-FC_REFLECT( eosio::chain_apis::read_only::push_ro_transaction_params, (account_name)(return_failure_traces)(transaction) )
+FC_REFLECT( eosio::chain_apis::read_only::push_ro_transaction_params, (return_failure_traces)(transaction) )
 FC_REFLECT( eosio::chain_apis::read_only::push_ro_transaction_results, (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(code_hash)(pending_transactions)(result) )
 
