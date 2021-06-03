@@ -13,6 +13,8 @@ if (APPLE AND EXISTS "/usr/local/opt/libpq/lib/pkgconfig")
    else()
       set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/libpq/lib/pkgconfig")
    endif()
+elseif ( EXISTS "/usr/local/pgsql/lib/pkgconfig" )
+   set(ENV{PKG_CONFIG_PATH} "/usr/local/pgsql/lib/pkgconfig")
 endif()
 
 pkg_check_modules(pq IMPORTED_TARGET  libpq>=10.0)
