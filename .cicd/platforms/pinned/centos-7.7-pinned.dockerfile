@@ -59,8 +59,8 @@ RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.
     cd postgres-REL_13_3 && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres-REL_13_3
-#ENV PostgreSQL_ROOT=/usr/pgsql-13   
-#ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig:/usr/local/lib64/pkgconfig
+ENV PostgreSQL_ROOT=/usr/local/pgsql
+ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \

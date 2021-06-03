@@ -51,13 +51,15 @@ RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.
     cd postgres-REL_13_3 && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres-REL_13_3
+ENV PostgreSQL_ROOT=/usr/local/pgsql
+ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
     cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake  -DPostgreSQL_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_LIBRARY_DIR=/usr/local/pgsql/lib   -DPostgreSQL_LIBRARY=libpq.a  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
-ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig
+
 # install nvm
 RUN touch ~/.bashrc
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
