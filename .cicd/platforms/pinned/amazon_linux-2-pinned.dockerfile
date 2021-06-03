@@ -5,7 +5,7 @@ RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel python-requests python3-requests libedit-devel doxygen \
-    graphviz patch gcc gcc-c++ vim-common jq && \
+    graphviz patch gcc gcc-c++ vim-common jq zlib-devel bison readline-devel flex && \
     yum clean all && rm -rf /var/cache/yum
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
@@ -43,13 +43,18 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
 #install libpq postgresql-server
-RUN amazon-linux-extras enable postgresql11 && \
-    yum install -y libpq-devel postgresql-server && \
-    yum clean all && rm -rf /var/cache/yum
+#RUN amazon-linux-extras enable postgresql11 && \
+#    yum install -y libpq-devel postgresql-server && \
+#    yum clean all && rm -rf /var/cache/yum
+# build libpq and postgres
+RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
+    cd postgres-REL_13_3 && \
+    ./configure && make && make install && \
+    cd .. && rm -rf postgres-REL_13_3
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake  -DPostgreSQL_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_LIBRARY_DIR=/usr/local/pgsql/lib   -DPostgreSQL_LIBRARY=libpq.a  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
 ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig
@@ -64,4 +69,4 @@ RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/npm" /usr/local/bin/npm
 # setup Postgress
-RUN su - postgres -c "/usr/bin/initdb" 
+RUN su - postgres -c "/usr/local/pgsql/bin/initdb"
