@@ -478,10 +478,8 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             return result;
          } else {
             try {
-               name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
                auto args = fc::mutable_variant_object()
                            ("return_failure_traces", tx_rtn_failure_trace)
-                           ("account_name", account_name)
                            ("transaction", pt_v0);
                if (tx_read_only)
                {
