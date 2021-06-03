@@ -21,6 +21,8 @@ pkg_check_modules(pq IMPORTED_TARGET  libpq>=10.0)
 pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0)
 
 if (pqxx_FOUND)
+   add_library(blockvault postgres_backend.cpp)
+   target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
    if (APPLE)
       ###################################################################################################
@@ -29,7 +31,7 @@ if (pqxx_FOUND)
       ##################################################################################################
       set(pq_lib PkgConfig::pq)
       set(pqxx_lib PkgConfig::pqxx )
-      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} eosio_chain)  #PkgConfig::pq
+      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} eosio_chain)
    else()
       add_library(pq STATIC IMPORTED)
       set_property(TARGET pq PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIRS}/libpq.a)
@@ -50,12 +52,8 @@ if (pqxx_FOUND)
       set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
       set_property(TARGET pqxx PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pqxx_STATIC_INCLUDE_DIRS})
       set(pqxx_lib pqxx)
-      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)  #PkgConfig::pq
+      target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)
    endif()
-
-   add_library(blockvault postgres_backend.cpp)
-   target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-   target_link_libraries(blockvault PUBLIC ${pqxx_lib} PkgConfig::pq eosio_chain)
 
    target_link_libraries( blockvault_client_plugin blockvault)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
