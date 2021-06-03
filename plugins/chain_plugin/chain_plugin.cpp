@@ -3318,8 +3318,9 @@ void read_only::send_ro_transaction(const read_only::send_ro_transaction_params_
                } catch( chain::abi_exception& ) {
                   output = *trx_trace_ptr;
                }
+               const auto& account_name = input_trx->get_transaction().actions[0].account;
+               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( account_name );
                vector<transaction_id_type>  pending_transactions;
-               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
                if (db.is_building_block()){
                   const auto& receipts = db.get_pending_trx_receipts();
                   pending_transactions.reserve(receipts.size());
