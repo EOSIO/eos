@@ -537,11 +537,11 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                }
 
                // beast_https_server = make_unique<beast_http_listener<ssl_session> >(ioc, ctx);
-               beast_https_server = make_shared<beast_http_listener<ssl_session> >(ioc, ctx, plugin_state);
+               beast_https_server = std::make_shared<beast_http_listener<ssl_session> >(ioc, ctx, plugin_state);
                fc_ilog( logger, "created beast HTTPS listener");
             }
             else {
-               beast_server = make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
+               beast_server = std::make_shared<beast_http_listener<plain_session> >(ioc, ctx, plugin_state);
                fc_ilog( logger, "created beast HTTP listener");
             }
          }
