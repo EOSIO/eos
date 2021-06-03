@@ -6,7 +6,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
-    yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
+    yum --enablerepo=extras install -y libcurl-devel patch vim-common jq zlib-devel bison readline-devel flex && \
     yum install -y python3 python3-devel python3-requests clang llvm-devel llvm-static procps-ng util-linux sudo libstdc++ \
     glibc-locale-source glibc-langpack-en && \
     yum clean all && rm -rf /var/cache/yum
@@ -29,16 +29,21 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/bo
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
 # install libpq & postgres
-RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
-    dnf -qy module disable postgresql && \
-    dnf install -y postgresql13-devel postgresql13-server \
-  	&& dnf clean all && rm -rf /var/cache/yum
-ENV PostgreSQL_ROOT=/usr/pgsql-13  
-ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig:/usr/local/lib64/pkgconfig
+#RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+#    dnf -qy module disable postgresql && \
+#    dnf install -y postgresql13-devel postgresql13-server \
+#  	&& dnf clean all && rm -rf /var/cache/yum
+# build libpq and postgres
+RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
+    cd postgres-REL_13_3 && \
+    ./configure && make && make install && \
+    cd .. && rm -rf postgres-REL_13_3
+ENV PostgreSQL_ROOT=/usr/local/pgsql
+ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
-    cmake -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
+    cmake -DSKIP_BUILD_TEST=ON -DPostgreSQL_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_LIBRARY_DIR=/usr/local/pgsql/lib   -DPostgreSQL_LIBRARY=libpq.a    -DCMAKE_BUILD_TYPE=Release -S . -B build && \
     cmake --build build && cmake --install build && \
     cd .. && rm -rf libpqxx-7.2.1
 # install nvm
@@ -56,4 +61,4 @@ RUN yum install -y nodejs && \
 RUN ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
-    su - postgres -c "/usr/pgsql-13/bin/initdb" 
+    adduser postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/" 
