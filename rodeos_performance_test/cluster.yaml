@@ -38,8 +38,6 @@ services:
             condition: on-failure
 
    grafana:
-      volumes:
-         - ./configs/grafana-dashboards/dashboard-swarm.json:/var/lib/grafana/dashboards/dashboard.json
       deploy:
         <<: *manager-node
 
