@@ -44,7 +44,7 @@ if (pqxx_FOUND)
       set(pgcom_lib pgcom)
 
       add_library(pgport STATIC IMPORTED)
-      set_property(TARGET pgport PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIR}/libpgport.a)
+      set_property(TARGET pgport PROPERTY IMPORTED_LOCATION ${pq_STATIC_LIBRARY_DIRS}/libpgport.a)
       set_property(TARGET pgport PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS} )
       set(pgport_lib pgport)
 
