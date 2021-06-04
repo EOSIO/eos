@@ -1549,7 +1549,7 @@ class Node(object):
         return protocolFeatures
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
-    def preactivateProtocolFeatures(self, featureDigests:list):
+    def preactivateProtocolFeatures(self, featureDigests:list, failOnError=False):
         for digest in featureDigests:
             Utils.Print("push activate action with digest {}".format(digest))
             data="{{\"feature_digest\":{}}}".format(digest)
@@ -1557,13 +1557,13 @@ class Node(object):
             trans=self.pushMessage("eosio", "activate", data, opts)
             if trans is None or not trans[0]:
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
-                return None
+                assert not failOnError
         self.waitForHeadToAdvance(blocksToAdvance=2)
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
-    def preactivateAllBuiltinProtocolFeature(self):
+    def preactivateAllBuiltinProtocolFeature(self, failOnError=False):
         allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
-        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests)
+        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests, failOnError)
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
