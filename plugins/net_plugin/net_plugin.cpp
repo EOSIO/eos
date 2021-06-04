@@ -3856,9 +3856,12 @@ namespace eosio {
       ssl_context.reset( new ssl::context(ssl::context::sslv23) );
 
       //TLS-only connection, no SSL
-      ssl_context->set_options(ssl::context::default_workarounds | 
-                           ssl::context::no_sslv2 |
-                           ssl::context::no_sslv3 );
+      ssl_context->set_options(ssl::context::default_workarounds |
+                               ssl::context::no_sslv2 |
+                               ssl::context::no_sslv3 |
+                               ssl::context::no_tlsv1 |
+                               ssl::context::no_tlsv1_1 |
+                               ssl::context::single_dh_use );
 
       error_code ec;
 
@@ -4068,7 +4071,7 @@ namespace eosio {
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = my->chain_plug->get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
-         const controller& cc = my->chain_plug->chain();
+         controller& cc = my->chain_plug->chain();
 
          if( cc.get_read_mode() == db_read_mode::IRREVERSIBLE || cc.get_read_mode() == db_read_mode::READ_ONLY ) {
             if( my->p2p_accept_transactions ) {
@@ -4090,10 +4093,14 @@ namespace eosio {
          EOS_ASSERT(!options.count("p2p-tls-security-group-ca-file") || tls_own_certificate_file,
                     ssl_incomplete_configuration,
                     "\"p2p-tls-security-group-ca-file\" cannot be provided without \"p2p-tls-own-certificate-file\" and \"p2p-tls-private-key-file\".");
+         bool security_group_enabled = false;
          if ( tls_own_certificate_file ) {
             auto certificate = options["p2p-tls-own-certificate-file"].as<bfs::path>();
             auto pkey        = options["p2p-tls-private-key-file"].as<bfs::path>();
-            auto ca_cert     = options["p2p-tls-security-group-ca-file"].as<bfs::path>();
+            bfs::path ca_cert;
+            if (options.count("p2p-tls-security-group-ca-file"))
+               ca_cert = options["p2p-tls-security-group-ca-file"].as<bfs::path>();
+            
             auto relative_to_absolute = [](bfs::path& file) {
                if( file.is_relative()) {
                   file = bfs::current_path() / file;
@@ -4101,17 +4108,25 @@ namespace eosio {
             };
             relative_to_absolute(certificate);
             relative_to_absolute(pkey);
-            relative_to_absolute(ca_cert);
 
             EOS_ASSERT(fc::is_regular_file(certificate), ssl_incomplete_configuration, "p2p-tls-own-certificate-file doesn't contain regular file: ${p}", ("p", certificate.generic_string()));
             EOS_ASSERT(fc::is_regular_file(pkey), ssl_incomplete_configuration, "p2p-tls-private-key-file doesn't contain regular file: ${p}", ("p", pkey.generic_string()));
-            my->ssl_enabled = true;
+            
             if (!ca_cert.empty()){
+               relative_to_absolute(ca_cert);
                EOS_ASSERT(fc::is_regular_file(ca_cert), ssl_incomplete_configuration, "p2p-tls-security-group-ca-file doesn't contain regular file: ${p}", ("p", ca_cert.generic_string()));
             }
             
             my->init_ssl_context(certificate.generic_string(), pkey.generic_string(), ca_cert.generic_string());
+            my->ssl_enabled = true;
+
+            if (!ca_cert.empty()) {
+               //on this point we ensured that CA certificate, own certificate and private key are valid
+               //telling to controller that securoty_group protocol feature can be activated
+               security_group_enabled = true;
+            }
          }
+         cc.enable_security_groups(security_group_enabled);
 
       } FC_LOG_AND_RETHROW()
    }

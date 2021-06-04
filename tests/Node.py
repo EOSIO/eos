@@ -1242,7 +1242,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, deleteFlags={}, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1266,6 +1266,11 @@ class Node(object):
                     skip=True
                     continue
 
+                if i in deleteFlags:
+                    if deleteFlags[i] == True:
+                        skip = True
+                    continue
+
                 if swapValue is None:
                     cmdArr.append(i)
                 else:
@@ -1277,7 +1282,7 @@ class Node(object):
                     del toAddOrSwap[i]
             for k,v in toAddOrSwap.items():
                 cmdArr.append(k)
-                cmdArr.append(v)
+                cmdArr.append(v)    
             myCmd=" ".join(cmdArr)
 
         cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
@@ -1517,6 +1522,16 @@ class Node(object):
 
     def containsPreactivateFeature(self):
         return self.containsFeatures(["PREACTIVATE_FEATURE"])
+
+    def getAllBuiltInFeaturesInfo(self):
+        protocolFeatures = {}
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures()
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    codename = spec["value"]
+                    protocolFeatures[codename] = protocolFeature["feature_digest"]
+        return protocolFeatures
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin

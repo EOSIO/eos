@@ -560,9 +560,6 @@ class Cluster(object):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
-        if onlyBios:
-            self.nodes=[biosNode]
-
         self.totalNodes = totalNodes
 
         # ensure cluster node are inter-connected by ensuring everyone has block 1
@@ -1416,7 +1413,7 @@ class Cluster(object):
             Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                         (expectedAmount, actualAmount))
             return None
-
+            
         if loadSystemContract:
             contract="eosio.system"
             contractDir="unittests/contracts/%s" % (contract)

@@ -1648,8 +1648,10 @@ struct controller_impl {
                      "protocol feature with digest '${digest}' has already been activated",
                      ("digest", f)
          );
+         
+         protocol_features.validate_feature(pfs.get_protocol_feature(f));
 
-         auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr]
+         auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr, this]
                                    ( const digest_type& f ) -> bool
          {
             if( currently_activated_protocol_features.find( f ) != currently_activated_protocol_features.end() )
@@ -2477,6 +2479,8 @@ void controller::preactivate_feature( uint32_t action_id, const digest_type& fea
                ("digest", feature_digest)
    );
 
+   my->protocol_features.validate_feature(pfs.get_protocol_feature(feature_digest));
+
    if (auto dm_logger = get_deep_mind_logger()) {
       const auto feature = pfs.get_protocol_feature(feature_digest);
 
@@ -3219,6 +3223,10 @@ fc::logger* controller::get_deep_mind_logger()const {
 void controller::enable_deep_mind(fc::logger* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
+}
+
+void controller::enable_security_groups(bool enabled) {
+   my->protocol_features.enable_security_groups(enabled);
 }
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
