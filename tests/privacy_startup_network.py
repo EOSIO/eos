@@ -85,7 +85,7 @@ try:
         # p2p connection between producer and relay
         topo[producerNum] = [pairedRelayNodeNum]
         # p2p connections between relays
-        topo[pairedRelayNodeNum] = [x + producerNum for x in range(pnodes) if x != producerNum]
+        topo[pairedRelayNodeNum] = [x for x in range(pnodes, pnodes + relayNodes) if x != pairedRelayNodeNum]
         # p2p connections between relay and all api nodes
         topo[pairedRelayNodeNum].extend(apiNodeNums)
     Utils.Print("topo: {}".format(json.dumps(topo, indent=4, sort_keys=True)))

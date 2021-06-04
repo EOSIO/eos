@@ -730,6 +730,8 @@ Allows privileged contracts to add/remove participants for mutual TLS enforcemen
                   ("digest", feature_digest)
       );
 
+      validate_feature(*itr);
+
       if (auto dm_logger = _get_deep_mind_logger()) {
          fc_dlog(*dm_logger, "FEATURE_OP ACTIVATE ${feature_digest} ${feature}",
             ("feature_digest", feature_digest)
@@ -759,6 +761,18 @@ Allows privileged contracts to add/remove participants for mutual TLS enforcemen
               && block_num < _activated_protocol_features.back().activation_block_num )
       {
          _activated_protocol_features.pop_back();
+      }
+   }
+
+   void protocol_feature_manager::validate_feature( const protocol_feature& feature) const {
+      if (*feature.builtin_feature == builtin_protocol_feature_t::security_group){
+         //enforce ssl requirement for activation of security groups
+         EOS_ASSERT( security_groups_enabled(),
+                     protocol_feature_exception,
+                     "security_group protocol feature activation requires ssl to be enabled. Following command line arguments are required:\n"
+                     "--p2p-tls-own-certificate-file\n"
+                     "--p2p-tls-private-key-file\n"
+                     "--p2p-tls-security-group-ca-file" );
       }
    }
 
