@@ -22,7 +22,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "loki",
       "description": "Estimate time from block is produced until it is processed by rodeos",
       "fieldConfig": {
         "defaults": {},
@@ -74,67 +74,16 @@
               "type": "date_histogram"
             }
           ],
+          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"latency: (?P<latency>\\\\d+)ms\" | unwrap latency [1s])",
+          "legendFormat": "{{container_name}}",
           "metrics": [
             {
               "id": "1",
-              "settings": {
-                "script": "Long.parseLong(doc['tag.latency'].value)"
-              },
-              "type": "max"
+              "type": "count"
             }
           ],
-          "query": "operationName: process_received",
+          "query": "",
           "refId": "A",
-          "timeField": "startTimeMillis"
-        },
-        {
-          "alias": "",
-          "bucketAggs": [
-            {
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "hide": false,
-          "metrics": [
-            {
-              "id": "1",
-              "settings": {
-                "script": "Long.parseLong(doc['tag.latency'].value)"
-              },
-              "type": "avg"
-            }
-          ],
-          "query": "operationName: process_received",
-          "refId": "B",
-          "timeField": "startTimeMillis"
-        },
-        {
-          "alias": "",
-          "bucketAggs": [
-            {
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "hide": false,
-          "metrics": [
-            {
-              "id": "1",
-              "settings": {
-                "script": "Long.parseLong(doc['tag.latency'].value)"
-              },
-              "type": "min"
-            }
-          ],
-          "query": "operationName: process_received",
-          "refId": "C",
           "timeField": "startTimeMillis"
         }
       ],
@@ -148,26 +97,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "transformations": [
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "config": {
-                  "id": "greater",
-                  "options": {
-                    "value": 100000000
-                  }
-                },
-                "fieldName": "Max"
-              }
-            ],
-            "match": "any",
-            "type": "exclude"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "graph",
       "xaxis": {
         "buckets": null,
@@ -202,7 +132,7 @@
       }
     },
     {
-      "datasource": null,
+      "datasource": "loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -255,21 +185,19 @@
             {
               "id": "2",
               "settings": {
-                "interval": "10m"
+                "interval": "auto"
               },
               "type": "date_histogram"
             }
           ],
+          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"latency: (?P<latency>\\\\d+)ms\" | unwrap latency [10m])",
           "metrics": [
             {
               "id": "1",
-              "settings": {
-                "script": "Long.parseLong(doc['tag.latency'].value)"
-              },
-              "type": "max"
+              "type": "count"
             }
           ],
-          "query": "operationName: process_received",
+          "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
         }
@@ -279,14 +207,12 @@
     },
     {
       "aliasColors": {},
-      "bars": true,
+      "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Elasticsearch",
+      "datasource": "loki",
       "fieldConfig": {
-        "defaults": {
-          "unit": "µs"
-        },
+        "defaults": {},
         "overrides": []
       },
       "fill": 1,
@@ -328,7 +254,6 @@
           "alias": "",
           "bucketAggs": [
             {
-              "field": "startTimeMillis",
               "id": "2",
               "settings": {
                 "interval": "auto"
@@ -336,14 +261,15 @@
               "type": "date_histogram"
             }
           ],
+          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"duration: (?P<duration>\\\\d+)ms\" | unwrap duration [1s])",
+          "legendFormat": "{{container_name}}",
           "metrics": [
             {
-              "field": "duration",
               "id": "1",
-              "type": "max"
+              "type": "count"
             }
           ],
-          "query": "operationName: process_received",
+          "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
         }
@@ -368,7 +294,8 @@
       },
       "yaxes": [
         {
-          "format": "µs",
+          "$$hashKey": "object:257",
+          "format": "ms",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -376,6 +303,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:258",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -390,7 +318,7 @@
       }
     },
     {
-      "datasource": null,
+      "datasource": "loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -443,20 +371,19 @@
             {
               "id": "2",
               "settings": {
-                "interval": "10m"
+                "interval": "auto"
               },
               "type": "date_histogram"
             }
           ],
+          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"duration: (?P<duration>\\\\d+)ms\" | unwrap duration [10m])",
           "metrics": [
             {
-              "field": "duration",
               "id": "1",
-              "settings": {},
-              "type": "max"
+              "type": "count"
             }
           ],
-          "query": "operationName: process_received",
+          "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
         }
@@ -560,7 +487,7 @@
         {
           "expr": "rate(({service=~\".*rodeos\"} |= \"process_received block_num\")[10s])",
           "hide": false,
-          "legendFormat": "rodeos",
+          "legendFormat": "{{container_name}}",
           "refId": "C"
         }
       ],
@@ -584,6 +511,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:317",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -592,6 +520,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:318",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -610,7 +539,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "loki",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -661,16 +590,15 @@
               "type": "date_histogram"
             }
           ],
+          "expr": "min_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with\" | regexp \"throughput: (?P<throughput>\\\\d+)\" | unwrap throughput [1s])",
+          "legendFormat": "{{container_name}}",
           "metrics": [
             {
               "id": "1",
-              "settings": {
-                "script": "Long.parseLong(doc['tag.throughput'].value)"
-              },
-              "type": "min"
+              "type": "count"
             }
           ],
-          "query": "operationName: process_received",
+          "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
         }
@@ -1100,8 +1028,8 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "sum by (event)(sum_over_time({service=~\".*rodeos\",source=\"stdout\"} |= \"EVENT_LOG_v1\" | regexp \"EVENT_LOG_v1 (?P<body>.+)\" | line_format \"{{ .body }}\" | json | event = \"compaction_finished\" | unwrap compaction_time_cpu_micros [10s]))",
-          "legendFormat": "compaction cpu time over 10s",
+          "expr": "sum by (container_name)(sum_over_time({service=~\".*rodeos\",source=\"stdout\"} |= \"EVENT_LOG_v1\" | regexp \"EVENT_LOG_v1 (?P<body>.+)\" | line_format \"{{ .body }}\" | json | event = \"compaction_finished\" | unwrap compaction_time_cpu_micros [10s]))",
+          "legendFormat": "{{container_name}}",
           "metrics": [
             {
               "id": "1",
@@ -1117,7 +1045,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "RockDB events",
+      "title": "RockDB compaction cpu time over 10s",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1477,7 +1405,9 @@
         }
       ],
       "thresholds": [],
+      "timeFrom": null,
       "timeRegions": [],
+      "timeShift": null,
       "title": "producer errors",
       "tooltip": {
         "shared": true,
