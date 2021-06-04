@@ -40,6 +40,8 @@ RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.
     cd postgres-REL_13_3 && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres-REL_13_3
+ENV PostgreSQL_ROOT=/usr/local/pgsql
+ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig:/usr/local/lib64/pkgconfig
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
@@ -55,3 +57,5 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key ad
     apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
+ 64     useradd postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"

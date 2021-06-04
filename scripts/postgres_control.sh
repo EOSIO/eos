@@ -59,7 +59,7 @@ if [ "$CI" = "true" ]; then
          ## Linux
          case "$1" in 
          start)
-            su - postgres -c "$PG_CTL start"
+            su - postgres -c "$PG_CTL -D /usr/local/pgsql/data  start"
             su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
             if [ ! -z "$2" ]; then su - postgres -c "psql -q -c \"$2\""  > /dev/null; fi
             ;;
