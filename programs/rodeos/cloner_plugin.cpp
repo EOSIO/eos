@@ -236,10 +236,14 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
       end_block_time   = fc::time_point::now().time_since_epoch().count();
       uint64_t now     = end_block_time;
-      uint64_t latency = now > rodeos_block_timestamp ? (now - rodeos_block_timestamp)/1000 : 0;
-      fc_trace_log(blk_span, "Done with block ${m}, incoming size: ${s}, latency: ${l}ms, duration: ${d}ms, read time: ${r}ms, throughput: ${th} bytes/s",
-         ("m",result.this_block->block_num) ("s", ship_client::msg_size) ("l",latency) ("d",(now - start_time)/1000) ("r", ship_client::msg_read_duration) 
-         ("th",(ship_client::msg_size*1000000/(now - start_time))));
+      uint64_t latency = (now > rodeos_block_timestamp  && result.this_block->block_num > 2) ? (now - rodeos_block_timestamp)/1000 : 0;
+      fc_trace_log(
+            blk_span,
+            "Done with block ${m}, incoming size: ${s}, latency: ${l}ms, duration: ${d}ms, read time: ${r}ms, "
+            "throughput: ${th} bytes/s",
+            ("m", result.this_block->block_num)("s", ship_client::msg_size)("l", latency)("d",
+                                                                                          (now - start_time) / 1000)(
+                  "r", ship_client::msg_read_duration)("th", (ship_client::msg_size * 1000000 / (now - start_time))));
 
       return true;
    }
