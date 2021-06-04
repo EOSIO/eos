@@ -28,7 +28,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # install libpq postgresql
-#ENV TZ=America/Chicago
+ENV TZ=America/Chicago
 #RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
 #    echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
 #    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \

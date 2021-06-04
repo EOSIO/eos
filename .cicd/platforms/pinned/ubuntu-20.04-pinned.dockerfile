@@ -40,7 +40,7 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     cd / && \
     rm -rf /llvm
 # install libpq postgresql
-#ENV TZ=America/Chicago
+ENV TZ=America/Chicago
 #RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
 #    echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
 #    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
