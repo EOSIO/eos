@@ -65,7 +65,7 @@ try:
     feature = "SECURITY_GROUP"
     Utils.Print("Activating {} Feature".format(feature))
     allBuiltInFeatures = prodNode.getAllBuiltInFeaturesInfo()
-    prodNode.preactivateProtocolFeatures([allBuiltInFeatures[feature]])
+    prodNode.preactivateProtocolFeatures([allBuiltInFeatures[feature]], failOnError=True)
 
     assert True == prodNode.waitForHeadToAdvance(blocksToAdvance=12, timeout=10)
     assert True == prodNode.containsFeatures({feature})
