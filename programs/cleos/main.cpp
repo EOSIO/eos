@@ -450,9 +450,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             if (tx_read_only){
                 tx_ro_print_json = true;
                 packed_transaction_v0 pt_v0(trx, compression);
-                name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
                 auto args = fc::mutable_variant_object()
-                        ("account_name", account_name)
                         ("return_failure_traces", tx_rtn_failure_trace)
                         ("transaction", pt_v0);
                 return call(push_ro_txns_func, args);
