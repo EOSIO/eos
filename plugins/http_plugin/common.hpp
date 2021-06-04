@@ -29,6 +29,10 @@
 #include <boost/optional.hpp>
 
 namespace eosio {
+    static uint16_t const uri_default_port = 80;
+    /// Default port for wss://
+    static uint16_t const uri_default_secure_port = 443;
+
     using std::string;
     using std::map;
     using std::set;
@@ -280,8 +284,8 @@ namespace eosio {
             return host_port_is_valid( plugin_state, 
                                        host + ":" 
                                             + std::to_string(secure?
-                                                    websocketpp::uri_default_secure_port 
-                                                   : websocketpp::uri_default_port ), 
+                                                    uri_default_secure_port 
+                                                   : uri_default_port ), 
                                        endpoint_local_host_port);
         }
     }

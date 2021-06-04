@@ -62,7 +62,9 @@ namespace eosio {
                 return static_cast<Derived&>(*this);
             }
 
-            http::request<http::string_body> req_;
+            // http::request<http::string_body> req_;
+            http::request_parser<http::string_body> req_parser_;
+
             // std::shared_ptr<void> res_;
             http::response<http::string_body> res_;
             // send_lambda lambda_;
@@ -114,7 +116,6 @@ namespace eosio {
 
 
                 try {
-                    // TODO implement allow_hosts
                     if(!allow_host(req))
                         return;
 
@@ -177,6 +178,7 @@ namespace eosio {
                 , plugin_state_(plugin_state)
             {
                 plugin_state_->requests_in_flight += 1;
+                req_parser_.body_limit(plugin_state_->max_body_size);
             }
 
             virtual ~beast_http_session() {
@@ -196,7 +198,7 @@ namespace eosio {
                 http::async_read(
                     derived().stream(),
                     buffer_,
-                    req_,
+                    req_parser_,
                     beast::bind_front_handler(
                         &beast_http_session::on_read,
                         derived().shared_from_this()));
@@ -216,8 +218,10 @@ namespace eosio {
                 if(ec && ec != asio::ssl::error::stream_truncated)
                     return fail(ec, "read");
 
+
+                auto req = req_parser_.get();
                 // Send the response
-                handle_request(std::move(req_));
+                handle_request(std::move(req));
             }
 
             void
@@ -265,6 +269,21 @@ namespace eosio {
                 return false;
                 }
                 */
+                auto is_secure = derived().is_secure();
+                auto& lowest_layer = beast::get_lowest_layer(derived().stream());
+                auto local_endpoint = lowest_layer.socket().local_endpoint();
+                auto local_socket_host_port = local_endpoint.address().to_string() 
+                        + ":" + std::to_string(local_endpoint.port());
+                const auto& host_str = req["Host"].to_string();
+                if (host_str.empty() 
+                    || !host_is_valid(*plugin_state_, 
+                                      host_str, 
+                                      local_socket_host_port, 
+                                      is_secure)) 
+                {
+                    return false;
+                }
+
                 return true;
             }
 
@@ -381,6 +400,9 @@ namespace eosio {
 
                 // At this point the connection is closed gracefully
             }
+
+            bool is_secure() { return false; }
+
     }; // end class plain_session
 
     // Handles an SSL HTTP connection
@@ -480,6 +502,8 @@ namespace eosio {
 
                 // At this point the connection is closed gracefully
             }
+
+            bool is_secure() { return true; }
     }; // end class ssl_session
 
 } // end namespace
