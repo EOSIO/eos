@@ -65,3 +65,4 @@ RUN yum install -y nodejs && \
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
     useradd postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
+ENV PGDATA=/usr/local/pgsql/data

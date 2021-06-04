@@ -58,3 +58,4 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key ad
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN useradd postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
+ENV PGDATA=/usr/local/pgsql/data
