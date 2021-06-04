@@ -3,6 +3,7 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/thread_utils.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
@@ -962,12 +963,12 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
       named_thread_pool thread_pool( "misc", 5 );
 
-      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
+      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
 
       // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
-      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
+      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum(), transaction_metadata::trx_type::input );
 
       auto mtrx = fut.get();
       const auto& keys = mtrx->recovered_keys();
@@ -1074,16 +1075,19 @@ static checksum256_type calculate_trx_merkle( const deque<transaction_receipt>& 
    return merkle( move( trx_digests ) );
 }
 
+eosio::chain::transaction_trace_ptr push_cfd_transaction(eosio::testing::tester& t) {
+    signed_transaction trx;
+    trx.actions.push_back({ { permission_level{ "eosio"_n, "active"_n } }, "eosio"_n, ""_n, bytes() } );
+    trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
+    trx.context_free_data.push_back(bytes());
+    t.set_transaction_headers(trx);
+    trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
+    return t.push_transaction(trx);
+}
+
 BOOST_AUTO_TEST_CASE(pruned_block_test) {
    tester t;
-   signed_transaction trx;
-   trx.actions.push_back({ { permission_level{ "eosio"_n, "active"_n } }, "eosio"_n, ""_n, bytes() } );
-   trx.context_free_actions.push_back({ {}, "eosio"_n, ""_n, bytes() });
-   trx.context_free_data.push_back(bytes());
-   t.set_transaction_headers(trx);
-   trx.sign( t.get_private_key( "eosio"_n, "active" ), t.control->get_chain_id() );
-
-   t.push_transaction(trx);
+   push_cfd_transaction(t);
    signed_block_ptr produced = t.produce_block();
    auto original = produced->to_signed_block_v0();
    BOOST_REQUIRE(original);
@@ -1117,6 +1121,20 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(out.tellp() <= buffer.size());
 
    BOOST_TEST(!deserialized.to_signed_block_v0());
+}
+
+BOOST_AUTO_TEST_CASE(block_prune_state_test) {
+   tester t;
+   eosio::chain::transaction_trace_ptr trace;
+   trace = push_cfd_transaction(t);
+   signed_block_ptr produced = t.produce_block();
+   BOOST_TEST(trace->block_num == produced->block_num());
+   t.produce_blocks(10);
+   block_log blog(t.get_config().blog);
+   std::vector<transaction_id_type> ids{trace->id};
+   BOOST_TEST(blog.prune_transactions(trace->block_num, ids) == 1);
+   auto signed_blk_ptr = blog.read_signed_block_by_num(trace->block_num);
+   BOOST_TEST(!signed_blk_ptr->to_signed_block_v0());
 }
 
 BOOST_AUTO_TEST_CASE(reflector_init_test) {

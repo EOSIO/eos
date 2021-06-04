@@ -69,6 +69,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_simple_network.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_tls_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_tls_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_scenario_3_test.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_scenario_3_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_forked_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_forked_network.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -135,6 +137,10 @@ add_test(NAME privacy_scenario_3_test COMMAND tests/privacy_scenario_3_test.py -
 set_property(TEST privacy_scenario_3_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_forked_network COMMAND tests/privacy_forked_network.py -p 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_forked_network PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST cleos_action_no_params PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

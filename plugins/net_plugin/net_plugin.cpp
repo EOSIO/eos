@@ -2029,7 +2029,7 @@ namespace eosio {
       // sync need checks; (lib == last irreversible block)
       //
       // 0. my head block id == peer head id means we are all caught up block wise
-      // 1. my head block num < peer lib - start sync locally
+      // 1. my head block num < peer lib - send handshake (if not sent in handle_message) and wait for receipt of notice message to start syncing
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num < peer head block num - update sync state and send a catchup request
@@ -2056,6 +2056,9 @@ namespace eosio {
                   ("ep", c->peer_name())("lib", msg.last_irreversible_block_num)("head", msg.head_num)
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
+         if (c->sent_handshake_count > 0) {
+            c->send_handshake(true);
+         }
          return;
       }
       if (lib_num > msg.head_num ) {
@@ -3260,7 +3263,11 @@ namespace eosio {
       }
       if( msg.reason == wrong_version ) {
          if( !retry ) no_retry = fatal_other; // only retry once on wrong version
-      } else {
+      } 
+      else if ( msg.reason == benign_other ) {
+         if ( retry ) fc_dlog( logger, "received benign_other reason, retrying to connect");
+      }
+      else {
          retry = false;
       }
       flush_queues();
@@ -3990,6 +3997,7 @@ namespace eosio {
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
+         my->p2p_reject_incomplete_blocks = options.at("p2p-reject-incomplete-blocks").as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
          my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() );
