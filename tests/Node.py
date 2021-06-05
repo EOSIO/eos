@@ -1484,15 +1484,12 @@ class Node(object):
         self.activateFeatures(features, blocksToAdvance=0)
         headBlockNum = self.getBlockNum()
         blockNum = headBlockNum
-        producers = {}
         while True:
             block = self.getBlock(blockNum)
-            blockHeaderState = self.getBlockHeaderState(blockNum)
-            if self.containsFeatures(features, blockHeaderState):
+            if self.containsFeatures(features):
                 return
 
             producer = block["producer"]
-            producers[producer] += 1
 
             # feature should be in block for this node's producers, if it is at least 2 blocks after we sent the activate
             minBlocksForGuarantee = 2
@@ -1507,21 +1504,31 @@ class Node(object):
     # Require producer_api_plugin
     def activatePreactivateFeature(self):
         return self.activateFeatures(["PREACTIVATE_FEATURE"])
+    
+    # similar to getActivatedProtocolFeatures functionality but different method since getting block header doesn't
+    # work in all cases
+    def getActivatedFeatures(self):
+        response = requests.get("http://{}:{}/v1/chain/get_activated_protocol_features".format(self.host, self.port))
+        if Utils.Debug: Utils.Print("get_activated_protocol_features response status: {}".format(response.status_code))
+        assert response.status_code == 200
+        jsonObj = json.loads(response.text)
+        if Utils.Debug: Utils.Print("get_activated_protocol_features response: {}".format(json.dumps(jsonObj, indent=4, sort_keys=True)))
+        return jsonObj["activated_protocol_features"]
 
-    def containsFeatures(self, features, blockHeaderState=None):
-        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
-        if blockHeaderState is None:
-            blockHeaderState = self.getLatestBlockHeaderState()
+    def containsFeatures(self, features:set):
+        activatedFeatures = self.getActivatedFeatures()
+        curFeatures = set()
         for feature in features:
-            featureDigest = protocolFeatureDict[feature]["feature_digest"]
-            assert featureDigest, "{}'s Digest should not be empty".format(feature)
-            activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
-            if featureDigest not in activatedProtocolFeatures:
-                return False
-        return True
+            for activatedFeature in activatedFeatures:
+                for specs in activatedFeature["specification"]:
+                    if specs["name"] == "builtin_feature_codename" and specs["value"] == feature:
+                        curFeatures.add(feature)
+                        break
+        if Utils.Debug: Utils.Print("activated features: {}".format(curFeatures))
+        return features == curFeatures
 
     def containsPreactivateFeature(self):
-        return self.containsFeatures(["PREACTIVATE_FEATURE"])
+        return self.containsFeatures({"PREACTIVATE_FEATURE"})
 
     def getAllBuiltInFeaturesInfo(self):
         protocolFeatures = {}
