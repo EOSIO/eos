@@ -1242,7 +1242,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, deleteFlags={}, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1264,6 +1264,11 @@ class Node(object):
                     continue
                 if skipGenesis and ("--genesis-json" == i or "--genesis-timestamp" == i):
                     skip=True
+                    continue
+
+                if i in deleteFlags:
+                    if deleteFlags[i] == True:
+                        skip = True
                     continue
 
                 if swapValue is None:
@@ -1479,15 +1484,12 @@ class Node(object):
         self.activateFeatures(features, blocksToAdvance=0)
         headBlockNum = self.getBlockNum()
         blockNum = headBlockNum
-        producers = {}
         while True:
             block = self.getBlock(blockNum)
-            blockHeaderState = self.getBlockHeaderState(blockNum)
-            if self.containsFeatures(features, blockHeaderState):
+            if self.containsFeatures(features):
                 return
 
             producer = block["producer"]
-            producers[producer] += 1
 
             # feature should be in block for this node's producers, if it is at least 2 blocks after we sent the activate
             minBlocksForGuarantee = 2
@@ -1503,20 +1505,42 @@ class Node(object):
     def activatePreactivateFeature(self):
         return self.activateFeatures(["PREACTIVATE_FEATURE"])
 
-    def containsFeatures(self, features, blockHeaderState=None):
-        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
-        if blockHeaderState is None:
-            blockHeaderState = self.getLatestBlockHeaderState()
+    # similar to getActivatedProtocolFeatures functionality but different method since getting block header doesn't
+    # work in all cases
+    def getActivatedFeatures(self):
+        url = "http://{}:{}/v1/chain/get_activated_protocol_features".format(self.host, self.port)
+        data= {"limit" : 2**32-1} # 2^32-1 is numeric_limits<uint32_t>::max()
+        response = requests.get(url, json=data)
+        if Utils.Debug: Utils.Print("get_activated_protocol_features response status: {}".format(response.status_code))
+        assert response.status_code == 200
+        jsonObj = json.loads(response.text)
+        if Utils.Debug: Utils.Print("get_activated_protocol_features response: {}".format(json.dumps(jsonObj, indent=4, sort_keys=True)))
+        return jsonObj["activated_protocol_features"]
+
+    def containsFeatures(self, features:set):
+        activatedFeatures = self.getActivatedFeatures()
+        curFeatures = set()
         for feature in features:
-            featureDigest = protocolFeatureDict[feature]["feature_digest"]
-            assert featureDigest, "{}'s Digest should not be empty".format(feature)
-            activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
-            if featureDigest not in activatedProtocolFeatures:
-                return False
-        return True
+            for activatedFeature in activatedFeatures:
+                for specs in activatedFeature["specification"]:
+                    if specs["name"] == "builtin_feature_codename" and specs["value"] == feature:
+                        curFeatures.add(feature)
+                        break
+        if Utils.Debug: Utils.Print("activated features: {}".format(curFeatures))
+        return features == curFeatures
 
     def containsPreactivateFeature(self):
-        return self.containsFeatures(["PREACTIVATE_FEATURE"])
+        return self.containsFeatures({"PREACTIVATE_FEATURE"})
+
+    def getAllBuiltInFeaturesInfo(self):
+        protocolFeatures = {}
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures()
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    codename = spec["value"]
+                    protocolFeatures[codename] = protocolFeature["feature_digest"]
+        return protocolFeatures
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
@@ -1534,7 +1558,7 @@ class Node(object):
         return protocolFeatures
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
-    def preactivateProtocolFeatures(self, featureDigests:list):
+    def preactivateProtocolFeatures(self, featureDigests:list, failOnError=False):
         for digest in featureDigests:
             Utils.Print("push activate action with digest {}".format(digest))
             data="{{\"feature_digest\":{}}}".format(digest)
@@ -1542,13 +1566,13 @@ class Node(object):
             trans=self.pushMessage("eosio", "activate", data, opts)
             if trans is None or not trans[0]:
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
-                return None
+                assert not failOnError
         self.waitForHeadToAdvance(blocksToAdvance=2)
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
-    def preactivateAllBuiltinProtocolFeature(self):
+    def preactivateAllBuiltinProtocolFeature(self, failOnError=False):
         allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
-        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests)
+        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests, failOnError)
 
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
@@ -1566,7 +1590,8 @@ class Node(object):
                             " is only 1 block in the reversible database. Test should be redesigned to aquire this information via another interface.")
         return blockHeaderState
 
-    def getActivatedProtocolFeatures(self, blockHeaderState=None):
+    # not used at the moment but leaving as an alternative to getActivatedFeatures
+    def getActivatedFeaturesFromHeaderState(self, blockHeaderState=None):
         if blockHeaderState is None:
             blockHeaderState = self.getLatestBlockHeaderState()
         if "activated_protocol_features" not in blockHeaderState or "protocol_features" not in blockHeaderState["activated_protocol_features"]:
