@@ -4122,7 +4122,7 @@ namespace eosio {
 
             if (!ca_cert.empty()) {
                //on this point we ensured that CA certificate, own certificate and private key are valid
-               //telling to controller that securoty_group protocol feature can be activated
+               //telling to controller that security_group protocol feature can be activated
                security_group_enabled = true;
             }
          }

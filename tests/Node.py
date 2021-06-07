@@ -1282,7 +1282,7 @@ class Node(object):
                     del toAddOrSwap[i]
             for k,v in toAddOrSwap.items():
                 cmdArr.append(k)
-                cmdArr.append(v)    
+                cmdArr.append(v)
             myCmd=" ".join(cmdArr)
 
         cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
@@ -1504,11 +1504,13 @@ class Node(object):
     # Require producer_api_plugin
     def activatePreactivateFeature(self):
         return self.activateFeatures(["PREACTIVATE_FEATURE"])
-    
+
     # similar to getActivatedProtocolFeatures functionality but different method since getting block header doesn't
     # work in all cases
     def getActivatedFeatures(self):
-        response = requests.get("http://{}:{}/v1/chain/get_activated_protocol_features".format(self.host, self.port))
+        url = "http://{}:{}/v1/chain/get_activated_protocol_features".format(self.host, self.port)
+        data= {"limit" : 2**32-1} # 2^32-1 is numeric_limits<uint32_t>::max()
+        response = requests.get(url, json=data)
         if Utils.Debug: Utils.Print("get_activated_protocol_features response status: {}".format(response.status_code))
         assert response.status_code == 200
         jsonObj = json.loads(response.text)
@@ -1588,7 +1590,8 @@ class Node(object):
                             " is only 1 block in the reversible database. Test should be redesigned to aquire this information via another interface.")
         return blockHeaderState
 
-    def getActivatedProtocolFeatures(self, blockHeaderState=None):
+    # not used at the moment but leaving as an alternative to getActivatedFeatures
+    def getActivatedFeaturesFromHeaderState(self, blockHeaderState=None):
         if blockHeaderState is None:
             blockHeaderState = self.getLatestBlockHeaderState()
         if "activated_protocol_features" not in blockHeaderState or "protocol_features" not in blockHeaderState["activated_protocol_features"]:

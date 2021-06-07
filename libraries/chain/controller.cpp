@@ -1651,7 +1651,7 @@ struct controller_impl {
          
          protocol_features.validate_feature(pfs.get_protocol_feature(f));
 
-         auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr, this]
+         auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr]
                                    ( const digest_type& f ) -> bool
          {
             if( currently_activated_protocol_features.find( f ) != currently_activated_protocol_features.end() )

@@ -1413,7 +1413,6 @@ class Cluster(object):
             Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                         (expectedAmount, actualAmount))
             return None
-            
         if loadSystemContract:
             contract="eosio.system"
             contractDir="unittests/contracts/%s" % (contract)
