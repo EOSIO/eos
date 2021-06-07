@@ -11,7 +11,7 @@ import signal
 # privacy_config_test_restart
 #
 # This test ensures that node can't restart without ssl configuration
-# if privacy feature was activated previsouly
+# if privacy feature was activated previously
 #
 ###############################################################
 
