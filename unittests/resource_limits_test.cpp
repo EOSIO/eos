@@ -5,6 +5,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/testing/chainbase_fixture.hpp>
 #include <eosio/testing/tester.hpp>
+#include <contracts.hpp>
 #include "fork_test_utilities.hpp"
 
 #include <boost/test/unit_test.hpp>
@@ -556,4 +557,230 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       }
    } FC_LOG_AND_RETHROW()
 
+   namespace {
+      name respyr_acct = "respyr"_n;
+      name payee_acct = "payee"_n;
+
+      template<typename Transaction>
+      Transaction populate() {
+         Transaction txn;
+         txn.ref_block_num = 1;
+         txn.ref_block_prefix = 2;
+         txn.expiration.from_iso_string("2021-12-20T15:30");
+         txn.actions.emplace_back( vector<permission_level>{{respyr_acct, config::active_name}}, respyr_acct, "doit"_n, bytes{} );
+         txn.max_net_usage_words = 32;
+         txn.max_cpu_usage_ms = 10;
+
+         // Resource Payer Transaction Extension (with net and cpu different from those in transaction)
+         resource_payer resource_payer_trx_extension;
+         resource_payer_trx_extension.payer = respyr_acct;
+         resource_payer_trx_extension.max_net_bytes = 1024;
+         resource_payer_trx_extension.max_cpu_us = 30000;
+         resource_payer_trx_extension.max_memory_bytes = 0;
+         emplace_extension(
+            txn.transaction_extensions,
+            resource_payer::extension_id(),
+            fc::raw::pack( resource_payer_trx_extension )
+         );
+
+         return txn;
+      }
+
+      template<typename Transaction>
+      Transaction populate_payer_payee() {
+         Transaction txn;
+         txn.ref_block_num = 1;
+         txn.ref_block_prefix = 2;
+         txn.expiration.from_iso_string("2021-12-20T15:30");
+         txn.actions.emplace_back( vector<permission_level>{{payee_acct, config::active_name}}, payee_acct, "doit"_n, bytes{} );
+         txn.max_net_usage_words = 32;
+         txn.max_cpu_usage_ms = 10;
+
+         // Resource Payer Transaction Extension (with net and cpu different from those in transaction)
+         resource_payer resource_payer_trx_extension;
+         resource_payer_trx_extension.payer = respyr_acct;
+         resource_payer_trx_extension.max_net_bytes = 1024;
+         resource_payer_trx_extension.max_cpu_us = 30000;
+         resource_payer_trx_extension.max_memory_bytes = 0;
+         emplace_extension(
+               txn.transaction_extensions,
+               resource_payer::extension_id(),
+               fc::raw::pack( resource_payer_trx_extension )
+         );
+
+         return txn;
+      }
+   }
+
+   BOOST_FIXTURE_TEST_CASE(resource_payer_cpu_validation, resource_limits_fixture) try {
+      tester t( setup_policy::preactivate_feature_and_new_bios );
+
+      auto txn = populate<eosio::chain::signed_transaction>();
+
+      // get resource payer info without activating resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr == std::nullopt, true);
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
+
+      if (res_pyr) {
+         t.produce_blocks(2);
+         t.create_account( res_pyr->payer );
+         t.set_code( res_pyr->payer, contracts::payloadless_wasm() );
+         t.produce_blocks(1);
+
+         t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
+         txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
+
+         auto res = t.push_transaction(txn);
+
+         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+         BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+         BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
+
+         initialize_account(res_pyr->payer);
+         initialize_account( "all"_n );
+         set_account_limits(res_pyr->payer, -1, res_pyr->max_net_bytes, res_pyr->max_cpu_us );
+         set_account_limits( "all"_n, 0, 0, 100'000'000'000ll );
+         process_account_limit_updates();
+
+         // cpu
+         uint64_t increment = 2000;
+         uint64_t iterations = 5;
+
+         for (uint64_t idx = 0; idx < iterations; idx++) {
+            add_transaction_usage({res_pyr->payer}, increment, 0, 0, true, true);
+         }
+
+         BOOST_REQUIRE_THROW(add_transaction_usage({res_pyr->payer}, 20000, 0, 0, true, true), resource_payer_cpu_exceeded);
+
+      }
+
+   } FC_LOG_AND_RETHROW()
+
+   BOOST_FIXTURE_TEST_CASE(resource_payer_net_validation, resource_limits_fixture) try {
+      tester t( setup_policy::preactivate_feature_and_new_bios );
+
+      auto txn = populate<eosio::chain::signed_transaction>();
+
+      // get resource payer info without activating resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr == std::nullopt, true);
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
+
+      if (res_pyr) {
+         t.produce_blocks(2);
+         t.create_account( res_pyr->payer );
+         t.set_code( res_pyr->payer, contracts::payloadless_wasm() );
+         t.produce_blocks(1);
+
+         t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
+         txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
+
+         auto res = t.push_transaction(txn);
+
+         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+         BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+         BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
+
+         initialize_account(res_pyr->payer);
+         initialize_account( "all"_n );
+         set_account_limits(res_pyr->payer, -1, res_pyr->max_net_bytes, res_pyr->max_cpu_us );
+         set_account_limits( "all"_n, 0, 100'000'000'000ll, 0 );
+         process_account_limit_updates();
+
+         // net
+         uint64_t increment = 200;
+         uint64_t iterations = 5;
+
+         for (uint64_t idx = 0; idx < iterations; idx++) {
+            add_transaction_usage({res_pyr->payer}, 0, increment, 0, true, true);
+         }
+
+         BOOST_REQUIRE_THROW(add_transaction_usage({res_pyr->payer}, 0, 1000, 0, true, true), resource_payer_net_exceeded);
+      }
+
+   } FC_LOG_AND_RETHROW()
+   BOOST_FIXTURE_TEST_CASE(resource_payer_not_signed, resource_limits_fixture) try {
+      tester t( setup_policy::preactivate_feature_and_new_bios );
+
+      auto txn = populate_payer_payee<eosio::chain::signed_transaction>();
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
+
+      t.produce_blocks(2);
+      t.create_account( res_pyr->payer );
+      t.create_account( payee_acct);
+
+      t.set_code( res_pyr->payer, contracts::payloadless_wasm() );
+      t.produce_blocks(1);
+
+      t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
+      txn.sign( t.get_private_key(payee_acct, "active"), t.control->get_chain_id() );
+
+      BOOST_REQUIRE_THROW(t.push_transaction(txn), unsatisfied_authorization);
+
+   } FC_LOG_AND_RETHROW()
+
+   BOOST_FIXTURE_TEST_CASE(resource_payer_fully_signed, resource_limits_fixture) try {
+      tester t( setup_policy::preactivate_feature_and_new_bios );
+
+      auto txn = populate_payer_payee<eosio::chain::signed_transaction>();
+
+      const auto& pfm = t.control->get_protocol_feature_manager();
+      const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::resource_payer);
+      BOOST_REQUIRE(d);
+
+      t.preactivate_protocol_features( {*d} );
+      t.produce_block();
+
+      // now, get resource payer info having activated resource_payer protcol feature
+      auto res_pyr = txn.resource_payer_info( t.control->is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
+      BOOST_CHECK_EQUAL(res_pyr != std::nullopt, true);
+
+      t.produce_blocks(2);
+      t.create_account( res_pyr->payer );
+      t.create_account( payee_acct);
+
+      t.set_code( res_pyr->payer, contracts::payloadless_wasm() );
+      t.produce_blocks(1);
+
+      t.set_transaction_headers( txn, t.DEFAULT_EXPIRATION_DELTA );
+      txn.sign( t.get_private_key(res_pyr->payer, "active"), t.control->get_chain_id() );
+      txn.sign( t.get_private_key(payee_acct, "active"), t.control->get_chain_id() );
+
+   auto res = t.push_transaction(txn);
+   BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+   BOOST_REQUIRE_EQUAL(res->bill_to_accounts.size(), 1);
+   BOOST_REQUIRE_EQUAL(*res->bill_to_accounts.begin(), respyr_acct);
+
+   } FC_LOG_AND_RETHROW()
 BOOST_AUTO_TEST_SUITE_END()

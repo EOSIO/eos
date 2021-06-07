@@ -241,6 +241,17 @@ Allows privileged contracts to add/remove participants for mutual TLS enforcemen
 */
             {}
          } )
+         (builtin_protocol_feature_t::resource_payer, builtin_protocol_feature_spec{
+            "RESOURCE_PAYER",
+            fc::variant("3d6f070c7cfcbbdbf2c07365f54d2cc9108b98b502e07495e8cc6f6e6dbf13bc").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: RESOURCE_PAYER
+
+Allows a 3rd party account to pay (sponsor) for the resources on the transactions of another account.
+*/
+            {}
+         } )
    ;
 
 
