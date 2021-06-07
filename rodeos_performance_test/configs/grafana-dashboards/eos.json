@@ -74,8 +74,8 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"latency: (?P<latency>\\\\d+)ms\" | unwrap latency [1s])",
-          "legendFormat": "{{container_name}}",
+          "expr": "max_over_time({service=~\".*latency-collector\",source=\"stdout\"} |= \"latency=\" | unwrap latency [1s]) by (from)",
+          "legendFormat": "{{from}}",
           "metrics": [
             {
               "id": "1",
@@ -109,7 +109,7 @@
       "yaxes": [
         {
           "$$hashKey": "object:166",
-          "format": "ms",
+          "format": "µs",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -151,7 +151,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "µs"
         },
         "overrides": []
       },
@@ -190,7 +191,7 @@
               "type": "date_histogram"
             }
           ],
-          "expr": "max_over_time({service=~\".*rodeos\",source=\"stderr\"} |= \"Done with block\" | regexp \"latency: (?P<latency>\\\\d+)ms\" | unwrap latency [10m])",
+          "expr": "max_over_time({service=~\".*latency-collector\",source=\"stdout\"} |= \"latency=\" | unwrap latency [10m]) by (from)",
           "metrics": [
             {
               "id": "1",
@@ -202,6 +203,8 @@
           "timeField": "startTimeMillis"
         }
       ],
+      "timeFrom": null,
+      "timeShift": null,
       "title": "Max Block Latency In 10m",
       "type": "stat"
     },
@@ -337,7 +340,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -1089,7 +1093,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "loki",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -1140,16 +1144,14 @@
               "type": "date_histogram"
             }
           ],
+          "expr": "max_over_time({service=~\".*producer\",source=\"stderr\"} |= \"Produced block\" | regexp \"trxs: (?P<trxs>\\\\d+)\" | unwrap trxs [1s])",
           "metrics": [
             {
               "id": "1",
-              "settings": {
-                "script": "Integer.parseInt(doc['tag.num_transactions'].value)"
-              },
-              "type": "max"
+              "type": "count"
             }
           ],
-          "query": "operationName: block",
+          "query": "",
           "refId": "A",
           "timeField": "startTimeMillis"
         }
@@ -1463,5 +1465,5 @@
   "timezone": "",
   "title": "EOS dashboard",
   "uid": "OVp1EY3Gz",
-  "version": 1
+  "version": 5
 }

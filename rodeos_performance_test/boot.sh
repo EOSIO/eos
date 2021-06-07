@@ -48,6 +48,6 @@ for ((i = 0 ; i <= 100 ; i++)); do
   done
 done
 # cleos push action txn.test.b setlogging '[1]' -p txn.test.b@active
-cleos push action txn.test.b setbatchsize '[90]' -p txn.test.b@active 
+cleos push action txn.test.b setbatchsize '[15]' -p txn.test.b@active 
 curl -s --data-binary '["", 20, 20]' $BIOS_ENDPOINT/v1/txn_test_gen/start_generation || :
 sleep 3600
