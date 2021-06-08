@@ -190,7 +190,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
       fc_add_tag( blk_span, "block_num", result.this_block->block_num );
       fc_add_tag( blk_span, "wait_time", end_block_time == 0 ? 0LL : (start_time - end_block_time) );
-      fc_trace_log(blk_span, "process_received block_num=${block_num}", ("block_num", result.this_block->block_num));
+      fc_trace_log(blk_span, "process_received block_num=${block_num} wait_time=${wait_time} packet_size=${packet_size}", 
+         ("block_num", result.this_block->block_num)("wait_time",end_block_time == 0 ? 0LL : (start_time - end_block_time) ));
 
       rodeos_snapshot->start_block(result);
       if (result.this_block->block_num <= rodeos_snapshot->head)
@@ -303,6 +304,8 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "Zipkin localEndpoint.serviceName sent with each span" );
    op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
       "Timeout for sending Zipkin span." );
+   op("telemetry-wait-timeout-seconds", bpo::value<uint32_t>()->default_value(0),
+      "Timeout to wait for Zipkin to become available.");
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -364,7 +367,8 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>() );
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>() );
       }
 
       ship_client::threaded_receive = ! options["no-threaded-receive"].as<bool>();

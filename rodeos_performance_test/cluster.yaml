@@ -59,6 +59,10 @@ services:
    elasticsearch:
       deploy:
         <<: *manager-node
+   
+   latency-collector:
+      deploy:
+        <<: *manager-node
    producer: 
       deploy:
         <<: *manager-node
@@ -66,9 +70,13 @@ services:
       deploy:
          placement:
             constraints:
-               - "node.labels.name==node-1"
+               - "node.role==manager"
+               # - "node.labels.name==node-1"
    rodeos:
       deploy:
-         placement:
-            constraints:
-               - "node.labels.name==node-2"
+         mode: replicated
+         replicas: 5
+         # placement:
+         #    max_replicas_per_node: 1
+         #    constraints:
+         #      - "node.labels.name==node-2"

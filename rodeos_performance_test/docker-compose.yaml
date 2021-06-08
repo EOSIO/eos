@@ -160,6 +160,7 @@ services:
          - ZIPKIN_URL=http://jaeger-collector:9411/api/v2/spans 
       depends_on:
          - jaeger-collector
+         - loki
       logging: 
          << : *logging
          options:
@@ -230,12 +231,13 @@ services:
          - /bin/sh
          - -c
          - | 
-            ./wait-for-it.sh --timeout=0 latency-collector:9411 ## do not use wait-for-it.sh to wait for ship:8080, it would cause the the websocket listening endpoint to be in unrecoverable state. 
-            sleep 10  
+            ./wait-for-it.sh --timeout=0 ship:8888 ## do not use wait-for-it.sh to wait for ship:8080, it would cause the the websocket listening endpoint to be in unrecoverable state. 
+            sleep 1 
             rodeos --clone-connect-to=ship:8080 --data-dir=/var/rodeos/data --rdb-threads=12 \
                    --telemetry-url=http://latency-collector:9411/api/v2/spans --telemetry-service-name=rodeos \
                    --eos-vm-oc-cache-size-mb=200 --eos-vm-oc-compile-threads=8 --rdb-console-log  \
-                   --rdb-options-file-name=/etc/rodeos/rocksdb.ini                 
+                   --rdb-options-file-name=/etc/rodeos/rocksdb.ini   \
+                   --telemetry-wait-timeout-seconds 60             
       depends_on:
          - latency-collector
          - ship
