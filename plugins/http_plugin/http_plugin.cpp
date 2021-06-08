@@ -26,6 +26,7 @@
 
 #include "common.hpp"
 #include "beast_http_listener.hpp"
+#include "unix_socket_listener.hpp"
 
 const fc::string logger_name("http_plugin");
 fc::logger logger;
@@ -44,8 +45,6 @@ namespace eosio {
    using boost::asio::ip::address_v4;
    using boost::asio::ip::address_v6;
    using std::shared_ptr;
-   using std::unique_ptr;
-   using std::make_unique;
    using websocketpp::connection_hdl;
 
    enum https_ecdh_curve_t {
@@ -169,7 +168,8 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          shared_ptr<beast_http_listener<plain_session> >  beast_server;
          shared_ptr<beast_http_listener<ssl_session> >    beast_https_server;
-         // shared_ptr<beast_http_listener<plain_session> >  beast_https_server;
+         
+         shared_ptr<unix_socket_listener> asio_unix_server;
 
          shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
         
@@ -762,15 +762,22 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
             if(my->unix_endpoint) {
                try {
-                  my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-                  my->unix_server.init_asio( &my->thread_pool->get_executor() );
-                  my->unix_server.set_max_http_body_size(my->plugin_state->max_body_size);
-                  my->unix_server.listen(*my->unix_endpoint);
-                  // captures `this`, my needs to live as long as unix_server is handling requests
-                  my->unix_server.set_http_handler([this](connection_hdl hdl) {
-                     my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(std::move(hdl)));
-                  });
-                  my->unix_server.start_accept();
+                  if(my->plugin_state->use_beast) {
+                     my->asio_unix_server = make_shared<unix_socket_listener>(&my->thread_pool->get_executor(), 
+                                                                              *my->unix_endpoint,
+                                                                              my->plugin_state );
+                  }
+                  else {
+                     my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
+                     my->unix_server.init_asio( &my->thread_pool->get_executor() );
+                     my->unix_server.set_max_http_body_size(my->plugin_state->max_body_size);
+                     my->unix_server.listen(*my->unix_endpoint);
+                     // captures `this`, my needs to live as long as unix_server is handling requests
+                     my->unix_server.set_http_handler([this](connection_hdl hdl) {
+                        my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(std::move(hdl)));
+                     });
+                     my->unix_server.start_accept();
+                  }
                } catch ( const fc::exception& e ){
                   fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
                   throw;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "http_session_base.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -12,15 +13,11 @@
 #include <vector>
 #include <sstream>
 
-extern fc::logger logger;
-
 namespace eosio { 
 
     //------------------------------------------------------------------------------
-
     // Report a failure
-    void
-    fail(beast::error_code ec, char const* what)
+    void fail(beast::error_code ec, char const* what)
     {
         // ssl::error::stream_truncated, also known as an SSL "short read",
         // indicates the peer closed the connection without performing the
@@ -45,128 +42,43 @@ namespace eosio {
         std::cerr << what << ": " << ec.message() << "\n";
     }
 
-
-
-    // Handles an HTTP server connection.
+    // Handle HTTP conneciton using boost::beast for TCP communication
     // This uses the Curiously Recurring Template Pattern so that
     // the same code works with both SSL streams and regular sockets.
-    template<class Derived>
-    class beast_http_session : public detail::abstract_conn
+    template<class Derived> 
+    class beast_http_session : public http_session_base
     {
-        public: 
+        protected:
+            beast::flat_buffer buffer_;
+            beast::error_code ec_;
+
             // Access the derived class, this is part of
             // the Curiously Recurring Template Pattern idiom.
-            Derived&
-            derived()
+            Derived& derived()
             {
                 return static_cast<Derived&>(*this);
             }
 
-            // http::request<http::string_body> req_;
-            http::request_parser<http::string_body> req_parser_;
-
-            // std::shared_ptr<void> res_;
-            http::response<http::string_body> res_;
-            // send_lambda lambda_;
-            
-            beast::flat_buffer buffer_;
-            asio::io_context *ioc_;
-            std::shared_ptr<http_plugin_state> plugin_state_;
-            beast::error_code ec_;
-
-            template<
-                class Body, class Allocator>
-            void
-            handle_request(
-                http::request<Body, http::basic_fields<Allocator>>&& req)
-            {
-                auto &res = res_;
-
-                fc_ilog( logger, "res.version()" ); 
-                res.version(req.version());
-                res.set(http::field::content_type, "application/json");
-                res.keep_alive(req.keep_alive());
-                res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-
-                // Returns a bad request response
-                auto const bad_request =
-                [](beast::string_view why, detail::abstract_conn& conn)
+            bool allow_host(const http::request<http::string_body>& req) override {
+                auto is_conn_secure = is_secure();
+                auto& lowest_layer = beast::get_lowest_layer(derived().stream());
+                auto local_endpoint = lowest_layer.socket().local_endpoint();
+                auto local_socket_host_port = local_endpoint.address().to_string() 
+                        + ":" + std::to_string(local_endpoint.port());
+                const auto& host_str = req["Host"].to_string();
+                if (host_str.empty() 
+                    || !host_is_valid(*plugin_state_, 
+                                      host_str, 
+                                      local_socket_host_port, 
+                                      is_conn_secure)) 
                 {
-                    conn.send_response(std::string(why), 
-                                    static_cast<int>(http::status::bad_request));
-                };
+                    return false;
+                }
 
-                // Returns a not found response
-                auto const not_found =
-                [](beast::string_view target, detail::abstract_conn& conn)
-                {
-                    conn.send_response("The resource '" + std::string(target) + "' was not found.",
-                                static_cast<int>(http::status::not_found)); 
-                };
-
-                //fc_ilog( logger, "detect bad target" ); 
-                // Request path must be absolute and not contain "..".
-                if( req.target().empty() ||
-                    req.target()[0] != '/' ||
-                    req.target().find("..") != beast::string_view::npos)
-                    return bad_request("Illegal request-target", *this);
-
-                // Cache the size since we need it after the move
-                // auto const size = body.size();
-
-
-                try {
-                    if(!allow_host(req))
-                        return;
-
-                    //fc_ilog( logger, "set HTTP headers" ); 
-
-                    if( !plugin_state_->access_control_allow_origin.empty()) {
-                        res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
-                    }
-                    if( !plugin_state_->access_control_allow_headers.empty()) {
-                        res.set( "Access-Control-Allow-Headers", plugin_state_->access_control_allow_headers );
-                    }
-                    if( !plugin_state_->access_control_max_age.empty()) {
-                        res.set( "Access-Control-Max-Age", plugin_state_->access_control_max_age );
-                    }
-                    if( plugin_state_->access_control_allow_credentials ) {
-                        res.set( "Access-Control-Allow-Credentials", "true" );
-                    }
-
-                    // Respond to options request
-                    if(req.method() == http::verb::options)
-                    {
-                        //fc_ilog( logger, "send_response(\"\")" ); 
-                        send_response("", static_cast<int>(http::status::ok));
-                        return;
-                    }
-
-                    // verfiy bytes in flight/requests in flight
-                    if( !verify_max_bytes_in_flight() || !verify_max_requests_in_flight() ) return;
-
-                    std::string resource = std::string(req.target());
-                    // look for the URL handler to handle this reosouce
-                    auto handler_itr = plugin_state_->url_handlers.find( resource );
-                    if( handler_itr != plugin_state_->url_handlers.end()) {
-                        // c
-                        std::string body = req.body();
-                        //fc_ilog( logger, "invoking handler_itr-second() " ); 
-                        handler_itr->second( derived().shared_from_this(), 
-                                            std::move( resource ), 
-                                            std::move( body ), 
-                                            make_http_response_handler(*ioc_, *plugin_state_, derived().shared_from_this()) );
-                    } else {
-                        fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
-                        not_found(resource, *this);                    
-                    }
-                } catch( ... ) {
-                    handle_exception();
-                }           
+                return true;
             }
 
-
-        public:
+        public: 
             // shared_from_this() requires default constuctor
             beast_http_session() = default;  
       
@@ -174,19 +86,12 @@ namespace eosio {
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
-                : ioc_(ioc)
-                , plugin_state_(plugin_state)
-            {
-                plugin_state_->requests_in_flight += 1;
-                req_parser_.body_limit(plugin_state_->max_body_size);
-            }
+                : http_session_base(plugin_state, ioc)
+            { }
 
-            virtual ~beast_http_session() {
-                plugin_state_->requests_in_flight -= 1;
-            }
+            virtual ~beast_http_session() = default;            
 
-            void
-            do_read()
+            void do_read()
             {
                 //fc_ilog( logger, "get_lowest_layer()" ); 
                 // Set the timeout.
@@ -204,10 +109,8 @@ namespace eosio {
                         derived().shared_from_this()));
             }
 
-            void
-            on_read(
-                beast::error_code ec,
-                std::size_t bytes_transferred)
+            void on_read(beast::error_code ec,
+                         std::size_t bytes_transferred)
             {
                 boost::ignore_unused(bytes_transferred);
 
@@ -224,11 +127,9 @@ namespace eosio {
                 handle_request(std::move(req));
             }
 
-            void
-            on_write(
-                bool close,
-                beast::error_code ec,
-                std::size_t bytes_transferred)
+            void on_write(bool close,
+                          beast::error_code ec,
+                          std::size_t bytes_transferred)
             {
                 //fc_ilog( logger, "ignore_unused()" ); 
                 boost::ignore_unused(bytes_transferred);
@@ -253,69 +154,7 @@ namespace eosio {
 
                 // Read another request
                 do_read();
-            }
-
-
-            // TODO 
-            bool allow_host(const http::request<http::string_body>& req) {
-                /*
-                bool is_secure = con->get_uri()->get_secure();
-                const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
-                auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
-
-                const auto& host_str = req.get_header("Host");
-                if (host_str.empty() || !host_is_valid(*plugin_state, host_str, local_socket_host_port, is_secure)) {
-                con->set_status(websocketpp::http::status_code::bad_request);
-                return false;
-                }
-                */
-                auto is_secure = derived().is_secure();
-                auto& lowest_layer = beast::get_lowest_layer(derived().stream());
-                auto local_endpoint = lowest_layer.socket().local_endpoint();
-                auto local_socket_host_port = local_endpoint.address().to_string() 
-                        + ":" + std::to_string(local_endpoint.port());
-                const auto& host_str = req["Host"].to_string();
-                if (host_str.empty() 
-                    || !host_is_valid(*plugin_state_, 
-                                      host_str, 
-                                      local_socket_host_port, 
-                                      is_secure)) 
-                {
-                    return false;
-                }
-
-                return true;
-            }
-
-            void report_429_error(const std::string & what) {                
-                send_response(std::string(what), 
-                                static_cast<int>(http::status::too_many_requests));                
-            }
-
-            virtual bool verify_max_bytes_in_flight() override {
-                auto bytes_in_flight_size = plugin_state_->bytes_in_flight.load();
-                if( bytes_in_flight_size > plugin_state_->max_bytes_in_flight ) {
-                    fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
-                    string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
-                    report_429_error(what);
-                    return false;
-                }
-                return true;
-            }
-
-            virtual bool verify_max_requests_in_flight() override {
-                if (plugin_state_->max_requests_in_flight < 0)
-                    return true;
-
-                auto requests_in_flight_num = plugin_state_->requests_in_flight.load();
-                if( requests_in_flight_num > plugin_state_->max_requests_in_flight ) {
-                    fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
-                    string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
-                    report_429_error(what);
-                    return false;
-                }
-                return true;
-            }
+            }           
 
             virtual void handle_exception() override {
                 auto errCodeStr = std::to_string(ec_.value());
@@ -375,8 +214,7 @@ namespace eosio {
             }
 
             // Start the asynchronous operation
-            void
-            run()
+            void run()
             {
                 // Set the timeout.
                 beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
@@ -391,8 +229,7 @@ namespace eosio {
                                 shared_from_this()));
             }
 
-            void
-            do_eof()
+            void do_eof()
             {
                 // Send a TCP shutdown
                 beast::error_code ec;
@@ -401,7 +238,9 @@ namespace eosio {
                 // At this point the connection is closed gracefully
             }
 
-            bool is_secure() { return false; }
+            virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
+                return shared_from_this();
+            }
 
     }; // end class plain_session
 
@@ -425,22 +264,19 @@ namespace eosio {
             { }
 
             // Called by the base class
-            beast::ssl_stream<beast::tcp_stream>&
-            stream()
+            beast::ssl_stream<beast::tcp_stream>&  stream()
             {
                 return stream_;
             }
 
             // Start the asynchronous operation
-            void
-            run()
+            void run()
             {
                 
                 // Set the timeout.
                 // beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
                 auto self = shared_from_this();
-
             
                 // We need to be executing within a strand to perform async operations
                 // on the I/O objects in this session.
@@ -464,10 +300,8 @@ namespace eosio {
                 
             }
 
-            void
-            on_handshake(
-                beast::error_code ec,
-                std::size_t bytes_used)
+            void on_handshake(beast::error_code ec,
+                              std::size_t bytes_used)
             {
                 
                 if(ec)
@@ -479,8 +313,7 @@ namespace eosio {
                 do_read();
             }
 
-            void
-            do_eof()
+            void do_eof()
             {
                 /*
                 // Set the timeout.
@@ -494,8 +327,7 @@ namespace eosio {
                         */
             }
 
-            void
-            on_shutdown(beast::error_code ec)
+            void on_shutdown(beast::error_code ec)
             {
                 if(ec)
                     return fail(ec, "shutdown");
@@ -503,7 +335,11 @@ namespace eosio {
                 // At this point the connection is closed gracefully
             }
 
-            bool is_secure() { return true; }
+            virtual bool is_secure() override { return true; }
+
+            virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
+                return shared_from_this();
+            }
     }; // end class ssl_session
 
 } // end namespace
