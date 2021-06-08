@@ -763,9 +763,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             if(my->unix_endpoint) {
                try {
                   if(my->plugin_state->use_beast) {
-                     my->asio_unix_server = make_shared<unix_socket_listener>(&my->thread_pool->get_executor(), 
-                                                                              *my->unix_endpoint,
-                                                                              my->plugin_state );
+                     my->asio_unix_server = std::make_shared<unix_socket_listener>(&my->thread_pool->get_executor(), 
+                                                                                   *my->unix_endpoint,
+                                                                                    my->plugin_state );
                   }
                   else {
                      my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
