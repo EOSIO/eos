@@ -36,13 +36,12 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     fi
     export FILE_NAME="$(echo "$FILE" | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
-    # macos-10.14
     # ubuntu-16.04
     # skip Mojave if it's anything but the post-merge build
-    if [[ "$FILE_NAME" =~ 'macos-10.14' && "$SKIP_MACOS_10_14" != 'false' && "$RUN_ALL_TESTS" != 'true' && ( "$BUILDKITE_SOURCE" != 'webhook' || "$BUILDKITE_PULL_REQUEST" != 'false' || ! "$BUILDKITE_MESSAGE" =~ 'Merge pull request' ) ]]; then
-        export SKIP_MACOS_10_14='true'
-        continue
-    fi
+  #  if [[ "$FILE_NAME" =~ 'macos-10.14' && "$SKIP_MACOS_10_14" != 'false' && "$RUN_ALL_TESTS" != 'true' && ( "$BUILDKITE_SOURCE" != 'webhook' || "$BUILDKITE_PULL_REQUEST" != 'false' || ! "$BUILDKITE_MESSAGE" =~ 'Merge pull request' ) ]]; then
+  #      export SKIP_MACOS_10_14='true'
+  #      continue
+  #  fi
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
     # macOS
     # ubuntu
@@ -71,9 +70,7 @@ for FILE in $(ls "$CICD_DIR/platforms/$PLATFORM_TYPE"); do
     export PLATFORM_SKIP_VAR="SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}${VERSION_MINOR}"
     # Anka Template and Tags
     export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
-    if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
-        export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_80G'
-    elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
+    if [[ $FILE_NAME =~ 'macos-10.15' ]]; then
         export ANKA_TEMPLATE_NAME='10.15.5_6C_14G_80G'
     elif [[ $FILE_NAME =~ 'macos-11' ]]; then
         export ANKA_TEMPLATE_NAME='11.2.1_6C_14G_80G'
@@ -633,33 +630,7 @@ cat <<EOF
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
-
-  - label: ":darwin: macOS 10.14 - Package Builder"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package.sh"
-    plugins:
-      - EOSIO/anka#v0.6.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.14.6_6C_14G_80G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          always-pull: true
-          debug: true
-          wait-network: true
-          pre-execute-sleep: 5
-          pre-execute-ping-sleep: github.com
-          failover-registries:
-            - 'registry_1'
-            - 'registry_2'
-      - EOSIO/skip-checkout#v0.1.1:
-          cd: ~
-    agents:
-      - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
-
+  
   - label: ":darwin: macOS 10.15 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
@@ -732,12 +703,12 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
+      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
+    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
     command:  "./.cicd/create-docker-from-binary.sh"
