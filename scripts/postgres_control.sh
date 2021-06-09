@@ -66,7 +66,7 @@ if [ "$CI" = "true" ]; then
             if [ ! -z "$2" ]; then su - postgres -c "$PSQL -q -c \"$2\""  > /dev/null; fi
             ;;
          stop)
-            su - postgres -c "$PG_CTL stop"
+            su - postgres -c "$PG_CTL -D /usr/local/pgsql/data  stop"
             ;;
          exec)
             su - postgres -c "$PSQL -U postgres -q -c \"$2\""
