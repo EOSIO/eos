@@ -1,0 +1,50 @@
+cc_binary(
+    name = "sample-server",
+    srcs = ["sample_server.cc"],
+    deps = ["//pull"],
+)
+
+cc_binary(
+    name = "sample-server_multi",
+    srcs = ["sample_server_multi.cc"],
+    deps = ["//pull"],
+)
+
+cc_binary(
+    name = "sample-server_auth",
+    srcs = ["sample_server_auth.cc"],
+    deps = ["//pull"],
+)
+
+sh_test(
+    name = "scrape-test",
+    size = "small",
+    srcs = ["scrape.sh"],
+    data = [
+        "sample-server",
+        "scrape.conf",
+    ],
+    tags = ["manual"],
+)
+
+sh_test(
+    name = "lint-test",
+    size = "small",
+    srcs = ["lint.sh"],
+    data = [
+        "sample-server",
+    ],
+    tags = ["manual"],
+)
+
+cc_test(
+    name = "integration_test",
+    srcs = ["integration_test.cc"],
+    copts = ["-Iexternal/googletest/include"],
+    linkstatic = True,
+    deps = [
+        "//pull",
+        "@com_github_curl//:curl",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

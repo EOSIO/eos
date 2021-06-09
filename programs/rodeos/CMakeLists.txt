@@ -7,6 +7,7 @@ add_executable( ${RODEOS_EXECUTABLE_NAME}
   wasm_ql_http.cpp
   wasm_ql_plugin.cpp
   rdb_stdout_logger.cpp
+  prometheus_plugin.cpp
   ${HEADERS}
 )
 
@@ -43,7 +44,7 @@ target_include_directories(${RODEOS_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINA
 
 target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
-        PRIVATE rodeos_lib fc amqpcpp amqp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE rodeos_lib fc amqpcpp amqp prometheus-cpp::core ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 add_subdirectory(tests)
 

@@ -1,0 +1,13 @@
+cc_test(
+    name = "internal",
+    srcs = glob([
+        "*.cc",
+        "*.h",
+    ]),
+    copts = ["-Iexternal/googletest/include"],
+    linkstatic = True,
+    deps = [
+        "//pull:pull_internal_headers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

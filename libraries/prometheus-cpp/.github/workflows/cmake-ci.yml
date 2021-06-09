@@ -1,0 +1,129 @@
+name: CMake CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: CMake on ${{ matrix.os }} with ${{ matrix.dependencies }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macOS-latest, ubuntu-18.04, windows-2016]
+        dependencies: [submodule, vcpkg]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        if: matrix.dependencies == 'submodule'
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+      - name: Mount vcpkg cache
+        if: matrix.dependencies == 'vcpkg'
+        uses: actions/cache@v2
+        with:
+          path: "~/.cache/vcpkg/archives"
+          key: vcpkg-${{ matrix.os }}
+
+      - name: Install vcpkg dependencies
+        if: matrix.dependencies == 'vcpkg'
+        run: vcpkg install benchmark civetweb curl[core] gtest zlib
+
+      - name: Generate German locale on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen de_DE.UTF-8 # used by SerializerTest
+
+      - name: Install ninja on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ninja-build
+
+      - name: Install ninja on macOS
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: "Configure for Unix with internal dependencies"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=ON -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/_install -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_COMPRESSION=OFF -DENABLE_PUSH=OFF -DCMAKE_DEBUG_POSTFIX=_d -DCMAKE_CONFIGURATION_TYPES='Release;Debug' -G"Ninja Multi-Config" -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: "Configure for Windows with internal dependencies"
+        if: matrix.dependencies == 'submodule' && runner.os == 'Windows'
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=ON -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/_install -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_COMPRESSION=OFF -DENABLE_PUSH=OFF -DCMAKE_DEBUG_POSTFIX=_d -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: "Configure for Unix with vcpkg dependencies"
+        if: matrix.dependencies == 'vcpkg' && runner.os != 'Windows'
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=OFF -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/_install "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake" -DCMAKE_DEBUG_POSTFIX=_d -DCMAKE_CONFIGURATION_TYPES='Release;Debug' -G"Ninja Multi-Config" -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: "Configure for Windows with vcpkg dependencies"
+        if: matrix.dependencies == 'vcpkg' && runner.os == 'Windows'
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=OFF -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/_install "-DCMAKE_TOOLCHAIN_FILE=${Env:VCPKG_INSTALLATION_ROOT}\scripts\buildsystems\vcpkg.cmake" -DCMAKE_DEBUG_POSTFIX=_d -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: "Build Debug"
+        run: cmake --build ${{ github.workspace }}/_build --config Debug
+
+      - name: "Build Release"
+        run: cmake --build ${{ github.workspace }}/_build --config Release
+
+      - name: "Test Debug"
+        run: ctest -C Debug -V -LE Benchmark
+        working-directory: "${{ github.workspace }}/_build"
+
+      - name: "Test Release"
+        run: ctest -C Debug -V -LE Benchmark
+        working-directory: "${{ github.workspace }}/_build"
+
+      - name: "Install Debug"
+        run: cmake --install ${{ github.workspace }}/_build --config Debug
+
+      - name: "Install Release"
+        run: cmake --install ${{ github.workspace }}/_build --config Release
+
+      - name: "Configure CMake import for Unix with internal dependencies"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake -Dprometheus-cpp_DIR=${{ github.workspace }}/_install/lib/cmake/prometheus-cpp -DCMAKE_CONFIGURATION_TYPES='Release;Debug' -G"Ninja Multi-Config" -S ${{ github.workspace }}/cmake/project-import-cmake -B ${{ github.workspace }}/_import_cmake
+
+      - name: "Configure CMake import for Windows with internal dependencies"
+        if: matrix.dependencies == 'submodule' && runner.os == 'Windows'
+        run: cmake -Dprometheus-cpp_DIR=${{ github.workspace }}/_install/lib/cmake/prometheus-cpp -S ${{ github.workspace }}/cmake/project-import-cmake -B ${{ github.workspace }}/_import_cmake
+
+      - name: "Configure CMake import for Unix with vcpkg dependencies"
+        if: matrix.dependencies == 'vcpkg' && runner.os != 'Windows'
+        run: cmake -Dprometheus-cpp_DIR=${{ github.workspace }}/_install/lib/cmake/prometheus-cpp "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CONFIGURATION_TYPES='Release;Debug' -G"Ninja Multi-Config" -S ${{ github.workspace }}/cmake/project-import-cmake -B ${{ github.workspace }}/_import_cmake
+
+      - name: "Configure CMake import for Windows with vcpkg dependencies"
+        if: matrix.dependencies == 'vcpkg' && runner.os == 'Windows'
+        run: cmake -Dprometheus-cpp_DIR=${{ github.workspace }}/_install/lib/cmake/prometheus-cpp "-DCMAKE_TOOLCHAIN_FILE=${Env:VCPKG_INSTALLATION_ROOT}\scripts\buildsystems\vcpkg.cmake" -S ${{ github.workspace }}/cmake/project-import-cmake -B ${{ github.workspace }}/_import_cmake
+
+      - name: "Build CMake import Debug"
+        run: cmake --build ${{ github.workspace }}/_import_cmake --config Debug
+
+      - name: "Build CMake import Release"
+        run: cmake --build ${{ github.workspace }}/_import_cmake --config Release
+
+      - name: "Configure for Unix Shared Libs with internal dependencies"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/_install_shared -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_COMPRESSION=OFF -DENABLE_PUSH=OFF -DCMAKE_DEBUG_POSTFIX=_d  -GNinja -S ${{ github.workspace }} -B ${{ github.workspace }}/_build_shared
+
+      - name: "Build for Unix Shared Libs"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake --build ${{ github.workspace }}/_build_shared
+
+      - name: "Install for Unix Shared Libs"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake --install ${{ github.workspace }}/_build_shared
+
+      - name: "Configure pkg-config import for Unix"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake -DCMAKE_PREFIX_PATH=${{ github.workspace }}/_install_shared -GNinja -S ${{ github.workspace }}/cmake/project-import-pkgconfig -B ${{ github.workspace }}/_import_pkgconfig
+
+      - name: "Build pkg-config import for Unix"
+        if: matrix.dependencies == 'submodule' && runner.os != 'Windows'
+        run: cmake --build ${{ github.workspace }}/_import_pkgconfig

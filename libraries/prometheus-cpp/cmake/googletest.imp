@@ -1,0 +1,5 @@
+[
+  { include: [ "@<gmock/.*>", private, "<gmock/gmock.h>", public ] },
+  { include: [ "@<gtest/.*>", private, "<gtest/gtest.h>", public ] },
+  { include: [ "@<bits/this_thread_sleep.h>", private, "<thread>", public ]}
+]

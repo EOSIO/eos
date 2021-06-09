@@ -1,0 +1,60 @@
+name: Coverage
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Code Coverage
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Mount vcpkg cache
+        uses: actions/cache@v2
+        with:
+          path: "~/.cache/vcpkg/archives"
+          key: vcpkg-${{ runner.os }}
+
+      - name: Install vcpkg dependencies
+        run: vcpkg install benchmark civetweb curl[core] gtest zlib
+
+      - name: Generate German locale on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen de_DE.UTF-8 # used by SerializerTest
+
+      - name: Install ninja on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ninja-build
+
+      - name: Install lcov
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y lcov
+
+      - name: "CMake Configure for Unix with vcpkg dependencies"
+        env:
+          CFLAGS: "--coverage"
+          CXXFLAGS: "--coverage"
+          LDFLAGS: "--coverage"
+        run: cmake -DUSE_THIRDPARTY_LIBRARIES=OFF "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake" -GNinja -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/_build
+
+      - name: Test
+        run: ctest -V -LE Benchmark
+        working-directory: "${{ github.workspace }}/_build"
+
+      - name: Run lcov
+        run: lcov --capture --directory "${{ github.workspace }}/_build" --output-file coverage.info --no-external --directory "${{ github.workspace }}" --exclude '*/tests/*'
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.info

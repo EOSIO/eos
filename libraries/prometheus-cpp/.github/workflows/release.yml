@@ -1,0 +1,38 @@
+on:
+  release:
+    types: [created]
+
+name: Handle Release
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+      - name: Create tarball including submodules
+        shell: bash
+        env:
+          PREFIX: prometheus-cpp-with-submodules
+        run: |
+          git archive --prefix "${PREFIX}/" -o "${PREFIX}.tar" HEAD
+          git submodule foreach --recursive "git archive --prefix=${PREFIX}/\$path/ --output=\$sha1.tar HEAD && tar --concatenate --file=$(pwd)/${PREFIX}.tar \$sha1.tar && rm \$sha1.tar"
+          gzip "${PREFIX}.tar"
+
+      # using the official actions/upload-release-asset action would be preferred but is blocked by
+      # https://github.com/actions/upload-release-asset/pull/41
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@75ce5546020fc1848da842f40240f9fa03e7a3a8 # release-0.14
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: prometheus-cpp-with-submodules.tar.gz

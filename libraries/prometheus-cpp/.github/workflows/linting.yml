@@ -1,0 +1,58 @@
+name: Linting
+on: [push, pull_request]
+
+jobs:
+  iwyu:
+    name: Include What You Use
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo add-apt-repository ppa:gjasny/iwyu
+          sudo apt-get update
+          sudo apt-get install -y clang-11 iwyu libbenchmark-dev libcurl4-openssl-dev ninja-build zlib1g-dev
+
+      - name: "CMake Configure"
+        run: cmake -GNinja -DRUN_IWYU=ON -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/_build 2>&1 | tee ${{ github.workspace }}/output.txt
+
+      - name: Check build output
+        run: if egrep -q 'should (add|remove) these lines' ${{ github.workspace }}/output.txt; then exit 1; fi
+
+      #- name: "CMake Configure"
+      #  run: cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S ${{ github.workspace }} -B ${{ github.workspace }}/_build
+
+      #- name: "Run IWYU"
+      #  run: iwyu_tool -p ${{ github.workspace }}/_build core push pull -- -Xiwyu --mapping_file=${{ github.workspace }}/cmake/googletest.imp -Xiwyu --no_fwd_decls 2>&1 | tee ${{ github.workspace }}/output.txt
+
+  format:
+    name: Clang Format
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo apt-get update
+          sudo apt-get install -y clang-format-11
+
+      - name: Run clang-format
+        run: find . -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.o' -o -name '*.h' -o -name '*.hpp' -o -name '*.hxx' \) -exec clang-format-11 -style=file -i {} \;
+
+      - name: Check for changes
+        run: git diff --exit-code

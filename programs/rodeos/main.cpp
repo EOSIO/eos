@@ -11,6 +11,7 @@
 #include "cloner_plugin.hpp"
 #include "config.hpp"
 #include "wasm_ql_plugin.hpp"
+#include "prometheus_plugin.hpp"
 
 using namespace appbase;
 

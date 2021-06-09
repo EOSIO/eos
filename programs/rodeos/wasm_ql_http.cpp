@@ -33,6 +33,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <appbase/application.hpp>
+#include "prometheus_plugin.hpp"
 
 static const std::vector<char> temp_contract_kv_prefix{ 0x02 }; // todo: replace
 
@@ -62,6 +64,8 @@ struct error_results {
 EOSIO_REFLECT(error_results, code, message, error)
 
 namespace b1::rodeos::wasm_ql {
+
+static b1::metric_collection* the_metrics;
 
 // Report a failure
 static void fail(beast::error_code ec, const char* what) { elog("${w}: ${s}", ("w", what)("s", ec.message())); }
@@ -472,7 +476,15 @@ class http_session {
       }
 
       // Send the response
-      handle_request(*http_config, *shared_state, *state_cache, parser->release(), queue_);
+      auto req = parser->release();
+      if (the_metrics) {
+         std::string target(req.target());
+         the_metrics->increment_http_request_total(target);
+         auto recorder = the_metrics->record_http_request_duration(target);
+         handle_request(*http_config, *shared_state, *state_cache, std::move(req), queue_);
+      }
+      else
+         handle_request(*http_config, *shared_state, *state_cache, std::move(req), queue_);
 
       // If we aren't at the queue limit, try to pipeline another request
       if (!queue_.is_full())
@@ -692,6 +704,11 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
 std::shared_ptr<http_server> http_server::create(const std::shared_ptr<const http_config>&  http_config,
                                                  const std::shared_ptr<const shared_state>& shared_state) {
    FC_ASSERT(http_config->num_threads > 0, "too few threads");
+
+   prometheus_plugin* plugin = appbase::app().find_plugin<prometheus_plugin>();
+
+   the_metrics = plugin ? &plugin->metrics() : 0;
+
    auto server = std::make_shared<server_impl>(http_config, shared_state);
    if (server->start())
       return server;

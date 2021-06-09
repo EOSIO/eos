@@ -1,0 +1,30 @@
+name: Doxygen
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Code Coverage
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Install doxygen
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Generate doxygen
+        run: doxygen
+        working-directory: "${{ github.workspace }}/doc"
+
+      - name: Deploy documentation
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force_orphan: true
+          publish_dir: ./doc/html

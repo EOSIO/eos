@@ -60,3 +60,12 @@ find_package(OpenSSL REQUIRED)
 option(AMQP-CPP_LINUX_TCP CACHE ON)
 add_subdirectory( amqp-cpp EXCLUDE_FROM_ALL )
 target_include_directories(amqpcpp PRIVATE "${OPENSSL_INCLUDE_DIR}")
+
+set(ENABLE_PULL OFF)
+set(ENABLE_PUSH OFF)
+set(ENABLE_COMPRESSION OFF)
+set(ENABLE_TESTING OFF)
+set(USE_THIRDPARTY_LIBRARIES OFF)
+set(OVERRIDE_CXX_STANDARD_FLAGS OFF)
+
+add_subdirectory(prometheus-cpp)

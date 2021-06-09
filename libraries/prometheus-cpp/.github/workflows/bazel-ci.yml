@@ -1,0 +1,47 @@
+name: Bazel CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Bazel on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-20.04, windows-2019]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Generate German locale on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get remove -y --purge man-db # avoid time-consuming trigger
+          sudo apt-get update
+          sudo apt-get install -y locales
+          sudo locale-gen de_DE.UTF-8 # used by SerializerTest
+
+      - name: Install telegraf on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
+          source /etc/lsb-release
+          echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+          sudo apt-get update
+          sudo apt-get install -y telegraf
+
+      - name: Install telegraf on macOS
+        if: runner.os == 'macOS'
+        run: brew install telegraf
+
+      - name: Build
+        run: bazel build //...
+
+      - name: Test
+        run: bazel test --test_output=all //core/... //pull/...
+
+      - name: Scraping Test
+        if: runner.os != 'Windows'
+        run: bazel test --test_output=all //pull/tests/integration:scrape-test
+
+      - name: Benchmark
+        run: bazel run -c opt //core/benchmarks

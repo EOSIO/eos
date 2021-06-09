@@ -1,0 +1,40 @@
+load("//bazel:export_header.bzl", "generate_dummy_export_header")
+
+generate_dummy_export_header(
+    name = "export_header",
+    basename = "PROMETHEUS_CPP_PULL",
+    header = "include/prometheus/detail/pull_export.h",
+)
+
+cc_library(
+    name = "pull",
+    srcs = glob([
+        "src/**/*.cc",
+        "src/**/*.h",
+    ]),
+    hdrs = glob(
+        ["include/**/*.h"],
+    ) + [":export_header"],
+    local_defines = [
+        "HAVE_ZLIB",
+    ],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core",
+        "@civetweb",
+        "@net_zlib_zlib//:z",
+    ],
+)
+
+cc_library(
+    name = "pull_internal_headers",
+    hdrs = glob(
+        ["src/detail/*.h"],
+    ),
+    strip_include_prefix = "src",
+    visibility = ["//pull/tests:__subpackages__"],
+    deps = [
+        "//core",
+    ],
+)

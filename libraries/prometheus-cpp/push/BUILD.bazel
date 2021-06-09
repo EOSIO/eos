@@ -1,0 +1,29 @@
+load("//bazel:export_header.bzl", "generate_dummy_export_header")
+
+generate_dummy_export_header(
+    name = "export_header",
+    basename = "PROMETHEUS_CPP_PUSH",
+    header = "include/prometheus/detail/push_export.h",
+)
+
+cc_library(
+    name = "push",
+    srcs = glob([
+        "src/**/*.cc",
+        "src/**/*.h",
+    ]),
+    hdrs = glob(
+        ["include/**/*.h"],
+    ) + [":export_header"],
+    linkopts = select({
+        "//:windows": [],
+        "//:windows_msvc": [],
+        "//conditions:default": ["-lpthread"],
+    }),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core",
+        "@com_github_curl//:curl",
+    ],
+)
