@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-VERS=`sw_vers -productVersion | awk '/10\.14\..*/{print $0}'`
+VERS=`sw_vers -productVersion | awk '/10\.15\..*/{print $0}'`
 if [[ -z "$VERS" ]]; then
-   VERS=`sw_vers -productVersion | awk '/10\.15.*/{print $0}'`
+   VERS=`sw_vers -productVersion | awk '/11\.*.*/{print $0}'`
    if [[ -z $VERS ]]; then
       echo "Error, unsupported OS X version"
       exit -1
    fi
-   MAC_VERSION="catalina"
+   MAC_VERSION="big sur"
 else
-   MAC_VERSION="mojave"
+   MAC_VERSION="catalina"
 fi
 
 NAME="${PROJECT}-${VERSION}.${MAC_VERSION}.bottle"
