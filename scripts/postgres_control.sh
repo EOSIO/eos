@@ -26,6 +26,8 @@
 ########################################################################################################################################################
 if [ "$CI" = "true" ]; then
    PG_CTL=`which pg_ctl 2>/dev/null`
+   PSQL=$PostgreSQL_ROOT/bin/psql
+   PGDATA=/usr/local/pgsql/data
    if [ -z $PG_CTL ]; then 
      if [ -f "$PostgreSQL_ROOT/bin/pg_ctl" ]; then
          # CentOS
@@ -60,14 +62,14 @@ if [ "$CI" = "true" ]; then
          case "$1" in 
          start)
             su - postgres -c "$PG_CTL -D /usr/local/pgsql/data  start"
-            su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
-            if [ ! -z "$2" ]; then su - postgres -c "psql -q -c \"$2\""  > /dev/null; fi
+            su - postgres -c "$PSQL -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
+            if [ ! -z "$2" ]; then su - postgres -c "$PSQL -q -c \"$2\""  > /dev/null; fi
             ;;
          stop)
             su - postgres -c "$PG_CTL stop"
             ;;
          exec)
-            su - postgres -c "psql -U postgres -q -c \"$2\""
+            su - postgres -c "$PSQL -U postgres -q -c \"$2\""
             ;;
          status)
             echo true 

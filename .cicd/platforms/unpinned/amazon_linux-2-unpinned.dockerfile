@@ -33,6 +33,7 @@ RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.
     cd .. && rm -rf postgres-REL_13_3
 ENV PostgreSQL_ROOT=/usr/local/pgsql
 ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig:/usr/local/lib64/pkgconfig
+ENV PATH="/usr/local/pgsql/bin:${PATH}"
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
@@ -49,5 +50,5 @@ RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/npm" /usr/local/bin/npm
 # setup Postgress
-RUN useradd postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
+RUN useradd -m postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
 ENV PGDATA=/usr/local/pgsql/data 
