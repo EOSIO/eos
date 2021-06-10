@@ -1,3 +1,5 @@
+// base class for HTTP session objects
+
 #pragma once
 
 #include "common.hpp"
@@ -54,8 +56,9 @@ namespace eosio {
                     conn.send_response("The resource '" + std::string(target) + "' was not found.",
                                 static_cast<int>(http::status::not_found)); 
                 };
-
-                //fc_ilog( logger, "detect bad target" ); 
+                
+                auto tgtStr = req.target().data();
+                fc_ilog( logger, "detect bad target ${tgt}", ("tgt", tgtStr) ); 
                 // Request path must be absolute and not contain "..".
                 if( req.target().empty() ||
                     req.target()[0] != '/' ||
@@ -69,7 +72,7 @@ namespace eosio {
                     if(!allow_host(req))
                         return;
 
-                    //fc_ilog( logger, "set HTTP headers" ); 
+                    fc_ilog( logger, "set HTTP headers" ); 
 
                     if( !plugin_state_->access_control_allow_origin.empty()) {
                         res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
@@ -87,7 +90,7 @@ namespace eosio {
                     // Respond to options request
                     if(req.method() == http::verb::options)
                     {
-                        //fc_ilog( logger, "send_response(\"\")" ); 
+                        fc_ilog( logger, "send_response(\"\")" ); 
                         send_response("", static_cast<int>(http::status::ok));
                         return;
                     }
@@ -99,9 +102,8 @@ namespace eosio {
                     // look for the URL handler to handle this reosouce
                     auto handler_itr = plugin_state_->url_handlers.find( resource );
                     if( handler_itr != plugin_state_->url_handlers.end()) {
-                        // c
                         std::string body = req.body();
-                        //fc_ilog( logger, "invoking handler_itr-second() " ); 
+                        fc_ilog( logger, "invoking handler_itr->second() body.size()= ${bs}", ("bs", body.size()) ); 
                         handler_itr->second( get_shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
