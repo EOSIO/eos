@@ -11,36 +11,36 @@
 #include <boost/asio/basic_stream_socket.hpp>
 
 #include <string>
+#include <sstream>
 
 namespace eosio {
 
   using boost::asio::local::stream_protocol;
 
-  // class local_stream : public stream_protocol::iostream {
-  //     local_stream(stream_protocol::socket&& sock) : stream_proocol::iosream(sock) { }
-
-
-  // }
-
   using local_stream = beast::basic_stream<
     stream_protocol,
+  #if BOOST_VERSION < 107300
+    asio::executor,
+  #else
     asio::any_io_executor,
+  #endif
     beast::unlimited_rate_policy>;
 
   class unix_socket_session 
     : public std::enable_shared_from_this<unix_socket_session>
-    , public http_session_base
+    , public http_session_base 
+    
   {    
-    protected:
+    public:
       // The socket used to communicate with the client.
       // stream_protocol::socket socket_;
       local_stream stream_; 
 
       // Buffer used to store data received from the client.
-      // std::array<char, 4096> in_data_;
       beast::flat_buffer buffer_;
       beast::error_code beast_ec_;
 
+    public:
       virtual bool allow_host(const http::request<http::string_body>& req) override { 
           // TODO 
           return true;
@@ -48,12 +48,12 @@ namespace eosio {
 
       void do_read()
       {
-          //fc_ilog( logger, "get_lowest_layer()" ); 
           // Set the timeout.
-          // beast::get_lowest_layer(
-          //    derived().stream()).expires_after(std::chrono::seconds(30));
+          beast::get_lowest_layer(
+              stream_).expires_after(std::chrono::seconds(30));
 
           fc_ilog( logger, "async_read()" ); 
+
           // Read a request
           
           http::async_read(
@@ -62,11 +62,7 @@ namespace eosio {
               req_parser_,
               beast::bind_front_handler(
                   &unix_socket_session::on_read,
-                  shared_from_this()));
-
-          // auto bytes_read = http::read(stream_, buffer_, req_parser_, beast_ec_);
-          
-          // on_read(beast_ec_, bytes_read);
+                  shared_from_this()));                  
       }
 
       void on_read(beast::error_code ec,
@@ -76,29 +72,30 @@ namespace eosio {
 
           // This means they closed the connection
           if(ec == http::error::end_of_stream)
+          // if(ec == asio::error::eof)
               return do_eof();
 
-          if(ec && ec != asio::ssl::error::stream_truncated) {
-              auto errCodeStr = std::to_string(beast_ec_.value());
+          if(ec) {
+              auto errCodeStr = std::to_string(ec.value());
               fc_elog( logger, "unix_socket_session::on_read() failed error code ${ec}", ("ec", errCodeStr));
               
               return;
           }
 
+          // Hande the parsed request
           auto req = req_parser_.get();
-          // Send the response
           handle_request(std::move(req));
       }
 
       void on_write(bool close,
+                    // boost::system::error_code ec,
                     beast::error_code ec,
                     std::size_t bytes_transferred)
       {
-          //fc_ilog( logger, "ignore_unused()" ); 
           boost::ignore_unused(bytes_transferred);
 
           if(ec) {
-              beast_ec_ = ec;
+              // beast_ec_ = ec;
               fc_elog( logger, "unix_socket_session::on_write() failed");
               handle_exception();
               return;
@@ -111,12 +108,7 @@ namespace eosio {
               return do_eof();
           }
 
-          // We're done with the response so delete it
-          // res_ = nullptr;
-
-          //fc_ilog( logger, "do_read()" ); 
-
-          // Read another request
+          // Read another request if connection has not been closed
           do_read();
       }
 
@@ -153,6 +145,7 @@ namespace eosio {
         // on the I/O objects in this session. Although not strictly necessary
         // for single-threaded contexts, this example code is written to be
         // thread-safe by default.
+        
         asio::dispatch(stream_.get_executor(),
                     beast::bind_front_handler(
                         &unix_socket_session::do_read,
@@ -164,10 +157,14 @@ namespace eosio {
       }
 
      virtual void send_response(std::optional<std::string> body, int code) override {
-        fc_ilog( logger, "unix_socket_session: send_response()");
+        //fc_ilog( logger, "unix_socket_session: send_response()");
+
+        // Determine if we should close the connection after
+        bool close = !(plugin_state_->keep_alive) || res_.need_eof();
+
         res_.result(code);
         if(body.has_value()) {
-            fc_ilog( logger, "unix_socket_session: send_response() body size= ${bs}",  ("bs", body->size()) );
+            //fc_ilog( logger, "unix_socket_session: send_response() body size= ${bs}",  ("bs", body->size()) );
             res_.body() = *body;        
         }
         else { 
@@ -187,8 +184,7 @@ namespace eosio {
         //   );
         http::response_serializer<http::string_body> sr{res_};
         auto bytes_written = http::write(stream_, sr, beast_ec_);
-        on_write(true, beast_ec_, bytes_written);
-
+        on_write(close, beast_ec_, bytes_written);
       }
 
       virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
@@ -216,11 +212,10 @@ namespace eosio {
 
       unix_socket_listener(asio::io_context* ioc, 
                            std::shared_ptr<http_plugin_state> plugin_state)
-        : isListening_(false)
-        , plugin_state_(plugin_state)
+        : plugin_state_(plugin_state)
         , ioc_(ioc)
         , acceptor_(asio::make_strand(*ioc))
-        //, acceptor_(asio::make_strand(*ioc))
+        , isListening_(false)
       { }
 
       virtual ~unix_socket_listener() = default; 
@@ -229,9 +224,9 @@ namespace eosio {
         if (isListening_) return;
 
         // delete the old socket
-        std::string endpt_str;
-        (std::stringstream() << endpoint) >> endpt_str;
-        ::unlink(endpt_str.c_str());
+        auto ss = std::stringstream();
+        ss << endpoint;
+        ::unlink(ss.str().c_str());
 
         boost::system::error_code ec;
         fc_ilog( logger, "acceptor_.open()" ); 
@@ -252,12 +247,6 @@ namespace eosio {
             fc_elog(logger, "unix_socket_listener::listen() failed to set_option 'reuse_address' error code ${ec}", ("ec", errCodeStr));
             throw boost::system::system_error(ec, "stream_protocol::acceptor::set_option()");
         }
-        // acceptor_.set_option(asio::socket_base::linger(false, 0), ec);
-        // if(ec)  {
-        //     auto errCodeStr = std::to_string(ec.value());
-        //     fc_elog(logger, "unix_socket_listener::listen() failed to set_option 'linger' error code ${ec}", ("ec", errCodeStr));
-        //     throw boost::system::system_error(ec, "stream_protocol::acceptor::set_option()");
-        // }
 
         fc_ilog( logger, "acceptor_.bind()" ); 
         // Bind to the server address
@@ -293,29 +282,12 @@ namespace eosio {
       {
         fc_ilog(logger, "unix_socket_listener::do_accept() calling async_accept");
 
-        
-        // acceptor_.async_accept(
-        //     asio::make_strand(*ioc_),
-        //     [this](boost::system::error_code ec, stream_protocol::socket socket)
-        //     {
-        //       if (!ec) {
-        //         std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket))->run();
-        //       } else {
-        //         auto errCodeStr = std::to_string(ec.value());
-        //         fc_elog( logger, "unix_socket_listener::do_accept() error code ${ec}", ("ec", errCodeStr));
-        //       }
-        //       do_accept();
-        //     });
-            
-        auto sh_fr_ths = this->shared_from_this();
-
-        //fc_ilog( logger, "acceptor_.async_accept()" ); 
         // The new connection gets its own strand
         acceptor_.async_accept(
             asio::make_strand(*ioc_),
             beast::bind_front_handler(
                 &unix_socket_listener::on_accept,
-                sh_fr_ths));
+                this->shared_from_this()));
       }
 
       void on_accept(beast::error_code ec, stream_protocol::socket socket) {

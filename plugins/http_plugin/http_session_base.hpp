@@ -65,9 +65,6 @@ namespace eosio {
                     req.target().find("..") != beast::string_view::npos)
                     return bad_request("Illegal request-target", *this);
 
-                // Cache the size since we need it after the move
-                // auto const size = body.size();
-
                 try {
                     if(!allow_host(req))
                         return;

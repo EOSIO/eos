@@ -147,11 +147,6 @@ namespace eosio {
                     return derived().do_eof();
                 }
 
-                // We're done with the response so delete it
-                // res_ = nullptr;
-
-                //fc_ilog( logger, "do_read()" ); 
-
                 // Read another request
                 do_read();
             }           
@@ -163,14 +158,13 @@ namespace eosio {
 
             virtual void send_response(std::optional<std::string> body, int code) override {
                 // Determine if we should close the connection after
-                // close_ = res_.need_eof();                
+                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
                 res_.result(code);
                 if(body.has_value())
                     res_.body() = *body;        
 
                 //fc_ilog( logger, "res_.prepare_payload()" ); 
-
                 res_.prepare_payload();
 
                 // Write the response
@@ -180,7 +174,7 @@ namespace eosio {
                     beast::bind_front_handler(
                         &beast_http_session::on_write,
                         derived().shared_from_this(),
-                        true) // self._res.need_eof())
+                        close) 
                     );
             }
     }; // end class beast_http_session
@@ -315,16 +309,14 @@ namespace eosio {
 
             void do_eof()
             {
-                /*
                 // Set the timeout.
-                beast::get_lowest_layer(*stream_).expires_after(std::chrono::seconds(30));
+                beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
                 // Perform the SSL shutdown
-                stream_->async_shutdown(
+                stream_.async_shutdown(
                     beast::bind_front_handler(
                         &ssl_session::on_shutdown,
-                        shared_from_this()));
-                        */
+                        shared_from_this()));                        
             }
 
             void on_shutdown(beast::error_code ec)
