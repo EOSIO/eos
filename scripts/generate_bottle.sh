@@ -3,7 +3,7 @@ set -eo pipefail
 
 VERS=`sw_vers -productVersion | awk '/10\.15\..*/{print $0}'`
 if [[ -z "$VERS" ]]; then
-   VERS=`sw_vers -productVersion | awk '/11\.*.*/{print $0}'`
+   VERS=`sw_vers -productVersion | awk '/11\..*/{print $0}'`
    if [[ -z $VERS ]]; then
       echo "Error, unsupported OS X version"
       exit -1
