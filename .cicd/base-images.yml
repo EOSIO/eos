@@ -3,8 +3,8 @@ steps:
     
   - label: ":darwin: macOS 10.15 - Base Image Pinned"
     command:
-      - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
-      - "cd eos && ./.cicd/platforms/pinned/macos-10.15-pinned.sh"
+      - "brew update"
+      - "brew install eosio"
     plugins:
       - EOSIO/anka#v0.6.1:
           debug: true
