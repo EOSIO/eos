@@ -79,7 +79,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    
+
   - label: ":aws: Amazon_Linux 2 - Base Image Unpinned"
     command:
       - "./.cicd/generate-base-images.sh"
