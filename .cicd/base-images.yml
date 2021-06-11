@@ -3,9 +3,9 @@ steps:
     
   - label: ":darwin: macOS 10.15 - Base Image Pinned"
     command:
-      - "echo '$ brew update' && brew update"
-      - "echo '$ brew upgrade' && brew upgrade"
-      - "echo '$ brew install eosio' && brew install eosio"
+      - "echo '\$ brew update' && brew update"
+      - "echo '\$ brew upgrade' && brew upgrade"
+      - "echo '\$ brew install eosio' && brew install eosio"
     plugins:
       - EOSIO/anka#v0.6.1:
           debug: true
