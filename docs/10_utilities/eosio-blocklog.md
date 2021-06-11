@@ -25,7 +25,7 @@ eosio-blocklog <options> ...
 Option (=default) | Description
 -|-
 `--blocks-dir arg (="blocks")` | The location of the blocks directory (absolute path or relative to the current directory)
-`--blocks-filebase arg (="blocks")` | the name of the blocks log/index files without file extension (absolute path or relative to the current directory). This can only used with `extract-blocklog`.
+`--blocks-filebase arg (="blocks")` | the name of the blocks log/index files without file extension (absolute path or relative to the current directory). This is used with `extract-blocklog`.
 `--state-history-dir arg (="state-history")` | The location of the `state-history` directory (absolute path or relative to the current dir)
 `-o [ --output-file ] arg` | The file to write the generated output to (absolute or relative path). If not specified then output is to `stdout`
 `-f [ --first ] arg (=0)` | The first block number to log or the first block to keep if `trim-blocklog` specified
