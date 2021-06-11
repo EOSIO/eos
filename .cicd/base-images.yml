@@ -68,6 +68,17 @@ steps:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     timeout: 180
+
+  - label: ":ubuntu: Ubuntu 18.04 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: ubuntu-18.04-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
     
   - label: ":aws: Amazon_Linux 2 - Base Image Unpinned"
     command:

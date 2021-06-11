@@ -81,6 +81,18 @@ steps:
           cd: ~
     timeout: 180
 
+  - label: ":ubuntu: Ubuntu 18.04 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "ubuntu:18.04"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "apt update && apt upgrade -y && apt install -y git"
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
   - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
     env:
       DEBIAN_FRONTEND: "noninteractive" 
