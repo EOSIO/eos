@@ -78,11 +78,14 @@ class SecurityGroup(object):
 
         self.nonParticipants.extend(nodes)
 
+    @staticmethod
+    def toString(nodes):
+        return "[[{}]]".format(','.join(['"{}"'.format(node.getParticipant()) for node in nodes]))
+
     # create the action payload for an add or remove action
     @staticmethod
     def createAction(nodes):
-        return None if len(nodes) == 0 else \
-            "[[{}]]".format(','.join(['"{}"'.format(node.getParticipant()) for node in nodes]))
+        return None if len(nodes) == 0 else SecurityGroup.toString(nodes)
 
     # sends actions to add/remove the provided nodes to/from the network's security group
     def editSecurityGroup(self, addNodes=[], removeNodes=[], node=None):
@@ -134,9 +137,10 @@ class SecurityGroup(object):
             if part.pid is None:
                 continue
             if part.waitForTransFinalization(transId) == None:
-                Utils.errorExit("Transaction: {}, never finalized".format(trans))
+                Utils.errorExit("Transaction: {}, never finalized".format(transId))
             headAtTransFinalized = part.getBlockNum()
         assert headAtTransFinalized, "None of the participants are currently running, no reason to call verifyParticipantsTransactionFinalized"
+        Utils.Print("Head when transaction been finalized: {}".format(headAtTransFinalized))
         return headAtTransFinalized
 
     # verify that the block for the transaction ID is never finalized in nonParticipants
@@ -161,9 +165,12 @@ class SecurityGroup(object):
             if nonParticipant.pid is None:
                 continue
             nonParticipantPostLIB = nonParticipant.getBlockNum(blockType=BlockType.lib)
+            Utils.Print("node {} lib = {}".format(nonParticipant.nodeId, nonParticipantPostLIB))
             assert nonParticipantPostLIB < publishBlock, "Participants not in security group should not have advanced LIB to {}, but it has advanced to {}".format(publishBlock, nonParticipantPostLIB)
             nonParticipantHead = nonParticipant.getBlockNum()
+            Utils.Print("node {} head = {}".format(nonParticipant.nodeId, nonParticipantHead))
             if nonParticipantHead > headAtTransFinalization:
+                Utils.Print("non-participant head is beyond transaction head, checking that producer is out of participating group")
                 producer = nonParticipant.getBlockProducerByNum(nonParticipantHead)
                 assert producer in expectedProducers, \
                        "Participants should not advance head to {} unless they are producing their own blocks. It has advanced to {} with producer {}, \
