@@ -3,8 +3,8 @@ steps:
     
   - label: ":darwin: macOS 10.15 - Base Image Pinned"
     command:
-      - "brew update"
-      - "brew install eosio"
+      - "echo '$ brew update' && brew update"
+      - "echo '$ brew install eosio' && brew install eosio"
     plugins:
       - EOSIO/anka#v0.6.1:
           debug: true
