@@ -13,6 +13,11 @@ link_text: eosio-blocklog
 * Prune context-free data within given transaction and block number.
 * Output the results of the operation to a file or `stdout` (default).
 
+## Usage
+```sh
+eosio-blocklog <options> ...
+```
+
 ## Options
 
 `eosio-blocklog` supports the following options:
