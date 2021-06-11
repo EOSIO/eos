@@ -11,6 +11,11 @@ link_text: eosio-blocklog
 * Perform consistency test between `blocks.log` and `blocks.index`.
 * Output the results of the operation to a file or `stdout` (default).
 
+## Usage
+```sh
+eosio-blocklog <options> ...
+```
+
 ## Options
 
 Option (=default) | Description
