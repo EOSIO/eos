@@ -39,9 +39,10 @@ Option (=default) | Description
 `--block-num arg (=0)` | The block number which contains the transactions to be pruned
 `-t [ --transaction ] arg` | The transaction id to be pruned
 `--prune-transactions` | Prune the context free data and signatures from specified transactions of specified block-num
-`--output-dir arg (=".")` | the output location for `split-blocklog` or `extract-blocklog`
+`--output-dir arg (=".")` | the output location for `split-blocklog`, `extract-blocklog`, or `merge-blocklogs`
 `--split-blocklog arg (=0)` | split the block log file based on the stride and store the result in the specified `output-dir`
 `--extract-blocklog` | Extract blocks from `blocks.log` and `blocks.index` and keep the original. Must give `blocks-dir` or `blocks-filebase`, `output-dir`, `first` and `last`
+`--merge-blocklogs` | Merge block log files in `blocks-dir` with the file pattern `blocks-\d+-\d+.[log,index]` to `output-dir` whenever possible. The files in `blocks-dir` will be kept without change. Must provide `blocks-dir` and `output-dir`
 `-h [ --help ]` | Print this help message and exit
 
 ## Remarks
