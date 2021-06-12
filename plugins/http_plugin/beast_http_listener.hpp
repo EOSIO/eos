@@ -44,13 +44,11 @@ namespace eosio {
                 , ctx_(ctx)
                 , plugin_state_(plugin_state)
                 , acceptor_(asio::make_strand(*ioc))
-                { fc_ilog( logger, "constructor called" ); }
+                { }
 
             virtual ~beast_http_listener() = default; 
 
             void listen(tcp::endpoint endpoint) {
-                fc_ilog( logger, "acceptor_.open()" ); 
-
                 if (isListening_) return;
 
                 beast::error_code ec;
@@ -61,8 +59,6 @@ namespace eosio {
                     return;
                 }
 
-
-                fc_ilog( logger, "acceptor_.set_option()" ); 
                 // Allow address reuse
                 acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
                 if(ec)  {
@@ -70,7 +66,6 @@ namespace eosio {
                     return;
                 }
 
-                fc_ilog( logger, "acceptor_.bind()" ); 
                 // Bind to the server address
                 acceptor_.bind(endpoint, ec);
                 if(ec)  {
@@ -106,17 +101,14 @@ namespace eosio {
 
         private:
             void do_accept() {
-                //fc_ilog( logger, "shared_from_this()" ); 
                 auto sh_fr_ths = this->shared_from_this();
 
-                //fc_ilog( logger, "acceptor_.async_accept()" ); 
                 // The new connection gets its own strand
                 acceptor_.async_accept(
                     asio::make_strand(*ioc_),
                     beast::bind_front_handler(
                         &beast_http_listener::on_accept,
                         sh_fr_ths));
-                //fc_ilog( logger, "acceptor_.async_accept() done" ); 
             }
 
             void on_accept(beast::error_code ec, tcp::socket socket) {
@@ -124,7 +116,6 @@ namespace eosio {
                     fail(ec, "accept");
                 }
                 else {
-                    fc_ilog( logger, "launch session" ); 
                     // Create the session object and run it
                     std::make_shared<T>(
                         std::move(socket),

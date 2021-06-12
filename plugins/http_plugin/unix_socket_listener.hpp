@@ -52,10 +52,7 @@ namespace eosio {
           beast::get_lowest_layer(
               stream_).expires_after(std::chrono::seconds(30));
 
-          fc_ilog( logger, "async_read()" ); 
-
           // Read a request
-          
           http::async_read(
               stream_,
               buffer_,
@@ -157,14 +154,11 @@ namespace eosio {
       }
 
      virtual void send_response(std::optional<std::string> body, int code) override {
-        //fc_ilog( logger, "unix_socket_session: send_response()");
-
         // Determine if we should close the connection after
         bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
         res_.result(code);
         if(body.has_value()) {
-            //fc_ilog( logger, "unix_socket_session: send_response() body size= ${bs}",  ("bs", body->size()) );
             res_.body() = *body;        
         }
         else { 
@@ -229,7 +223,6 @@ namespace eosio {
         ::unlink(ss.str().c_str());
 
         boost::system::error_code ec;
-        fc_ilog( logger, "acceptor_.open()" ); 
         // Open the acceptor
         acceptor_.open(endpoint.protocol(), ec);
         if(ec)  {
@@ -238,8 +231,6 @@ namespace eosio {
             throw boost::system::system_error(ec, "stream_protocol::acceptor::open()");
         }
 
-
-        fc_ilog( logger, "acceptor_.set_option()" ); 
         // Allow address reuse
         acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
         if(ec)  {
@@ -248,7 +239,6 @@ namespace eosio {
             throw boost::system::system_error(ec, "stream_protocol::acceptor::set_option()");
         }
 
-        fc_ilog( logger, "acceptor_.bind()" ); 
         // Bind to the server address
         acceptor_.bind(endpoint, ec);
         if(ec)  {
@@ -280,8 +270,6 @@ namespace eosio {
     private:
       void do_accept()
       {
-        fc_ilog(logger, "unix_socket_listener::do_accept() calling async_accept");
-
         // The new connection gets its own strand
         acceptor_.async_accept(
             asio::make_strand(*ioc_),
@@ -296,7 +284,6 @@ namespace eosio {
               fc_elog( logger, "unix_socket_listener::on_accept() error code ${ec}", ("ec", errCodeStr));
           }
           else {
-              fc_ilog( logger, "unix_socket_listener::on_accept() launch session" ); 
               // Create the session object and run it
               std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket))->run();       
           }

@@ -35,7 +35,6 @@ namespace eosio {
             {
                 auto &res = res_;
 
-                fc_ilog( logger, "res.version()" ); 
                 res.version(req.version());
                 res.set(http::field::content_type, "application/json");
                 res.keep_alive(req.keep_alive());
@@ -57,8 +56,6 @@ namespace eosio {
                                 static_cast<int>(http::status::not_found)); 
                 };
                 
-                auto tgtStr = req.target().data();
-                fc_ilog( logger, "detect bad target ${tgt}", ("tgt", tgtStr) ); 
                 // Request path must be absolute and not contain "..".
                 if( req.target().empty() ||
                     req.target()[0] != '/' ||
@@ -68,8 +65,6 @@ namespace eosio {
                 try {
                     if(!allow_host(req))
                         return;
-
-                    fc_ilog( logger, "set HTTP headers" ); 
 
                     if( !plugin_state_->access_control_allow_origin.empty()) {
                         res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
@@ -87,7 +82,6 @@ namespace eosio {
                     // Respond to options request
                     if(req.method() == http::verb::options)
                     {
-                        fc_ilog( logger, "send_response(\"\")" ); 
                         send_response("", static_cast<int>(http::status::ok));
                         return;
                     }
@@ -100,7 +94,6 @@ namespace eosio {
                     auto handler_itr = plugin_state_->url_handlers.find( resource );
                     if( handler_itr != plugin_state_->url_handlers.end()) {
                         std::string body = req.body();
-                        fc_ilog( logger, "invoking handler_itr->second() body.size()= ${bs}", ("bs", body.size()) ); 
                         handler_itr->second( get_shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 

@@ -93,12 +93,10 @@ namespace eosio {
 
             void do_read()
             {
-                //fc_ilog( logger, "get_lowest_layer()" ); 
                 // Set the timeout.
                 beast::get_lowest_layer(
                     derived().stream()).expires_after(std::chrono::seconds(30));
 
-                //fc_ilog( logger, "async_read()" ); 
                 // Read a request
                 http::async_read(
                     derived().stream(),
@@ -131,7 +129,6 @@ namespace eosio {
                           beast::error_code ec,
                           std::size_t bytes_transferred)
             {
-                //fc_ilog( logger, "ignore_unused()" ); 
                 boost::ignore_unused(bytes_transferred);
 
                 if(ec) {
@@ -164,7 +161,6 @@ namespace eosio {
                 if(body.has_value())
                     res_.body() = *body;        
 
-                //fc_ilog( logger, "res_.prepare_payload()" ); 
                 res_.prepare_payload();
 
                 // Write the response
