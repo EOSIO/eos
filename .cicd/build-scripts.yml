@@ -22,17 +22,6 @@ steps:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
 
-  - label: ":centos: CentOS 8 - Build Pinned"
-    plugins:
-      - docker#v3.3.0:
-          image: "centos:8"
-          always-pull: true
-    agents:
-      queue: "automation-eks-eos-builder-fleet"
-    command:
-      - "./scripts/eosio_build.sh -P -y"
-    timeout: 180
-
   - label: ":darwin: macOS 10.15 - Build Pinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
@@ -61,19 +50,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
-    
-  - label: ":ubuntu: Ubuntu 16.04 - Build Pinned"
-    plugins:
-      - docker#v3.3.0:
-          image: "ubuntu:16.04"
-          always-pull: true
-    agents:
-      queue: "automation-eks-eos-builder-fleet"
-    command:
-      - "apt update && apt upgrade -y && apt install -y git"
-      - "./scripts/eosio_build.sh -P -y"
-    timeout: 180
-    
+
   - label: ":ubuntu: Ubuntu 18.04 - Build Pinned"
     plugins:
       - docker#v3.3.0:
@@ -123,17 +100,6 @@ steps:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
 
-  - label: ":centos: CentOS 8 - Build UnPinned"
-    plugins:
-      - docker#v3.3.0:
-          image: "centos:8"
-          always-pull: true
-    agents:
-      queue: "automation-eks-eos-builder-fleet"
-    command:
-      - "./scripts/eosio_build.sh -y"
-    timeout: 180
-    
   - label: ":darwin: macOS 10.15 - Build UnPinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
