@@ -13,6 +13,9 @@
 #include <string>
 #include <sstream>
 
+#define ASYNC_WRITE 1
+#define ASYNC_READ 1
+
 namespace eosio {
 
   using boost::asio::local::stream_protocol;
@@ -53,6 +56,7 @@ namespace eosio {
               stream_).expires_after(std::chrono::seconds(30));
 
           // Read a request
+#if ASYNC_READ
           http::async_read(
               stream_,
               buffer_,
@@ -60,6 +64,11 @@ namespace eosio {
               beast::bind_front_handler(
                   &unix_socket_session::on_read,
                   shared_from_this()));                  
+#else
+        http::response_serializer<http::string_body> sr{res_};
+        auto bytes_read = http::read(stream_, buffer_, req_parser_, beast_ec_);
+        on_read(beast_ec, bytes_transferred);
+#endif 
       }
 
       void on_read(beast::error_code ec,
@@ -167,18 +176,20 @@ namespace eosio {
 
         res_.prepare_payload();
 
-        // do_write();
-        // http::async_write(
-        //   stream_,
-        //   res_,
-        //   beast::bind_front_handler(
-        //       &unix_socket_session::on_write,
-        //       shared_from_this(),
-        //       true) // self._res.need_eof())
-        //   );
+#if ASYNC_WRITE
+        http::async_write(
+            stream_,
+            res_,
+            beast::bind_front_handler(
+                 &unix_socket_session::on_write,
+                 shared_from_this(),
+                 close)
+        );
+#else
         http::response_serializer<http::string_body> sr{res_};
         auto bytes_written = http::write(stream_, sr, beast_ec_);
         on_write(close, beast_ec_, bytes_written);
+#endif 
       }
 
       virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
