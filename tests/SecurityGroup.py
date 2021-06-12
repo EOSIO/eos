@@ -136,6 +136,7 @@ class SecurityGroup(object):
         for part in self.participants:
             if part.pid is None:
                 continue
+            Utils.Print("Checking node {}".format(part.nodeId))
             if part.waitForTransFinalization(transId) == None:
                 Utils.errorExit("Transaction: {}, never finalized".format(transId))
             headAtTransFinalized = part.getBlockNum()

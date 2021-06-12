@@ -2,11 +2,13 @@
 
 from SecurityGroup import SecurityGroup
 from testUtils import Utils
+from testUtils import WaitSpec
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from TestHelper import TestHelper
+from Node import Node
 
-import time
+import re
 import signal
 import json
 import os
@@ -51,7 +53,7 @@ try:
     # without that flag node waits till next lib to arrive
     specificExtraNodeosArgs = { 0 : "--enable-stale-production",
                                 1 : "--enable-stale-production",
-                                3 : "--read-mode irreversible" }
+                                3 : "--read-mode irreversible --plugin eosio::net_api_plugin" }
     if not cluster.launch(pnodes=pnodes, 
                           totalNodes=totalNodes,
                           specificExtraNodeosArgs=specificExtraNodeosArgs,
@@ -109,11 +111,55 @@ try:
     # verify security group nodes are in sync after lib moved
     cluster.verifyInSync(specificNodes=secGroupNodes)
 
+    securityGroupEndpoints = []
+    for node in secGroupNodes:
+        curEndpoint = node.getListenEndpoint()
+        curEndpoint.replace("localhost", "0.0.0.0")
+        Print("node {} p2p-listen-endpoint is {}".format(node.nodeId, curEndpoint))
+        securityGroupEndpoints.append(curEndpoint)
+
     # verifying non-participants to stay disconnected from security group
     for node in nonSecGroupNodes:
         Print("node {} head block is {}".format(node.nodeId, node.getHeadBlockNum()))
         assert node.getHeadBlockNum() < trans_block_num, "node {} must not advance past {} block as it is not in security group".format(node.nodeId, trans_block_num)
+        
+        # just to be sure check that non-participant does have connection to any node from security group
+        foundConnection = False
+        for connection in node.getConnections():
+            p2p_address = connection["last_handshake"]["p2p_address"]
+            match = re.search("([a-z\.0-9]+:[0-9]{2,5}) ", p2p_address)
+            if match and len(match.groups()):
+                cur_address = match.groups()[0].replace("localhost", "0.0.0.0")
+                Print("node {} has connection from {}".format(node.nodeId, cur_address))
+                if cur_address in securityGroupEndpoints:
+                    Print("found connection to one of security group nodes, breaking")
+                    foundConnection = True
+                    break
+        assert foundConnection
 
+    # now let's make a snapshot with adding to group and then provide it to non-participant
+    trans = securityGroup.editSecurityGroup(addNodes=nonSecGroupNodes)
+    trans_block_num = secGroupNodes[0].getBlockNumByTransId(trans["transaction_id"], blocksAhead=3)
+    assert trans_block_num is not None
+    Print("security group update {} published on block {}".format(SecurityGroup.toString(nonSecGroupNodes), trans_block_num))
+
+    assert secGroupNodes[0].waitForTransFinalization(Node.getTransId(trans), timeout=WaitSpec.default())
+    cluster.verifyInSync(specificNodes=secGroupNodes)
+
+    # snapshot from participant node
+    snapshot3 = secGroupNodes[0].createSnapshot()
+    snapshot3_path = snapshot1["snapshot_name"]
+    Print("snapshot data: {}".format(json.dumps(snapshot3, indent=4, sort_keys=True)))
+
+    for node in nonSecGroupNodes:
+        node.kill(signal.SIGTERM)
+    cleanNodeData(nonSecGroupNodes)
+    for node in nonSecGroupNodes:
+        node.relaunch(cachePopen=True, addSwapFlags={"--snapshot" : snapshot3_path })
+
+    secGroupNodes.extend(nonSecGroupNodes)
+    cluster.verifyInSync(specificNodes=secGroupNodes)
+    
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, cluster.walletMgr, testSuccessful, True, True, keepLogs, True, dumpErrorDetails)
