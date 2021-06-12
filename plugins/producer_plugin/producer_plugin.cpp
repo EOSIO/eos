@@ -461,11 +461,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                                                                  chain.configured_subjective_signature_length_limit() );
 
          boost::asio::post(_thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, return_failure_trace,
-                                                          next{std::move(next)}, trx]() mutable {
+                                                          next{std::move(next)}, is_resource_payer_pf_activated, trx]() mutable {
             if( future.valid() ) {
                future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}, return_failure_trace]() mutable {
-                  auto exception_handler = [self, &next, trx{std::move(trx)}](fc::exception_ptr ex) {
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}, trx{std::move(trx)}, is_resource_payer_pf_activated, return_failure_trace]() mutable {
+                  auto exception_handler = [self, &next, trx{std::move(trx)}, is_resource_payer_pf_activated](fc::exception_ptr ex) {
+
                      fc_dlog(_trx_failed_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid}, auth: ${a} : ${why} ",
                             ("txid", trx->id())("a",trx->get_transaction().resource_payer(is_resource_payer_pf_activated))("why",ex->what()));
                      next(ex);
@@ -532,8 +533,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   }
                }
             } else {
-                _transaction_ack_channel.publish(priority::low,
-                                                 std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
+               if (!trx->read_only) {
+                  _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
+               }
                 if (_pending_block_mode == pending_block_mode::producing) {
                     fc_dlog(_trx_successful_trace_log,
                             "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}, auth: ${a}",
@@ -624,13 +626,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   }
                   exhausted = block_is_exhausted();
                } else {
-                  _subjective_billing.subjective_bill_failure( first_auth, trace->elapsed, fc::time_point::now() );
+                  _subjective_billing.subjective_bill_failure( resource_payer, trace->elapsed, fc::time_point::now() );
                   if( return_failure_trace ) {
                      send_response( trace );
                   } else {
                      auto e_ptr = trace->except->dynamic_copy_exception();
                      send_response( e_ptr );
                   }
+
                }
             } else {
                if( persist_until_expired && !_disable_persist_until_expired ) {

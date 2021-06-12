@@ -119,34 +119,21 @@ namespace eosio { namespace chain {
       }
 
       // check for resource_payer extension
-      bool has_res_pyr = false;
-      resource_payer res_pyr;
-      if( control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) ) {
-         if (trx.transaction_extensions.size() > 0) {
-            std::find_if(trx.transaction_extensions.begin(), trx.transaction_extensions.end(),
-                         [&](auto &elem) {
-                            bool ret = elem.first == transaction_extension_id::resource_payer_id;
-                            if (ret) {
-                               fc::raw::unpack(elem.second, res_pyr);
-                               has_res_pyr = true;
-                            }
-                            return ret;
-                         });
-         }
+      auto res_pyr = trx.resource_payer_info( control.is_builtin_activated(builtin_protocol_feature_t::resource_payer) );
 
-         // Possibly lower net_limit to the optional limit set in resource_payer extension
-         if (has_res_pyr && res_pyr.max_net_bytes <= net_limit) {
-            net_limit = res_pyr.max_net_bytes;
-            net_limit_due_to_block = false;
-         }
+      // Possibly lower net_limit to the optional limit set in resource_payer extension
+      if( res_pyr && res_pyr->max_net_bytes <= net_limit ) {
+         net_limit = res_pyr->max_net_bytes;
+         net_limit_due_to_block = false;
+         use_resource_payer_net_limit = true;
+      }
 
-         // Possibly lower objective_duration_limit to optional limit set in resource_payer extension
-         if (has_res_pyr && res_pyr.max_cpu_us > 0 && res_pyr.max_cpu_us <= objective_duration_limit.count()) {
-            objective_duration_limit = fc::microseconds(res_pyr.max_cpu_us);
-            // TODO resource limit exceptions (update billing_timer_exception_code in EPE-932)
-            // billing_timer_exception_code = TODO;
-            _deadline = start + objective_duration_limit;
-         }
+      // Possibly lower objective_duration_limit to optional limit set in resource_payer extension
+      if( res_pyr && res_pyr->max_cpu_us > 0 && res_pyr->max_cpu_us <= uint64_t(objective_duration_limit.count()) ) {
+         objective_duration_limit = fc::microseconds(res_pyr->max_cpu_us);
+         billing_timer_exception_code = resource_payer_cpu_exceeded::code_value;
+         use_resource_payer_cpu_limit = true;
+         _deadline = start + objective_duration_limit;
       }
 
       initial_objective_duration_limit = objective_duration_limit;
