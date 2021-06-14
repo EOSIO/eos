@@ -115,8 +115,8 @@ function getOS(environment)
         return 'High Sierra';
     if (/mojave/.test(label))
         return 'Mojave';
-    if (/ubuntu.*16.*04/.test(label) || /ubuntu.*16(?!.*10)/.test(label))
-        return 'Ubuntu 16.04';
+    if (/ubuntu.*20.*04/.test(label) || /ubuntu.*20(?!.*10)/.test(label))
+        return 'Ubuntu 20.04';
     if (/ubuntu.*18.*04/.test(label) || /ubuntu.*18(?!.*10)/.test(label))
         return 'Ubuntu 18.04';
     if (/docker/.test(label))

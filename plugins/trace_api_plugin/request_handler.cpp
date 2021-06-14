@@ -112,6 +112,14 @@ namespace {
                      ("actions", process_actions<action_trace_v1>(std::get<std::vector<action_trace_v1>>(t.actions), data_handler, yield))
                      (std::move(common_mvo)));
             }
+            else if constexpr(std::is_same_v<TransactionTrace, transaction_trace_v3>){
+               result.emplace_back(
+                  fc::mutable_variant_object()
+                     ("id", t.id.str())
+                     ("actions", process_actions<action_trace_v1>(std::get<std::vector<action_trace_v1>>(t.actions), data_handler, yield))
+                     (std::move(common_mvo))
+                     ("bill_to_accounts", t.bill_to_accounts));
+            }
          }
 
       }
@@ -145,12 +153,17 @@ namespace eosio::trace_api::detail {
                 ("transactions", process_transactions<transaction_trace_v1>( block_trace.transactions_v1, data_handler, yield )) ;
        }else if(std::holds_alternative<block_trace_v2>(trace)){
           auto& block_trace = std::get<block_trace_v2>(trace);
+
+          auto transactions = std::visit([&](auto&& arg){
+             return process_transactions(arg, data_handler, yield);
+          }, block_trace.transactions);
+
           return	fc::mutable_variant_object()
                 (std::move(common_mvo))
                 ("transaction_mroot", block_trace.transaction_mroot)
                 ("action_mroot", block_trace.action_mroot)
                 ("schedule_version", block_trace.schedule_version)
-                ("transactions", process_transactions( std::get<std::vector<transaction_trace_v2>>(block_trace.transactions), data_handler, yield )) ;
+                ("transactions", transactions) ;
        }else{
           return fc::mutable_variant_object();
        }

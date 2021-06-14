@@ -450,9 +450,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             if (tx_read_only){
                 tx_ro_print_json = true;
                 packed_transaction_v0 pt_v0(trx, compression);
-                name account_name = trx.actions.size() > 0 ? trx.actions[0].account : ""_n;
                 auto args = fc::mutable_variant_object()
-                        ("account_name", account_name)
                         ("return_failure_traces", tx_rtn_failure_trace)
                         ("transaction", pt_v0);
                 return call(push_ro_txns_func, args);
@@ -514,7 +512,9 @@ void print_action( const fc::variant& at ) {
    const auto& act = at["act"].get_object();
    auto code = act["account"].as_string();
    auto func = act["name"].as_string();
-   auto args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+   string args;
+   if(act.contains("data"))
+      args = fc::json::to_string( act["data"], fc::time_point::maximum() );
    auto console = at["console"].as_string();
 
    /*
@@ -3135,14 +3135,16 @@ int main( int argc, char** argv ) {
               auto code = act["account"].as_string();
               auto func = act["name"].as_string();
               string args;
-              if( prettyact ) {
-                  args = fc::json::to_pretty_string( act["data"] );
-              }
-              else {
-                 args = fc::json::to_string( act["data"], fc::time_point::maximum() );
-                 if( !fullact ) {
-                    args = args.substr(0,60) + "...";
-                 }
+              if(act.contains("data")) {
+                  if( prettyact ) {
+                        args = fc::json::to_pretty_string( act["data"] );
+                  }
+                  else {
+                     args = fc::json::to_string( act["data"], fc::time_point::maximum() );
+                     if( !fullact ) {
+                        args = args.substr(0,60) + "...";
+                     }
+                  }
               }
               out << std::setw(24) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
 

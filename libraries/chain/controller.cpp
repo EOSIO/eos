@@ -1179,6 +1179,7 @@ struct controller_impl {
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
+
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
@@ -1216,6 +1217,7 @@ struct controller_impl {
 
          try {
             const transaction& trn = trx->packed_trx()->get_transaction();
+
             if( trx->implicit ) {
                EOS_ASSERT( !explicit_net_usage_words, transaction_exception, "NET usage cannot be explicitly set for implicit transactions" );
                trx_context.init_for_implicit_trx();
@@ -1234,9 +1236,12 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
+               auto payer = trn.resource_payer_info(self.is_builtin_activated(builtin_protocol_feature_t::resource_payer));
+
                authorization.check_authorization(
                        trn.actions,
                        trx->recovered_keys(),
+                       payer,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
@@ -1643,6 +1648,8 @@ struct controller_impl {
                      "protocol feature with digest '${digest}' has already been activated",
                      ("digest", f)
          );
+         
+         protocol_features.validate_feature(pfs.get_protocol_feature(f));
 
          auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr]
                                    ( const digest_type& f ) -> bool
@@ -2472,6 +2479,8 @@ void controller::preactivate_feature( uint32_t action_id, const digest_type& fea
                ("digest", feature_digest)
    );
 
+   my->protocol_features.validate_feature(pfs.get_protocol_feature(feature_digest));
+
    if (auto dm_logger = get_deep_mind_logger()) {
       const auto feature = pfs.get_protocol_feature(feature_digest);
 
@@ -3214,6 +3223,10 @@ fc::logger* controller::get_deep_mind_logger()const {
 void controller::enable_deep_mind(fc::logger* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
+}
+
+void controller::enable_security_groups(bool enabled) {
+   my->protocol_features.enable_security_groups(enabled);
 }
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)

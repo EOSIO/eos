@@ -3205,7 +3205,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       auto trx_trace = fc_create_trace_with_id("TransactionReadOnly", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "send_transaction");
+      fc_add_tag(trx_span, "method", "push_ro_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
             [this, token=trx_trace.get_token(), input_trx, params, next]
@@ -3237,7 +3237,8 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                } catch( chain::abi_exception& ) {
                   output = *trx_trace_ptr;
                }
-               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( params.account_name );
+               const auto& account_name = input_trx->get_transaction().actions[0].account;
+               const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( account_name );
                const auto& receipts = db.get_pending_trx_receipts();
                vector<transaction_id_type>  pending_transactions;
                pending_transactions.reserve(receipts.size());

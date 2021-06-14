@@ -331,6 +331,8 @@ namespace eosio { namespace chain {
          fc::logger* get_deep_mind_logger() const;
          void enable_deep_mind( fc::logger* logger );
 
+         void enable_security_groups(bool enable);
+
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
          vm::wasm_allocator&  get_wasm_allocator();
 #endif

@@ -119,50 +119,50 @@ public:
    void disable_account( chain::account_name a ) { _disabled_accounts.emplace( a ); }
 
    /// @param in_pending_block pass true if pt's bill time is accounted for in the pending block
-   void subjective_bill( const transaction_id_type& id, const fc::time_point& expire, const account_name& first_auth,
+   void subjective_bill( const transaction_id_type& id, const fc::time_point& expire, const account_name& resource_payer,
                          const fc::microseconds& elapsed, bool in_pending_block )
    {
-      if( !_disabled && !_disabled_accounts.count( first_auth ) ) {
+      if( !_disabled && !_disabled_accounts.count( resource_payer ) ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
          auto p = _trx_cache_index.emplace(
                trx_cache_entry{id,
-                               first_auth,
+                               resource_payer,
                                bill,
                                expire} );
          if( p.second ) {
-            _account_subjective_bill_cache[first_auth].pending_cpu_us += bill;
+            _account_subjective_bill_cache[resource_payer].pending_cpu_us += bill;
             if( in_pending_block ) {
-               _block_subjective_bill_cache[first_auth] += bill;
+               _block_subjective_bill_cache[resource_payer] += bill;
             }
          }
       }
    }
 
-   void subjective_bill_failure( const account_name& first_auth, const fc::microseconds& elapsed, const fc::time_point& now )
+   void subjective_bill_failure( const account_name& resource_payer, const fc::microseconds& elapsed, const fc::time_point& now )
    {
-      if( !_disabled && !_disabled_accounts.count( first_auth ) ) {
+      if( !_disabled && !_disabled_accounts.count( resource_payer ) ) {
          uint32_t bill = std::max<int64_t>( 0, elapsed.count() );
          const auto time_ordinal = time_ordinal_for(now);
-         _account_subjective_bill_cache[first_auth].expired_accumulator.add(bill, time_ordinal, expired_accumulator_average_window);
+         _account_subjective_bill_cache[resource_payer].expired_accumulator.add(bill, time_ordinal, expired_accumulator_average_window);
       }
    }
 
-   uint32_t get_subjective_bill( const account_name& first_auth, const fc::time_point& now ) const {
-      if( _disabled || _disabled_accounts.count( first_auth ) ) return 0;
+   uint32_t get_subjective_bill( const account_name& resource_payer, const fc::time_point& now ) const {
+      if( _disabled || _disabled_accounts.count( resource_payer ) ) return 0;
       const auto time_ordinal = time_ordinal_for(now);
       const subjective_billing_info* sub_bill_info = nullptr;
-      auto aitr = _account_subjective_bill_cache.find( first_auth );
+      auto aitr = _account_subjective_bill_cache.find( resource_payer );
       if( aitr != _account_subjective_bill_cache.end() ) {
          sub_bill_info = &aitr->second;
       }
       uint64_t in_block_pending_cpu_us = 0;
-      auto bitr = _block_subjective_bill_cache.find( first_auth );
+      auto bitr = _block_subjective_bill_cache.find( resource_payer );
       if( bitr != _block_subjective_bill_cache.end() ) {
          in_block_pending_cpu_us = bitr->second;
       }
 
       if (sub_bill_info) {
-         EOS_ASSERT(sub_bill_info->pending_cpu_us >= in_block_pending_cpu_us, chain::tx_resource_exhaustion, "Logic error subjective billing ${a}", ("a", first_auth) );
+         EOS_ASSERT(sub_bill_info->pending_cpu_us >= in_block_pending_cpu_us, chain::tx_resource_exhaustion, "Logic error subjective billing ${a}", ("a", resource_payer) );
          uint32_t sub_bill = sub_bill_info->pending_cpu_us - in_block_pending_cpu_us + sub_bill_info->expired_accumulator.value_at(time_ordinal, expired_accumulator_average_window );
          return sub_bill;
       } else {

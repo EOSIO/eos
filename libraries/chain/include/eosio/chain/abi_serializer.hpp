@@ -566,6 +566,10 @@ namespace impl {
             const auto& deferred_transaction_generation = std::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
+         if (exts.count(resource_payer::extension_id()) > 0) {
+            const auto& res_payer = std::get<resource_payer>(exts.lower_bound(resource_payer::extension_id())->second);
+            mvo("resource_payer", res_payer);
+         }
       }
 
       /**
@@ -859,6 +863,16 @@ namespace impl {
          }
          if (vo.contains("actions")) {
             extract(vo["actions"], trx.actions, resolver, ctx);
+         }
+
+         if (vo.contains("resource_payer")) {
+            resource_payer res_payer;
+            from_variant(vo["resource_payer"], res_payer);
+            emplace_extension(
+               trx.transaction_extensions,
+               resource_payer::extension_id(),
+               fc::raw::pack( res_payer )
+            );
          }
 
          // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),

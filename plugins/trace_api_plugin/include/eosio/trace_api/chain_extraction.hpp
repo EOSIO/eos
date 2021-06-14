@@ -81,7 +81,7 @@ private:
 
    void store_block_trace( const chain::block_state_ptr& block_state ) {
       try {
-         using transaction_trace_t = transaction_trace_v2;
+         using transaction_trace_t = transaction_trace_v3;
 
          auto bt = create_block_trace( block_state );
 

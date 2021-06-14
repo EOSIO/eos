@@ -13,6 +13,11 @@ link_text: eosio-blocklog
 * Prune context-free data within given transaction and block number.
 * Output the results of the operation to a file or `stdout` (default).
 
+## Usage
+```sh
+eosio-blocklog <options> ...
+```
+
 ## Options
 
 `eosio-blocklog` supports the following options:
@@ -20,6 +25,7 @@ link_text: eosio-blocklog
 Option (=default) | Description
 -|-
 `--blocks-dir arg (="blocks")` | The location of the blocks directory (absolute path or relative to the current directory)
+`--blocks-filebase arg (="blocks")` | the name of the blocks log/index files without file extension (absolute path or relative to the current directory). This is used with `extract-blocklog`.
 `--state-history-dir arg (="state-history")` | The location of the `state-history` directory (absolute path or relative to the current dir)
 `-o [ --output-file ] arg` | The file to write the generated output to (absolute or relative path). If not specified then output is to `stdout`
 `-f [ --first ] arg (=0)` | The first block number to log or the first block to keep if `trim-blocklog` specified
@@ -33,6 +39,10 @@ Option (=default) | Description
 `--block-num arg (=0)` | The block number which contains the transactions to be pruned
 `-t [ --transaction ] arg` | The transaction id to be pruned
 `--prune-transactions` | Prune the context free data and signatures from specified transactions of specified block-num
+`--output-dir arg (=".")` | the output location for `split-blocklog`, `extract-blocklog`, or `merge-blocklogs`
+`--split-blocklog arg (=0)` | split the block log file based on the stride and store the result in the specified `output-dir`
+`--extract-blocklog` | Extract blocks from `blocks.log` and `blocks.index` and keep the original. Must give `blocks-dir` or `blocks-filebase`, `output-dir`, `first` and `last`
+`--merge-blocklogs` | Merge block log files in `blocks-dir` with the file pattern `blocks-\d+-\d+.[log,index]` to `output-dir` whenever possible. The files in `blocks-dir` will be kept without change. Must provide `blocks-dir` and `output-dir`
 `-h [ --help ]` | Print this help message and exit
 
 ## Remarks
