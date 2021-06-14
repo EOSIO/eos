@@ -21,14 +21,17 @@ enum request_flags {
    request_block             = 2,
    request_traces            = 4,
    request_deltas            = 8,
+   request_block_header      = 16
 };
 
 struct connection_callbacks {
    virtual ~connection_callbacks() = default;
    virtual void received_abi() {}
+   //   using result = std::variant<get_status_result_v0, get_blocks_result_v0, get_blocks_result_v1, get_blocks_result_v2>;
    virtual bool received(ship::get_status_result_v0& status, eosio::input_stream bin) { return true; }
    virtual bool received(ship::get_blocks_result_v0& result, eosio::input_stream bin) { return true; }
    virtual bool received(ship::get_blocks_result_v1& result, eosio::input_stream bin) { return true; }
+   virtual bool received(ship::get_blocks_result_v2& result, eosio::input_stream bin) { return true; }
    virtual void closed(bool retry) = 0;
 };
 
@@ -146,6 +149,8 @@ struct connection : connection_base {
       req.fetch_block            = flags & request_block;
       req.fetch_traces           = flags & request_traces;
       req.fetch_deltas           = flags & request_deltas;
+      // Add when updating to ship::get_blocks_request_v1 which can happen once CDT abieos is updated to have ship::get_blocks_request_v1
+      // req.fetch_block_header     = flags & request_block_header;
       send(req);
    }
 

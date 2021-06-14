@@ -35,7 +35,7 @@ public:
 
    /// @param address AMQP address
    /// @param exchange_name AMQP exchange to send message to
-   /// @param exchange_type AMQP exhcnage type
+   /// @param exchange_type AMQP exchange type
    /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
    /// @param on_consume callback for consume on routing key name, called from amqp thread, null if no consume needed.
    ///        user required to ack/reject delivery_tag for each callback.
@@ -50,11 +50,13 @@ public:
 
    /// publish to AMQP address with routing key name
    //  on_error() called if not connected
-   void publish( std::string exchange, std::string correlation_id, std::vector<char> buf ) {
+   void publish( std::string exchange, std::string correlation_id, std::string reply_to, std::vector<char> buf ) {
       boost::asio::post( thread_pool_.get_executor(),
-            [my=this, exchange=std::move(exchange), cid=std::move(correlation_id), buf=std::move(buf)]() {
+            [my=this, exchange=std::move(exchange), cid=std::move(correlation_id), rt=std::move(reply_to),
+             buf=std::move(buf)]() mutable {
                AMQP::Envelope env( buf.data(), buf.size() );
-               env.setCorrelationID( cid );
+               if(!cid.empty()) env.setCorrelationID( std::move( cid ) );
+               if(!rt.empty()) env.setReplyTo( std::move( rt ) );
                if( my->channel_ )
                   my->channel_->publish( exchange, my->name_, env, 0 );
                else
@@ -65,12 +67,14 @@ public:
    /// publish to AMQP calling f() -> std::vector<char> on amqp thread
    //  on_error() called if not connected
    template<typename Func>
-   void publish( std::string exchange, std::string correlation_id, Func f ) {
+   void publish( std::string exchange, std::string correlation_id, std::string reply_to, Func f ) {
       boost::asio::post( thread_pool_.get_executor(),
-            [my=this, exchange=std::move(exchange), cid=std::move(correlation_id), f=std::move(f)]() {
+            [my=this, exchange=std::move(exchange), cid=std::move(correlation_id), rt=std::move(reply_to),
+             f=std::move(f)]() mutable {
                std::vector<char> buf = f();
                AMQP::Envelope env( buf.data(), buf.size() );
-               env.setCorrelationID( cid );
+               if(!cid.empty()) env.setCorrelationID( std::move( cid ) );
+               if(!rt.empty()) env.setReplyTo( std::move(rt) );
                if( my->channel_ )
                   my->channel_->publish( exchange, my->name_, env, 0 );
                else

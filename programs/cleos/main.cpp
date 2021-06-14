@@ -162,6 +162,7 @@ string default_url = "http://127.0.0.1:8888/";
 string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
 string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
+string amqp_reply_to;
 bool no_verify = false;
 vector<string> headers;
 
@@ -449,7 +450,7 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             result = fc::mutable_variant_object()
                   ( "transaction_id", id )
                   ( "status", "submitted" );
-            qp_trx.publish( "", std::move( id ), std::move( buf ) );
+            qp_trx.publish( "", std::move( id ), amqp_reply_to, std::move( buf ) );
             return result;
          } else {
             try {
@@ -2524,6 +2525,7 @@ int main( int argc, char** argv ) {
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
    app.add_option( "-r,--header", header_opt_callback, localized("Pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("Don't verify peer certificate when using HTTPS"));
@@ -3741,6 +3743,23 @@ int main( int argc, char** argv ) {
 
       EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
       fc::variant trx_var = json_from_file_or_string(trx_json_to_sign);
+
+      // If transaction was packed, unpack it before signing 
+      bool was_packed_trx = false;
+      if( trx_var.is_object() ) {
+         fc::variant_object& vo = trx_var.get_object();
+         if( vo.contains("packed_trx") ) {
+            packed_transaction_v0 packed_trx;
+            try {
+              fc::from_variant<packed_transaction_v0>( trx_var, packed_trx );
+            } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'",
+                                ("data", fc::json::to_string(trx_var, fc::time_point::maximum())))
+           const signed_transaction& strx = packed_trx.get_signed_transaction();
+           trx_var = strx;
+           was_packed_trx = true;
+         }
+      }
+
       signed_transaction trx;
       try {
         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver_empty, abi_serializer::create_yield_function( abi_serializer_max_time ) );
@@ -3782,7 +3801,11 @@ int main( int argc, char** argv ) {
          auto trx_result = call(push_txn_func, packed_transaction_v0(trx, packed_transaction_v0::compression_type::none));
          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       } else {
-         std::cout << fc::json::to_pretty_string(trx) << std::endl;
+         if ( was_packed_trx ) { // pack it as before
+           std::cout << fc::json::to_pretty_string(packed_transaction_v0(trx,packed_transaction_v0::compression_type::none)) << std::endl;
+         } else {
+           std::cout << fc::json::to_pretty_string(trx) << std::endl;
+         }
       }
    });
 

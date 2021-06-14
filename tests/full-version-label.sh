@@ -3,15 +3,19 @@ set -eo pipefail
 # The purpose of this test is to ensure that the output of the "nodeos --full-version" command matches the version string defined by our CMake files
 echo '##### Nodeos Full Version Label Test #####'
 # orient ourselves
-[[ "$BUILD_ROOT" == '' ]] && BUILD_ROOT=$(pwd)
+[[ -z "$BUILD_ROOT" ]] && export BUILD_ROOT="$(pwd)"
 echo "Using BUILD_ROOT=\"$BUILD_ROOT\"."
-EXPECTED=$1
+[[ -z "$CMAKE_SOURCE_DIR" ]] && export CMAKE_SOURCE_DIR="$2"
+# test expectations
+if [[ -z "$EXPECTED" ]]; then
+    [[ -z "$BUILDKITE_COMMIT" ]] && export BUILDKITE_COMMIT="$(pushd "$CMAKE_SOURCE_DIR" &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
+    [[ -z "$BUILDKITE_TAG" ]] && export BUILDKITE_TAG="${GIT_TAG:-$1}"
+    export EXPECTED="$BUILDKITE_TAG-$BUILDKITE_COMMIT"
+fi
 if [[ -z "$EXPECTED" ]]; then
     echo "Missing version input."
     exit 1
 fi
-VERSION_HASH="$(pushd $2 &>/dev/null && git rev-parse HEAD 2>/dev/null ; popd &>/dev/null)"
-EXPECTED=v$EXPECTED-$VERSION_HASH
 echo "Expecting \"$EXPECTED\"..."
 # get nodeos version
 ACTUAL=$($BUILD_ROOT/bin/nodeos --full-version)
