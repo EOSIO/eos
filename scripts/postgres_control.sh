@@ -45,14 +45,14 @@ if [ "$CI" = "true" ]; then
          case "$1" in 
          start)
             $PG_CTL -D /usr/local/pgsql/data start
-            psql postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
-            if [ ! -z "$2" ]; then psql postgres -q -c "$2" > /dev/null ; fi
+            $PSQL postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
+            if [ ! -z "$2" ]; then $PSQL postgres -q -c "$2" > /dev/null ; fi
             ;;
          stop)
             $PG_CTL -D /usr/local/pgsql/data stop
             ;;
          exec)
-            PGPASSWORD=password psql postgres -q -c "$2"
+            PGPASSWORD=password $PSQL postgres -q -c "$2"
             ;;
          status)
             echo true 
