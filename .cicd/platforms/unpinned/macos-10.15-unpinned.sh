@@ -18,7 +18,7 @@ export PATH="/usr/local/pgsql/bin:${PATH}"
 #build libpqxx from source
 curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf -
 cd  libpqxx-7.2.1
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local  -DSKIP_BUILD_TEST=ON  -DPostgreSQL_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_LIBRARY_DIR=/usr/local/pgsql/lib  -DPostgreSQL_LIBRARY=libpq.a   -DCMAKE_BUILD    _TYPE=Release -S . -B build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local  -DSKIP_BUILD_TEST=ON  -DPostgreSQL_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/local/pgsql/include  -DPostgreSQL_LIBRARY_DIR=/usr/local/pgsql/lib  -DPostgreSQL_LIBRARY=libpq.a   -DCMAKE_BUILD_TYPE=Release -S . -B build
 cmake --build build && cmake --install build
 cd .. && rm -rf libpqxx-7.2.1
 
