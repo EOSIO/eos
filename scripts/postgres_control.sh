@@ -42,14 +42,15 @@ if [ "$CI" = "true" ]; then
       OS=`uname`
       if [ "$OS" = "Darwin" ]; then
          ## mac
+         PGDATA=/usr/local/var/postgres
          case "$1" in 
          start)
-            $PG_CTL -D /usr/local/pgsql/data start
+            $PG_CTL -D $PGDATA start
             $PSQL postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
             if [ ! -z "$2" ]; then $PSQL postgres -q -c "$2" > /dev/null ; fi
             ;;
          stop)
-            $PG_CTL -D /usr/local/pgsql/data stop
+            $PG_CTL -D $PGDATA stop
             ;;
          exec)
             PGPASSWORD=password $PSQL postgres -q -c "$2"
