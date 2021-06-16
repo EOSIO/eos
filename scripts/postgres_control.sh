@@ -25,32 +25,20 @@
 # 
 ########################################################################################################################################################
 if [ "$CI" = "true" ]; then
-   PG_CTL=`which pg_ctl 2>/dev/null`
-   PSQL=$PostgreSQL_ROOT/bin/psql
-   PGDATA=/usr/local/pgsql/data
-   if [ -z $PG_CTL ]; then 
-     if [ -f "$PostgreSQL_ROOT/bin/pg_ctl" ]; then
-         # CentOS
-         PG_CTL=$PostgreSQL_ROOT/bin/pg_ctl
-      elif [ ! -z `which  pg_ctlcluster 2>/dev/null` ]; then
-         # ubuntu
-         PG_CTL="pg_ctlcluster 13 main"
-      fi
-   fi
-
+   PG_CTL=/usr/local/pgsql/bin/pg_ctl
+   PSQL=/usr/local/pgsql/bin/psql
    if [ ! -z "$PG_CTL" ]; then
       OS=`uname`
       if [ "$OS" = "Darwin" ]; then
          ## mac
-         PGDATA=/usr/local/var/postgres
          case "$1" in 
          start)
-            $PG_CTL -D $PGDATA start
+            $PG_CTL -D /usr/local/var/postgres start
             $PSQL postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
             if [ ! -z "$2" ]; then $PSQL postgres -q -c "$2" > /dev/null ; fi
             ;;
          stop)
-            $PG_CTL -D $PGDATA stop
+            $PG_CTL -D /usr/local/var/postgres stop
             ;;
          exec)
             PGPASSWORD=password $PSQL postgres -q -c "$2"
