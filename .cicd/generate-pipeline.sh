@@ -607,19 +607,19 @@ cat <<EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    key: "ubuntu1604pb"
+    key: "ubuntu1804pb"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 16.04 - Test Package"
+  - label: ":ubuntu: Ubuntu 18.04 - Test Package"
     command:
-      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.sh"
     env:
-      IMAGE: "ubuntu:16.04"
+      IMAGE: "ubuntu:18.04"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    depends_on: "ubuntu1604pb"
+    depends_on: "ubuntu1804pb"
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
@@ -635,19 +635,19 @@ cat <<EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    key: "ubuntu1804pb"
+    key: "ubuntu2004pb"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Test Package"
+  - label: ":ubuntu: Ubuntu 20.04 - Test Package"
     command:
-      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
       - "./.cicd/test-package.sh"
     env:
-      IMAGE: "ubuntu:18.04"
+      IMAGE: "ubuntu:20.04"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
-    depends_on: "ubuntu1804pb"
+    depends_on: "ubuntu2004pb"
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
