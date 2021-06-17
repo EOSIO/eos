@@ -39,19 +39,17 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     make install && \
     cd / && \
     rm -rf /llvm
-# install libpq postgresql
+
 ENV TZ=America/Chicago
-#RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-#    echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-#    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-#    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
-#    apt-get clean && \
-#    rm -rf /var/lib/apt/lists/*
+
 # build libpq and postgres
 RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
     cd postgres-REL_13_3 && \
     ./configure && make && make install && \
     cd .. && rm -rf postgres-REL_13_3
+ENV PostgreSQL_ROOT=/usr/local/pgsql
+ENV PKG_CONFIG_PATH=/usr/local/pgsql/lib/pkgconfig:/usr/local/lib64/pkgconfig
+ENV PATH="/usr/local/pgsql/bin:${PATH}"
 #build libpqxx
 RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
     cd  libpqxx-7.2.1  && \
@@ -75,3 +73,5 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key ad
     apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+RUN useradd -m postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
+ENV PGDATA=/usr/local/pgsql/data

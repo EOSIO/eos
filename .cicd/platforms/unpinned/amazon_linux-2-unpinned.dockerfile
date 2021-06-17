@@ -22,10 +22,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-#install libpq
-#RUN amazon-linux-extras enable postgresql11 && \
-#    yum install -y libpq-devel postgresql-server && \
-#    yum clean all && rm -rf /var/cache/yum
+
 # build libpq and postgres
 RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
     cd postgres-REL_13_3 && \
@@ -51,4 +48,4 @@ RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/npm" /usr/local/bin/npm
 # setup Postgress
 RUN useradd -m postgres &&  mkdir /usr/local/pgsql/data && chown postgres:postgres /usr/local/pgsql/data &&  su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
-ENV PGDATA=/usr/local/pgsql/data 
+ENV PGDATA=/usr/local/pgsql/data

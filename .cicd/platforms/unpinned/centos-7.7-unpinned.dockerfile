@@ -32,10 +32,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-#install libpq postgresql-server
-#RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
-#    yum install -y postgresql13-devel postgresql13-server && \
-#    yum clean all && rm -rf /var/cache/yum
+
 # build libpq and postgres
 RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
     cd postgres-REL_13_3 && \

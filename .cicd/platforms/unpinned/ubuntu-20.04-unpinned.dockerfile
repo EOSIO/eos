@@ -27,14 +27,9 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
-# install libpq postgresql
+
 ENV TZ=America/Chicago
-#RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-#    echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-#    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-#    apt-get update && apt-get -y install libpq-dev postgresql-13 && \
-#    apt-get clean && \
-#    rm -rf /var/lib/apt/lists/*
+
 # build libpq and postgres
 RUN curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
     cd postgres-REL_13_3 && \
