@@ -2919,6 +2919,7 @@ namespace eosio {
             std::unique_lock<std::mutex> g( conn_mtx );
             const auto last_sent_lib = last_handshake_sent.last_irreversible_block_num;
             g.unlock();
+
             if( blk_num < last_sent_lib ) {
                fc_ilog( logger, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
                if(my_impl->p2p_always_resync) {
