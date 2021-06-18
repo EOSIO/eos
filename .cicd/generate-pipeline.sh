@@ -691,9 +691,13 @@ cat <<EOF
     timeout: ${TIMEOUT:-5}
 
   - label: ":beer: Brew Updater"
-    command:
-      - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
-      - "buildkite-agent artifact upload eosio.rb"
+    command: |
+      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
+      mv eosio.rb eosio_mojave.rb
+      buildkite-agent artifact upload eosio_mojave.rb
+      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.15 - Package Builder'
+      mv eosio.rb eosio_catalina.rb
+      buildkite-agent artifact upload eosio_catalina.rb
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
