@@ -63,6 +63,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_filter.wasm ${CMAKE_CURRENT_BINA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trace_plugin_test.py ${CMAKE_CURRENT_BINARY_DIR}/trace_plugin_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_contrl_c_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_contrl_c_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blockvault_tests.py ${CMAKE_CURRENT_BINARY_DIR}/blockvault_tests.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/feature_privacy_blockvault.py ${CMAKE_CURRENT_BINARY_DIR}/feature_privacy_blockvault.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/generate-certificates.sh ${CMAKE_CURRENT_BINARY_DIR}/generate-certificates.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_startup_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_startup_network.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_simple_network.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_simple_network.py COPYONLY)
