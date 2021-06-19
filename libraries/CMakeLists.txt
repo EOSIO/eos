@@ -30,6 +30,7 @@ add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
 add_subdirectory( abieos )
+add_subdirectory( libpqxx )
 
 # Suppress warnings on 3rdParty Library
 add_definitions( -w )

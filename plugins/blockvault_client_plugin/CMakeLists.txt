@@ -21,10 +21,9 @@ elseif ( EXISTS "/usr/local/pgsql/lib/pkgconfig" )
    endif()
 endif()
 
-pkg_check_modules(pq IMPORTED_TARGET  libpq>=10.0)
-pkg_check_modules(pqxx IMPORTED_TARGET libpqxx>=6.0)
+pkg_check_modules(pq IMPORTED_TARGET  libpq>=13.0)
 
-if (pqxx_FOUND)
+if (pq_FOUND)
    add_library(blockvault postgres_backend.cpp)
    target_include_directories(blockvault PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
  
@@ -43,11 +42,10 @@ if (pqxx_FOUND)
    set_property(TARGET pgport PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS} )
    set(pgport_lib pgport)
 
-   add_library(pqxx STATIC IMPORTED)
-   set_property(TARGET pqxx PROPERTY IMPORTED_LOCATION ${pqxx_LIBDIR}/libpqxx.a)
-   set_property(TARGET pqxx PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pqxx_STATIC_INCLUDE_DIRS})
-   set(pqxx_lib pqxx)
-   target_link_libraries(blockvault PUBLIC ${pqxx_lib} ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)
+   add_library(pqxx_lib STATIC IMPORTED)
+   set_property(TARGET pqxx_lib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/../../libraries/libpqxx/src/libpqxx.a)
+   set_property(TARGET pqxx_lib PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/libpqxx/include)
+   target_link_libraries(blockvault PUBLIC pqxx_lib  ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)
 
    target_link_libraries( blockvault_client_plugin blockvault)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
