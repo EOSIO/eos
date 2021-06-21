@@ -5,6 +5,8 @@
    "homepage": "https://github.com/EOSIO/appbase",
    "dependencies": [
       "boost-filesystem",
-      "boost-program-options"
+      "boost-program-options",
+      "boost-asio",
+      "boost-signals2"
    ]
  }
