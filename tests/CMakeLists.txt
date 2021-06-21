@@ -158,7 +158,7 @@ add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WOR
 set_property(TEST cleos_action_no_params PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
-if(SHORT_FORK)
+#[[
   add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_sanity_lr_test PROPERTY LABELS long_running_tests)
   add_test(NAME nodeos_run_check_lr_test COMMAND tests/nodeos_run_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -192,6 +192,7 @@ if(SHORT_FORK)
   set_tests_properties(nodeos_startup_catchup_lr_test PROPERTIES TIMEOUT 3000)
   set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_tests)
 endif(SHORT_FORK)
+]]
 
 add_test(NAME nodeos_short_fork_take_over_lr_test COMMAND tests/nodeos_short_fork_take_over_test.py -v --wallet-port 9905 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_short_fork_take_over_lr_test PROPERTY LABELS long_running_tests)
@@ -208,7 +209,7 @@ if(ENABLE_MULTIVERSION_PROTOCOL_TEST)
   set_property(TEST nodeos_extra_packed_data_multiversion_test PROPERTY LABELS mixed_version_tests)
 endif()
 
-if(SHORT_FORK)
+#[[
   add_test(NAME nodeos_extra_packed_data_test COMMAND tests/nodeos_extra_packed_data_test.py -v --clean-run -p 8 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST nodeos_extra_packed_data_test PROPERTY LABELS long_running_tests)
 
@@ -235,7 +236,7 @@ if(SHORT_FORK)
 
   add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
-endif(SHORT_FORK)
+]]
 
 if (pqxx_FOUND )
   execute_process(COMMAND ${CMAKE_SOURCE_DIR}/scripts/postgres_control.sh status OUTPUT_VARIABLE HAS_POSTGRES_SERVER)
