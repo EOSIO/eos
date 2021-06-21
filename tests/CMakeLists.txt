@@ -230,7 +230,7 @@ add_subdirectory(se_tests)
 add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
 
-if (pqxx_FOUND )
+if (pq_FOUND )
   execute_process(COMMAND ${CMAKE_SOURCE_DIR}/scripts/postgres_control.sh status OUTPUT_VARIABLE HAS_POSTGRES_SERVER)
   if (HAS_POSTGRES_SERVER)
     add_test(NAME blockvault_tests COMMAND tests/blockvault_tests.py --dump-error-detail -v --clean-run WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
