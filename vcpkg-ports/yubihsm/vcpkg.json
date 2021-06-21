@@ -1,0 +1,17 @@
+{
+   "name": "yubihsm",
+   "version-string": "2.0.3",
+   "port-version": 1,
+   "description": "C library to expose low- and high-level functions to interact with a YubiHSM",
+   "dependencies": [
+      "openssl",
+      "curl",
+      {
+         "name": "libusb",
+         "platform": "!linux",
+         "$explanation": [
+            "libusb package from vcpkg on linux requires libudev from system package manager to compile. Just install libusb directly from system package manager instead."
+          ]
+      }
+   ]
+}

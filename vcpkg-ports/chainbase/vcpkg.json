@@ -1,0 +1,15 @@
+{
+   "name": "chainbase",
+   "version-date": "2021-01-04",
+   "port-version": 1,
+   "description": "a fast version controlled, transactional database",
+   "homepage": "https://github.com/EOSIO/chainbase",
+   "dependencies": [
+      "boost-asio",
+      "boost-filesystem",
+      "boost-interprocess",
+      "boost-multi-index",
+      "boost-mpl",
+      "boost-test"
+   ]
+ }

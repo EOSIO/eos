@@ -11,6 +11,7 @@
 *.cmake
 !.cicd
 !CMakeModules/*.cmake
+!vcpkg-ports/**/*.cmake
 *.ninja
 \#*
 \.#*

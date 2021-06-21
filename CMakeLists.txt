@@ -1,5 +1,5 @@
 cmake_minimum_required( VERSION 3.8 )
-
+set(VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports)
 project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
@@ -104,6 +104,21 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
+
+if (_VCPKG_INSTALLED_DIR)
+  find_package(RocksDB CONFIG REQUIRED)
+  find_package(fc CONFIG REQUIRED)
+  find_package(softfloat CONFIG REQUIRED)
+  find_package(appbase CONFIG REQUIRED)
+  find_package(chainbase CONFIG REQUIRED)
+  find_package(abieos CONFIG REQUIRED)
+  find_package(eos-vm CONFIG REQUIRED)
+  find_package(yubihsm CONFIG REQUIRED)
+  find_package(libpqxx CONFIG REQUIRED)
+
+  add_library(rocksdb ALIAS RocksDB::rocksdb)
+  add_library(pqxx ALIAS libpqxx::pqxx)
+endif()
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
@@ -215,6 +230,25 @@ install(FILES ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake DESTINATION ${CMAKE
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
+if (_VCPKG_INSTALLED_DIR)
+  configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
+                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
+
+  set(VCPKG_INSTALLED_SHARE ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share)
+  file(COPY ${CMAKE_SOURCE_DIR}/LICENSE
+            ${VCPKG_INSTALLED_SHARE}/rocksdb/LICENSE.leveldb 
+            ${VCPKG_INSTALLED_SHARE}/fc/LICENSE.go
+      DESTINATION ${CMAKE_BINARY_DIR}/licenses/eosio
+  )
+
+  foreach(lib yubihsm rocksdb amqpcpp libpq libpqxx eos-vm secp256k1 softfloat rapidjson)
+    configure_file(${VCPKG_INSTALLED_SHARE}/${lib}/copyright ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.${lib} COPYONLY)
+  endforeach()
+
+  install(DIRECTORY ${CMAKE_BINARY_DIR}/licenses/eosio DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses COMPONENT base)
+
+else()
+
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt
@@ -252,6 +286,7 @@ install(FILES libraries/rocksdb/LICENSE.Apache DESTINATION ${CMAKE_INSTALL_FULL_
 install(FILES libraries/rocksdb/LICENSE.leveldb DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.leveldb COMPONENT base)
 install(FILES libraries/amqp-cpp/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.amqpcpp COMPONENT base)
 install(FILES libraries/libpqxx/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.libpqxx COMPONENT base)
+endif()
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

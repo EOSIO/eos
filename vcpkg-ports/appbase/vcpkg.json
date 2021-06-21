@@ -1,0 +1,10 @@
+{
+   "name": "appbase",
+   "version-date": "2020-10-28", 
+   "description": "a basic framework for building applications from a set of plugins",
+   "homepage": "https://github.com/EOSIO/appbase",
+   "dependencies": [
+      "boost-filesystem",
+      "boost-program-options"
+   ]
+ }

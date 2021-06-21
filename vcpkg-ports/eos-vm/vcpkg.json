@@ -1,0 +1,10 @@
+{
+   "name": "eos-vm",
+   "version-string": "1.0.0-rc1",
+   "port-version": 1,
+   "description": "A Low-Latency, High Performance and Extensible WebAssembly Engine",
+   "homepage": "https://github.com/EOSIO/eos-vm",
+   "dependencies": [
+      "softfloat"
+   ]
+ }

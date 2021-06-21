@@ -1,0 +1,61 @@
+{
+   "name": "eos",
+   "version-string": "2.1.0",
+   "port-version": 1,
+   "dependencies": [
+      "abieos",
+      "appbase",
+      "chainbase",
+      "eos-vm",
+      "fc",
+      "softfloat",
+      "amqpcpp",
+      "rocksdb",
+      "yubihsm",
+		"openssl",
+      "gmp",
+      "libpqxx",
+      "boost-date-time",
+      "boost-test",
+      "boost-asio",
+      "boost-filesystem",
+      "boost-program-options",
+      "boost-iostreams",
+      "boost-interprocess",
+      "boost-beast",
+      "boost-multi-index",
+      "boost-multiprecision",
+      "boost-signals2",
+      "boost-accumulators",
+      "boost-hana",
+      "boost-assign",
+      "boost-convert",
+      "boost-process",
+      "boost-bimap",
+      "boost-dll",
+      "boost-lockfree"
+   ],
+   "$default-features-explanation": "Users using this library transitively will get all dependencies from vcpkg automatically",
+   "default-features": [
+      "vcpkg-llvm"
+   ],
+   "features": {
+      "vcpkg-llvm": {
+         "description": "LLVM from vcpkg",
+         "dependencies": [
+            {
+               "name": "llvm",
+               "default-features": false,
+               "features": [
+                  "enable-rtti"
+               ],
+               "platform": "linux"
+            }
+         ]
+      }
+   },
+   "builtin-baseline": "6e024e744e7717c06ddacd5089401109c6298553", 
+   "overrides": [
+      { "name": "libpqxx", "version": "7.2.1" }
+  ]
+}

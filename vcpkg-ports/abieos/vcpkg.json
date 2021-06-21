@@ -1,0 +1,11 @@
+{
+   "name": "abieos",
+   "version-date": "2021-01-19",
+   "port-version": 1,
+   "description": "Binary <> JSON conversion using ABIs",
+   "homepage": "https://github.com/EOSIO/abieos",
+   "dependencies": [
+      "boost-pfr",
+      "rapidjson"
+   ]
+ }

@@ -1,0 +1,20 @@
+{
+   "name": "fc",
+   "version-date": "2021-02-22",
+   "port-version": 1,
+   "description": "",
+   "homepage": "https://github.com/EOSIO/fc",
+   "dependencies": [
+      "openssl",
+      "zlib",
+      "boost-date-time",
+      "boost-filesystem",
+      "boost-chrono",
+      "boost-test",
+      "boost-iostreams",
+      {
+         "name": "secp256k1",
+         "features": [ "gmp", "module-ecdh", "module-recovery"]
+      }
+   ]
+ }

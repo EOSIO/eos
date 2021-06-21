@@ -1,0 +1,23 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1d5ecb0..6c64915 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -317,9 +317,14 @@ file ( GLOB softfloat_headers "${CMAKE_CURRENT_SOURCE_DIR}/source/include/*.h"
+                               "${CMAKE_CURRENT_SOURCE_DIR}/source/8086-SSE/specialize.h" )
+ list( APPEND softfloat_sources ${softfloat_headers} )
+ add_library ( softfloat STATIC ${softfloat_sources} )
+-target_include_directories( softfloat PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/source/include" "${CMAKE_CURRENT_SOURCE_DIR}/source/8086-SSE" "${CMAKE_CURRENT_SOURCE_DIR}/build/Linux-x86_64-GCC" )
++target_include_directories( softfloat PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source/include" "${CMAKE_CURRENT_SOURCE_DIR}/source/8086-SSE" "${CMAKE_CURRENT_SOURCE_DIR}/build/Linux-x86_64-GCC" )
+ 
+-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/include/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/softfloat)
++install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/include/ DESTINATION include/softfloat)
+ install(TARGETS softfloat
+-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
++        EXPORT  softfloat
++        INCLUDES DESTINATION include/softfloat)
++
++
++install(EXPORT softfloat
++        DESTINATION "share/softfloat"
++        FILE softfloat-targets.cmake)

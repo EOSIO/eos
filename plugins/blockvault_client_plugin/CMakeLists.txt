@@ -16,3 +16,4 @@ target_link_libraries( blockvault_client_plugin blockvault)
 target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
 
 add_subdirectory(tests)
+

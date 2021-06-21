@@ -26,4 +26,3 @@ if(APPLE)
 endif()
 
 #sadly old cmake 2.8 support in yubihsm cmake prevents usage of target_include_directories there
-target_include_directories( wallet_plugin PRIVATE "${CMAKE_SOURCE_DIR}/libraries/yubihsm/lib" )

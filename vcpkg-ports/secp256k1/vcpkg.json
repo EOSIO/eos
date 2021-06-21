@@ -1,0 +1,30 @@
+{
+   "name": "secp256k1",
+   "version-date": "2020-12-09",
+   "port-version": 4,
+   "homepage": "https://github.com/bitcoin-core/secp256k1",
+   "description": "Optimized C library for EC operations on curve",
+   "default-features": [
+      "gmp", "module-ecdh"
+   ],
+   "features": {
+      "gmp": {
+         "description": "Use the gmp implementation for num",
+         "dependencies": [
+            "gmp"
+         ]
+      },
+      "module-ecdh": {
+         "description": "Enable ECDH shared secret computation"
+      },
+      "module-recovery": {
+         "description": "Enable ECDSA pubkey recovery module"
+      },
+      "module-extrakeys": {
+         "description": "Enable extrakeys module (experimental)"
+      },
+      "module-schnorrsig": {
+         "description": "Enable schnorrsig module (experimental)"
+      }
+   }
+}

@@ -1,0 +1,87 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2f7e794..0061659 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -174,17 +174,9 @@ else()
+   endif ()
+ 
+   find_package (PkgConfig REQUIRED)
+-  if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+-    if (NOT LIBCRYPTO_LDFLAGS)
+-      set (LIBCRYPTO_LDFLAGS "-lcrypto")
+-    endif()
+-    if (NOT LIBCRYPTO_VERSION)
+-      set (LIBCRYPTO_VERSION "1.1.1")
+-    endif()
+-  else()
+-    include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
+-    find_libcrypto()
+-  endif()
++	find_package (OpenSSL REQUIRED)
++	set(LIBCRYPTO_LDFLAGS OpenSSL::Crypto)
++	set (LIBCRYPTO_VERSION ${OPENSSL_VERSION})
+   if(NOT BUILD_ONLY_LIB)
+     if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+       set (LIBEDIT_LDFLAGS "-ledit")
+@@ -192,7 +184,8 @@ else()
+       pkg_search_module (LIBEDIT REQUIRED libedit)
+     endif()
+   endif()
+-  pkg_search_module (LIBCURL REQUIRED libcurl)
++	find_package(CURL CONFIG REQUIRED)
++	set(LIBCURL_LDFLAGS CURL::libcurl)
+   pkg_search_module (LIBUSB REQUIRED libusb-1.0)
+ endif()
+ 
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+index bd38714..2f3b5c4 100644
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -95,9 +95,9 @@ include_directories (
+   ${LIBCURL_INCLUDEDIR}
+ )
+ 
+-add_library (yubihsm SHARED ${SOURCE})
+-add_library (yubihsm_usb SHARED ${USB_SOURCE})
+-add_library (yubihsm_http SHARED ${HTTP_SOURCE})
++add_library (yubihsm SHARED EXCLUDE_FROM_ALL ${SOURCE})
++add_library (yubihsm_usb SHARED EXCLUDE_FROM_ALL ${USB_SOURCE})
++add_library (yubihsm_http SHARED EXCLUDE_FROM_ALL ${HTTP_SOURCE})
+ 
+ set_target_properties(yubihsm PROPERTIES BUILD_RPATH "${CMAKE_BINARY_DIR}/lib")
+ set_target_properties (yubihsm PROPERTIES VERSION "${yubihsm_shell_VERSION_MAJOR}.${yubihsm_shell_VERSION_MINOR}.${yubihsm_shell_VERSION_PATCH}" SOVERSION ${yubihsm_shell_VERSION_MAJOR})
+@@ -128,6 +128,7 @@ else(${WIN32})
+   set_target_properties (yubihsm_usb PROPERTIES COMPILE_FLAGS ${LIBUSB_CFLAGS})
+   if(ENABLE_STATIC)
+     set_property(TARGET yubihsm_static APPEND_STRING PROPERTY COMPILE_FLAGS ${LIBUSB_CFLAGS})
++		set_target_properties( yubihsm_static PROPERTIES OUTPUT_NAME "yubihsm" )
+   endif(ENABLE_STATIC)
+ endif(${WIN32})
+ 
+@@ -154,6 +155,18 @@ if(WIN32)
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version_winusb.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version_winusb.rc @ONLY)
+ endif(WIN32)
+ 
++if (ENABLE_STATIC)
++  install(
++    TARGETS yubihsm_static
++    EXPORT yubihsm
++    INCLUDES DESTINATION include/
++    ARCHIVE DESTINATION ${YUBIHSM_INSTALL_LIB_DIR})
++
++  install(EXPORT yubihsm
++    DESTINATION "share/yubihsm"
++    FILE yubihsm-targets.cmake
++  )
++else()
+ install(
+   TARGETS yubihsm
+   ARCHIVE DESTINATION ${YUBIHSM_INSTALL_LIB_DIR}
+@@ -169,6 +182,7 @@ install(
+   ARCHIVE DESTINATION ${YUBIHSM_INSTALL_LIB_DIR}
+   LIBRARY DESTINATION ${YUBIHSM_INSTALL_LIB_DIR}
+   RUNTIME DESTINATION ${YUBIHSM_INSTALL_BIN_DIR})
++endif()
+ install(FILES yubihsm.h DESTINATION ${YUBIHSM_INSTALL_INC_DIR})
+ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/yubihsm.pc DESTINATION ${YUBIHSM_INSTALL_PKGCONFIG_DIR})
+ 

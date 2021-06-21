@@ -1,0 +1,6 @@
+{
+   "name": "softfloat",
+   "version-string": "3e",
+   "port-version": 1,
+   "description": "software implementation of binary floating-point"
+}
