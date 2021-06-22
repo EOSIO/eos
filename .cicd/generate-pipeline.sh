@@ -204,7 +204,7 @@ for ROUND in $(seq 1 $ROUNDS); do
     echo '    # long-running tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         IFS=$oIFS
-        LR_TESTS="$(cat tests/CMakeLists.txt | grep -P 'nodeos_irreversible_mode_lr_test' | grep -v "^#" | awk -F" " '{ print $2 }' | sort | uniq)"
+        LR_TESTS="$(cat tests/CMakeLists.txt | grep -P 'nodeos_short_fork_take_over_lr_test' | grep -v "^#" | awk -F" " '{ print $2 }' | sort | uniq)"
         for TEST_NAME in $LR_TESTS; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
