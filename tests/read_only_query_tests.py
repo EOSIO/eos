@@ -133,6 +133,8 @@ try:
 
     Print("Setting up read-only tables")
     success, transaction = node.pushMessage(readtestaccount.name, 'setup', "{}", '-p readtest1111@active')
+    assert success, 'Creating KV tables failed\n' + str(transaction)
+    node.trackCmdTransaction(transaction)
 
     Print("Querying combined kv tables")
     trx = {
@@ -143,7 +145,7 @@ try:
     success, transaction = node.pushTransaction(trx, opts='--read-only --return-failure-trace', permissions=readtestaccount.name)
 
     assert success
-    assert 8 == len(transaction['result']['action_traces'][0]['return_value_data']), 'Combined kv tables roqm and roqf should contain 8 rows'
+    assert 8 == len(transaction['result']['action_traces'][0]['return_value_data']), 'Combined kv tables roqm and roqf should contain 8 rows\n' + str(transaction)
 
     testSuccessful=True
 finally:
