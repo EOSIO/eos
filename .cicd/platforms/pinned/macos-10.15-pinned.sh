@@ -23,13 +23,6 @@ sudo -E ./b2 --with-iostreams --with-date_time --with-filesystem --with-system -
 cd ..
 sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
 
-# install libpqxx from source
-curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - 
-cd  libpqxx-7.2.1  
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPostgreSQL_ROOT=/usr/local/opt/libpq  -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build 
-cmake --build build && cmake --install build 
-cd .. && rm -rf libpqxx-7.2.1
-
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
 # initialize postgres configuration files

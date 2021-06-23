@@ -23,3 +23,5 @@ clang,rpm -qa
 patch,rpm -qa
 llvm-devel,rpm -qa
 llvm-static,rpm -qa
+postgresql-server,rpm -qa
+postgresql-devel,rpm -qa
