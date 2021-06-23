@@ -1,7 +1,7 @@
 ## Overview
 This guide provides instructions on calling a smart contract read-only query.   
 
-The example uses `cleos push transaction` to call a read-only query.  A readonly query can be called using either the `--read-only` option or the ``-o` option.  
+The example uses `cleos push transaction` to call a read-only query.  A readonly query can be called using either the `--read-only` option or the `-o` option.  
 
 ## Before you Begin
 Make sure you meet the following requirements: 
@@ -27,11 +27,10 @@ cleos push transaction --read-only -j '{"actions":[{"account":"scholder","name":
 ```
 
 **Where**
-**Where**
 - `--read-only` = Tells the `cleos push transaction` command that this is calling a read-only query.  
 - `-j` = Tells the `cleos push transaction` to print the result as json. 
 - `'{"actions":[{"account":"scholder","name":"get","authorization":[{"actor":"bob","permission":"active"}],"data":""}]}'` = The transaction to call.
-- `-p bob@active` - The account permission.
+- `-p bob@active` - The account permission used to call the action.
 
 **Example Output**
 ```json
@@ -95,11 +94,17 @@ cleos push transaction --read-only -j '{"actions":[{"account":"scholder","name":
         "except": null,
         "error_code": null,
         "return_value_hex_data": "045068696c0100000033000000",
-        "return_value_data": {
-          "name": "Phil",
-          "gender": 1,
-          "age": 51
-        }
+        "return_value_data": [{
+				"name": "Alice",
+				"gender": 0,
+				"age": 19
+        		},
+				{
+				"name": "Bob",
+				"gender": 1,
+				"age": 19
+        		}
+			]
       }
     ],
     "account_ram_delta": null,
@@ -110,4 +115,4 @@ cleos push transaction --read-only -j '{"actions":[{"account":"scholder","name":
 ```
 
 ## Summary
-In conclusion, by following these instructions you are call a smart contract read-only action.
+In conclusion, by following these instructions you are able to call a smart contract read-only action.
