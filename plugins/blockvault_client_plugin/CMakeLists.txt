@@ -35,10 +35,7 @@ if (pq_FOUND)
    set_property(TARGET pgport PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${pq_STATIC_INCLUDE_DIRS} )
    set(pgport_lib pgport)
 
-   add_library(pqxx_lib STATIC IMPORTED)
-   set_property(TARGET pqxx_lib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/../../libraries/libpqxx/src/libpqxx.a)
-   set_property(TARGET pqxx_lib PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/libpqxx/include ${CMAKE_CURRENT_BINARY_DIR}/../../libraries/libpqxx/include)
-   target_link_libraries(blockvault PUBLIC pqxx_lib  ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)
+   target_link_libraries(blockvault PUBLIC pqxx  ${pq_lib} ${pgcom_lib} ${pgport_lib} eosio_chain)
 
    target_link_libraries( blockvault_client_plugin blockvault)
    target_compile_definitions(blockvault_client_plugin PRIVATE HAS_PQXX)
