@@ -1,5 +1,6 @@
 #include "../postgres_backend.hpp"
 #include <boost/test/unit_test.hpp>
+#include <boost/mpl/list.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/log/appender.hpp>
 
