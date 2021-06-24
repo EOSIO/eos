@@ -134,7 +134,8 @@ try:
     Print("Setting up read-only tables")
     success, transaction = node.pushMessage(readtestaccount.name, 'setup', "{}", '-p readtest1111@active')
     assert success, 'Creating KV tables failed\n' + str(transaction)
-    node.trackCmdTransaction(transaction)
+    transId = Node.getTransId(transaction)
+    node.waitForTransInBlock(transId)
 
     Print("Querying combined kv tables")
     trx = {
