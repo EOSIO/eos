@@ -10,7 +10,7 @@ BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/${BUILDKITE_COMMIT:-master}/.cicd/README.md"
-export RETRY="$(buildkite-agent meta-data get pipeline-upload-retries --default '0')"
+export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
 if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     echo "This documentation is also available on [GitHub]($DOCS_URL)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
     cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
