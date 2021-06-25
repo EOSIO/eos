@@ -104,6 +104,9 @@ class thread_state_cache : public std::enable_shared_from_this<thread_state_cach
 };
 
 const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
+                                        uint64_t                 version,
+                                        const std::string&       version_str,
+                                        const std::string&       full_version_str,
                                         const std::vector<char>& contract_kv_prefix);
 const std::vector<char>& query_get_block(wasm_ql::thread_state&   thread_state,
                                          const std::vector<char>& contract_kv_prefix, std::string_view body);
