@@ -5,9 +5,10 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.6_6C_14G_80G'}
 export PLATFORMS_JSON_ARRAY='[]'
+[[ -z "$ROUNDS" ]] && export ROUNDS='1'
+[[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='5'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
-[[ -z "$ROUNDS" ]] && export ROUNDS='1'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/${BUILDKITE_COMMIT:-master}/.cicd/README.md"
 export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
@@ -312,7 +313,7 @@ EOF
             if [[ -z "$TEST" ]]; then
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
             else
-                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$")"
+                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$" | awk "{while(i++<$ROUND_SIZE)print;i=0}")"
             fi
             for TEST_NAME in $SERIAL_TESTS; do
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
