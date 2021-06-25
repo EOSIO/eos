@@ -683,7 +683,7 @@ fi
       buildkite-agent artifact upload eosio.rb
     agents:
       queue: "automation-basic-builder-fleet"
-    timeout: "${TIMEOUT:-5}"
+    timeout: ${TIMEOUT:-5}
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
   - label: ":docker: :ubuntu: Docker - Build 18.04 Docker Image"
