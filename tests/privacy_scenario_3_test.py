@@ -266,8 +266,8 @@ try:
     Print("API Node1 head = {} API Node2 head = {}".format(apiNode2_head, apiNode1.getHeadBlockNum()))
     assert apiNode2_Advancing
     
-    Print("Waiting for {} seconds to allow Node1 to advance it's head".format(waitSec))
-    time.sleep(waitSec)
+    Print("Waiting for Node1 head to advance past current API Node2 head")
+    apiNode1.waitForBlock(apiNode2.getHeadBlockNum() + 1, errorContext="API Node2 was not moving")
     # after last recorded block number (rbn6) is made irreversible, verify
     # node2 receives no blocks
     apiNode1_head = apiNode1.getHeadBlockNum()
