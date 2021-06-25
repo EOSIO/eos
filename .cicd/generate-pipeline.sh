@@ -455,7 +455,7 @@ EOF
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
 
 EOF
-    fi
+        fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
             echo '  - wait'
             echo ''
