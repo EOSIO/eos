@@ -172,7 +172,7 @@ EOF
 EOF
     fi
 done
-cat <<EOF
+[[ -z "$TEST" ]] && cat <<EOF
 
   - label: ":docker: Docker - Build and Install"
     command: "./.cicd/installation-build.sh"
