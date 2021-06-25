@@ -27,6 +27,8 @@ if (( $ROUNDS > 1 || $ROUND_SIZE > 1 )) && [[ -z "$TEST" ]]; then
     If you _really_ meant to run every test $(( $ROUNDS * $ROUND_SIZE )) times, set \`TEST='.*'\`.
 MD
     exit 255
+elif [[ "$TEST" = '.*' ]]; then # if they want to run every test, just spawn the jobs like normal
+    unset TEST
 fi
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
