@@ -263,7 +263,6 @@ EOF
 
 EOF
             fi
-        echo
         done
         # wasm spec tests
         echo '    # wasm spec tests'
@@ -318,7 +317,6 @@ EOF
 
 EOF
             fi
-        echo
         done
         # serial tests
         echo '    # serial tests'
@@ -380,7 +378,6 @@ EOF
 
 EOF
                 fi
-                echo
             done
             IFS=$nIFS
         done
@@ -440,7 +437,6 @@ EOF
 
 EOF
                 fi
-                echo
             done
             IFS=$nIFS
         done
@@ -466,7 +462,6 @@ EOF
             echo ''
         fi
     done
-    
     # trigger eosio-lrt post pr
     if [[ -z "$TEST" && -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
