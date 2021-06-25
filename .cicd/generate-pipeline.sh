@@ -203,7 +203,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
         echo "    # round $ROUND of $ROUNDS"
         # parallel tests
         echo '    # parallel tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
@@ -261,7 +261,7 @@ EOF
         done
         # wasm spec tests
         echo '    # wasm spec tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - WASM Spec Tests"
@@ -376,7 +376,7 @@ EOF
         done
         # long-running tests
         echo '    # long-running tests'
-        echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
+        [[ -z "$TEST" ]] && echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
             IFS=$oIFS
             LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }' | sort | uniq)"
             for TEST_NAME in $LR_TESTS; do
@@ -435,7 +435,7 @@ EOF
             IFS=$nIFS
         done
         IFS=$oIFS
-        if [[ ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ]]; then
+        if [[ -z "$TEST" && ( ! "$PINNED" == 'false' || "$SKIP_MULTIVERSION_TEST" == 'false' ) ]]; then
             cat <<EOF
   - label: ":pipeline: Multiversion Test"
     command:
@@ -468,7 +468,7 @@ EOF
     done
     
     # trigger eosio-lrt post pr
-    if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
+    if [[ -z "$TEST" && -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
         if ( [[ ! $PINNED == false ]] ); then
             cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
@@ -491,7 +491,7 @@ EOF
         fi
     fi
     # trigger eosio-sync-from-genesis for every build
-    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    if [[ -z "$TEST" && "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
         cat <<EOF
   - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
@@ -511,7 +511,7 @@ EOF
 EOF
     fi
     # trigger eosio-resume-from-state for every build
-    if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
+    if [[ -z "$TEST" && "$BUILDKITE_PIPELINE_SLUG" == 'eosio' && -z "${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_SYNC_TESTS}" ]]; then
         cat <<EOF
   - label: ":outbox_tray: Resume from State Test"
     trigger: "eosio-resume-from-state"
@@ -532,7 +532,7 @@ EOF
     fi
 fi
 # pipeline tail
-cat <<EOF
+[[ -z "$TEST" ]] && cat <<EOF
   - wait:
     continue_on_failure: true
 
