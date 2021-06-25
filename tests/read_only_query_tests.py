@@ -117,7 +117,12 @@ try:
                         "authorization": [{"actor": readtestaccount.name, "permission": "active"}],
                         "data": ""}]
           }
-    node.pushTransaction(trx, opts='--read-only', permissions=readtestaccount.name)
+    success, transaction = node.pushTransaction(trx, opts='--read-only', permissions=readtestaccount.name)
+    assert success, 'Executing setup as read-only query failed'
+    transId = node.getTransId(transaction)
+    # Default wait time from WaitSpec is 60 seconds.  Default transaction expiration time from cleos is 30 seconds.
+    result = node.waitForTransInBlock(transId, exitOnError=False)
+    assert False == result, 'Executing setup as read-only was erroneously incorporated into the chain'
 
     Print("Verifying kv tables not written")
     cmd="get kv_table %s roqm id" % readtestaccount.name
