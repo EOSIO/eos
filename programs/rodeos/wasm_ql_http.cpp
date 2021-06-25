@@ -211,7 +211,9 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
    try {
       if (req.target() == "/v1/chain/get_info") {
          auto thread_state = state_cache.get_state();
-         send(ok(query_get_info(*thread_state, appbase::app().version_string(), appbase::app().full_version_string(), temp_contract_kv_prefix),
+         send(ok(query_get_info(*thread_state,
+                                appbase::app().version(), appbase::app().version_string(), appbase::app().full_version_string(),
+                                temp_contract_kv_prefix),
                  "application/json"));
          return;
       } else if (req.target() ==
