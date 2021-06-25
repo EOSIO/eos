@@ -460,7 +460,7 @@ EOF
     timeout: ${TIMEOUT:-180}
 
 EOF
-    fi
+        fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
             echo '  - wait'
             echo ''
