@@ -288,12 +288,16 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
 } // run_action
 
 const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
+                                        const std::string&       version,
+                                        const std::string&       full_version,
                                         const std::vector<char>& contract_kv_prefix) {
    rocksdb::ManagedSnapshot snapshot{ thread_state.shared->db->rdb.get() };
    chain_kv::write_session  write_session{ *thread_state.shared->db, snapshot.snapshot() };
    db_view_state            db_view_state{ state_account, *thread_state.shared->db, write_session, contract_kv_prefix };
 
    std::string result = "{\"server_type\":\"wasm-ql\"";
+   result += ",\"version\":\"" + version + "\"";
+   result += ",\"full_version\":\"" + full_version + "\"";
 
    {
       global_property_kv table{ { db_view_state } };

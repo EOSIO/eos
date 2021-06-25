@@ -6,6 +6,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 #include "wasm_ql_http.hpp"
+#include <appbase/application.hpp>
 
 #include <eosio/from_json.hpp>
 
@@ -210,7 +211,8 @@ void handle_request(const wasm_ql::http_config& http_config, const wasm_ql::shar
    try {
       if (req.target() == "/v1/chain/get_info") {
          auto thread_state = state_cache.get_state();
-         send(ok(query_get_info(*thread_state, temp_contract_kv_prefix), "application/json"));
+         send(ok(query_get_info(*thread_state, appbase::app().version_string(), appbase::app().full_version_string(), temp_contract_kv_prefix),
+                 "application/json"));
          return;
       } else if (req.target() ==
                  "/v1/chain/get_block") { // todo: replace with /v1/chain/get_block_header. upgrade cleos.
