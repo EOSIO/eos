@@ -4,6 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
+[[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='5'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 # attach pipeline documentation
@@ -321,7 +322,7 @@ EOF
             if [[ -z "$TEST" ]]; then
                 SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq)"
             else
-                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$")"
+                SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep -v "^#" | awk -F ' ' '{ print $2 }' | sort | uniq | grep -P "^$TEST$" | awk "{while(i++<$ROUND_SIZE)print;i=0}")"
             fi
             for TEST_NAME in $SERIAL_TESTS; do
                 if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
