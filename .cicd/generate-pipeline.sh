@@ -249,7 +249,6 @@ EOF
 
 EOF
             fi
-        echo
         done
         # wasm spec tests
         echo '    # wasm spec tests'
@@ -304,7 +303,6 @@ EOF
 
 EOF
             fi
-        echo
         done
         # serial tests
         echo '    # serial tests'
@@ -366,7 +364,6 @@ EOF
 
 EOF
                 fi
-                echo
             done
             IFS=$nIFS
         done
@@ -426,7 +423,6 @@ EOF
 
 EOF
                 fi
-                echo
             done
             IFS=$nIFS
         done
