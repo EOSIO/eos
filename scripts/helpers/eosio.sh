@@ -317,7 +317,7 @@ function ensure-libpq() {
             LIBPQ_SUDO="$SUDO_LOCATION"
         fi
         if $PIN_COMPILER || $BUILD_CLANG; then
-            LIBPQ_CONFIG_STRING="CC=clang CFLAGS='-fPIC'"
+            LIBPQ_CONFIG_STRING="CFLAGS=-fPIC"
         fi
         if [[ $NAME == "Amazon Linux" || $NAME == "CentOS Linux" ]]; then
             #install libpq dependencies
