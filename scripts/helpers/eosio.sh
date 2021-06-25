@@ -325,17 +325,17 @@ function ensure-libpq() {
             # build libpq and postgres
             curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
             cd postgres-REL_13_3 && \
-            ./configure LIBPQ_CONFIG_STRING && make && $LIBPQ_SUDO make install && \
+            ./configure $LIBPQ_CONFIG_STRING && make && $LIBPQ_SUDO make install && \
             cd .. && rm -rf postgres-REL_13_3
             $LIBPQ_SUDO useradd -m postgres && $LIBPQ_SUDO mkdir /usr/local/pgsql/data && $LIBPQ_SUDO chown postgres:postgres /usr/local/pgsql/data && \
               su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
         elif [[ $NAME == "Ubuntu" ]]; then
             # install libpq dependencies
-            $LIBPQ_SUDO apt-get update && apt-get -y install bison libreadline-dev flex
+            $LIBPQ_SUDO apt-get update && $LIBPQ_SUDO apt-get -y install bison libreadline-dev flex
             # build libpq and postgres
             curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf - && \
             cd postgres-REL_13_3  && \
-            ./configure && make && $LIBPQ_SUDO make install && \
+            ./configure $LIBPQ_CONFIG_STRING && make && $LIBPQ_SUDO make install && \
             cd .. && rm -rf postgres-REL_13_3
             $LIBPQ_SUDO useradd -m postgres && $LIBPQ_SUDO mkdir /usr/local/pgsql/data && $LIBPQ_SUDO chown postgres:postgres /usr/local/pgsql/data && \
               su - postgres -c "/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data/"
