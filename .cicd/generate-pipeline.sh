@@ -530,7 +530,7 @@ EOF
     fi
 fi
 # pipeline tail
-[[ -z "$TEST" ]] && cat <<EOF
+cat <<EOF
   - wait:
     continue_on_failure: true
 
@@ -545,6 +545,8 @@ fi
     timeout: ${TIMEOUT:-10}
     soft_fail: true
 
+EOF
+[[ -z "$TEST" ]] && cat <<EOF
   - wait
 
     # packaging
