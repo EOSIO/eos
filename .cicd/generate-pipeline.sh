@@ -13,6 +13,7 @@ export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pi
 if [[ "$BUILDKITE" == 'true' && "$RETRY" == '0' ]]; then
     echo "This documentation is also available on [GitHub]($DOCS_URL)." | buildkite-agent annotate --append --style 'info' --context 'documentation'
     cat .cicd/README.md | buildkite-agent annotate --append --style 'info' --context 'documentation'
+    [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]] && cat .cicd/eosio-test-stability.md | buildkite-agent annotate --append --style 'info' --context 'test-stability'
 fi
 [[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data set pipeline-upload-retries "$(( $RETRY + 1 ))"
 # guard against accidentally spawning too many jobs
