@@ -303,8 +303,6 @@ function build-clang() {
 function ensure-libpq() {
     if [[ $ARCH == "Darwin" ]]; then
         #build libpq from source
-        export PATH=/usr/local/bin/:/usr/bin/:$PATH
-        export LD_LIBRARY_PATH=/usr/local/lib/:/usr/lib/:$LD_LIBRARY_PATH
         curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf -
         cd postgres-REL_13_3
         ./configure && make && sudo make install && cd .. && rm -rf postgres-REL_13_3
