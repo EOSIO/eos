@@ -249,7 +249,6 @@ namespace eosio {
       uint32_t                              max_nodes_per_host = 1;
       bool                                  p2p_accept_transactions = true;
       bool                                  p2p_reject_incomplete_blocks = true;
-      bool                                  p2p_always_resync = false;
 
       /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
@@ -2920,23 +2919,12 @@ namespace eosio {
             const auto last_sent_lib = last_handshake_sent.last_irreversible_block_num;
             g.unlock();
 
-            if( blk_num < last_sent_lib ) {
-               fc_ilog( logger, "received block ${n} less than sent lib ${lib}", ("n", blk_num)("lib", last_sent_lib) );
-               if(my_impl->p2p_always_resync) {
-                  fc_ilog( logger, "attempting to resync with peer that is sending blocks less than sent lib ${lib}", ("lib", last_sent_lib) );
-                  enqueue( (sync_request_message) {0, 0} );
-                  send_handshake();
-                  cancel_wait();
-               }
-               else {
-                  close();
-               }
-            } else {
-               fc_ilog( logger, "received block ${n} less than lib ${lib}", ("n", blk_num)("lib", lib) );
-               enqueue( (sync_request_message) {0, 0} );
-               send_handshake();
-               cancel_wait();
-            }
+            fc_ilog( logger, "received block ${n} less than ${which}lib ${lib}",
+                     ("n", blk_num)("which", blk_num < last_sent_lib ? "sent " : "")
+                     ("lib", blk_num < last_sent_lib ? last_sent_lib : lib) );
+            enqueue( (sync_request_message) {0, 0} );
+            send_handshake();
+            cancel_wait();
 
             pending_message_buffer.advance_read_ptr( message_length );
             return true;
@@ -3981,7 +3969,6 @@ namespace eosio {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
-         ( "p2p-always-resync", bpo::value<bool>()->default_value(false), "Always attempt to resync even when peer sends blocks earlier than this node's last irreversible block")
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
          ( "p2p-tls-security-group-ca-file", bpo::value<bfs::path>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
          ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
@@ -4009,7 +3996,6 @@ namespace eosio {
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->p2p_accept_transactions = options.at( "p2p-accept-transactions" ).as<bool>();
          my->p2p_reject_incomplete_blocks = options.at("p2p-reject-incomplete-blocks").as<bool>();
-         my->p2p_always_resync = options.at( "p2p-always-resync" ).as<bool>();
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
          my->keepalive_interval = std::chrono::milliseconds( options.at( "p2p-keepalive-interval-ms" ).as<int>() );
