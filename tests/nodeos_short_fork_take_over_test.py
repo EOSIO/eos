@@ -153,7 +153,7 @@ try:
 
     # ***   setup topogrophy   ***
 
-    # "bridge" shape connects defprocera through defproducerk (in node0) to each other and defproducerl through defproduceru (in node01)
+    # "bridge" shape connects defprocera through defproducerb (in node0) to each other and defproducerc (in node01)
     # and the only connection between those 2 groups is through the bridge node
     if cluster.launch(prodCount=2, topo="bridge", pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
@@ -226,7 +226,7 @@ try:
     # block number to start expecting node killed after
     preKillBlockNum=nonProdNode.getBlockNum()
     preKillBlockProducer=nonProdNode.getBlockProducerByNum(preKillBlockNum)
-    # kill at last block before defproducerl, since the block it is killed on will get propagated
+    # kill at last block before defproducerc, since the block it is killed on will get propagated
     killAtProducer="defproducerb"
     inRowCountPerProducer=12
     nonProdNode.killNodeOnProducer(producer=killAtProducer, whereInSequence=(inRowCountPerProducer-1))
