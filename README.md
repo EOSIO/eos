@@ -1,4 +1,3 @@
-
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
@@ -30,17 +29,17 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 ## Supported Operating Systems
 
-EOSIO currently supports the following operating systems:  
+EOSIO currently supports the following operating systems:
 
 1. Amazon Linux 2
 2. CentOS 7
-2. CentOS 7.x
-2. CentOS 8
-3. Ubuntu 16.04
-4. Ubuntu 18.04
-4. Ubuntu 20.04
-5. MacOS 10.14 (Mojave)
-6. MacOS 10.15 (Catalina)
+3. CentOS 7.x
+4. CentOS 8
+5. Ubuntu 16.04
+6. Ubuntu 18.04
+7. Ubuntu 20.04
+8. MacOS 10.14 (Mojave)
+9. MacOS 10.15 (Catalina)
 
 ---
 
@@ -65,11 +64,26 @@ Prebuilt EOSIO software packages are available for the operating systems below. 
 ### Mac OS X:
 
 #### Mac OS X Brew Install
+
 ```sh
 brew tap eosio/eosio
 brew install eosio
 ```
+
+Note: On MacOS 10.15 (Catalina), there is a chance to face this error which prevents successful installation of EOSIO:
+
+```
+Reinstalling 1 broken dependent from source: eosio/eosio/eosio
+```
+
+The following Homebrew commands will fix this issue:
+
+```sh
+brew cleanup eosio && brew link eosio
+```
+
 #### Mac OS X Brew Uninstall
+
 ```sh
 brew remove eosio
 ```
@@ -77,16 +91,21 @@ brew remove eosio
 ### Ubuntu Linux:
 
 #### Ubuntu 18.04 Package Install
+
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
 sudo apt install ./eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
 ```
+
 #### Ubuntu 16.04 Package Install
+
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
 sudo apt install ./eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
 ```
+
 #### Ubuntu Package Uninstall
+
 ```sh
 sudo apt remove eosio
 ```
@@ -94,31 +113,38 @@ sudo apt remove eosio
 ### RPM-based (CentOS, Amazon Linux, etc.):
 
 #### RPM Package Install
+
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio-2.1.0-rc1.el7.x86_64.rpm
 sudo yum install ./eosio-2.1.0-rc1.el7.x86_64.rpm
 ```
+
 #### RPM Package Uninstall
+
 ```sh
 sudo yum remove eosio
 ```
 
 ## Uninstall Script
+
 To uninstall the EOSIO built/installed binaries and dependencies, run:
+
 ```sh
 ./scripts/eosio_uninstall.sh
 ```
 
 ## Documentation
+
 1. [Nodeos](http://eosio.github.io/eos/latest/nodeos/)
-    - [Usage](http://eosio.github.io/eos/latest/nodeos/usage/index)
-    - [Replays](http://eosio.github.io/eos/latest/nodeos/replays/index)
-    - [Chain API Reference](http://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index)
-    - [Troubleshooting](http://eosio.github.io/eos/latest/nodeos/troubleshooting/index)
+   - [Usage](http://eosio.github.io/eos/latest/nodeos/usage/index)
+   - [Replays](http://eosio.github.io/eos/latest/nodeos/replays/index)
+   - [Chain API Reference](http://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index)
+   - [Troubleshooting](http://eosio.github.io/eos/latest/nodeos/troubleshooting/index)
 1. [Cleos](http://eosio.github.io/eos/latest/cleos/)
 1. [Keosd](http://eosio.github.io/eos/latest/keosd/)
 
 ## Resources
+
 1. [Website](https://eos.io)
 1. [Blog](https://medium.com/eosio)
 1. [Developer Portal](https://developers.eos.io)
@@ -129,6 +155,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 ## Getting Started
+
 Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started-guide) walkthrough.
 
 ## Contributing
@@ -139,10 +166,10 @@ Instructions detailing the process of getting the software, building it, running
 
 ## License
 
-EOSIO is released under the open source [MIT](./LICENSE) license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as WABT (Apache License) and WAVM (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.  
+EOSIO is released under the open source [MIT](./LICENSE) license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as WABT (Apache License) and WAVM (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.
 
 ## Important
 
 See [LICENSE](./LICENSE) for copyright and license terms.
 
-All repositories and other materials are provided subject to the terms of this [IMPORTANT](./IMPORTANT.md) notice and you must familiarize yourself with its terms.  The notice contains important information, limitations and restrictions relating to our software, publications, trademarks, third-party resources, and forward-looking statements.  By accessing any of our repositories and other materials, you accept and agree to the terms of the notice.
+All repositories and other materials are provided subject to the terms of this [IMPORTANT](./IMPORTANT.md) notice and you must familiarize yourself with its terms. The notice contains important information, limitations and restrictions relating to our software, publications, trademarks, third-party resources, and forward-looking statements. By accessing any of our repositories and other materials, you accept and agree to the terms of the notice.
