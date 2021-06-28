@@ -33,11 +33,6 @@ done
 echo -e ${PFILES} &> ~/rpmbuild/BUILD/filenames.txt
 
 CENTOS_MAJOR_VERSION=$(rpm -E %{rhel})
-if [[ $CENTOS_MAJOR_VERSION == '7' ]]; then
-  LIBPQ="postgresql-libs"
-elif [[ $CENTOS_MAJOR_VERSION == '8' ]]; then
-  LIBPQ="libpq"
-fi
 
 mkdir -p ${PROJECT}
 echo -e "Name: ${PROJECT} 
@@ -45,7 +40,7 @@ Version: ${VERSION_NO_SUFFIX}
 License: MIT
 Vendor: ${VENDOR} 
 Source: ${URL} 
-Requires: openssl, gmp, libstdc++, bzip2, libcurl, libusbx, ${LIBPQ}
+Requires: openssl, gmp, libstdc++, bzip2, libcurl, libusbx
 URL: ${URL} 
 Packager: ${VENDOR} <${EMAIL}>
 Summary: ${DESC}

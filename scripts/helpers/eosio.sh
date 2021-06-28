@@ -307,7 +307,6 @@ function ensure-libpq() {
         cd postgres-REL_13_3
         ./configure && make && sudo make install && cd .. && rm -rf postgres-REL_13_3
 
-        sudo rm -rf /usr/local/var/postgres
         /usr/local/pgsql/bin/initdb --locale=C -E UTF-8 /usr/local/var/postgres
         export PGDATA=/usr/local/var/postgres
     fi
