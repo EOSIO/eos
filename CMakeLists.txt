@@ -237,8 +237,10 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/amqp-cpp/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.amqpcpp COPYONLY)
-file(DOWNLOAD https://raw.githubusercontent.com/jtv/libpqxx/master/COPYING 
-     ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.libpqxx)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/libpqxx/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.libpqxx COPYONLY)
+file(DOWNLOAD https://github.com/postgres/postgres/blob/REL_13_STABLE/COPYRIGHT
+     ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.postgres)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
