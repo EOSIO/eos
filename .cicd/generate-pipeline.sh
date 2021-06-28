@@ -192,7 +192,6 @@ EOF
     fi
 done
 [[ -z "$TEST" ]] && cat <<EOF
-
   - label: ":docker: Docker - Build and Install"
     command: "./.cicd/installation-build.sh"
     env:
@@ -203,6 +202,8 @@ done
     timeout: ${TIMEOUT:-180}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}
 
+EOF
+cat <<EOF
   - wait
 
 EOF
