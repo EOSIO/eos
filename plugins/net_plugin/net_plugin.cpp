@@ -105,6 +105,7 @@ namespace eosio {
       block_id_type id;
       uint32_t      block_num = 0;
       uint32_t      connection_id = 0;
+      bool          have_block = false; // true if we have received the block, false if only received id notification
    };
 
    struct by_peer_block_id;
@@ -119,8 +120,12 @@ namespace eosio {
                >,
                composite_key_compare< std::less<uint32_t>, sha256_less >
          >,
-         ordered_non_unique< tag<by_peer_block_id>, member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
-               sha256_less
+         ordered_non_unique< tag<by_peer_block_id>,
+               composite_key< peer_block_state,
+                     member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
+                     member<peer_block_state, bool, &eosio::peer_block_state::have_block>
+               >,
+               composite_key_compare< sha256_less, std::greater<bool> >
          >,
          ordered_non_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
       >
@@ -198,7 +203,6 @@ namespace eosio {
       bool add_peer_block( const block_id_type& blkid, uint32_t connection_id );
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id) const;
       bool have_block(const block_id_type& blkid) const;
-      bool rm_peer_block( const block_id_type& blkid, uint32_t connection_id );
 
       bool add_peer_txn( const node_transaction_state& nts );
       bool add_peer_txn( const transaction_id_type& tid, uint32_t connection_id );
@@ -2287,17 +2291,13 @@ namespace eosio {
       auto bptr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
       bool added = (bptr == blk_state.end());
       if( added ) {
-         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id} );
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, true} );
+      } else if( !bptr->have_block ) {
+         blk_state.modify( bptr, []( auto& pb ) {
+            pb.have_block = true;
+         });
       }
       return added;
-   }
-
-   bool dispatch_manager::rm_peer_block( const block_id_type& blkid, uint32_t connection_id) {
-      std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
-      if( bptr == blk_state.end() ) return false;
-      blk_state.get<by_id>().erase( bptr );
-      return false;
    }
 
    bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) const {
@@ -2308,9 +2308,13 @@ namespace eosio {
 
    bool dispatch_manager::have_block( const block_id_type& blkid ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
+      // by_peer_block_id sorts have_block by greater so have_block == true will be the first one found
       const auto& index = blk_state.get<by_peer_block_id>();
       auto blk_itr = index.find( blkid );
-      return blk_itr != index.end();
+      if( blk_itr != index.end() ) {
+         return blk_itr->have_block;
+      }
+      return false;
    }
 
    bool dispatch_manager::add_peer_txn( const node_transaction_state& nts ) {
@@ -3509,13 +3513,11 @@ namespace eosio {
 
       go_away_reason reason = fatal_other;
       try {
-         my_impl->dispatcher->add_peer_block( blk_id, c->connection_id );
          bool accepted = my_impl->chain_plug->accept_block(msg, blk_id);
          my_impl->update_chain_info();
          if( !accepted ) return;
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
-         my_impl->dispatcher->rm_peer_block( blk_id, c->connection_id );
          peer_elog(c, "unlinkable_block_exception #${n} ${id}...: ${m}", ("n", blk_num)("id", blk_id.str().substr(8,16))("m",ex.to_string()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
@@ -3530,8 +3532,9 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), blk_id, msg]() {
+         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), cid=c->connection_id, blk_id, msg]() {
             fc_dlog( logger, "accepted signed_block : #${n} ${id}...", ("n", msg->block_num())("id", blk_id.str().substr(8,16)) );
+            dispatcher->add_peer_block( blk_id, cid );
             dispatcher->update_txns_block_num( msg );
          });
          c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
