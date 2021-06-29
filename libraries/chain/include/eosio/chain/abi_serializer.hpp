@@ -840,6 +840,8 @@ namespace impl {
       template<typename Resolver>
       static void extract_transaction( const variant_object& vo, transaction& trx, Resolver resolver, abi_traverse_context& ctx )
       {
+         bool has_txn_level_extension = false;
+
          if (vo.contains("expiration")) {
             from_variant(vo["expiration"], trx.expiration);
          }
@@ -873,20 +875,26 @@ namespace impl {
                resource_payer::extension_id(),
                fc::raw::pack( res_payer )
             );
+
+            has_txn_level_extension = true;
          }
 
          // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
-         // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
-         // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
-         // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
          if (vo.contains("deferred_transaction_generation")) {
-            deferred_transaction_generation_context deferred_transaction_generation;
-            from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
-            emplace_extension(
-               trx.transaction_extensions,
-               deferred_transaction_generation_context::extension_id(),
-               fc::raw::pack( deferred_transaction_generation )
-            );
+             deferred_transaction_generation_context deferred_transaction_generation;
+             from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
+             emplace_extension(
+                     trx.transaction_extensions,
+                     deferred_transaction_generation_context::extension_id(),
+                     fc::raw::pack(deferred_transaction_generation)
+             );
+             has_txn_level_extension = true;
+         }
+
+          // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
+          // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
+          // or neither (only if extension was "extracted" and there was no deferred transaction to extract)
+         if (has_txn_level_extension) {
             // if both are present, they need to match
             if (vo.contains("transaction_extensions")) {
                extensions_type trx_extensions;
