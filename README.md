@@ -65,6 +65,14 @@ Prebuilt EOSIO software packages are available for the operating systems below. 
 brew tap eosio/eosio
 brew install eosio
 ```
+Note: On MacOS 10.15 (Catalina), there is a chance to face the error below which prevents successful installation of Eosio:
+```
+Reinstalling 1 broken dependent from source: eosio/eosio/eosio
+```
+The following Homebrew commands will resolve this issue:
+```sh
+brew cleanup eosio && brew link eosio
+```
 #### Mac OS X Brew Uninstall
 ```sh
 brew remove eosio
