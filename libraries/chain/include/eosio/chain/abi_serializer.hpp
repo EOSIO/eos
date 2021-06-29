@@ -867,6 +867,18 @@ namespace impl {
             extract(vo["actions"], trx.actions, resolver, ctx);
          }
 
+         // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
+         if (vo.contains("deferred_transaction_generation")) {
+             deferred_transaction_generation_context deferred_transaction_generation;
+             from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
+             emplace_extension(
+                     trx.transaction_extensions,
+                     deferred_transaction_generation_context::extension_id(),
+                     fc::raw::pack(deferred_transaction_generation)
+             );
+             has_txn_level_extension = true;
+         }
+
          if (vo.contains("resource_payer")) {
             resource_payer res_payer;
             from_variant(vo["resource_payer"], res_payer);
@@ -879,17 +891,6 @@ namespace impl {
             has_txn_level_extension = true;
          }
 
-         // can have "deferred_transaction_generation" (if there is a deferred transaction and the extension was "extracted" to show data),
-         if (vo.contains("deferred_transaction_generation")) {
-             deferred_transaction_generation_context deferred_transaction_generation;
-             from_variant(vo["deferred_transaction_generation"], deferred_transaction_generation);
-             emplace_extension(
-                     trx.transaction_extensions,
-                     deferred_transaction_generation_context::extension_id(),
-                     fc::raw::pack(deferred_transaction_generation)
-             );
-             has_txn_level_extension = true;
-         }
 
           // or "transaction_extensions" (either as empty or containing the packed deferred transaction),
           // or both (when there is a deferred transaction and extension was "extracted" to show data and a redundant "transaction_extensions" was provided),
