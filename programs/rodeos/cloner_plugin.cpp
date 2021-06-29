@@ -285,6 +285,7 @@ void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t d
 }
 
 void cloner_plugin::handle_sighup() {
+   fc::zipkin_config::handle_sighup();
 }
 
 } // namespace b1
