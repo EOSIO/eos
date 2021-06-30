@@ -305,7 +305,7 @@ function ensure-libpq() {
         #build libpq from source
         curl -L https://github.com/postgres/postgres/archive/refs/tags/REL_13_3.tar.gz | tar zxvf -
         cd postgres-REL_13_3
-        ./configure && make && sudo make install && cd .. && rm -rf postgres-REL_13_3
+        ./configure CC=gcc && make && sudo make install && cd .. && rm -rf postgres-REL_13_3
 
         /usr/local/pgsql/bin/initdb --locale=C -E UTF-8 /usr/local/var/postgres
         export PGDATA=/usr/local/var/postgres
