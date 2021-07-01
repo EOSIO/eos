@@ -30,4 +30,4 @@
 	url = https://github.com/eosio/appbase
 [submodule "libraries/libpqxx"]
 	path = libraries/libpqxx
-	url = https://github.com/spoonincode/libpqxx.git
+	url = https://github.com/EOSIO/libpqxx
