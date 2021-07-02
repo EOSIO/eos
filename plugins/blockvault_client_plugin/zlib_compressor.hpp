@@ -16,7 +16,6 @@ struct zlib_compressor {
 
       std::ifstream                                infile(input_filename, ios_base::in | ios_base::binary);
       boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
-      in.push(Filter());
       in.push(infile);
 
       std::string out_filename = std::string(input_filename) + output_file_suffix;
