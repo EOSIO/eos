@@ -901,7 +901,7 @@ namespace impl {
                extensions_type trx_extensions;
                from_variant(vo["transaction_extensions"], trx_extensions);
                EOS_ASSERT(trx.transaction_extensions == trx_extensions, packed_transaction_type_exception,
-                        "Transaction contained deferred_transaction_generation and transaction_extensions that did not match");
+                        "The transaction_extensions do not match specified data specified transaction level data [deferred_transaction_generation, resource_payer].");
             }
          }
          else if (vo.contains("transaction_extensions")) {
