@@ -73,6 +73,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_config_test_activate.py ${CMA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_config_test_restart.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_config_test_restart.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_config_test_snapshot.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_config_test_snapshot.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_config_test_no_ca.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_config_test_no_ca.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_network_from_snapshot.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_network_from_snapshot.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
 
@@ -149,6 +150,8 @@ add_test(NAME privacy_config_test_snapshot COMMAND tests/privacy_config_test_sna
 set_property(TEST privacy_config_test_snapshot PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME privacy_config_test_no_ca COMMAND tests/privacy_config_test_no_ca.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST privacy_config_test_no_ca PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME privacy_network_from_snapshot COMMAND tests/privacy_network_from_snapshot.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST privacy_network_from_snapshot PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

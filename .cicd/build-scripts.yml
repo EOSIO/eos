@@ -27,7 +27,7 @@ steps:
       REPO: "git@github.com:EOSIO/eos.git"
       TEMPLATE: "10.15.5_6C_14G_80G"
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-    agents: "queue=mac-anka-large-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -P -y"
@@ -105,7 +105,7 @@ steps:
       REPO: "git@github.com:EOSIO/eos.git"
       TEMPLATE: "10.15.5_6C_14G_80G"
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-    agents: "queue=mac-anka-large-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos &&  git checkout -f $BUILDKITE_BRANCH && git submodule update --init --recursive"
       - "cd eos && ./scripts/eosio_build.sh -y"
