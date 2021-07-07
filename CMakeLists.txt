@@ -1,5 +1,35 @@
-cmake_minimum_required( VERSION 3.8 )
-set(VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports)
+
+if (CMAKE_TOOLCHAIN_FILE MATCHES ".*vcpkg\\.cmake")
+  cmake_minimum_required( VERSION 3.16 )
+  set(USE_SYSTEM_OPENSSL AUTO CACHE STRING "Use system supplied openssl package")
+  set_property(CACHE USE_SYSTEM_OPENSSL PROPERTY STRINGS AUTO ON OFF) 
+
+  set(USE_SYSTEM_LLVM AUTO CACHE STRING "Use system supplied llvm package")
+  set_property(CACHE USE_SYSTEM_LLVM PROPERTY STRINGS AUTO ON OFF) 
+
+  if(USE_SYSTEM_OPENSSL STREQUAL "AUTO")
+    find_package(OpenSSL QUIET)
+    if (OpenSSL_FOUND)
+      list(APPEND VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports/openssl-override)
+    endif()
+  elseif(USE_SYSTEM_OPENSSL)
+    list(APPEND VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports/openssl-override)
+  endif()
+
+  if(USE_SYSTEM_LLVM STREQUAL "AUTO")
+    find_package(LLVM QUIET)
+    if (NOT LLVM_FOUND)
+      list(APPEND VCPKG_MANIFEST_FEATURES "vcpkg-llvm")
+    endif()
+  elseif(NOT USE_SYSTEM_LLVM)
+    list(APPEND VCPKG_MANIFEST_FEATURES "vcpkg-llvm")
+  endif()
+
+  list(APPEND VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports)
+else()
+  cmake_minimum_required( VERSION 3.8 )
+endif()
+
 project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
@@ -200,7 +230,17 @@ add_subdirectory( tools )
 option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
 
 if (NOT DISABLE_WASM_SPEC_TESTS)
-add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+  if (NOT _VCPKG_INSTALLED_DIR)
+    add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+  else()
+    include(FetchContent)
+    FetchContent_Declare(
+      eosio-wasm-spec-tests
+      GIT_REPOSITORY https://github.com/EOSIO/eosio-wasm-spec-tests.git
+      GIT_TAG        22f7f62d5451ee57f14b2c3b9f62e35da50560f1
+    )
+    FetchContent_MakeAvailable(eosio-wasm-spec-tests)  
+  endif()
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
@@ -241,8 +281,16 @@ if (_VCPKG_INSTALLED_DIR)
       DESTINATION ${CMAKE_BINARY_DIR}/licenses/eosio
   )
 
-  foreach(lib yubihsm rocksdb amqpcpp libpq libpqxx eos-vm secp256k1 softfloat rapidjson)
-    configure_file(${VCPKG_INSTALLED_SHARE}/${lib}/copyright ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.${lib} COPYONLY)
+  file(GLOB_RECURSE COPYRIGHT_FILES "${VCPKG_INSTALLED_SHARE}/*/copyright")
+  foreach(f ${COPYRIGHT_FILES})
+    if(f MATCHES "${VCPKG_INSTALLED_SHARE}/(.*)/copyright")
+      set(lib ${CMAKE_MATCH_1})
+      if (NOT lib MATCHES "boost-.*")
+        configure_file(${VCPKG_INSTALLED_SHARE}/${lib}/copyright ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.${lib} COPYONLY)
+      elseif(NOT EXISTS ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.boost)
+        configure_file(${VCPKG_INSTALLED_SHARE}/${lib}/copyright ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.boost COPYONLY)
+      endif()
+    endif()
   endforeach()
 
   install(DIRECTORY ${CMAKE_BINARY_DIR}/licenses/eosio DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses COMPONENT base)

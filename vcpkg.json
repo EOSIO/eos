@@ -1,4 +1,5 @@
 {
+   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
    "name": "eos",
    "version-string": "2.1.0",
    "port-version": 1,
@@ -12,7 +13,6 @@
       "amqpcpp",
       "rocksdb",
       "yubihsm",
-		"openssl",
       "gmp",
       "libpqxx",
       "boost-date-time",
@@ -49,7 +49,7 @@
                "features": [
                   "enable-rtti"
                ],
-               "platform": "linux"
+               "platform": "linux & osx"
             }
          ]
       }
