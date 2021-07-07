@@ -150,10 +150,21 @@ namespace eosio { namespace chain {
          net_limit_due_to_block = false;
       }
 
-      // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway) does not exceed current delta
-      if( (fc::microseconds(account_cpu_limit) + leeway) <= (_deadline - start) ) {
-         _deadline = start + fc::microseconds(account_cpu_limit) + leeway;
-         billing_timer_exception_code = leeway_deadline_exception::code_value;
+      // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway and - subjective cpu billing) does not exceed current delta
+      if( explicit_billed_cpu_time || subjective_cpu_bill_us == 0 ) { // subjective cpu billing is not taken into account
+         if( (fc::microseconds( account_cpu_limit) + leeway ) <= (_deadline - start) ) {
+            _deadline = start + fc::microseconds( account_cpu_limit ) + leeway;
+            billing_timer_exception_code = leeway_deadline_exception::code_value;
+         }
+      } else {
+         fc::microseconds duration { fc::microseconds( leeway ) };
+         if ( account_cpu_limit > subjective_cpu_bill_us ) {
+            duration += fc::microseconds( account_cpu_limit - subjective_cpu_bill_us );
+         }
+         if( duration <= (_deadline - start) ) {
+            _deadline = start + duration;
+            billing_timer_exception_code = subjective_cpu_bill_deadline_exception::code_value;
+         }
       }
 
       billing_timer_duration_limit = _deadline - start;
@@ -417,6 +428,11 @@ namespace eosio { namespace chain {
                      "the transaction was unable to complete by deadline, "
                      "but it is possible it could have succeeded if it were allowed to run to completion ${billing_timer}",
                      ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+      } else if( deadline_exception_code == subjective_cpu_bill_deadline_exception::code_value ) {
+         EOS_THROW( subjective_cpu_bill_deadline_exception,
+                     "the transaction was unable to complete by deadline due to subjective cpu billing. "
+                     "It was running for ${billing_timer}us. The current subjective CPU billing is ${subjective_cpu_bill_us}us",
+                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) ("subjective_cpu_bill_us", subjective_cpu_bill_us) );
       }
       EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
    }
@@ -513,8 +529,8 @@ namespace eosio { namespace chain {
                const int64_t cpu_limit = (cpu_limited_by_account ? account_cpu_limit : objective_duration_limit.count());
                EOS_ASSERT( prev_billed_us < cpu_limit,
                            tx_cpu_usage_exceeded,
-                           "estimated CPU time (${billed} us) is not less than the maximum billable CPU time for the transaction (${billable} us)",
-                           ("billed", prev_billed_us)( "billable", cpu_limit )
+                           "estimated CPU time (${billed} us) is not less than the maximum billable CPU time for the transaction (${billable} us). subjective cpu billed time: ${subjective_cpu_bill_us} us",
+                           ("billed", prev_billed_us)( "billable", cpu_limit ) ("subjective_cpu_bill_us", subjective_cpu_bill_us)
                );
             }
          }
