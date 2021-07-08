@@ -23,6 +23,17 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
     
+  - label: ":centos: CentOS 8 - Base Image Pinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: centos-8-pinned
+      PLATFORM_TYPE: pinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+
   - label: ":darwin: macOS 10.15 - Base Image Pinned"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
@@ -79,6 +90,17 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
     
+  - label: ":centos: CentOS 8 - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: centos-8-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+
   - label: ":darwin: macOS 10.15 - Base Image Unpinned"
     command:
       - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout -f $BUILDKITE_BRANCH"
