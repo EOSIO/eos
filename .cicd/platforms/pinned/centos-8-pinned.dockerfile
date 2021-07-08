@@ -10,7 +10,7 @@ RUN yum update -y && \
     yum install -y python3
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
-    yum config-manager --set-enabled PowerTools && \
+    yum config-manager --set-enabled powertools && \
     yum install -y doxygen ocaml
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
