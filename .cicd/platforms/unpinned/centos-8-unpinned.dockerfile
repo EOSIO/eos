@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel  && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
-    yum install -y python3 llvm-toolset cmake boost postgresql-server-devel
+    yum install -y python3 llvm-toolset llvm-devel cmake boost postgresql postgresql-server-devel
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     yum config-manager --set-enabled powertools && \
@@ -23,4 +23,6 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN yum install -y nodejs
-
+# setup Postgress
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
+    su - postgres -c initdb
