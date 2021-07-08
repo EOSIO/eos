@@ -1,8 +1,18 @@
+## Command
+
+```sh
+cleos create key [OPTIONS]
+```
+
+**Where**:
+
+* [`OPTIONS`] = See **Options** in **Command Usage** section below. 
+
 ## Description
 
-Creates a new keypair and prints the public and private keys
+Use this command to create a new keypair and print the public and private keys
 
-## Usage
+## Command Usage
 
 ```console
 Usage: cleos create key [OPTIONS]
@@ -14,15 +24,22 @@ Options:
   --to-console                Print private/public keys to console.
 ```
 
-## Command
+## Requirements
 
-```sh
-cleos create key -f passwd
-```
+For prerequisites to run this command, see the **Before you Begin** section of the [How to Create Keypairs](../02_how-to-guides/how-to-create-key-pairs.md) topic.
 
-## Output
+## Examples
+
+The following example creates a keypair and prints the output to the console:
 
 ```console
-Private key: 5KCkcSxYKZfh5Cr8CCunS2PiUKzNZLhtfBjudaUnad3PDargFQo
-Public key: EOS5uHeBsURAT6bBXNtvwKtWaiDSDJSdSmc96rHVws5M1qqVCkAm6
+cleos create key --to-console
+Private key: 5KPzrqNMJdr6AX6abKg*******************************cH
+Public key: EOS4wSiQ2jbYGrqiiKCm8oWR88NYoqnmK4nNL1RCtSQeSFkGtqsNc
+```
+
+The following example creates a keypair and saves it to a file using the ``--file`` flag: 
+```console
+cleos create key --file pw.txt         
+saving keys to pw.txt
 ```
