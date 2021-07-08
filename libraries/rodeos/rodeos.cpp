@@ -120,7 +120,11 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
    if (!writing_block || result.this_block->block_num != *writing_block)
       throw std::runtime_error("call start_block first");
 
-   bool near       = result.this_block->block_num + 4 >= result.last_irreversible.block_num;
+   // if we are trying to get caught up to head and are already near (within 4 blocks) of LIB only then call db->flush to disk
+   bool near       = false;
+   if (result.this_block->block_num < result.last_irreversible.block_num)
+      near = result.this_block->block_num + 4 >= result.last_irreversible.block_num;
+    
    bool write_now  = !(result.this_block->block_num % 200) || near || force_write;
    head            = result.this_block->block_num;
    head_id         = result.this_block->block_id;
@@ -128,8 +132,9 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
    irreversible_id = result.last_irreversible.block_id;
    if (!first || head < first)
       first = head;
-   if (write_now)
-      end_write(write_now);
+  
+      end_write(true);
+    
    if (near)
       db->flush(false, false);
 }
