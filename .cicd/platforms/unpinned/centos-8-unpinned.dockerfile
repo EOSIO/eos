@@ -20,13 +20,13 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.
     make -j$(nproc) && make install && \
     rm -rf cmake-3.18.0.tar.gz cmake-3.18.2
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
-    tar -xjf boost_1_72_0.tar.bz2 && \
-    cd boost_1_72_0 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.69.0/source/boost_1_69_0.tar.bz2 && \
+    tar -xjf boost_1_69_0.tar.bz2 && \
+    cd boost_1_69_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
+    rm -rf boost_1_69_0.tar.bz2 /boost_1_69_0
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
