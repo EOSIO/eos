@@ -4,9 +4,6 @@ if (CMAKE_TOOLCHAIN_FILE MATCHES ".*vcpkg\\.cmake")
   set(USE_SYSTEM_OPENSSL AUTO CACHE STRING "Use system supplied openssl package")
   set_property(CACHE USE_SYSTEM_OPENSSL PROPERTY STRINGS AUTO ON OFF) 
 
-  set(USE_SYSTEM_LLVM AUTO CACHE STRING "Use system supplied llvm package")
-  set_property(CACHE USE_SYSTEM_LLVM PROPERTY STRINGS AUTO ON OFF) 
-
   if(USE_SYSTEM_OPENSSL STREQUAL "AUTO")
     find_package(OpenSSL QUIET)
     if (OpenSSL_FOUND)
@@ -14,15 +11,6 @@ if (CMAKE_TOOLCHAIN_FILE MATCHES ".*vcpkg\\.cmake")
     endif()
   elseif(USE_SYSTEM_OPENSSL)
     list(APPEND VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports/openssl-override)
-  endif()
-
-  if(USE_SYSTEM_LLVM STREQUAL "AUTO")
-    find_package(LLVM QUIET)
-    if (NOT LLVM_FOUND)
-      list(APPEND VCPKG_MANIFEST_FEATURES "vcpkg-llvm")
-    endif()
-  elseif(NOT USE_SYSTEM_LLVM)
-    list(APPEND VCPKG_MANIFEST_FEATURES "vcpkg-llvm")
   endif()
 
   list(APPEND VCPKG_OVERLAY_PORTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg-ports)
@@ -260,17 +248,35 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/contracts/contracts/eosio.boot/eosio.b
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.in ${CMAKE_CURRENT_BINARY_DIR}/version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio)
 
-set(EOS_ROOT_DIR ${CMAKE_BINARY_DIR})
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/EosioTester.cmake @ONLY)
 
-set(EOS_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake @ONLY)
-install(FILES ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
-configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
-install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
 if (_VCPKG_INSTALLED_DIR)
+
+  install(TARGETS Logging IR Runtime WASM WAST builtins chain_kv eos-vm eosio_chain eosio_testing_contracts eosio_testing
+          EXPORT eosio)
+
+  export(EXPORT eosio
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/lib/cmake/eosio/EosioTargets.cmake"
+  )
+  include(CMakePackageConfigHelpers)
+
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/lib/cmake/eosio/EosioConfigVersion.cmake"
+    VERSION "${VERSION_FULL}"
+    COMPATIBILITY ExactVersion
+  )
+
+  # create config file
+  configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/eosio
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+  ) 
+
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/lib/cmake/eosio/EosioConfigVersion.cmake"
+          DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio )
+
   configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE
                 ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
 
@@ -296,6 +302,16 @@ if (_VCPKG_INSTALLED_DIR)
   install(DIRECTORY ${CMAKE_BINARY_DIR}/licenses/eosio DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses COMPONENT base)
 
 else()
+
+set(EOS_ROOT_DIR ${CMAKE_BINARY_DIR})
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/EosioTester.cmake @ONLY)
+
+set(EOS_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)

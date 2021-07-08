@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+find_dependency(fc CONFIG)
+find_dependency(softfloat CONFIG)
+find_dependency(RocksDB CONFIG)
+find_dependency(eos-vm CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/EosioTargets.cmake")
+
