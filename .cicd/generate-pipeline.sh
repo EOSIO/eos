@@ -584,6 +584,33 @@ EOF
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "centos7pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":centos: CentOS 7 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "centos:7"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos7pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":aws: Amazon Linux 2 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "amazonlinux:2"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos7pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -598,6 +625,20 @@ EOF
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "centos8pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":centos: CentOS 8 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 8 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "centos:8"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos8pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -612,6 +653,20 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "ubuntu1604pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":ubuntu: Ubuntu 16.04 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "ubuntu:16.04"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu1604pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -626,6 +681,20 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "ubuntu1804pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":ubuntu: Ubuntu 18.04 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "ubuntu:18.04"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu1804pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -640,6 +709,20 @@ EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "ubuntu2004pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+
+  - label: ":ubuntu: Ubuntu 20.04 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "ubuntu:20.04"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu2004pb"
+    allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
