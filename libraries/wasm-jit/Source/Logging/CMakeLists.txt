@@ -7,6 +7,7 @@ include_directories(${WAVM_INCLUDE_DIR}/Logging)
 add_definitions(-DLOGGING_API=DLL_EXPORT)
 
 add_library(Logging STATIC ${Sources} ${PublicHeaders})
+target_include_directories(Logging PUBLIC $<BUILD_INTERFACE:${WAVM_INCLUDE_DIR}>)
 
 # Link with dl on Linux for dladdr.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
