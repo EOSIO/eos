@@ -11,7 +11,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    
+
   - label: ":centos: CentOS 7.7 - Base Image Pinned"
     command:
       - "./.cicd/generate-base-images.sh"
@@ -22,7 +22,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    
+
   - label: ":centos: CentOS 8 - Base Image Pinned"
     command:
       - "./.cicd/generate-base-images.sh"
@@ -78,7 +78,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    
+
   - label: ":centos: CentOS 7.7 - Base Image Unpinned"
     command:
       - "./.cicd/generate-base-images.sh"
@@ -89,7 +89,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    
+
   - label: ":centos: CentOS 8 - Base Image Unpinned"
     command:
       - "./.cicd/generate-base-images.sh"
@@ -123,7 +123,7 @@ steps:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     timeout: 180
-    
+
   - label: ":ubuntu: Ubuntu 18.04 - Base Image Unpinned"
     command:
       - "./.cicd/generate-base-images.sh"
