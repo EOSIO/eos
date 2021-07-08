@@ -1,9 +1,13 @@
 ## Description
 Creates or updates the contract on an account.
+
 ## Positional Parameters
- `account` _TEXT_ - The account to publish a contract for
-  `wast-file`  _TEXT_ - The file containing the contract WAST or WASM
-  `abi-file`  _TEXT_ - The ABI for the contract
+
+* `account` _TEXT_ - The account to publish a contract for
+* `contract-dir` _TEXT_ - The path containing the .wasm and .abi
+* `wast-file`  _TEXT_ - The file containing the contract WAST or WASM
+* `abi-file`  _TEXT_ - The ABI for the contract
+
 ## Options
 
 `-h,--help` Print this help message and exit
