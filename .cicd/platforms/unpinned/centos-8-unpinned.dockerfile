@@ -7,12 +7,20 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel  && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
-    yum install -y python3 llvm-toolset llvm-devel cmake boost-devel \
+    yum install -y python3 llvm-toolset llvm-devel cmake \
     postgresql-server postgresql-server-devel libpq-devel
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     yum config-manager --set-enabled powertools && \
     yum install -y doxygen ocaml
+# build boost
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
+    ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
+    ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FOR$
+    cd / && \
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
