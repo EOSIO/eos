@@ -38,7 +38,7 @@ The *Private Access Control* feature provides a [C++ security_group API](https:/
 
 ### C++ security_group API
 
-The C++ security_group API exposes various internal functions to be used within smart contracts. You can add or remove participants, check existence within the *security group*, or get a list of the current participants:
+The C++ security_group API exposes the following functions to be used within smart contracts. You can add or remove participants, check existence within the *security group*, or get a list of the current participants:
 
 * [`add_security_group_participants()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-add_security_group_participants)
 * [`remove_security_group_participants()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-remove_security_group_participants)
