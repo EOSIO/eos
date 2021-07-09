@@ -24,5 +24,4 @@ llvm-toolset-11.0-llvm-devel,rpm -qa
 llvm-toolset-11.0-llvm-static,rpm -qa
 epel-release,rpm -qa
 jq,rpm -qa
-boost169,rpm -qa
 postgresql-devel,rpm -qa
