@@ -5,7 +5,7 @@ link_text: Private Chain Access Control
 
 ## Overview
 
-The *Private Access Control* or *Security Group* feature provides a two-layer security solution for blockchain administrators to control which participants can access and use a private EOSIO network. The first security layer is met by enforcing TLS connections in the peer-to-peer network protocol; only those participants with a properly signed certificate are able to proceed past the TLS handshake and connect to other peers. The second security layer, which is optional, brings the concept of a *privacy group* or *security group*; if enabled, only those participants in the group are allowed to access data from the private network. Therefore, the first layer controls “connection” access while the second layer manages “data” access. Participants are considered logical entities with a designated EOSIO name and may host multiple nodes, potentially deployed in \[Block Vault\](link to plugin) mode.
+The *Private Access Control* or *Security Group* feature provides a two-layer security solution for blockchain administrators to control which participants can access and use a private EOSIO network. The first security layer enforces TLS connections in the peer-to-peer network protocol; only those participants with a properly signed certificate are able to establish a TLS connection and communicate securely with other peers. The second security layer, which is optional, brings the concept of a *privacy group* or *security group*; if enabled, only those participants in the group are allowed to access data from the private network. Therefore, the first layer controls “connection” access while the second layer manages “data” access. Participants are considered logical entities with a designated EOSIO name and may host multiple nodes, potentially deployed in [Block Vault](../../03_plugins/blockvault_client_plugin/index.md) mode.
 
 ## Concept
 
@@ -21,35 +21,40 @@ The *Private Access Control* feature must meet the following requirements:
 - Once activated, only nodes with valid signed credentials are allowed to connect.
 - valid nodes must establish TLS connections to communicate securely with other peers.
 - Once connected, all peer-to-peer communications must be encrypted - TLS satisfies this.
-- Optionally, a *security group* can be used to manage participant data access to the network.
-- If at least one participant is added to the group, data access control is enabled.
-- If no participants are added to the group, data access control is disabled.
-- When data access control is disabled, all participants in the group are allowed data access.
-- When data access control is enabled, only those participants in the group are allowed data access.
+- Optionally, a *security group* can be used to manage participant data access to the network:
+  * If at least one participant is added to the group, data access control is enabled.
+  * If no participants are added to the group, data access control is disabled.
+  * When data access control is disabled, all participants in the group are allowed data access.
+  * When data access control is enabled, only those participants in the group are allowed data access.
 
-The secure connection requirements are met by establishing TLS connections among the participant nodes. This is considered sufficient from a security standpoint since the peer-to-peer communications are encrypted. The optional data access control requirements are met through the *security group* which adds further data access control on a per-participant basis. Adding and removing participans within the *security group* as well as further housekeeping operations are implemented through EOSIO WASM intrinsics, which can be invoked from wrapper actions within custom smart contracts.
+The secure connection requirements are met by establishing TLS connections among the participant nodes. This is considered sufficient from a security standpoint since the peer-to-peer communications are encrypted. The optional data access control requirements are met through the *security group* which adds further data access control on a per-participant basis. Adding and removing participans within the *security group* as well as additional housekeeping operations are implemented through EOSIO WASM host functions, which can be invoked from wrapper actions within custom smart contracts.
+
+[[info | Technical note]]
+| Removing a participant from the *security group* means that a peer belonging to that participant will not get any data from the *security group* despite having a valid certificate. However, it will still be able to receive p2p handshake data such as head number, lib number, and other non-essential data.
 
 ## Interface
 
-The *Private Access Control* feature provides a \[C++ security_group API\](link to cdt ref) for data access control on a per-participant basis. The API is composed of C++ wrappers to EOSIO WASM intrinsics. Smart contract developers are encouraged to create custom wrapper actions over this interface and implement additional business logic according to their application needs. A sample [security_group_test](https://github.com/EOSIO/eos/blob/develop/unittests/test-contracts/security_group_test/security_group_test.cpp) smart contract is provided for reference [TODO: ask product whether we can also make the `eosio.secgrp` smart contract source code public since it's used in the unit tests and the tutorial].
+The *Private Access Control* feature provides a [C++ security_group API](https://developers.eos.io/manuals/eosio.cdt/latest/security__group_8hpp) for data access control on a per-participant basis. The API is composed of C++ wrappers to EOSIO WASM host functions. Smart contract developers are encouraged to create custom wrapper actions over this interface and implement additional business logic according to their application requirements. A sample [security_group_test](https://github.com/EOSIO/eos/blob/develop/unittests/test-contracts/security_group_test/security_group_test.cpp) smart contract is provided for reference.
 
 ### C++ security_group API
 
-The C++ security_group API exposes the following functions:
+The C++ security_group API exposes various internal functions to be used within smart contracts. You can add or remove participants, check existence within the *security group*, or get a list of the current participants:
 
-* \[`add_security_group_participants()`\](../../../classeosio... link to cdt ref)
-* \[`remove_security_group_participants()`\](../../../classeosio... link to cdt ref)
-* \[`in_active_security_group()`\](../../../classeosio... link to cdt ref)
-* \[`get_active_security_group()`\](../../../classeosio... link to cdt ref)
+* [`add_security_group_participants()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-add_security_group_participants)
+* [`remove_security_group_participants()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-remove_security_group_participants)
+* [`in_active_security_group()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-in_active_security_group)
+* [`get_active_security_group()`](https://developers.eos.io/manuals/eosio.cdt/latest/namespaceeosio_1_1internal__use__do__not__use#function-get_active_security_group)
 
 Note that adding or removing participants within the *security group* requires a privileged account. Also, note that these two actions are "proposed" for approval via EOSIO consensus. Finally, checking for existence of participants in the *security group* is all or nothing: if there is at least one specified participant that is not in the *security group*, the check returns false.
 
-For more information visit the \[C++ security_group API\](link to cdt ref) reference.
+For more information visit the [C++ security_group API](https://developers.eos.io/manuals/eosio.cdt/latest/security__group_8hpp) reference.
 
 ## Examples
 
 The examples below showcase how to enable the SECURITY_GROUP protocol feature as well as adding and removing participants from the *security group*:
-* [Private Access Control Tutorial](tutorial.md)
+* [Private Access Control Tutorial](05_tutorial.md)
+* [How to add participants to security group](10_how-to-add-participants-to-security-group.md)
+* [How to remove participants to security group](15_how-to-remove-participants-to-security-group.md)
 
 ## Use Cases
 
