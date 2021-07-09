@@ -8,7 +8,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
     yum install -y python3 python3-devel python3-requests llvm-toolset llvm-devel cmake \
-    postgresql-server postgresql-server-devel libpq-devel
+    glibc-locale-source glibc-langpack-en postgresql-server postgresql-server-devel libpq-devel 
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     yum config-manager --set-enabled powertools && \
