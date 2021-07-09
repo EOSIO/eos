@@ -3872,6 +3872,7 @@ namespace eosio {
 
    void net_plugin::handle_sighup() {
       fc::logger::update( logger_name, logger );
+      fc::zipkin_config::handle_sighup();
    }
 
    void net_plugin::plugin_shutdown() {
