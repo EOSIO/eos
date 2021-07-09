@@ -57,3 +57,6 @@ RUN cp ~/.bashrc ~/.bashrc.bak && \
 RUN bash -c '. ~/.bashrc; nvm install --lts=dubnium' && \
     ln -s "/root/.nvm/versions/node/$(ls -p /root/.nvm/versions/node | sort -Vr | head -1)bin/node" /usr/local/bin/node
 RUN yum install -y nodejs
+# setup Postgress
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
+    su - postgres -c initdb
