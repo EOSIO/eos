@@ -7,7 +7,7 @@ export MOUNTED_DIR='/eos'
 export DOCKER_CLI_EXPERIMENTAL='enabled'
 export DOCKERHUB_CI_REGISTRY="docker.io/eosio/ci"
 export DOCKERHUB_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
-if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "security" ]] ; then
+if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
     export CI_REGISTRIES=("$MIRROR_REGISTRY")
     export CONTRACT_REGISTRIES=("$MIRROR_REGISTRY")
 else
