@@ -16,7 +16,7 @@ echo "$ $DOCKER_BUILD"
 eval $DOCKER_BUILD
 # docker tag
 echo '--- :label: Tag Container'
-if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "security" ]] ; then
+if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
     REGISTRIES=("$EOSIO_REGISTRY")
 else
     REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
