@@ -40,6 +40,13 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
         group-install-package 'Development Tools'
         install-package openssl-devel
 
+        # Repo necessary for rh-python3, devtoolset-8 and llvm-toolset-7.0
+        ensure-scl
+        
+        echo "${COLOR_CYAN}[Enabling Centos devtoolset-8]${COLOR_NC}"
+        execute-always source /opt/rh/devtoolset-8/enable
+        echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
+
         # Ensure packages exist
         ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos8_deps"
         export PYTHON3PATH="/opt/rh/rh-python36"
