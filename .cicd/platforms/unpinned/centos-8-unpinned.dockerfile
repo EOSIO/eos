@@ -18,7 +18,7 @@ RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.71.0/source/bo
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
-    ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
+    ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test --with-regex -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # install nvm
