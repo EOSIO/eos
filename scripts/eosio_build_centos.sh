@@ -40,7 +40,7 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
         group-install-package 'Development Tools'
         install-package openssl-devel
        
-        dnf install llvm-toolset
+        dnf -y install llvm-toolset
 
         # Ensure packages exist
         ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos8_deps"
