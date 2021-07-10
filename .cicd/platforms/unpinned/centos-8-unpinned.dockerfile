@@ -35,3 +35,6 @@ RUN yum install -y nodejs
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
     su - postgres -c initdb
+
+# fixes problem with test_kv_rocksdb
+RUN ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so
