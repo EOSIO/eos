@@ -246,8 +246,9 @@ function ensure-yum-packages() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
+                    ( [[ $NAME == "CentOS Linux" ]] ) && OPTIONS="--enablerepo=powertools"
                     for DEP in $DEPS; do
-                        install-package $DEP
+                        install-package $DEP $OPTIONS
                     done
                 break;;
                 1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
