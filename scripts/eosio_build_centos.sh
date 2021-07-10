@@ -55,6 +55,8 @@ fi
 ensure-compiler
 # CMAKE Installation
 ensure-cmake
+# CLANG Installation
+build-clang
 # LLVM Installation
 ensure-llvm
 # BOOST Installation
