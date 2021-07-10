@@ -1,9 +1,10 @@
+add_library(eos-vm INTERFACE IMPORTED)
 
-add_library(eos-vm INTERFACE)
-target_include_directories(eos-vm
-                           INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../../include)
+set_target_properties(eos-vm PROPERTIES
+                      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/../../include"
+                      INTERFACE_COMPILE_OPTIONS "-Wno-register"
+                      INTERFACE_COMPILE_DEFINITIONS "EOS_VM_SOFTFLOAT"
+                      INTERFACE_LINK_LIBRARIES "softfloat"
+                      INTERFACE_COMPILE_FEATURES cxx_std_17
+                      )
 
-# ignore the C++17 register warning until clean up
-target_compile_options( eos-vm INTERFACE "-Wno-register" )
-target_compile_definitions(eos-vm INTERFACE -DEOS_VM_SOFTFLOAT)
-target_link_libraries(eos-vm INTERFACE softfloat)

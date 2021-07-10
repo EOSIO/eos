@@ -1,5 +1,6 @@
 {
    "name": "openssl",
    "version-string": "system-openssl-1.1",
+   "port-version": 0,
    "$comment": "This is an empty port to system supplied OpenSSL instead of recompiling from source."
 }

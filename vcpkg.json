@@ -35,6 +35,20 @@
       "boost-dll",
       "boost-lockfree"
    ],
+   "features": {
+      "vcpkg-llvm": {
+         "description": "LLVM from vcpkg",
+         "dependencies": [
+            {
+               "name": "llvm",
+               "default-features": false,
+               "features": [
+                  "enable-rtti"
+               ]
+            }
+         ]
+      }
+   },
    "builtin-baseline": "6e024e744e7717c06ddacd5089401109c6298553", 
    "overrides": [
       { "name": "libpqxx", "version": "7.2.1" }
