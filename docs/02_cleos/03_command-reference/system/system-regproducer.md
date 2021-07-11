@@ -6,7 +6,7 @@ excerpt: "Register a new producer"
 - `account` _TEXT_ - The account to register as a producer
 - `producer_key` _TEXT_ - The producer's public key
 - `url` _TEXT_ - URL where info about producer can be found
-- `location` _UINT_ - Relative location for purpose of nearest neighbor scheduling
+- `location` _UINT_ - Relative location for purpose of nearest neighbor scheduling, e.g. ISO 3166-1 numeric
 ## Options
 - `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
 - `-f,--force-unique` - force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times

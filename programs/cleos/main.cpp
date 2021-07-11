@@ -1109,7 +1109,7 @@ struct register_producer_subcommand {
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("The URL where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("Relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_option("location", loc, localized("Relative location for purpose of nearest neighbor scheduling, e.g. ISO 3166-1 numeric"), true);
       add_standard_transaction_options_plus_signing(register_producer, "account@active");
 
 
