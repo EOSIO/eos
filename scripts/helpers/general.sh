@@ -246,7 +246,7 @@ function ensure-yum-packages() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    ( [[ $NAME == "CentOS Linux" ]] ) && OPTIONS="--enablerepo=powertools"
+                    ( [[ $NAME == "CentOS Linux" && $VERSION == "8"]] ) && OPTIONS="--enablerepo=powertools"
                     for DEP in $DEPS; do
                         install-package $DEP $OPTIONS
                     done
