@@ -51,6 +51,8 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
 	        echo " ${COLOR_GREEN}- Python36 successfully enabled!${COLOR_NC}"
 	        echo ""
         fi
+
+        export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/pgsql"
 fi
 
 # Handle clang/compiler
