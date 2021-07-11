@@ -4,38 +4,33 @@
    "version-string": "2.1.0",
    "port-version": 1,
    "dependencies": [
-      "abieos",
-      "appbase",
       "chainbase",
       "eos-vm",
       "fc",
-      "softfloat",
-      "amqpcpp",
       "rocksdb",
-      "yubihsm",
-      "gmp",
-      "libpqxx",
-      "boost-date-time",
-      "boost-test",
-      "boost-asio",
-      "boost-filesystem",
-      "boost-program-options",
-      "boost-iostreams",
-      "boost-interprocess",
-      "boost-beast",
-      "boost-multi-index",
-      "boost-multiprecision",
-      "boost-signals2",
-      "boost-accumulators",
       "boost-hana",
       "boost-assign",
-      "boost-convert",
-      "boost-process",
       "boost-bimap",
-      "boost-dll",
-      "boost-lockfree"
+      "boost-lockfree",
+      "boost-signals2",
+      "boost-accumulators"
    ],
+   "default-features": ["non-chain"],
    "features": {
+      "non-chain" : {
+         "description": "depedencies required by components other than chain library",
+         "dependencies": [
+            "abieos",
+            "appbase",
+            "amqpcpp",
+            "yubihsm",
+            "libpqxx",
+            "boost-convert",
+            "boost-process",
+            "boost-beast",
+            "boost-dll"
+         ]
+      },
       "vcpkg-llvm": {
          "description": "LLVM from vcpkg",
          "dependencies": [

@@ -6,20 +6,13 @@ set(VCPKG_INSTALLED_DIR @_VCPKG_INSTALLED_DIR@)
 
 get_filename_component(build_dir_from_vcpkg ${VCPKG_INSTALLED_DIR}/.. REALPATH)
 get_filename_component(build_dir_from_current_list_dir ${CMAKE_CURRENT_LIST_DIR}/../../.. REALPATH)
-message("build_dir_from_vcpkg=${build_dir_from_vcpkg}")
-message("build_dir_from_current_list_dir=${build_dir_from_current_list_dir}")
-
-
 
 if ("${build_dir_from_vcpkg}" STREQUAL "${build_dir_from_current_list_dir}")
    set(SAVED_CMAKE_PREFIX_DIR ${SAVED_CMAKE_PREFIX_DIR})
    set(CMAKE_PREFIX_PATH ${VCPKG_INSTALLED_DIR}/@VCPKG_TARGET_TRIPLET@)
 endif()
 
-message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
-
 find_package(fc CONFIG REQUIRED)
-find_package(softfloat CONFIG REQUIRED)
 find_package(RocksDB CONFIG REQUIRED)
 find_package(chainbase CONFIG REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
@@ -120,8 +113,6 @@ endfunction(EOSIO_CHECK_VERSION)
 
 macro(add_eosio_test_executable test_name)
    add_executable( ${test_name} ${ARGN} )
-   set_target_properties(${test_name} PROPERTIES
-            CXX_STANDARD 17)
    target_link_libraries( ${test_name} eosio_testing)
 endmacro()
 

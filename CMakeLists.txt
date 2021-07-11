@@ -261,6 +261,31 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.hpp DESTINATION ${CMAKE_INSTAL
 
 if (_VCPKG_INSTALLED_DIR)
 
+  set(CORE_DEPENDECIES_INSTALLED_DIR ${CMAKE_CURRENT_BINARY_DIR}/core_dependecies)
+
+  add_custom_command(
+    OUTPUT ${CORE_DEPENDECIES_INSTALLED_DIR}/vcpkg/status
+    COMMAND "${Z_VCPKG_EXECUTABLE}" install
+                --triplet "${VCPKG_TARGET_TRIPLET}"
+                --vcpkg-root "${Z_VCPKG_ROOT_DIR}"
+                "--x-wait-for-lock"
+                "--x-manifest-root=${VCPKG_MANIFEST_DIR}"
+                "--x-install-root=${CORE_DEPENDECIES_INSTALLED_DIR}"
+                "${Z_VCPKG_FEATURE_FLAGS}" "--x-no-default-features"
+                ${Z_VCPKG_ADDITIONAL_MANIFEST_PARAMS}
+                ${VCPKG_INSTALL_OPTIONS}
+    DEPENDS ${_VCPKG_INSTALLED_DIR}/vcpkg/status
+  )
+
+  add_custom_target(core_dependencies DEPENDS ${CORE_DEPENDECIES_INSTALLED_DIR}/vcpkg/status)
+  install(CODE "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target core_dependencies)")
+  install(DIRECTORY ${CORE_DEPENDECIES_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include 
+                    ${CORE_DEPENDECIES_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
+                    ${CORE_DEPENDECIES_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+  )
+
+
   install(TARGETS Logging IR Runtime WASM WAST builtins chain_kv eosio_chain eosio_testing_contracts eosio_testing
           EXPORT eosio)
 
