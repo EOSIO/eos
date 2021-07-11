@@ -130,7 +130,7 @@ function print_supported_linux_distros_and_exit() {
 
 function ensure-compiler() {
     # Support build-essentials on ubuntu
-    if [[ ( $NAME == "CentOS Linux" && $VERSION_ID == "7" ) ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
+    if [[ $NAME == "CentOS Linux" ]] || ( $PIN_COMPILER && ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "20.04" ]] ) ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
@@ -222,20 +222,13 @@ function ensure-cmake() {
 function ensure-boost() {
     [[ $ARCH == "Darwin" ]] && export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
     echo "${COLOR_CYAN}[Ensuring Boost $( echo $BOOST_VERSION | sed 's/_/./g' ) library installation]${COLOR_NC}"
-    BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
-    if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" || $CXX =~ "clang" ]] || [[ $COMPILER_TYPE =~ "clang" ]]; then
-        # Boost location provided either not new enough or we're building with clang so build our own
-        BOOST_ROOT="${SRC_DIR}/boost_${BOOST_VERSION}"
-        B2_FLAGS="-q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test --with-regex install"
+    BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
+    if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]]; then
+        B2_FLAGS="-q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install"
         BOOTSTRAP_FLAGS=""
-        if [[ $ARCH == "Linux" || $CXX =~ "clang" ]]; then
-            if $PIN_COMPILER; then
-                B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q --with-regex -j${JOBS} install"
-                BOOTSTRAP_FLAGS="--with-toolset=clang"
-            else
-                B2_FLAGS="toolset=clang -q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test --with-regex install"
-                BOOTSTRAP_FLAGS="--with-toolset=clang"
-        fi
+        if [[ $ARCH == "Linux" ]] && $PIN_COMPILER; then
+            B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
+            BOOTSTRAP_FLAGS="--with-toolset=clang"
         elif $PIN_COMPILER; then
             local SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
         fi
@@ -247,7 +240,7 @@ function ensure-boost() {
         && SDKROOT="$SDKROOT" ./b2 ${B2_FLAGS} \
         && cd .. \
         && rm -f boost_$BOOST_VERSION.tar.bz2 \
-        && rm -rf $BOOST_LINK_LOCATION"
+        && rm -rf $BOOST_LINK_LOCATION"        
         echo " - Boost library successfully installed @ ${BOOST_ROOT}"
         echo ""
     else
@@ -279,9 +272,7 @@ function ensure-llvm() {
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
     elif [[ $NAME == "CentOS Linux" ]]; then
-        if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 7 ]]; then
-            export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
-        fi
+        export LOCAL_CMAKE_FLAGS="${LOCAL_CMAKE_FLAGS} -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm'"
     fi
 }
 
@@ -290,12 +281,15 @@ function build-clang() {
     if $BUILD_CLANG; then
         echo "${COLOR_CYAN}[Ensuring Clang support]${COLOR_NC}"
         if [[ ! -d $CLANG_ROOT ]]; then
+            if [[ $ARCH == "Darwin" ]]; then 
+                export CMAKE_XTRA_FLAGS="-DCOMPILER_RT_INCLUDE_TESTS=0 -DCOMPILER_RT_BUILD_SANITIZERS=0 -DCOMPILER_RT_BUILD_XRAY=0"
+            fi
             execute bash -c "cd ${TEMP_DIR} \
             && rm -rf clang10 \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://github.com/llvm/llvm-project clang10 \
             && cd clang10 \
             && mkdir build && cd build \
-            && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ../llvm \
+            && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_ENABLE_PROJECTS='lld;polly;clang;clang-tools-extra;libcxx;libcxxabi;libunwind;compiler-rt' -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_TARGETS_TO_BUILD=host -DCMAKE_BUILD_TYPE=Release ${CMAKE_XTRA_FLAGS} ../llvm \
             && make -j${JOBS} \
             && make install"
             echo " - Clang 10 successfully installed @ ${CLANG_ROOT}"
