@@ -53,6 +53,10 @@ For more information visit the [C++ security_group API](https://developers.eos.i
 
 The examples below showcase how to enable the SECURITY_GROUP protocol feature as well as adding and removing participants from the *security group*:
 * [Private Access Control Tutorial](05_tutorial.md)
+<!--
+* [How to add participants to security group](10_how-to-add-participants-to-security-group.md)
+* [How to remove participants to security group](15_how-to-remove-participants-to-security-group.md)
+-->
 
 ## Use Cases
 
