@@ -12,14 +12,14 @@ Currently we use PostgreSQL as our durable storage for block vault, other distri
 
 ## Compiling the blockvault_client_plugin
 
-blockvault_client_plugin requires libpq version 10 or above and libpqxx version 6 or above to compile.
+blockvault_client_plugin requires libpq to compile.
 
 For Mac, you can simply use homebrew to install the required dependencies. 
 ```
-brew install libpq libpqxx
+brew install postgresql
 ```
 
-For Linux, the versions of libpq and libpqxx provided by the system package managers may be not be new enough. We recommend to follow the `install libpq` and `install libpqxx` sections of the corresponding dockerfile in `.cicd/platform/pinned` for your platform to install the dependencies.
+For Linux, Ubuntu derived distributions will require installation of `libpq-dev` and `postgresql-server-dev-all` packages. Other distributions like CentOS will require only `postgresql-devel`.
 
 
 ## Running PostgreSQL for testing purpose
@@ -32,7 +32,7 @@ docker run  -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
 
 ## Running PostgreSQL for Production 
 
-We recommend to deploy PostgreSQL with HA (high availability) mode and synchronous replication strategy. 
+We recommend to deploy PostgreSQL with HA (high availability) mode and synchronous replication strategy. PostgreSQL server should be 9.3 or later as previous versions do not supporting large objects >2GB which are used for snapshot storage in Block Vault. The version of libpq EOSIO is compiled with does not need to be the same as the server it is connecting too. Versions of libpq prior to 9.3 are able to store snapshots >2GB in a PostgreSQL 9.3+ server.
 
 ### Database schema
 

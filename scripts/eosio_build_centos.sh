@@ -45,5 +45,3 @@ build-clang
 ensure-llvm
 # BOOST Installation
 ensure-boost
-# `libpq` and `libpqxx` Installation
-ensure-libpq-and-libpqxx

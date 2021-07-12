@@ -31,7 +31,7 @@
         "configuration":
         [
             "170=v1.7.0",
-            "209=v2.0.9"
+            "alt_ver=672d94417a8e4309a2366028f48fdbec88687ce9"
         ]
     },
     // eosio-resume-from-state documentation: https://github.com/EOSIO/auto-eks-sync-nodes/blob/master/pipelines/eosio-resume-from-state/README.md

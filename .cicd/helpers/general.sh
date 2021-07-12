@@ -7,8 +7,13 @@ export MOUNTED_DIR='/eos'
 export DOCKER_CLI_EXPERIMENTAL='enabled'
 export DOCKERHUB_CI_REGISTRY="docker.io/eosio/ci"
 export DOCKERHUB_CONTRACTS_REGISTRY="docker.io/eosio/ci-contracts-builder"
-export CI_REGISTRIES=("$DOCKERHUB_CI_REGISTRY" "$MIRROR_REGISTRY")
-export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
+if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
+    export CI_REGISTRIES=("$MIRROR_REGISTRY")
+    export CONTRACT_REGISTRIES=("$MIRROR_REGISTRY")
+else
+    export CI_REGISTRIES=("$DOCKERHUB_CI_REGISTRY" "$MIRROR_REGISTRY")
+    export CONTRACT_REGISTRIES=("$DOCKERHUB_CONTRACTS_REGISTRY" "$MIRROR_REGISTRY")
+fi
 
 # capitalize each word in a string
 function capitalize()
