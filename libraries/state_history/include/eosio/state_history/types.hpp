@@ -46,20 +46,26 @@ void pack_big_bytes(ST& ds, const std::optional<eosio::chain::bytes>& v) {
 
 template <typename T>
 class opaque {
-   std::vector<char> data;
+   std::shared_ptr<std::vector<char>> data;
 
  public:
    opaque() = default;
    explicit opaque(std::vector<char>&& serialized)
-       : data(std::move(serialized)) {}
-   opaque(const T& value) { data = fc::raw::pack(value); }
+       : data(std::make_shared<std::vector<char>>(std::move(serialized))) {}
+
+   opaque(const T& value) { data = std::make_shared<std::vector<char>>(fc::raw::pack(value)); }
 
    opaque& operator=(const T& value) {
-      data = fc::raw::pack(value);
+      data = std::make_shared<std::vector<char>>(fc::raw::pack(value));
       return *this;
    }
    opaque& operator=(std::vector<char>&& serialized) {
-      data = std::move(serialized);
+      data = std::make_shared<std::vector<char>>(std::move(serialized));
+      return *this;
+   }
+
+   opaque& operator=(std::shared_ptr<std::vector<char>> serialized) {
+      data = serialized;
       return *this;
    }
 
@@ -67,10 +73,14 @@ class opaque {
    void pack_to(ST& ds) const {
       // we need to pack as big vector because it can be used to hold the state delta object
       // which would be as large as the eos snapshot when the nodeos restarted from a snapshot.
-      pack_big_bytes(ds, this->data);
+      if (data)
+         pack_big_bytes(ds, *data);
+      else
+         fc::raw::pack(fc::unsigned_int(0));
    }
 
-   bool has_value() const { return data.size(); }
+   bool   has_value() const { return data->size() > 0; }
+   size_t data_size() const { return data->size(); }
 };
 
 struct augmented_transaction_trace {
