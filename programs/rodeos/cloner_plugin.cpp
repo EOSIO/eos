@@ -70,6 +70,13 @@ struct cloner_plugin_impl : std::enable_shared_from_this<cloner_plugin_impl> {
    void start();
 };
 
+namespace {
+   std::string to_string(const eosio::checksum256& cs) {
+      auto bytes = cs.extract_as_byte_array();
+      return fc::to_hex((const char*)bytes.data(), bytes.size());
+   }
+} // namespace
+
 struct cloner_session : ship_client::connection_callbacks, std::enable_shared_from_this<cloner_session> {
    cloner_plugin_impl*                  my = nullptr;
    std::shared_ptr<cloner_config>       config;
@@ -148,6 +155,10 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return result;
    }
 
+   static uint64_t to_trace_id(const eosio::checksum256& id) { 
+      return fc::zipkin_span::to_id(fc::sha256{ reinterpret_cast<const char*>(id.extract_as_byte_array().data()), 32 }); 
+   }
+
    template <typename Get_Blocks_Result>
    bool process_received(Get_Blocks_Result& result, eosio::input_stream bin) {
       if (!result.this_block)
@@ -161,6 +172,13 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       if (rodeos_snapshot->head && result.this_block->block_num > rodeos_snapshot->head + 1)
          throw std::runtime_error("state-history plugin is missing block " + std::to_string(rodeos_snapshot->head + 1));
 
+      using namespace eosio::literals;
+      auto trace_id  = to_trace_id(result.this_block->block_id);
+      auto token     = fc::zipkin_span::token{ "ship"_n.value, trace_id };
+      auto blk_span  = fc_create_span_from_token(token, "process_received");
+      fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
+      fc_add_tag( blk_span, "block_num", result.this_block->block_num );
+      
       rodeos_snapshot->start_block(result);
       if (result.this_block->block_num <= rodeos_snapshot->head)
          reported_block = false;
@@ -173,10 +191,17 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
                     "i", result.this_block->block_num <= result.last_irreversible.block_num ? "irreversible" : ""));
       reported_block = true;
 
-      rodeos_snapshot->write_block_info(result);
-      rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
+      {
+         auto write_block_info_span = fc_create_span(blk_span, "write_block_info");
+         rodeos_snapshot->write_block_info(result);
+      }
+      {
+         auto write_deltas_span = fc_create_span(blk_span, "write_deltas");
+         rodeos_snapshot->write_deltas(result, [] { return app().is_quiting(); });
+      }
 
       if (filter) {
+         auto filter_span = fc_create_span(blk_span, "filter");
          if (my->streamer)
             my->streamer->start_block(result.this_block->block_num);
          filter->process(*rodeos_snapshot, result, bin, [&](const char* data, uint64_t data_size) {
@@ -191,6 +216,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          return false;
 
       rodeos_snapshot->end_block(result, false);
+      {
+         auto end_block_span = fc_create_span(blk_span, "end_block");
+         rodeos_snapshot->end_block(result, false);
+      }
+
       return true;
    }
 
@@ -253,6 +283,10 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "Zipkin localEndpoint.serviceName sent with each span" );
    op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
       "Timeout for sending Zipkin span." );
+   op("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
+      "Retry interval for connecting to Zipkin." );
+   op("telemetry-wait-timeout-seconds", bpo::value<uint32_t>()->default_value(0),
+      "Initial wait time for Zipkin to become available, stop the program if the connection cannot be established within the wait time.");
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -313,7 +347,8 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>() );
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>() );
       }
    }
    FC_LOG_AND_RETHROW()
@@ -333,6 +368,7 @@ void cloner_plugin::plugin_shutdown() {
 }
 
 void cloner_plugin::handle_sighup() {
+   fc::zipkin_config::handle_sighup();
 }
 
 void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {
