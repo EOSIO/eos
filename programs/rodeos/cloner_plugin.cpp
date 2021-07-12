@@ -368,6 +368,7 @@ void cloner_plugin::plugin_shutdown() {
 }
 
 void cloner_plugin::handle_sighup() {
+   fc::zipkin_config::handle_sighup();
 }
 
 void cloner_plugin::set_streamer(std::shared_ptr<streamer_t> streamer) {
