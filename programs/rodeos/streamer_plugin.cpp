@@ -20,10 +20,6 @@ using namespace std::literals;
 struct streamer_plugin_impl : public streamer_t {
 
    void start_block(uint32_t block_num) override {
-      auto blk_trace = fc_create_trace("Block");
-      auto blk_span = fc_create_span(blk_trace, "Filter-Start");
-      fc_add_tag( blk_span, "block_num", block_num );
-
       for (const auto& stream : streams) {
          stream->start_block(block_num);
       }
@@ -45,10 +41,6 @@ struct streamer_plugin_impl : public streamer_t {
    }
 
    void stop_block(uint32_t block_num) override {
-      auto blk_trace = fc_create_trace("Block");
-      auto blk_span = fc_create_span(blk_trace, "Filter-Stop");
-      fc_add_tag( blk_span, "block_num", block_num );
-
       for (const auto& stream : streams) {
          stream->stop_block(block_num);
       }

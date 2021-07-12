@@ -345,6 +345,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Zipkin localEndpoint.serviceName sent with each span" )
          ("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
           "Timeout for sending Zipkin span." )
+         ("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
+          "Retry interval for connecting to Zipkin." )
+         ("telemetry-wait-timeout-seconds", bpo::value<uint32_t>()->default_value(0),
+          "Initial wait time for Zipkin to become available, stop the program if the connection cannot be established within the wait time.")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -714,6 +718,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
+      if (options.count("telemetry-url")) {
+         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
+                                  options["telemetry-service-name"].as<std::string>(),
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-retry-interval-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>());
+      }
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const std::exception& ) {
@@ -1234,11 +1245,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain->enable_deep_mind( &_deep_mind_log );
       }
 
-      if (options.count("telemetry-url")) {
-         fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
-                                  options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>() );
-      }
+      
 
 
       // set up method providers
@@ -3024,7 +3031,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -3177,7 +3184,7 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());

@@ -19,6 +19,7 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
+#include <fc/log/trace.hpp>
 
 #include <new>
 
@@ -1649,6 +1650,11 @@ struct controller_impl {
                ubo.set_block( bsp->block );
             });
          }
+
+         auto trace = fc_create_trace_with_id_if(add_to_fork_db, "block", bsp->id);
+         fc_add_tag( trace, "block_id",  bsp->id.str() );
+         fc_add_tag( trace, "block_num", bsp->block_num );
+         fc_add_tag( trace, "num_transactions", bsp->block->transactions.size());         
 
          emit( self.accepted_block, bsp );
 
