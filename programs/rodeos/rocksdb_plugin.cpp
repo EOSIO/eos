@@ -2,7 +2,6 @@
 
 #include <boost/filesystem.hpp>
 #include <fc/exception/exception.hpp>
-
 namespace b1 {
 
 using namespace appbase;
@@ -12,6 +11,7 @@ struct rocksdb_plugin_impl {
    boost::filesystem::path             db_path        = {};
    std::optional<uint32_t>             threads        = {};
    std::optional<uint32_t>             max_open_files = {};
+   std::optional<bfs::path>            options_file_name = {};
    std::shared_ptr<chain_kv::database> database       = {};
    std::mutex                          mutex          = {};
 };
@@ -32,6 +32,9 @@ void rocksdb_plugin::set_program_options(options_description& cli, options_descr
    op("rdb-max-files", bpo::value<uint32_t>(),
       "RocksDB limit max number of open files (default unlimited). This should be smaller than 'ulimit -n #'. "
       "# should be a very large number for full-history nodes.");
+   op("rdb-options-file", bpo::value<bfs::path>(),
+      "File (including path) store RocksDB options. Must follow INI file format. Consult RocksDB documentation for details."
+      "If rdb-options-file is present, rdb-threads and rdb-max-files are ignored.");
 }
 
 void rocksdb_plugin::plugin_initialize(const variables_map& options) {
@@ -45,6 +48,10 @@ void rocksdb_plugin::plugin_initialize(const variables_map& options) {
          my->threads = options["rdb-threads"].as<uint32_t>();
       if (!options["rdb-max-files"].empty())
          my->max_open_files = options["rdb-max-files"].as<uint32_t>();
+      if (!options["rdb-options-file"].empty()) {
+         my->options_file_name = options["rdb-options-file"].as<bfs::path>();
+         EOS_ASSERT( bfs::exists(*my->options_file_name), eosio::chain::plugin_config_exception, "options file ${f} does not exist.", ("f", my->options_file_name->string()) );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
@@ -59,7 +66,8 @@ std::shared_ptr<chain_kv::database> rocksdb_plugin::get_db() {
       ilog("rodeos database is ${d}", ("d", my->db_path.string()));
       if (!bfs::exists(my->db_path.parent_path()))
          bfs::create_directories(my->db_path.parent_path());
-      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, my->threads, my->max_open_files);
+
+      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, my->threads, my->max_open_files, my->options_file_name);
    }
    return my->database;
 }
