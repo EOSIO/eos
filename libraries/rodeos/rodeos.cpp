@@ -181,13 +181,6 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    eosio::input_stream bin       = *result.block;
    signed_block_header block;
    from_bin(block, bin);
-
-   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
-   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
-   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
-   fc_add_tag( blk_span, "block_num", block_num );
-   fc_add_tag( blk_span, "block_time", block.timestamp.to_time_point().elapsed.count() );
-
    write_block_info(block_num, result.this_block->block_id, block);
 }
 
@@ -200,12 +193,6 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
 
    const signed_block_header& header =
          std::visit([](const auto& blk) { return static_cast<const signed_block_header&>(blk); }, *result.block);
-
-   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
-   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
-   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
-   fc_add_tag( blk_span, "block_num", block_num );
-   fc_add_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
 
    write_block_info(block_num, result.this_block->block_id, header);
 }
@@ -224,13 +211,6 @@ void rodeos_db_snapshot::write_block_info(const ship_protocol::get_blocks_result
    }
 
    uint32_t block_num = result.this_block->block_num;
-
-   auto blk_trace = fc_create_trace_with_id( "Block", result.this_block->block_id );
-   auto blk_span = fc_create_span( blk_trace, "rodeos-received" );
-   fc_add_tag( blk_span, "block_id", to_string( result.this_block->block_id ) );
-   fc_add_tag( blk_span, "block_num", block_num );
-   fc_add_tag( blk_span, "block_time", eosio::microseconds_to_str( header.timestamp.to_time_point().elapsed.count() ) );
-
    write_block_info(block_num, result.this_block->block_id, header);
 }
 
