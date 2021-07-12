@@ -35,8 +35,6 @@ EOSIO currently supports the following operating systems:
 1. Amazon Linux 2
 2. CentOS 7
 2. CentOS 7.x
-2. CentOS 8
-3. Ubuntu 16.04
 4. Ubuntu 18.04
 4. Ubuntu 20.04
 5. MacOS 10.14 (Mojave)
@@ -80,11 +78,6 @@ brew remove eosio
 ```sh
 wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
 sudo apt install ./eosio_2.1.0-rc1-ubuntu-18.04_amd64.deb
-```
-#### Ubuntu 16.04 Package Install
-```sh
-wget https://github.com/eosio/eos/releases/download/v2.1.0-rc1/eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
-sudo apt install ./eosio_2.1.0-rc1-ubuntu-16.04_amd64.deb
 ```
 #### Ubuntu Package Uninstall
 ```sh
