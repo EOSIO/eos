@@ -595,8 +595,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "enable debug mode for trace history");
    options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
            "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
-   options("state-history-num-buffered-entries", bpo::value<uint32_t>()->default_value(2), "size of the buffered state history log entries before they are written to disk");
-   options("state-history-no-threaded-disk-write", bpo::bool_switch(), "write state history traces/deltas logs into disk in main thread");
+   options("state-history-num-buffered-entries", bpo::value<uint32_t>()->default_value(2), "size of the buffered state history log entries in memory");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -633,7 +632,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       config.stride             = options.at("state-history-stride").as<uint32_t>();
       config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();
       config.num_buffered_entries = options.at("state-history-num-buffered-entries").as<uint32_t>();
-      config.threaded_write       = ! options.at("state-history-no-threaded-disk-write").as<bool>();
+      config.threaded_write       = true;
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       if (ip_port.size()) {
