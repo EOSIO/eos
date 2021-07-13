@@ -12,7 +12,7 @@ Make sure you meet the following requirements:
 * Install the currently supported version of `cleos`.
 [[info | Note]]
 | `cleos` is bundled with the EOSIO software. [Installing EOSIO](../../00_install/index.md) will also install `cleos`.
-* Understand what a [public key](https://developers.eos.io/welcome/latest/glossary/index/#public-key) and [private key](https://developers.eos.io/welcome/latest/glossary/index/#private-key) is.
+* Understand what a [public key](https://developers.eos.io/welcome/v2.2/glossary/index/#public-key) and [private key](https://developers.eos.io/welcome/v2.2/glossary/index/#private-key) is.
 
 ## Command Reference
 
