@@ -3,6 +3,7 @@
 #include <eosio/state_history/log.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <fc/log/logger_config.hpp> //set_thread_name
 
 namespace eosio {
 
@@ -45,23 +46,15 @@ state_history_log::state_history_log(const char* const name, const state_history
    open_index(config.log_dir / (std::string(name) + ".index"));
 
    if (config.threaded_write) {
-      num_buffered_entries = config.num_buffered_entries;
       thr = std::thread([this] {
-         fc_ilog(logger,"${name} thread created", ("name", this->name));
+         fc::set_os_thread_name( this->name );
          try {
-            while (!ending.load()) {
-               std::unique_lock lock(mx);
-               cv.wait(lock);
-               write_queue_type tmp;
-               std::swap(tmp, write_queue);
-               for (const auto& entry : tmp) {
-                  write_entry(entry, lock);
-               }
-            }
+            this->ctx.run();
          }
          catch(...) {
             fc_elog(logger,"catched exception from ${name} write thread", ("name", this->name));
             eptr = std::current_exception();
+            write_thread_has_exception = true;
          }
          fc_ilog(logger,"${name} thread ended", ("name", this->name));
       });
@@ -70,14 +63,8 @@ state_history_log::state_history_log(const char* const name, const state_history
 
 void state_history_log::stop() {
    if (thr.joinable()) {
-      ending = true;
-      cv.notify_one();
+      work_guard.reset();
       thr.join();
-
-      std::unique_lock lock(mx);
-      for (const auto& entry : write_queue) {
-         write_entry(entry, lock);
-      }
    }
 }
 
@@ -331,16 +318,15 @@ void state_history_log::store_entry(const chain::block_id_type& id, const chain:
                                     std::vector<char>&& data) {
    
    if (thr.joinable()) {
-      if (eptr) {
+      if (write_thread_has_exception) {
          std::rethrow_exception(eptr);
       }
       block_num_type block_num = chain::block_header::num_from_id(id);
       auto shared_data = std::make_shared<std::vector<char>>(std::move(data));
-      {
-         std::lock_guard<std::mutex> lk(mx);
-         write_queue.emplace_back(log_entry_type{id, prev_id, shared_data});
-         cv.notify_one();
-      }
+      boost::asio::post(work_strand, [this, entry = log_entry_type{id, prev_id, shared_data} ]() {
+         std::unique_lock<std::mutex> lock(this->mx);
+         write_entry(entry, lock);
+      });
       cached[block_num] = shared_data;
 
       while (cached.size() > num_buffered_entries && cached.begin()->second.use_count() == 1) {

@@ -17,6 +17,7 @@
 #include <fc/io/cfile.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/log/logger.hpp>
+#include <boost/asio.hpp>
 
 namespace eosio {
 
@@ -166,17 +167,20 @@ class state_history_log {
    void write_entry(const log_entry_type& entry, std::unique_lock<std::mutex>& lock);
    void get_entry_header(block_num_type block_num, state_history_log_header& header);
 
-   using write_queue_type = std::vector<log_entry_type>;
    using cached_data_map  = boost::container::flat_map<uint32_t, std::shared_ptr<std::vector<char>>>;
-   write_queue_type                                     write_queue;
    cached_data_map                                      cached;
    std::mutex                                           mx;
-   std::condition_variable                              cv;
    std::thread                                          thr;
-   std::atomic<bool>                                    ending = false;
    uint32_t                                             num_buffered_entries;
-   std::exception_ptr                                   eptr;
    fc::logger                                           logger;
+
+   std::atomic<bool>                                                        write_thread_has_exception = false;
+   std::exception_ptr                                                       eptr;
+   boost::asio::io_context                                                  ctx;
+   boost::asio::io_context::strand                                          work_strand{ctx};
+   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard =
+       boost::asio::make_work_guard(ctx);
+
  private:
    void               read_header(state_history_log_header& header, bool assert_version = true);
    void               write_header(const state_history_log_header& header);
