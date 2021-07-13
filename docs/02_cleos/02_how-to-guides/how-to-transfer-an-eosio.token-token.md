@@ -16,7 +16,7 @@ This how-to guide provides instructions on how to transfer tokens created by `eo
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [cleos transfer](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/transfer) reference.
+* The [cleos transfer](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/transfer) reference.
 
 ## Procedure
 

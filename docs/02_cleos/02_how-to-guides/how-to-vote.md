@@ -18,7 +18,7 @@ This how-to guide provides instructions on how to vote for block producers.
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [cleos system voteproducer prods](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-voteproducer-prods) reference.
+* The [cleos system voteproducer prods](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/system/system-voteproducer-prods) reference.
 
 ## Procedure
 

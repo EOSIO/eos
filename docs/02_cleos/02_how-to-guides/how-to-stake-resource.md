@@ -12,13 +12,13 @@ This how-to guide provides instructions on how to stake resources, NET and/or CP
   * What an [account](https://developers.eos.io/welcome/latest/glossary/index/#account) is.
   * What [NET bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/net) is.
   * What [CPU bandwidth](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/cpu) is.
-  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+  * The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/system/system-delegatebw).
 
 ## Command Reference
 
 See the following reference guides for command line usage and related options for the `cleos` command:
 
-* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/latest/cleos/command-reference/system/system-delegatebw).
+* The [`delegatebw` cleos sub-command](https://developers.eos.io/manuals/eos/v2.2/cleos/command-reference/system/system-delegatebw).
 
 ## Procedure
 
