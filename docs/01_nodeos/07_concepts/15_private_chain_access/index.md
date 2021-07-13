@@ -5,18 +5,18 @@ link_text: Private Access Control
 
 ## Overview
 
-The *Private Access Control* or *Security Group* feature provides a two-layer security solution for blockchain administrators designed to control which participants can access and use a private EOSIO network. The first security layer is designed to enforce TLS connections in the peer-to-peer network protocol; so only those participants with a properly signed certificate are able to establish a TLS connection and communicate securely with other peers. The second security layer, which is optional, is designed to bring the concept of a *privacy group* or *security group*; so that if enabled, only those participants in the group are allowed to access data from the private network. Therefore, the first layer controls “connection” access while the second layer manages “data” access. Participants are considered logical entities with a designated EOSIO name and may host multiple nodes, potentially deployed in [Block Vault](../../03_plugins/blockvault_client_plugin/index.md) mode.
+The *Private Access Control* or *Security Group* feature provides a two-layer security solution for blockchain administrators to control which participants can access and use a private EOSIO network. The first security layer enforces TLS connections in the peer-to-peer network protocol; only those participants with a properly signed certificate are able to establish a TLS connection and communicate securely with other peers. The second security layer, which is optional, brings the concept of a *privacy group* or *security group*; if enabled, only those participants in the group are allowed to access data from the private network. Therefore, the first layer controls “connection” access while the second layer manages “data” access. Participants are considered logical entities with a designated EOSIO name and may host multiple nodes, potentially deployed in [Block Vault](../../03_plugins/blockvault_client_plugin/index.md) mode.
 
 ## Concept
 
 Most businesses need to keep data private for regulatory compliance, customer privacy, or both. Since blockchain solutions have a history of public data and open architecture, businesses need certain privacy and security guarantees before they can adopt blockchain technology. The *Private Access Control* feature aims to bring EOSIO closer to the Enterprise by providing a general business security solution that can be used across a variety of [Use Cases](#use-cases).
 
 [[info | Access controls via consensus]]
-| Along with the inherent features of the EOSIO blockchain, the *Private Access Control* feature is designed to achieve security, robustness, and coordination through EOSIO consensus. The protocol feature can be enabled and participants added or removed from a *security group* only after the block that contains the corresponding transaction is approved by a supermajority of producer participants and the block becomes [irreversible](https://developers.eos.io/welcome/v2.2/glossary/index/#irreversible-block).
+| Along with the inherent features of the EOSIO blockchain, the *Private Access Control* feature achieves security, robustness, and coordination through EOSIO consensus. The protocol feature can be enabled and participants added or removed from a *security group* only after the block that contains the corresponding transaction is approved by a supermajority of producer participants and the block becomes [irreversible](https://developers.eos.io/welcome/v2.2/glossary/index/#irreversible-block).
 
 ## Requirements
 
-The EOSIO software supports the *Private Access Control* feature by meeting the following requirements:
+The *Private Access Control* feature must meet the following requirements:
 - The SECURITY_GROUP protocol feature must be activated first via EOSIO consensus.
 - Once activated, only nodes with valid signed credentials are allowed to connect.
 - Valid nodes must establish TLS connections to communicate securely with other peers.
@@ -53,10 +53,8 @@ For more information visit the [C++ security_group API](https://developers.eos.i
 
 The examples below showcase how to enable the SECURITY_GROUP protocol feature as well as adding and removing participants from the *security group*:
 * [Private Access Control Tutorial](05_tutorial.md)
-<!--
 * [How to add participants to security group](10_how-to-add-participants-to-security-group.md)
 * [How to remove participants to security group](15_how-to-remove-participants-to-security-group.md)
--->
 
 ## Use Cases
 

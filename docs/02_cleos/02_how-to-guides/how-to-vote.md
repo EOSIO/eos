@@ -9,7 +9,7 @@ This how-to guide provides instructions on how to vote for block producers.
 * Ensure the [reference system contracts](https://developers.eos.io/manuals/eosio.contracts/latest/build-and-deploy) are deployed and used to manage system resources.
 
 * Understand the following:
-  * What is a [block producer](https://developers.eos.io/welcome/latest/protocol/consensus_protocol#11-block-producers).
+  * What is a [block producer](https://developers.eos.io/welcome/v2.2/protocol/consensus_protocol#11-block-producers).
   * How does [voting](https://developers.eos.io/manuals/eosio.contracts/latest/key-concepts/vote) work.
 
 * Unlock your wallet.
