@@ -334,13 +334,16 @@ struct database {
             options.max_open_files = 768;
          }
 
-         options.compaction_style = rocksdb::kCompactionStyleLevel;
-         options.level0_file_num_compaction_trigger = 10;
-         options.level0_slowdown_writes_trigger = 20;
-         options.level0_stop_writes_trigger = 40;
-         options.write_buffer_size = 256 * 1024 * 1024;
-         options.target_file_size_base = 256 * 1024 * 1024;
-         options.max_bytes_for_level_base = 256 * 1024 * 1024;  // L1 max size
+         // Those were from RocksDB Performance Tuning Guide for a typical
+         // setting. Applications are encuroage to experiment different settings
+         // and use options file instead.
+         options.compaction_style = rocksdb::kCompactionStyleLevel; // level style compaction
+         options.level0_file_num_compaction_trigger = 10; // number of L0 files to trigger L0 to L1 compaction.
+         options.level0_slowdown_writes_trigger = 20;     // number of L0 files that will slow down writes
+         options.level0_stop_writes_trigger = 40;         // number of L0 files that will stop writes
+         options.write_buffer_size = 256 * 1024 * 1024;   // memtable size
+         options.target_file_size_base = 256 * 1024 * 1024; // size of files in L1
+         options.max_bytes_for_level_base = 10 * options.target_file_size_base;  // total size of L1, recommended to be 10 * target_file_size_base
 
          check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
       }
