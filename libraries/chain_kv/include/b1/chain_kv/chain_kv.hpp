@@ -5,7 +5,7 @@
 #include <optional>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
-#include "rocksdb/utilities/options_util.h"
+#include <rocksdb/utilities/options_util.h>
 
 #include <stdexcept>
 #include <softfloat.hpp>
@@ -312,7 +312,7 @@ struct database {
          // load the options file
          rocksdb::DBOptions loaded_db_opt;
          std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
-         check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadLatestOptions: ");
+         check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadOptionsFromFile: ");
          loaded_db_opt.env->SetBackgroundThreads(loaded_db_opt.max_background_jobs, rocksdb::Env::LOW); // low priority background threads pool
          loaded_db_opt.env->SetBackgroundThreads(1, rocksdb::Env::HIGH); // high priority background threads pool
 
@@ -320,30 +320,16 @@ struct database {
          std::vector<rocksdb::ColumnFamilyHandle*> handles;
          check(rocksdb::DB::Open(loaded_db_opt, db_path, loaded_cf_descs, &handles, &p), "database::database:rocksdb::DB::Open (options files): ");
       } else {
+         // This is only for embedded RocksDB instance creation. 
          rocksdb::Options options;
          options.create_if_missing = create_if_missing;
 
          if (threads) {
             options.IncreaseParallelism(*threads);
-         } else {
-            options.IncreaseParallelism(20);
          }
          if (max_open_files) {
             options.max_open_files = *max_open_files;
-         } else {
-            options.max_open_files = 768;
          }
-
-         // Those were from RocksDB Performance Tuning Guide for a typical
-         // setting. Applications are encuroage to experiment different settings
-         // and use options file instead.
-         options.compaction_style = rocksdb::kCompactionStyleLevel; // level style compaction
-         options.level0_file_num_compaction_trigger = 10; // number of L0 files to trigger L0 to L1 compaction.
-         options.level0_slowdown_writes_trigger = 20;     // number of L0 files that will slow down writes
-         options.level0_stop_writes_trigger = 40;         // number of L0 files that will stop writes
-         options.write_buffer_size = 256 * 1024 * 1024;   // memtable size
-         options.target_file_size_base = 256 * 1024 * 1024; // size of files in L1
-         options.max_bytes_for_level_base = 10 * options.target_file_size_base;  // total size of L1, recommended to be 10 * target_file_size_base
 
          check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
       }
