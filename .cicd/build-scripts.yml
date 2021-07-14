@@ -22,7 +22,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
-    skip: ${SKIP_CENTOS_7}${SKIP_LINUX}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
 
   - label: ":centos: CentOS 8 - Build Pinned"
     plugins:
@@ -76,7 +76,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
-    skip: ${SKIP_UBUNTU_18}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
     env:
@@ -92,7 +92,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
-    skip: ${SKIP_UBUNTU_20}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
@@ -116,7 +116,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
-    skip: ${SKIP_CENTOS_7}${SKIP_LINUX}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
 
   - label: ":centos: CentOS 8 - Build UnPinned"
     plugins:
@@ -170,7 +170,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
-    skip: ${SKIP_UBUNTU_18}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
     env:
@@ -186,4 +186,4 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git g++"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
-    skip: ${SKIP_UBUNTU_20}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
