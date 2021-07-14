@@ -304,8 +304,8 @@ bytes create_full_key(const bytes& prefix, uint64_t contract, const T& key) {
 struct database {
    std::unique_ptr<rocksdb::DB> rdb;
 
-   database(const char* db_path, bool create_if_missing, std::optional<uint32_t> threads = {},
-            std::optional<int> max_open_files = {}, std::optional<boost::filesystem::path> options_file_name = {}) {
+   database(const char* db_path, bool create_if_missing,
+            std::optional<boost::filesystem::path> options_file_name = {}) {
       rocksdb::DB* p;
 
       if (options_file_name) {
@@ -313,8 +313,6 @@ struct database {
          rocksdb::DBOptions loaded_db_opt;
          std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
          check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadOptionsFromFile: ");
-         loaded_db_opt.env->SetBackgroundThreads(loaded_db_opt.max_background_jobs, rocksdb::Env::LOW); // low priority background threads pool
-         loaded_db_opt.env->SetBackgroundThreads(1, rocksdb::Env::HIGH); // high priority background threads pool
 
          // open rocksdb using the loaded options
          std::vector<rocksdb::ColumnFamilyHandle*> handles;
@@ -323,13 +321,6 @@ struct database {
          // This is only for embedded RocksDB instance creation. 
          rocksdb::Options options;
          options.create_if_missing = create_if_missing;
-
-         if (threads) {
-            options.IncreaseParallelism(*threads);
-         }
-         if (max_open_files) {
-            options.max_open_files = *max_open_files;
-         }
 
          check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
       }

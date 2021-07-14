@@ -56,7 +56,7 @@ std::shared_ptr<chain_kv::database> rocksdb_plugin::get_db() {
       if (!bfs::exists(my->db_path.parent_path()))
          bfs::create_directories(my->db_path.parent_path());
 
-      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, std::nullopt, std::nullopt, my->options_file_name);
+      my->database = std::make_shared<chain_kv::database>(my->db_path.c_str(), true, my->options_file_name);
    }
    return my->database;
 }
