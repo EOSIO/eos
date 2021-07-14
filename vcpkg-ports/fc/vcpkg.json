@@ -7,11 +7,13 @@
    "dependencies": [
       "openssl",
       "zlib",
+      "rapidjson",
       "boost-date-time",
       "boost-filesystem",
       "boost-chrono",
       "boost-test",
       "boost-iostreams",
+      "boost-beast",
       {
          "name": "secp256k1",
          "features": [ "gmp", "module-ecdh", "module-recovery"]
