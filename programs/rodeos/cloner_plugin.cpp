@@ -42,6 +42,7 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
    bool        profile = false;
+   uint32_t    force_write_stride = 200;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
@@ -102,6 +103,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
    void connect(asio::io_context& ioc) {
       rodeos_snapshot.emplace(partition, true);
+      rodeos_snapshot->force_write_stride = config->force_write_stride;
 
       ilog("cloner database status:");
       ilog("    revisions:    ${f} - ${r}",
@@ -291,6 +293,9 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
+   op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
+      "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations under disaster recovery scenarios (when rodeos has unexpectedly exited). This option ensures blocks stored in rocksdb are at most force-write-stride blocks behind the current head block being processed by rodeos. However, saving too frequently may affect performance. It is likely that rocksdb itself will save rodeos data more frequently than this setting by flushing memtables to disk, based on various rocksdb options. In contrast, when rodeos exits normally, it saves the last block processed by rodeos into rocksdb and will continue processing new blocks from that last processed block number when it next starts up.");
+
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -350,6 +355,9 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
                                   options["telemetry-timeout-us"].as<uint32_t>(),
                                   options["telemetry-wait-timeout-seconds"].as<uint32_t>() );
       }
+
+      my->config->force_write_stride = options["force-write-stride"].as<uint32_t>();
+      
    }
    FC_LOG_AND_RETHROW()
 }

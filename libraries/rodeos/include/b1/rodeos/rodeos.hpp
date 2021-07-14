@@ -50,6 +50,7 @@ struct rodeos_db_snapshot {
    eosio::checksum256                      irreversible_id = {};
    uint32_t                                first           = 0;
    std::optional<uint32_t>                 writing_block   = {};
+   uint32_t                                force_write_stride = 200;
 
    rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent);
 

@@ -121,16 +121,16 @@ void rodeos_db_snapshot::end_block(const get_blocks_result_base& result, bool fo
       throw std::runtime_error("call start_block first");
 
    bool near       = result.this_block->block_num + 4 >= result.last_irreversible.block_num;
-   bool write_now  = !(result.this_block->block_num % 200) || near || force_write;
+   bool write_now  = !(result.this_block->block_num % force_write_stride) || force_write;
    head            = result.this_block->block_num;
    head_id         = result.this_block->block_id;
    irreversible    = result.last_irreversible.block_num;
    irreversible_id = result.last_irreversible.block_id;
    if (!first || head < first)
       first = head;
+   if (write_now || near)
+      end_write(write_now || near);
    if (write_now)
-      end_write(write_now);
-   if (near)
       db->flush(false, false);
 }
 
