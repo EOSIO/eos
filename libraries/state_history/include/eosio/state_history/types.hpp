@@ -76,7 +76,7 @@ class opaque {
       if (data)
          pack_big_bytes(ds, *data);
       else
-         fc::raw::pack(fc::unsigned_int(0));
+         fc::raw::pack(ds, fc::unsigned_int(0));
    }
 
    bool   has_value() const { return data->size() > 0; }
