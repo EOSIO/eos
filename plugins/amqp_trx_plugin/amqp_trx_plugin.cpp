@@ -79,6 +79,27 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
 
    // called from amqp thread
    void consume_message( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
+      
+      // simplest solution 
+      if ( producer_plugin.paused() ) { 
+
+         // producer_plugin.paused() && !my->allow_speculative_execution && prod_plugin->has_producers() 
+         
+         // can a speculative node have its producer paused? In which we check we are not in spec exec and have producers defined (we are a producer) 
+         // but we are paused
+
+         // NACK the messages to AMQP so that it knows someone else needs to
+         // process the 1000-x that has not been ACK'd
+         amqp_trx->reject(delivery_tag);
+
+         // Does a paused producer still do speculative execution and forward txns
+         // on the p2p network? Does this imply we need an abort_block() here and
+         // then we are done
+
+         return;
+     }
+      
+      
       try {
          fc::datastream<const char*> ds( message.body(), message.bodySize() );
          fc::unsigned_int which;

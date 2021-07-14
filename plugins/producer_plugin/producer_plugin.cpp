@@ -1072,6 +1072,11 @@ void producer_plugin::handle_sighup() {
 void producer_plugin::pause() {
    fc_ilog(_log, "Producer paused.");
    my->_pause_production = true;
+
+   // thinking we do not do want to do this as it will change the behavior of pause() in unintended ways for regular use cases
+   // my->abort_block();
+   // my->schedule_production_loop();
+
 }
 
 void producer_plugin::resume() {
