@@ -23,7 +23,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_CENTOS_7}${SKIP_LINUX}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.15 - Base Image Pinned"
     command:
@@ -59,7 +59,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_UBUNTU_18}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Base Image Pinned"
     command:
@@ -71,7 +71,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_UBUNTU_20}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
   - label: ":aws: Amazon_Linux 2 - Base Image Unpinned"
     command:
@@ -95,7 +95,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_CENTOS_7}${SKIP_LINUX}
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.15 - Base Image Unpinned"
     command:
@@ -131,7 +131,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_UBUNTU_18}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Base Image Unpinned"
     command:
@@ -143,4 +143,4 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
-    skip: ${SKIP_UBUNTU_20}${SKIP_LINUX}
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
