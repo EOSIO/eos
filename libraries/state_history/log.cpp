@@ -316,39 +316,24 @@ void state_history_log::split_log() {
 void state_history_log::store_entry(const chain::block_id_type& id, const chain::block_id_type& prev_id,
                                     std::vector<char>&& data) {
    
-   if (thr.joinable()) {
-      if (write_thread_has_exception) {
-         std::rethrow_exception(eptr);
-      }
-      block_num_type block_num = chain::block_header::num_from_id(id);
-      auto shared_data = std::make_shared<std::vector<char>>(std::move(data));
-      boost::asio::post(work_strand, [this, entry = log_entry_type{id, prev_id, shared_data} ]() {
-         write_entry(entry);
-      });
-      cached[block_num] = shared_data;
-
-      while (cached.size() > num_buffered_entries && cached.begin()->second.use_count() == 1) {
-         // the log entry has been removed from write_queue, so we can safely erase it. 
-         cached.erase(cached.begin());
-      }
-
-      fc_ilog(logger,"store_entry name=${name}, block_num=${block_num} cached.size = ${sz}, num_buffered_entries=${num_buffered_entries}, id=${id}",
-            ("name", name)("block_num", block_num)("sz", cached.size())("num_buffered_entries", num_buffered_entries)("id", id));
-
+   if (write_thread_has_exception) {
+      std::rethrow_exception(eptr);
    }
-   else {
-      state_history_log_header header{.magic = ship_magic(ship_current_version), .block_id = id};
-      auto [block_num, start_pos] = write_entry_header(header, prev_id);
-      try {
-         this->write_payload(write_log, data);
-         write_entry_position(header, start_pos, block_num);
-      } catch (...) {
-         write_log.close();
-         boost::filesystem::resize_file(write_log.get_file_path(), start_pos);
-         write_log.open("rb+");
-         throw;
-      }
+   block_num_type block_num = chain::block_header::num_from_id(id);
+   auto shared_data = std::make_shared<std::vector<char>>(std::move(data));
+   boost::asio::post(work_strand, [this, entry = log_entry_type{id, prev_id, shared_data} ]() {
+      write_entry(entry);
+   });
+   cached[block_num] = shared_data;
+
+   while (cached.size() > num_buffered_entries && cached.begin()->second.use_count() == 1) {
+      // the log entry has been removed from write_queue, so we can safely erase it. 
+      cached.erase(cached.begin());
    }
+
+   fc_ilog(logger,"store_entry name=${name}, block_num=${block_num} cached.size = ${sz}, num_buffered_entries=${num_buffered_entries}, id=${id}",
+         ("name", name)("block_num", block_num)("sz", cached.size())("num_buffered_entries", num_buffered_entries)("id", id));
+
 }
 
 void state_history_log::write_entry(const log_entry_type& entry) {
@@ -375,14 +360,12 @@ state_history_traces_log::state_history_traces_log(const state_history_config& c
 
 std::shared_ptr<std::vector<char>> state_history_traces_log::get_log_entry(block_num_type block_num) {
 
-   if (thr.joinable()) {
-      auto itr = cached.find(block_num);
-      if (itr != cached.end()) {
-         std::vector<state_history::transaction_trace> traces;
-         auto ds = fc::datastream<const char*>(itr->second->data(), itr->second->size());
-         state_history::trace_converter::unpack(ds, traces);
-         return std::make_shared<std::vector<char>>(fc::raw::pack(traces));
-      }
+   auto itr = cached.find(block_num);
+   if (itr != cached.end()) {
+      std::vector<state_history::transaction_trace> traces;
+      auto ds = fc::datastream<const char*>(itr->second->data(), itr->second->size());
+      state_history::trace_converter::unpack(ds, traces);
+      return std::make_shared<std::vector<char>>(fc::raw::pack(traces));
    }
    
    auto get_traces_bin = [block_num](auto& ds, uint32_t version, std::size_t size) {
@@ -473,12 +456,10 @@ state_history_chain_state_log::state_history_chain_state_log(const state_history
     : state_history_log("chain_state_history", config) {}
 
 std::shared_ptr<std::vector<char>> state_history_chain_state_log::get_log_entry(block_num_type block_num) {
-   if (thr.joinable()) {
-      auto itr = cached.find(block_num);
-      if (itr != cached.end()) {
-         return itr->second;
-      }
-   } 
+   auto itr = cached.find(block_num);
+   if (itr != cached.end()) {
+      return itr->second;
+   }
 
    auto [ds, _] = catalog.ro_stream_for_block(block_num);
    if (ds.remaining()) {
