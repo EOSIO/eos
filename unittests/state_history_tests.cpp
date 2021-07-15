@@ -346,7 +346,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.index" ));
 
-   BOOST_CHECK_EQUAL(chain.traces_log.begin_block(), 41);
+   BOOST_CHECK_EQUAL(chain.traces_log.begin_end_block_nums().first, 41);
 
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.index" ));
@@ -359,7 +359,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.index" ));
 
-   BOOST_CHECK_EQUAL(chain.chain_state_log.begin_block(), 41);
+   BOOST_CHECK_EQUAL(chain.chain_state_log.begin_end_block_nums().first, 41);
 
    BOOST_CHECK(get_traces(chain.traces_log, 10).empty());
    BOOST_CHECK(get_traces(chain.traces_log, 100).size());
