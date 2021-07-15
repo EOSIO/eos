@@ -53,7 +53,7 @@ class opaque {
    explicit opaque(std::vector<char>&& serialized)
        : data(std::make_shared<std::vector<char>>(std::move(serialized))) {}
 
-   opaque(const T& value) { data = std::make_shared<std::vector<char>>(fc::raw::pack(value)); }
+   explicit opaque(const T& value) { data = std::make_shared<std::vector<char>>(fc::raw::pack(value)); }
 
    opaque& operator=(const T& value) {
       data = std::make_shared<std::vector<char>>(fc::raw::pack(value));
@@ -65,7 +65,7 @@ class opaque {
    }
 
    opaque& operator=(std::shared_ptr<std::vector<char>> serialized) {
-      data = serialized;
+      data = std::move(serialized);
       return *this;
    }
 

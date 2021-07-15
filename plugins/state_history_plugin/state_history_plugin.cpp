@@ -632,7 +632,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       config.stride             = options.at("state-history-stride").as<uint32_t>();
       config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();
       config.num_buffered_entries = options.at("state-history-num-buffered-entries").as<uint32_t>();
-      config.threaded_write       = true;
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       if (ip_port.size()) {

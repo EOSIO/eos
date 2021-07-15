@@ -115,7 +115,6 @@ struct state_history_config {
    uint32_t  stride             = UINT32_MAX;
    uint32_t  max_retained_files = 10;
    uint32_t  num_buffered_entries = 2;
-   bool      threaded_write       = false; // eosio-blocklog never uses threaded_write
    fc::logger* logger             = nullptr;
 };
 
@@ -152,8 +151,8 @@ class state_history_log {
    };
 
    state_history_log(const char* const name, const state_history_config& conf);
-   virtual ~state_history_log(){}
-   
+   virtual ~state_history_log() { stop(); }
+
    block_num_type begin_block() const {
       block_num_type result = catalog.first_block_num();
       return result != 0 ? result : _begin_block;
@@ -164,7 +163,7 @@ class state_history_log {
 
  protected:
    void store_entry(const chain::block_id_type& id, const chain::block_id_type& prev_id, std::vector<char>&& data);
-   void write_entry(const log_entry_type& entry, std::unique_lock<std::mutex>& lock);
+   void write_entry(const log_entry_type& entry);
    void get_entry_header(block_num_type block_num, state_history_log_header& header);
 
    using cached_data_map  = boost::container::flat_map<uint32_t, std::shared_ptr<std::vector<char>>>;
