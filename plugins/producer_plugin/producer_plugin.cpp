@@ -430,12 +430,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          return true;
       }
 
-      auto make_retry_later_func() {
-         return [this]( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
-            _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
-         };
-      }
-
       void restart_speculative_block() {
          chain::controller& chain = chain_plug->chain();
          // abort the pending block
@@ -464,7 +458,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   };
                   try {
                      auto result = future.get();
-                     if( !self->process_incoming_transaction_async( result, persist_until_expired, next, self->make_retry_later_func() ) ) {
+                     if( !self->process_incoming_transaction_async( result, persist_until_expired, next ) ) {
                         if( self->_pending_block_mode == pending_block_mode::producing ) {
                            self->schedule_maybe_produce_block( true );
                         } else {
@@ -521,12 +515,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
       }
 
-      // @param RetryLaterFunc form: void( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t next )
-      template<typename RetryLaterFunc>
       bool process_incoming_transaction_async(const transaction_metadata_ptr& trx,
                                               bool persist_until_expired,
                                               next_function<transaction_trace_ptr> next,
-                                              RetryLaterFunc retry_later,
                                               bool return_failure_trace = false)
       {
          bool exhausted = false;
@@ -554,7 +545,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             if( !chain.is_building_block()) {
-               retry_later( trx, persist_until_expired, next );
+               _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                return true;
             }
 
@@ -580,7 +571,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             fc_dlog( _trx_failed_trace_log, "Subjective bill for ${a}: ${b} elapsed ${t}us", ("a",first_auth)("b",sub_bill)("t",trace->elapsed));
             if( trace->except ) {
                if( exception_is_exhausted( *trace->except, deadline_is_subjective )) {
-                  retry_later( trx, persist_until_expired, next );
+                  _unapplied_transactions.add_incoming( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog(_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING, ec: ${c} ",
                               ("block_num", chain.head_block_num() + 1)
@@ -2027,7 +2018,7 @@ void producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          auto next = itr->next;
          bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
          itr = _unapplied_transactions.erase( itr );
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next, make_retry_later_func() ) ) {
+         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next ) ) {
             exhausted = true;
             break;
          }
@@ -2097,7 +2088,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
          itr = _unapplied_transactions.erase( itr );
          ++processed;
-         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next, make_retry_later_func() ) ) {
+         if( !process_incoming_transaction_async( trx_meta, persist_until_expired, next ) ) {
             exhausted = true;
             break;
          }
@@ -2380,16 +2371,11 @@ void producer_plugin::log_failed_transaction(const transaction_id_type& trx_id, 
 }
 
 bool producer_plugin::execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
-                                                   next_function<chain::transaction_trace_ptr> next,
-                                                   retry_later_function_t retry_later )
+                                                   next_function<chain::transaction_trace_ptr> next )
 {
-   auto retry_later_func = [&retry_later](const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t& next ) {
-      retry_later( trx, next );
-   };
-
    const bool persist_until_expired = false;
    const bool return_failure_trace = true;
-   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), retry_later_func, return_failure_trace );
+   bool exhausted = !my->process_incoming_transaction_async( trx, persist_until_expired, std::move(next), return_failure_trace );
    if( exhausted ) {
       if( my->_pending_block_mode == pending_block_mode::producing ) {
          my->schedule_maybe_produce_block( true );
