@@ -48,7 +48,7 @@ EOSIO currently supports the following operating systems:
 
 ## Software Installation
 
-If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started Guide](https://developers.eos.io/welcome/v2.2/getting-started-guide). If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://developers.eos.io/manuals/eos/v2.2/install/build-from-source).
+If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started Guide](https://developers.eos.io/welcome/latest/getting-started-guide). If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://developers.eos.io/manuals/eos/latest/install/build-from-source).
 
 ---
 
@@ -103,13 +103,13 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 ```
 
 ## Documentation
-1. [Nodeos](https://developers.eos.io/manuals/eos/v2.2/nodeos)
-    - [Usage](https://developers.eos.io/manuals/eos/v2.2/nodeos/usage)
-    - [Replays](https://developers.eos.io/manuals/eos/v2.2/nodeos/replays)
-    - [Chain API Reference](https://developers.eos.io/manuals/eos/v2.2/nodeos/plugins/chain_api_plugin/api-reference)
-    - [Troubleshooting](https://developers.eos.io/manuals/eos/v2.2/nodeos/troubleshooting)
-1. [Cleos](https://developers.eos.io/manuals/eos/v2.2/cleos)
-1. [Keosd](https://developers.eos.io/manuals/eos/v2.2/keosd)
+1. [Nodeos](https://developers.eos.io/manuals/eos/latest/nodeos)
+    - [Usage](https://developers.eos.io/manuals/eos/latest/nodeos/usage)
+    - [Replays](https://developers.eos.io/manuals/eos/latest/nodeos/replays)
+    - [Chain API Reference](https://developers.eos.io/manuals/eos/latest/nodeos/plugins/chain_api_plugin/api-reference)
+    - [Troubleshooting](https://developers.eos.io/manuals/eos/latest/nodeos/troubleshooting)
+1. [Cleos](https://developers.eos.io/manuals/eos/latest/cleos)
+1. [Keosd](https://developers.eos.io/manuals/eos/latest/keosd)
 
 ## Resources
 1. [Website](https://eos.io)
@@ -122,7 +122,7 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started](https://developers.eos.io/welcome/latest/getting-started-guide) walkthrough.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in the [Getting Started Guide](https://developers.eos.io/welcome/latest/getting-started-guide).
 
 ## Contributing
 
