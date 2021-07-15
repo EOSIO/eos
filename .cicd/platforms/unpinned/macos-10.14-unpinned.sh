@@ -2,9 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git icu4c python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 cmake jq || :
-curl -LO https://raw.githubusercontent.com/Homebrew/homebrew-core/0b9ee3127763e8ebce62599bae85f37ab1687622/Formula/boost.rb
-brew install -f boost.rb
+brew install git icu4c python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl@1.1 cmake jq boost || :
 # install mongoDB
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
