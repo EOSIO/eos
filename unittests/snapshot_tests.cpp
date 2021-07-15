@@ -43,7 +43,6 @@ controller::config copy_config_and_files(const controller::config& config, int o
    controller::config copied_config = copy_config(config, ordinal);
    fc::create_directories(copied_config.blocks_dir);
    fc::copy(config.blocks_dir / "blocks.log", copied_config.blocks_dir / "blocks.log");
-   fc::copy(config.blocks_dir / config::reversible_blocks_dir_name, copied_config.blocks_dir / config::reversible_blocks_dir_name );
    return copied_config;
 }
 
