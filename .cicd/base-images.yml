@@ -11,6 +11,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Base Image Pinned"
     command:
@@ -22,6 +23,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.14 - Base Image Pinned"
     command:
@@ -45,6 +47,7 @@ steps:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 16.04 - Base Image Pinned"
     command:
@@ -56,6 +59,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_UBUNTU_16_04}${SKIP_LINUX}
     
   - label: ":ubuntu: Ubuntu 18.04 - Base Image Pinned"
     command:
@@ -67,6 +71,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":aws: Amazon_Linux 2 - Base Image Unpinned"
     command:
@@ -78,6 +83,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Base Image Unpinned"
     command:
@@ -89,6 +95,7 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.14 - Base Image Unpinned"
     command:
@@ -112,6 +119,7 @@ steps:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 18.04 - Base Image Unpinned"
     command:
@@ -123,3 +131,4 @@ steps:
     agents:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
