@@ -10,6 +10,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Build Pinned"
     plugins:
@@ -21,6 +22,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
 
   - label: ":centos: CentOS 8 - Build Pinned"
     plugins:
@@ -32,6 +34,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_8}${SKIP_LINUX}
 
   - label: ":darwin: macOS 10.14 - Build Pinned"
     env:
@@ -61,6 +64,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
 
 
   - label: ":darwin: macOS 10.15 - Build Pinned"
@@ -91,6 +95,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_15}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 16.04 - Build Pinned"
     plugins:
@@ -103,6 +108,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_16_04}${SKIP_LINUX}
     
   - label: ":ubuntu: Ubuntu 18.04 - Build Pinned"
     plugins:
@@ -115,6 +121,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Build Pinned"
     env:
@@ -130,6 +137,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -P -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
 
   - label: ":aws: Amazon_Linux 2 - Build UnPinned"
     plugins:
@@ -141,6 +149,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LINUX}
     
   - label: ":centos: CentOS 7.7 - Build UnPinned"
     plugins:
@@ -152,6 +161,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
 
   - label: ":centos: CentOS 8 - Build UnPinned"
     plugins:
@@ -163,6 +173,7 @@ steps:
     command:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_CENTOS_8}${SKIP_LINUX}
     
   - label: ":darwin: macOS 10.14 - Build UnPinned"
     env:
@@ -192,6 +203,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_14}${SKIP_MAC}
 
   - label: ":darwin: macOS 10.15 - Build UnPinned"
     env:
@@ -221,6 +233,7 @@ steps:
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     timeout: 180
+    skip: ${SKIP_MACOS_10_15}${SKIP_MAC}
     
   - label: ":ubuntu: Ubuntu 18.04 - Build UnPinned"
     plugins:
@@ -233,6 +246,7 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_18_04}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Build UnPinned"
     env:
@@ -248,3 +262,4 @@ steps:
       - "apt update && apt upgrade -y && apt install -y git g++"
       - "./scripts/eosio_build.sh -y"
     timeout: 180
+    skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
