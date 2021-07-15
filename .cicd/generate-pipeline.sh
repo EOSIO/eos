@@ -153,6 +153,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    key: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     timeout: ${TIMEOUT:-180}
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
 
@@ -195,6 +196,7 @@ EOF
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
+    key: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     skip: $(echo "$PLATFORM_JSON" | jq -r '.PLATFORM_SKIP_VAR | env[.] // empty')${SKIP_BUILD}
 
 EOF
@@ -208,14 +210,12 @@ done
       PLATFORM_TYPE: "unpinned"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    key: "ubuntu-18.04-unpinned-docker-build"
     timeout: ${TIMEOUT:-180}
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}
 
 EOF
-cat <<EOF
-  - wait
 
-EOF
 # tests
 IFS=$oIFS
 if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
@@ -236,6 +236,7 @@ if [[ "$DCMAKE_BUILD_TYPE" != 'Debug' ]]; then
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -270,6 +271,7 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents: "queue=mac-anka-node-fleet"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -293,6 +295,7 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -324,6 +327,7 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -354,6 +358,7 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -385,6 +390,7 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -413,6 +419,7 @@ EOF
       PLATFORM_TYPE: $PLATFORM_TYPE
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -444,6 +451,7 @@ EOF
       - EOSIO/skip-checkout#v0.1.1:
           cd: ~
     agents: "queue=mac-anka-node-fleet"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)-build"
     retry:
       manual:
         permit_on_passed: true
@@ -467,6 +475,7 @@ EOF
       PLATFORM_TYPE: "pinned"
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "ubuntu-18.04-pinned-build"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_LINUX}${SKIP_UBUNTU_18_04}${SKIP_MULTIVERSION_TEST}
 
@@ -477,6 +486,7 @@ EOF
       BUILD_IMAGE: "${MIRROR_REGISTRY}:base-ubuntu-18.04-\${BUILDKITE_COMMIT}"
     agents:
       queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
+    depends_on: "ubuntu-18.04-unpinned-docker-build"
     skip: ${SKIP_INSTALL}${SKIP_LINUX}${SKIP_DOCKER}${SKIP_CONTRACT_BUILDER}${SKIP_MULTIVERSION_TEST}
     timeout: ${TIMEOUT:-180}
 
