@@ -30,6 +30,8 @@ struct shared_state {
 struct thread_state : action_state, console_state, query_state {
    std::shared_ptr<const shared_state> shared = {};
    eosio::vm::wasm_allocator           wa     = {};
+
+   ~thread_state();
 };
 
 class thread_state_cache : public std::enable_shared_from_this<thread_state_cache> {
