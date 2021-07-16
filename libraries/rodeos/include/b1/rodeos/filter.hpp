@@ -50,6 +50,8 @@ struct filter_state : b1::rodeos::data_state<backend_t>, b1::rodeos::console_sta
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    std::optional<eosvmoc_tier> eosvmoc_tierup;
 #endif
+
+   ~filter_state();
 };
 
 struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
