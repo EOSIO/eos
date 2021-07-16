@@ -50,8 +50,8 @@ struct context {
 
    operator rodeos_context*() { return obj; }
 
-   void open_db(const char* path, bool create_if_missing, int num_threads = 0, int max_open_files = 0) {
-      error.check([&] { return rodeos_open_db(error, obj, path, create_if_missing, num_threads, max_open_files); });
+   void open_db(const char* path, bool create_if_missing) {
+      error.check([&] { return rodeos_open_db(error, obj, path, create_if_missing ); });
    }
 };
 
