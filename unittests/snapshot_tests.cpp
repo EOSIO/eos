@@ -171,6 +171,9 @@ namespace {
          auto rhs_latest = SNAPSHOT_SUITE::finalize(rhs_latest_writer);
 
          print_variant_diff(lhs_latest, rhs_latest);
+         // more than print the different, also save snapshots json gz files under path build/unittests/snapshots
+         SNAPSHOT_SUITE::write_to_file("snapshot_debug_verify_integrity_hash_lhs", lhs_latest);
+         SNAPSHOT_SUITE::write_to_file("snapshot_debug_verify_integrity_hash_rhs", rhs_latest);
       }
       BOOST_REQUIRE_EQUAL(lhs_integrity_hash.str(), rhs_integrity_hash.str());
    }

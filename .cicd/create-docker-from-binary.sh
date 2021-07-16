@@ -16,7 +16,11 @@ echo "$ $DOCKER_BUILD"
 eval $DOCKER_BUILD
 # docker tag
 echo '--- :label: Tag Container'
-REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
+if [[ "$BUILDKITE_PIPELINE_SLUG" =~ "-sec" ]] ; then
+    REGISTRIES=("$EOSIO_REGISTRY")
+else
+    REGISTRIES=("$EOSIO_REGISTRY" "$DOCKERHUB_REGISTRY")
+fi
 for REG in ${REGISTRIES[@]}; do
     DOCKER_TAG_BRANCH="docker tag '$IMAGE' '$REG:$SANITIZED_BRANCH'"
     echo "$ $DOCKER_TAG_BRANCH"
