@@ -144,3 +144,15 @@ steps:
       queue: "automation-eks-eos-builder-fleet"
     timeout: 180
     skip: ${SKIP_UBUNTU_20_04}${SKIP_LINUX}
+
+  - label: ":debian: Optionals - Base Image Unpinned"
+    command:
+      - "./.cicd/generate-base-images.sh"
+    env:
+      FORCE_BASE_IMAGE: true
+      IMAGE_TAG: optionals-NA-unpinned
+      PLATFORM_TYPE: unpinned
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    timeout: 180
+    skip: ${SKIP_OPTIONALS}${SKIP_LINUX}
