@@ -79,8 +79,8 @@ class opaque {
          fc::raw::pack(ds, fc::unsigned_int(0));
    }
 
-   bool   has_value() const { return data->size() > 0; }
-   size_t data_size() const { return data->size(); }
+   bool   has_value() const { return data ? data->size() > 0 : false; }
+   size_t data_size() const { return data ? data->size() : 0; }
 };
 
 struct augmented_transaction_trace {
