@@ -511,7 +511,6 @@ EOF
   - label: ":chains: Sync from Genesis Test"
     trigger: "eosio-sync-from-genesis"
     async: false
-    if: build.env("BUILDKITE_TAG") == null
     build:
       message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
@@ -531,7 +530,6 @@ EOF
   - label: ":outbox_tray: Resume from State Test"
     trigger: "eosio-resume-from-state"
     async: false
-    if: build.env("BUILDKITE_TAG") == null
     build:
       message: "Triggered by $BUILDKITE_PIPELINE_SLUG build $BUILDKITE_BUILD_NUMBER"
       commit: "${BUILDKITE_COMMIT}"
