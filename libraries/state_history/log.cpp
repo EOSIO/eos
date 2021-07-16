@@ -42,6 +42,7 @@ state_history_log::state_history_log(const char* const name, const state_history
    catalog.open(config.log_dir, config.retained_dir, config.archive_dir, name);
    catalog.max_retained_files = config.max_retained_files;
    this->stride               = config.stride;
+   this->num_buffered_entries = config.num_buffered_entries;
    open_log(config.log_dir / (std::string(name) + ".log"));
    open_index(config.log_dir / (std::string(name) + ".index"));
 
@@ -399,7 +400,7 @@ std::pair<std::vector<char>, uint32_t> state_history_log::read_entry(block_num_t
    return std::make_pair(std::move(data), version);
 }
 
-// Only used for prune_transaction, not thread safe
+// Only used for prune_transactions, not thread safe
 template <typename Lambda>
 void state_history_log::modify_entry(block_num_type block_num, Lambda f) {
    auto [ds, version] = catalog.rw_stream_for_block(block_num);
