@@ -40,7 +40,7 @@
         "test":
         [
             {
-                "commit": "85ac2aae5f52c68b6b1d764b997bb020f3c496f8" // test backwards-compatibility
+                "commit": "8fe13fffe4363dbc9028f3bdd549afc18802d511" // test backwards-compatibility forkdb v2 change.
             }
         ]
     }
