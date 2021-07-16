@@ -33,6 +33,7 @@ struct connection_callbacks {
    virtual bool received(ship::get_blocks_result_v1& result, eosio::input_stream bin) { return true; }
    virtual bool received(ship::get_blocks_result_v2& result, eosio::input_stream bin) { return true; }
    virtual void closed(bool retry) = 0;
+   virtual void quited() = 0;
 };
 
 struct tcp_connection_config {
@@ -61,6 +62,7 @@ struct connection_base {
    virtual void send(const ship::request& req) = 0;
    virtual void request_blocks(const ship::get_status_result_v0& status, uint32_t start_block_num, const std::vector<ship::block_position>& positions, int flags) = 0;
    virtual void close(bool retry) = 0;
+   virtual void quit() = 0;
 
    virtual ~connection_base() = default;
 };
@@ -185,6 +187,14 @@ struct connection : connection_base {
    void catch_and_close(F f) {
       try {
          f();
+      } catch (const std::runtime_error& e) {
+         elog("${e}", ("e", e.what()));
+         
+         if (std::strstr(e.what(), "quit rodeos") != nullptr) {
+            quit();
+         } else {
+            close(false);
+         }
       } catch (const std::exception& e) {
          elog("${e}", ("e", e.what()));
          close(false);
@@ -214,6 +224,15 @@ struct connection : connection_base {
       if (callbacks)
          callbacks->closed(retry);
       callbacks.reset();
+   }
+
+   void quit() {
+      ilog("quit");
+      if (callbacks) {
+         callbacks->quited();
+      } else {
+         wlog("callbacks is not initiated yet when quit is called");
+      }
    }
 }; // connection
 
