@@ -130,13 +130,13 @@ To uninstall the EOSIO built/installed binaries and dependencies, run:
 ```
 
 ## Documentation
-1. [Nodeos](http://eosio.github.io/eos/latest/nodeos/)
-    - [Usage](http://eosio.github.io/eos/latest/nodeos/usage/index)
-    - [Replays](http://eosio.github.io/eos/latest/nodeos/replays/index)
-    - [Chain API Reference](http://eosio.github.io/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index)
-    - [Troubleshooting](http://eosio.github.io/eos/latest/nodeos/troubleshooting/index)
-1. [Cleos](http://eosio.github.io/eos/latest/cleos/)
-1. [Keosd](http://eosio.github.io/eos/latest/keosd/)
+1. [Nodeos](https://developers.eos.io/manuals/eos/latest/nodeos/index)
+    - [Usage](https://developers.eos.io/manuals/eos/latest/nodeos/usage/index)
+    - [Replays](https://developers.eos.io/manuals/eos/latest/nodeos/replays/index)
+    - [Chain API Reference](https://developers.eos.io/manuals/eos/latest/nodeos/plugins/chain_api_plugin/api-reference/index)
+    - [Troubleshooting](https://developers.eos.io/manuals/eos/latest/nodeos/troubleshooting/index)
+1. [Cleos](https://developers.eos.io/manuals/eos/latest/cleos/index)
+1. [Keosd](https://developers.eos.io/manuals/eos/latest/keosd/index)
 
 ## Resources
 1. [Website](https://eos.io)
