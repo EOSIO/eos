@@ -97,12 +97,12 @@ public:
    }
 
    // reject consume message
-   void reject( const delivery_tag_t& delivery_tag ) {
+   void reject( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( thread_pool_.get_executor(),
-            [my = this, delivery_tag]() {
+            [my = this, delivery_tag, multiple]() {
                try {
                   if( my->channel_ )
-                     my->channel_->reject( delivery_tag );
+                     my->channel_->reject( delivery_tag, multiple ? AMQP::multiple : 0 );
                   else
                      my->on_error( "AMQP Unable to reject: " + std::to_string(delivery_tag) );
                } FC_LOG_AND_DROP()
@@ -141,6 +141,18 @@ public:
       }
    }
 
+    // called from non-amqp thread
+    void connect() {
+        AMQP::Address amqp_address( address_ );
+        ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
+
+        if( !first_connect_.wait() ) {
+            boost::asio::post( thread_pool_.get_executor(), [this](){
+                on_error( "AMQP timeout connecting and declaring queue" );
+            } );
+        }
+    }
+
 private:
 
    amqp_handler(const std::string& address, std::string name, std::string exchange_name, std::string exchange_type,
@@ -148,26 +160,16 @@ private:
          : first_connect_()
          , thread_pool_( "ampq", 1 ) // amqp is not thread safe, use only one thread
          , amqp_connection_(  thread_pool_.get_executor(), address, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
+         , address_(address)
          , name_( std::move( name ) )
          , exchange_name_( std::move( exchange_name ) )
          , exchange_type_( std::move( exchange_type ) )
          , on_error_( std::move( on_err ) )
          , on_consume_( std::move( on_consume ) )
    {
-      AMQP::Address amqp_address( address );
-      ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
 
-      wait();
    }
 
-   // called from non-amqp thread
-   void wait() {
-      if( !first_connect_.wait() ) {
-         boost::asio::post( thread_pool_.get_executor(), [this](){
-            on_error( "AMQP timeout connecting and declaring queue" );
-         } );
-      }
-   }
 
    // called from amqp thread
    void channel_ready(AMQP::Channel* c) {
@@ -237,6 +239,7 @@ private:
       consumer.onReceived( on_consume_ );
    }
 
+
    // called from amqp thread
    void on_error( const std::string& message ) {
       if( on_error_ ) on_error_( message );
@@ -274,6 +277,7 @@ private:
    eosio::chain::named_thread_pool thread_pool_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
+   std::string address_;
    std::string name_;
    std::string exchange_name_;
    std::string exchange_type_;
