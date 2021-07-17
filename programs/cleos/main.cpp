@@ -3962,7 +3962,7 @@ int main( int argc, char** argv ) {
    trxSubcommand->add_option("--signature", extra_sig_opt_callback, localized("append a signature to the transaction; repeat this option to append multiple signatures"))->type_size(0, 1000);
    add_standard_transaction_options_plus_signing(trxSubcommand);
    trxSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify a transaction is read-only"));
-   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transactions, use it along with --read-only)"));
+   trxSubcommand->add_flag("-t,--return-failure-trace", tx_rtn_failure_trace, localized("Return partial traces on failed transaction"));
 
    trxSubcommand->callback([&] {
       fc::variant trx_var = json_from_file_or_string(trx_to_push);
