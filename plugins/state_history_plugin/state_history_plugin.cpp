@@ -346,11 +346,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
             if (block_req.fetch_traces && plugin->trace_log) {
                result.traces = plugin->trace_log->get_log_entry(to_send_block_num);
-               // fc_add_tag(send_update_span, "traces_size", result.traces.data_size());
+               fc_add_tag(send_update_span, "traces_size", result.traces.data_size());
             }
             if (block_req.fetch_deltas && plugin->chain_state_log) {
                result.deltas = plugin->chain_state_log->get_log_entry(to_send_block_num);
-               // fc_add_tag(send_update_span, "deltas_size", result.deltas.data_size());
+               fc_add_tag(send_update_span, "deltas_size", result.deltas.data_size());
             }
             set_result_block_header(result, get_block());
          }
