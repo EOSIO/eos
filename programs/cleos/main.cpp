@@ -448,12 +448,13 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
    packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
       EOSC_ASSERT( !(tx_use_old_rpc && tx_use_old_send_rpc), "ERROR: --use-old-rpc and --use-old-send-rpc are mutually exclusive" );
-      EOSC_ASSERT( !(tx_use_old_send_rpc && tx_read_only), "ERROR: --use-old-send-rpc and --read-only are mutually exclusive" );
       packed_transaction_v0 pt_v0(trx, compression);
       if (tx_use_old_rpc) {
+         EOSC_ASSERT( !tx_read_only, "ERROR: --read-only can not be used with --use-old-rpc" );
          EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-rpc" );
          return call(push_txn_func, pt_v0);
       } else if (tx_use_old_send_rpc) {
+         EOSC_ASSERT( !tx_read_only, "ERROR: --read-only can not be used with --use-old-send-rpc" );
          EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-send-rpc" );
          return call(send_txn_func, pt_v0);
       } else {
