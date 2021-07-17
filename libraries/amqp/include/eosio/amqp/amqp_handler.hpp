@@ -142,42 +142,42 @@ public:
    }
 
     void start_consuming() {
-        if( !on_consume_ || is_consuming_ ) {
+        if( !on_consume_ || is_consuming_.value() ) {
             return;
         }
 
-        start_cond consumed;
         auto& consumer = channel_->consume( name_ );
 
         consumer.onSuccess( [&]( const std::string& consumer_tag ) {
             dlog( "consume started: ${tag}", ("tag", consumer_tag) );
-            is_consuming_ = true;
-            consumed.set();
+            is_consuming_.set(true);
         } );
         consumer.onError( [&]( const char* message ) {
             wlog( "consume failed: ${e}", ("e", message) );
             on_error( message );
-            is_consuming_ = false;
-            consumed.set();
+            is_consuming_.set(false);
         } );
         static_assert( std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed" );
         consumer.onReceived( on_consume_ );
+        is_consuming_.wait();
     }
 
     void stop_consuming() {
-        if( ! is_consuming_ ) {
+        if( ! is_consuming_.value() ) {
             return;
         }
         auto& consumer = channel_->cancel( name_ );
 
         consumer.onSuccess( [&]( const std::string& consumer_tag ) {
             dlog( "consume stopped: ${tag}", ("tag", consumer_tag) );
-            is_consuming_ = false;
+            is_consuming_.set(false);
         } );
         consumer.onError( [&]( const char* message ) {
             wlog( "consume stop failed: ${e}", ("e", message) );
             on_error( message );
+            is_consuming_.set(true);
         } );
+        is_consuming_.wait();
     }
 
 private:
@@ -262,6 +262,10 @@ private:
       if( on_error_ ) on_error_( message );
    }
 
+   bool is_consuming() {
+      return is_consuming_.value();
+   }
+
 private:
    class start_cond {
    private:
@@ -269,13 +273,14 @@ private:
       bool started_ = false;
       std::condition_variable start_cond_;
    public:
-      void set() {
+      void set(bool val=true) {
          {
             auto lock = std::scoped_lock(mtx_);
-            started_ = true;
+            started_ = val;
          }
          start_cond_.notify_one();
       }
+      bool value() {return started_;}
       bool wait() {
          std::unique_lock<std::mutex> lk(mtx_);
          return start_cond_.wait_for( lk, std::chrono::seconds( 10 ), [&]{ return started_; } );
@@ -291,6 +296,7 @@ private:
 
 private:
    start_cond first_connect_;
+   start_cond is_consuming_;
    eosio::chain::named_thread_pool thread_pool_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
@@ -299,7 +305,6 @@ private:
    std::string exchange_type_;
    on_error_t on_error_;
    on_consume_t on_consume_;
-   bool is_consuming_;
 };
 
 } // namespace eosio
