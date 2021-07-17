@@ -449,7 +449,7 @@ struct controller_impl {
                auto block_num = next->block_num();
                replay_push_block( std::move(next), controller::block_status::irreversible );
                if( check_shutdown() ) break;
-               if( block_num % 500 == 0 ) {
+               if( block_num % conf.print_replay_progress_blocks == 0 ) {
                   ilog( "${n} of ${head}", ("n", block_num)("head", blog_head->block_num()) );
                }
             }

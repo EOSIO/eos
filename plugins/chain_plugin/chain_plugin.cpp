@@ -438,6 +438,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "disable optimizations that specifically target replay")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain state database and replay all blocks")
+         ("print-replay-progress-blocks",  bpo::value<uint32_t>()->default_value(500),
+          "print replay progress messsages every print-replay-progress-blocks blocks")
          ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
@@ -911,6 +913,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
       my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
+      my->chain_config->print_replay_progress_blocks = options.at("print-replay-progress-blocks").as<uint32_t>();
 
 #ifdef EOSIO_DEVELOPER
       my->chain_config->disable_all_subjective_mitigations = options.at( "disable-all-subjective-mitigations" ).as<bool>();

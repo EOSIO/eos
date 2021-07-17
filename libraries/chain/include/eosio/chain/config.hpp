@@ -94,6 +94,8 @@ const static int        default_persistent_storage_max_num_files     = -1;
 const static uint64_t   default_persistent_storage_write_buffer_size = 128 * 1024 * 1024;
 const static uint64_t   default_persistent_storage_bytes_per_sync    = 1 * 1024 * 1024;
 const static uint32_t   default_persistent_storage_mbytes_batch      = 50;
+const static uint32_t   default_print_replay_progress_blocks         = 500;
+
 
 static_assert(MAX_SIZE_OF_BYTE_ARRAYS == 20*1024*1024, "Changing MAX_SIZE_OF_BYTE_ARRAYS breaks consensus. Make sure this is expected");
 
