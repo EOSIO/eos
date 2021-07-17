@@ -198,7 +198,6 @@ private:
       ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
 
       wait();
-      start_consuming();
    }
 
    // called from non-amqp thread
