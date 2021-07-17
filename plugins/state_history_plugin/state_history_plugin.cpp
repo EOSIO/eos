@@ -132,7 +132,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
 
          // avoid ~session() to be executed in this thread.
-         app().post( priority::high, [self = this->derived_session().shared_from_this()]() {
+         app().post( priority::medium, [self = this->derived_session().shared_from_this()]() {
             self->catch_and_close( [self]{
                if (self->send_thread_has_exception) 
                   std::rethrow_exception(self->eptr);
