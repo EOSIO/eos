@@ -221,12 +221,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          result.chain_id          = chain.get_chain_id();
          if (plugin->trace_log) {
-            result.trace_begin_block = plugin->trace_log->begin_block();
-            result.trace_end_block   = plugin->trace_log->end_block();
+            std::tie(result.trace_begin_block, result.trace_end_block) = plugin->trace_log->begin_end_block_nums();
          }
          if (plugin->chain_state_log) {
-            result.chain_state_begin_block = plugin->chain_state_log->begin_block();
-            result.chain_state_end_block   = plugin->chain_state_log->end_block();
+            std::tie(result.chain_state_begin_block, result.chain_state_end_block) =
+                plugin->chain_state_log->begin_end_block_nums();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
          send(std::move(result), std::move(request_span));
@@ -652,6 +651,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
            "enable debug mode for trace history");
    options("context-free-data-compression", bpo::value<string>()->default_value("zlib"), 
            "compression mode for context free data in transaction traces. Supported options are \"zlib\" and \"none\"");
+   options("state-history-num-buffered-entries", bpo::value<uint32_t>()->default_value(2), "size of the buffered state history log entries in memory");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -674,6 +674,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       auto  dir_option = options.at("state-history-dir").as<bfs::path>();
 
       static eosio::state_history_config config;
+      config.logger = &_log;
 
       if (dir_option.is_relative())
          config.log_dir = app().data_dir() / dir_option;
@@ -686,6 +687,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       config.archive_dir        = options.at("state-history-archive-dir").as<bfs::path>();
       config.stride             = options.at("state-history-stride").as<uint32_t>();
       config.max_retained_files = options.at("max-retained-history-files").as<uint32_t>();
+      config.num_buffered_entries = options.at("state-history-num-buffered-entries").as<uint32_t>();
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       if (ip_port.size()) {
@@ -751,6 +753,8 @@ void state_history_plugin::plugin_shutdown() {
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;
+   my->trace_log->stop();
+   my->chain_state_log->stop();
 }
 
 void state_history_plugin::handle_sighup() {

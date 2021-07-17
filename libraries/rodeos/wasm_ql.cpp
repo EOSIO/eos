@@ -163,6 +163,11 @@ shared_state::shared_state(std::shared_ptr<chain_kv::database> db)
 
 shared_state::~shared_state() {}
 
+thread_state::~thread_state() {
+   // wasm allocator must be explicitly freed
+   wa.free();
+}
+
 std::optional<std::vector<uint8_t>> read_code(wasm_ql::thread_state& thread_state, eosio::name account) {
    std::optional<std::vector<uint8_t>> code;
    if (!thread_state.shared->contract_dir.empty()) {
