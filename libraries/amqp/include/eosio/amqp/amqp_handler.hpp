@@ -263,10 +263,6 @@ private:
       if( on_error_ ) on_error_( message );
    }
 
-   bool is_consuming() {
-      return is_consuming_.value();
-   }
-
 private:
    class start_cond {
    private:
