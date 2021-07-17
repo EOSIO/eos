@@ -362,9 +362,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
                                   options["telemetry-timeout-us"].as<uint32_t>(),
                                   options["telemetry-wait-timeout-seconds"].as<uint32_t>() );
       }
-
       my->config->force_write_stride = options["force-write-stride"].as<uint32_t>();
-
    }
    FC_LOG_AND_RETHROW()
 }
