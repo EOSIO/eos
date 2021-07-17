@@ -955,25 +955,31 @@ public:
    read_write(controller& db, const fc::microseconds& abi_serializer_max_time, bool api_accept_transactions);
    void validate() const;
 
-   using push_block_params = chain::signed_block_v0;
+   using push_block_params_v1 = chain::signed_block_v0;
    using push_block_results = empty;
-   void push_block(push_block_params&& params, chain::plugin_interface::next_function<push_block_results> next);
+   void push_block(push_block_params_v1&& params, chain::plugin_interface::next_function<push_block_results> next);
 
-   using push_transaction_params = fc::variant_object;
+   using push_transaction_params_v1 = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
+   void push_transaction(const push_transaction_params_v1& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
-
-   using push_transactions_params  = vector<push_transaction_params>;
+   using push_transactions_params_v1  = vector<push_transaction_params_v1>;
    using push_transactions_results = vector<push_transaction_results>;
-   void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
+   void push_transactions(const push_transactions_params_v1& params, chain::plugin_interface::next_function<push_transactions_results> next);
 
-   using send_transaction_params = push_transaction_params;
+   using send_transaction_params_v1 = push_transaction_params_v1;
    using send_transaction_results = push_transaction_results;
-   void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
+   void send_transaction(const send_transaction_params_v1& params, chain::plugin_interface::next_function<send_transaction_results> next);
+
+   struct send_transaction_params_v2 {
+      bool return_failure_traces = false;
+      fc::variant transaction;
+   };
+   void send_transaction(const send_transaction_params_v2& params, chain::plugin_interface::next_function<send_transaction_results> next);
+
 };
 
  //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
@@ -1130,6 +1136,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_info_params, (block_num))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
+FC_REFLECT( eosio::chain_apis::read_write::send_transaction_params_v2, (return_failure_traces)(transaction) )
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
