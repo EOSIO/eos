@@ -184,6 +184,7 @@ bool   tx_ro_print_json = false;
 bool   tx_rtn_failure_trace = false;
 bool   tx_read_only = false;
 bool   tx_use_old_rpc = false;
+bool   tx_use_old_send_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
 bool   print_response = false;
@@ -237,6 +238,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("--return-packed", tx_return_packed, localized("Used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
    cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("Use old RPC push_transaction, rather than new RPC send_transaction"));
+   cmd->add_flag("--use-old-send-rpc", tx_use_old_send_rpc, localized("Use old RPC send_transaction, rather than new RPC /v2/chain/send_transaction"));
    cmd->add_option("--compression", tx_compression, localized("Compression for transaction 'none' or 'zlib'"))->transform(
          CLI::CheckedTransformer(compression_type_map, CLI::ignore_case));
 
@@ -443,24 +445,31 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
 
    packed_transaction::compression_type compression = to_compression_type( tx_compression );
    if (!tx_dont_broadcast) {
+      EOSC_ASSERT( !(tx_use_old_rpc && tx_use_old_send_rpc), "ERROR: --use-old-rpc and --use-old-send-rpc are mutually exclusive" );
+      EOSC_ASSERT( !(tx_use_old_send_rpc && tx_read_only), "ERROR: --use-old-send-rpc and --read-only are mutually exclusive" );
+      packed_transaction_v0 pt_v0(trx, compression);
       if (tx_use_old_rpc) {
-         return call(push_txn_func, packed_transaction_v0(trx, compression));
+         EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-rpc" );
+         return call(push_txn_func, pt_v0);
+      } else if (tx_use_old_send_rpc) {
+         EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-send-rpc" );
+         return call(send_txn_func, pt_v0);
       } else {
          try {
-            if (tx_read_only){
-                tx_ro_print_json = true;
-                packed_transaction_v0 pt_v0(trx, compression);
-                auto args = fc::mutable_variant_object()
+             auto args = fc::mutable_variant_object()
                         ("return_failure_traces", tx_rtn_failure_trace)
                         ("transaction", pt_v0);
-                return call(push_ro_txns_func, args);
-            }else {
-                EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can only be used along with --read-only" );
-                return call(send_txn_func, packed_transaction_v0(trx, compression));
+            if (tx_read_only){
+               tx_ro_print_json = true;
+               return call(send_ro_txns_func, args);
+            } else {
+               return call(send_txn_func_v2, args);
             }
          }
          catch (chain::missing_chain_api_plugin_exception &) {
-            std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
+            std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
+                      << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
+                      << "push_transaction instead or submit your transaction to a different node." << std::endl;
             throw;
          }
       }
@@ -3447,7 +3456,7 @@ int main( int argc, char** argv ) {
 
         const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
         if(wasm.compare(0, 8, binary_wasm_header))
-           std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
+           std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyway...") << std::endl;
         code_bytes = bytes(wasm.begin(), wasm.end());
       } else {
         code_bytes = bytes();
