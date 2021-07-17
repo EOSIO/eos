@@ -2754,7 +2754,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    return vo;
 }
 
-void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
+void read_write::push_block(read_write::push_block_params_v1&& params, next_function<read_write::push_block_results> next) {
    try {
       app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>( std::move( params ), true), {});
       next(read_write::push_block_results{});
@@ -2765,7 +2765,7 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
    } CATCH_AND_CALL(next);
 }
 
-void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
+void read_write::push_transaction(const read_write::push_transaction_params_v1& params, next_function<read_write::push_transaction_results> next) {
    try {
       packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -2871,7 +2871,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    } CATCH_AND_CALL(next);
 }
 
-static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params_v1>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
    auto wrapped_next = [=](const std::variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
       if (std::holds_alternative<fc::exception_ptr>(result)) {
          const auto& e = std::get<fc::exception_ptr>(result);
@@ -2892,10 +2892,10 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
    rw->push_transaction(params->at(index), wrapped_next);
 }
 
-void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
+void read_write::push_transactions(const read_write::push_transactions_params_v1& params, next_function<read_write::push_transactions_results> next) {
    try {
       EOS_ASSERT( params.size() <= 1000, too_many_tx_at_once, "Attempt to push too many transactions at once" );
-      auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
+      auto params_copy = std::make_shared<read_write::push_transactions_params_v1>(params.begin(), params.end());
       auto result = std::make_shared<read_write::push_transactions_results>();
       result->reserve(params.size());
 
@@ -2907,7 +2907,7 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
    } CATCH_AND_CALL(next);
 }
 
-void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
+void read_write::send_transaction(const read_write::send_transaction_params_v1& params, next_function<read_write::send_transaction_results> next) {
 
    try {
       packed_transaction_v0 input_trx_v0;
@@ -2924,6 +2924,65 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       fc_add_tag(trx_span, "method", "send_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
+            [this, token=trx_trace.get_token(), input_trx, next]
+            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+         auto trx_span = fc_create_span_from_token(token, "Processed");
+         fc_add_tag(trx_span, "trx_id", input_trx->id());
+
+         if (std::holds_alternative<fc::exception_ptr>(result)) {
+            auto& eptr = std::get<fc::exception_ptr>(result);
+            fc_add_tag(trx_span, "error", eptr->to_string());
+            next(eptr);
+         } else {
+            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+            if( trx_trace_ptr->receipt ) {
+               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+            }
+            if( trx_trace_ptr->except ) {
+               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+            }
+
+            try {
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               const chain::transaction_id_type& id = trx_trace_ptr->id;
+               next(read_write::send_transaction_results{id, output});
+            } CATCH_AND_CALL(next);
+         }
+      });
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
+   } CATCH_AND_CALL(next);
+}
+
+void read_write::send_transaction(const read_write::send_transaction_params_v2& params, next_function<read_write::send_transaction_results> next) {
+
+   try {
+      packed_transaction_v0 input_trx_v0;
+      auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      packed_transaction_ptr input_trx;
+      try {
+         abi_serializer::from_variant(params.transaction, input_trx_v0, std::move( resolver ), abi_serializer::create_yield_function( abi_serializer_max_time ));
+         input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
+      } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
+      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+      fc_add_tag(trx_span, "method", "/v2/chain/send_transaction");
+
+      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, static_cast<const bool>(params.return_failure_traces),
             [this, token=trx_trace.get_token(), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -3195,7 +3254,7 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
-void read_only::push_ro_transaction(const read_only::push_ro_transaction_params& params, chain::plugin_interface::next_function<read_only::push_ro_transaction_results> next) const {
+void read_only::send_ro_transaction(const read_only::send_ro_transaction_params_v1& params, chain::plugin_interface::next_function<read_only::send_ro_transaction_results> next) const {
    try {
       packed_transaction_v0 input_trx_v0;
       auto resolver = make_resolver(db, abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -3208,7 +3267,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
       auto trx_trace = fc_create_trace_with_id("TransactionReadOnly", input_trx->id());
       auto trx_span = fc_create_span(trx_trace, "HTTP Received");
       fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "push_ro_transaction");
+      fc_add_tag(trx_span, "method", "send_ro_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
             [this, token=trx_trace.get_token(), input_trx, params, next]
@@ -3253,7 +3312,7 @@ void read_only::push_ro_transaction(const read_only::push_ro_transaction_params&
                      pending_transactions.push_back(std::get<packed_transaction>(receipt.trx).id());
                   }
                }
-               next(read_only::push_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
+               next(read_only::send_ro_transaction_results{db.head_block_num(), db.head_block_id(), db.last_irreversible_block_num(), db.last_irreversible_block_id(),
                                                            accnt_metadata_obj.code_hash, pending_transactions, output});
             } CATCH_AND_CALL(next);
          }
