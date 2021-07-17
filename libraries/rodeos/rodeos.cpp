@@ -4,7 +4,7 @@
 #include <b1/rodeos/rodeos_tables.hpp>
 #include <fc/log/trace.hpp>
 
-#include <fc/log/trace.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace b1::rodeos {
 
@@ -99,8 +99,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
            undo_stack->undo(true);
       } else {
            wlog("can't switch forks at ${b} since undo stack is not enabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
-           throw std::runtime_error("quit rodeos. can't switch forks since undo stack is not enabled. Block number: " +
-                                    std::to_string(result.this_block->block_num)); // do not modify "quit rodeos"; it is used by catch_and_close of ship_client.hpp to decide quit or not
+           EOS_ASSERT(false, eosio::chain::unlinkable_block_exception, "can't switch forks at ${b} since undo stack is not enabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
       }
    }
 

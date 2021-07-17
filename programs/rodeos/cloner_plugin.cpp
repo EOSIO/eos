@@ -237,7 +237,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return process_received(result, bin);
    }
 
-   void closed(bool retry) override {
+   void closed(bool retry, bool quitting) override {
+      if (quitting) {
+         appbase::app().quit();
+      }
+
       if (my) {
          my->session.reset();
          if (retry) {
@@ -245,11 +249,9 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          } else if (my->config->exit_on_filter_wasm_error) {
             appbase::app().quit();
          }
+      } else {
+         wlog("closed did not nothing as my had not been initialized yet");
       }
-   }
-
-   void quited() override {
-      appbase::app().quit();
    }
 
    ~cloner_session() {}
