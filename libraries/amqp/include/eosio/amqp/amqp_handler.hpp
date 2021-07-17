@@ -141,6 +141,45 @@ public:
       }
    }
 
+    void start_consuming() {
+        if( !on_consume_ || is_consuming_ ) {
+            return;
+        }
+
+        start_cond consumed;
+        auto& consumer = channel_->consume( name_ );
+
+        consumer.onSuccess( [&]( const std::string& consumer_tag ) {
+            dlog( "consume started: ${tag}", ("tag", consumer_tag) );
+            is_consuming_ = true;
+            consumed.set();
+        } );
+        consumer.onError( [&]( const char* message ) {
+            wlog( "consume failed: ${e}", ("e", message) );
+            on_error( message );
+            is_consuming_ = false;
+            consumed.set();
+        } );
+        static_assert( std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed" );
+        consumer.onReceived( on_consume_ );
+    }
+
+    void stop_consuming() {
+        if( ! is_consuming_ ) {
+            return;
+        }
+        auto& consumer = channel_->cancel( name_ );
+
+        consumer.onSuccess( [&]( const std::string& consumer_tag ) {
+            dlog( "consume stopped: ${tag}", ("tag", consumer_tag) );
+            is_consuming_ = false;
+        } );
+        consumer.onError( [&]( const char* message ) {
+            wlog( "consume stop failed: ${e}", ("e", message) );
+            on_error( message );
+        } );
+    }
+
 private:
 
    amqp_handler(const std::string& address, std::string name, std::string exchange_name, std::string exchange_type,
@@ -158,6 +197,7 @@ private:
       ilog( "Connecting to AMQP address ${a} - Queue: ${q}...", ("a", amqp_address)("q", name_) );
 
       wait();
+      start_consuming();
    }
 
    // called from non-amqp thread
@@ -196,7 +236,7 @@ private:
          auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
          exchange.onSuccess( [this]() {
             dlog( "AMQP declare exchange Successfully!\n Exchange ${e}", ("e", exchange_name_) );
-            init_consume();
+            first_connect_.set();
          } );
          exchange.onError([this](const char* error_message) {
             on_error( std::string("AMQP Queue error: ") + error_message );
@@ -207,7 +247,7 @@ private:
          queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
             dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
                   ("q", name)( "mc", messagecount )( "cc", consumercount ) );
-            init_consume();
+             first_connect_.set();
          } );
          queue.onError( [&]( const char* error_message ) {
             on_error( error_message );
@@ -216,26 +256,6 @@ private:
       }
    }
 
-   // called from amqp thread
-   void init_consume() {
-      if( !on_consume_ ) {
-         first_connect_.set();
-         return;
-      }
-
-      auto& consumer = channel_->consume( name_ );
-      consumer.onSuccess( [&]( const std::string& consumer_tag ) {
-         dlog( "consume started: ${tag}", ("tag", consumer_tag) );
-         first_connect_.set();
-      } );
-      consumer.onError( [&]( const char* message ) {
-         wlog( "consume failed: ${e}", ("e", message) );
-         on_error( message );
-         first_connect_.set();
-      } );
-      static_assert( std::is_same_v<on_consume_t, AMQP::MessageCallback>, "AMQP::MessageCallback interface changed" );
-      consumer.onReceived( on_consume_ );
-   }
 
    // called from amqp thread
    void on_error( const std::string& message ) {
@@ -279,6 +299,7 @@ private:
    std::string exchange_type_;
    on_error_t on_error_;
    on_consume_t on_consume_;
+   bool is_consuming_;
 };
 
 } // namespace eosio
