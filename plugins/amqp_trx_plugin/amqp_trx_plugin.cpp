@@ -110,8 +110,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
       if (prod_plugin->paused() && !allow_speculative_execution) {
          if (amqp_trx && amqp_trx->is_consuming()) {
             amqp_trx->stop_consuming();
-            // clean out unapplied txn queue?
-            // will there be anything in there at block_start?
+            //  get last trx from trx_queue_ptr, reject from there, and clear?
+
          }
       } else {
          if (amqp_trx && !amqp_trx->is_consuming()) {
