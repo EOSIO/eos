@@ -71,7 +71,7 @@ extern "C" rodeos_context* rodeos_create() {
 extern "C" void rodeos_destroy(rodeos_context* context) { std::unique_ptr<rodeos_context>{ context }; }
 
 extern "C" rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* context, const char* path,
-                                      rodeos_bool create_if_missing, int num_threads, int max_open_files) {
+                                      rodeos_bool create_if_missing) {
    return handle_exceptions(error, false, [&] {
       if (!context)
          return error->set("context is null");
@@ -80,8 +80,7 @@ extern "C" rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* conte
       if (context->db)
          return error->set("a database is already open on this context");
       context->db = std::make_shared<b1::chain_kv::database>(
-            path, create_if_missing, num_threads ? std::make_optional(num_threads) : std::nullopt,
-            max_open_files ? std::make_optional(max_open_files) : std::nullopt);
+            path, create_if_missing);
       return true;
    });
 }

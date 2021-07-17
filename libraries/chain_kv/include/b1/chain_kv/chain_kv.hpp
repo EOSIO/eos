@@ -1,9 +1,12 @@
 #pragma once
 
+#include <boost/filesystem.hpp>
 #include <fc/io/raw.hpp>
 #include <optional>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
+#include <rocksdb/utilities/options_util.h>
+
 #include <stdexcept>
 #include <softfloat.hpp>
 #include <algorithm>
@@ -301,29 +304,27 @@ bytes create_full_key(const bytes& prefix, uint64_t contract, const T& key) {
 struct database {
    std::unique_ptr<rocksdb::DB> rdb;
 
-   database(const char* db_path, bool create_if_missing, std::optional<uint32_t> threads = {},
-            std::optional<int> max_open_files = {}) {
-
-      rocksdb::Options options;
-      options.create_if_missing                    = create_if_missing;
-      options.level_compaction_dynamic_level_bytes = true;
-      options.bytes_per_sync                       = 1048576;
-
-      if (threads)
-         options.IncreaseParallelism(*threads);
-
-      options.OptimizeLevelStyleCompaction(256ull << 20);
-
-      if (max_open_files)
-         options.max_open_files = *max_open_files;
-
-      rocksdb::BlockBasedTableOptions table_options;
-      table_options.format_version               = 4;
-      table_options.index_block_restart_interval = 16;
-      options.table_factory.reset(NewBlockBasedTableFactory(table_options));
-
+   database(const char* db_path, bool create_if_missing,
+            std::optional<boost::filesystem::path> options_file_name = {}) {
       rocksdb::DB* p;
-      check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
+
+      if (options_file_name) {
+         // load the options file
+         rocksdb::DBOptions loaded_db_opt;
+         std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
+         check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadOptionsFromFile: ");
+
+         // open rocksdb using the loaded options
+         std::vector<rocksdb::ColumnFamilyHandle*> handles;
+         check(rocksdb::DB::Open(loaded_db_opt, db_path, loaded_cf_descs, &handles, &p), "database::database:rocksdb::DB::Open (options files): ");
+      } else {
+         // This is only for embedded RocksDB instance creation. 
+         rocksdb::Options options;
+         options.create_if_missing = create_if_missing;
+
+         check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
+      }
+
       rdb.reset(p);
 
       // Sentinels with keys 0x00 and 0xff simplify iteration logic.

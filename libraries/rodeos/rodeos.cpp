@@ -273,6 +273,11 @@ void rodeos_db_snapshot::write_deltas(const ship_protocol::get_blocks_result_v2&
    write_deltas(block_num, result.deltas, shutdown);
 }
 
+filter::filter_state::~filter_state() {
+   // wasm allocator must be explicitly freed
+   wa.free();
+}
+
 std::once_flag registered_filter_callbacks;
 
 rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile

@@ -37,21 +37,25 @@ auto make_unique_trx( const chain_id_type& chain_id, fc::time_point expire = fc:
 
 
 struct mock_producer_plugin {
-   using retry_later_function_t =
-   std::function<void(const chain::transaction_metadata_ptr& trx, producer_plugin::next_function<chain::transaction_trace_ptr>& next)>;
-
    bool execute_incoming_transaction(const chain::transaction_metadata_ptr& trx,
-                                     producer_plugin::next_function<chain::transaction_trace_ptr> next,
-                                     retry_later_function_t retry_later) {
+                                     producer_plugin::next_function<chain::transaction_trace_ptr> next ) {
       static int num = 0;
-      if( ++num % 3 != 0 ) {
-         retry_later(trx, next);
-         return false;
-      } else {
+      auto process = [&](const chain::transaction_metadata_ptr& trx,
+                        producer_plugin::next_function<chain::transaction_trace_ptr> next ) {
          trxs_.push_back( trx );
          transaction_trace trace;
          trace.id = trx->id();
          next( std::make_shared<transaction_trace>( trace ) );
+      };
+      if( ++num % 3 != 0 ) {
+         unapplied_trxs_.emplace_back( std::make_pair(trx, next) );
+         return false;
+      } else {
+         for( auto& i : unapplied_trxs_ ) {
+            process( i.first, i.second );
+         }
+         unapplied_trxs_.clear();
+         process( trx, next );
          return true;
       }
    }
@@ -75,6 +79,7 @@ struct mock_producer_plugin {
       return true;
    }
 
+   std::deque<std::pair<chain::transaction_metadata_ptr, producer_plugin::next_function<chain::transaction_trace_ptr>>> unapplied_trxs_;
    std::deque<chain::transaction_metadata_ptr> trxs_;
 };
 

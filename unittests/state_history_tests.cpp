@@ -71,8 +71,8 @@ std::vector<eosio::ship_protocol::transaction_trace> get_traces(eosio::state_his
                                                                 block_num_type                   block_num) {
    auto                                                 entry = log.get_log_entry(block_num);
    std::vector<eosio::ship_protocol::transaction_trace> traces;
-   if (entry.size()) {
-      eosio::input_stream traces_bin{entry.data(), entry.data() + entry.size()};
+   if (entry->size()) {
+      eosio::input_stream traces_bin{entry->data(), entry->data() + entry->size()};
       BOOST_REQUIRE_NO_THROW(from_bin(traces, traces_bin));
    }
    return traces;
@@ -163,6 +163,8 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
    auto cfd_trace = push_test_cfd_transaction(chain);
    chain.produce_blocks(1);
 
+   log.stop();
+
    auto traces = get_traces(log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
 
@@ -181,6 +183,7 @@ BOOST_AUTO_TEST_CASE(test_trace_log) {
 
    BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
        get_prunable_data_from_traces(pruned_traces, cfd_trace->id)));
+   new_log.stop();
 }
 
 BOOST_AUTO_TEST_CASE(test_trace_log_with_transaction_extensions) {
@@ -213,6 +216,8 @@ BOOST_AUTO_TEST_CASE(test_trace_log_with_transaction_extensions) {
                  fc::mutable_variant_object()("payer", "alice")("sender_id", 1)("contract", "test")("payload", 40));
 
    auto block  = c.produce_block();
+   log.stop();
+
    auto traces = get_traces(log, block->block_num());
 
    auto contains_transaction_extensions = [](const eosio::ship_protocol::transaction_trace& trace) {
@@ -231,8 +236,8 @@ BOOST_AUTO_TEST_CASE(test_trace_log_versions) {
    for(std::string version : {"v0", "v1"}) {
       tester chain;
       eosio::state_history_traces_log log({ .log_dir = state_history_data_base_path() + "/trace-log-"+ version });
-
-      for(int i = 2; i <= 11; i++) {
+      log.stop();
+      for (int i = 2; i <= 11; i++) {
          auto traces = get_traces(log, i);
       }
    }
@@ -255,10 +260,11 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
    });
 
    chain.produce_blocks(10);
+   log.stop();
 
-   eosio::chain::bytes                                   entry = log.get_log_entry(last_accepted_block_num);
+   auto                                                  entry = log.get_log_entry(last_accepted_block_num);
    std::vector<eosio::ship_protocol::table_delta>        deltas;
-   eosio::input_stream                                   deltas_bin{entry.data(), entry.data() + entry.size()};
+   eosio::input_stream                                   deltas_bin{entry->data(), entry->data() + entry->size()};
    BOOST_CHECK_NO_THROW(from_bin(deltas, deltas_bin));
 }
 
@@ -266,6 +272,11 @@ BOOST_AUTO_TEST_CASE(test_chain_state_log) {
 struct state_history_tester_logs  {
    state_history_tester_logs(const eosio::state_history_config& config) 
       : traces_log(config) , chain_state_log(config) {}
+
+   void stop() {
+      traces_log.stop();
+      chain_state_log.stop();
+   }
 
    eosio::state_history_traces_log traces_log;
    eosio::state_history_chain_state_log   chain_state_log;
@@ -308,7 +319,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    auto cfd_trace = push_test_cfd_transaction(chain);
 
    chain.produce_blocks(100);
-
+   chain.stop();
 
    auto log_dir = state_history_dir.path;
    auto archive_dir  = log_dir / "archive";
@@ -335,7 +346,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "trace_history-121-140.index" ));
 
-   BOOST_CHECK_EQUAL(chain.traces_log.begin_block(), 41);
+   BOOST_CHECK_EQUAL(chain.traces_log.begin_end_block_nums().first, 41);
 
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-41-60.index" ));
@@ -348,7 +359,7 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.log" ));
    BOOST_CHECK(bfs::exists( retained_dir / "chain_state_history-121-140.index" ));
 
-   BOOST_CHECK_EQUAL(chain.chain_state_log.begin_block(), 41);
+   BOOST_CHECK_EQUAL(chain.chain_state_log.begin_end_block_nums().first, 41);
 
    BOOST_CHECK(get_traces(chain.traces_log, 10).empty());
    BOOST_CHECK(get_traces(chain.traces_log, 100).size());
@@ -356,11 +367,11 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    BOOST_CHECK(get_traces(chain.traces_log, 150).size());
    BOOST_CHECK(get_traces(chain.traces_log, 160).empty());
 
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(10).empty());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(100).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(140).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(150).size());
-   BOOST_CHECK(chain.chain_state_log.get_log_entry(160).empty());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(10)->empty());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(100)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(140)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(150)->size());
+   BOOST_CHECK(chain.chain_state_log.get_log_entry(160)->empty());
 
    auto traces = get_traces(chain.traces_log, cfd_trace->block_num);
    BOOST_REQUIRE(traces.size());
@@ -375,7 +386,8 @@ BOOST_AUTO_TEST_CASE(test_splitted_log) {
    // we assume the nodeos has to be stopped while running, it can only be read
    // correctly with restart
    eosio::state_history_traces_log new_log(config);
-   auto                            pruned_traces = get_traces(new_log, cfd_trace->block_num);
+   new_log.stop();
+   auto pruned_traces = get_traces(new_log, cfd_trace->block_num);
    BOOST_REQUIRE(pruned_traces.size());
 
    BOOST_CHECK(std::holds_alternative<eosio::ship_protocol::prunable_data_type::none>(
@@ -402,7 +414,7 @@ bool test_fork(uint32_t stride, uint32_t max_retained_files) {
       .retained_dir = "retained",
       .archive_dir = "archive",
       .stride  = stride,
-      .max_retained_files = max_retained_files 
+      .max_retained_files = max_retained_files
    };
 
    state_history_tester chain1(config);
@@ -419,6 +431,7 @@ bool test_fork(uint32_t stride, uint32_t max_retained_files) {
    auto fork_block_num = chain1.control->head_block_num();
 
    chain1.produce_blocks(12);
+
    auto create_account_traces = chain2.create_accounts( {"adam"_n} );
    auto create_account_trace_id = create_account_traces[0]->id;
 
@@ -427,8 +440,11 @@ bool test_fork(uint32_t stride, uint32_t max_retained_files) {
 
    for( uint32_t start = fork_block_num + 1, end = chain2.control->head_block_num(); start <= end; ++start ) {
       auto fb = chain2.control->fetch_block_by_number( start );
-      chain1.push_block( fb );
+      chain1.push_block(fb);
    }
+
+   chain1.stop();
+
    auto traces = get_traces(chain1.traces_log, b->block_num());
 
    bool trace_found = std::find_if(traces.begin(), traces.end(), [create_account_trace_id](const auto& v) {
@@ -438,21 +454,21 @@ bool test_fork(uint32_t stride, uint32_t max_retained_files) {
    return trace_found;
 }
 
-BOOST_AUTO_TEST_CASE(test_fork_no_stride) { 
-   // In this case, the chain fork would NOT trunk the trace log across the stride boundary. 
-   BOOST_CHECK(test_fork(UINT32_MAX, 10)); 
+BOOST_AUTO_TEST_CASE(test_fork_no_stride) {
+   // In this case, the chain fork would NOT trunk the trace log across the stride boundary.
+   BOOST_CHECK(test_fork(UINT32_MAX, 10));
 }
-BOOST_AUTO_TEST_CASE(test_fork_with_stride1) { 
-   // In this case, the chain fork would trunk the trace log across the stride boundary. 
-   // However, there are still some traces remains after the truncation. 
-   BOOST_CHECK(test_fork(10, 10)); 
+BOOST_AUTO_TEST_CASE(test_fork_with_stride1) {
+   // In this case, the chain fork would trunk the trace log across the stride boundary.
+   // However, there are still some traces remains after the truncation.
+   BOOST_CHECK(test_fork(10, 10));
 }
-BOOST_AUTO_TEST_CASE(test_fork_with_stride2) { 
-   // In this case, the chain fork would trunk the trace log across the stride boundary. 
+BOOST_AUTO_TEST_CASE(test_fork_with_stride2) {
+   // In this case, the chain fork would trunk the trace log across the stride boundary.
    // However, no existing trace remain after the truncation. Because we only keep a very
    // short history, the create_account_trace is not available to be found. We just need
-   // to make sure no exception is throw. 
-   BOOST_CHECK_NO_THROW(test_fork(5, 1)); 
+   // to make sure no exception is throw.
+   BOOST_CHECK_NO_THROW(test_fork(5, 1));
 }
 
 BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
@@ -470,6 +486,7 @@ BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
 
    state_history_tester chain(config);
    chain.produce_blocks(50);
+   chain.stop();
    chain.close();
 
    // write a few random bytes to block log indicating the last block entry is incomplete
@@ -483,9 +500,10 @@ BOOST_AUTO_TEST_CASE(test_corrupted_log_recovery) {
 
    state_history_tester new_chain(config);
    new_chain.produce_blocks(50);
+   new_chain.stop();
 
    BOOST_CHECK(get_traces(new_chain.traces_log, 10).size());
-   BOOST_CHECK(new_chain.chain_state_log.get_log_entry(10).size());
+   BOOST_CHECK(new_chain.chain_state_log.get_log_entry(10)->size());
 }
 
 
@@ -601,6 +619,7 @@ BOOST_AUTO_TEST_CASE(test_traces_present)
    auto tr_ptr = chain.create_account("newacc"_n);
 
    chain.produce_block();
+   log.stop();
 
    BOOST_CHECK(onblock_test_executed);
 

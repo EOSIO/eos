@@ -55,6 +55,18 @@ void zlib_pack(STREAM& strm, const T& obj) {
    }
 }
 
+template <typename STREAM>
+void zlib_pack_raw(STREAM& strm, const std::vector<char>& bytes) {
+   if (bytes.empty()) {
+      fc::raw::pack(strm, uint32_t(0));
+   }
+   else {
+      length_writer<STREAM>     len_writer(strm);
+      fc::datastream<bio::filtering_ostreambuf> compressed_strm(bio::zlib_compressor() | fc::to_sink(strm));
+      compressed_strm.write(&bytes[0], bytes.size());
+   }
+}
+
 template <typename STREAM, typename T>
 void zlib_unpack(STREAM& strm, T& obj) {
    uint32_t len;
