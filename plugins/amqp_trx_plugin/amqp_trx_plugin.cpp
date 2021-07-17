@@ -106,6 +106,19 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    }
 
    void on_block_start( uint32_t bn ) {
+      auto* prod_plugin = app().find_plugin<producer_plugin>();
+      if (prod_plugin->paused() && !allow_speculative_execution) {
+         if (amqp_trx && amqp_trx->is_consuming()) {
+            amqp_trx->stop_consuming();
+            // clean out unapplied txn queue?
+            // will there be anything in there at block_start?
+         }
+      } else {
+         if (amqp_trx && !amqp_trx->is_consuming()) {
+            amqp_trx->start_consuming();
+         }
+      }
+
       block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
       tracked_block_uuid_rks.clear();
       trx_queue_ptr->on_block_start();
