@@ -99,6 +99,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       need_to_send_update = false;
 
       std::thread                                                              thr;
+      std::mutex                                                               mx;
       std::atomic<bool>                                                        send_thread_has_exception = false;
       std::exception_ptr                                                       eptr;
       boost::asio::io_context                                                  ctx;
@@ -181,6 +182,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void start_read() {
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
+         std::lock_guard lock(mx);
          derived_session().socket_stream->async_read(
              *in_buffer, [self = derived_session().shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
                 self->callback(ec, "async_read", [self, in_buffer] {
@@ -201,6 +203,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() {
                auto span = fc_create_span_from_token(token, "send");
                fc_add_tag(span, "buffer_size", data.size());
+               std::lock_guard lock(mx);
                this->derived_session().socket_stream->write(boost::asio::buffer(data));
             });
             callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {
@@ -571,9 +574,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
       FC_LOG_AND_DROP()
 
-      elog("State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
+      // Both app().quit() and exception throwing are required. Without app().quit(),
+      // the exception would be caught and drop before reaching main(). The exception is
+      // to ensure the block won't be committed.
+      appbase::app().quit();
+      EOS_THROW(
+          chain::state_history_write_exception,
+          "State history encountered an Error which it cannot recover from.  Please resolve the error and relaunch "
           "the process");
-      exit(1);
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
