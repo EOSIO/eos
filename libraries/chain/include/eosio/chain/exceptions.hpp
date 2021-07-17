@@ -281,7 +281,8 @@ namespace eosio { namespace chain {
                                     3040020, "Transaction signatures pruned" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_no_context_free_data, transaction_exception,
                                     3040021, "Transaction context free data pruned" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( tx_production_paused, transaction_exception,
+                                      3040022, "Production paused, transaction aborted" )
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
                                  3050000, "Action validate exception" )

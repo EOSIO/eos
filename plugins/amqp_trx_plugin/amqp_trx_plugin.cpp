@@ -105,8 +105,9 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
       amqp_trx->reject( delivery_tag );
    }
 
+
    void on_block_start( uint32_t bn ) {
-      block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
+      block_uuid = boost::uuids::to_string(boost::uuids::random_generator()());
       tracked_block_uuid_rks.clear();
       trx_queue_ptr->on_block_start();
    }
@@ -158,13 +159,23 @@ private:
             // publish to trace plugin as exceptions are not reported via controller signal applied_transaction
             if( std::holds_alternative<chain::exception_ptr>(result) ) {
                auto& eptr = std::get<chain::exception_ptr>(result);
-               fc_add_tag(trx_span, "error", eptr->to_string());
-               dlog( "accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()) );
-               if( my->acked == ack_mode::executed || my->acked == ack_mode::in_block ) { // ack immediately on failure
-                  my->amqp_trx->ack( delivery_tag );
-               }
-               if( !reply_to.empty() ) {
-                  my->trace_plug.publish_error( std::move(reply_to), std::move(correlation_id), eptr->code(), eptr->to_string() );
+
+               if (eptr->code() == chain::tx_production_paused::code_value) {
+                   fc_add_tag(trx_span, "error", eptr->to_string());
+                   dlog("reject_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()));
+                   my->amqp_trx->reject(delivery_tag);
+
+               } else {
+                   fc_add_tag(trx_span, "error", eptr->to_string());
+                   dlog("accept_transaction ${id} exception: ${e}", ("id", trx->id())("e", eptr->to_string()));
+                   if (my->acked == ack_mode::executed ||
+                       my->acked == ack_mode::in_block) { // ack immediately on failure
+                       my->amqp_trx->ack(delivery_tag);
+                   }
+                   if (!reply_to.empty()) {
+                       my->trace_plug.publish_error(std::move(reply_to), std::move(correlation_id), eptr->code(),
+                                                    eptr->to_string());
+                   }
                }
             } else {
                auto& trace = std::get<chain::transaction_trace_ptr>(result);
@@ -310,6 +321,10 @@ void amqp_trx_plugin::plugin_startup() {
                             my->consume_message( message, delivery_tag, redelivered );
                          }
    );
+
+   if (!prod_plugin->paused()) {
+      my->amqp_trx->connect();
+   }
 
 }
 
