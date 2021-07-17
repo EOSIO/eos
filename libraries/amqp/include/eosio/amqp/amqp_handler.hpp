@@ -180,6 +180,7 @@ public:
         is_consuming_.wait();
     }
 
+    bool is_consuming() {return is_consuming_.value();}
 private:
 
    amqp_handler(const std::string& address, std::string name, std::string exchange_name, std::string exchange_type,
