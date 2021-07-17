@@ -296,10 +296,6 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
-      "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations under disaster recovery scenarios (when rodeos has unexpectedly exited). This option ensures blocks stored in rocksdb are at most force-write-stride blocks behind the current head block being processed by rodeos. However, saving too frequently may affect performance. It is likely that rocksdb itself will save rodeos data more frequently than this setting by flushing memtables to disk, based on various rocksdb options. In contrast, when rodeos exits normally, it saves the last block processed by rodeos into rocksdb and will continue processing new blocks from that last processed block number when it next starts up.");
-
-
-   op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
       "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations \
       under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most \
       force-write-stride blocks behind the current head block being processed by rodeos. However, saving too frequently may affect performance.\
@@ -367,7 +363,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
                                   options["telemetry-wait-timeout-seconds"].as<uint32_t>() );
       }
 
-       my->config->force_write_stride = options["force-write-stride"].as<uint32_t>();
+      my->config->force_write_stride = options["force-write-stride"].as<uint32_t>();
 
    }
    FC_LOG_AND_RETHROW()
