@@ -42,7 +42,7 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
    bool        profile = false;
-   uint32_t    force_write_stride = 200;
+   uint32_t    force_write_stride = 0;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
@@ -240,6 +240,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
 
    void closed(bool retry) override {
       if (my) {
+         rodeos_snapshot->end_write(true);
+         db->flush(true, true);
          my->session.reset();
          if (retry) {
             my->schedule_retry();
@@ -295,7 +297,12 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
 
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
-      "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most N blocks behind the current head block being processed by rodeos. However, saving too frequently may affect performance. It is likely that rocksdb itself will save rodeos data more frequently than this setting by flushing memtables to disk, based on various rocksdb options. In contrast, when rodeos exits normally, it saves the last block processed by rodeos into rocksdb and will continue processing new blocks from that last processed block number when it next starts up.");
+      "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations \
+      under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most \
+      force-write-stride blocks behind the current head block being processed by rodeos. However, saving too frequently may affect performance.\
+      It is likely that rocksdb itself will save rodeos data more frequently than this setting by flushing memtables to disk, based on various rocksdb \
+      options. In contrast, when rodeos exits normally, it saves the last block processed by rodeos into rocksdb and will continue processing \
+      new blocks from that last processed block number when it next starts up.");
 
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
