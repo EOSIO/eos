@@ -2,13 +2,12 @@ FROM centos:8
 ENV VERSION 1
 #install dependencies
 RUN yum update -y && \
-    yum install -y epel-release  && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel  && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
     yum install -y python3 python3-devel python3-requests && \
-    yum install -y glibc-locale-source glibc-langpack-en postgresql-server postgresql-devel
+    yum install -y glibc-locale-source glibc-langpack-en postgresql-server postgresql-devel postgresql-server-devel
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf group install -y  "Development Tools" && \
     yum config-manager --set-enabled powertools && \
