@@ -42,7 +42,7 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
    bool        profile = false;
-   bool        undo_stack_enabled = false;
+   bool        undo_stack_disabled = false;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    eosio::chain::eosvmoc::config eosvmoc_config;
@@ -102,7 +102,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    void connect(asio::io_context& ioc) {
-      rodeos_snapshot.emplace(partition, true, config->undo_stack_enabled);
+      rodeos_snapshot.emplace(partition, true, config->undo_stack_disabled);
 
       ilog("cloner database status:");
       ilog("    revisions:    ${f} - ${r}",
@@ -298,7 +298,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
-   op("undo-stack", bpo::bool_switch(), "Enable undo stack");
+   op("disable-undo-stack", bpo::bool_switch(), "disable undo stack");
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -342,7 +342,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
-      my->config->undo_stack_enabled = options["undo-stack"].as<bool>();
+      my->config->undo_stack_disabled = options["disable-undo-stack"].as<bool>();
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if (options.count("eos-vm-oc-cache-size-mb"))
