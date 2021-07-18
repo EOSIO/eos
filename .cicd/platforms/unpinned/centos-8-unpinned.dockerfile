@@ -2,7 +2,6 @@ FROM centos:8
 ENV VERSION 1
 #install dependencies
 RUN yum update -y && \
-    yum install -y epel-release  && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel  && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
