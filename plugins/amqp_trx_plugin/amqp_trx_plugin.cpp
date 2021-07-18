@@ -326,7 +326,7 @@ void amqp_trx_plugin::plugin_startup() {
    );
 
    if (!my->prod_plugin->paused()) {
-      ilog("Production not paused - starting ampq consumption at startup.")
+      ilog("Production not paused - starting ampq consumption at startup.");
       my->amqp_trx->start_consume(true);
       my->started_consuming = true;
    }
