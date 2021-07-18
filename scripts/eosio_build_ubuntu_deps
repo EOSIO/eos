@@ -24,3 +24,5 @@ pkg-config,dpkg -s
 patch,dpkg -s
 lsb-release,dpkg -s
 gnupg,dpkg -s
+libpq-dev,dpkg -s
+postgresql-server-dev-all,dpkg -s

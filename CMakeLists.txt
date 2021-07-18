@@ -237,8 +237,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/rocksdb/LICENSE.leveldb
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.leveldb COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/amqp-cpp/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.amqpcpp COPYONLY)
-file(DOWNLOAD https://raw.githubusercontent.com/jtv/libpqxx/master/COPYING 
-     ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.libpqxx)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/libpqxx/COPYING
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.libpqxx COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat COMPONENT base)
@@ -251,7 +251,7 @@ install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOT
 install(FILES libraries/rocksdb/LICENSE.Apache DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.rocksdb COMPONENT base)
 install(FILES libraries/rocksdb/LICENSE.leveldb DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.leveldb COMPONENT base)
 install(FILES libraries/amqp-cpp/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.amqpcpp COMPONENT base)
-install(FILES ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.libpqxx DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
+install(FILES libraries/libpqxx/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.libpqxx COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

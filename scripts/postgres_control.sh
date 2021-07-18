@@ -27,13 +27,8 @@
 if [ "$CI" = "true" ]; then
    PG_CTL=`which pg_ctl 2>/dev/null`
    if [ -z $PG_CTL ]; then 
-     if [ -f "$PostgreSQL_ROOT/bin/pg_ctl" ]; then
-         # CentOS
-         PG_CTL=$PostgreSQL_ROOT/bin/pg_ctl
-      elif [ ! -z `which  pg_ctlcluster 2>/dev/null` ]; then
-         # ubuntu
-         PG_CTL="pg_ctlcluster 13 main"
-      fi
+      # ubuntu
+      PG_CTL="pg_ctlcluster $(pg_lsclusters -h | cut -f1 -d' ') main -- "
    fi
 
    if [ ! -z "$PG_CTL" ]; then
@@ -42,7 +37,7 @@ if [ "$CI" = "true" ]; then
          ## mac
          case "$1" in 
          start)
-            $PG_CTL -D /usr/local/var/postgres start
+            $PG_CTL -D /usr/local/var/postgres start -w -t 60
             psql postgres -q -c "CREATE ROLE postgres WITH LOGIN PASSWORD 'password'"
             if [ ! -z "$2" ]; then psql postgres -q -c "$2" > /dev/null ; fi
             ;;
@@ -59,7 +54,7 @@ if [ "$CI" = "true" ]; then
          ## Linux
          case "$1" in 
          start)
-            su - postgres -c "$PG_CTL start"
+            su - postgres -c "$PG_CTL start -w -t 60"
             su - postgres -c "psql -q -c \"ALTER USER postgres WITH PASSWORD 'password';\""
             if [ ! -z "$2" ]; then su - postgres -c "psql -q -c \"$2\""  > /dev/null; fi
             ;;

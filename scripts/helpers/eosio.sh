@@ -264,7 +264,7 @@ function ensure-llvm() {
         execute bash -c "cd '$LLVM_TEMP_DIR' \
         && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm/llvm-project llvm && cd llvm/llvm \
         && mkdir build && cd build \
-        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_TERMINFO=OFF $LLVM_PINNED_CMAKE_ARGS .. \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_TERMINFO=OFF -DLLVM_ENABLE_Z3_SOLVER=OFF $LLVM_PINNED_CMAKE_ARGS .. \
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
     elif [[ $NAME == "Ubuntu" ]]; then
@@ -297,75 +297,5 @@ function build-clang() {
         fi
         export CXX=$CPP_COMP
         export CC=$CC_COMP
-    fi
-}
-
-function install_libpqxx_from_source() {
-    if [ ! -d ${OPT_DIR}/pqxx ]; then
-        execute bash -c "cd $SRC_DIR && \
-            curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-            cd libpqxx-7.2.1 && mkdir build && cd build && \
-            ${CMAKE} $CXX_SPEC $EXTRA_CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=${OPT_DIR}/pqxx -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release .. && \
-            make -j${JOBS} && make install && \
-            cd ../.. && rm -rf libpqxx-7.2.1"
-    fi
-
-    if [ -z "$PKG_CONFIG_PATH" ]; then
-        export PKG_CONFIG_PATH="${OPT_DIR}/pqxx/lib/pkgconfig"
-    else
-        export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${OPT_DIR}/pqxx/lib/pkgconfig"
-    fi
-} 
-
-function ensure-libpq-and-libpqxx() {  
-
-    if [[ $ARCH == "Darwin" ]]; then
-        #install libpq
-        [ -f /usr/local/opt/libpq/lib/pkgconfig/libpq.pc ] || brew install libpq
-        #install libpqxx
-        if $PIN_COMPILER; then
-            EXTRA_CMAKE_FLAGS="-DPostgreSQL_ROOT=/usr/local/opt/libpq"
-            install_libpqxx_from_source
-        elif [ ! -f /usr/local/lib/pkgconfig/libpqxx.pc ]; then
-            brew install libpqxx
-        fi
-    fi
-
-    if [[ $ARCH == "Linux" ]]; then
-        if [[ $CURRENT_USER != "root" ]] ; then
-            LIBPQ_SUDO="$SUDO_LOCATION"
-        fi
-        if [[ $NAME == "Amazon Linux" ]]; then
-            #install libpq
-            if [ ! -d /usr/include/libpq ]; then
-                $LIBPQ_SUDO amazon-linux-extras enable postgresql11 && \
-                    $LIBPQ_SUDO yum install -y libpq-devel
-            fi
-            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/libpq"
-        elif [[ $NAME == "CentOS Linux" ]]; then
-            #install libpq
-            if [ ! -d /usr/pgsql-13 ]; then
-                CENTOS_VERSION=$(rpm -E %{rhel})
-                $LIBPQ_SUDO yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-$CENTOS_VERSION-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-                [ $CENTOS_VERSION -lt 8 ] || $LIBPQ_SUDO dnf -qy module disable postgresql
-                $LIBPQ_SUDO yum install -y postgresql13-devel
-            fi
-            export PostgreSQL_ROOT=/usr/pgsql-13   
-            export PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig
-        elif [[ $NAME == "Ubuntu" ]]; then
-            # install libpq
-            if [ ! -d /usr/include/postgresql ]; then
-              $LIBPQ_SUDO bash -c 'source /etc/os-release; echo "deb http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-                    curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-                    apt-get update && apt-get -y install libpq-dev'
-            fi
-            EXTRA_CMAKE_FLAGS="-DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql"     
-        fi
-        #build libpqxx
-        if $PIN_COMPILER || $BUILD_CLANG; then
-            CXX_SPEC="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake"
-        fi
-
-        install_libpqxx_from_source
     fi
 }

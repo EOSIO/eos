@@ -27,7 +27,5 @@ build-clang
 ensure-llvm
 # BOOST Installation
 ensure-boost
-# `libpq` and `libpqxx` Installation
-ensure-libpq-and-libpqxx
 VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
 VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
