@@ -99,7 +99,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
            undo_stack->undo(true);
       } else {
            wlog("can't switch forks at ${b} since undo stack is not enabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
-           EOS_ASSERT(false, eosio::chain::unlinkable_block_exception, "can't switch forks at ${b} since undo stack is not enabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
+           EOS_ASSERT(false, eosio::chain::unsupported_feature, "can't switch forks at ${b} since undo stack is not enabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
       }
    }
 

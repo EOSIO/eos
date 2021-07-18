@@ -370,7 +370,7 @@ void cloner_plugin::plugin_startup() {
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
-      my->session->connection->close(false);
+      my->session->connection->close(false, false);
    my->timer.cancel();
    fc::zipkin_config::shutdown();
    ilog("cloner_plugin stopped");
