@@ -210,7 +210,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       // called on strand
       void send_next() {
-         if( send_queue.empty() ) return;
+         if( send_queue.empty() ) {
+            app().post( priority::medium, [self = derived_session().shared_from_this()](){
+               self->callback(boost::system::error_code{}, "", [self] {
+                  self->send_update(::std::optional<::fc::zipkin_span>{});
+               });
+            });
+            return;
+         }
          auto& i = send_queue.front();
 
          auto span = fc_create_span_from_token(i.token, "send");
@@ -228,12 +235,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       template <typename T>
       void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
          if (!send_thread_has_exception) {
-            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() mutable {
-               send_queue.emplace( send_item{.data = std::make_shared<std::vector<char>>(std::move(data)), .token = token} );
-               send_next();
-            });
-            callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {
-               self->send_update(::std::optional<::fc::zipkin_span>{});
+            boost::asio::post(work_strand, [self = derived_session().shared_from_this(),
+                                            data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() mutable {
+               self->send_queue.emplace( send_item{.data = std::make_shared<std::vector<char>>(std::move(data)), .token = token} );
+               self->send_next();
             });
          }
       }
