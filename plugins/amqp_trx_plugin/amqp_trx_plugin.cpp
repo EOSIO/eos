@@ -110,7 +110,8 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    void on_block_start( uint32_t bn ) {
       if (!prod_plugin->paused() || allow_speculative_execution) {
          if (!started_consuming) {
-            amqp_trx->start_consume();
+            ilog("Starting consuming amqp messages during on_block_start");
+            amqp_trx->start_consume(true);
             started_consuming = true;
          }
 
@@ -325,6 +326,7 @@ void amqp_trx_plugin::plugin_startup() {
    );
 
    if (!my->prod_plugin->paused()) {
+      ilog("Production not paused - starting ampq consumption at startup.")
       my->amqp_trx->start_consume(true);
       my->started_consuming = true;
    }
