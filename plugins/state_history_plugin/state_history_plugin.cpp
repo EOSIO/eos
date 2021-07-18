@@ -96,10 +96,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       std::shared_ptr<state_history_plugin_impl> plugin;
       bool                                       sending  = false;
       bool                                       sent_abi = false;
+      struct send_item {
+         std::shared_ptr<std::vector<char>> data;
+         fc::zipkin_span::token token;
+      };
+      std::queue<send_item>                      send_queue;
       bool                                       need_to_send_update = false;
 
       std::thread                                                              thr;
-      std::mutex                                                               mx;
       std::atomic<bool>                                                        send_thread_has_exception = false;
       std::exception_ptr                                                       eptr;
       boost::asio::io_context                                                  ctx;
@@ -113,7 +117,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       session(std::shared_ptr<state_history_plugin_impl> plugin)
           : plugin(std::move(plugin)) {}
 
-      void send_thread_fun() {
+      void run_ctx() {
          fc_ilog(_log, "send thread started");
          try {
             ctx.run();
@@ -158,53 +162,75 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void start() {
          fc_ilog(_log, "incoming connection");
-         derived_session().socket_stream->binary(true);
-         derived_session().socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
-         derived_session().socket_stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
-         derived_session().socket_stream->async_accept(
-            [self = derived_session().shared_from_this()](boost::system::error_code ec) {
-               self->callback(ec, "async_accept", [self] {
-                  self->socket_stream->binary(false);
-                  self->socket_stream->async_write(
-                     boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
-                     [self](boost::system::error_code ec, size_t) {
-                        if (ec) {
-                           self->on_fail(ec, "async_write");
-                           return;
-                        }
-                        self->socket_stream->binary(true);
-                        self->start_read();
-                        self->thr = std::thread([self] { self->send_thread_fun(); });
-                     });
-               });
-            });
+         auto self = derived_session().shared_from_this();
+         thr = std::thread([self] { self->run_ctx(); });
+         work_strand.post([self](){
+            self->socket_stream->binary(true);
+            self->socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
+            self->socket_stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
+            self->socket_stream->async_accept( boost::asio::bind_executor( self->work_strand,
+                  [self](boost::system::error_code ec) {
+                  self->callback(ec, "async_accept", [self] {
+                     self->socket_stream->binary(false);
+                     self->socket_stream->async_write(
+                        boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
+                        boost::asio::bind_executor( self->work_strand,
+                        [self](boost::system::error_code ec, size_t) {
+                           if (ec) {
+                              self->on_fail(ec, "async_write");
+                              return;
+                           }
+                           self->socket_stream->binary(true);
+                           self->start_read();
+                        }));
+                  });
+               }));
+         });
       }
 
+      // called on strand
       void start_read() {
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
-         std::lock_guard lock(mx);
          derived_session().socket_stream->async_read(
-             *in_buffer, [self = derived_session().shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
+             *in_buffer, boost::asio::bind_executor(work_strand,
+                [self = derived_session().shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
                 self->callback(ec, "async_read", [self, in_buffer] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
                    auto s = boost::asio::buffer_size(in_buffer->data());
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
                    fc::raw::unpack(ds, req);
-                   std::visit(*self, std::move(req));
+                   app().post( priority::medium, [self, req=std::move(req)]() mutable {
+                      std::visit(*self, std::move(req));
+                   });
                    self->start_read();
                 });
-             });
+             }));
       }
 
+      // called on strand
+      void send_next() {
+         if( send_queue.empty() ) return;
+         auto& i = send_queue.front();
+
+         auto span = fc_create_span_from_token(i.token, "send");
+         fc_add_tag(span, "buffer_size", i.data->size());
+         this->derived_session().socket_stream->async_write(boost::asio::buffer(*i.data),
+               boost::asio::bind_executor( work_strand,
+                 [ptr=i.data, self = derived_session().shared_from_this()]( boost::system::error_code ec, std::size_t w ) {
+                    self->callback(ec, "async_write", [self]() { self->send_next(); });
+               }) );
+
+         send_queue.pop();
+      }
+
+      // called from main thread
       template <typename T>
       void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
          if (!send_thread_has_exception) {
-            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() {
-               auto span = fc_create_span_from_token(token, "send");
-               fc_add_tag(span, "buffer_size", data.size());
-               std::lock_guard lock(mx);
-               this->derived_session().socket_stream->write(boost::asio::buffer(data));
+            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() mutable {
+               send_queue.emplace( send_item{.data = std::make_shared<std::vector<char>>(std::move(data)), .token = token} );
+               send_next();
             });
             callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {
                self->send_update(::std::optional<::fc::zipkin_span>{});
@@ -212,6 +238,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          }
       }
 
+      // called from main thread
       void operator()(get_status_request_v0&&) {
          auto request_span = fc_create_trace("get_status_request");
          fc_ilog(_log, "got get_status_request_v0");
@@ -231,6 +258,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send(std::move(result), std::move(request_span));
       }
 
+      // called from main thread
       template <typename T>
       std::enable_if_t<std::is_base_of_v<get_blocks_request_v0,T>>
       operator()(T&& req) {
@@ -261,6 +289,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send_update(std::move(request_span), true);
       }
 
+      // called from main thread
       void operator()(get_blocks_ack_request_v0&& ack_req) {
          fc_ilog(_log, "received get_blocks_ack_request_v0 = ${req}", ("req",ack_req));
          if (!current_request.has_value()) {
