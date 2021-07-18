@@ -324,6 +324,10 @@ void amqp_trx_plugin::plugin_startup() {
                          }
    );
 
+   if (!my->prod_plugin->paused()) {
+      my->amqp_trx->start_consume(true);
+      my->started_consuming = true;
+   }
 }
 
 void amqp_trx_plugin::plugin_shutdown() {
