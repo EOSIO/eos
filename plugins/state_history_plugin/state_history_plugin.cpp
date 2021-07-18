@@ -452,9 +452,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                return;
             if( ec )
                return on_fail( ec, what );
-         app().post( priority::high, [=]() {
-            catch_and_close( f );
-         } );
+         catch_and_close( f );
       }
 
       void on_fail(boost::system::error_code ec, const char* what) {
