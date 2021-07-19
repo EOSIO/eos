@@ -42,6 +42,7 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
    bool        profile = false;
+   bool        undo_stack_disabled = false;
    uint32_t    force_write_stride = 0;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
@@ -102,7 +103,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    void connect(asio::io_context& ioc) {
-      rodeos_snapshot.emplace(partition, true);
+      rodeos_snapshot.emplace(partition, true, config->undo_stack_disabled);
       rodeos_snapshot->force_write_stride = config->force_write_stride;
 
       ilog("cloner database status:");
@@ -238,7 +239,11 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
       return process_received(result, bin);
    }
 
-   void closed(bool retry) override {
+   void closed(bool retry, bool quitting) override {
+      if (quitting) {
+         appbase::app().quit();
+      }
+
       if (my) {
          rodeos_snapshot->end_write(true);
          db->flush(true, true);
@@ -248,6 +253,8 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
          } else if (my->config->exit_on_filter_wasm_error) {
             appbase::app().quit();
          }
+      } else {
+         wlog("closed did not nothing as my had not been initialized yet");
       }
    }
 
@@ -295,6 +302,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
+   op("disable-undo-stack", bpo::bool_switch(), "disable undo stack");
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
       "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations "
       "under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most "
@@ -302,7 +310,6 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "It is likely that rocksdb itself will save rodeos data more frequently than this setting by flushing memtables to disk, based on various rocksdb "
       "options. In contrast, when rodeos exits normally, it saves the last block processed by rodeos into rocksdb and will continue processing "
       "new blocks from that last processed block number when it next starts up.");
-
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    op("eos-vm-oc-cache-size-mb",
@@ -346,6 +353,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
+      my->config->undo_stack_disabled = options["disable-undo-stack"].as<bool>();
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if (options.count("eos-vm-oc-cache-size-mb"))
@@ -374,7 +382,7 @@ void cloner_plugin::plugin_startup() {
 
 void cloner_plugin::plugin_shutdown() {
    if (my->session)
-      my->session->connection->close(false);
+      my->session->connection->close(false, false);
    my->timer.cancel();
    fc::zipkin_config::shutdown();
    ilog("cloner_plugin stopped");

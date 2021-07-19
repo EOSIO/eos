@@ -4,7 +4,7 @@
 #include <b1/rodeos/rodeos_tables.hpp>
 #include <fc/log/trace.hpp>
 
-#include <fc/log/trace.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace b1::rodeos {
 
@@ -16,8 +16,8 @@ using ship_protocol::get_blocks_result_v1;
 using ship_protocol::signed_block_header;
 using ship_protocol::signed_block_variant;
 
-rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent)
-    : partition{ std::move(partition) }, db{ this->partition->db } {
+rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent, bool undo_stack_disabled)
+    : partition{ std::move(partition) }, db{ this->partition->db }, undo_stack_disabled{ undo_stack_disabled } {
    if (persistent) {
       undo_stack.emplace(*db, this->partition->undo_prefix);
       write_session.emplace(*db);
@@ -88,27 +88,37 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
       throw std::runtime_error("get_blocks_result this_block is empty");
 
    if (result.this_block->block_num <= head) {
-      ilog("switch forks at block ${b}; database contains revisions ${f} - ${h}",
-           ("b", result.this_block->block_num)("f", undo_stack->first_revision())("h", undo_stack->revision()));
-      if (undo_stack->first_revision() >= result.this_block->block_num)
-         throw std::runtime_error("can't switch forks since database doesn't contain revision " +
-                                  std::to_string(result.this_block->block_num - 1));
-      write_session->wipe_cache();
-      while (undo_stack->revision() >= result.this_block->block_num) //
-         undo_stack->undo(true);
+      if (undo_stack_disabled) {
+           wlog("can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
+           EOS_ASSERT(false, eosio::chain::unsupported_feature, "can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
+      } else {
+        ilog("switch forks at block ${b}; database contains revisions ${f} - ${h}",
+             ("b", result.this_block->block_num)("f", undo_stack->first_revision())("h", undo_stack->revision()));
+        if (undo_stack->first_revision() >= result.this_block->block_num)
+           throw std::runtime_error("can't switch forks since database doesn't contain revision " +
+                                    std::to_string(result.this_block->block_num - 1));
+        write_session->wipe_cache();
+        while (undo_stack->revision() >= result.this_block->block_num) //
+           undo_stack->undo(true);
+      }
    }
 
    if (head_id != eosio::checksum256{} && (!result.prev_block || result.prev_block->block_id != head_id))
       throw std::runtime_error("prev_block does not match");
 
-   if (result.this_block->block_num <= result.last_irreversible.block_num) {
-      undo_stack->commit(std::min(result.last_irreversible.block_num, head));
-      undo_stack->set_revision(result.this_block->block_num, false);
+   if (undo_stack_disabled) {
+     end_write(false);
    } else {
-      end_write(false);
-      undo_stack->commit(std::min(result.last_irreversible.block_num, head));
-      undo_stack->push(false);
+     if (result.this_block->block_num <= result.last_irreversible.block_num) {
+        undo_stack->commit(std::min(result.last_irreversible.block_num, head));
+        undo_stack->set_revision(result.this_block->block_num, false);
+     } else {
+        end_write(false);
+        undo_stack->commit(std::min(result.last_irreversible.block_num, head));
+        undo_stack->push(false);
+     }
    }
+
    writing_block = result.this_block->block_num;
 }
 
