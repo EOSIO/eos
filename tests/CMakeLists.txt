@@ -229,6 +229,7 @@ set_tests_properties(trace_plugin_test PROPERTIES TIMEOUT 150)
 set_property(TEST trace_plugin_test PROPERTY LABELS nonparallelizable_tests)
 
 add_subdirectory(se_tests)
+add_subdirectory(tpm_tests)
 
 add_test(NAME resource_monitor_plugin_test COMMAND tests/resource_monitor_plugin_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST resource_monitor_plugin_test PROPERTY LABELS long_running_tests)
