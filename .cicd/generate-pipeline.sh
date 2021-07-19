@@ -616,6 +616,33 @@ EOF
     allow_dependency_failure: false
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+    
+  - label: ":centos: CentOS 8 - Package Builder"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 8 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/package.sh"
+    env:
+      IMAGE_TAG: "centos-8-$PLATFORM_TYPE"
+      PLATFORM_TYPE: $PLATFORM_TYPE
+      OS: "el8" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "rpm"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    key: "centos8pb"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+  - label: ":centos: CentOS 8 - Test Package"
+    command:
+      - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 8 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "./.cicd/test-package.sh"
+    env:
+      IMAGE: "centos:8"
+    agents:
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
+    depends_on: "centos8pb"
+    allow_dependency_failure: false
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CENTOS_8}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:

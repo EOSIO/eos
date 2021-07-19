@@ -24,6 +24,17 @@ steps:
     timeout: 180
     skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
 
+  - label: ":centos: CentOS 8 - Build Pinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -P -y"
+    timeout: 180
+
   - label: ":darwin: macOS 10.15 - Build Pinned"
     env:
       REPO: "git@github.com:EOSIO/eos.git"
@@ -106,6 +117,17 @@ steps:
       - "./scripts/eosio_build.sh -y"
     timeout: 180
     skip: ${SKIP_CENTOS_7_7}${SKIP_LINUX}
+
+  - label: ":centos: CentOS 8 - Build UnPinned"
+    plugins:
+      - docker#v3.3.0:
+          image: "centos:8"
+          always-pull: true
+    agents:
+      queue: "automation-eks-eos-builder-fleet"
+    command:
+      - "./scripts/eosio_build.sh -y"
+    timeout: 180
 
   - label: ":darwin: macOS 10.15 - Build UnPinned"
     env:
