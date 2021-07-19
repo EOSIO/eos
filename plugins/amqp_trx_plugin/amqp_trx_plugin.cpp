@@ -59,6 +59,7 @@ using boost::signals2::scoped_connection;
 struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl> {
 
    chain_plugin* chain_plug = nullptr;
+   producer_plugin* prod_plugin = nullptr;
    std::optional<amqp_handler> amqp_trx;
    amqp_trace_plugin_impl trace_plug;
 
@@ -70,6 +71,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    std::set<std::string> tracked_block_uuid_rks;
    uint32_t trx_processing_queue_size = 1000;
    bool allow_speculative_execution = false;
+   bool started_consuming = false;
    std::shared_ptr<fifo_trx_processing_queue<producer_plugin>> trx_queue_ptr;
 
    std::optional<scoped_connection> block_start_connection;
@@ -106,9 +108,18 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
    }
 
    void on_block_start( uint32_t bn ) {
-      block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
-      tracked_block_uuid_rks.clear();
-      trx_queue_ptr->on_block_start();
+      if (!prod_plugin->paused() || allow_speculative_execution) {
+         if (!started_consuming) {
+            ilog("Starting consuming amqp messages during on_block_start");
+            amqp_trx->start_consume(true);
+            started_consuming = true;
+         }
+
+         block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
+         tracked_block_uuid_rks.clear();
+         trx_queue_ptr->on_block_start();
+      }
+
    }
 
    void on_block_abort( uint32_t bn ) {
@@ -229,6 +240,7 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
 void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
    try {
       my->chain_plug = app().find_plugin<chain_plugin>();
+      my->prod_plugin = app().find_plugin<producer_plugin>();
       EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, "chain_plugin required" );
 
       EOS_ASSERT( options.count("amqp-trx-address"), chain::plugin_config_exception, "amqp-trx-address required" );
@@ -260,9 +272,8 @@ void amqp_trx_plugin::plugin_startup() {
 
    ilog( "Starting amqp_trx_plugin" );
 
-   auto* prod_plugin = app().find_plugin<producer_plugin>();
-   EOS_ASSERT( prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
-   EOS_ASSERT( my->allow_speculative_execution || prod_plugin->has_producers(), chain::plugin_config_exception,
+   EOS_ASSERT( my->prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
+   EOS_ASSERT( my->allow_speculative_execution || my->prod_plugin->has_producers(), chain::plugin_config_exception,
                "Must be a producer to run without amqp-trx-speculative-execution" );
 
    auto& chain = my->chain_plug->chain();
@@ -271,7 +282,7 @@ void amqp_trx_plugin::plugin_startup() {
                                                                        chain.configured_subjective_signature_length_limit(),
                                                                        my->allow_speculative_execution,
                                                                        chain.get_thread_pool(),
-                                                                       prod_plugin,
+                                                                       my->prod_plugin,
                                                                        my->trx_processing_queue_size );
 
    const boost::filesystem::path trace_data_dir_path = appbase::app().data_dir() / "amqp_trx_plugin";
@@ -311,6 +322,11 @@ void amqp_trx_plugin::plugin_startup() {
                          }
    );
 
+   if (!my->prod_plugin->paused() || my->allow_speculative_execution) {
+      ilog("Starting amqp consumption at startup.");
+      my->amqp_trx->start_consume(true);
+      my->started_consuming = true;
+   }
 }
 
 void amqp_trx_plugin::plugin_shutdown() {

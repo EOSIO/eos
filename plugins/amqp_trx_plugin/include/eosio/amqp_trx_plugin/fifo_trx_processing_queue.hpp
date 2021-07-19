@@ -233,7 +233,6 @@ public:
    bool empty() const {
       return queue_.empty();
    }
-
 };
 
 } //eosio
