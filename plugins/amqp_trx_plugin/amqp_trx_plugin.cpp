@@ -118,8 +118,6 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          block_uuid = boost::uuids::to_string( boost::uuids::random_generator()() );
          tracked_block_uuid_rks.clear();
          trx_queue_ptr->on_block_start();
-      } else {
-         trx_queue_ptr->clear();
       }
 
    }
