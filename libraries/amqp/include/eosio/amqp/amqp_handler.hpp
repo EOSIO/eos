@@ -240,14 +240,6 @@ private:
    }
 
    // called from amqp thread
-   void do_consume() {
-      if( !on_consume_ ) {
-         return;
-      }
-
-   }
-
-   // called from amqp thread
    void on_error( const std::string& message ) {
       if( on_error_ ) on_error_( message );
    }
