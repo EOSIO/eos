@@ -48,7 +48,6 @@ public:
          appbase::app().quit();
          error = true;
       } );
-      declare_queue.start_consume(false);
       if( error ) return;
       init();
    }
@@ -67,7 +66,6 @@ public:
          appbase::app().quit();
          error = true;
       } );
-      declare_exchange.start_consume(false);
       if( error ) return;
       init();
    }
