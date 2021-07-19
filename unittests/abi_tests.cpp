@@ -3612,8 +3612,27 @@ BOOST_AUTO_TEST_CASE(transaction_extensions_tests)
    using eosio::testing::fc_exception_message_starts_with;
    BOOST_CHECK_EXCEPTION( abi_serializer::from_variant(mvo["test"], txn_clone4, get_resolver(), abi_serializer::create_yield_function( max_serialization_time )),
                           packed_transaction_type_exception,
-                          fc_exception_message_starts_with("Transaction contained deferred_transaction_generation and transaction_extensions that did not match") );
+                          fc_exception_message_starts_with("The transaction_extensions do not match") );
+
+    // remove the resource_payer, so that the data is not consistent
+    auto txn_no_rp_ext = populate<chain::transaction>();
+    txn_no_rp_ext.transaction_extensions.pop_back();
+    fc::variant direct_txn_no_rp_ext(txn_no_rp_ext);
+    const auto trans_ext_no_rp_ext= direct_txn_no_rp_ext["transaction_extensions"].get_array();
+    mvo_txn["transaction_extensions"] = trans_ext_no_rp_ext;
+    mvo["test"] = mvo_txn;
+    const std::string incompatible_no_rp_ext_as_string = fc::json::to_string(mvo, fc::time_point::now() + max_serialization_time);
+    std::cerr << incompatible_no_rp_ext_as_string << "\n";
+    // verifying both are present
+    BOOST_REQUIRE(incompatible_ext_as_string.find("resource_payer") != string::npos);
+    chain::transaction txn_clone5;
+    using eosio::testing::fc_exception_message_starts_with;
+    BOOST_CHECK_EXCEPTION( abi_serializer::from_variant(mvo["test"], txn_clone5, get_resolver(), abi_serializer::create_yield_function( max_serialization_time )),
+                           packed_transaction_type_exception,
+                           fc_exception_message_starts_with("The transaction_extensions do not match") );
+
 }
+
 
 BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
 {
@@ -3689,7 +3708,7 @@ BOOST_AUTO_TEST_CASE(signed_transaction_extensions_tests)
    using eosio::testing::fc_exception_message_starts_with;
    BOOST_CHECK_EXCEPTION( abi_serializer::from_variant(mvo["test"], txn_clone4, get_resolver(), abi_serializer::create_yield_function( max_serialization_time )),
                           packed_transaction_type_exception,
-                          fc_exception_message_starts_with("Transaction contained deferred_transaction_generation and transaction_extensions that did not match") );
+                          fc_exception_message_starts_with("The transaction_extensions do not match") );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -82,7 +82,7 @@ try:
         if alternateVersionLabelsFile is not None:
             #that means we are in multiversion mode
             for i in range( int(pnodes / 2) ):
-                associatedNodeLabels[str(i)] = "209"
+                associatedNodeLabels[str(i)] = "alt_ver"
         
         if cluster.launch(totalNodes=pnodes, 
                           pnodes=pnodes,

@@ -196,8 +196,8 @@ class Node(object):
         assert trans
         assert isinstance(trans, dict), print("Input type is %s" % type(trans))
 
-        assert "transaction_id" in trans, print("trans does not contain key %s. trans={%s}" % ("transaction_id", json.dumps(trans, indent=2, sort_keys=True)))
-        transId=trans["transaction_id"]
+        assert "transaction_id" in trans or "id" in trans["result"], print("trans does not contain key %s or %s. trans=\n{%s}" % ("transaction_id", "result:id", json.dumps(trans, indent=2, sort_keys=True)))
+        transId=trans["transaction_id"] if "transaction_id" in trans else trans["result"]["id"]
         return transId
 
     @staticmethod
@@ -323,11 +323,11 @@ class Node(object):
 
         return False
 
-    def getBlockNumByTransId(self, transId, delayedRetry=True, blocksAhead=1):
+    def getBlockNumByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=1):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
-        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
+        trans=self.getTransaction(transId, exitOnError=exitOnError, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""
@@ -356,11 +356,11 @@ class Node(object):
 
         return None
 
-    def isTransInAnyBlock(self, transId):
+    def isTransInAnyBlock(self, transId, exitOnError=True):
         """Check if transaction (transId) is in a block."""
         assert(transId)
         assert(isinstance(transId, (str,int)))
-        blockId=self.getBlockNumByTransId(transId)
+        blockId=self.getBlockNumByTransId(transId, exitOnError=exitOnError)
         return True if blockId else False
 
     def isTransFinalized(self, transId):
@@ -486,10 +486,10 @@ class Node(object):
 
         return None
 
-    def waitForTransInBlock(self, transId, timeout=None):
+    def waitForTransInBlock(self, transId, timeout=None, exitOnError=True):
         """Wait for trans id to be finalized."""
         assert(isinstance(transId, str))
-        lam = lambda: self.isTransInAnyBlock(transId)
+        lam = lambda: self.isTransInAnyBlock(transId, exitOnError=exitOnError)
         ret=Utils.waitForTruth(lam, timeout)
         return ret
 
