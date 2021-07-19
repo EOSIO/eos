@@ -302,7 +302,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
-   op("undo-stack", bpo::bool_switch(), "Enable  undo stack");
+   op("enable-undo-stack", bpo::bool_switch(), "Enable undo stack");
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
       "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations "
       "under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most "
@@ -353,7 +353,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
-      my->config->undo_stack_enabled = options["undo-stack"].as<bool>();
+      my->config->undo_stack_enabled = options["enable-undo-stack"].as<bool>();
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if (options.count("eos-vm-oc-cache-size-mb"))
