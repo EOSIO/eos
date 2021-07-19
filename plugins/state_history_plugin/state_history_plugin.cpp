@@ -97,6 +97,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending  = false;
       bool                                       sent_abi = false;
       struct send_item {
+         uint32_t block_num = 0;
          std::shared_ptr<std::vector<char>> data;
          fc::zipkin_span::token token;
       };
@@ -222,9 +223,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          auto span = fc_create_span_from_token(i.token, "send");
          fc_add_tag(span, "buffer_size", i.data->size());
+         fc_ilog(_log, "async_write, block_num: {$b}", ("b", i.block_num));
          this->derived_session().socket_stream->async_write(boost::asio::buffer(*i.data),
                boost::asio::bind_executor( work_strand,
-                 [ptr=i.data, self = derived_session().shared_from_this()]( boost::system::error_code ec, std::size_t w ) {
+                 [ptr=i.data, self = derived_session().shared_from_this(), block_num=i.block_num]( boost::system::error_code ec, std::size_t w ) {
+                    fc_ilog(_log, "async_write complete, block_num: {$b}", ("b", block_num));
                     self->callback(ec, "async_write", [self]() { self->send_next(); });
                }) );
 
@@ -233,11 +236,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       // called from main thread
       template <typename T>
-      void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
+      void send(uint32_t block_num, T obj, ::std::optional<::fc::zipkin_span>&& span) {
          if (!send_thread_has_exception) {
-            boost::asio::post(work_strand, [self = derived_session().shared_from_this(),
+            boost::asio::post(work_strand, [self = derived_session().shared_from_this(), block_num,
                                             data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() mutable {
-               self->send_queue.emplace( send_item{.data = std::make_shared<std::vector<char>>(std::move(data)), .token = token} );
+               self->send_queue.emplace(
+                     send_item{.block_num = block_num,
+                               .data = std::make_shared<std::vector<char>>( std::move( data ) ),
+                               .token = token} );
                self->send_next();
             });
          }
@@ -260,7 +266,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                 plugin->chain_state_log->begin_end_block_nums();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
-         send(std::move(result), std::move(request_span));
+         send(-1, std::move(result), std::move(request_span));
       }
 
       // called from main thread
@@ -388,14 +394,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             }
             set_result_block_header(result, get_block());
          }
-         ++to_send_block_num;
-         
+
          fc_ilog(_log, "pushing result {\"head\":{\"block_num\":${head}},\"last_irreversible\":{\"block_num\":${last_irr}},\"this_block\":{\"block_num\":${this_block}, \"id\": ${id}}} to send queue", 
                ("head", result.head.block_num)("last_irr", result.last_irreversible.block_num)
                ("this_block", result.this_block ? result.this_block->block_num : fc::variant())
                ("id", block_id ? block_id->_hash[3] : 0 ));
 
-         send(std::move(result), std::move(send_update_span));
+         send(to_send_block_num, std::move(result), std::move(send_update_span));
+
+         ++to_send_block_num;
          --block_req.max_messages_in_flight;
          need_to_send_update = to_send_block_num <= current &&
                                to_send_block_num < block_req.end_block_num;
@@ -449,9 +456,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       template <typename F>
       void callback(boost::system::error_code ec, const char* what, F f) {
          if( plugin->stopping )
-               return;
-            if( ec )
-               return on_fail( ec, what );
+            return;
+         if( ec )
+            return on_fail( ec, what );
          catch_and_close( f );
       }
 
