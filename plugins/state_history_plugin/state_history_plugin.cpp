@@ -192,9 +192,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       // called on strand
       void start_read() {
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
+         fc_ilog(_log, "async_read");
          derived_session().socket_stream->async_read(
              *in_buffer, boost::asio::bind_executor(work_strand,
                 [self = derived_session().shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
+                fc_ilog(_log, "async_read complete");
                 self->callback(ec, "async_read", [self, in_buffer] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
                    auto s = boost::asio::buffer_size(in_buffer->data());
@@ -223,11 +225,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          auto span = fc_create_span_from_token(i.token, "send");
          fc_add_tag(span, "buffer_size", i.data->size());
-         fc_ilog(_log, "async_write, block_num: {$b}", ("b", i.block_num));
+         fc_ilog(_log, "async_write, block_num: ${b}", ("b", i.block_num));
          this->derived_session().socket_stream->async_write(boost::asio::buffer(*i.data),
                boost::asio::bind_executor( work_strand,
                  [ptr=i.data, self = derived_session().shared_from_this(), block_num=i.block_num]( boost::system::error_code ec, std::size_t w ) {
-                    fc_ilog(_log, "async_write complete, block_num: {$b}", ("b", block_num));
+                    fc_ilog(_log, "async_write complete, block_num: ${b}", ("b", block_num));
                     self->callback(ec, "async_write", [self]() { self->send_next(); });
                }) );
 
