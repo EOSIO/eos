@@ -50,7 +50,7 @@ EOSIO currently supports the following operating systems:
 
 ## Software Installation
 
-If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started](https://developers.eos.io/eosio-home/docs) walkthrough. If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://eosio.github.io/eos/latest/install/build-from-source).
+If you are new to EOSIO, it is recommended that you install the [EOSIO Prebuilt Binaries](#prebuilt-binaries), then proceed to the [Getting Started Guide](https://developers.eos.io/welcome/latest/getting-started-guide). If you are an advanced developer, a block producer, or no binaries are available for your platform, you may need to [Build EOSIO from source](https://developers.eos.io/manuals/eos/latest/install/build-from-source).
 
 ---
 
