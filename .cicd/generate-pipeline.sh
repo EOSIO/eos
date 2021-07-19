@@ -702,8 +702,9 @@ EOF
 
   - label: ":darwin: macOS 10.15 - Test Package"
     command:
-      - "buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 11 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "cd eos && ./.cicd/test-package.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -718,6 +719,8 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
     depends_on: "macos1015pb"
@@ -754,8 +757,9 @@ EOF
 
   - label: ":darwin: macOS 11 - Test Package"
     command:
-      - "buildkite-agent artifact download '*' . --step ':darwin: macOS 11 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 11 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
+      - "cd eos && ./.cicd/test-package.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -770,6 +774,8 @@ EOF
           failover-registries:
             - 'registry_1'
             - 'registry_2'
+      - EOSIO/skip-checkout#v0.1.1:
+          cd: ~
     agents:
       - "queue=mac-anka-node-fleet"
     depends_on: "macos11pb"
