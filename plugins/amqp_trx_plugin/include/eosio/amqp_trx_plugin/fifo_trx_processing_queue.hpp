@@ -99,6 +99,11 @@ public:
       return queue_.empty() && !paused_;
    }
 
+   void clear() {
+      std::scoped_lock<std::mutex> lk(mtx_);
+      queue_.clear();
+    }
+
 private:
    mutable std::mutex mtx_;
    bool stopped_ = false;
@@ -234,6 +239,9 @@ public:
       return queue_.empty();
    }
 
+   void clear() {
+       return queue_.clear();
+   }
 };
 
 } //eosio

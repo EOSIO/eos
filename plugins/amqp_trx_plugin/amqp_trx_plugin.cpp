@@ -119,7 +119,7 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
          tracked_block_uuid_rks.clear();
          trx_queue_ptr->on_block_start();
       } else {
-         trx_queue_ptr->empty();
+         trx_queue_ptr->clear();
       }
 
    }
@@ -274,7 +274,6 @@ void amqp_trx_plugin::plugin_startup() {
 
    ilog( "Starting amqp_trx_plugin" );
 
-   // auto* prod_plugin = app().find_plugin<producer_plugin>();
    EOS_ASSERT( my->prod_plugin, chain::plugin_config_exception, "producer_plugin required" ); // should not be possible
    EOS_ASSERT( my->allow_speculative_execution || my->prod_plugin->has_producers(), chain::plugin_config_exception,
                "Must be a producer to run without amqp-trx-speculative-execution" );
