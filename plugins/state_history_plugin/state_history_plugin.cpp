@@ -51,7 +51,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    chain_plugin*                                              chain_plug = nullptr;
    std::optional<state_history_traces_log>                    trace_log;
    std::optional<state_history_chain_state_log>               chain_state_log;
-   bool                                                       stopping = false;
+   std::atomic<bool>                                          stopping = false;
    std::optional<scoped_connection>                           applied_transaction_connection;
    std::optional<scoped_connection>                           block_start_connection;
    std::optional<scoped_connection>                           accepted_block_connection;
@@ -482,7 +482,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          try {
             work_guard.reset();
             derived_session().socket_stream->next_layer().close();
-            plugin->sessions.erase(this);
+            app().post( priority::medium, [self = derived_session().shared_from_this(), plugin=plugin]() {
+               plugin->sessions.erase( self.get() );
+            });
          }
          catch (...) {
             fc_elog(_log, "uncaught exception on close");
