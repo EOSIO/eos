@@ -167,8 +167,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          thr = std::thread([self] { self->run_ctx(); });
          work_strand.post([self](){
             self->socket_stream->binary(true);
-            self->socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
+            self->socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(2 * 1024 * 1024));
             self->socket_stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
+            self->socket_stream->write_buffer_bytes(64*1024-10);
             self->socket_stream->async_accept( boost::asio::bind_executor( self->work_strand,
                   [self](boost::system::error_code ec) {
                   self->callback(ec, "async_accept", [self] {
@@ -226,22 +227,22 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          auto span = fc_create_span_from_token(i.token, "send");
          fc_add_tag(span, "buffer_size", i.data->size());
-//         fc_ilog(_log, "async_write, block_num: ${b}", ("b", i.block_num));
-         fc_ilog(_log, "write, block_num: ${b}", ("b", i.block_num));
+         fc_ilog(_log, "async_write, block_num: ${b}", ("b", i.block_num));
+//         fc_ilog(_log, "write, block_num: ${b}", ("b", i.block_num));
          sending = true;
          this->derived_session().socket_stream->write(boost::asio::buffer(*i.data));
-//         this->derived_session().socket_stream->async_write(boost::asio::buffer(*i.data),
-//               boost::asio::bind_executor( work_strand,
-//                 [ptr=i.data, self = derived_session().shared_from_this(), block_num=i.block_num]( boost::system::error_code ec, std::size_t w ) {
-//                    fc_ilog(_log, "async_write complete, block_num: ${b}", ("b", block_num));
-//                    self->sending = false;
-//                    self->callback(ec, "async_write", [self]() { self->send_next(); });
-//               }) );
+         this->derived_session().socket_stream->async_write(boost::asio::buffer(*i.data),
+               boost::asio::bind_executor( work_strand,
+                 [ptr=i.data, self = derived_session().shared_from_this(), block_num=i.block_num]( boost::system::error_code ec, std::size_t w ) {
+                    fc_ilog(_log, "async_write complete, block_num: ${b}", ("b", block_num));
+                    self->sending = false;
+                    self->callback(ec, "async_write", [self]() { self->send_next(); });
+               }) );
 
-         fc_ilog(_log, "write complete, block_num: ${b}", ("b", i.block_num));
-         sending = false;
+//         fc_ilog(_log, "write complete, block_num: ${b}", ("b", i.block_num));
+//         sending = false;
          send_queue.pop();
-         callback(boost::system::error_code{}, "", [&]() { send_next(); });
+//         callback(boost::system::error_code{}, "", [&]() { send_next(); });
       }
 
       // called from main thread
