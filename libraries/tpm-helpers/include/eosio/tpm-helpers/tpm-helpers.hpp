@@ -38,23 +38,6 @@ fc::crypto::public_key create_key(const std::string& tcti, const std::vector<uns
 attested_key create_key_attested(const std::string& tcti, const std::vector<unsigned>& pcrs, uint32_t certifying_key_handle);
 fc::crypto::public_key verify_attestation(const attested_key& ak, const std::map<unsigned, fc::sha256>& pcr_policy = std::map<unsigned, fc::sha256>());
 
-class nv_data {
-public:
-   nv_data(const std::string& tcti, unsigned nv_index, const std::vector<unsigned>& pcrs);
-   ~nv_data();
-
-   nv_data(const nv_data&) = delete;
-   nv_data& operator=(const nv_data&) = delete;
-
-   std::optional<std::vector<char>> data();
-   void set_data(const std::vector<char>& data);
-
-private:
-   struct impl;
-   constexpr static size_t fwd_size = 128;
-   fc::fwd<impl,fwd_size> my;
-};
-
 class swtpm {
 public:
    swtpm();
