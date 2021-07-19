@@ -42,7 +42,7 @@ struct cloner_config : ship_client::connection_config {
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
    bool        profile = false;
-   bool        undo_stack_disabled = false;
+   bool        undo_stack_enabled = false;
    uint32_t    force_write_stride = 0;
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
@@ -103,7 +103,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    }
 
    void connect(asio::io_context& ioc) {
-      rodeos_snapshot.emplace(partition, true, config->undo_stack_disabled);
+      rodeos_snapshot.emplace(partition, true, config->undo_stack_enabled);
       rodeos_snapshot->force_write_stride = config->force_write_stride;
 
       ilog("cloner database status:");
@@ -302,7 +302,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
-   op("disable-undo-stack", bpo::bool_switch(), "disable undo stack");
+   op("undo-stack", bpo::bool_switch(), "Enable  undo stack");
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
       "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations "
       "under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most "
@@ -353,7 +353,7 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
-      my->config->undo_stack_disabled = options["disable-undo-stack"].as<bool>();
+      my->config->undo_stack_enabled = options["undo-stack"].as<bool>();
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if (options.count("eos-vm-oc-cache-size-mb"))

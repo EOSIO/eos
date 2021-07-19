@@ -40,7 +40,7 @@ struct rodeos_db_partition {
 struct rodeos_db_snapshot {
    std::shared_ptr<rodeos_db_partition>    partition       = {};
    std::shared_ptr<chain_kv::database>     db              = {};
-   bool                                    undo_stack_disabled = false;
+   bool                                    undo_stack_enabled = false;
    std::optional<chain_kv::undo_stack>     undo_stack      = {}; // only if persistent
    std::optional<rocksdb::ManagedSnapshot> snap            = {}; // only if !persistent
    std::optional<chain_kv::write_session>  write_session   = {};

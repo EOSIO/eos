@@ -26,10 +26,17 @@ void rocksdb_plugin::set_program_options(options_description& cli, options_descr
       "Database path (absolute path or relative to application data dir)");
    op("rdb-options-file", bpo::value<bfs::path>(),
       "File (including path) store RocksDB options. Must follow INI file format. Consult RocksDB documentation for details.");
+   op("rdb-threads", bpo::value<uint32_t>(),
+      "Deprecated. Please use max_background_jobs in options file to configure it. Default is 20. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
+   op("rdb-max-files", bpo::value<uint32_t>(),
+      "Deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini"); 
 }
 
 void rocksdb_plugin::plugin_initialize(const variables_map& options) {
    try {
+      EOS_ASSERT(options["rdb-threads"].empty(), eosio::chain::plugin_config_exception, "rdb-threads is deprecated. Please use max_background_jobs in options file to configure it. Default is 20. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini");
+      EOS_ASSERT(options["rdb-max-files"].empty(), eosio::chain::plugin_config_exception, "rdb-max-files is deprecated. Please use max_open_files in options file to configure it. Default is 765. An example options file is <build-dir>/programs/rodeos/rocksdb_options.ini");
+
       auto db_path = options.at("rdb-database").as<bfs::path>();
       if (db_path.is_relative())
          my->db_path = app().data_dir() / db_path;
