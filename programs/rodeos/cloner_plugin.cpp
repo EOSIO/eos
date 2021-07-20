@@ -302,7 +302,7 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
    op("profile-filter", bpo::bool_switch(), "Enable filter profiling");
-   op("enable-undo-stack", bpo::bool_switch(), "Enable undo stack");
+   op("enable-undo-stack", bpo::value<bool>()->default_value(false), "Enable undo stack");
    op("force-write-stride", bpo::value<uint32_t>()->default_value(200), 
       "Maximum number of blocks to process before forcing rocksdb to flush. This option is primarily useful to control re-sync durations "
       "under disaster recovery scenarios (when rodeos has unexpectedly exited, the option ensures blocks stored in rocksdb are at most "
