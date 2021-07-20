@@ -24,10 +24,8 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     perform 'git init homebrew-eosio'
     perform 'cp *.rb homebrew-eosio'
     perform "sed -i.bk -e 's/url \".*\"/url \"http:\/\/127.0.0.1:7800\"/' homebrew-eosio/*.rb"
-    # Start Reference: https://github.com/Homebrew/brew/issues/1505
-    perform "mkdir -p `brew --repo`/Library/Taps/EOSIO"
-    perform "mv ./homebrew-eosio `brew --repo`/Library/Taps/EOSIO/homebrew-eosio"
-    # End Reference
+    perform "pushd homebrew-eosio && git add *.rb && git commit -m 'test it!' && popd"
+    perform "brew tap eosio/eosio homebrew-eosio"
     perform 'python3 -m http.server 7800 &'
     perform 'sleep 20s'
     perform 'brew install eosio'
