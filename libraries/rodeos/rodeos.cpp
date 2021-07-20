@@ -16,8 +16,8 @@ using ship_protocol::get_blocks_result_v1;
 using ship_protocol::signed_block_header;
 using ship_protocol::signed_block_variant;
 
-rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent, bool undo_stack_disabled)
-    : partition{ std::move(partition) }, db{ this->partition->db }, undo_stack_disabled{ undo_stack_disabled } {
+rodeos_db_snapshot::rodeos_db_snapshot(std::shared_ptr<rodeos_db_partition> partition, bool persistent, bool undo_stack_enabled)
+    : partition{ std::move(partition) }, db{ this->partition->db }, undo_stack_enabled{ undo_stack_enabled } {
    if (persistent) {
       undo_stack.emplace(*db, this->partition->undo_prefix);
       write_session.emplace(*db);
@@ -88,7 +88,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
       throw std::runtime_error("get_blocks_result this_block is empty");
 
    if (result.this_block->block_num <= head) {
-      if (undo_stack_disabled) {
+      if (!undo_stack_enabled) {
            wlog("can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
            EOS_ASSERT(false, eosio::chain::unsupported_feature, "can't switch forks at ${b} since undo stack is disabled. head: ${h}", ("b", result.this_block->block_num) ("h", head));
       } else {
@@ -106,7 +106,7 @@ void rodeos_db_snapshot::start_block(const get_blocks_result_base& result) {
    if (head_id != eosio::checksum256{} && (!result.prev_block || result.prev_block->block_id != head_id))
       throw std::runtime_error("prev_block does not match");
 
-   if (undo_stack_disabled) {
+   if (!undo_stack_enabled) {
      end_write(false);
    } else {
      if (result.this_block->block_num <= result.last_irreversible.block_num) {
