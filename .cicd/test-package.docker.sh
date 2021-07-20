@@ -1,7 +1,9 @@
 #!/bin/bash
-set -eu
+set -euo pipefail
 
-echo '--- :docker: Selecting Container'
+. "${0%/*}/libfunctions.sh"
 
-docker pull $IMAGE
-docker run --rm -v "$(pwd):/eos" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh
+echo '--- :docker: Pretest Setup'
+
+perform "docker pull $IMAGE"
+perform "docker run --rm -v \"$(pwd):/eos\" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh"
