@@ -1,10 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-function perform {
-    echo "$ $1"
-    eval $1
-}
+. "${0%/*}/libfunctions.sh"
 
 echo '+++ :minidisc: Installing EOSIO'
 
@@ -14,7 +11,7 @@ if [[ $(apt-get --version 2>/dev/null) ]]; then # debian family packaging
 elif [[ $(yum --version 2>/dev/null) ]]; then # RHEL family packaging
     perform 'yum check-update || :'
     perform 'yum install -y /eos/*.rpm'
-elif [[ ! $(brew --version 2>/dev/null) ]]; then # homebrew packaging
+elif [[ $(brew --version 2>/dev/null) ]]; then # homebrew packaging
     perform 'brew update'
     perform 'mkdir homebrew-eosio'
     perform 'git init homebrew-eosio'
