@@ -594,7 +594,7 @@ EOF
   - label: ":centos: CentOS 7 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "centos:7"
     agents:
@@ -607,7 +607,7 @@ EOF
   - label: ":aws: Amazon Linux 2 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 7.7 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "amazonlinux:2"
     agents:
@@ -635,7 +635,7 @@ EOF
   - label: ":ubuntu: Ubuntu 18.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 18.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "ubuntu:18.04"
     agents:
@@ -663,7 +663,7 @@ EOF
   - label: ":ubuntu: Ubuntu 20.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 20.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "ubuntu:20.04"
     agents:
@@ -704,7 +704,7 @@ EOF
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 10.15 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "cd eos && ./.cicd/test-package.sh"
+      - "cd eos && ./.cicd/test-package.anka.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
@@ -759,7 +759,7 @@ EOF
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download '*' . --step ':darwin: macOS 11 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "cd eos && ./.cicd/test-package.sh"
+      - "cd eos && ./.cicd/test-package.anka.sh"
     plugins:
       - EOSIO/anka#v0.6.1:
           no-volume: true
