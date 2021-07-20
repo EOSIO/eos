@@ -27,6 +27,8 @@ namespace eosio {
             std::shared_ptr<http_plugin_state> plugin_state_;
             tcp::acceptor acceptor_;
             tcp::endpoint listen_ep_;
+            tcp::socket socket_;
+            // boost::asio::strand<boost::asio::io_context::executor_type> strand_;
 
         public:
             beast_http_listener() = default;
@@ -43,8 +45,10 @@ namespace eosio {
                 , ioc_(ioc)
                 , ctx_(ctx)
                 , plugin_state_(plugin_state)
-                , acceptor_(asio::make_strand(*ioc))
-                { }
+                , acceptor_(*ioc)
+                , socket_(*ioc)
+                //, strand_(ioc->get_executor())
+            { }
 
             virtual ~beast_http_listener() = default; 
 
@@ -104,21 +108,31 @@ namespace eosio {
                 auto sh_fr_ths = this->shared_from_this();
 
                 // The new connection gets its own strand
+                // acceptor_.async_accept(
+                //     asio::make_strand(*ioc_),
+                //     beast::bind_front_handler(
+                //         &beast_http_listener::on_accept,
+                //         sh_fr_ths));
+
                 acceptor_.async_accept(
-                    asio::make_strand(*ioc_),
-                    beast::bind_front_handler(
+                    socket_,
+                    std::bind(
                         &beast_http_listener::on_accept,
-                        sh_fr_ths));
+                        sh_fr_ths,
+                        std::placeholders::_1
+                    )
+                );
+
             }
 
-            void on_accept(beast::error_code ec, tcp::socket socket) {
+            void on_accept(beast::error_code ec) {
                 if(ec) {
                     fail(ec, "accept");
                 }
                 else {
                     // Create the session object and run it
                     std::make_shared<T>(
-                        std::move(socket),
+                        std::move(socket_),
                         ctx_,
                         plugin_state_,
                         ioc_)->run();        

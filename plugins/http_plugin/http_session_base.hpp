@@ -17,8 +17,8 @@ namespace eosio {
 
             // HTTP response object
             http::response<http::string_body> res_;
-
             asio::io_context *ioc_;
+            
             std::shared_ptr<http_plugin_state> plugin_state_;
 
             virtual bool is_secure() { return false; }
@@ -116,7 +116,7 @@ namespace eosio {
             http_session_base(std::shared_ptr<http_plugin_state> plugin_state,
                          asio::io_context* ioc) 
                 : ioc_(ioc)
-                , plugin_state_(plugin_state) 
+                , plugin_state_(plugin_state)
             {
                 plugin_state_->requests_in_flight += 1;
                 req_parser_.body_limit(plugin_state_->max_body_size);
