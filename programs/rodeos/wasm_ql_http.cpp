@@ -592,27 +592,25 @@ class listener : public std::enable_shared_from_this<listener> {
    void start_listen(Acceptor& acceptor, const Endpoint& endpoint) {
       beast::error_code ec;
 
+      auto check_ec = [&](const char* what) {
+         if (!ec)
+            return;
+         elog("${w}: ${m}", ("w", what)("m", ec.message()));
+         FC_ASSERT(false, "unable to open listen socket");
+      };
+
       // Open the acceptor
       acceptor.open(endpoint.protocol(), ec);
-      if (ec) {
-         fail(ec, "open");
-         return;
-      }
+      check_ec("open");
 
       // Bind to the server address
       acceptor.set_option(net::socket_base::reuse_address(true));
       acceptor.bind(endpoint, ec);
-      if (ec) {
-         fail(ec, "bind");
-         return;
-      }
+      check_ec("bind");
 
       // Start listening for connections
       acceptor.listen(net::socket_base::max_listen_connections, ec);
-      if (ec) {
-         fail(ec, "listen");
-         return;
-      }
+      check_ec("listen");
    }
 
    // Start accepting incoming connections
@@ -674,7 +672,6 @@ struct server_impl : http_server, std::enable_shared_from_this<server_impl> {
    }
 
    bool start() {
-      boost::system::error_code ec;
       auto l = std::make_shared<listener>(http_config, shared_state, ioc);
       if (!l->run())
          return false;
