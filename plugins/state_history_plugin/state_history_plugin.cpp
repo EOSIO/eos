@@ -203,9 +203,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                fc_add_tag(span, "buffer_size", data.size());
                this->derived_session().socket_stream->write(boost::asio::buffer(data));
             });
-            callback(boost::system::error_code{}, "", [self = derived_session().shared_from_this()] {
-               self->send_update(::std::optional<::fc::zipkin_span>{});
-            });
+            app().post( priority::medium, [self = derived_session().shared_from_this()](){
+               self->callback( boost::system::error_code{}, "", [self] {
+                  self->send_update( ::std::optional<::fc::zipkin_span>{} );
+               } );
+            } );
          }
       }
 
