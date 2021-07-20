@@ -1,14 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-function perform {
-    echo "$ $1"
-    eval $1
-}
+. "${0%/*}/libfunctions.sh"
 
-if [[ ! $(brew --version 2>/dev/null) ]]; then # macos
+echo '--- :anka: Pretest Setup'
+
+if [[ ! $(brew --version 2>/dev/null) ]]; then
    perform 'echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"'
    perform 'brew analytics off'
 fi
 
-./.cicd/test-package.run.sh
+perform "./.cicd/test-package.run.sh"
