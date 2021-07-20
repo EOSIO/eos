@@ -8,17 +8,13 @@ function perform {
 
 echo '+++ :minidisc: Installing EOSIO'
 
-if [[ $(apt-get --version 2>/dev/null) ]]; then # debian family
+if [[ $(apt-get --version 2>/dev/null) ]]; then # debian family packaging
     perform 'apt-get update'
     perform 'apt-get install -y /eos/*.deb'
-elif [[ $(yum --version 2>/dev/null) ]]; then # RHEL family
+elif [[ $(yum --version 2>/dev/null) ]]; then # RHEL family packaging
     perform 'yum check-update || :'
     perform 'yum install -y /eos/*.rpm'
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ ! $(brew --version 2>/dev/null) ]]; then # macos
-        perform 'echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"'
-        perform 'brew analytics off'
-    fi
+elif [[ ! $(brew --version 2>/dev/null) ]]; then # homebrew packaging
     perform 'brew update'
     perform 'mkdir homebrew-eosio'
     perform 'git init homebrew-eosio'
