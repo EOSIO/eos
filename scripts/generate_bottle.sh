@@ -47,7 +47,7 @@ echo "class Eosio < Formula
    depends_on \"libusb\"
    depends_on \"postgresql\"
    depends_on macos: :mojave
-   depends_on arch: intel
+   depends_on arch: :intel
 
    bottle do
       root_url \"https://github.com/eosio/eos/releases/download/v${VERSION}\"
