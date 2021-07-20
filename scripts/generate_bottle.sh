@@ -44,8 +44,8 @@ echo "class Eosio < Formula
    depends_on \"openssl@1.1\"
    depends_on \"libusb\"
    depends_on \"libpqxx\"
-   depends_on :macos => :mojave
-   depends_on :arch =>  :intel
+   depends_on macos: :mojave
+   depends_on arch: :intel
 
    bottle do
       root_url \"https://github.com/eosio/eos/releases/download/v${VERSION}\"
