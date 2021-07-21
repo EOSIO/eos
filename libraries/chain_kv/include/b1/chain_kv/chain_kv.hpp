@@ -335,7 +335,7 @@ struct database {
          options.level0_stop_writes_trigger = 40;         // number of L0 files that will stop writes
          options.write_buffer_size = 256 * 1024 * 1024;   // memtable size
          options.target_file_size_base = 256 * 1024 * 1024; // size of files in L1
-         options.max_bytes_for_level_base = 10 * options.target_file_size_base;  // total size of L1, recommended to be 10 * target_file_size_base
+         options.max_bytes_for_level_base = options.target_file_size_base;  // total size of L1, recommended to be 10 * target_file_size_base but to match the number used in testing.
 
          check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
       }
