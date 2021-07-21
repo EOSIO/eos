@@ -10,4 +10,9 @@ if [[ ! $(brew --version 2>/dev/null) ]]; then
    perform 'brew analytics off'
 fi
 
+if [[ ! $(python3 --version 2>/dev/null) ]]; then
+   perform 'brew update'
+   perform 'brew install python3'
+fi
+
 perform "./.cicd/test-package.run.sh"
