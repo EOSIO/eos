@@ -630,7 +630,7 @@ EOF
   - label: ":centos: CentOS 8 - Test Package"
     command:
       - "buildkite-agent artifact download '*.rpm' . --step ':centos: CentOS 8 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "centos:8"
     agents:
@@ -658,7 +658,7 @@ EOF
   - label: ":ubuntu: Ubuntu 16.04 - Test Package"
     command:
       - "buildkite-agent artifact download '*.deb' . --step ':ubuntu: Ubuntu 16.04 - Package Builder' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN"
-      - "./.cicd/test-package.sh"
+      - "./.cicd/test-package.docker.sh"
     env:
       IMAGE: "ubuntu:16.04"
     agents:
