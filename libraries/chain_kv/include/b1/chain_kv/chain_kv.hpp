@@ -328,6 +328,7 @@ struct database {
          // Those are from RocksDB Performance Tuning Guide for a typical
          // setting. Applications are encuroage to experiment different settings
          // and use options file instead.
+         options.max_write_buffer_number = 10;
          options.compaction_style = rocksdb::kCompactionStyleLevel; // level style compaction
          options.level0_file_num_compaction_trigger = 10; // number of L0 files to trigger L0 to L1 compaction.
          options.level0_slowdown_writes_trigger = 20;     // number of L0 files that will slow down writes
