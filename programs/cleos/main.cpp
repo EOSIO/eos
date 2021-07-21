@@ -3882,7 +3882,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-
+   actionsSubcommand->add_flag("-o,--read-only", tx_read_only, localized("Specify the action is read-only"));
    add_standard_transaction_options_plus_signing(actionsSubcommand);
    actionsSubcommand->callback([&] {
       fc::variant action_args_var;
