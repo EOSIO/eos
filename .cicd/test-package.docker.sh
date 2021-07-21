@@ -6,4 +6,4 @@ set -euo pipefail
 echo '--- :docker: Pretest Setup'
 
 perform "docker pull $IMAGE"
-perform "docker run --rm -v \"$(pwd):/eos\" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh"
+perform "docker run --rm -v \"\$(pwd):/eos\" -w '/eos' -it $IMAGE ./.cicd/test-package.run.sh"
