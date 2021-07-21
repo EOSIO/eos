@@ -17,7 +17,9 @@
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-// #include <boost/beast/ssl.hpp>
+#if BOOST_VERSION >= 107000
+#include <boost/beast/ssl.hpp>
+#endif
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/version.hpp>
