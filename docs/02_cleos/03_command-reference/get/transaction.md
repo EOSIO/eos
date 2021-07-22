@@ -3,7 +3,7 @@
 cleos get transaction [OPTIONS] id
 ```
 **Where**:
-* [`OPTIONS`] = See **Options** in [**Command Usage**](command-usage) section below
+* [`OPTIONS`] = See **Options** in [**Command Usage**](#command-usage) section below
 * `id` = ID of the transaction to retrieve
 
 **Note:** The arguments and options enclosed in square brackets are optional.
