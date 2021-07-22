@@ -3,7 +3,7 @@
 cleos wallet keys [OPTIONS]
 ```
 **Where**:
-* [`OPTIONS`] = See **Options** in [**Command Usage**](command-usage) section below
+* [`OPTIONS`] = See **Options** in [**Command Usage**](#command-usage) section below
 
 **Note:** The arguments and options enclosed in square brackets are optional.
 
@@ -20,7 +20,7 @@ The following information shows the different positionals and options you can us
 * `-h,--help` - Print this help message and exit
 
 ## Requirements
-For prerequisites to run this command, see the **Before you Begin** section of the [How to List All Keys](../../02_cleos/02_how-to-guides/how-to-list-all-key-pairs.md) topic.
+For prerequisites to run this command, see the **Before you Begin** section of the [How to List All Keys](../../02_how-to-guides/how-to-list-all-key-pairs.md) topic.
 
 ## Examples
 The following examples demonstrate the `cleos wallet keys` command:
