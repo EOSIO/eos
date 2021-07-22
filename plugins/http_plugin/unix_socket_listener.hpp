@@ -58,8 +58,7 @@ namespace eosio {
 
       void do_read()
       {
-          // Read a request
-        http::response_serializer<http::string_body> sr{res_};
+        // Read a request
         auto bytes_read = http::read(socket_, buffer_, req_parser_, beast_ec_);
         on_read(beast_ec_, bytes_read);
       }

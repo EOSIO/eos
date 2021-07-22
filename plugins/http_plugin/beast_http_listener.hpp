@@ -136,11 +136,11 @@ namespace eosio {
                 else {
                     // Create the session object and run it
                     std::make_shared<T>(
-//#if BOOST_VERSION < 107000                                            
+#if BOOST_VERSION < 107000                                            
                         std::move(socket_),
-// #else
-//                         std::move(socket),
-// #endif
+#else
+                        std::move(socket),
+#endif
                         ctx_,
                         plugin_state_,
                         ioc_)->run();        
