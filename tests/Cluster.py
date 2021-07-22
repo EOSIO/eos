@@ -1549,22 +1549,20 @@ class Cluster(object):
             return Node(Cluster.__BiosHost, Cluster.__BiosPort, "bios", pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, participant=participant)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
-    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
+    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag, orderReversed=True):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
         Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
-
-        killedCount=0
-        for node in reversed(self.nodes):
-            if not node.kill(killSignal):
+        
+        killFn = lambda node: node.kill(killSignal)
+        getNodesRange = lambda: self.nodes[-killCount:]
+        getNodesReversed = lambda: reversed(getNodesRange())
+        getNodes = getNodesReversed if orderReversed else getNodesRange
+        for node in getNodes():
+            if not killFn(node):
                 return False
 
-            killedCount += 1
-            if killedCount >= killCount:
-                break
-
-        time.sleep(1) # Give processes time to stand down
         return True
 
     def relaunchEosInstances(self, cachePopen=False, nodeArgs=""):
