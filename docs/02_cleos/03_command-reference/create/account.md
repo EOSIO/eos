@@ -3,7 +3,7 @@
 cleos create account [OPTIONS] creator name OwnerKey [ActiveKey]
 ```
 **Where:**
-* [`OPTIONS`] = See **Options** in [**Command Usage**](command-usage) section below
+* [`OPTIONS`] = See **Options** in [**Command Usage**](#command-usage) section below
 * `creator` = The name of the existing account creating the new account
 * `name` = The name of the new account
 * `OwnerKey` = The owner public key or permission level for the new account
