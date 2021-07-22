@@ -19,17 +19,15 @@ namespace eosio {
             // we have to use pointers here instead of references
             // because we need shared_from_this, whihc requires
             // a default constructor.  However when you use references as member 
-            // varaibles, you must the default constuctor must be deleted
-            // inthe case of io_context, we have to use raw pointer because 
+            // varaibles, the default constuctor must be deleted
+            // in the case of io_context, we have to use raw pointer because 
             // it is a stack allocated member variable fo application class
             asio::io_context* ioc_;
             std::shared_ptr<ssl::context> ctx_;
             std::shared_ptr<http_plugin_state> plugin_state_;
             tcp::acceptor acceptor_;
             tcp::endpoint listen_ep_;
-#if BOOST_VERSION < 107000
-            tcp::socket socket_;
-#endif    
+            tcp_socket_t socket_;
 
         public:
             beast_http_listener() = default;
@@ -46,13 +44,8 @@ namespace eosio {
                 , ioc_(ioc)
                 , ctx_(ctx)
                 , plugin_state_(plugin_state)
-#if BOOST_VERSION < 107000
                 , acceptor_(*ioc)
                 , socket_(*ioc)
-#else
-                , acceptor_(asio::make_strand(*ioc))
-#endif
-                //, strand_(ioc->get_executor())
             { }
 
             virtual ~beast_http_listener() = default; 
@@ -112,7 +105,7 @@ namespace eosio {
             void do_accept() {
                 auto sh_fr_ths = this->shared_from_this();
 
-#if BOOST_VERSION < 107000
+#if BOOST_VERSION < 107000 
                 acceptor_.async_accept(
                     socket_,
                     std::bind(
@@ -128,7 +121,8 @@ namespace eosio {
                     beast::bind_front_handler(
                         &beast_http_listener::on_accept,
                         sh_fr_ths));                
-#endif 
+#endif                        
+
             }
 
 #if BOOST_VERSION < 107000
@@ -142,11 +136,11 @@ namespace eosio {
                 else {
                     // Create the session object and run it
                     std::make_shared<T>(
-#if BOOST_VERSION < 107000                                            
+//#if BOOST_VERSION < 107000                                            
                         std::move(socket_),
-#else
-                        std::move(socket),
-#endif
+// #else
+//                         std::move(socket),
+// #endif
                         ctx_,
                         plugin_state_,
                         ioc_)->run();        

@@ -13,15 +13,8 @@
 #include <string>
 #include <sstream>
 
-#define ASYNC_WRITE 1
-#define ASYNC_READ 1
-#if BOOST_VERSION < 107000
-#define ASYNC_WRITE 0
-#define ASYNC_READ 0
-#endif
 
 namespace eosio {
-
   using boost::asio::local::stream_protocol;
   
   
@@ -47,13 +40,11 @@ namespace eosio {
     
   {    
     public:
-#if BOOST_VERSION < 107000      
       // The socket used to communicate with the client.
       stream_protocol::socket socket_;
+#if BOOST_VERSION < 107000      
       boost::asio::strand<boost::asio::io_context::executor_type> strand_;
-#else
-      local_stream stream_; 
-#endif
+#endif      
 
       // Buffer used to store data received from the client.
       beast::flat_buffer buffer_;
@@ -68,40 +59,9 @@ namespace eosio {
       void do_read()
       {
           // Read a request
-#if ASYNC_READ
-#if BOOST_VERSION < 107000
-          http::async_read(
-              socket_,
-              buffer_,
-              req_parser_,
-              boost::asio::bind_executor(
-                strand_,
-                std::bind(
-                  &unix_socket_session::on_read,
-                  shared_from_this(),
-                  std::placeholders::_1,
-                  std::placeholders::_2
-                )
-              )
-          );
-#else              
-          http::async_read(
-              stream_,
-              buffer_,
-              req_parser_,
-              beast::bind_front_handler(
-                  &unix_socket_session::on_read,
-                  shared_from_this()
-              )
-          );
-                            
-#endif              
-            
-#else
         http::response_serializer<http::string_body> sr{res_};
         auto bytes_read = http::read(socket_, buffer_, req_parser_, beast_ec_);
         on_read(beast_ec_, bytes_read);
-#endif 
       }
 
       void on_read(beast::error_code ec,
@@ -152,12 +112,7 @@ namespace eosio {
       {
           // Send a TCP shutdown
           boost::system::error_code ec;
-#if BOOST_VERSION < 107000          
           socket_.shutdown(stream_protocol::socket::shutdown_send, ec);
-#else
-          stream_.socket().shutdown(stream_protocol::socket::shutdown_send, ec);
-#endif                    
-
           // At this point the connection is closed gracefully
       }
 
@@ -168,90 +123,43 @@ namespace eosio {
                           asio::io_context* ioc, 
                           stream_protocol::socket sock)
         : http_session_base(plugin_state, ioc)
-
-#if BOOST_VERSION < 107000        
         , socket_(std::move(sock)) 
+#if BOOST_VERSION < 107000        
         , strand_(socket_.get_executor()) 
-#else 
-        , stream_(std::move(sock))         
 #endif        
-      { 
-      }
+      {  }
 
       virtual ~unix_socket_session() = default;
 
       void run() {
-
-#if BOOST_VERSION < 107000        
-        do_read();
-#else 
-        // We need to be executing within a strand to perform async operations
-        // on the I/O objects in this session. Although not strictly necessary
-        // for single-threaded contexts, this example code is written to be
-        // thread-safe by default.
-        
-        asio::dispatch(stream_.get_executor(),
-                    beast::bind_front_handler(
-                        &unix_socket_session::do_read,
-                        shared_from_this()));
-#endif                        
+          do_read();
       }
       
       virtual void handle_exception() override {
-        fc_elog( logger, "unix_socket_session: exception occured");
+          fc_elog( logger, "unix_socket_session: exception occured");
       }
 
      virtual void send_response(std::optional<std::string> body, int code) override {
-        // Determine if we should close the connection after
-        bool close = !(plugin_state_->keep_alive) || res_.need_eof();
+          // Determine if we should close the connection after
+          bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
-        res_.result(code);
-        if(body.has_value()) {
-            res_.body() = *body;        
-        }
-        else { 
-            fc_ilog( logger, "unix_socket_session: send_response() body has no value");
-        }
+          res_.result(code);
+          if(body.has_value()) {
+              res_.body() = *body;        
+          }
+          else { 
+              fc_ilog( logger, "unix_socket_session: send_response() body has no value");
+          }
 
-        res_.prepare_payload();
+          res_.prepare_payload();
 
-#if ASYNC_WRITE
-#if BOOST_VERSION < 107000                          
-        http::async_write(
-            socket_,
-            res_,
-            boost::asio::bind_executor(
-              strand_,
-              std::bind(
-                &unix_socket_session::on_write,
-                shared_from_this(),
-                std::placeholders::_1,
-                std::placeholders::_2,
-                close
-              )
-            )
-        );
-#else
-        http::async_write(
-            stream_,
-            res_,
-            beast::bind_front_handler(
-                &unix_socket_session::on_write,
-                shared_from_this(),
-                close
-            )
-        );            
-#endif              
-         
-#else
-        http::response_serializer<http::string_body> sr{res_};
-        auto bytes_written = http::write(socket_, sr, beast_ec_);
-        on_write(close, beast_ec_, bytes_written);
-#endif 
+          http::response_serializer<http::string_body> sr{res_};
+          auto bytes_written = http::write(socket_, sr, beast_ec_);
+          on_write(close, beast_ec_, bytes_written);
       }
 
       virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
-        return shared_from_this();
+          return shared_from_this();
       }
   }; // end class unix_socket_session
 
@@ -285,48 +193,48 @@ namespace eosio {
       virtual ~unix_socket_listener() = default; 
 
       void listen(stream_protocol::endpoint endpoint) {
-        if (isListening_) return;
+          if (isListening_) return;
 
-        // delete the old socket
-        auto ss = std::stringstream();
-        ss << endpoint;
-        ::unlink(ss.str().c_str());
+          // delete the old socket
+          auto ss = std::stringstream();
+          ss << endpoint;
+          ::unlink(ss.str().c_str());
 
-        boost::system::error_code ec;
-        // Open the acceptor
-        acceptor_.open(endpoint.protocol(), ec);
-        if(ec)  {
-            auto errCodeStr = std::to_string(ec.value());
-            fc_elog(logger, "unix_socket_listener::listen() failed to open endpoint error code ${ec}", ("ec", errCodeStr));
-            throw boost::system::system_error(ec, "stream_protocol::acceptor::open()");
-        }
+          boost::system::error_code ec;
+          // Open the acceptor
+          acceptor_.open(endpoint.protocol(), ec);
+          if(ec)  {
+              auto errCodeStr = std::to_string(ec.value());
+              fc_elog(logger, "unix_socket_listener::listen() failed to open endpoint error code ${ec}", ("ec", errCodeStr));
+              throw boost::system::system_error(ec, "stream_protocol::acceptor::open()");
+          }
 
-        // Allow address reuse
-        acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
-        if(ec)  {
-            auto errCodeStr = std::to_string(ec.value());
-            fc_elog(logger, "unix_socket_listener::listen() failed to set_option 'reuse_address' error code ${ec}", ("ec", errCodeStr));
-            throw boost::system::system_error(ec, "stream_protocol::acceptor::set_option()");
-        }
+          // Allow address reuse
+          acceptor_.set_option(asio::socket_base::reuse_address(true), ec);
+          if(ec)  {
+              auto errCodeStr = std::to_string(ec.value());
+              fc_elog(logger, "unix_socket_listener::listen() failed to set_option 'reuse_address' error code ${ec}", ("ec", errCodeStr));
+              throw boost::system::system_error(ec, "stream_protocol::acceptor::set_option()");
+          }
 
-        // Bind to the server address
-        acceptor_.bind(endpoint, ec);
-        if(ec)  {
-            auto errCodeStr = std::to_string(ec.value());
-            fc_elog(logger, "unix_socket_listener::listen() failed to bind to endpoint  error code ${ec}", ("ec", errCodeStr));
-        }
+          // Bind to the server address
+          acceptor_.bind(endpoint, ec);
+          if(ec)  {
+              auto errCodeStr = std::to_string(ec.value());
+              fc_elog(logger, "unix_socket_listener::listen() failed to bind to endpoint  error code ${ec}", ("ec", errCodeStr));
+          }
 
-        // Start listening for connections
-        ec = {};
-        auto maxConnections = asio::socket_base::max_listen_connections;
-        fc_ilog( logger, "acceptor_.listen()" ); 
-        acceptor_.listen(maxConnections, ec);
-        if(ec) {
-            auto errCodeStr = std::to_string(ec.value());
-            fc_elog(logger, "unix_socket_listener::listen() acceptor_.listen() failed  error code ${ec}", ("ec", errCodeStr));
-            throw boost::system::system_error(ec, "stream_protocol::acceptor::listen()");
-        }
-        isListening_ = true; 
+          // Start listening for connections
+          ec = {};
+          auto maxConnections = asio::socket_base::max_listen_connections;
+          fc_ilog( logger, "acceptor_.listen()" ); 
+          acceptor_.listen(maxConnections, ec);
+          if(ec) {
+              auto errCodeStr = std::to_string(ec.value());
+              fc_elog(logger, "unix_socket_listener::listen() acceptor_.listen() failed  error code ${ec}", ("ec", errCodeStr));
+              throw boost::system::system_error(ec, "stream_protocol::acceptor::listen()");
+          }
+          isListening_ = true; 
       }
 
       void start_accept() {
@@ -372,11 +280,12 @@ namespace eosio {
           }
           else {
               // Create the session object and run it
-#if BOOST_VERSION < 107000               
-              std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket_))->run();       
-#else
-              std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket))->run();       
-#endif
+#if BOOST_VERSION < 107000       
+              std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket_))->run();         
+#else               
+              std::make_shared<unix_socket_session>(plugin_state_, ioc_, std::move(socket))->run();         
+#endif                              
+              
           }
 
           // Accept another connection

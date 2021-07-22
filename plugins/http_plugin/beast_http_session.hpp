@@ -39,7 +39,7 @@ namespace eosio {
         if(ec == asio::ssl::error::stream_truncated)
             return;
 
-        std::cerr << what << ": " << ec.message() << "\n";
+        fc_elog(logger, "${w}: ${m}", ("w", what)("m", ec.message()));
     }
 
     // Handle HTTP conneciton using boost::beast for TCP communication
@@ -62,13 +62,7 @@ namespace eosio {
 
             bool allow_host(const http::request<http::string_body>& req) override {
                 auto is_conn_secure = is_secure();
-#if BOOST_VERSION < 107000
-                auto& lowest_layer = beast::get_lowest_layer<tcp::socket&>(derived().stream());
-                auto local_endpoint = lowest_layer.local_endpoint();
-#else
-                auto& lowest_layer = beast::get_lowest_layer(derived().stream());
-                auto local_endpoint = lowest_layer.socket().local_endpoint();
-#endif                
+                auto local_endpoint = derived().get_lowest_layer_endpoint();
                 auto local_socket_host_port = local_endpoint.address().to_string() 
                         + ":" + std::to_string(local_endpoint.port());
                 const auto& host_str = req["Host"].to_string();
@@ -100,28 +94,10 @@ namespace eosio {
 
             void do_read()
             {
-                // Read a request
-                http::async_read(
-                    derived().stream(),
-                    buffer_,
-                    req_parser_,
-#if BOOST_VERSION < 107000                    
-                    boost::asio::bind_executor(
-                        strand_,
-                        std::bind(
-                            &beast_http_session::on_read,
-                            derived().shared_from_this(),
-                            std::placeholders::_1,
-                            std::placeholders::_2
-                        )
-                    )
-#else
-                    beast::bind_front_handler(
-                        &beast_http_session::on_read,
-                        derived().shared_from_this()
-                    )
-#endif
-                );
+                // just use sync reads for now - P. Raphael
+                beast::error_code ec;
+                auto bytes_read = http::read(derived().stream(), buffer_, req_parser_, ec);
+                on_read(ec, bytes_read);                
             }
 
             void on_read(beast::error_code ec,
@@ -142,15 +118,9 @@ namespace eosio {
                 handle_request(std::move(req));
             }
 
-#if BOOST_VERSION < 107000
             void on_write(beast::error_code ec,
                           std::size_t bytes_transferred, 
                           bool close)
-#else
-            void on_write(bool close,
-                          beast::error_code ec,
-                          std::size_t bytes_transferred)
-#endif
             {
                 boost::ignore_unused(bytes_transferred);
 
@@ -186,29 +156,10 @@ namespace eosio {
 
                 res_.prepare_payload();
 
-                // Write the response
-                http::async_write(
-                    derived().stream(),
-                    res_,
-    #if BOOST_VERSION < 107000
-                    boost::asio::bind_executor(
-                        strand_,
-                        std::bind(
-                            &beast_http_session::on_write,
-                            derived().shared_from_this(),
-                            std::placeholders::_1,
-                            std::placeholders::_2,
-                            close)
-                        )
-    #else
-                        beast::bind_front_handler(
-                            &beast_http_session::on_write,
-                            derived().shared_from_this(),
-                            close
-                        )                         
-    #endif
-                    
-                );
+                // just use sync writes for now - P. Raphael
+                beast::error_code ec;
+                auto bytes_written = http::write(derived().stream(), res_, ec);
+                on_write(ec, bytes_written, close);
             }
     }; // end class beast_http_session
 
@@ -217,61 +168,41 @@ namespace eosio {
         : public beast_http_session<plain_session> 
         , public std::enable_shared_from_this<plain_session>
     {
-#if BOOST_VERSION < 107000        
-        tcp::socket socket_;
-        boost::asio::strand<boost::asio::io_context::executor_type> strand_;
-#else
-        beast::tcp_stream stream_;
+     
+        tcp_socket_t socket_;
+#if BOOST_VERSION < 107000          
+        // for boost versions < 1.70, we need to create the strand and have it live inside the session                     
+        // for boost versions >= 1.70, this is taken care of by make_strand() call in the listener
+        asio::strand<asio::io_context::executor_type> strand_;
 #endif
-        public:      
 
-#if BOOST_VERSION < 107000                        
+        // beast::tcp_stream stream_;
+        public:      
             // Create the session
             plain_session(
-                tcp::socket socket,
+                tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc
                 )
                 : beast_http_session<plain_session>(plugin_state, ioc)
                 , socket_(std::move(socket))
+#if BOOST_VERSION < 107000       
                 , strand_(socket_.get_executor())
+#endif                
             {}
 
-#else
-            plain_session(
-                tcp::socket&& socket,
-                std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state,
-                asio::io_context* ioc
-                )
-                : beast_http_session<plain_session>(plugin_state, ioc)
-                , stream_(std::move(socket))            
-            { }                
-#endif                 
-            
-
             // Called by the base class
-#if BOOST_VERSION < 107000            
-            tcp::socket& stream() { return socket_; }
-#else
-            beast::tcp_stream& stream() { return stream_; }
-#endif
+            tcp_socket_t& stream() { return socket_; }
+            // Called by the base class
+            tcp_socket_t& socket() { return socket_; }
+
+            // beast::tcp_stream& stream() { return stream_; }
+
             // Start the asynchronous operation
             void run()
             {
-#if BOOST_VERSION < 107000
                 do_read();
-#else
-                // We need to be executing within a strand to perform async operations
-                // on the I/O objects in this session. Although not strictly necessary
-                // for single-threaded contexts, this example code is written to be
-                // thread-safe by default.
-                asio::dispatch(stream_.get_executor(),
-                            beast::bind_front_handler(
-                                &plain_session::do_read,
-                                shared_from_this()));
-#endif
             }
 
             void do_eof()
@@ -279,115 +210,75 @@ namespace eosio {
                 // Send a TCP shutdown
                 beast::error_code ec;
                 
-#if BOOST_VERSION < 107000                
                 socket_.shutdown(tcp::socket::shutdown_send, ec);
-#else
-                stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
-#endif
+                // stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
 
                 // At this point the connection is closed gracefully
+            }
+
+            auto get_lowest_layer_endpoint() {
+#if BOOST_VERSION < 107000                
+                auto& lowest_layer = beast::get_lowest_layer<tcp_socket_t&>(socket_);
+#else
+                auto& lowest_layer = beast::get_lowest_layer(socket_);
+#endif
+                return lowest_layer.local_endpoint();
             }
 
             virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
                 return shared_from_this();
             }
-
     }; // end class plain_session
 
     // Handles an SSL HTTP connection
     class ssl_session
         : public beast_http_session<ssl_session>
         , public std::enable_shared_from_this<ssl_session>
-    {
-        
-#if BOOST_VERSION < 107000        
-        tcp::socket socket_;
-        ssl::stream<tcp::socket&> stream_;
-        boost::asio::strand<boost::asio::io_context::executor_type> strand_;
-#else
-        beast::ssl_stream<beast::tcp_stream> stream_;
-#endif
+    {        
+        tcp_socket_t socket_;
+        ssl::stream<tcp_socket_t&> stream_;
+#if BOOST_VERSION < 107000                
+// for boost versions < 1.70, we need to create the strand and have it live inside the session                     
+// for boost versions >= 1.70, this is taken care of by make_strand() call in the listener
+        asio::strand<asio::io_context::executor_type> strand_;
+#endif        
         public:
             // Create the session
-#if BOOST_VERSION < 107000                            
+
             ssl_session(
-                tcp::socket socket,
+                tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
                 : beast_http_session<ssl_session>(plugin_state, ioc)
                 , socket_(std::move(socket))
                 , stream_(socket_, *ctx)
-                , strand_(stream_.get_executor())
-            { }                
-#else
-            ssl_session(
-                tcp::socket&& socket,
-                std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state,
-                asio::io_context* ioc)
-                : beast_http_session<ssl_session>(plugin_state, ioc)
-                , stream_(std::move(socket), *ctx)            
-            { }                
+#if BOOST_VERSION < 107000
+                , strand_(socket_.get_executor())
 #endif
-            
+            { }
+
 
             // Called by the base class
-#if BOOST_VERSION < 107000                                                                        
-            ssl::stream<tcp::socket&> &stream() { return stream_; }
-#else
-            beast::ssl_stream<beast::tcp_stream>&  stream() { return stream_; }
-#endif
-            
+            ssl::stream<tcp_socket_t&> &stream() { return stream_; }
+            // beast::ssl_stream<beast::tcp_stream>&  stream() { return stream_; }
+
+            // Called by the base class
+            tcp_socket_t& socket() { return socket_; }
 
             // Start the asynchronous operation
             void run()
             {
-                auto self = shared_from_this();
-
-#if BOOST_VERSION < 107000
-                // Perform the SSL handshake
-                // Note, this is the buffered version of the handshake.
-                self->derived().stream_.async_handshake(
-                    ssl::stream_base::server,
-                    self->buffer_.data(),
-                    boost::asio::bind_executor(
-                        strand_,
-                        std::bind(
-                            &ssl_session::on_handshake,
-                            shared_from_this(),
-                            std::placeholders::_1,
-                            std::placeholders::_2
-                        )
-                    )
-                );
-#else
-                // We need to be executing within a strand to perform async operations
-                // on the I/O objects in this session.
-                asio::dispatch(stream_.get_executor(), [self]() {
-                        // Perform the SSL handshake
-                        // Note, this is the buffered version of the handshake.
-                        self->derived().stream_.async_handshake(
-                            ssl::stream_base::server,
-                            self->buffer_.data(),
-                            beast::bind_front_handler(
-                                &ssl_session::on_handshake,
-                                self
-                            )
-                        );
-                    } );
-#endif
+                beast::error_code ec;
+                stream_.handshake(ssl::stream_base::server, ec);
+                on_handshake(ec);
             }
 
-            void on_handshake(beast::error_code ec,
-                              std::size_t bytes_used)
+            void on_handshake(beast::error_code ec)
             {
                 
                 if(ec)
                     return fail(ec, "handshake");
-
-                // Consume the portion of the buffer used by the handshake
-                buffer_.consume(bytes_used);
 
                 do_read();
             }
@@ -395,23 +286,9 @@ namespace eosio {
             void do_eof()
             {
                 // Perform the SSL shutdown
-                stream_.async_shutdown(
-#if BOOST_VERSION < 107000                            
-                    boost::asio::bind_executor(
-                        strand_,
-                        std::bind(
-                            &ssl_session::on_shutdown,
-                            shared_from_this(),
-                            std::placeholders::_1
-                        )
-                    )
-#else
-                    beast::bind_front_handler(
-                        &ssl_session::on_shutdown,
-                        shared_from_this()
-                    )    
-#endif                    
-                );                        
+                beast::error_code ec;
+                stream_.shutdown(ec);
+                on_shutdown(ec);
             }
 
             void on_shutdown(beast::error_code ec)
@@ -422,11 +299,22 @@ namespace eosio {
                 // At this point the connection is closed gracefully
             }
 
+            auto get_lowest_layer_endpoint() {
+#if BOOST_VERSION < 107000                
+                auto& lowest_layer = beast::get_lowest_layer<tcp_socket_t&>(socket_);
+#else
+                auto& lowest_layer = beast::get_lowest_layer(socket_);
+#endif
+                return lowest_layer.local_endpoint();
+            }
+
             virtual bool is_secure() override { return true; }
 
             virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
                 return shared_from_this();
             }
+
+            
     }; // end class ssl_session
 
 } // end namespace
