@@ -131,7 +131,18 @@ namespace eosio {
       virtual ~unix_socket_session() = default;
 
       void run() {
-          do_read();
+          // catch any loose exceptions so that nodeos will return zero exit code
+          try {
+              do_read();
+          } catch (fc::exception& e) {
+              fc_dlog( logger, "fc::exception thrown while invoking unix_socket_session::run()");
+              fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
+          } catch (std::exception& e) {
+              fc_elog( logger, "STD exception thrown while invoking unix_socket_session::run()");
+              fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
+          } catch (...) {
+              fc_elog( logger, "Unknown exception thrown while invoking unix_socket_session::run()");
+          }
       }
       
       virtual void handle_exception() override {
