@@ -5,7 +5,7 @@ link_text: Deep-mind Logger Integration
 
 ## Overview
 
-The `Deep-mind logger` is part of the `dfuse` [platform]([https://dfuse.io/](https://dfuse.io/)) which is a highly scalable and performant [open-source]([https://github.com/dfuse-io/dfuse-eosio/tree/master](https://github.com/dfuse-io/dfuse-eosio/tree/master)) platform for searching and processing blockchain data.
+The `Deep-mind logger` is part of the `dfuse` [platform](https://dfuse.io) which is a highly scalable and performant [open-source](https://github.com/dfuse-io/dfuse-eosio/tree/master) platform for searching and processing blockchain data.
 
 ### How To Enable Deep-mind Logger
 
