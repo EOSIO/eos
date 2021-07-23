@@ -190,7 +190,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    state_request               req;
                    fc::raw::unpack(ds, req);
                    std::visit(*self, std::move(req));
-                   self->start_read();
                 });
              });
       }
@@ -198,10 +197,29 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       template <typename T>
       void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
          if (!send_thread_has_exception) {
-            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() {
+            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span), messages_left = max_messages_in_flight()]() {
                auto span = fc_create_span_from_token(token, "send");
                fc_add_tag(span, "buffer_size", data.size());
                this->derived_session().socket_stream->write(boost::asio::buffer(data));
+               if (messages_left == 0) {
+                  app().post(priority::medium, [self = derived_session().shared_from_this()]() { self->start_read(); });
+               } else {
+                  boost::asio::socket_base::bytes_readable command(true);
+                  this->derived_session().socket_stream->next_layer().io_control(command);
+                  std::size_t bytes_readable = command.get();
+                  if (bytes_readable > 0) {
+                     boost::beast::flat_buffer in_buffer;
+                     this->derived_session().socket_stream->read(in_buffer);
+                     auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer.data()));
+                     auto s = boost::asio::buffer_size(in_buffer.data());
+                     fc::datastream<const char*> ds(d, s);
+                     auto                        req = std::make_shared<state_request>();
+                     fc::raw::unpack(ds, *req);
+                     app().post(priority::medium, [self = derived_session().shared_from_this(), req]() {
+                        std::visit(*self, std::move(*req));
+                     });
+                  }
+               }
             });
             app().post( priority::medium, [self = derived_session().shared_from_this()](){
                self->callback( boost::system::error_code{}, "", [self] {
@@ -227,7 +245,17 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                 plugin->chain_state_log->begin_end_block_nums();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
-         send(std::move(result), std::move(request_span));
+
+         auto data = std::make_shared<std::vector<char>>(fc::raw::pack(state_result{std::move(result)}));
+         this->derived_session().socket_stream->async_write(
+             boost::asio::buffer(*data),
+             [self = derived_session().shared_from_this(), data, span = std::move(request_span)](boost::system::error_code ec, size_t) {
+                if (ec) {
+                   self->on_fail(ec, "async_write");
+                   return;
+                }
+                self->start_read();
+             });
       }
 
       template <typename T>
