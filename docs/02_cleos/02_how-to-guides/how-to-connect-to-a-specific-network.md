@@ -4,7 +4,15 @@ This guide provides instructions on how to connect to specifc EOSIO blockchain w
 The examples use the `--url`optional argument to send commands to the specified blockchain.   
 
 [[info | Default address:port]]
-| If no optional arguments are used (i.e. no `--url`), `cleos` attempts to connect to a local `nodeos` running at localhost or `127.0.0.1` and default port `8888`. Use the `nodeos` command line arguments or [config.ini](../../01_nodeos/02_usage/01_nodeos-configuration/#configini-location) file to specify a different address.
+| If no optional arguments are used (i.e. no `--url`), `cleos` attempts to connect to a local `nodeos` running at localhost or `127.0.0.1` and default port `8888`. Use the `nodeos` command line arguments or [config.ini](../../nodeos/usage/nodeos-configuration/#configini-location) file to specify a different address.
+
+<!--
+devrel-1602
+[config.ini](../../01_nodeos/02_usage/01_nodeos-configuration/#configini-location)
+resolves incorrectly to:
+/manuals/eos/latest/01_nodeos/usage/nodeos-configuration/#configini-location
+(prefix number in "01_nodeos" not removed)
+-->
 
 ## Before you Begin
 Make sure you meet the following requirements: 
