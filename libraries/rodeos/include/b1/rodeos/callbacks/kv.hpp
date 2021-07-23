@@ -147,7 +147,7 @@ struct kv_context_rocksdb {
    chain_kv::view                           view;
    bool                                     enable_write          = false;
    bool                                     bypass_receiver_check = false;
-   eosio::name                              receiver;
+   eosio::name                              receiver_filter_name;
    const kv_database_config&                limits;
    uint32_t                                 num_iterators = 0;
    std::shared_ptr<const std::vector<char>> temp_data_buffer;
@@ -156,7 +156,7 @@ struct kv_context_rocksdb {
                       std::vector<char> contract_kv_prefix, eosio::name database_id, eosio::name receiver,
                       const kv_database_config& limits)
        : database{ database }, write_session{ write_session }, contract_kv_prefix{ std::move(contract_kv_prefix) },
-         database_id{ database_id }, view{ write_session, make_prefix() }, receiver{ receiver }, limits{ limits } {}
+       database_id{ database_id }, view{ write_session, make_prefix() }, receiver_filter_name{ receiver }, limits{ limits } {}
 
    std::vector<char> make_prefix() {
       std::vector<char> prefix = contract_kv_prefix;
@@ -165,7 +165,7 @@ struct kv_context_rocksdb {
    }
 
    int64_t kv_erase(uint64_t contract, const char* key, uint32_t key_size) {
-      eosio::check(enable_write && (bypass_receiver_check || eosio::name{ contract } == receiver),
+      eosio::check(enable_write && (bypass_receiver_check || eosio::name{ contract } == receiver_filter_name),
                    "Can not write to this key");
       temp_data_buffer = nullptr;
       view.erase(contract, { key, key_size });
@@ -173,7 +173,7 @@ struct kv_context_rocksdb {
    }
 
    int64_t kv_set(uint64_t contract, const char* key, uint32_t key_size, const char* value, uint32_t value_size, uint64_t payer) {
-      eosio::check(enable_write && (bypass_receiver_check || eosio::name{ contract } == receiver),
+      eosio::check(enable_write && (bypass_receiver_check || eosio::name{ contract } == receiver_filter_name),
                    "Can not write to this key");
       eosio::check(key_size <= limits.max_key_size, "Key too large");
       eosio::check(value_size <= limits.max_value_size, "Value too large");
@@ -212,7 +212,6 @@ struct kv_context_rocksdb {
 }; // kv_context_rocksdb
 
 struct db_view_state {
-   eosio::name                                       receiver;
    chain_kv::database&                               database;
    const kv_database_config                          limits;
    const kv_database_config                          kv_state_limits{ 1024, std::numeric_limits<uint32_t>::max() };
@@ -222,7 +221,7 @@ struct db_view_state {
 
    db_view_state(eosio::name receiver, chain_kv::database& database, chain_kv::write_session& write_session,
                  const std::vector<char>& contract_kv_prefix)
-       : receiver{ receiver }, database{ database }, //
+                 : database{ database }, //
          kv_state{ database, write_session, contract_kv_prefix, state_db_id, receiver, kv_state_limits },
          kv_iterators(1) {}
 
