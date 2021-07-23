@@ -21,7 +21,6 @@ None
 
 ## Dependencies
 
-* [`wallet_plugin`](../wallet_plugin/index.md)
 * [`http_plugin`](../http_plugin/index.md)
 
 ### Load Dependency Examples
