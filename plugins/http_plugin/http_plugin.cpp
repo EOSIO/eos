@@ -138,6 +138,10 @@ namespace eosio {
    using http_plugin_impl_ptr = std::shared_ptr<class http_plugin_impl>;
 
    static bool verbose_http_errors = false;
+   // time points for timeout measurement and perf metrics 
+   steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
+   uint64_t read_time_us_, handle_time_us_, write_time_us_;
+
 
 class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       public:
@@ -173,7 +177,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
          shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
         
-         
 
          ssl_context_ptr on_tls_init() {
             ssl_context_ptr ctx = websocketpp::lib::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::sslv23_server);
@@ -318,10 +321,21 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             ,_impl(std::move(impl))
             {
                 _impl->plugin_state->requests_in_flight += 1;
+                session_begin_ = steady_clock::now();
+                read_begin_ = session_begin_;
+                read_time_us_ = handle_time_us_ = write_time_us_ = 0;
             }
 
             ~abstract_conn_impl() override {
                 _impl->plugin_state->requests_in_flight -= 1;
+#ifdef PRINT_PERF_METRICS                
+                auto session_time = steady_clock::now() - session_begin_;
+                auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
+                fc_elog(logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_elog(logger, "        read    ${t}", ("t", read_time_us_));
+                fc_elog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_elog(logger, "        write   ${t}", ("t", write_time_us_));                            
+#endif
             }
 
             // No copy constructor and no move
@@ -344,11 +358,18 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
             }
 
             void send_response(std::optional<std::string> body, int code) override {
+               write_begin_ = steady_clock::now();
+               auto dt = write_begin_ - handle_begin_;
+               handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+
                if( body ) {
                   _conn->set_body( std::move( *body ) );
                }
                _conn->set_status( websocketpp::http::status_code::value( code ) );
                _conn->send_http_response();
+
+               dt = steady_clock::now() - write_begin_;
+               write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
             }
 
             detail::connection_ptr<T> _conn;
@@ -458,6 +479,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                auto handler_itr = plugin_state->url_handlers.find( resource );
                if( handler_itr != plugin_state->url_handlers.end()) {
                   std::string body = con->get_request_body();
+                  handle_begin_ = steady_clock::now();
+                  auto dt = handle_begin_ - read_begin_;
+                  read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
                   handler_itr->second( abstract_conn_ptr, 
                                        std::move( resource ), 
                                        std::move( body ), 

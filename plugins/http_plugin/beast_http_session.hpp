@@ -13,7 +13,10 @@
 #include <vector>
 #include <sstream>
 
+
 namespace eosio { 
+
+    using std::chrono::steady_clock;
 
     //------------------------------------------------------------------------------
     // Report a failure
@@ -51,6 +54,9 @@ namespace eosio {
         protected:
             beast::flat_buffer buffer_;
             beast::error_code ec_;
+            // time points for timeout measurement and perf metrics 
+            steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
+            uint64_t read_time_us_, handle_time_us_, write_time_us_;
 
             // Access the derived class, this is part of
             // the Curiously Recurring Template Pattern idiom.
@@ -61,7 +67,14 @@ namespace eosio {
 
             bool allow_host(const http::request<http::string_body>& req) override {
                 auto is_conn_secure = is_secure();
-                auto local_endpoint = derived().get_lowest_layer_endpoint();
+
+                auto& socket = derived().socket();
+#if BOOST_VERSION < 107000                
+                auto& lowest_layer = beast::get_lowest_layer<tcp_socket_t&>(socket);
+#else
+                auto& lowest_layer = beast::get_lowest_layer(socket);
+#endif                
+                auto local_endpoint = lowest_layer.local_endpoint();
                 auto local_socket_host_port = local_endpoint.address().to_string() 
                         + ":" + std::to_string(local_endpoint.port());
                 const auto& host_str = req["Host"].to_string();
@@ -79,21 +92,61 @@ namespace eosio {
 
         public: 
             // shared_from_this() requires default constuctor
-            beast_http_session() = default;  
+            beast_http_session() = default;
       
             // Take ownership of the buffer
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
                 : http_session_base(plugin_state, ioc)
-            { }
+            {  
+                session_begin_ = steady_clock::now();
+                read_time_us_ = handle_time_us_ = write_time_us_ = 0;
+            }
 
-            virtual ~beast_http_session() = default;            
+            virtual ~beast_http_session() {
+#ifdef PRINT_PERF_METRICS                
+                auto session_time = steady_clock::now() - session_begin_;
+                auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
+                fc_elog(logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_elog(logger, "        read    ${t}", ("t", read_time_us_));
+                fc_elog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_elog(logger, "        write   ${t}", ("t", write_time_us_));                            
+#endif
+            }    
+
+            bool check_timeout() {
+                auto t = steady_clock::now();
+                auto dt = t - session_begin_;
+                auto t_elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(dt).count();        
+                return (t_elapsed_us > plugin_state_->max_response_time.count());
+            }
 
             void do_read()
             {
-                // just use sync reads for now - P. Raphael
                 beast::error_code ec;
+
+                // wait for data to become available on the socket if we don't do this
+                // clients can hang the session by not sending any data
+                boost::asio::socket_base::bytes_readable command(true);
+                auto &socket = derived().socket();
+                std::size_t bytes_readable = 0; 
+                
+                bool timeout = false;
+                while (bytes_readable < 1 && !timeout) {
+                    socket.io_control(command);
+                    bytes_readable = command.get();
+                    timeout = check_timeout();
+                }
+
+                if(timeout) {
+                    fc_elog(logger, "connection timeout - no data sent. closing");
+                    return derived().do_eof();
+                }
+
+                read_begin_ = steady_clock::now();
+
+                // just use sync reads for now - P. Raphael
                 auto bytes_read = http::read(derived().stream(), buffer_, req_parser_, ec);
                 on_read(ec, bytes_read);                
             }
@@ -110,8 +163,17 @@ namespace eosio {
                 if(ec && ec != asio::ssl::error::stream_truncated)
                     return fail(ec, "read");
 
-
                 auto req = req_parser_.get();
+
+                if (check_timeout()) {
+                    fc_elog(logger, "connection timeout - could not read data within time period. closing");
+                    return derived().do_eof();
+                }
+
+                handle_begin_ = steady_clock::now();
+                auto dt = handle_begin_ - read_begin_;
+                read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+
                 // Send the response
                 handle_request(std::move(req));
             }
@@ -127,6 +189,9 @@ namespace eosio {
                     handle_exception();
                     return fail(ec, "write");
                 }
+
+                auto dt = steady_clock::now() - write_begin_;
+                write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
 
                 if(close)
                 {
@@ -148,11 +213,20 @@ namespace eosio {
                 // Determine if we should close the connection after
                 bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
+                write_begin_ = steady_clock::now();
+                auto dt = write_begin_ - handle_begin_;
+                handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                
                 res_.result(code);
                 if(body.has_value())
                     res_.body() = *body;        
 
                 res_.prepare_payload();
+
+                if (check_timeout()) {
+                    fc_elog(logger, "connection timeout - could not process request within time period. closing");
+                    return derived().do_eof();
+                }
 
                 // just use sync writes for now - P. Raphael
                 beast::error_code ec;
@@ -195,9 +269,12 @@ namespace eosio {
             // Called by the base class
 #if BOOST_VERSION < 107000                   
             tcp_socket_t& stream() { return socket_; }
+            tcp_socket_t& socket() { return socket_};
 #else            
             beast::tcp_stream& stream() { return stream_; }
+            tcp_socket_t& socket() { return stream_.socket(); };
 #endif            
+            
 
             // Start the asynchronous operation
             void run()
@@ -283,8 +360,10 @@ namespace eosio {
             // Called by the base class
 #if BOOST_VERSION < 107000            
             ssl::stream<tcp_socket_t&> &stream() { return stream_; }
+            tcp_socket_t& socket() { return socket_};
 #else            
             beast::ssl_stream<beast::tcp_stream>&  stream() { return stream_; }
+            tcp_socket_t& socket() { return beast::get_lowest_layer(stream_).socket(); }
 #endif
             // Start the asynchronous operation
             void run()
@@ -317,17 +396,6 @@ namespace eosio {
                     return fail(ec, "shutdown");
 
                 // At this point the connection is closed gracefully
-            }
-
-            auto get_lowest_layer_endpoint() {
-#if BOOST_VERSION < 107000                
-                auto& lowest_layer = beast::get_lowest_layer<tcp_socket_t&>(socket_);
-                return lowest_layer.local_endpoint();
-#else
-                auto& lowest_layer = beast::get_lowest_layer(stream_);
-                return lowest_layer.socket().local_endpoint();
-#endif
-                
             }
 
             virtual bool is_secure() override { return true; }

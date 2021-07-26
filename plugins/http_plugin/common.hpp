@@ -31,6 +31,8 @@
 #include <boost/make_unique.hpp>
 #include <boost/optional.hpp>
 
+#define PRINT_PERF_METRICS                
+
 namespace eosio {
     static uint16_t const uri_default_port = 80;
     /// Default port for wss://
