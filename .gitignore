@@ -85,5 +85,6 @@ var/lib/node_*
 .idea/
 *.iws
 .DS_Store
+node_modules/*
 
 !*.swagger.*

@@ -29,6 +29,7 @@ add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( version )
 add_subdirectory( state_history )
+set(ABIEOS_BUILD_SHARED_LIB OFF)
 add_subdirectory( abieos )
 
 # Suppress warnings on 3rdParty Library
