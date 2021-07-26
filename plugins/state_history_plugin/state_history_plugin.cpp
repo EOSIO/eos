@@ -180,46 +180,34 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void start_read() {
-         auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
-         derived_session().socket_stream->async_read(
-             *in_buffer, [self = derived_session().shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
-                self->callback(ec, "async_read", [self, in_buffer] {
-                   auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
-                   auto s = boost::asio::buffer_size(in_buffer->data());
-                   fc::datastream<const char*> ds(d, s);
-                   state_request               req;
-                   fc::raw::unpack(ds, req);
-                   std::visit(*self, std::move(req));
-                });
-             });
+         // use reactor pattern with blocking read to avoid mixing async_read() and block write(). 
+         derived_session().socket_stream->next_layer().async_wait(
+            SessionType::socket_type::wait_read,
+            boost::asio::bind_executor(work_strand,
+               [self = derived_session().shared_from_this()](boost::system::error_code ec)
+               {
+                  if (!ec) {
+                     boost::beast::flat_buffer in_buffer;
+                     self->derived_session().socket_stream->read(in_buffer);
+                     auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer.data()));
+                     auto s = boost::asio::buffer_size(in_buffer.data());
+                     fc::datastream<const char*> ds(d, s);
+                     auto req= std::make_shared<state_request>();
+                     fc::raw::unpack(ds, *req);
+                     app().post(priority::medium, [self, req]() { std::visit(*self, std::move(*req)); });
+                     self->start_read();
+                  }
+               }));
       }
 
       template <typename T>
       void send(T obj, ::std::optional<::fc::zipkin_span>&& span) {
          if (!send_thread_has_exception) {
-            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span), messages_left = max_messages_in_flight()]() {
+            boost::asio::post(work_strand, [this, data = fc::raw::pack(state_result{std::move(obj)}), token = fc_get_token(span)]() {
                auto span = fc_create_span_from_token(token, "send");
                fc_add_tag(span, "buffer_size", data.size());
+               // use blocking write because it is more performant with heavy load based on our experiments
                this->derived_session().socket_stream->write(boost::asio::buffer(data));
-               if (messages_left == 0) {
-                  app().post(priority::medium, [self = derived_session().shared_from_this()]() { self->start_read(); });
-               } else {
-                  boost::asio::socket_base::bytes_readable command(true);
-                  this->derived_session().socket_stream->next_layer().io_control(command);
-                  std::size_t bytes_readable = command.get();
-                  if (bytes_readable > 0) {
-                     boost::beast::flat_buffer in_buffer;
-                     this->derived_session().socket_stream->read(in_buffer);
-                     auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer.data()));
-                     auto s = boost::asio::buffer_size(in_buffer.data());
-                     fc::datastream<const char*> ds(d, s);
-                     auto                        req = std::make_shared<state_request>();
-                     fc::raw::unpack(ds, *req);
-                     app().post(priority::medium, [self = derived_session().shared_from_this(), req]() {
-                        std::visit(*self, std::move(*req));
-                     });
-                  }
-               }
             });
             app().post( priority::medium, [self = derived_session().shared_from_this()](){
                self->callback( boost::system::error_code{}, "", [self] {
@@ -245,17 +233,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                 plugin->chain_state_log->begin_end_block_nums();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
-
-         auto data = std::make_shared<std::vector<char>>(fc::raw::pack(state_result{std::move(result)}));
-         this->derived_session().socket_stream->async_write(
-             boost::asio::buffer(*data),
-             [self = derived_session().shared_from_this(), data, span = std::move(request_span)](boost::system::error_code ec, size_t) {
-                if (ec) {
-                   self->on_fail(ec, "async_write");
-                   return;
-                }
-                self->start_read();
-             });
+         send(std::move(result), std::move(request_span));
       }
 
       template <typename T>
@@ -283,8 +261,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             position_it = req.have_positions.begin();
          }
 
-         current_request = std::move(req);
-         
+         current_request = std::move(req);  
          send_update(std::move(request_span), true);
       }
 
@@ -466,6 +443,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    };
 
    struct tcp_session : session<tcp_session>, std::enable_shared_from_this<tcp_session> {
+      using socket_type = tcp::socket;
       tcp_session(std::shared_ptr<state_history_plugin_impl> plugin) : session<tcp_session>(plugin) {}
 
       void start(tcp::socket socket) {
@@ -478,6 +456,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    };
 
    struct unix_session : session<unix_session>, std::enable_shared_from_this<unix_session> {
+      using socket_type = unixs::socket;
       unix_session(std::shared_ptr<state_history_plugin_impl> plugin) : session<unix_session>(plugin) {}
 
       void start(unixs::socket socket) {
