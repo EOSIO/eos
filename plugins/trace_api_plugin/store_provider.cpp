@@ -67,6 +67,7 @@ namespace eosio::trace_api {
             const auto& block = std::get<block_entry_v0>(e);
             if (block.number == block_height) {
                trace_offset = block.offset;
+               return false; // stop scanning
             }
          } else if (std::holds_alternative<lib_entry_v0>(e)) {
             auto lib = std::get<lib_entry_v0>(e).lib;
