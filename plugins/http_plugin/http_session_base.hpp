@@ -10,17 +10,9 @@ extern fc::logger logger;
 namespace eosio { 
     using std::shared_ptr;
 
-    // Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
-    // this is suggested fix OK'd Beast author (V. Falcon) to handle both versions gracefully
-    // see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
-///#if BOOST_VERSION < 107000                
-    typedef tcp::socket tcp_socket_t;
-// #else
-//     typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_type;
-// #endif
-
     // Handles an HTTP server connection.    
     class http_session_base : public detail::abstract_conn {
+
         protected:
             // HTTP parser object
             http::request_parser<http::string_body> req_parser_;
@@ -29,10 +21,6 @@ namespace eosio {
             http::response<http::string_body> res_;
             asio::io_context *ioc_;
             
-            std::shared_ptr<http_plugin_state> plugin_state_;
-
-            virtual bool is_secure() { return false; }
-
             virtual bool allow_host(const http::request<http::string_body>& req) = 0;
 
             virtual shared_ptr<detail::abstract_conn> get_shared_from_this() = 0;
@@ -123,6 +111,10 @@ namespace eosio {
             }
 
         public:
+            // public due to implementation of allow_host() in beast_http_session
+            std::shared_ptr<http_plugin_state> plugin_state_;
+
+        public:
             http_session_base(std::shared_ptr<http_plugin_state> plugin_state,
                          asio::io_context* ioc) 
                 : ioc_(ioc)
@@ -160,5 +152,7 @@ namespace eosio {
                 }
                 return true;
             }           
+
+            virtual bool is_secure() { return false; }
     }; // end class
 } // end namespace

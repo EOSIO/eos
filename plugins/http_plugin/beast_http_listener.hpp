@@ -3,15 +3,45 @@
 #include "beast_http_session.hpp"
 #include "common.hpp"
 #include <type_traits>
+#include <sstream>
 
 extern fc::logger logger;
 
 namespace eosio {
+
+    // Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
+    // this is suggested fix OK'd Beast author (V. Falco) to handle both versions gracefully
+    // see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
+#if BOOST_VERSION < 107000                
+    typedef tcp::socket tcp_socket_t;
+#else
+    typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_t;
+#endif
+
+    using boost::asio::local::stream_protocol;
+    
+#if BOOST_VERSION < 107000
+    using local_stream = boost::asio::basic_stream_socket<stream_protocol>;
+#else 
+#if BOOST_VERSION < 107300
+    using local_stream = beast::basic_stream<
+    stream_protocol,
+    asio::executor,
+    beast::unlimited_rate_policy>;
+#else      
+using local_stream = beast::basic_stream<
+    stream_protocol,
+    // asio::any_io_executor,
+    io_context::executor_type,
+    beast::unlimited_rate_policy>;    
+#endif    
+#endif
+
     // Accepts incoming connections and launches the sessions
     // T must be a subclass of 
-    template<typename T> 
+    template<typename session_type, typename protocol_type, typename socket_type> 
     //std::enable_if_t<std::is_base_of_v<beast_http_session,T> >
-    class beast_http_listener : public std::enable_shared_from_this<beast_http_listener<T> >
+    class beast_http_listener : public std::enable_shared_from_this<beast_http_listener<session_type, protocol_type, socket_type> >
     {
         private: 
             bool isListening_; 
@@ -25,9 +55,10 @@ namespace eosio {
             asio::io_context* ioc_;
             std::shared_ptr<ssl::context> ctx_;
             std::shared_ptr<http_plugin_state> plugin_state_;
-            tcp::acceptor acceptor_;
-            tcp::endpoint listen_ep_;
-            tcp_socket_t socket_;
+
+            typename protocol_type::acceptor acceptor_;
+            typename protocol_type::endpoint listen_ep_;
+            socket_type socket_;
 
         public:
             beast_http_listener() = default;
@@ -50,8 +81,14 @@ namespace eosio {
 
             virtual ~beast_http_listener() = default; 
 
-            void listen(tcp::endpoint endpoint) {
+            void listen(typename protocol_type::endpoint endpoint) {
                 if (isListening_) return;
+
+                // delete the old socket
+                // TODO only need for stream protocol
+                auto ss = std::stringstream();
+                ss << endpoint;
+                ::unlink(ss.str().c_str());
 
                 beast::error_code ec;
                 // Open the acceptor
@@ -103,53 +140,24 @@ namespace eosio {
 
         private:
             void do_accept() {
-                auto sh_fr_ths = this->shared_from_this();
+                auto self = this->shared_from_this();
+                acceptor_.async_accept(socket_, [self](beast::error_code ec) {
+                        if(ec) {
+                            fail(ec, "accept");
+                        }
+                        else {
+                            // Create the session object and run it
+                            std::make_shared<session_type>(
+                                std::move(self->socket_),
+                                self->ctx_,
+                                self->plugin_state_,
+                                self->ioc_)->run();        
+                        }
 
-#if BOOST_VERSION < 107000 
-                acceptor_.async_accept(
-                    socket_,
-                    std::bind(
-                        &beast_http_listener::on_accept,
-                        sh_fr_ths,
-                        std::placeholders::_1
-                    )
+                        // Accept another connection
+                        self->do_accept();
+                    }
                 );
-#else
-                // The new connection gets its own strand
-                acceptor_.async_accept(
-                    asio::make_strand(*ioc_),
-                    beast::bind_front_handler(
-                        &beast_http_listener::on_accept,
-                        sh_fr_ths));                
-#endif                        
-
-            }
-
-#if BOOST_VERSION < 107000
-            void on_accept(beast::error_code ec) {
-#else
-            void on_accept(beast::error_code ec, tcp::socket socket) {
-#endif
-                if(ec) {
-                    fail(ec, "accept");
-                }
-                else {
-                    // Create the session object and run it
-                    std::make_shared<T>(
-#if BOOST_VERSION < 107000                                            
-                        std::move(socket_),
-#else
-                        std::move(socket),
-#endif
-                        ctx_,
-                        plugin_state_,
-                        ioc_)->run();        
-                }
-
-                // Accept another connection
-                do_accept();
-            }   
-
-               
+            }               
     }; // end class beast_http_Listener
 } // end namespace

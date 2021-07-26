@@ -9,6 +9,7 @@
 #include <atomic>
 #include <optional>
 #include <regex>
+#include <string>
 
 #include <fc/time.hpp>
 #include <fc/io/raw.hpp>
@@ -17,9 +18,6 @@
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#if BOOST_VERSION >= 107000
-#include <boost/beast/ssl.hpp>
-#endif
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/version.hpp>
@@ -31,7 +29,12 @@
 #include <boost/make_unique.hpp>
 #include <boost/optional.hpp>
 
-#define PRINT_PERF_METRICS                
+#include <boost/asio/detail/config.hpp>
+#include <boost/asio/basic_socket_acceptor.hpp>
+#include <boost/asio/basic_socket_iostream.hpp>
+#include <boost/asio/basic_stream_socket.hpp>
+
+#define PRINT_PERF_METRICS 0               
 
 namespace eosio {
     static uint16_t const uri_default_port = 80;
