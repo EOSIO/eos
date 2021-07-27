@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common.hpp"
-#include "beast_http_session_base.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -13,11 +12,12 @@
 #include <vector>
 #include <sstream>
 
+extern fc::logger logger;
 
 namespace eosio { 
 
     using std::chrono::steady_clock;
-
+    
     // Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
     // this is suggested fix OK'd Beast author (V. Falco) to handle both versions gracefully
     // see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
@@ -72,7 +72,7 @@ using local_stream = beast::basic_stream<
         fc_elog(logger, "${w}: ${m}", ("w", what)("m", ec.message()));
     }
 
-    // this needs to be declared outside of the class, because it doesn't work for 
+    // this needs to be declared outside of the beast_http_session, because it doesn't work for 
     // UNIX socket session, since it lacks address() function in endpoint
     //  Since this is a virtual function, std::enable_if_t/SFNIAE doesn't work 
     template<class T>
@@ -101,12 +101,11 @@ using local_stream = beast::basic_stream<
         return true;
     }
 
-
     // Handle HTTP conneciton using boost::beast for TCP communication
     // This uses the Curiously Recurring Template Pattern so that
     // the same code works with both SSL streams and regular sockets.
     template<class Derived> 
-    class beast_http_session : public beast_http_session_base
+    class beast_http_session :  public detail::abstract_conn
     {
         protected:
             beast::flat_buffer buffer_;
@@ -115,6 +114,128 @@ using local_stream = beast::basic_stream<
             // time points for timeout measurement and perf metrics 
             steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
             uint64_t read_time_us_, handle_time_us_, write_time_us_;
+
+            // HTTP parser object
+            http::request_parser<http::string_body> req_parser_;
+
+            // HTTP response object
+            http::response<http::string_body> res_;
+            asio::io_context *ioc_;
+            
+            template<
+                class Body, class Allocator>
+            void
+            handle_request(
+                http::request<Body, http::basic_fields<Allocator>>&& req)
+            {
+                auto &res = res_;
+
+                res.version(req.version());
+                res.set(http::field::content_type, "application/json");
+                res.keep_alive(req.keep_alive());
+                res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+
+                // Returns a bad request response
+                auto const bad_request =
+                [](beast::string_view why, detail::abstract_conn& conn)
+                {
+                    conn.send_response(std::string(why), 
+                                    static_cast<int>(http::status::bad_request));
+                };
+
+                // Returns a not found response
+                auto const not_found =
+                [](beast::string_view target, detail::abstract_conn& conn)
+                {
+                    conn.send_response("The resource '" + std::string(target) + "' was not found.",
+                                static_cast<int>(http::status::not_found)); 
+                };
+                
+                // Request path must be absolute and not contain "..".
+                if( req.target().empty() ||
+                    req.target()[0] != '/' ||
+                    req.target().find("..") != beast::string_view::npos)
+                    return bad_request("Illegal request-target", *this);
+
+                try {
+                    if(!derived().allow_host(req))
+                        return;
+
+                    if( !plugin_state_->access_control_allow_origin.empty()) {
+                        res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
+                    }
+                    if( !plugin_state_->access_control_allow_headers.empty()) {
+                        res.set( "Access-Control-Allow-Headers", plugin_state_->access_control_allow_headers );
+                    }
+                    if( !plugin_state_->access_control_max_age.empty()) {
+                        res.set( "Access-Control-Max-Age", plugin_state_->access_control_max_age );
+                    }
+                    if( plugin_state_->access_control_allow_credentials ) {
+                        res.set( "Access-Control-Allow-Credentials", "true" );
+                    }
+
+                    // Respond to options request
+                    if(req.method() == http::verb::options)
+                    {
+                        send_response("", static_cast<int>(http::status::ok));
+                        return;
+                    }
+
+                    // verfiy bytes in flight/requests in flight
+                    if( !verify_max_bytes_in_flight() ) return;
+
+                    std::string resource = std::string(req.target());
+                    // look for the URL handler to handle this reosouce
+                    auto handler_itr = plugin_state_->url_handlers.find( resource );
+                    if( handler_itr != plugin_state_->url_handlers.end()) {
+                        std::string body = req.body();
+                        handler_itr->second( derived().shared_from_this(), 
+                                            std::move( resource ), 
+                                            std::move( body ), 
+                                            make_http_response_handler(*ioc_, *plugin_state_, derived().shared_from_this()) );
+                    } else {
+                        fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
+                        not_found(resource, *this);                    
+                    }
+                } catch( ... ) {
+                    handle_exception();
+                }           
+            }
+
+            void report_429_error(const std::string & what) {                
+                send_response(std::string(what), 
+                            static_cast<int>(http::status::too_many_requests));                
+            }
+
+        public:
+            // public due to implementation of allow_host() in beast_http_session
+            std::shared_ptr<http_plugin_state> plugin_state_;
+
+        public:
+            virtual bool verify_max_bytes_in_flight() override {
+                auto bytes_in_flight_size = plugin_state_->bytes_in_flight.load();
+                if( bytes_in_flight_size > plugin_state_->max_bytes_in_flight ) {
+                    fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
+                    string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
+                    report_429_error(what);
+                    return false;
+                }
+                return true;
+            }
+
+            virtual bool verify_max_requests_in_flight() override {
+                if (plugin_state_->max_requests_in_flight < 0)
+                    return true;
+
+                auto requests_in_flight_num = plugin_state_->requests_in_flight.load();
+                if( requests_in_flight_num > plugin_state_->max_requests_in_flight ) {
+                    fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
+                    string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
+                    report_429_error(what);
+                    return false;
+                }
+                return true;
+            }           
 
             // Access the derived class, this is part of
             // the Curiously Recurring Template Pattern idiom.
@@ -131,13 +252,18 @@ using local_stream = beast::basic_stream<
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
-                : beast_http_session_base(plugin_state, ioc)
+                : ioc_(ioc)
+                , plugin_state_(plugin_state)
             {  
+                plugin_state_->requests_in_flight += 1;
+                req_parser_.body_limit(plugin_state_->max_body_size);
+
                 session_begin_ = steady_clock::now();
                 read_time_us_ = handle_time_us_ = write_time_us_ = 0;
             }
 
             virtual ~beast_http_session() {
+                plugin_state_->requests_in_flight -= 1;
 #if PRINT_PERF_METRICS                
                 auto session_time = steady_clock::now() - session_begin_;
                 auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
@@ -337,11 +463,9 @@ using local_stream = beast::basic_stream<
                 // At this point the connection is closed gracefully
             }
 
-            virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
-                return shared_from_this();
-            }
+            bool is_secure() { return false; };
 
-            virtual bool allow_host(const http::request<http::string_body>& req) override { 
+            bool allow_host(const http::request<http::string_body>& req) { 
                 return eosio::allow_host(req, *this);
             }
 
@@ -415,13 +539,9 @@ using local_stream = beast::basic_stream<
                 // At this point the connection is closed gracefully
             }
 
-            virtual bool is_secure() override { return true; }
+            bool is_secure() { return true; }
 
-            virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
-                return shared_from_this();
-            }
-
-            virtual bool allow_host(const http::request<http::string_body>& req) override { 
+            bool allow_host(const http::request<http::string_body>& req) { 
                 return eosio::allow_host(req, *this);
             }
 
@@ -454,7 +574,7 @@ using local_stream = beast::basic_stream<
 
             virtual ~unix_socket_session() = default;
 
-            virtual bool allow_host(const http::request<http::string_body>& req) override { 
+            bool allow_host(const http::request<http::string_body>& req) { 
                 // TODO allow host make sense here ? 
                 return true;
             }
@@ -467,7 +587,7 @@ using local_stream = beast::basic_stream<
                 // At this point the connection is closed gracefully
             }
 
-            bool is_secure() override { return false; };
+            bool is_secure() { return false; };
 
             void run() {
                 // catch any loose exceptions so that nodeos will return zero exit code
@@ -477,15 +597,9 @@ using local_stream = beast::basic_stream<
             stream_protocol::socket& stream() { return socket_; }
             stream_protocol::socket& socket() { return socket_; } 
             
-            virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
-                return shared_from_this();
-            }
-
             constexpr auto name() {
                 return "unix_socket_session";
             }
     }; // end class unix_socket_session
 
 } // end namespace
-
-

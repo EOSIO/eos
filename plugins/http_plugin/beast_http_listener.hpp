@@ -5,8 +5,6 @@
 #include <type_traits>
 #include <sstream>
 
-extern fc::logger logger;
-
 namespace eosio {
     // Accepts incoming connections and launches the sessions
     // session_type should be a subclass of beast_http_session
