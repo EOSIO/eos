@@ -319,11 +319,11 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId, delayedRetry=True):
+    def getBlockIdByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=5):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
-        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
+        trans=self.getTransaction(transId, exitOnError=exitOnError, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""
@@ -348,7 +348,8 @@ class Node(object):
             raise
 
         if Utils.Debug: Utils.Print("Reference block num %d, Head block num: %d" % (refBlockNum, headBlockNum))
-        for blockNum in range(refBlockNum, headBlockNum+1):
+        for blockNum in range(refBlockNum, headBlockNum+blocksAhead):
+            self.waitForBlock(blockNum)
             if self.isTransInBlock(str(transId), blockNum):
                 if Utils.Debug: Utils.Print("Found transaction %s in block %d" % (transId, blockNum))
                 return blockNum
@@ -592,6 +593,8 @@ class Node(object):
         expirationStr = ""
         if expiration is not None:
             expirationStr = "--expiration %d " % (expiration)
+        else:
+            expirationStr = "--expiration 120" # 2 minutes
         cmd="%s %s %s -v transfer -j %s %s" % (
             Utils.EosClientPath, amqpAddrStr, self.eosClientArgs(), dontSendStr, expirationStr)
         cmdArr=cmd.split()
