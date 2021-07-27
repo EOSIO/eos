@@ -11,7 +11,7 @@ namespace eosio {
     using std::shared_ptr;
 
     // Handles an HTTP server connection.    
-    class http_session_base : public detail::abstract_conn {
+    class beast_http_session_base : public detail::abstract_conn {
 
         protected:
             // HTTP parser object
@@ -115,7 +115,7 @@ namespace eosio {
             std::shared_ptr<http_plugin_state> plugin_state_;
 
         public:
-            http_session_base(std::shared_ptr<http_plugin_state> plugin_state,
+            beast_http_session_base(std::shared_ptr<http_plugin_state> plugin_state,
                          asio::io_context* ioc) 
                 : ioc_(ioc)
                 , plugin_state_(plugin_state)
@@ -124,7 +124,7 @@ namespace eosio {
                 req_parser_.body_limit(plugin_state_->max_body_size);
             }
 
-            virtual ~http_session_base() {
+            virtual ~beast_http_session_base() {
                 plugin_state_->requests_in_flight -= 1;
             }
 

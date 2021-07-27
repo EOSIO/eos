@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "http_session_base.hpp"
+#include "beast_http_session_base.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -106,7 +106,7 @@ using local_stream = beast::basic_stream<
     // This uses the Curiously Recurring Template Pattern so that
     // the same code works with both SSL streams and regular sockets.
     template<class Derived> 
-    class beast_http_session : public http_session_base
+    class beast_http_session : public beast_http_session_base
     {
         protected:
             beast::flat_buffer buffer_;
@@ -131,7 +131,7 @@ using local_stream = beast::basic_stream<
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
-                : http_session_base(plugin_state, ioc)
+                : beast_http_session_base(plugin_state, ioc)
             {  
                 session_begin_ = steady_clock::now();
                 read_time_us_ = handle_time_us_ = write_time_us_ = 0;
@@ -266,6 +266,25 @@ using local_stream = beast::basic_stream<
                 auto bytes_written = http::write(derived().stream(), res_, ec);
                 on_write(ec, bytes_written, close);
             }
+
+            void run_handle_exception() {
+                auto name = derived().name();
+
+                if(!verify_max_requests_in_flight())
+                    return derived().do_eof();
+
+                try {
+                    derived().run();
+                } catch (fc::exception& e) {
+                    fc_dlog( logger, "fc::exception thrown while invoking ${n}::run()", ("n", name));
+                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
+                } catch (std::exception& e) {
+                    fc_elog( logger, "STD exception thrown while invoking ${n}::run()", ("n", name));
+                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
+                } catch (...) {
+                    fc_elog( logger, "Unknown exception thrown while invoking ${n}::run()", ("n", name));
+                }
+            }
     }; // end class beast_http_session
 
     // Handles a plain HTTP connection
@@ -295,21 +314,7 @@ using local_stream = beast::basic_stream<
             // Start the asynchronous operation
             void run()
             {
-                if(!verify_max_requests_in_flight())
-                    return do_eof();
-
-                // catch any loose exceptions so that nodeos will return zero exit code
-                try {
-                    do_read();
-                } catch (fc::exception& e) {
-                    fc_dlog( logger, "fc::exception thrown while invoking unix_socket_session::run()");
-                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
-                } catch (std::exception& e) {
-                    fc_elog( logger, "STD exception thrown while invoking beast_http_session::run()");
-                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
-                } catch (...) {
-                    fc_elog( logger, "Unknown exception thrown while invoking beast_http_session::run()");
-                }
+                do_read();
             }
 
             void do_eof()
@@ -327,6 +332,10 @@ using local_stream = beast::basic_stream<
 
             virtual bool allow_host(const http::request<http::string_body>& req) override { 
                 return eosio::allow_host(req, *this);
+            }
+
+            constexpr auto name() {
+                return "plain_session";
             }
     }; // end class plain_session
 
@@ -363,22 +372,8 @@ using local_stream = beast::basic_stream<
             {
                 beast::error_code ec;
 
-                if(!verify_max_requests_in_flight())
-                    return do_eof();
-                
-                // catch any loose exceptions so that nodeos will return zero exit code
-                try {
-                    stream_.handshake(ssl::stream_base::server, ec);
-                    on_handshake(ec);
-                } catch (fc::exception& e) {
-                    fc_dlog( logger, "fc::exception thrown while invoking ssl_session::run()");
-                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
-                } catch (std::exception& e) {
-                    fc_elog( logger, "STD exception thrown while invoking ssl_session::run()");
-                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
-                } catch (...) {
-                    fc_elog( logger, "Unknown exception thrown while invoking ssl_session::run()");
-                }
+                stream_.handshake(ssl::stream_base::server, ec);
+                on_handshake(ec);
             }
 
             void on_handshake(beast::error_code ec)
@@ -415,6 +410,10 @@ using local_stream = beast::basic_stream<
             virtual bool allow_host(const http::request<http::string_body>& req) override { 
                 return eosio::allow_host(req, *this);
             }
+
+            constexpr auto name() {
+                return "ssl_session";
+            }
     }; // end class ssl_session
 
 
@@ -428,7 +427,6 @@ using local_stream = beast::basic_stream<
             stream_protocol::socket socket_;
             asio::io_context::strand strand_;
 
-
         public:
             unix_socket_session(stream_protocol::socket sock, 
                             std::shared_ptr<ssl::context> ctx,
@@ -436,6 +434,7 @@ using local_stream = beast::basic_stream<
                             asio::io_context* ioc) 
             : beast_http_session(plugin_state, ioc)
             , socket_(std::move(sock)) 
+            // TODO ugly pointer cast to get around silly type system, should probably be fixed
             , strand_(*((boost::asio::io_context*)(&socket_.get_executor().context())))
             {  }
 
@@ -457,21 +456,8 @@ using local_stream = beast::basic_stream<
             bool is_secure() override { return false; };
 
             void run() {
-                if(!verify_max_requests_in_flight())
-                    return do_eof();
-
                 // catch any loose exceptions so that nodeos will return zero exit code
-                try {
-                    do_read();
-                } catch (fc::exception& e) {
-                    fc_dlog( logger, "fc::exception thrown while invoking unix_socket_session::run()");
-                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
-                } catch (std::exception& e) {
-                    fc_elog( logger, "STD exception thrown while invoking unix_socket_session::run()");
-                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
-                } catch (...) {
-                    fc_elog( logger, "Unknown exception thrown while invoking unix_socket_session::run()");
-                }
+                do_read();
             }
 
             stream_protocol::socket& stream() { return socket_; }
@@ -479,6 +465,10 @@ using local_stream = beast::basic_stream<
             
             virtual shared_ptr<detail::abstract_conn> get_shared_from_this() override {
                 return shared_from_this();
+            }
+
+            constexpr auto name() {
+                return "unix_socket_session";
             }
     }; // end class unix_socket_session
 

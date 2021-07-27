@@ -124,7 +124,7 @@ namespace eosio {
                                 std::move(self->socket_),
                                 self->ctx_,
                                 self->plugin_state_,
-                                self->ioc_)->run();        
+                                self->ioc_)->run_handle_exception();        
                         }
 
                         // Accept another connection
