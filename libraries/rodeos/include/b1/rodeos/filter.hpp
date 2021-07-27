@@ -8,6 +8,7 @@
 #include <b1/rodeos/callbacks/filter.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
+#include <b1/rodeos/callbacks/query.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #   include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
@@ -45,7 +46,7 @@ struct eosvmoc_tier {
 };
 #endif
 
-struct filter_state : b1::rodeos::data_state<backend_t>, b1::rodeos::console_state, b1::rodeos::filter_callback_state {
+struct filter_state : b1::rodeos::data_state<backend_t>, b1::rodeos::console_state, b1::rodeos::filter_callback_state, b1::rodeos::query_state {
    eosio::vm::wasm_allocator wa = {};
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    std::optional<eosvmoc_tier> eosvmoc_tierup;
@@ -64,7 +65,8 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
                    b1::rodeos::filter_callbacks<callbacks>,
                    b1::rodeos::memory_callbacks<callbacks>,
                    b1::rodeos::unimplemented_callbacks<callbacks>,
-                   b1::rodeos::unimplemented_filter_callbacks<callbacks> {
+                   b1::rodeos::query_callbacks<callbacks> {
+//                   b1::rodeos::unimplemented_filter_callbacks<callbacks> {
    filter::filter_state&      filter_state;
    b1::rodeos::chaindb_state& chaindb_state;
    b1::rodeos::db_view_state& db_view_state;
@@ -90,7 +92,8 @@ inline void register_callbacks() {
    b1::rodeos::filter_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
-   b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::query_callbacks<callbacks>::register_callbacks<rhf_t>();
+//   b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 
 } // namespace b1::rodeos::filter
