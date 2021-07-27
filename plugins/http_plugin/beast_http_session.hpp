@@ -274,51 +274,20 @@ using local_stream = beast::basic_stream<
 #endif
             }    
 
-            bool check_timeout() {
-                auto t = steady_clock::now();
-                auto dt = t - session_begin_;
-                auto t_elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(dt).count();        
-                return (t_elapsed_us > plugin_state_->max_response_time.count());
-            }
-
-            // wait for data to be available on the socket
-            // if reached timeout, close collection  
-            // return number of bytes available on socket
-            std::size_t wait_for_socket_data() {
-                // wait for data to become available on the socket if we don't do this
-                // clients can hang the session by not sending any data
-                boost::asio::socket_base::bytes_readable command(true);
-                auto &socket = derived().socket();
-                std::size_t bytes_readable = 0; 
-
-                bool timeout = false;
-                while (bytes_readable < 1 && !timeout) {
-                    socket.io_control(command);
-                    bytes_readable = command.get();
-                    timeout = check_timeout();
-                }
-
-                if(timeout) {
-                    fc_elog(logger, "connection timeout - no data sent. closing");
-                    derived().do_eof();
-                    return 0;
-                }
-
-                return bytes_readable;
-            }
-
             void do_read()
             {
-                beast::error_code ec;
-
                 read_begin_ = steady_clock::now();
 
-                // wait for data to become available on socket, checking timeout
-                if(wait_for_socket_data() < 1) return;
-                
-                // just use sync reads for now - P. Raphael
-                auto bytes_read = http::read(derived().stream(), buffer_, req_parser_, ec);
-                on_read(ec, bytes_read);                
+                // Read a request
+                auto self = derived().shared_from_this();
+                http::async_read(
+                    derived().stream(),
+                    buffer_,
+                    req_parser_,
+                    [self](beast::error_code ec, std::size_t bytes_transferred) { 
+                        self->on_read(ec, bytes_transferred);
+                    }
+                );                
             }
 
             void on_read(beast::error_code ec,
@@ -334,11 +303,6 @@ using local_stream = beast::basic_stream<
                     return fail(ec, "read");
 
                 auto req = req_parser_.get();
-
-                if (check_timeout()) {
-                    fc_elog(logger, "connection timeout - could not read data within time period. closing");
-                    return derived().do_eof();
-                }
 
                 handle_begin_ = steady_clock::now();
                 auto dt = handle_begin_ - read_begin_;
@@ -393,15 +357,16 @@ using local_stream = beast::basic_stream<
 
                 res_.prepare_payload();
 
-                if (check_timeout()) {
-                    fc_elog(logger, "connection timeout - could not process request within time period. closing");
-                    return derived().do_eof();
-                }
-
-                // just use sync writes for now - P. Raphael
-                beast::error_code ec;
-                auto bytes_written = http::write(derived().stream(), res_, ec);
-                on_write(ec, bytes_written, close);
+                // Write the response
+                auto self = derived().shared_from_this();
+                http::async_write(
+                    derived().stream(),
+                    res_,
+                    [self, close](beast::error_code ec, std::size_t bytes_transferred) 
+                    {
+                        self->on_write(ec, bytes_transferred, close);
+                    }
+                );
             }
 
             void run_handle_exception() {
@@ -409,6 +374,10 @@ using local_stream = beast::basic_stream<
 
                 if(!verify_max_requests_in_flight())
                     return derived().do_eof();
+
+                // Set the timeout for the entire session (including handling)
+                auto& ll = beast::get_lowest_layer(derived().stream());
+                ll.expires_after(plugin_state_->max_response_time);
 
                 try {
                     derived().run();
@@ -505,20 +474,23 @@ using local_stream = beast::basic_stream<
             // Start the asynchronous operation
             void run()
             {
-                beast::error_code ec;
-
-                // wait for data to become available on socket, checking timeout
-                if(wait_for_socket_data() < 1) return;
-
-                stream_.handshake(ssl::stream_base::server, ec);
-                on_handshake(ec);
+                auto self = shared_from_this();
+                self->stream_.async_handshake(
+                    ssl::stream_base::server,
+                    self->buffer_.data(),
+                    [self](beast::error_code ec, std::size_t bytes_used) {
+                        self->on_handshake(ec, bytes_used);
+                    }
+                );
             }
 
-            void on_handshake(beast::error_code ec)
+            void on_handshake(beast::error_code ec, std::size_t bytes_used)
             {
                 
                 if(ec)
                     return fail(ec, "handshake");
+
+                buffer_.consume(bytes_used);
 
                 do_read();
             }
