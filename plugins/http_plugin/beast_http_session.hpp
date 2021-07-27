@@ -155,16 +155,16 @@ using local_stream = beast::basic_stream<
                 return (t_elapsed_us > plugin_state_->max_response_time.count());
             }
 
-            void do_read()
-            {
-                beast::error_code ec;
-
+            // wait for data to be available on the socket
+            // if reached timeout, close collection  
+            // return number of bytes available on socket
+            std::size_t wait_for_socket_data() {
                 // wait for data to become available on the socket if we don't do this
                 // clients can hang the session by not sending any data
                 boost::asio::socket_base::bytes_readable command(true);
                 auto &socket = derived().socket();
                 std::size_t bytes_readable = 0; 
-                
+
                 bool timeout = false;
                 while (bytes_readable < 1 && !timeout) {
                     socket.io_control(command);
@@ -174,11 +174,22 @@ using local_stream = beast::basic_stream<
 
                 if(timeout) {
                     fc_elog(logger, "connection timeout - no data sent. closing");
-                    return derived().do_eof();
+                    derived().do_eof();
+                    return 0;
                 }
+
+                return bytes_readable;
+            }
+
+            void do_read()
+            {
+                beast::error_code ec;
 
                 read_begin_ = steady_clock::now();
 
+                // wait for data to become available on socket, checking timeout
+                if(wait_for_socket_data() < 1) return;
+                
                 // just use sync reads for now - P. Raphael
                 auto bytes_read = http::read(derived().stream(), buffer_, req_parser_, ec);
                 on_read(ec, bytes_read);                
@@ -371,6 +382,9 @@ using local_stream = beast::basic_stream<
             void run()
             {
                 beast::error_code ec;
+
+                // wait for data to become available on socket, checking timeout
+                if(wait_for_socket_data() < 1) return;
 
                 stream_.handshake(ssl::stream_base::server, ec);
                 on_handshake(ec);

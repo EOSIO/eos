@@ -22,9 +22,9 @@ namespace eosio {
             // we have to use pointers here instead of references
             // because we need shared_from_this, whihc requires
             // a default constructor.  However when you use references as member 
-            // varaibles, the default constuctor must be deleted
+            // variables, the default constuctor must be deleted
             // in the case of io_context, we have to use raw pointer because 
-            // it is a stack allocated member variable fo application class
+            // it is a stack allocated member variable in thread_pool
             asio::io_context* ioc_;
             std::shared_ptr<ssl::context> ctx_;
             std::shared_ptr<http_plugin_state> plugin_state_;
