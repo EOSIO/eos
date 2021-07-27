@@ -141,10 +141,10 @@ using local_stream = beast::basic_stream<
 #if PRINT_PERF_METRICS                
                 auto session_time = steady_clock::now() - session_begin_;
                 auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
-                fc_elog(logger, "session time    ${t}", ("t", session_time_us));                            
-                fc_elog(logger, "        read    ${t}", ("t", read_time_us_));
-                fc_elog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
-                fc_elog(logger, "        write   ${t}", ("t", write_time_us_));                            
+                fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
+                fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
 #endif
             }    
 
@@ -295,6 +295,9 @@ using local_stream = beast::basic_stream<
             // Start the asynchronous operation
             void run()
             {
+                if(!verify_max_requests_in_flight())
+                    return do_eof();
+
                 // catch any loose exceptions so that nodeos will return zero exit code
                 try {
                     do_read();
@@ -359,8 +362,23 @@ using local_stream = beast::basic_stream<
             void run()
             {
                 beast::error_code ec;
-                stream_.handshake(ssl::stream_base::server, ec);
-                on_handshake(ec);
+
+                if(!verify_max_requests_in_flight())
+                    return do_eof();
+                
+                // catch any loose exceptions so that nodeos will return zero exit code
+                try {
+                    stream_.handshake(ssl::stream_base::server, ec);
+                    on_handshake(ec);
+                } catch (fc::exception& e) {
+                    fc_dlog( logger, "fc::exception thrown while invoking ssl_session::run()");
+                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
+                } catch (std::exception& e) {
+                    fc_elog( logger, "STD exception thrown while invoking ssl_session::run()");
+                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
+                } catch (...) {
+                    fc_elog( logger, "Unknown exception thrown while invoking ssl_session::run()");
+                }
             }
 
             void on_handshake(beast::error_code ec)
@@ -439,6 +457,9 @@ using local_stream = beast::basic_stream<
             bool is_secure() override { return false; };
 
             void run() {
+                if(!verify_max_requests_in_flight())
+                    return do_eof();
+
                 // catch any loose exceptions so that nodeos will return zero exit code
                 try {
                     do_read();

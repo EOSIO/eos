@@ -169,13 +169,9 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          std::optional<asio::local::stream_protocol::endpoint> unix_endpoint;
          websocket_local_server_type unix_server;
 
-         // tcp::acceptor acceptor_;
-            // tcp::endpoint listen_ep_;
-            // tcp_socket_t socket_;
          shared_ptr<beast_http_listener<plain_session, tcp, tcp_socket_t > >  beast_server;
          shared_ptr<beast_http_listener<ssl_session, tcp, tcp_socket_t > >  beast_https_server;
          shared_ptr<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket > > beast_unix_server;
-
 
          shared_ptr<http_plugin_state> plugin_state = std::make_shared<http_plugin_state>();
         
@@ -330,13 +326,13 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
 
             ~abstract_conn_impl() override {
                 _impl->plugin_state->requests_in_flight -= 1;
-#ifdef PRINT_PERF_METRICS                
+#if PRINT_PERF_METRICS                
                 auto session_time = steady_clock::now() - session_begin_;
                 auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
-                fc_elog(logger, "session time    ${t}", ("t", session_time_us));                            
-                fc_elog(logger, "        read    ${t}", ("t", read_time_us_));
-                fc_elog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
-                fc_elog(logger, "        write   ${t}", ("t", write_time_us_));                            
+                fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
+                fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
 #endif
             }
 

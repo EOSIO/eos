@@ -85,7 +85,7 @@ namespace eosio {
                     }
 
                     // verfiy bytes in flight/requests in flight
-                    if( !verify_max_bytes_in_flight() || !verify_max_requests_in_flight() ) return;
+                    if( !verify_max_bytes_in_flight() ) return;
 
                     std::string resource = std::string(req.target());
                     // look for the URL handler to handle this reosouce
