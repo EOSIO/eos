@@ -375,10 +375,6 @@ using local_stream = beast::basic_stream<
                 if(!verify_max_requests_in_flight())
                     return derived().do_eof();
 
-                // Set the timeout for the entire session (including handling)
-                auto& ll = beast::get_lowest_layer(derived().stream());
-                ll.expires_after(plugin_state_->max_response_time);
-
                 try {
                     derived().run();
                 } catch (fc::exception& e) {
