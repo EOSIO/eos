@@ -7,6 +7,7 @@
 #include <b1/rodeos/callbacks/crypto.hpp>
 #include <b1/rodeos/callbacks/filter.hpp>
 #include <b1/rodeos/callbacks/memory.hpp>
+#include <b1/rodeos/callbacks/system.hpp>
 #include <b1/rodeos/callbacks/unimplemented.hpp>
 #include <b1/rodeos/callbacks/unimplemented_filter.hpp>
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
@@ -64,7 +65,7 @@ struct callbacks : b1::rodeos::chaindb_callbacks<callbacks>,
                    b1::rodeos::filter_callbacks<callbacks>,
                    b1::rodeos::memory_callbacks<callbacks>,
                    b1::rodeos::unimplemented_callbacks<callbacks>,
-                   b1::rodeos::unimplemented_filter_callbacks<callbacks> {
+                   b1::rodeos::system_callbacks<callbacks> {
    filter::filter_state&      filter_state;
    b1::rodeos::chaindb_state& chaindb_state;
    b1::rodeos::db_view_state& db_view_state;
@@ -89,8 +90,8 @@ inline void register_callbacks() {
    b1::rodeos::db_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::filter_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::memory_callbacks<callbacks>::register_callbacks<rhf_t>();
+   b1::rodeos::system_callbacks<callbacks>::register_callbacks<rhf_t>();
    b1::rodeos::unimplemented_callbacks<callbacks>::register_callbacks<rhf_t>();
-   b1::rodeos::unimplemented_filter_callbacks<callbacks>::register_callbacks<rhf_t>();
 }
 
 } // namespace b1::rodeos::filter
