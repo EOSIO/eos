@@ -22,7 +22,4 @@ llvm-devel,rpm -qa
 llvm-static,rpm -qa
 epel-release,rpm -qa
 jq,rpm -qa
-boost169-devel,rpm -qa
-libpq-devel,rpm -qa
-ncurses-devel,rpm -qa
-zlib-devel,rpm -qa
+postgresql-devel,rpm -qa
