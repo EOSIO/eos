@@ -21,11 +21,11 @@ namespace eosio {
     // Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
     // this is suggested fix OK'd Beast author (V. Falco) to handle both versions gracefully
     // see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
-#if BOOST_VERSION < 107000                
+//#if BOOST_VERSION < 107000                
     typedef tcp::socket tcp_socket_t;
-#else
-    typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_t;
-#endif
+//#else
+    //typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_t;
+//#endif
 
     using boost::asio::local::stream_protocol;
     
@@ -395,7 +395,6 @@ using local_stream = beast::basic_stream<
         , public std::enable_shared_from_this<plain_session>
     {
         tcp_socket_t socket_;
-        asio::io_context::strand strand_;
 
         public:      
             // Create the session
@@ -407,7 +406,6 @@ using local_stream = beast::basic_stream<
                 )
                 : beast_http_session<plain_session>(plugin_state, ioc)
                 , socket_(std::move(socket))
-                , strand_(socket_.get_executor().context())
             {}
 
             tcp_socket_t& stream() { return socket_; }
@@ -444,7 +442,6 @@ using local_stream = beast::basic_stream<
         : public beast_http_session<ssl_session>
         , public std::enable_shared_from_this<ssl_session>
     {   
-        asio::io_context::strand strand_;
         ssl::stream<tcp_socket_t> stream_;
 
         public:
@@ -456,7 +453,6 @@ using local_stream = beast::basic_stream<
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
                 : beast_http_session<ssl_session>(plugin_state, ioc)
-                , strand_(socket.get_executor().context())
                 , stream_(std::move(socket), *ctx)
             { }
 
@@ -527,7 +523,6 @@ using local_stream = beast::basic_stream<
         protected:
             // The socket used to communicate with the client.
             stream_protocol::socket socket_;
-            asio::io_context::strand strand_;
 
         public:
             unix_socket_session(stream_protocol::socket sock, 
@@ -536,8 +531,6 @@ using local_stream = beast::basic_stream<
                             asio::io_context* ioc) 
             : beast_http_session(plugin_state, ioc)
             , socket_(std::move(sock)) 
-            // TODO ugly pointer cast to get around silly type system, should probably be fixed
-            , strand_(*((boost::asio::io_context*)(&socket_.get_executor().context())))
             {  }
 
             virtual ~unix_socket_session() = default;
