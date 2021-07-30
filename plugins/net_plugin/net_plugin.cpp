@@ -3239,8 +3239,6 @@ namespace eosio {
 
       auto handle_message_span  = fc_create_span_with_id("handle_message", (uint64_t) rand(), id);
       fc_add_tag(handle_message_span, "queue_size", app().get_priority_queue().size());
-      fc_trace_log(handle_message_span, "handle_message block_num=${block_num}", ("block_num", ptr->block_num()));
-
 
       app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(),
                                     handle_message_span = std::move(handle_message_span)]() mutable {
