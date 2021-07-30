@@ -109,6 +109,7 @@ macro(add_eosio_test_executable test_name)
        ${Boost_IOSTREAMS_LIBRARY}
        "-lz" # Needed by Boost iostreams
        ${Boost_DATE_TIME_LIBRARY}
+       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 
        ${LLVM_LIBS}
 
