@@ -258,6 +258,10 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
+      uint32_t get_last_block_num() const {
+          return _last_block_num;
+      }
+
       void start_maintenance_thread( log_handler log ) {
          _slice_directory.start_maintenance_thread( std::move(log) );
       }
@@ -352,6 +356,7 @@ namespace eosio::trace_api {
       void validate_existing_index_slice_file(fc::cfile& index, open_state state);
 
       slice_directory _slice_directory;
+      uint32_t _last_block_num;
    };
 
 }

@@ -285,6 +285,88 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             http_plugin::handle_exception("trace_api", "get_block", body, cb);
          }
       });
+
+      http.add_async_handler("/v1/trace_api/get_transaction",
+            [wthis=weak_from_this(), max_response_time, this](std::string, std::string body, url_response_callback cb)
+      {
+         auto that = wthis.lock();
+         if (!that) {
+            return;
+         }
+
+         auto trx_id = ([&body]() -> std::optional<string> {
+            if (body.empty()) {
+               return {};
+            }
+            try {
+               auto input = fc::json::from_string(body);
+               auto id = input.get_object()["id"].as_string();
+               return id;
+            } catch (...) {
+               return {};
+            }
+         })();
+
+         if (!trx_id) {
+            error_results results{400, "Bad or missing id"};
+            cb( 400, fc::variant( results ));
+            return;
+         }
+
+         transaction_id_type input_id;
+         auto input_id_length = trx_id->size();
+         try {
+             FC_ASSERT( input_id_length <= 64, "hex string is too long to represent an actual transaction id" );
+             FC_ASSERT( input_id_length >= 8,  "hex string representing transaction id should be at least 8 characters long to avoid excessive collisions" );
+             input_id = transaction_id_type(*trx_id);
+         } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", *trx_id))
+
+
+         auto txn_id_matched = [&input_id, input_id_size = input_id_length/2, no_half_byte_at_end = (input_id_length % 2 == 0)]
+                 ( const transaction_id_type &id ) -> bool // hex prefix comparison
+         {
+            bool whole_byte_prefix_matches = memcmp( input_id.data(), id.data(), input_id_size ) == 0;
+            if( !whole_byte_prefix_matches || no_half_byte_at_end )
+               return whole_byte_prefix_matches;
+
+               // check if half byte at end of specified part of input_id matches
+               return (*(input_id.data() + input_id_size) & 0xF0) == (*(id.data() + input_id_size) & 0xF0);
+         };
+
+         bool found = false;
+         try {
+            uint32_t num_blocks = common->store->get_last_block_num();
+            for (uint32_t block_number = 2; block_number < num_blocks; ++block_number) {
+               const auto deadline = that->calc_deadline( max_response_time );
+               auto resp = that->req_handler->get_block_trace(block_number, [deadline]() { FC_CHECK_DEADLINE(deadline); });
+               if (resp.is_null()) continue;
+               auto& b_mvo = resp.get_object();
+               if (b_mvo.contains("transactions")) {
+                  auto& transactions = b_mvo["transactions"];
+                  for (uint32_t i = 0; i < transactions.size(); ++i) {
+                     if (transactions[i].is_null()) continue;
+                     auto& t_mvo = transactions[i].get_object();
+                     if (t_mvo.contains("id")) {
+                        string t_id = t_mvo["id"].as_string();
+                        if (txn_id_matched(transaction_id_type(t_id))) {
+                           cb( 200, std::move(t_mvo) );
+                           found = true;
+                           break; // terminate the inner loop
+                        }
+                     }
+                  }
+               }
+               if (found) break; // terminate the outer loop
+            }
+
+            if (!found) {
+               error_results results{404, "Transaction trace missing"};
+               cb( 404, fc::variant( results ));
+            }
+         } catch (...) {
+            http_plugin::handle_exception("trace_api", "get_transaction", body, cb);
+         }
+      });
    }
 
    void plugin_shutdown() {

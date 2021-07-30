@@ -45,6 +45,8 @@ namespace eosio::trace_api {
 
       auto be = metadata_log_entry { block_entry_v0 { .id = bt.id, .number = bt.number, .offset = offset }};
       append_store(be, index);
+
+       _last_block_num = bt.number;
    }
 
    template void store_provider::append<block_trace_v1>(const block_trace_v1& bt);
