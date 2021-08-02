@@ -3305,6 +3305,10 @@ namespace eosio {
 
       auto handle_message_span  = fc_create_span_with_id("handle_message", (uint64_t) rand(), id);
       fc_add_tag(handle_message_span, "queue_size", app().get_priority_queue().size());
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4d8498a8f (address PR comments)
 
       app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(),
                                     handle_message_span = std::move(handle_message_span)]() mutable {
@@ -3727,7 +3731,7 @@ namespace eosio {
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
-         ( "telemtry-span-root", bpo::bool_switch(), "generate zipkin root span for blocks received from net-plugin")
+         ( "telemtry-span-root", bpo::value<bool>()->default_value(false), "generate zipkin root span for blocks received from net-plugin")
         ;
    }
 
