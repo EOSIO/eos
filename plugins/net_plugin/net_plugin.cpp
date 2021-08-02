@@ -3486,7 +3486,6 @@ namespace eosio {
 
       auto handle_message_span  = fc_create_span_with_id("handle_message", (uint64_t) rand(), id);
       fc_add_tag(handle_message_span, "queue_size", app().get_priority_queue().size());
-      fc_trace_log(handle_message_span, "handle_message block_num=${block_num}", ("block_num", ptr->block_num()));
 
 
       app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(),
@@ -3977,7 +3976,7 @@ namespace eosio {
          ( "p2p-tls-security-group-ca-file", bpo::value<bfs::path>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
          ( "p2p-tls-private-key-file", bpo::value<bfs::path>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
          ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
-         ( "telemtry-span-root", bpo::bool_switch(), "generate zipkin root span for blocks received from net-plugin")
+         ( "telemtry-span-root", bpo::value<bool>()->default_value(false), "generate zipkin root span for blocks received from net-plugin")
         ;
    }
 
