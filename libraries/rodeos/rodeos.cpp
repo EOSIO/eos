@@ -290,7 +290,7 @@ filter::filter_state::~filter_state() {
 
 std::once_flag registered_filter_callbacks;
 
-rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename, bool profile
+rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                              ,
                              const boost::filesystem::path&       eosvmoc_path,
@@ -315,9 +315,6 @@ rodeos_filter::rodeos_filter(eosio::name name, const std::string& wasm_filename,
    backend      = std::make_unique<filter::backend_t>(code, nullptr);
    filter_state = std::make_unique<filter::filter_state>();
    filter::rhf_t::resolve(backend->get_module());
-   if (profile) {
-      prof = std::make_unique<eosio::vm::profile_data>(wasm_filename + ".profile", *backend);
-   }
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
    if (eosvmoc_enable) {
       try {
@@ -370,7 +367,6 @@ void rodeos_filter::process(rodeos_db_snapshot& snapshot, const ship_protocol::g
    backend->set_wasm_allocator(&filter_state->wa);
    backend->initialize(&cb);
    try {
-      eosio::vm::scoped_profile profile_runner(prof.get());
       (*backend)(cb, "env", "apply", uint64_t(0), uint64_t(0), uint64_t(0));
 
       if (!filter_state->console.empty())
