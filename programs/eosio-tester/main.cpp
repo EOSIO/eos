@@ -1059,11 +1059,11 @@ struct callbacks {
       std::memcpy(hash_val, hash.data(), hash.data_size());
    }
 
-   int32_t recover_key( const void* digest_span,
+   int32_t recover_key( span<const char> digest_span,
                         span<const char> sig,
                         void* pub ) {
       fc::sha256 digest;
-      std::memcpy(digest.data(), digest_span, digest.data_size());
+      std::memcpy(digest.data(), digest_span.data(), digest.data_size());
 
       fc::crypto::signature s;
       fc::datastream<const char*> ds( sig.data(), sig.size() );
@@ -1084,7 +1084,6 @@ struct callbacks {
       if (static_cast<unsigned>(s.which()) >= eosio::chain::config::genesis_num_supported_key_types ) {
          // EOS_ASSERT(pub.size() >= 33, eosio::chain::wasm_execution_error,
          //           "destination buffer must at least be able to hold an ECC public key");
-         check_bounds(pub, static_cast<size_t>(33));
 
          auto packed_pubkey = fc::raw::pack(recovered);
          auto copy_size = packed_pubkey.size();
