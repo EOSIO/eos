@@ -17,15 +17,7 @@ extern fc::logger logger;
 namespace eosio { 
 
     using std::chrono::steady_clock;
-    
-    // Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
-    // this is suggested fix OK'd Beast author (V. Falco) to handle both versions gracefully
-    // see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
-//#if BOOST_VERSION < 107000                
     typedef tcp::socket tcp_socket_t;
-//#else
-    //typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_t;
-//#endif
 
     using boost::asio::local::stream_protocol;
     
