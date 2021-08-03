@@ -1059,11 +1059,11 @@ struct callbacks {
       std::memcpy(hash_val, hash.data(), hash.data_size());
    }
 
-   int32_t recover_key( span<const char> digest_span,
+   int32_t recover_key( const void* digest_span,
                         span<const char> sig,
                         void* pub ) {
       fc::sha256 digest;
-      std::memcpy(digest.data(), digest_span.data(), digest_span.size());
+      std::memcpy(digest.data(), digest_span, digest.data_size());
 
       fc::crypto::signature s;
       fc::datastream<const char*> ds( sig.data(), sig.size() );
