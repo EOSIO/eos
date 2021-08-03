@@ -102,6 +102,7 @@ using local_stream = beast::basic_stream<
         protected:
             beast::flat_buffer buffer_;
             beast::error_code ec_;
+            std::string errStr_;
 
             // time points for timeout measurement and perf metrics 
             steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
@@ -331,8 +332,21 @@ using local_stream = beast::basic_stream<
             }           
 
             virtual void handle_exception() override {
-                auto errCodeStr = std::to_string(ec_.value());
-                fc_elog( logger, "beast_websession_exception: error code ${ec}", ("ec", errCodeStr));
+                auto errStr = errStr_;
+                if(errStr.size() < 1) { 
+                    errStr = std::to_string(ec_.value());
+                    fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
+                } else {
+                    fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
+                }
+
+                res_.set(http::field::content_type, "text/plain");
+                res_.keep_alive(false);
+                res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+
+                std::string err = "Internal server error";
+                http::status stat = http::status::internal_server_error;
+                send_response(errStr, static_cast<int>(stat));
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
@@ -371,11 +385,14 @@ using local_stream = beast::basic_stream<
                     derived().run();
                 } catch (fc::exception& e) {
                     fc_dlog( logger, "fc::exception thrown while invoking ${n}::run()", ("n", name));
-                    fc_dlog( logger, "Details: ${e}", ("e", e.to_detail_string()) );
+                    errStr_ = e.to_detail_string();
+                    fc_dlog( logger, "Details: ${e}", ("e", errStr_) );
                 } catch (std::exception& e) {
                     fc_elog( logger, "STD exception thrown while invoking ${n}::run()", ("n", name));
-                    fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
+                    errStr_ = e.what();
+                    fc_dlog( logger, "Exception Details: ${e}", ("e", errStr_) );
                 } catch (...) {
+                    errStr_ = "unknown";
                     fc_elog( logger, "Unknown exception thrown while invoking ${n}::run()", ("n", name));
                 }
             }

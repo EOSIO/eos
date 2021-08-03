@@ -133,7 +133,6 @@ namespace eosio {
         bool verbose_http_errors = false;
 
         url_handlers_type  url_handlers;
-        bool                     use_beast = false;
         bool                     keep_alive = false;
     };
 
