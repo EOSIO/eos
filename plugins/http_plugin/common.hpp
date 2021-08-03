@@ -203,7 +203,7 @@ namespace eosio {
      */
     template<typename T>
     auto make_in_flight(T&& object, http_plugin_state& plugin_state) {
-    return std::make_shared<in_flight<T>>(std::forward<T>(object), plugin_state);
+        return std::make_shared<in_flight<T>>(std::forward<T>(object), plugin_state);
     }
 
     /**
@@ -213,7 +213,6 @@ namespace eosio {
      * @param con - pointer for the connection this response should be sent to
      * @return lambda suitable for url_response_callback
      */
-    template<typename T>
     auto make_http_response_handler( asio::io_context &ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
     return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
          {
@@ -227,37 +226,11 @@ namespace eosio {
                                 [&plugin_state, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
                 try {
                     if( tracked_response->obj().has_value() ) {
-                    std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
-                    auto tracked_json = make_in_flight( std::move( json ), plugin_state );
-                    abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
+                        std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
+                        auto tracked_json = make_in_flight( std::move( json ), plugin_state );
+                        abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
                     } else {
-                    abstract_conn_ptr->send_response( {}, code );
-                    }
-                } catch( ... ) {
-                    abstract_conn_ptr->handle_exception();
-                }
-            });
-        };// end lambda
-    }
-
-    auto make_http_response_handler( asio::io_context &ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
-    return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
-         {
-            auto tracked_response = make_in_flight(std::move(response), plugin_state);
-            if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
-                return;
-            }
-
-            // post  back to an HTTP thread to to allow the response handler to be called from any thread
-            boost::asio::post( ioc, // my->thread_pool->get_executor()
-                                [&plugin_state, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
-                try {
-                    if( tracked_response->obj().has_value() ) {
-                    std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
-                    auto tracked_json = make_in_flight( std::move( json ), plugin_state );
-                    abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
-                    } else {
-                    abstract_conn_ptr->send_response( {}, code );
+                        abstract_conn_ptr->send_response( {}, code );
                     }
                 } catch( ... ) {
                     abstract_conn_ptr->handle_exception();
