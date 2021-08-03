@@ -1985,7 +1985,7 @@ namespace eosio {
       if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
-         return;
+         c->send_handshake();
       }
 
       if( sync_state == in_sync ) {
