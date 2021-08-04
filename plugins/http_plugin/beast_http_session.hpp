@@ -286,115 +286,112 @@ using local_stream = beast::basic_stream<
             void on_read(beast::error_code ec,
                          std::size_t bytes_transferred)
             {
-                boost::ignore_unused(bytes_transferred);
+                // wrap around try/catch to prevent non-zero exit-code problem
+                try {
+                    boost::ignore_unused(bytes_transferred);
 
-                // This means they closed the connection
-                if(ec == http::error::end_of_stream)
-                    return derived().do_eof();
+                    // This means they closed the connection
+                    if(ec == http::error::end_of_stream)
+                        return derived().do_eof();
 
-                if(ec && ec != asio::ssl::error::stream_truncated)
-                    return fail(ec, "read");
+                    if(ec && ec != asio::ssl::error::stream_truncated)
+                        return fail(ec, "read");
 
-                auto req = req_parser_.get();
+                    auto req = req_parser_.get();
 
-                handle_begin_ = steady_clock::now();
-                auto dt = handle_begin_ - read_begin_;
-                read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                    handle_begin_ = steady_clock::now();
+                    auto dt = handle_begin_ - read_begin_;
+                    read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
 
-                // Send the response
-                handle_request(std::move(req));
+                    // Send the response
+                    handle_request(std::move(req));
+                } catch (...) { }
             }
 
             void on_write(beast::error_code ec,
                           std::size_t bytes_transferred, 
                           bool close)
             {
-                boost::ignore_unused(bytes_transferred);
+                // wrap around try/catch to prevent non-zero exit-code problem
+                try {
+                    boost::ignore_unused(bytes_transferred);
 
-                if(ec) {
-                    ec_ = ec;
-                    handle_exception();
-                    return fail(ec, "write");
-                }
+                    if(ec) {
+                        ec_ = ec;
+                        handle_exception();
+                        return fail(ec, "write");
+                    }
 
-                auto dt = steady_clock::now() - write_begin_;
-                write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                    auto dt = steady_clock::now() - write_begin_;
+                    write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
 
-                if(close)
-                {
-                    // This means we should close the connection, usually because
-                    // the response indicated the "Connection: close" semantic.
-                    return derived().do_eof();
-                }
+                    if(close)
+                    {
+                        // This means we should close the connection, usually because
+                        // the response indicated the "Connection: close" semantic.
+                        return derived().do_eof();
+                    }
 
-                // Read another request
-                do_read();
+                    // Read another request
+                    do_read();
+                } catch(...) { }
             }           
 
             virtual void handle_exception() override {
-                auto errStr = errStr_;
-                if(errStr.size() < 1) { 
-                    errStr = std::to_string(ec_.value());
-                    fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
-                } else {
-                    fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
-                }
+                // wrap around try/catch to prevent non-zero exit-code problem
+                try {
+                    auto errStr = errStr_;
+                    if(errStr.size() < 1) { 
+                        errStr = std::to_string(ec_.value());
+                        fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
+                    } else {
+                        fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
+                    }
 
-                res_.set(http::field::content_type, "text/plain");
-                res_.keep_alive(false);
-                res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                    res_.set(http::field::content_type, "text/plain");
+                    res_.keep_alive(false);
+                    res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 
-                std::string err = "Internal server error";
-                http::status stat = http::status::internal_server_error;
-                send_response(errStr, static_cast<int>(stat));
+                    std::string err = "Internal server error";
+                    http::status stat = http::status::internal_server_error;
+                    send_response(errStr, static_cast<int>(stat));
+                } catch (...) { }
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
-                // Determine if we should close the connection after
-                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
+                // wrap around try/catch to prevent non-zero exit-code problem
+                try {
+                    // Determine if we should close the connection after
+                    bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
-                write_begin_ = steady_clock::now();
-                auto dt = write_begin_ - handle_begin_;
-                handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
-                
-                res_.result(code);
-                if(body.has_value())
-                    res_.body() = *body;        
+                    write_begin_ = steady_clock::now();
+                    auto dt = write_begin_ - handle_begin_;
+                    handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                    
+                    res_.result(code);
+                    if(body.has_value())
+                        res_.body() = *body;        
 
-                res_.prepare_payload();
+                    res_.prepare_payload();
 
-                // Write the response
-                auto self = derived().shared_from_this();
-                http::async_write(
-                    derived().stream(),
-                    res_,
-                    [self, close](beast::error_code ec, std::size_t bytes_transferred) 
-                    {
-                        self->on_write(ec, bytes_transferred, close);
-                    }
-                );
+                    // Write the response
+                    auto self = derived().shared_from_this();
+                    http::async_write(
+                        derived().stream(),
+                        res_,
+                        [self, close](beast::error_code ec, std::size_t bytes_transferred) 
+                        {
+                            self->on_write(ec, bytes_transferred, close);
+                        }
+                    );
+                } catch(...) { }
             }
 
-            void run_handle_exception() {
-                auto name = derived().name();
-
+            void run_session() {
                 if(!verify_max_requests_in_flight())
                     return derived().do_eof();
-
-                try {
-                    derived().run();
-                } catch (fc::exception& e) {
-                    fc_dlog( logger, "fc::exception thrown while invoking ${n}::run()", ("n", name));
-                    errStr_ = e.to_detail_string();
-                    fc_dlog( logger, "Details: ${e}", ("e", errStr_) );
-                } catch (std::exception& e) {
-                    fc_elog( logger, "STD exception thrown while invoking ${n}::run()", ("n", name));
-                    errStr_ = e.what();
-                    fc_dlog( logger, "Exception Details: ${e}", ("e", errStr_) );
-                } catch (...) {
-                    errStr_ = "unknown";
-                    fc_elog( logger, "Unknown exception thrown while invoking ${n}::run()", ("n", name));
-                }
+                
+                derived().run();
             }
     }; // end class beast_http_session
 
@@ -441,7 +438,7 @@ using local_stream = beast::basic_stream<
                 return eosio::allow_host(req, *this);
             }
 
-            constexpr auto name() {
+            static constexpr auto name() {
                 return "plain_session";
             }
     }; // end class plain_session
@@ -487,13 +484,15 @@ using local_stream = beast::basic_stream<
 
             void on_handshake(beast::error_code ec, std::size_t bytes_used)
             {
-                
-                if(ec)
-                    return fail(ec, "handshake");
+                // wrap around try/catch to prevent non-zero exit-code problem
+                try {
+                    if(ec)
+                        return fail(ec, "handshake");
 
-                buffer_.consume(bytes_used);
+                    buffer_.consume(bytes_used);
 
-                do_read();
+                    do_read();
+                } catch(...) { }
             }
 
             void do_eof()
@@ -506,8 +505,10 @@ using local_stream = beast::basic_stream<
 
             void on_shutdown(beast::error_code ec)
             {
-                if(ec)
-                    return fail(ec, "shutdown");
+                try {
+                    if(ec)
+                        return fail(ec, "shutdown");
+                } catch(...) { }
 
                 // At this point the connection is closed gracefully
             }
@@ -518,7 +519,7 @@ using local_stream = beast::basic_stream<
                 return eosio::allow_host(req, *this);
             }
 
-            constexpr auto name() {
+            static constexpr auto name() {
                 return "ssl_session";
             }
     }; // end class ssl_session
@@ -567,7 +568,7 @@ using local_stream = beast::basic_stream<
             stream_protocol::socket& stream() { return socket_; }
             stream_protocol::socket& socket() { return socket_; } 
             
-            constexpr auto name() {
+            static constexpr auto name() {
                 return "unix_socket_session";
             }
     }; // end class unix_socket_session
