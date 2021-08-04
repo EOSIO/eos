@@ -24,9 +24,10 @@ private:
    std::optional<boost::signals2::scoped_connection> _irreversible_block_connection;
    chain::controller&  _chain;
    account_name        _producer;
-   int32_t             _where_in_sequence;
-   int32_t             _producer_sequence;
-   bool                _clean_producer_sequence;
+   int32_t             _where_in_sequence{-1};
+   int32_t             _producer_sequence{-1};
+   uint32_t            _first_sequence_timeslot{0};
+   bool                _clean_producer_sequence{false};
    std::atomic_bool    _track_lib;
    std::atomic_bool    _track_head;
 };
@@ -66,10 +67,25 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_state
 
    // start counting sequences for this producer (once we have a sequence that we saw the initial block for that producer)
    if (producer_name == _producer && _clean_producer_sequence) {
-      ilog("producer ${prod} seq: ${seq}", ("prod", producer_name.to_string())("seq", _producer_sequence));
+      auto slot = bsp->block->timestamp.slot;
       _producer_sequence += 1;
+      ilog("producer ${prod} seq: ${seq} slot: ${slot}", 
+           ("prod", producer_name.to_string())
+           ("seq", _producer_sequence+1) // _producer_sequence is index, aligning it with slot number
+           ("slot", slot - _first_sequence_timeslot));
 
-      if (_producer_sequence >= _where_in_sequence) {
+      bool last_slot = false;
+      if (_where_in_sequence + 1 == config::producer_repetitions){
+         auto last_slot_time = _first_sequence_timeslot + config::producer_repetitions;
+         last_slot = slot == last_slot_time;
+      }
+
+      if (_producer_sequence >= _where_in_sequence || last_slot) {
+         int32_t slot_index = slot - _first_sequence_timeslot;
+         if (last_slot && slot_index > _producer_sequence + 1){
+            wlog("Producer produced less than ${n} blocks, ${l}th block is last in sequence. Likely performance issue, check timing",
+                 ("n", config::producer_repetitions)("l", _producer_sequence + 1));
+         }
          ilog("shutting down");
          app().quit();
       }
@@ -79,6 +95,8 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_state
       _producer_sequence = -1;
       // can now guarantee we are at the start of the producer
       _clean_producer_sequence = true;
+
+      _first_sequence_timeslot = bsp->block->timestamp.slot;
    }
 }
 
