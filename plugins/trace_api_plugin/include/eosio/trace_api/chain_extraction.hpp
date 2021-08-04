@@ -87,6 +87,7 @@ private:
 
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );
+         std::vector<transaction_id_type> ids;
          if( onblock_trace )
             traces.emplace_back( to_transaction_trace<transaction_trace_t>( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
@@ -100,11 +101,19 @@ private:
             if( it != cached_traces.end() ) {
                traces.emplace_back( to_transaction_trace<transaction_trace_t>( it->second ));
             }
+            ids.emplace_back(id);
          }
          clear_caches();
 
          store.append( std::move( bt ) );
 
+         //save trx ids into rocksdb
+         if (ids.size() > 0){
+            trx_ids_trace tt;
+            tt.ids = ids;
+            tt.block_num = bt.number;
+            store.append_trx_ids( std::move(tt) );
+         }
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }

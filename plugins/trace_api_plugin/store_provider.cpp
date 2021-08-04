@@ -30,8 +30,9 @@ namespace {
 
 namespace eosio::trace_api {
    namespace bfs = boost::filesystem;
-   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
-   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride) {
+   store_provider::store_provider(const bfs::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
+                                  std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride, std::shared_ptr<rocksdb::DB> rdb)
+   : _slice_directory(slice_dir, stride_width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride), rdb(rdb) {
    }
 
    template<typename BlockTrace>
@@ -59,6 +60,14 @@ namespace eosio::trace_api {
       auto le = metadata_log_entry { lib_entry_v0 { .lib = lib }};
       append_store(le, index);
       _slice_directory.set_lib(lib);
+   }
+
+   void store_provider::append_trx_ids(const trx_ids_trace& tt){
+      //rocksdb::WriteOptions  m_write_options;
+      //m_write_options.disableWAL = true;
+      for (const auto& id : tt.ids) {
+         auto status = rdb->Put(rocksdb::WriteOptions(), id.str(), std::to_string(tt.block_num));
+      }
    }
 
    get_block_t store_provider::get_block(uint32_t block_height, const yield_function& yield) {

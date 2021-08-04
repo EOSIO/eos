@@ -11,6 +11,9 @@
 #include <eosio/trace_api/metadata_log.hpp>
 #include <eosio/trace_api/data_log.hpp>
 #include <eosio/trace_api/compressed_file.hpp>
+#include <eosio/chain/combined_database.hpp>
+//#include <b1/session/rocks_session.hpp>
+#include <b1/session/session.hpp>
 
 namespace eosio::trace_api {
    using namespace boost::filesystem;
@@ -244,11 +247,13 @@ namespace eosio::trace_api {
       using open_state = slice_directory::open_state;
 
       store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
-            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
+            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride,std::shared_ptr<rocksdb::DB> rdb);
 
       template<typename BlockTrace>
       void append(const BlockTrace& bt);
       void append_lib(uint32_t lib);
+
+      void append_trx_ids(const trx_ids_trace& tt);
 
       /**
        * Read the trace for a given block
@@ -357,6 +362,8 @@ namespace eosio::trace_api {
 
       slice_directory _slice_directory;
       uint32_t _last_block_num;
+      std::unique_ptr<chain::rocks_db_type>   kv_db;
+      std::shared_ptr<rocksdb::DB> rdb;
    };
 
 }

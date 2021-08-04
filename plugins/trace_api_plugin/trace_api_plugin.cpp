@@ -87,6 +87,10 @@ namespace {
          return store->get_block(height, yield);
       }
 
+      void append_trx_ids(const trx_ids_trace& tt){
+         store->append_trx_ids(tt);
+      }
+
       std::shared_ptr<Store> store;
    };
 }
@@ -112,11 +116,14 @@ struct trace_api_common_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
+      /*
       auto dir_option = options.at("trace-dir").as<bfs::path>();
       if (dir_option.is_relative())
          trace_dir = app().data_dir() / dir_option;
       else
          trace_dir = dir_option;
+      */
+
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
         resmon_plugin->monitor_directory(trace_dir);
 
@@ -142,8 +149,29 @@ struct trace_api_common_impl {
          slice_stride,
          minimum_irreversible_history_blocks,
          minimum_uncompressed_irreversible_history_blocks,
-         compression_seek_point_stride
+         compression_seek_point_stride,
+         rdb
       );
+   }
+
+   void rocksdb_initialize(const appbase::variables_map& options) {
+      auto dir_option = options.at("trace-dir").as<bfs::path>();
+      if (dir_option.is_relative())
+         trace_dir = app().data_dir() / dir_option;
+      else
+         trace_dir = dir_option;
+
+      rocksdb::DB* cache_ptr{ nullptr };
+      auto opts                                 = rocksdb::Options{};
+      opts.create_if_missing                    = true;
+      opts.level_compaction_dynamic_level_bytes = true;
+      opts.bytes_per_sync                       = 1048576;
+      opts.OptimizeLevelStyleCompaction(256ull << 20);
+      opts.create_if_missing = true;
+
+      const path rdb_path = trace_dir;
+      auto status = rocksdb::DB::Open(opts, rdb_path.string().c_str(), &cache_ptr);
+      rdb.reset(cache_ptr);
    }
 
    void plugin_startup() {
@@ -167,6 +195,8 @@ struct trace_api_common_impl {
    static constexpr uint32_t compression_seek_point_stride = 6 * 1024 * 1024; // 6 MiB strides for clog seek points
 
    std::shared_ptr<store_provider> store;
+
+   std::shared_ptr<rocksdb::DB> rdb;
 };
 
 /**
@@ -333,33 +363,35 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                return (*(input_id.data() + input_id_size) & 0xF0) == (*(id.data() + input_id_size) & 0xF0);
          };
 
-         bool found = false;
          try {
-            uint32_t num_blocks = common->store->get_last_block_num();
-            for (uint32_t block_number = 2; block_number < num_blocks; ++block_number) {
+            // search for the trx id in rocksdb to find out associated block number
+            std::string blk_num;
+            rocksdb::Status status = common->rdb->Get(rocksdb::ReadOptions(), *trx_id, &blk_num);
+
+            if (status.ok()){
                const auto deadline = that->calc_deadline( max_response_time );
-               auto resp = that->req_handler->get_block_trace(block_number, [deadline]() { FC_CHECK_DEADLINE(deadline); });
-               if (resp.is_null()) continue;
-               auto& b_mvo = resp.get_object();
-               if (b_mvo.contains("transactions")) {
-                  auto& transactions = b_mvo["transactions"];
-                  for (uint32_t i = 0; i < transactions.size(); ++i) {
-                     if (transactions[i].is_null()) continue;
-                     auto& t_mvo = transactions[i].get_object();
-                     if (t_mvo.contains("id")) {
-                        string t_id = t_mvo["id"].as_string();
-                        if (txn_id_matched(transaction_id_type(t_id))) {
-                           cb( 200, std::move(t_mvo) );
-                           found = true;
-                           break; // terminate the inner loop
+               auto resp = that->req_handler->get_block_trace(std::stoi(blk_num), [deadline]() { FC_CHECK_DEADLINE(deadline); });
+               if (resp.is_null()) {
+                  error_results results{404, "Block trace missing"};
+                  cb( 404, fc::variant( results ));
+               } else {
+                  auto& b_mvo = resp.get_object();
+                  if (b_mvo.contains("transactions")) {
+                     auto& transactions = b_mvo["transactions"];
+                     for (uint32_t i = 0; i < transactions.size(); ++i) {
+                        if (transactions[i].is_null()) continue;
+                        auto& t_mvo = transactions[i].get_object();
+                        if (t_mvo.contains("id")) {
+                           string t_id = t_mvo["id"].as_string();
+                           if (txn_id_matched(transaction_id_type(t_id))) {
+                              cb( 200, std::move(t_mvo) );
+                              break; // terminate the loop
+                           }
                         }
                      }
                   }
                }
-               if (found) break; // terminate the outer loop
-            }
-
-            if (!found) {
+            } else {
                error_results results{404, "Transaction trace missing"};
                cb( 404, fc::variant( results ));
             }
@@ -443,6 +475,8 @@ struct trace_api_plugin_impl {
    std::optional<scoped_connection>                            block_start_connection;
    std::optional<scoped_connection>                            accepted_block_connection;
    std::optional<scoped_connection>                            irreversible_block_connection;
+
+
 };
 
 trace_api_plugin::trace_api_plugin()
@@ -459,6 +493,7 @@ void trace_api_plugin::set_program_options(appbase::options_description& cli, ap
 
 void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
    auto common = std::make_shared<trace_api_common_impl>();
+   common->rocksdb_initialize(options);
    common->plugin_initialize(options);
 
    my = std::make_shared<trace_api_plugin_impl>(common);
