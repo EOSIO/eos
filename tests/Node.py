@@ -323,7 +323,7 @@ class Node(object):
 
         return False
 
-    def getBlockNumByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=1):
+    def getBlockNumByTransId(self, transId, exitOnError=True, delayedRetry=True, blocksAhead=5):
         """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
@@ -584,6 +584,8 @@ class Node(object):
         expirationStr = ""
         if expiration is not None:
             expirationStr = "--expiration %d " % (expiration)
+        else:
+            expirationStr = "--expiration 120" # 2 minutes
         cmd="%s %s -v transfer -j %s %s" % (
             Utils.EosClientPath, self.eosClientArgs(), dontSendStr, expirationStr)
         cmdArr=cmd.split()
