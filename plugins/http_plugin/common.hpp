@@ -214,7 +214,7 @@ namespace eosio {
      * @return lambda suitable for url_response_callback
      */
     template<typename T>
-    auto make_http_response_handler( T& ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
+    auto make_http_response_handler( T&& ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
     return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
          {
             auto tracked_response = make_in_flight(std::move(response), plugin_state);

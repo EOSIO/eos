@@ -111,29 +111,24 @@ namespace eosio {
 
         private:
             void do_accept() {
-                // wrap around try catch to prevent non-zero exit code problem
-                try { 
-                    auto self = this->shared_from_this();
-                    acceptor_.async_accept(socket_, [self](beast::error_code ec) {
-                            try {
-                                if(ec) {
-                                    fail(ec, "accept");
-                                }
-                                else {
-                                    // Create the session object and run it
-                                    std::make_shared<session_type>(
-                                        std::move(self->socket_),
-                                        self->ctx_,
-                                        self->plugin_state_,
-                                        self->ioc_)->run_session();        
-                                }
-
-                                // Accept another connection
-                                self->do_accept();
-                            } catch (...) { }
+                auto self = this->shared_from_this();
+                acceptor_.async_accept(socket_, [self](beast::error_code ec) {
+                        if(ec) {
+                            fail(ec, "accept");
                         }
-                    );
-                } catch (...) { }
+                        else {
+                            // Create the session object and run it
+                            std::make_shared<session_type>(
+                                std::move(self->socket_),
+                                self->ctx_,
+                                self->plugin_state_,
+                                self->ioc_)->run_session();        
+                        }
+
+                        // Accept another connection
+                        self->do_accept();
+                    }
+                );
             }               
     }; // end class beast_http_Listener
 } // end namespace

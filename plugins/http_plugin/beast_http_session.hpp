@@ -46,30 +46,17 @@ using local_stream = beast::basic_stream<
 #endif
 
     //------------------------------------------------------------------------------
-    // Report a failure
+    // fail() 
+    //  this function is generally reserved in the case of a severe error which results 
+    //  in immediate termiantion of the session, with no response sent back to the client
+    //  currently also includes SSL "short read" error for security reasons:
+    // 
+    //  https://github.com/boostorg/beast/issues/38
+    //  https://security.stackexchange.com/questions/91435/how-to-handle-a-malicious-ssl-tls-shutdown
     void fail(beast::error_code ec, char const* what)
     {
-        // ssl::error::stream_truncated, also known as an SSL "short read",
-        // indicates the peer closed the connection without performing the
-        // required closing handshake (for example, Google does this to
-        // improve performance). Generally this can be a security issue,
-        // but if your communication protocol is self-terminated (as
-        // it is with both HTTP and WebSocket) then you may simply
-        // ignore the lack of close_notify.
-        //
-        // https://github.com/boostorg/beast/issues/38
-        //
-        // https://security.stackexchange.com/questions/91435/how-to-handle-a-malicious-ssl-tls-shutdown
-        //
-        // When a short read would cut off the end of an HTTP message,
-        // Beast returns the error beast::http::error::partial_message.
-        // Therefore, if we see a short read here, it has occurred
-        // after the message has been completed, so it is safe to ignore it.
-
-        if(ec == asio::ssl::error::stream_truncated)
-            return;
-
         fc_elog(logger, "${w}: ${m}", ("w", what)("m", ec.message()));
+        fc_elog(logger, "closing connection");
     }
 
     // this needs to be declared outside of the beast_http_session, because it doesn't work for 
@@ -110,7 +97,6 @@ using local_stream = beast::basic_stream<
         protected:
             beast::flat_buffer buffer_;
             beast::error_code ec_;
-            std::string errStr_;
 
             // time points for timeout measurement and perf metrics 
             steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
@@ -194,14 +180,14 @@ using local_stream = beast::basic_stream<
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
-                                            make_http_response_handler(derived().strand_, *plugin_state_, derived().shared_from_this()) );
+                                            make_http_response_handler(derived().stream().get_executor(), *plugin_state_, derived().shared_from_this()) );
                     } else {
                         fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                         not_found(resource, *this);                    
                     }
-                } catch( ... ) {
+                } catch (...) {
                     handle_exception();
-                }           
+                }
             }
 
             void report_429_error(const std::string & what) {                
@@ -280,14 +266,9 @@ using local_stream = beast::basic_stream<
                     derived().stream(),
                     buffer_,
                     req_parser_,
-                    boost::asio::bind_executor(
-                        derived().strand_,
-                        [self](beast::error_code ec, std::size_t bytes_transferred) { 
-                            try {
-                                self->on_read(ec, bytes_transferred);
-                            } catch (...) { }
-                        }
-                    )
+                    [self](beast::error_code ec, std::size_t bytes_transferred) { 
+                        self->on_read(ec, bytes_transferred);
+                    }
                 );                
             }
 
@@ -300,8 +281,9 @@ using local_stream = beast::basic_stream<
                 if(ec == http::error::end_of_stream)
                     return derived().do_eof();
 
-                if(ec && ec != asio::ssl::error::stream_truncated)
+                if(ec) {
                     return fail(ec, "read");
+                }
 
                 auto req = req_parser_.get();
 
@@ -321,7 +303,6 @@ using local_stream = beast::basic_stream<
 
                 if(ec) {
                     ec_ = ec;
-                    handle_exception();
                     return fail(ec, "write");
                 }
 
@@ -340,13 +321,19 @@ using local_stream = beast::basic_stream<
             }           
 
             virtual void handle_exception() override {
-                auto errStr = errStr_;
-                if(errStr.size() < 1) { 
-                    errStr = std::to_string(ec_.value());
-                    fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
-                } else {
-                    fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
-                }
+                std::string errStr;
+                try { 
+                    throw;
+                } catch(const fc::exception& e) {
+                    errStr = e.to_detail_string();
+                    fc_elog( logger, "fc::exception: ${w}", ("w", errStr) );
+                } catch(std::exception& e) {
+                    errStr = e.what(); 
+                    fc_elog( logger, "std::exception: ${w}", ("w", errStr) );
+                } catch( ... ) {
+                    errStr = "unknown";
+                    fc_elog( logger, "unkonwn exception");
+                } 
 
                 res_.set(http::field::content_type, "text/plain");
                 res_.keep_alive(false);
@@ -355,6 +342,7 @@ using local_stream = beast::basic_stream<
                 std::string err = "Internal server error";
                 http::status stat = http::status::internal_server_error;
                 send_response(errStr, static_cast<int>(stat));
+                derived().do_eof();
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
@@ -376,25 +364,18 @@ using local_stream = beast::basic_stream<
                 http::async_write(
                     derived().stream(),
                     res_,
-                    boost::asio::bind_executor(
-                        derived().strand_,
-                        [self, close](beast::error_code ec, std::size_t bytes_transferred) {
-                            try {
-                                self->on_write(ec, bytes_transferred, close);
-                            } catch (...) { }
-                        }
-                    )
+                    [self, close](beast::error_code ec, std::size_t bytes_transferred) {
+                        self->on_write(ec, bytes_transferred, close);
+                    }
                 );
             }
 
             void run_session() {
                 // wrap entiere session around try/catch to prevent non-zero exit code test failure
-                try {
-                    if(!verify_max_requests_in_flight())
-                        return derived().do_eof();
-                    
-                    derived().run();
-                } catch (...) { }
+                if(!verify_max_requests_in_flight())
+                    return derived().do_eof();
+                
+                derived().run();
             }
     }; // end class beast_http_session
 
@@ -404,8 +385,6 @@ using local_stream = beast::basic_stream<
         , public std::enable_shared_from_this<plain_session>
     {
         tcp_socket_t socket_;
-        public:
-            asio::io_context::strand strand_;
 
         public:      
             // Create the session
@@ -417,7 +396,6 @@ using local_stream = beast::basic_stream<
                 )
                 : beast_http_session<plain_session>(plugin_state)
                 , socket_(std::move(socket))
-                , strand_(socket_.get_executor().context())
             {}
 
             tcp_socket_t& stream() { return socket_; }
@@ -455,8 +433,6 @@ using local_stream = beast::basic_stream<
         , public std::enable_shared_from_this<ssl_session>
     {   
         ssl::stream<tcp_socket_t> stream_;
-        public:
-            asio::io_context::strand strand_;
 
         public:
             // Create the session
@@ -468,7 +444,6 @@ using local_stream = beast::basic_stream<
                 asio::io_context* ioc)
                 : beast_http_session<ssl_session>(plugin_state)
                 , stream_(std::move(socket), *ctx)
-                , strand_(stream_.get_executor().context())
             { }
 
 
@@ -485,12 +460,9 @@ using local_stream = beast::basic_stream<
                 self->stream_.async_handshake(
                     ssl::stream_base::server,
                     self->buffer_.data(),
-                    boost::asio::bind_executor(
-                        strand_,
-                        [self](beast::error_code ec, std::size_t bytes_used) {
-                            self->on_handshake(ec, bytes_used);
-                        }
-                    )
+                    [self](beast::error_code ec, std::size_t bytes_used) {
+                        self->on_handshake(ec, bytes_used);
+                    }
                 );
             }
 
@@ -539,8 +511,6 @@ using local_stream = beast::basic_stream<
         
         // The socket used to communicate with the client.
         stream_protocol::socket socket_;
-        public:
-            asio::io_context::strand strand_;
 
         public:
             unix_socket_session(stream_protocol::socket sock, 
@@ -549,8 +519,6 @@ using local_stream = beast::basic_stream<
                             asio::io_context* ioc) 
             : beast_http_session(plugin_state)
             , socket_(std::move(sock)) 
-            // TODO ugly pointer cast to get around silly type system, should probably be fixed
-            , strand_(*((boost::asio::io_context*)(&socket_.get_executor().context())))
             {  }
 
             virtual ~unix_socket_session() = default;
