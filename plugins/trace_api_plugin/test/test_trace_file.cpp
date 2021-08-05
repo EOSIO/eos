@@ -208,8 +208,9 @@ namespace {
    };
 
    struct test_store_provider : public store_provider {
-      test_store_provider(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks = std::optional<uint32_t>(), std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks = std::optional<uint32_t>(), size_t compression_seek_point_stride = 0)
-         : store_provider(slice_dir, width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride) {
+      test_store_provider(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks = std::optional<uint32_t>(),
+              std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks = std::optional<uint32_t>(), size_t compression_seek_point_stride = 0, std::shared_ptr<rocksdb::DB> rdb = nullptr)
+         : store_provider(slice_dir, width, minimum_irreversible_history_blocks, minimum_uncompressed_irreversible_history_blocks, compression_seek_point_stride, rdb) {
       }
       using store_provider::scan_metadata_log_from;
       using store_provider::read_data_log;
@@ -975,7 +976,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(test_get_block_v1, test_fixture)
    {
       fc::temp_directory tempdir;
-      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
+      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0, nullptr);
       sp.append(bt_v1);
       sp.append_lib(1);
       sp.append(bt2_v1);
@@ -1024,7 +1025,7 @@ BOOST_AUTO_TEST_SUITE(slice_tests)
    BOOST_FIXTURE_TEST_CASE(test_get_block_v2, test_fixture)
    {
       fc::temp_directory tempdir;
-      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0);
+      store_provider sp(tempdir.path(), 100, std::optional<uint32_t>(), std::optional<uint32_t>(), 0, nullptr);
       sp.append(block_trace1_v2);
       sp.append_lib(1);
       sp.append(block_trace2_v2);

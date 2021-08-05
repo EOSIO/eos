@@ -116,13 +116,6 @@ struct trace_api_common_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
-      /*
-      auto dir_option = options.at("trace-dir").as<bfs::path>();
-      if (dir_option.is_relative())
-         trace_dir = app().data_dir() / dir_option;
-      else
-         trace_dir = dir_option;
-      */
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
         resmon_plugin->monitor_directory(trace_dir);

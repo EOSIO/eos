@@ -12,7 +12,6 @@
 #include <eosio/trace_api/data_log.hpp>
 #include <eosio/trace_api/compressed_file.hpp>
 #include <eosio/chain/combined_database.hpp>
-//#include <b1/session/rocks_session.hpp>
 #include <b1/session/session.hpp>
 
 namespace eosio::trace_api {
@@ -362,7 +361,6 @@ namespace eosio::trace_api {
 
       slice_directory _slice_directory;
       uint32_t _last_block_num;
-      std::unique_ptr<chain::rocks_db_type>   kv_db;
       std::shared_ptr<rocksdb::DB> rdb;
    };
 
