@@ -283,7 +283,9 @@ using local_stream = beast::basic_stream<
                     boost::asio::bind_executor(
                         derived().strand_,
                         [self](beast::error_code ec, std::size_t bytes_transferred) { 
-                            self->on_read(ec, bytes_transferred);
+                            try {
+                                self->on_read(ec, bytes_transferred);
+                            } catch (...) { }
                         }
                     )
                 );                
@@ -377,7 +379,9 @@ using local_stream = beast::basic_stream<
                     boost::asio::bind_executor(
                         derived().strand_,
                         [self, close](beast::error_code ec, std::size_t bytes_transferred) {
-                            self->on_write(ec, bytes_transferred, close);
+                            try {
+                                self->on_write(ec, bytes_transferred, close);
+                            } catch (...) { }
                         }
                     )
                 );
