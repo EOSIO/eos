@@ -1,21 +1,33 @@
-## Description
-Retrieves a transaction from the blockchain
-
-## Positional Parameters
-`id`` _TEXT_ - ID of the transaction to retrieve
-
-## Options
-` -b,--block-hint` UINT        the block number this transaction may be in
-
-**Command**
-
+## Command
 ```sh
-cleos get transaction
+cleos get transaction [OPTIONS] id
 ```
-**Output**
+**Where**:
+* [`OPTIONS`] = See **Options** in [**Command Usage**](#command-usage) section below
+* `id` = ID of the transaction to retrieve
 
-## Example
+**Note:** The arguments and options enclosed in square brackets are optional.
 
+## Description
+Use this command to retrieve a transaction from the blockchain. 
+
+## Command Usage
+The following information shows the different positionals and options you can use with the `cleos get transaction` command:
+
+### Positionals
+* `id` _TEXT_ REQUIRED - ID of the transaction to retrieve
+
+### Options
+* `-h,--help` - Print this help message and exit
+* `-b,--block-hint` _UINT_ - The block number this transaction may be in
+
+## Requirements
+For prerequisites to run this command, see the **Before you Begin** section of the [How to Get Transaction Information](../../02_how-to-guides/how-to-get-transaction-information.md) topic.
+
+## Examples
+The following examples demonstrate the `cleos get transaction` command:
+
+**Example 1.** Retrieve transaction information for transaction ID `eb4b94b7...b703`:
 ```sh
 cleos get transaction eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703
 ```
@@ -75,5 +87,5 @@ cleos get transaction eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd
 }
 ```
 
-[[info | Important Note]]
-| The above transaction id will not exist on your blockchain
+[[info | Note]]
+| The above transaction ID will not exist on your actual EOSIO blockchain.

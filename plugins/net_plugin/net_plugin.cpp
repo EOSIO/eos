@@ -287,6 +287,8 @@ namespace eosio {
       uint16_t                                       thread_pool_size = 2;
       std::optional<eosio::chain::named_thread_pool> thread_pool;
 
+      bool telemetry_span_root = false;
+
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
@@ -1985,7 +1987,7 @@ namespace eosio {
       if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
-         return;
+         c->send_handshake();
       }
 
       if( sync_state == in_sync ) {
@@ -3477,8 +3479,20 @@ namespace eosio {
             return;
          }
       }
-      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
-         c->process_signed_block( id, std::move( ptr ) );
+
+      auto trace = fc_create_trace_with_id_if(my_impl->telemetry_span_root, "block", id);
+      fc_add_tag(trace, "block_num", ptr->block_num());
+      fc_add_tag(trace, "block_id", id );
+
+      auto handle_message_span  = fc_create_span_with_id("handle_message", (uint64_t) rand(), id);
+      fc_add_tag(handle_message_span, "queue_size", app().get_priority_queue().size());
+
+
+      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(),
+                                    handle_message_span = std::move(handle_message_span)]() mutable {
+         auto       span = fc_create_span(handle_message_span, "processing_singed_block");
+         const auto bn   = ptr->block_num();
+         c->process_signed_block(id, std::move(ptr));
       });
    }
 
@@ -3724,13 +3738,6 @@ namespace eosio {
       update_security_group(bs);
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
-
-         auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
-         auto blk_span = fc_create_span( blk_trace, "Accepted" );
-         fc_add_tag( blk_span, "block_id", bs->id );
-         fc_add_tag( blk_span, "block_num", bs->block_num );
-         fc_add_tag( blk_span, "block_time", bs->block->timestamp.to_time_point() );
-
          dispatcher->bcast_block( bs->block, bs->id );
       });
    }
@@ -3743,13 +3750,6 @@ namespace eosio {
          dispatcher->strand.post( [this, block]() {
             auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
-
-            auto blk_trace = fc_create_trace_with_id("Block", id);
-            auto blk_span = fc_create_span(blk_trace, "PreAccepted");
-            fc_add_tag(blk_span, "block_id", id);
-            fc_add_tag(blk_span, "block_num", block->block_num());
-            fc_add_tag(blk_span, "block_time", block->timestamp.to_time_point());
-            fc_add_tag(blk_span, "producer", block->producer.to_string());
 
             dispatcher->bcast_block( block, id );
          });
@@ -3974,8 +3974,9 @@ namespace eosio {
            "   _lport \tlocal port number connected to peer\n\n")
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
          ( "p2p-tls-security-group-ca-file", bpo::value<bfs::path>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
-         ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
          ( "p2p-tls-private-key-file", bpo::value<bfs::path>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
+         ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
+         ( "telemtry-span-root", bpo::value<bool>()->default_value(false), "generate zipkin root span for blocks received from net-plugin")
         ;
    }
 
@@ -4128,6 +4129,7 @@ namespace eosio {
             }
          }
          cc.enable_security_groups(security_group_enabled);
+         my->telemetry_span_root = options["telemtry-span-root"].as<bool>();
 
       } FC_LOG_AND_RETHROW()
    }
