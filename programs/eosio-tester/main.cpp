@@ -1058,6 +1058,48 @@ struct callbacks {
       check_bounds(hash_val, hash.data_size());
       std::memcpy(hash_val, hash.data(), hash.data_size());
    }
+
+   int32_t recover_key( const void* digest_val,
+                        span<const char> sig,
+                        span<char> pub ) {
+
+      fc::sha256 digest((const char*)digest_val, fc::sha256().data_size());
+
+      fc::crypto::signature s;
+      fc::datastream<const char*> ds( sig.data(), sig.size() );
+      fc::raw::unpack(ds, s);
+
+      // EOS_ASSERT(static_cast<unsigned>(s.which()) < db.get<protocol_state_object>().num_supported_key_types,
+      //            eosio::chain::unactivated_signature_type,
+      //            "Unactivated signature type used during assert_recover_key");
+
+      // TODO: enforce subjective signature length limit maximum-variable-signature-length in queries. tester does not need this protection.
+      //   EOS_ASSERT(s.variable_size() <= configured_subjective_signature_length_limit(),
+      //              eosio::chain::sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
+
+      auto recovered = fc::crypto::public_key(s, digest, false);
+
+      // the key types newer than the first 2 may be varible in length
+      if (static_cast<unsigned>(s.which()) >= eosio::chain::config::genesis_num_supported_key_types ) {
+         EOS_ASSERT(pub.size() >= 33, eosio::chain::wasm_execution_error,
+                    "destination buffer must at least be able to hold an ECC public key");
+
+         auto packed_pubkey = fc::raw::pack(recovered);
+         auto copy_size = std::min<size_t>(pub.size(), packed_pubkey.size());
+         std::memcpy(pub.data(), packed_pubkey.data(), copy_size);
+         return packed_pubkey.size();
+      } else {
+         // legacy behavior, key types 0 and 1 always pack to 33 bytes.
+         // this will do one less copy for those keys while maintaining the rules of
+         //    [0..33) dest sizes: assert (asserts in fc::raw::pack)
+         //    [33..inf) dest sizes: return packed size (always 33)
+         fc::datastream<char*> out_ds( (char*)pub.data(), pub.size() );
+         fc::raw::pack(out_ds, recovered);
+         return out_ds.tellp();
+      }
+   }
+
+
 }; // callbacks
 
 #define DB_REGISTER_SECONDARY(IDX)                                                                                     \
@@ -1138,6 +1180,7 @@ void register_callbacks() {
    rhf_t::add<&callbacks::sha256>("env", "sha256");
    rhf_t::add<&callbacks::sha512>("env", "sha512");
    rhf_t::add<&callbacks::ripemd160>("env", "ripemd160");
+   rhf_t::add<&callbacks::recover_key>("env", "recover_key");
 }
 
 static int run(const char* wasm, const std::vector<std::string>& args) {
