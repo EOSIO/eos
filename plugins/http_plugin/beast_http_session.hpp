@@ -17,7 +17,15 @@ extern fc::logger logger;
 namespace eosio { 
 
     using std::chrono::steady_clock;
+
+// Boost 1.70 introduced a breaking change that causes problems with construction of strand objects from tcp_socket
+// this is suggested fix OK'd Beast author (V. Falco) to handle both versions gracefully
+// see https://stackoverflow.com/questions/58453017/boost-asio-tcp-socket-1-70-not-backward-compatible
+#if BOOST_VERSION < 107000                
     typedef tcp::socket tcp_socket_t;
+#else
+    typedef asio::basic_stream_socket<asio::ip::tcp, asio::io_context::executor_type> tcp_socket_t;
+#endif
 
     using boost::asio::local::stream_protocol;
     
@@ -68,7 +76,7 @@ using local_stream = beast::basic_stream<
     // UNIX socket session, since it lacks address() function in endpoint
     //  Since this is a virtual function, std::enable_if_t/SFNIAE doesn't work 
     template<class T>
-    bool allow_host(const http::request<http::string_body>& req, T& session) {
+    bool allow_host(const http::request<http::string_body>& req, T& session, std::shared_ptr<http_plugin_state> plugin_state) {
         auto is_conn_secure = session.is_secure();
 
         auto& socket = session.socket();
@@ -82,7 +90,7 @@ using local_stream = beast::basic_stream<
                 + ":" + std::to_string(local_endpoint.port());
         const auto& host_str = req["Host"].to_string();
         if (host_str.empty() 
-            || !host_is_valid(*session.plugin_state_, 
+            || !host_is_valid(*plugin_state, 
                                 host_str, 
                                 local_socket_host_port, 
                                 is_conn_secure)) 
@@ -113,7 +121,8 @@ using local_stream = beast::basic_stream<
 
             // HTTP response object
             http::response<http::string_body> res_;
-            asio::io_context *ioc_;
+
+            std::shared_ptr<http_plugin_state> plugin_state_;
             
             template<
                 class Body, class Allocator>
@@ -185,7 +194,7 @@ using local_stream = beast::basic_stream<
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
-                                            make_http_response_handler(*ioc_, *plugin_state_, derived().shared_from_this()) );
+                                            make_http_response_handler(derived().strand_, *plugin_state_, derived().shared_from_this()) );
                     } else {
                         fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                         not_found(resource, *this);                    
@@ -199,10 +208,6 @@ using local_stream = beast::basic_stream<
                 send_response(std::string(what), 
                             static_cast<int>(http::status::too_many_requests));                
             }
-
-        public:
-            // public due to implementation of allow_host() in beast_http_session
-            std::shared_ptr<http_plugin_state> plugin_state_;
 
         public:
             virtual bool verify_max_bytes_in_flight() override {
@@ -243,10 +248,8 @@ using local_stream = beast::basic_stream<
       
             // Take ownership of the buffer
             beast_http_session(
-                std::shared_ptr<http_plugin_state> plugin_state,
-                asio::io_context* ioc)
-                : ioc_(ioc)
-                , plugin_state_(plugin_state)
+                std::shared_ptr<http_plugin_state> plugin_state) 
+                : plugin_state_(plugin_state)
             {  
                 plugin_state_->requests_in_flight += 1;
                 req_parser_.body_limit(plugin_state_->max_body_size);
@@ -277,121 +280,117 @@ using local_stream = beast::basic_stream<
                     derived().stream(),
                     buffer_,
                     req_parser_,
-                    [self](beast::error_code ec, std::size_t bytes_transferred) { 
-                        self->on_read(ec, bytes_transferred);
-                    }
+                    boost::asio::bind_executor(
+                        derived().strand_,
+                        [self](beast::error_code ec, std::size_t bytes_transferred) { 
+                            self->on_read(ec, bytes_transferred);
+                        }
+                    )
                 );                
             }
 
             void on_read(beast::error_code ec,
                          std::size_t bytes_transferred)
             {
-                // wrap around try/catch to prevent non-zero exit-code problem
-                try {
-                    boost::ignore_unused(bytes_transferred);
+                boost::ignore_unused(bytes_transferred);
 
-                    // This means they closed the connection
-                    if(ec == http::error::end_of_stream)
-                        return derived().do_eof();
+                // This means they closed the connection
+                if(ec == http::error::end_of_stream)
+                    return derived().do_eof();
 
-                    if(ec && ec != asio::ssl::error::stream_truncated)
-                        return fail(ec, "read");
+                if(ec && ec != asio::ssl::error::stream_truncated)
+                    return fail(ec, "read");
 
-                    auto req = req_parser_.get();
+                auto req = req_parser_.get();
 
-                    handle_begin_ = steady_clock::now();
-                    auto dt = handle_begin_ - read_begin_;
-                    read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                handle_begin_ = steady_clock::now();
+                auto dt = handle_begin_ - read_begin_;
+                read_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
 
-                    // Send the response
-                    handle_request(std::move(req));
-                } catch (...) { }
+                // Send the response
+                handle_request(std::move(req));
             }
 
             void on_write(beast::error_code ec,
                           std::size_t bytes_transferred, 
                           bool close)
             {
-                // wrap around try/catch to prevent non-zero exit-code problem
-                try {
-                    boost::ignore_unused(bytes_transferred);
+                boost::ignore_unused(bytes_transferred);
 
-                    if(ec) {
-                        ec_ = ec;
-                        handle_exception();
-                        return fail(ec, "write");
-                    }
+                if(ec) {
+                    ec_ = ec;
+                    handle_exception();
+                    return fail(ec, "write");
+                }
 
-                    auto dt = steady_clock::now() - write_begin_;
-                    write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                auto dt = steady_clock::now() - write_begin_;
+                write_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
 
-                    if(close)
-                    {
-                        // This means we should close the connection, usually because
-                        // the response indicated the "Connection: close" semantic.
-                        return derived().do_eof();
-                    }
+                if(close)
+                {
+                    // This means we should close the connection, usually because
+                    // the response indicated the "Connection: close" semantic.
+                    return derived().do_eof();
+                }
 
-                    // Read another request
-                    do_read();
-                } catch(...) { }
+                // Read another request
+                do_read();
             }           
 
             virtual void handle_exception() override {
-                // wrap around try/catch to prevent non-zero exit-code problem
-                try {
-                    auto errStr = errStr_;
-                    if(errStr.size() < 1) { 
-                        errStr = std::to_string(ec_.value());
-                        fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
-                    } else {
-                        fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
-                    }
+                auto errStr = errStr_;
+                if(errStr.size() < 1) { 
+                    errStr = std::to_string(ec_.value());
+                    fc_elog( logger, "beast_http_session_exception: beast error code ${ec}", ("ec", errStr));
+                } else {
+                    fc_elog( logger, "beast_websession_exception: error ${e}", ("e", errStr));
+                }
 
-                    res_.set(http::field::content_type, "text/plain");
-                    res_.keep_alive(false);
-                    res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                res_.set(http::field::content_type, "text/plain");
+                res_.keep_alive(false);
+                res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 
-                    std::string err = "Internal server error";
-                    http::status stat = http::status::internal_server_error;
-                    send_response(errStr, static_cast<int>(stat));
-                } catch (...) { }
+                std::string err = "Internal server error";
+                http::status stat = http::status::internal_server_error;
+                send_response(errStr, static_cast<int>(stat));
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
-                // wrap around try/catch to prevent non-zero exit-code problem
-                try {
-                    // Determine if we should close the connection after
-                    bool close = !(plugin_state_->keep_alive) || res_.need_eof();
+                // Determine if we should close the connection after
+                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
-                    write_begin_ = steady_clock::now();
-                    auto dt = write_begin_ - handle_begin_;
-                    handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
-                    
-                    res_.result(code);
-                    if(body.has_value())
-                        res_.body() = *body;        
+                write_begin_ = steady_clock::now();
+                auto dt = write_begin_ - handle_begin_;
+                handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+                
+                res_.result(code);
+                if(body.has_value())
+                    res_.body() = *body;        
 
-                    res_.prepare_payload();
+                res_.prepare_payload();
 
-                    // Write the response
-                    auto self = derived().shared_from_this();
-                    http::async_write(
-                        derived().stream(),
-                        res_,
-                        [self, close](beast::error_code ec, std::size_t bytes_transferred) 
-                        {
+                // Write the response
+                auto self = derived().shared_from_this();
+                http::async_write(
+                    derived().stream(),
+                    res_,
+                    boost::asio::bind_executor(
+                        derived().strand_,
+                        [self, close](beast::error_code ec, std::size_t bytes_transferred) {
                             self->on_write(ec, bytes_transferred, close);
                         }
-                    );
-                } catch(...) { }
+                    )
+                );
             }
 
             void run_session() {
-                if(!verify_max_requests_in_flight())
-                    return derived().do_eof();
-                
-                derived().run();
+                // wrap entiere session around try/catch to prevent non-zero exit code test failure
+                try {
+                    if(!verify_max_requests_in_flight())
+                        return derived().do_eof();
+                    
+                    derived().run();
+                } catch (...) { }
             }
     }; // end class beast_http_session
 
@@ -401,6 +400,8 @@ using local_stream = beast::basic_stream<
         , public std::enable_shared_from_this<plain_session>
     {
         tcp_socket_t socket_;
+        public:
+            asio::io_context::strand strand_;
 
         public:      
             // Create the session
@@ -410,8 +411,9 @@ using local_stream = beast::basic_stream<
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc
                 )
-                : beast_http_session<plain_session>(plugin_state, ioc)
+                : beast_http_session<plain_session>(plugin_state)
                 , socket_(std::move(socket))
+                , strand_(socket_.get_executor().context())
             {}
 
             tcp_socket_t& stream() { return socket_; }
@@ -435,7 +437,7 @@ using local_stream = beast::basic_stream<
             bool is_secure() { return false; };
 
             bool allow_host(const http::request<http::string_body>& req) { 
-                return eosio::allow_host(req, *this);
+                return eosio::allow_host(req, *this, plugin_state_);
             }
 
             static constexpr auto name() {
@@ -449,6 +451,8 @@ using local_stream = beast::basic_stream<
         , public std::enable_shared_from_this<ssl_session>
     {   
         ssl::stream<tcp_socket_t> stream_;
+        public:
+            asio::io_context::strand strand_;
 
         public:
             // Create the session
@@ -458,8 +462,9 @@ using local_stream = beast::basic_stream<
                 std::shared_ptr<ssl::context> ctx,
                 std::shared_ptr<http_plugin_state> plugin_state,
                 asio::io_context* ioc)
-                : beast_http_session<ssl_session>(plugin_state, ioc)
+                : beast_http_session<ssl_session>(plugin_state)
                 , stream_(std::move(socket), *ctx)
+                , strand_(stream_.get_executor().context())
             { }
 
 
@@ -476,23 +481,23 @@ using local_stream = beast::basic_stream<
                 self->stream_.async_handshake(
                     ssl::stream_base::server,
                     self->buffer_.data(),
-                    [self](beast::error_code ec, std::size_t bytes_used) {
-                        self->on_handshake(ec, bytes_used);
-                    }
+                    boost::asio::bind_executor(
+                        strand_,
+                        [self](beast::error_code ec, std::size_t bytes_used) {
+                            self->on_handshake(ec, bytes_used);
+                        }
+                    )
                 );
             }
 
             void on_handshake(beast::error_code ec, std::size_t bytes_used)
             {
-                // wrap around try/catch to prevent non-zero exit-code problem
-                try {
-                    if(ec)
-                        return fail(ec, "handshake");
+                if(ec)
+                    return fail(ec, "handshake");
 
-                    buffer_.consume(bytes_used);
+                buffer_.consume(bytes_used);
 
-                    do_read();
-                } catch(...) { }
+                do_read();
             }
 
             void do_eof()
@@ -505,18 +510,15 @@ using local_stream = beast::basic_stream<
 
             void on_shutdown(beast::error_code ec)
             {
-                try {
-                    if(ec)
-                        return fail(ec, "shutdown");
-                } catch(...) { }
-
+                if(ec)
+                    return fail(ec, "shutdown");
                 // At this point the connection is closed gracefully
             }
 
             bool is_secure() { return true; }
 
             bool allow_host(const http::request<http::string_body>& req) { 
-                return eosio::allow_host(req, *this);
+                return eosio::allow_host(req, *this, plugin_state_);
             }
 
             static constexpr auto name() {
@@ -530,17 +532,21 @@ using local_stream = beast::basic_stream<
         : public std::enable_shared_from_this<unix_socket_session>
         , public beast_http_session<unix_socket_session>
     {    
-        protected:
-            // The socket used to communicate with the client.
-            stream_protocol::socket socket_;
+        
+        // The socket used to communicate with the client.
+        stream_protocol::socket socket_;
+        public:
+            asio::io_context::strand strand_;
 
         public:
             unix_socket_session(stream_protocol::socket sock, 
                             std::shared_ptr<ssl::context> ctx,
                             std::shared_ptr<http_plugin_state> plugin_state, 
                             asio::io_context* ioc) 
-            : beast_http_session(plugin_state, ioc)
+            : beast_http_session(plugin_state)
             , socket_(std::move(sock)) 
+            // TODO ugly pointer cast to get around silly type system, should probably be fixed
+            , strand_(*((boost::asio::io_context*)(&socket_.get_executor().context())))
             {  }
 
             virtual ~unix_socket_session() = default;
