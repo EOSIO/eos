@@ -17,13 +17,7 @@ namespace eosio {
         private: 
             bool isListening_; 
 
-            // we have to use pointers here instead of references
-            // because we need shared_from_this, whihc requires
-            // a default constructor.  However when you use references as member 
-            // variables, the default constuctor must be deleted
-            // in the case of io_context, we have to use raw pointer because 
-            // it is a stack allocated member variable in thread_pool
-            asio::io_context* ioc_;
+            std::shared_ptr<eosio::chain::named_thread_pool> thread_pool_;
             std::shared_ptr<ssl::context> ctx_;
             std::shared_ptr<http_plugin_state> plugin_state_;
 
@@ -39,15 +33,15 @@ namespace eosio {
             beast_http_listener& operator=(const beast_http_listener&) = delete;
             beast_http_listener& operator=(beast_http_listener&&) = delete;
 
-            beast_http_listener(asio::io_context* ioc, 
+            beast_http_listener(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, 
                                 std::shared_ptr<ssl::context> ctx, 
                                 std::shared_ptr<http_plugin_state> plugin_state) : 
                 isListening_(false)
-                , ioc_(ioc)
+                , thread_pool_(thread_pool)
                 , ctx_(ctx)
                 , plugin_state_(plugin_state)
-                , acceptor_(*ioc)
-                , socket_(*ioc)
+                , acceptor_(thread_pool_->get_executor())
+                , socket_(thread_pool_->get_executor())
             { }
 
             virtual ~beast_http_listener() = default; 
@@ -106,7 +100,7 @@ namespace eosio {
             }
 
             void stop_listening() {
-                ioc_->stop();
+                thread_pool_->stop();
             }
 
         private:
@@ -121,8 +115,7 @@ namespace eosio {
                             std::make_shared<session_type>(
                                 std::move(self->socket_),
                                 self->ctx_,
-                                self->plugin_state_,
-                                self->ioc_)->run_session();        
+                                self->plugin_state_)->run_session();        
                         }
 
                         // Accept another connection

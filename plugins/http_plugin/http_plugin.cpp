@@ -64,7 +64,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          std::optional<tcp::endpoint>  listen_endpoint;
          
          uint16_t                                       thread_pool_size = 2;
-         std::optional<eosio::chain::named_thread_pool> thread_pool;
+         std::shared_ptr<eosio::chain::named_thread_pool> thread_pool;
          
          std::optional<tcp::endpoint>  https_listen_endpoint;
          string                        https_cert_chain;
@@ -139,7 +139,6 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
          }
 
          void create_beast_server(bool useSSL, bool isUnix=false) {
-            auto ioc = &thread_pool->get_executor();
             // beast_ssl_ctx = {ssl::context::tlsv12}
             auto ctx = std::make_shared<ssl::context>(ssl::context::tlsv12);
             
@@ -173,16 +172,16 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
                   fc_elog( logger, "https server initialization error: ${w}", ("w", e.what()) );
                }
 
-               beast_https_server = std::make_shared<beast_http_listener<ssl_session, tcp, tcp_socket_t> >(ioc, ctx, plugin_state);
+               beast_https_server = std::make_shared<beast_http_listener<ssl_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
                fc_ilog( logger, "created beast HTTPS listener");
             }
             else {
                if(isUnix) {
-                  beast_unix_server = std::make_shared<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket> >(ioc, ctx, plugin_state);
+                  beast_unix_server = std::make_shared<beast_http_listener<unix_socket_session, stream_protocol, stream_protocol::socket> >(thread_pool, ctx, plugin_state);
                   fc_ilog( logger, "created beast UNIX socket listener");
                }
                else {
-                  beast_server = std::make_shared<beast_http_listener<plain_session, tcp, tcp_socket_t> >(ioc, ctx, plugin_state);
+                  beast_server = std::make_shared<beast_http_listener<plain_session, tcp, tcp_socket_t> >(thread_pool, ctx, plugin_state);
                   fc_ilog( logger, "created beast HTTP listener");
                }
             }
@@ -365,7 +364,7 @@ class http_plugin_impl : public std::enable_shared_from_this<http_plugin_impl> {
       app().post(appbase::priority::high, [this] ()
       {
          try {
-            my->thread_pool.emplace( "http", my->thread_pool_size );
+            my->thread_pool = std::make_shared<eosio::chain::named_thread_pool>( "http", my->thread_pool_size );
             if(my->listen_endpoint) {
                try {
                   my->create_beast_server(false);

@@ -391,8 +391,7 @@ using local_stream = beast::basic_stream<
             plain_session(
                 tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state,
-                asio::io_context* ioc
+                std::shared_ptr<http_plugin_state> plugin_state
                 )
                 : beast_http_session<plain_session>(plugin_state)
                 , socket_(std::move(socket))
@@ -440,8 +439,7 @@ using local_stream = beast::basic_stream<
             ssl_session(
                 tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state,
-                asio::io_context* ioc)
+                std::shared_ptr<http_plugin_state> plugin_state)
                 : beast_http_session<ssl_session>(plugin_state)
                 , stream_(std::move(socket), *ctx)
             { }
@@ -515,8 +513,7 @@ using local_stream = beast::basic_stream<
         public:
             unix_socket_session(stream_protocol::socket sock, 
                             std::shared_ptr<ssl::context> ctx,
-                            std::shared_ptr<http_plugin_state> plugin_state, 
-                            asio::io_context* ioc) 
+                            std::shared_ptr<http_plugin_state> plugin_state) 
             : beast_http_session(plugin_state)
             , socket_(std::move(sock)) 
             {  }
