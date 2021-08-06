@@ -410,14 +410,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void callback(boost::system::error_code ec, const char* what, F f) {
          if (this->plugin->stopping)
             return;
-         if (ec)
-            return on_fail(ec, what);
+         if (ec) {
+            fc_elog(_log, "${w}: ${m}", ("w", what)("m", ec.message()));
+            close_i();
+            return;
+         }
          catch_and_close(f);
-      }
-
-      void on_fail(boost::system::error_code ec, const char* what) {
-         fc_elog(_log, "${w}: ${m}", ("w", what)("m", ec.message()));
-         close_i();
       }
 
       void close_i() {
@@ -733,18 +731,21 @@ void state_history_plugin::plugin_startup() {
 }
 
 void state_history_plugin::plugin_shutdown() {
-   my->applied_transaction_connection.reset();
-   my->accepted_block_connection.reset();
-   my->block_start_connection.reset();
-   my->sessions.for_each([](auto& s) { s->close(); });
-   my->stopping = true;
-   my->trace_log->stop();
-   my->chain_state_log->stop();
-   if (my->thr.joinable()) {
-      my->work_guard.reset();
-      my->ctx.stop();
-      my->thr.join();
+   try {
+      my->applied_transaction_connection.reset();
+      my->accepted_block_connection.reset();
+      my->block_start_connection.reset();
+      my->sessions.for_each([](auto& s) { s->close(); });
+      my->stopping = true;
+      my->trace_log->stop();
+      my->chain_state_log->stop();
+      if (my->thr.joinable()) {
+         my->work_guard.reset();
+         my->ctx.stop();
+         my->thr.join();
+      }
    }
+   FC_CAPTURE_LOG_AND_RETHROW((""))
 }
 
 void state_history_plugin::handle_sighup() {
