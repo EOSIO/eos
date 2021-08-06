@@ -98,13 +98,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    template <typename SessionType>
    struct session : session_base {
-      std::shared_ptr<state_history_plugin_impl> plugin;
+      state_history_plugin_impl*                 plugin;
       bool                                       need_to_send_update = false;
 
       uint32_t                                       to_send_block_num = 0;
       std::optional<std::vector<block_position>::const_iterator> position_it;
 
-      session(std::shared_ptr<state_history_plugin_impl> plugin)
+      session(state_history_plugin_impl* plugin)
           : plugin(std::move(plugin)) {}
 
       ~session() {
@@ -303,28 +303,26 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                       public std::enable_shared_from_this<ws_session<SocketType>> {
     public:
       using socket_type = SocketType;
-      ws_session(std::shared_ptr<state_history_plugin_impl> plugin)
-          : session<ws_session<SocketType>>(plugin) {}
-
-      void start(SocketType&& socket) {
-         socket_stream =
-             std::make_unique<ws::stream<SocketType>>(std::move(socket));
-         if constexpr (std::is_same_v<SocketType, tcp::socket>) {
-            socket_stream->next_layer().set_option(boost::asio::ip::tcp::no_delay(true));
-         }
+      ws_session(state_history_plugin_impl* plugin, SocketType socket)
+          : session<ws_session<SocketType>>(plugin), socket_stream(std::move(socket)) {
+      }
+      void start() {
          fc_ilog(_log, "incoming connection");
-         socket_stream->auto_fragment(false);
-         socket_stream->binary(true);
-         socket_stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
-         socket_stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
-         socket_stream->async_accept([self = this->shared_from_this()](boost::system::error_code ec) {
+         if constexpr (std::is_same_v<SocketType, tcp::socket>) {
+            socket_stream.next_layer().set_option(boost::asio::ip::tcp::no_delay(true));
+         }
+         socket_stream.auto_fragment(false);
+         socket_stream.binary(true);
+         socket_stream.next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
+         socket_stream.next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
+         socket_stream.async_accept([self = this->shared_from_this()](boost::system::error_code ec) {
             self->callback(ec, "async_accept", [self] {
-               self->socket_stream->binary(false);
-               self->socket_stream->async_write(
+               self->socket_stream.binary(false);
+               self->socket_stream.async_write(
                    boost::asio::buffer(state_history_plugin_abi, strlen(state_history_plugin_abi)),
                    [self](boost::system::error_code ec, size_t) {
                       self->callback(ec, "async_write", [self] {
-                         self->socket_stream->binary(true);
+                         self->socket_stream.binary(true);
                          self->start_read();
                       });
                    });
@@ -353,7 +351,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       // all private member functions are called from internal thread
       void start_read() {
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
-         socket_stream->async_read(
+         socket_stream.async_read(
              *in_buffer, [self = this->shared_from_this(), in_buffer](boost::system::error_code ec, size_t) {
                 self->callback(ec, "async_read", [self, in_buffer] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
@@ -381,7 +379,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
          auto send_span = fc_create_span_from_token(send_queue[0].second, "send");
          fc_add_tag(send_span, "buffer_size", send_queue[0].first.size());
-         socket_stream->async_write( //
+         socket_stream.async_write( //
              boost::asio::buffer(send_queue[0].first),
              [self = this->shared_from_this(), send_span = std::move(send_span)](boost::system::error_code ec,
                                                                                  size_t) mutable {
@@ -424,19 +422,43 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void close_i() {
          boost::system::error_code ec;
-         socket_stream->next_layer().close(ec);
+         socket_stream.next_layer().close(ec);
          if (ec) fc_elog(_log, "close: ${m}", ("m", ec.message()));
-         app().post(priority::medium,
-                    [self = this->shared_from_this()]() { self->plugin->sessions.erase(self.get()); });
+         this->plugin->sessions.remove(this->shared_from_this());
       }
 
-      std::unique_ptr<ws::stream<SocketType>> socket_stream;
+      ws::stream<SocketType> socket_stream;
       using send_queue_t = std::vector<std::pair<std::vector<char>, fc::zipkin_span::token>>;
       send_queue_t send_queue;
       bool         sending = false;
    };
 
-   std::map<session_base*, std::shared_ptr<session_base>> sessions;
+   class session_manager_t {
+      std::mutex                                                mx;
+      boost::container::flat_set<std::shared_ptr<session_base>> session_set;
+
+    public:
+      template <typename SocketType>
+      void add(state_history_plugin_impl* plugin, std::shared_ptr<SocketType> socket) {
+         auto s = std::make_shared<ws_session<SocketType>>(plugin, std::move(*socket));
+         s->start();
+         std::lock_guard lock(mx);
+         session_set.insert(std::move(s));
+      }
+
+      void remove(std::shared_ptr<session_base> s) {
+         std::lock_guard lock(mx);
+         session_set.erase(s);
+      }
+
+      template <typename F>
+      void for_each(F&& f) {
+         std::lock_guard lock(mx);
+         for (auto& s : session_set) {
+            f(s);
+         }
+      }
+   } sessions;
 
    void listen() {
       boost::system::error_code ec;
@@ -504,7 +526,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    template <typename Acceptor>
    void do_accept(Acceptor& acceptor) {
       auto socket = std::make_shared<typename Acceptor::protocol_type::socket>(this->ctx);
-      acceptor.async_accept(*socket, [self = shared_from_this(), socket, &acceptor, this](const boost::system::error_code& ec) {
+      acceptor.async_accept(*socket, [this, socket, &acceptor](const boost::system::error_code& ec) {
          if (stopping)
             return;
          if (ec) {
@@ -513,15 +535,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             return;
          }
          catch_and_log([&] {
-            if constexpr (std::is_same_v<Acceptor, tcp::acceptor>) {
-               auto s            = std::make_shared<ws_session<tcp::socket>>(self);
-               sessions[s.get()] = s;
-               s->start(std::move(*socket));
-            } else if constexpr (std::is_same_v<Acceptor, unixs::acceptor>) {
-               auto s            = std::make_shared<ws_session<unixs::socket>>(self);
-               sessions[s.get()] = s;
-               s->start(std::move(*socket));
-            }
+            sessions.add(this, socket);
          });
          catch_and_log([&] { do_accept(acceptor); });
       });
@@ -565,12 +579,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       
       this->store(block_state, ship_accept_span);
 
-      for (auto& s : sessions) {
-         auto& p = s.second;
-         if (p) {
-            p->send_update(block_state, fc_create_span(ship_accept_span, "send_update"));
-         }
-      }
+      sessions.for_each([&block_state, &ship_accept_span](auto& s) {
+         s->send_update(block_state, fc_create_span(ship_accept_span, "send_update"));
+      });
    }
 
    void on_block_start(uint32_t block_num) {
@@ -725,9 +736,7 @@ void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
    my->block_start_connection.reset();
-   for (auto [ session, _]: my->sessions) {
-      session->close();
-   }
+   my->sessions.for_each([](auto& s) { s->close(); });
    my->stopping = true;
    my->trace_log->stop();
    my->chain_state_log->stop();
