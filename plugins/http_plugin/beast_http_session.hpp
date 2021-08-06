@@ -109,6 +109,9 @@ using local_stream = beast::basic_stream<
             http::response<http::string_body> res_;
 
             std::shared_ptr<http_plugin_state> plugin_state_;
+
+            // whetner resposne should be sent back to client when an exception occured
+            bool isSendExceptionResponse_; 
             
             template<
                 class Body, class Allocator>
@@ -242,18 +245,27 @@ using local_stream = beast::basic_stream<
 
                 session_begin_ = steady_clock::now();
                 read_time_us_ = handle_time_us_ = write_time_us_ = 0;
+
+                // dfeault to true
+                isSendExceptionResponse_ = true;
             }
 
             virtual ~beast_http_session() {
-                plugin_state_->requests_in_flight -= 1;
-#if PRINT_PERF_METRICS                
-                auto session_time = steady_clock::now() - session_begin_;
-                auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
-                fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
-                fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
-                fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
-                fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
-#endif
+                // avoid exceptions being thrown in destructor
+                isSendExceptionResponse_ = false;
+                try { 
+                    plugin_state_->requests_in_flight -= 1;
+    #if PRINT_PERF_METRICS                
+                    auto session_time = steady_clock::now() - session_begin_;
+                    auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
+                    fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
+                    fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
+                    fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                    fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
+    #endif
+                } catch(...) {
+                    handle_exception();
+                }
             }    
 
             void do_read()
@@ -335,14 +347,16 @@ using local_stream = beast::basic_stream<
                     fc_elog( logger, "unkonwn exception");
                 } 
 
-                res_.set(http::field::content_type, "text/plain");
-                res_.keep_alive(false);
-                res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                if(isSendExceptionResponse_) {
+                    res_.set(http::field::content_type, "text/plain");
+                    res_.keep_alive(false);
+                    res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
 
-                std::string err = "Internal server error";
-                http::status stat = http::status::internal_server_error;
-                send_response(errStr, static_cast<int>(stat));
-                derived().do_eof();
+                    std::string err = "Internal server error";
+                    http::status stat = http::status::internal_server_error;
+                    send_response(errStr, static_cast<int>(stat));
+                    derived().do_eof();
+                }
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
@@ -408,11 +422,15 @@ using local_stream = beast::basic_stream<
 
             void do_eof()
             {
-                // Send a TCP shutdown
-                beast::error_code ec;
-
-                socket_.shutdown(tcp::socket::shutdown_send, ec);
-                // At this point the connection is closed gracefully
+                isSendExceptionResponse_ = false;
+                try {
+                    // Send a TCP shutdown
+                    beast::error_code ec;
+                    socket_.shutdown(tcp::socket::shutdown_send, ec);
+                    // At this point the connection is closed gracefully
+                } catch (...) { 
+                    handle_exception();
+                }
             }
 
             bool is_secure() { return false; };
@@ -477,9 +495,12 @@ using local_stream = beast::basic_stream<
             void do_eof()
             {
                 // Perform the SSL shutdown
-                beast::error_code ec;
-                stream_.shutdown(ec);
-                on_shutdown(ec);
+                auto self = shared_from_this();
+                stream_.async_shutdown(
+                    [self](beast::error_code ec) {
+                        self->on_shutdown(ec);
+                    }
+                );            
             }
 
             void on_shutdown(beast::error_code ec)
@@ -527,10 +548,15 @@ using local_stream = beast::basic_stream<
 
             void do_eof()
             {
-                // Send a TCP shutdown
-                boost::system::error_code ec;
-                socket_.shutdown(stream_protocol::socket::shutdown_send, ec);
-                // At this point the connection is closed gracefully
+                isSendExceptionResponse_ = false;
+                try {
+                    // Send a shutdown signal
+                    boost::system::error_code ec;
+                    socket_.shutdown(stream_protocol::socket::shutdown_send, ec);
+                    // At this point the connection is closed gracefully
+                } catch (...) { 
+                    handle_exception(); 
+                }
             }
 
             bool is_secure() { return false; };

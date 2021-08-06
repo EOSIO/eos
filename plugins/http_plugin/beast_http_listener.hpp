@@ -44,16 +44,21 @@ namespace eosio {
                 , socket_(thread_pool_->get_executor())
             { }
 
-            virtual ~beast_http_listener() = default; 
+            virtual ~beast_http_listener() {
+                try {
+                     stop_listening();
+                } catch( ... ) { }
+            }; 
 
             void listen(typename protocol_type::endpoint endpoint) {
                 if (isListening_) return;
 
-                // delete the old socket
-                // TODO only need for stream protocol
-                auto ss = std::stringstream();
-                ss << endpoint;
-                ::unlink(ss.str().c_str());
+                // for unix sockets we should delete the old socket
+                if(std::is_same<socket_type, stream_protocol::socket>::value) { 
+                    auto ss = std::stringstream();
+                    ss << endpoint;
+                    ::unlink(ss.str().c_str());
+                }
 
                 beast::error_code ec;
                 // Open the acceptor
@@ -100,7 +105,10 @@ namespace eosio {
             }
 
             void stop_listening() {
-                thread_pool_->stop();
+                if(isListening_) {
+                    thread_pool_->stop();
+                    isListening_ = false;
+                }
             }
 
         private:
