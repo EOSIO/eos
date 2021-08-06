@@ -49,7 +49,7 @@ public:
          ( "resource-monitor-interval-seconds", bpo::value<uint32_t>()->default_value(def_interval_in_secs),
            "Time in seconds between two consecutive checks of resource usage. Should be between 1 and 300" )
          ( "resource-monitor-space-threshold", bpo::value<uint32_t>()->default_value(def_space_threshold),
-           "Threshold in terms of percentage of used space vs total space. If used space is above (threshold - 5%), a warning is generated.  If used space is above the threshold and resource-monitor-not-shutdown-on-threshold-exceeded is enabled, a graceful shutdown is initiated. The value should be between 6 and 99" )
+           "Threshold in terms of percentage of used space vs total space. If used space is above (threshold - 5%), a warning is generated.  Unless resource-monitor-not-shutdown-on-threshold-exceeded is enabled, if used space is above the threshold a graceful shutdown is initiated. The value should be between 6 and 99" )
          ( "resource-monitor-not-shutdown-on-threshold-exceeded",
            "Used to indicate nodeos will not shutdown when threshold is exceeded." )
          ( "resource-monitor-warning-interval", bpo::value<uint32_t>()->default_value(def_monitor_warning_interval),
