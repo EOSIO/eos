@@ -113,6 +113,8 @@ using local_stream = beast::basic_stream<
             // whetner resposne should be sent back to client when an exception occured
             bool isSendExceptionResponse_; 
             
+            std::shared_ptr<eosio::chain::named_thread_pool> thread_pool_;
+
             template<
                 class Body, class Allocator>
             void
@@ -183,7 +185,7 @@ using local_stream = beast::basic_stream<
                         handler_itr->second( derived().shared_from_this(), 
                                             std::move( resource ), 
                                             std::move( body ), 
-                                            make_http_response_handler(derived().stream().get_executor(), *plugin_state_, derived().shared_from_this()) );
+                                            make_http_response_handler(thread_pool_, plugin_state_, derived().shared_from_this()) );
                     } else {
                         fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                         not_found(resource, *this);                    
@@ -237,8 +239,10 @@ using local_stream = beast::basic_stream<
       
             // Take ownership of the buffer
             beast_http_session(
-                std::shared_ptr<http_plugin_state> plugin_state) 
-                : plugin_state_(plugin_state)
+                std::shared_ptr<http_plugin_state> plugin_state,  
+                std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
+                : plugin_state_(plugin_state) 
+                , thread_pool_(thread_pool)
             {  
                 plugin_state_->requests_in_flight += 1;
                 req_parser_.body_limit(plugin_state_->max_body_size);
@@ -405,9 +409,9 @@ using local_stream = beast::basic_stream<
             plain_session(
                 tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state
-                )
-                : beast_http_session<plain_session>(plugin_state)
+                std::shared_ptr<http_plugin_state> plugin_state, 
+                std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
+                : beast_http_session<plain_session>(plugin_state, thread_pool)
                 , socket_(std::move(socket))
             {}
 
@@ -457,8 +461,9 @@ using local_stream = beast::basic_stream<
             ssl_session(
                 tcp_socket_t socket,
                 std::shared_ptr<ssl::context> ctx,
-                std::shared_ptr<http_plugin_state> plugin_state)
-                : beast_http_session<ssl_session>(plugin_state)
+                std::shared_ptr<http_plugin_state> plugin_state, 
+                std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
+                : beast_http_session<ssl_session>(plugin_state, thread_pool)
                 , stream_(std::move(socket), *ctx)
             { }
 
@@ -534,8 +539,9 @@ using local_stream = beast::basic_stream<
         public:
             unix_socket_session(stream_protocol::socket sock, 
                             std::shared_ptr<ssl::context> ctx,
-                            std::shared_ptr<http_plugin_state> plugin_state) 
-            : beast_http_session(plugin_state)
+                            std::shared_ptr<http_plugin_state> plugin_state, 
+                            std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
+            : beast_http_session(plugin_state, thread_pool)
             , socket_(std::move(sock)) 
             {  }
 

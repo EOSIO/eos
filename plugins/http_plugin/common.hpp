@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/chain/thread_utils.hpp> // for thread pool
 #include <fc/utility.hpp>
 
 #include <string>
@@ -210,31 +211,32 @@ namespace eosio {
      * Construct a lambda appropriate for url_response_callback that will
      * JSON-stringify the provided response
      *
-     * @param con - pointer for the connection this response should be sent to
+     * @param thread_pool - pointer to the thread pool 
+     * @param plugin_state = reference to plugin state object
+     * @param session_ptr - pointer to the session object on which to invoke send_response
      * @return lambda suitable for url_response_callback
      */
-    template<typename T>
-    auto make_http_response_handler( T&& ioc, http_plugin_state &plugin_state, detail::abstract_conn_ptr abstract_conn_ptr) {
-    return [&ioc, &plugin_state, abstract_conn_ptr]( int code, std::optional<fc::variant> response )
+    auto make_http_response_handler(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, std::shared_ptr<http_plugin_state> plugin_state, detail::abstract_conn_ptr session_ptr) {
+    return [thread_pool, plugin_state, session_ptr]( int code, std::optional<fc::variant> response )
          {
-            auto tracked_response = make_in_flight(std::move(response), plugin_state);
-            if (!abstract_conn_ptr->verify_max_bytes_in_flight()) {
+            auto tracked_response = make_in_flight(std::move(response), *plugin_state);
+            if (!session_ptr->verify_max_bytes_in_flight()) {
                 return;
             }
 
             // post  back to an HTTP thread to to allow the response handler to be called from any thread
-            boost::asio::post( ioc, // my->thread_pool->get_executor()
-                                [&plugin_state, abstract_conn_ptr, code, tracked_response=std::move(tracked_response)]() {
+            boost::asio::post(  thread_pool->get_executor(),
+                                [plugin_state, session_ptr, code, tracked_response=std::move(tracked_response)]() {
                 try {
                     if( tracked_response->obj().has_value() ) {
-                        std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state.max_response_time );
-                        auto tracked_json = make_in_flight( std::move( json ), plugin_state );
-                        abstract_conn_ptr->send_response( std::move( tracked_json->obj() ), code );
+                        std::string json = fc::json::to_string( *tracked_response->obj(), fc::time_point::now() + plugin_state->max_response_time );
+                        auto tracked_json = make_in_flight( std::move( json ), *plugin_state );
+                        session_ptr->send_response( std::move( tracked_json->obj() ), code );
                     } else {
-                        abstract_conn_ptr->send_response( {}, code );
+                        session_ptr->send_response( {}, code );
                     }
                 } catch( ... ) {
-                    abstract_conn_ptr->handle_exception();
+                    session_ptr->handle_exception();
                 }
             });
         };// end lambda

@@ -123,7 +123,8 @@ namespace eosio {
                             std::make_shared<session_type>(
                                 std::move(self->socket_),
                                 self->ctx_,
-                                self->plugin_state_)->run_session();        
+                                self->plugin_state_,
+                                self->thread_pool_)->run_session();        
                         }
 
                         // Accept another connection

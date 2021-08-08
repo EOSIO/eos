@@ -1,6 +1,5 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/thread_utils.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
