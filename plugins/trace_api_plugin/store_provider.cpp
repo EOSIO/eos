@@ -8,6 +8,7 @@ namespace {
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
       static constexpr const char* _trace_ext = ".log";
+      static constexpr const char* _kv_file_name = "kv.log";
       static constexpr const char* _compressed_trace_ext = ".clog";
       static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
 
@@ -63,10 +64,11 @@ namespace eosio::trace_api {
    }
 
    void store_provider::append_trx_ids(const trx_ids_trace& tt){
-      //rocksdb::WriteOptions  m_write_options;
-      //m_write_options.disableWAL = true;
+      fc::cfile kv_file;
       for (const auto& id : tt.ids) {
-         auto status = rdb->Put(rocksdb::WriteOptions(), id.str(), std::to_string(tt.block_num));
+         _slice_directory.find_or_create_kv_file(open_state::write, kv_file);
+         auto kve = metadata_log_entry { kv_entry_v0 { .id = id, .block_num = tt.block_num }};
+         append_store(kve, kv_file);
       }
    }
 
@@ -96,6 +98,28 @@ namespace eosio::trace_api {
          return get_block_t{};
       }
       return std::make_tuple( entry.value(), irreversible );
+   }
+
+    get_block_n store_provider::get_trx_block_number(chain::transaction_id_type trx_id, const yield_function& yield) {
+      fc::cfile kv_file;
+      const bool found = _slice_directory.find_kv_file(open_state::read, kv_file);
+      if( !found ) {
+         return {};
+      }
+      metadata_log_entry entry;
+      auto ds = kv_file.create_datastream();
+      const uint64_t end = file_size(kv_file.get_file_path());
+      uint64_t  offset = kv_file.tellp();
+      while (offset < end) {
+         yield();
+         fc::raw::unpack(ds, entry);
+         FC_ASSERT( std::holds_alternative<kv_entry_v0>(entry) == true, "unpacked data should be a kv entry" );
+         const auto& kv = std::get<kv_entry_v0>(entry);
+         if (kv.id == trx_id) {
+            return kv.block_num;
+         }
+      }
+      return get_block_n{};
    }
 
    slice_directory::slice_directory(const bfs::path& slice_dir, uint32_t width, std::optional<uint32_t> minimum_irreversible_history_blocks, std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride)
@@ -215,6 +239,42 @@ namespace eosio::trace_api {
          const std::string index_status = index_found ? "existing" : "new";
          elog("Trace file is ${ts}, but it's metadata file is ${is}. This means the files are not consistent.", ("ts", trace_status)("is", index_status));
       }
+   }
+
+   bool slice_directory::find_or_create_kv_file(open_state state, fc::cfile& kv_file) const {
+       const bool found = find_kv_file(state, kv_file);
+       if( !found ) {
+           kv_file.open(fc::cfile::create_or_update_rw_mode);
+       }
+       return found;
+   }
+
+   bool slice_directory::find_kv_file(open_state state, fc::cfile& kv_file, bool open_file) const {
+      const bool found = find_kv(kv_file, open_file);
+      if( !found || !open_file ) {
+         return found;
+      }
+      if( state == open_state::write ) {
+         kv_file.seek_end(0);
+      }
+      return true;
+   }
+
+   bool slice_directory::find_kv(fc::cfile& kv_file, bool open_file) const {
+       auto filename = _kv_file_name;
+       const path slice_path = _slice_dir / filename;
+       kv_file.set_file_path(slice_path);
+
+       const bool file_exists = exists(slice_path);
+       if( !file_exists || !open_file ) {
+           return file_exists;
+       }
+
+       kv_file.open(fc::cfile::create_or_update_rw_mode);
+       // TODO: this is a temporary fix until fc::cfile handles it internally.  OSX and Linux differ on the read offset
+       // when opening in "ab+" mode
+       kv_file.seek(0);
+       return true;
    }
 
    void slice_directory::set_lib(uint32_t lib) {

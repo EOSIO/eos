@@ -357,13 +357,15 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
          };
 
          try {
-            // search for the trx id in rocksdb to find out associated block number
-            std::string blk_num;
-            rocksdb::Status status = common->rdb->Get(rocksdb::ReadOptions(), *trx_id, &blk_num);
+            // search for the trx id in the kv file and find out associate block number
+            const auto deadline = that->calc_deadline( max_response_time );
+            get_block_n blk_num;
+            blk_num = common->store->get_trx_block_number(input_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });
 
-            if (status.ok()){
+            // extract the trx trace from the block trace
+            if (blk_num.has_value()){
                const auto deadline = that->calc_deadline( max_response_time );
-               auto resp = that->req_handler->get_block_trace(std::stoi(blk_num), [deadline]() { FC_CHECK_DEADLINE(deadline); });
+               auto resp = that->req_handler->get_block_trace(blk_num.value(), [deadline]() { FC_CHECK_DEADLINE(deadline); });
                if (resp.is_null()) {
                   error_results results{404, "Block trace missing"};
                   cb( 404, fc::variant( results ));
