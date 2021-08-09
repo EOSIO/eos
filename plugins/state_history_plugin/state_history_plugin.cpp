@@ -157,12 +157,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          result.chain_id          = chain.get_chain_id();
          if (plugin->trace_log) {
-            result.trace_begin_block = plugin->trace_log->begin_block();
-            result.trace_end_block   = plugin->trace_log->end_block();
+            std::tie(result.trace_begin_block, result.trace_end_block) = plugin->trace_log->begin_end_block_nums();
          }
          if (plugin->chain_state_log) {
-            result.chain_state_begin_block = plugin->chain_state_log->begin_block();
-            result.chain_state_end_block   = plugin->chain_state_log->end_block();
+            std::tie(result.chain_state_begin_block, result.chain_state_end_block) =
+                plugin->chain_state_log->begin_end_block_nums();
          }
          fc_ilog(_log, "pushing get_status_result_v0 to send queue");
          send(std::move(result));
@@ -520,7 +519,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 
       auto  dir_option = options.at("state-history-dir").as<bfs::path>();
 
-      static eosio::state_history_config config;
+      eosio::state_history_config config;
+      config.logger = &_log;
 
       if (dir_option.is_relative())
          config.log_dir = app().data_dir() / dir_option;
@@ -580,6 +580,8 @@ void state_history_plugin::plugin_shutdown() {
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;
+   my->trace_log->stop();
+   my->chain_state_log->stop();
 }
 
 void state_history_plugin::handle_sighup() {
