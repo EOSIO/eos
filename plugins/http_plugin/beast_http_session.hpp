@@ -103,7 +103,7 @@ using local_stream = beast::basic_stream<
             uint64_t read_time_us_, handle_time_us_, write_time_us_;
 
             // HTTP parser object
-            http::request_parser<http::string_body> req_parser_;
+            std::optional<http::request_parser<http::string_body>> req_parser_;
 
             // HTTP response object
             http::response<http::string_body> res_;
@@ -245,7 +245,8 @@ using local_stream = beast::basic_stream<
                 , thread_pool_(thread_pool)
             {  
                 plugin_state_->requests_in_flight += 1;
-                req_parser_.body_limit(plugin_state_->max_body_size);
+                req_parser_.emplace();
+                req_parser_->body_limit(plugin_state_->max_body_size);
 
                 session_begin_ = steady_clock::now();
                 read_time_us_ = handle_time_us_ = write_time_us_ = 0;
@@ -281,7 +282,7 @@ using local_stream = beast::basic_stream<
                 http::async_read(
                     derived().stream(),
                     buffer_,
-                    req_parser_,
+                    *req_parser_,
                     [self](beast::error_code ec, std::size_t bytes_transferred) { 
                         self->on_read(ec, bytes_transferred);
                     }
@@ -301,7 +302,7 @@ using local_stream = beast::basic_stream<
                     return fail(ec, "read");
                 }
 
-                auto req = req_parser_.get();
+                auto req = req_parser_->get();
 
                 handle_begin_ = steady_clock::now();
                 auto dt = handle_begin_ - read_begin_;
@@ -332,6 +333,9 @@ using local_stream = beast::basic_stream<
                     return derived().do_eof();
                 }
 
+                // create a new parser to clear state 
+                req_parser_.emplace();
+                req_parser_->body_limit(plugin_state_->max_body_size);
                 // Read another request
                 do_read();
             }           
@@ -364,9 +368,6 @@ using local_stream = beast::basic_stream<
             }
 
             virtual void send_response(std::optional<std::string> body, int code) override {
-                // Determine if we should close the connection after
-                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
-
                 write_begin_ = steady_clock::now();
                 auto dt = write_begin_ - handle_begin_;
                 handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
@@ -376,6 +377,9 @@ using local_stream = beast::basic_stream<
                     res_.body() = *body;        
 
                 res_.prepare_payload();
+
+                // Determine if we should close the connection after
+                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
 
                 // Write the response
                 auto self = derived().shared_from_this();
