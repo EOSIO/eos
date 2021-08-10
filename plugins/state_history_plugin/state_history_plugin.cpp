@@ -202,8 +202,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          uint32_t current =
                block_req.irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
 
-         if (to_send_block_num > current || to_send_block_num >= block_req.end_block_num)
+         if (to_send_block_num > current || to_send_block_num >= block_req.end_block_num) {
+            fc_dlog( _log, "Not sending, to_send_block_num: ${s}, current: ${c} block_req.end_block_num: ${b}",
+                     ("s", to_send_block_num)("c", current)("b", block_req.end_block_num) );
             return;
+         }
 
          auto block_id  = plugin->get_block_id(to_send_block_num);
 
@@ -277,15 +280,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                (void)this; // avoid unused lambda warning
                // send get_blocks_result_v1 when the request is get_blocks_request_v0 and
                // send send_block_result_v2 when the request is get_blocks_request_v1. 
-               if (head_block_state->block) {
-                  typename std::decay_t<decltype(req)>::response_type result;
-                  result.head = {head_block_state->block_num, head_block_state->id};
-                  if (::fc::zipkin_config::is_enabled() && !span) {
-                     span.emplace("send-update-0", fc::zipkin_span::to_id(head_block_state->id),
-                                 "ship"_n.to_uint64_t());
-                  }
-                  send_update(head_block_state, std::move(result), std::move(span)); 
-               }
+               typename std::decay_t<decltype(req)>::response_type result;
+               result.head = {head_block_state->block_num, head_block_state->id};
+               send_update(head_block_state, std::move(result), std::move(span));
             },
             *current_request);
       }
