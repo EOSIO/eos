@@ -332,18 +332,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename T>
       void send(T obj, fc::zipkin_span::token token) {
-         boost::asio::post(this->plugin->work_strand, [this, obj = std::move(obj), token ]() {
-            send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), token);
-            send();
+         boost::asio::post(this->plugin->work_strand, [self = this->shared_from_this(), obj = std::move(obj), token ]() {
+            self->send_queue.emplace_back(fc::raw::pack(state_result{std::move(obj)}), token);
+            self->send();
          });
       }
 
       void close() override {
-         boost::asio::post(this->plugin->work_strand, [p = std::weak_ptr(this->weak_from_this())]() {
-            auto self = p.lock();
-            if (self) {
-               self->close_i();
-            }
+         boost::asio::post(this->plugin->work_strand, [self = this->shared_from_this()]() {
+            self->close_i();
          });
       }
 
