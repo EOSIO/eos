@@ -28,11 +28,20 @@ struct streamer_plugin_impl : public streamer_t {
    void stream_data(const char* data, uint64_t data_size) override {
       eosio::input_stream bin(data, data_size);
       stream_wrapper      res = eosio::from_bin<stream_wrapper>(bin);
-      const auto&         sw  = std::get<stream_wrapper_v0>(res);
-      publish_to_streams(sw);
+      std::visit([&](const auto& sw) { publish_to_streams(sw); }, res);
    }
 
    void publish_to_streams(const stream_wrapper_v0& sw) {
+      std::string route;
+      for (const auto& stream : streams) {
+         route = sw.route.to_string();
+         if (stream->check_route(route)) {
+            stream->publish(sw.data, route);
+         }
+      }
+   }
+
+   void publish_to_streams(const stream_wrapper_v1& sw) {
       for (const auto& stream : streams) {
          if (stream->check_route(sw.route)) {
             stream->publish(sw.data, sw.route);

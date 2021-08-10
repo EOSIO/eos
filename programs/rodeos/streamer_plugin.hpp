@@ -13,7 +13,12 @@ struct stream_wrapper_v0 {
    std::vector<char> data;
 };
 EOSIO_REFLECT(stream_wrapper_v0, route, data);
-using stream_wrapper = std::variant<stream_wrapper_v0>;
+struct stream_wrapper_v1 {
+   std::string       route;
+   std::vector<char> data;
+};
+EOSIO_REFLECT(stream_wrapper_v1, route, data);
+using stream_wrapper = std::variant<stream_wrapper_v0, stream_wrapper_v1>;
 
 class streamer_plugin : public appbase::plugin<streamer_plugin> {
 

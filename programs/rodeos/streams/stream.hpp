@@ -13,18 +13,20 @@ struct streamer_t {
 
 class stream_handler {
  public:
+   explicit stream_handler(std::vector<std::string> routes)
+   : routes_(std::move(routes)) {}
+
    virtual ~stream_handler() {}
-   virtual const std::vector<eosio::name>& get_routes() const = 0;
    virtual void start_block(uint32_t block_num) {};
-   virtual void publish(const std::vector<char>& data, const eosio::name& routing_key) = 0;
+   virtual void publish(const std::vector<char>& data, const std::string& routing_key) = 0;
    virtual void stop_block(uint32_t block_num) {}
 
-   bool check_route(const eosio::name& stream_route) {
-      if (get_routes().size() == 0) {
+   bool check_route(const std::string& stream_route) {
+      if (routes_.size() == 0) {
          return true;
       }
 
-      for (const auto& name : get_routes()) {
+      for (const auto& name : routes_) {
          if (name == stream_route) {
             return true;
          }
@@ -32,10 +34,13 @@ class stream_handler {
 
       return false;
    }
+
+private:
+   std::vector<std::string> routes_;
 };
 
-inline std::vector<eosio::name> extract_routes(const std::string& routes_str) {
-   std::vector<eosio::name> streaming_routes{};
+inline std::vector<std::string> extract_routes(const std::string& routes_str) {
+   std::vector<std::string> streaming_routes{};
    bool                     star     = false;
    std::string              routings = routes_str;
    while (routings.size() > 0) {
@@ -44,7 +49,7 @@ inline std::vector<eosio::name> extract_routes(const std::string& routes_str) {
       std::string route        = routings.substr(0, pos);
       ilog("extracting route ${route}", ("route", route));
       if (route != "*") {
-         streaming_routes.emplace_back(eosio::name(route));
+         streaming_routes.emplace_back(std::move(route));
       } else {
          star = true;
       }
