@@ -67,8 +67,12 @@ namespace eosio::trace_api {
       fc::cfile kv_file;
       for (const auto& id : tt.ids) {
          _slice_directory.find_or_create_kv_file(open_state::write, kv_file);
-         auto kve = metadata_log_entry { kv_entry_v0 { .id = id, .block_num = tt.block_num }};
-         append_store(kve, kv_file);
+         // save to the kv log without packing
+         std::string entry = id.str() + std::to_string(tt.block_num);
+         uint32_t entry_size = id.str().size() + sizeof(uint32_t);
+         kv_file.write(entry.c_str(), entry_size);
+         kv_file.flush();
+         kv_file.sync();
       }
    }
 
@@ -106,17 +110,28 @@ namespace eosio::trace_api {
       if( !found ) {
          return {};
       }
-      metadata_log_entry entry;
-      auto ds = kv_file.create_datastream();
+
+      auto convert_to_string = []( const char* a, uint32_t size ) -> std::string
+      {
+           std::string s;
+           for (uint32_t i = 0; i < size; ++i)
+               s = s+ a[i];
+           return s;
+      };
+
       const uint64_t end = file_size(kv_file.get_file_path());
-      uint64_t  offset = kv_file.tellp();
+      uint64_t offset = kv_file.tellp();
+      uint32_t trx_id_size = trx_id.str().size();
+      uint32_t blk_num_size = sizeof(uint32_t);
+      uint32_t entry_size = trx_id_size + blk_num_size;
       while (offset < end) {
          yield();
-         fc::raw::unpack(ds, entry);
-         FC_ASSERT( std::holds_alternative<kv_entry_v0>(entry) == true, "unpacked data should be a kv entry" );
-         const auto& kv = std::get<kv_entry_v0>(entry);
-         if (kv.id == trx_id) {
-            return kv.block_num;
+         auto buffer = std::make_unique<char[]>(entry_size);
+         char* buf = buffer.get();
+         kv_file.read(buf, entry_size);
+         std::string kv_id = convert_to_string(buf, trx_id_size);
+         if (kv_id == trx_id){
+             return std::stoul(convert_to_string(buf+trx_id_size, blk_num_size));
          }
       }
       return get_block_n{};
