@@ -111,12 +111,13 @@ namespace eosio::trace_api {
          return {};
       }
 
-      auto convert_to_string = []( const char* a, uint32_t size ) -> std::string
+      auto convert_to_int = []( const char* p)
       {
-           std::string s;
-           for (uint32_t i = 0; i < size; ++i)
-               s = s+ a[i];
-           return s;
+         uint32_t r = 0;
+         while (*p){
+            r = r*10 + ((*p++)-'0');
+         }
+         return r;
       };
 
       const uint64_t end = file_size(kv_file.get_file_path());
@@ -125,14 +126,15 @@ namespace eosio::trace_api {
       uint32_t blk_num_size = sizeof(uint32_t);
       uint32_t entry_size = trx_id_size + blk_num_size;
       while (offset < end) {
-         yield();
+         //yield();
          auto buffer = std::make_unique<char[]>(entry_size);
          char* buf = buffer.get();
          kv_file.read(buf, entry_size);
-         std::string kv_id = convert_to_string(buf, trx_id_size);
-         if (kv_id == trx_id){
-             return std::stoul(convert_to_string(buf+trx_id_size, blk_num_size));
+         int match = memcmp(trx_id.str().c_str(), buf, trx_id_size);
+         if (match == 0) {
+             return convert_to_int(buf+trx_id_size);
          }
+         offset = kv_file.tellp();
       }
       return get_block_n{};
    }
