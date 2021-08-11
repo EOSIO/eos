@@ -468,10 +468,13 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             }
          }
          catch (chain::missing_chain_api_plugin_exception &) {
-            std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
-                      << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
-                      << "push_transaction instead or submit your transaction to a different node." << std::endl;
-            throw;
+            if (tx_read_only || tx_rtn_failure_trace) {
+               std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
+                         << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
+                         << "push_transaction instead or submit your transaction to a different node." << std::endl;
+               throw;
+            }
+            return call(send_txn_func, pt_v0);  // With compatible options, silently fall back to v1 API
          }
       }
    } else {
