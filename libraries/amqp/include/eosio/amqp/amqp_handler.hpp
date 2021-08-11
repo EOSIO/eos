@@ -143,25 +143,8 @@ public:
 
    void start_consume(bool recover=true) {
        boost::asio::post( thread_pool_.get_executor(), [&]() {
-           if( channel_ && on_consume_) {
-               if (recover) {
-                   channel_->recover(AMQP::requeue)
-                           .onSuccess([&](){dlog("successfully started channel recovery");})
-                           .onError([&](const char* message){wlog("channel recovery failed ${e}", ("e", message));});
-               }
-
-               auto &consumer = channel_->consume(name_);
-               consumer.onSuccess([&](const std::string &consumer_tag) {
-                   dlog("consume started: ${tag}", ("tag", consumer_tag));
-               });
-               consumer.onError([&](const char *message) {
-                   wlog("consume failed: ${e}", ("e", message));
-                   on_error(message);
-               });
-               static_assert(std::is_same_v<on_consume_t, AMQP::MessageCallback>,
-                             "AMQP::MessageCallback interface changed");
-               consumer.onReceived(on_consume_);
-           }
+          consuming_ = true;
+          init_consume(recover);
        } );
    }
 private:
@@ -194,12 +177,14 @@ private:
 
    // called from amqp thread
    void channel_ready(AMQP::Channel* c) {
+      dlog( "AMQP Channel ready: ${id}", ("id", c ? c->id() : 0) );
       channel_ = c;
       init();
    }
 
    // called from amqp thread
    void channel_failed() {
+      wlog( "AMQP connection failed." );
       channel_ = nullptr;
    }
 
@@ -218,8 +203,9 @@ private:
 
          auto& exchange = channel_->declareExchange( exchange_name_, type, AMQP::durable);
          exchange.onSuccess( [this]() {
-            dlog( "AMQP declare exchange Successfully!\n Exchange ${e}", ("e", exchange_name_) );
-             first_connect_.set();
+            dlog( "AMQP declare exchange Successfully! Exchange ${e}", ("e", exchange_name_) );
+            init_consume(true);
+            first_connect_.set();
          } );
          exchange.onError([this](const char* error_message) {
             on_error( std::string("AMQP Queue error: ") + error_message );
@@ -228,14 +214,38 @@ private:
       } else {
          auto& queue = channel_->declareQueue( name_, AMQP::durable );
          queue.onSuccess( [&]( const std::string& name, uint32_t messagecount, uint32_t consumercount ) {
-            dlog( "AMQP Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
+            dlog( "AMQP Connected Successfully! Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
                   ("q", name)( "mc", messagecount )( "cc", consumercount ) );
-             first_connect_.set();
+            init_consume(true);
+            first_connect_.set();
          } );
          queue.onError( [&]( const char* error_message ) {
             on_error( error_message );
             first_connect_.set();
          } );
+      }
+   }
+
+   // called from amqp thread
+   void init_consume(bool recover) {
+      if( channel_ && on_consume_ && consuming_ ) {
+         if (recover) {
+            channel_->recover(AMQP::requeue)
+            .onSuccess([&](){dlog("successfully started channel recovery");})
+            .onError([&](const char* message){wlog("channel recovery failed ${e}", ("e", message));});
+         }
+
+         auto &consumer = channel_->consume(name_);
+         consumer.onSuccess([&](const std::string &consumer_tag) {
+            dlog("consume started: ${tag}", ("tag", consumer_tag));
+         });
+         consumer.onError([&](const char *message) {
+            wlog("consume failed: ${e}", ("e", message));
+            on_error(message);
+         });
+         static_assert(std::is_same_v<on_consume_t, AMQP::MessageCallback>,
+               "AMQP::MessageCallback interface changed");
+         consumer.onReceived(on_consume_);
       }
    }
 
@@ -281,6 +291,7 @@ private:
    std::string exchange_type_;
    on_error_t on_error_;
    on_consume_t on_consume_;
+   bool consuming_ = false;
 };
 
 } // namespace eosio
