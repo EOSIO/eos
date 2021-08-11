@@ -72,6 +72,9 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
 	install-package ncurses-compat-libs
         install-package nodejs
         install-package epel-release
+		
+		# needed for Centos 8 otherwise cmake is broken
+		install-package libarchive
 
         curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo
         sudo rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg
