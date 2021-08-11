@@ -6,16 +6,23 @@
 #include <sstream>
 
 namespace eosio {
+    // since beast_http_listener handles both TCP and UNIX endpoints we need a template here 
+    // to get the path if makes sense, so that we can call ::unlink() before opening socket 
+    // in beast_http_listener::listen() by tdefault return blank string
+    template<typename T>
+    std::string get_endpoint_path(T endpt) { return {}; }
+
+    std::string get_endpoint_path(stream_protocol::endpoint endpt) { return endpt.path(); }
+
     // Accepts incoming connections and launches the sessions
     // session_type should be a subclass of beast_http_session
     // protocol type must have sub types acceptor and endpoint, e.g. boost::asio::ip::tcp;
     // socket type must be the socket e.g, boost::asio::ip::tcp::socket
     template<typename session_type, typename protocol_type, typename socket_type> 
-    
     class beast_http_listener : public std::enable_shared_from_this<beast_http_listener<session_type, protocol_type, socket_type> >
     {
         private: 
-            bool isListening_; 
+            bool is_listening_ = false; 
 
             std::shared_ptr<eosio::chain::named_thread_pool> thread_pool_;
             std::shared_ptr<ssl::context> ctx_;
@@ -36,7 +43,7 @@ namespace eosio {
             beast_http_listener(std::shared_ptr<eosio::chain::named_thread_pool> thread_pool, 
                                 std::shared_ptr<ssl::context> ctx, 
                                 std::shared_ptr<http_plugin_state> plugin_state) : 
-                isListening_(false)
+                is_listening_(false)
                 , thread_pool_(thread_pool)
                 , ctx_(ctx)
                 , plugin_state_(plugin_state)
@@ -51,13 +58,11 @@ namespace eosio {
             }; 
 
             void listen(typename protocol_type::endpoint endpoint) {
-                if (isListening_) return;
+                if (is_listening_) return;
 
                 // for unix sockets we should delete the old socket
                 if(std::is_same<socket_type, stream_protocol::socket>::value) { 
-                    auto ss = std::stringstream();
-                    ss << endpoint;
-                    ::unlink(ss.str().c_str());
+                    ::unlink(get_endpoint_path(endpoint).c_str());
                 }
 
                 beast::error_code ec;
@@ -83,31 +88,31 @@ namespace eosio {
                 }
 
                 // Start listening for connections
-                auto maxConnections = asio::socket_base::max_listen_connections;
+                auto max_connections = asio::socket_base::max_listen_connections;
                 fc_ilog( logger, "acceptor_.listen()" ); 
-                acceptor_.listen(maxConnections, ec);
+                acceptor_.listen(max_connections, ec);
                 if(ec) {
                     fail(ec, "listen");
                     return;
                 }
-                isListening_ = true;        
+                is_listening_ = true;        
             }
 
             // Start accepting incoming connections
             void start_accept()
             {
-                if(!isListening_) return;
+                if(!is_listening_) return;
                 do_accept();
             }
 
             bool is_listening() {
-                return isListening_;
+                return is_listening_;
             }
 
             void stop_listening() {
-                if(isListening_) {
+                if(is_listening_) {
                     thread_pool_->stop();
-                    isListening_ = false;
+                    is_listening_ = false;
                 }
             }
 

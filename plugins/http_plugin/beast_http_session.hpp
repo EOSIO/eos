@@ -59,9 +59,7 @@ using local_stream = beast::basic_stream<
         fc_elog(logger, "closing connection");
     }
 
-    // this needs to be declared outside of the beast_http_session, because it doesn't work for 
-    // UNIX socket session, since it lacks address() function in endpoint
-    //  Since this is a virtual function, std::enable_if_t/SFNIAE doesn't work 
+
     template<class T>
     bool allow_host(const http::request<http::string_body>& req, T& session, std::shared_ptr<http_plugin_state> plugin_state) {
         auto is_conn_secure = session.is_secure();
@@ -89,29 +87,29 @@ using local_stream = beast::basic_stream<
     }
 
     // Handle HTTP conneciton using boost::beast for TCP communication
-    // This uses the Curiously Recurring Template Pattern so that
-    // the same code works with both SSL streams and regular sockets.
+    // Subclasses of this class (plain_session, ssl_session, etc.) 
+    // use the Curiously Recurring Template Pattern so that
+    // the same code works with both SSL streams, regular TCP sockets and UNIX sockets
     template<class Derived> 
     class beast_http_session :  public detail::abstract_conn
     {
         protected:
             beast::flat_buffer buffer_;
-            beast::error_code ec_;
 
             // time points for timeout measurement and perf metrics 
             steady_clock::time_point session_begin_, read_begin_, handle_begin_, write_begin_;
-            uint64_t read_time_us_, handle_time_us_, write_time_us_;
+            uint64_t read_time_us_ = 0, handle_time_us_ = 0, write_time_us_ = 0;
 
             // HTTP parser object
             std::optional<http::request_parser<http::string_body>> req_parser_;
 
             // HTTP response object
-            http::response<http::string_body> res_;
+            std::optional<http::response<http::string_body>> res_;
 
             std::shared_ptr<http_plugin_state> plugin_state_;
 
-            // whetner resposne should be sent back to client when an exception occured
-            bool isSendExceptionResponse_; 
+            // whether response should be sent back to client when an exception occurs
+            bool is_send_exception_response_ = true; 
             
             std::shared_ptr<eosio::chain::named_thread_pool> thread_pool_;
 
@@ -121,12 +119,10 @@ using local_stream = beast::basic_stream<
             handle_request(
                 http::request<Body, http::basic_fields<Allocator>>&& req)
             {
-                auto &res = res_;
-
-                res.version(req.version());
-                res.set(http::field::content_type, "application/json");
-                res.keep_alive(req.keep_alive());
-                res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                res_->version(req.version());
+                res_->set(http::field::content_type, "application/json");
+                res_->keep_alive(req.keep_alive());
+                res_->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 
                 // Returns a bad request response
                 auto const bad_request =
@@ -155,16 +151,16 @@ using local_stream = beast::basic_stream<
                         return;
 
                     if( !plugin_state_->access_control_allow_origin.empty()) {
-                        res.set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
+                        res_->set( "Access-Control-Allow-Origin", plugin_state_->access_control_allow_origin );
                     }
                     if( !plugin_state_->access_control_allow_headers.empty()) {
-                        res.set( "Access-Control-Allow-Headers", plugin_state_->access_control_allow_headers );
+                        res_->set( "Access-Control-Allow-Headers", plugin_state_->access_control_allow_headers );
                     }
                     if( !plugin_state_->access_control_max_age.empty()) {
-                        res.set( "Access-Control-Max-Age", plugin_state_->access_control_max_age );
+                        res_->set( "Access-Control-Max-Age", plugin_state_->access_control_max_age );
                     }
                     if( plugin_state_->access_control_allow_credentials ) {
-                        res.set( "Access-Control-Allow-Credentials", "true" );
+                        res_->set( "Access-Control-Allow-Credentials", "true" );
                     }
 
                     // Respond to options request
@@ -195,8 +191,8 @@ using local_stream = beast::basic_stream<
                 }
             }
 
-            void report_429_error(const std::string & what) {                
-                send_response(std::string(what), 
+            void report_429_error(std::string what) {                
+                send_response(std::move(what), 
                             static_cast<int>(http::status::too_many_requests));                
             }
 
@@ -205,8 +201,8 @@ using local_stream = beast::basic_stream<
                 auto bytes_in_flight_size = plugin_state_->bytes_in_flight.load();
                 if( bytes_in_flight_size > plugin_state_->max_bytes_in_flight ) {
                     fc_dlog( logger, "429 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight_size) );
-                    string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
-                    report_429_error(what);
+                    std::string what = "Too many bytes in flight: " + std::to_string( bytes_in_flight_size ) + ". Try again later.";;
+                    report_429_error(std::move(what));
                     return false;
                 }
                 return true;
@@ -219,8 +215,8 @@ using local_stream = beast::basic_stream<
                 auto requests_in_flight_num = plugin_state_->requests_in_flight.load();
                 if( requests_in_flight_num > plugin_state_->max_requests_in_flight ) {
                     fc_dlog( logger, "429 - too many requests in flight: ${requests}", ("requests", requests_in_flight_num) );
-                    string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
-                    report_429_error(what);
+                    std::string what = "Too many requests in flight: " + std::to_string( requests_in_flight_num ) + ". Try again later.";
+                    report_429_error(std::move(what));
                     return false;
                 }
                 return true;
@@ -234,10 +230,9 @@ using local_stream = beast::basic_stream<
             }
             
         public: 
-            // shared_from_this() requires default constuctor
+            // shared_from_this() requires default constructor
             beast_http_session() = default;
-      
-            // Take ownership of the buffer
+
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,  
                 std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
@@ -247,30 +242,25 @@ using local_stream = beast::basic_stream<
                 plugin_state_->requests_in_flight += 1;
                 req_parser_.emplace();
                 req_parser_->body_limit(plugin_state_->max_body_size);
+                res_.emplace();
 
                 session_begin_ = steady_clock::now();
                 read_time_us_ = handle_time_us_ = write_time_us_ = 0;
 
-                // dfeault to true
-                isSendExceptionResponse_ = true;
+                // default to true
+                is_send_exception_response_ = true;
             }
 
             virtual ~beast_http_session() {
                 // avoid exceptions being thrown in destructor
-                isSendExceptionResponse_ = false;
-                try { 
-                    plugin_state_->requests_in_flight -= 1;
-    #if PRINT_PERF_METRICS                
-                    auto session_time = steady_clock::now() - session_begin_;
-                    auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();           
-                    fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
-                    fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
-                    fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
-                    fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
-    #endif
-                } catch(...) {
-                    handle_exception();
-                }
+                is_send_exception_response_ = false;
+                plugin_state_->requests_in_flight -= 1;
+                auto session_time = steady_clock::now() - session_begin_;
+                auto session_time_us = std::chrono::duration_cast<std::chrono::microseconds>(session_time).count();
+                fc_dlog(logger, "session time    ${t}", ("t", session_time_us));                            
+                fc_dlog(logger, "        read    ${t}", ("t", read_time_us_));
+                fc_dlog(logger, "        handle  ${t}", ("t", handle_time_us_));                                            
+                fc_dlog(logger, "        write   ${t}", ("t", write_time_us_));                            
             }    
 
             void do_read()
@@ -319,7 +309,6 @@ using local_stream = beast::basic_stream<
                 boost::ignore_unused(bytes_transferred);
 
                 if(ec) {
-                    ec_ = ec;
                     return fail(ec, "write");
                 }
 
@@ -336,33 +325,36 @@ using local_stream = beast::basic_stream<
                 // create a new parser to clear state 
                 req_parser_.emplace();
                 req_parser_->body_limit(plugin_state_->max_body_size);
+                // create a new response object
+                res_.emplace();
+
                 // Read another request
                 do_read();
             }           
 
             virtual void handle_exception() override {
-                std::string errStr;
+                std::string err_str;
                 try { 
                     throw;
                 } catch(const fc::exception& e) {
-                    errStr = e.to_detail_string();
-                    fc_elog( logger, "fc::exception: ${w}", ("w", errStr) );
+                    err_str = e.to_detail_string();
+                    fc_elog( logger, "fc::exception: ${w}", ("w", err_str) );
                 } catch(std::exception& e) {
-                    errStr = e.what(); 
-                    fc_elog( logger, "std::exception: ${w}", ("w", errStr) );
+                    err_str = e.what(); 
+                    fc_elog( logger, "std::exception: ${w}", ("w", err_str) );
                 } catch( ... ) {
-                    errStr = "unknown";
+                    err_str = "unknown";
                     fc_elog( logger, "unkonwn exception");
                 } 
 
-                if(isSendExceptionResponse_) {
-                    res_.set(http::field::content_type, "text/plain");
-                    res_.keep_alive(false);
-                    res_.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                if(is_send_exception_response_) {
+                    res_->set(http::field::content_type, "text/plain");
+                    res_->keep_alive(false);
+                    res_->set(http::field::server, BOOST_BEAST_VERSION_STRING);
 
-                    std::string err = "Internal server error";
                     http::status stat = http::status::internal_server_error;
-                    send_response(errStr, static_cast<int>(stat));
+                    auto resp_str = "Internal Server Error\n\nUnhandled Exception: " + err_str;
+                    send_response(resp_str, static_cast<int>(stat));
                     derived().do_eof();
                 }
             }
@@ -372,20 +364,20 @@ using local_stream = beast::basic_stream<
                 auto dt = write_begin_ - handle_begin_;
                 handle_time_us_ += std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
                 
-                res_.result(code);
+                res_->result(code);
                 if(body.has_value())
-                    res_.body() = *body;        
+                    res_->body() = *body;        
 
-                res_.prepare_payload();
+                res_->prepare_payload();
 
                 // Determine if we should close the connection after
-                bool close = !(plugin_state_->keep_alive) || res_.need_eof();
+                bool close = !(plugin_state_->keep_alive) || res_->need_eof();
 
                 // Write the response
                 auto self = derived().shared_from_this();
                 http::async_write(
                     derived().stream(),
-                    res_,
+                    *res_,
                     [self, close](beast::error_code ec, std::size_t bytes_transferred) {
                         self->on_write(ec, bytes_transferred, close);
                     }
@@ -430,7 +422,7 @@ using local_stream = beast::basic_stream<
 
             void do_eof()
             {
-                isSendExceptionResponse_ = false;
+                is_send_exception_response_ = false;
                 try {
                     // Send a TCP shutdown
                     beast::error_code ec;
@@ -552,13 +544,13 @@ using local_stream = beast::basic_stream<
             virtual ~unix_socket_session() = default;
 
             bool allow_host(const http::request<http::string_body>& req) { 
-                // TODO allow host make sense here ? 
+                // always allow local hosts
                 return true;
             }
 
             void do_eof()
             {
-                isSendExceptionResponse_ = false;
+                is_send_exception_response_ = false;
                 try {
                     // Send a shutdown signal
                     boost::system::error_code ec;

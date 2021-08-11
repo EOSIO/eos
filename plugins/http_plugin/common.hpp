@@ -35,8 +35,6 @@
 #include <boost/asio/basic_socket_iostream.hpp>
 #include <boost/asio/basic_stream_socket.hpp>
 
-#define PRINT_PERF_METRICS 0               
-
 namespace eosio {
     static uint16_t const uri_default_port = 80;
     /// Default port for wss://
