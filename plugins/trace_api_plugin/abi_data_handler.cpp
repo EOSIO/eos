@@ -30,11 +30,14 @@ namespace eosio::trace_api {
                   std::optional<fc::variant> ret_data;
                   auto params = serializer_p->binary_to_variant(type_name, action.data, abi_yield);
                   if constexpr (std::is_same_v<T, action_trace_v1>) {
-                     // if there is no return data, an exception will be thrown, so catch it here
+                     // in the case of no return data, unpack_exception will be thrown
+                     // in thats case we ignore it and return normally
+                     //  other exceptions will be retrhown
                      try {
                         ret_data = serializer_p->binary_to_variant(type_name, action.return_value, abi_yield);
                      }
-                     catch(...) {  }
+                     catch(chain::unpack_exception) {  }
+                     catch(...) { throw; }
                   }
                   return {params, ret_data};
                }, action);
