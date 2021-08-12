@@ -378,7 +378,7 @@ class Node(object):
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False, sign=False, additionalArgs=''):
         signStr = Node.__sign_str(sign, [ creatorAccount.activePublicKey ])
         cmdDesc="system newaccount"
-        cmd='%s -j %s %s \'%s\' \'%s\' --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s %s"' % (
+        cmd='%s -j %s %s \'%s\' \'%s\' --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s" %s' % (
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL, additionalArgs)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
