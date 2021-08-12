@@ -19,6 +19,7 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 #include <b1/chain_kv/chain_kv.hpp>
+#include <fc/log/trace.hpp>
 
 #include <new>
 
@@ -134,6 +135,16 @@ struct pending_state {
       return (activated_features.find( feature_digest ) != activated_features.end());
    }
 
+   uint32_t get_block_num()const {
+      if( std::holds_alternative<building_block>(_block_stage) )
+         return std::get<building_block>(_block_stage)._pending_block_header_state.block_num;
+
+      if( std::holds_alternative<assembled_block>(_block_stage) )
+         return std::get<assembled_block>(_block_stage)._pending_block_header_state.block_num;
+
+      return std::get<completed_block>(_block_stage)._block_state->block_num;
+   }
+
    void push() {
       _db_session.push();
    }
@@ -237,6 +248,11 @@ struct controller_impl {
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
+#ifdef EOSIO_REQUIRE_CHAIN_ID
+      EOS_ASSERT(chain_id == chain_id_type(EOSIO_REQUIRE_CHAIN_ID), disallowed_chain_id_exception,
+                 "required chain id:${c} runtime chain id:${r}", ("r", chain_id)("c", EOSIO_REQUIRE_CHAIN_ID) );
+#endif
+
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -1324,9 +1340,10 @@ struct controller_impl {
 
       emit( self.block_start, head->block_num + 1 );
 
-      auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
-         protocol_features.popped_blocks_to( head_block_num );
-         pending.reset();
+      auto guard_pending = fc::make_scoped_exit([this](){
+         try {
+            abort_block();
+         } FC_LOG_AND_DROP()
       });
 
       if (!self.skip_db_sessions(s)) {
@@ -2013,9 +2030,11 @@ struct controller_impl {
    deque<transaction_metadata_ptr> abort_block() {
       deque<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
+         uint32_t block_num = pending->get_block_num();
          applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
+         emit( self.block_abort, block_num );
       }
       return applied_trxs;
    }
@@ -2348,7 +2367,9 @@ controller::controller( const config& cfg, protocol_feature_set&& pfs, const cha
 }
 
 controller::~controller() {
-   my->abort_block();
+   try {
+      my->abort_block();
+   } FC_LOG_AND_DROP();
    /* Shouldn't be needed anymore.
    //close fork_db here, because it can generate "irreversible" signal to this controller,
    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
