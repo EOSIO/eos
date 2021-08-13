@@ -38,6 +38,7 @@ remove_definitions( -w )
 
 add_subdirectory( chain_kv )
 add_subdirectory( se-helpers )
+add_subdirectory( amqp )
 
 set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TOOLS OFF CACHE BOOL "Build tools")
@@ -62,6 +63,8 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   "change_authkey import_ed decrypt_ec decrypt_rsa ssh logs generate_rsa import_ec echo\
   yubico_otp wrap_data wrap info import_rsa import_authkey generate_hmac generate_ec\
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
+
+add_subdirectory( rodeos )
 
 find_package(OpenSSL REQUIRED)
 option(AMQP-CPP_LINUX_TCP CACHE ON)
