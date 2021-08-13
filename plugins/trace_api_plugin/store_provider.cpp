@@ -69,7 +69,7 @@ namespace eosio::trace_api {
          _slice_directory.find_or_create_kv_file(open_state::write, kv_file);
          // save to the kv log without packing
          std::string entry = id.str() + std::to_string(tt.block_num);
-         uint32_t entry_size = id.str().size() + sizeof(uint32_t);
+         uint32_t entry_size = id.str().size() + std::to_string(UINT32_MAX).size() + 1;
          kv_file.write(entry.c_str(), entry_size);
          kv_file.flush();
          kv_file.sync();
@@ -123,7 +123,7 @@ namespace eosio::trace_api {
       const uint64_t end = file_size(kv_file.get_file_path());
       uint64_t offset = kv_file.tellp();
       uint32_t trx_id_size = trx_id.str().size();
-      uint32_t blk_num_size = sizeof(uint32_t);
+      uint32_t blk_num_size = std::to_string(UINT32_MAX).size() + 1;
       uint32_t entry_size = trx_id_size + blk_num_size;
       while (offset < end) {
          //yield();
