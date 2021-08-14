@@ -151,7 +151,7 @@ namespace eosio {
 
    public:
       explicit sync_manager( uint32_t span );
-      static void send_handshakes();
+      static void send_handshakes(bool force = false);
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
@@ -1725,10 +1725,10 @@ namespace eosio {
    }
 
    // static, thread safe
-   void sync_manager::send_handshakes() {
-      for_each_connection( []( auto& ci ) {
+   void sync_manager::send_handshakes(bool force) {
+      for_each_connection( [&]( auto& ci ) {
          if( ci->current() ) {
-            ci->send_handshake();
+            ci->send_handshake(force);
          }
          return true;
       } );
@@ -2033,18 +2033,18 @@ namespace eosio {
 
          if( set_state_to_head_catchup ) {
             if( set_state( head_catchup ) ) {
-                send_handshakes();
+                send_handshakes(true);
             }
          } else {
             set_state( in_sync );
-            send_handshakes();
+            send_handshakes(true);
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
             set_state( in_sync );
             g_sync.unlock();
-            send_handshakes();
+            send_handshakes(true);
          } else if( blk_num == sync_last_requested_num ) {
             request_next_chunk( std::move( g_sync) );
          } else {
