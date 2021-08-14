@@ -151,7 +151,7 @@ namespace eosio {
 
    public:
       explicit sync_manager( uint32_t span );
-      static void send_handshakes();
+      static void send_handshakes(bool force = false);
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
@@ -1725,10 +1725,10 @@ namespace eosio {
    }
 
    // static, thread safe
-   void sync_manager::send_handshakes() {
-      for_each_connection( []( auto& ci ) {
+   void sync_manager::send_handshakes(bool force) {
+      for_each_connection( [&]( auto& ci ) {
          if( ci->current() ) {
-            ci->send_handshake();
+            ci->send_handshake(force);
          }
          return true;
       } );
@@ -1757,7 +1757,7 @@ namespace eosio {
       if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
-         return;
+         c->send_handshake();
       }
 
       if( sync_state == in_sync ) {
@@ -1801,7 +1801,7 @@ namespace eosio {
       // sync need checks; (lib == last irreversible block)
       //
       // 0. my head block id == peer head id means we are all caught up block wise
-      // 1. my head block num < peer lib - start sync locally
+      // 1. my head block num < peer lib - send handshake (if not sent in handle_message) and wait for receipt of notice message to start syncing
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num < peer head block num - update sync state and send a catchup request
@@ -1828,6 +1828,9 @@ namespace eosio {
                   ("ep", c->peer_name())("lib", msg.last_irreversible_block_num)("head", msg.head_num)
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
+         if (c->sent_handshake_count > 0) {
+            c->send_handshake(true);
+         }
          return;
       }
       if (lib_num > msg.head_num ) {
@@ -2030,18 +2033,18 @@ namespace eosio {
 
          if( set_state_to_head_catchup ) {
             if( set_state( head_catchup ) ) {
-                send_handshakes();
+                send_handshakes(true);
             }
          } else {
             set_state( in_sync );
-            send_handshakes();
+            send_handshakes(true);
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
             set_state( in_sync );
             g_sync.unlock();
-            send_handshakes();
+            send_handshakes(true);
          } else if( blk_num == sync_last_requested_num ) {
             request_next_chunk( std::move( g_sync) );
          } else {
