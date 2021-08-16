@@ -1141,18 +1141,19 @@ namespace eosio {
             no_retry = benign_other;
             if( !peer_address().empty() ) {
                fc_wlog(logger, "heartbeat timed out for peer address ${adr}", ("adr", peer_address()));
-               close(true);  // reconnect
+               close(true);
             } else {
                {
                   std::lock_guard<std::mutex> g_conn( conn_mtx );
-                  fc_wlog(logger, "heartbeat timed out from ${p} ${ag}", ("p", last_handshake_recv.p2p_address)("ag", last_handshake_recv.agent));
+                  fc_wlog(logger, "heartbeat timed out from ${p} ${ag}",
+                          ("p", last_handshake_recv.p2p_address)("ag", last_handshake_recv.agent));
                }
-               close(false); // don't reconnect
+               close(false);
             }
             return;
          }
       }
-      send_time();
+      send_handshake(true);
    }
 
    void connection::send_time() {
