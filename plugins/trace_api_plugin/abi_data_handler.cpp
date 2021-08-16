@@ -32,7 +32,7 @@ namespace eosio::trace_api {
                   if constexpr (std::is_same_v<T, action_trace_v1>) {
                      // in the case of no return data, unpack_exception will be thrown
                      // if so we ignore it and return normally
-                     // other exceptions will be retrhown
+                     // other exceptions will be rethrown
                      try {
                         ret_data = serializer_p->binary_to_variant(type_name, action.return_value, abi_yield);
                      }
