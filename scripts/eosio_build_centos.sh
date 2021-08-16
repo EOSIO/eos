@@ -35,58 +35,58 @@ fi
 fi
 
 if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
-        echo "Install Development Tools ..."
-        install-package https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-        group-install-package 'Development Tools'
-        install-package openssl-devel
-        install-package which
-	install-package git 
-	install-package autoconf
-	install-package automake
-	install-package libtool
-	install-package make
-	install-package bzip2
-    	install-package graphviz
-	install-package bzip2-devel
-	install-package openssl-devel
-	install-package gmp-devel
-    	install-package file
-	install-package libusbx-devel
-    	install-package libcurl-devel
-	install-package patch
-        install-package vim-common
-        install-package jq
-    	install-package python3
-	install-package python3-devel
-	install-package clang
-	install-package llvm-devel
-	install-package llvm-static
-	install-package procps-ng
-	install-package util-linux
-        install-package sudo
-	install-package libstdc++
-        install-package dnf-plugins-core
-        sudo dnf config-manager --set-enabled PowerTools || sudo dnf config-manager --set-enabled powertools
-        install-package doxygen
-        install-package ocaml
-	install-package ncurses-compat-libs
-        install-package nodejs
-        install-package epel-release
+    echo "Install Development Tools ..."
+    install-package https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    group-install-package 'Development Tools'
+    install-package openssl-devel
+    install-package which
+    install-package git
+    install-package autoconf
+    install-package automake
+    install-package libtool
+    install-package make
+    install-package bzip2
+    install-package graphviz
+    install-package bzip2-devel
+    install-package openssl-devel
+    install-package gmp-devel
+    install-package file
+    install-package libusbx-devel
+    install-package libcurl-devel
+    install-package patch
+    install-package vim-common
+    install-package jq
+    install-package python3
+    install-package python3-devel
+    install-package clang
+    install-package llvm-devel
+    install-package llvm-static
+    install-package procps-ng
+    install-package util-linux
+    install-package sudo
+    install-package libstdc++
+    install-package dnf-plugins-core
+    sudo dnf config-manager --set-enabled PowerTools || sudo dnf config-manager --set-enabled powertools
+    install-package doxygen
+    install-package ocaml
+    install-package ncurses-compat-libs
+    install-package nodejs
+    install-package epel-release
 		
-		# needed for Centos 8 otherwise cmake is broken
-		install-package libarchive
+    # needed for Centos 8 otherwise cmake is broken
+    install-package libarchive
 
-        curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo
-        sudo rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg
-        install-package yarn
+    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo
+    sudo rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg
+    install-package yarn
 
-        pushd ${REPO_ROOT}
-        yarn install
-        popd
+    pushd ${REPO_ROOT}
+    yarn install
+    popd
 
-        if [ ! -L "/usr/local/lib/libtinfo.so" ] ; then
+    if [ ! -L "/usr/local/lib/libtinfo.so" ] ; then
 	    ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
-        fi
+    fi
 fi
 
 # Handle clang/compiler
