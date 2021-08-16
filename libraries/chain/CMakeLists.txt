@@ -162,6 +162,25 @@ if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
    target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
 endif()
 
+if(EOSIO_REQUIRE_CHAIN_ID)
+   set(ONE_HEX_BYTE "[0-9a-fA-F][0-9a-fA-F]")
+   string(LENGTH ${ONE_HEX_BYTE} ONE_HEX_BYTE_STRLEN)
+   math(EXPR SHA256_REGEX_TARGET_STRLEN "${ONE_HEX_BYTE_STRLEN} * 32")
+   set(SHA256_REGEX_STRLEN 0)
+   set(SHA256_REGEX "")
+   while(NOT ${SHA256_REGEX_STRLEN} EQUAL ${SHA256_REGEX_TARGET_STRLEN})
+      string(APPEND SHA256_REGEX ${ONE_HEX_BYTE})
+      string(LENGTH ${SHA256_REGEX} SHA256_REGEX_STRLEN)
+   endwhile()
+
+   string(REGEX MATCH "^${SHA256_REGEX}$" IS_SHA256 "${EOSIO_REQUIRE_CHAIN_ID}")
+   if(NOT IS_SHA256)
+      message(FATAL_ERROR "EOSIO_REQUIRE_CHAIN_ID option doesn't look like a valid sha256")
+   endif()
+
+   target_compile_definitions(eosio_chain PUBLIC "EOSIO_REQUIRE_CHAIN_ID=\"${EOSIO_REQUIRE_CHAIN_ID}\"")
+endif()
+
 add_subdirectory ( backing_store/tests )
 
 install( TARGETS eosio_chain

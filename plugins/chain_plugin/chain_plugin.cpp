@@ -29,7 +29,6 @@
 #include <boost/filesystem/path.hpp>
 
 #include <fc/io/json.hpp>
-#include <fc/log/trace.hpp>
 #include <fc/variant.hpp>
 #include <fc/log/trace.hpp>
 #include <signal.h>
