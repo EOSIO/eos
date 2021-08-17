@@ -41,7 +41,6 @@ struct cloner_config : ship_client::connection_config {
    bool        exit_on_filter_wasm_error = false;
    eosio::name filter_name = {}; // todo: remove
    std::string filter_wasm = {}; // todo: remove
-   bool        profile = false;
    bool        undo_stack_enabled = false;
    uint32_t    force_write_stride = 0;
 
@@ -94,7 +93,7 @@ struct cloner_session : ship_client::connection_callbacks, std::enable_shared_fr
    cloner_session(cloner_plugin_impl* my) : my(my), config(my->config) {
       // todo: remove
       if (!config->filter_wasm.empty())
-         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm, config->profile
+         filter = std::make_unique<rodeos_filter>(config->filter_name, config->filter_wasm
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
                                                   ,
                                                   app().data_dir(), config->eosvmoc_config, config->eosvmoc_tierup
@@ -350,7 +349,6 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("filter-name") && options.count("filter-wasm")) {
          my->config->filter_name = eosio::name{ options["filter-name"].as<std::string>() };
          my->config->filter_wasm = options["filter-wasm"].as<std::string>();
-         my->config->profile     = options["profile-filter"].as<bool>();
       } else if (options.count("filter-name") || options.count("filter-wasm")) {
          throw std::runtime_error("filter-name and filter-wasm must be used together");
       }
