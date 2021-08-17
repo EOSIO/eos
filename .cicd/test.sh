@@ -2,6 +2,12 @@
 set -eo pipefail
 # variables
 . ./.cicd/helpers/general.sh
+if [[ "$DEBUG" == 'true' ]]; then
+    echo '+++ :ladybug: DEBUG MODE'
+    echo 'The artifact download completed successfully, so this Buildkite job step cannot be used for debugging the issue.'
+    echo "To run a normal build, do not set DEBUG='true' in the build environment."
+    echo 'Exiting without running tests.'
+fi
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
