@@ -127,6 +127,7 @@ else()
 endif()
 
 option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOSIO" OFF)
+option(EOSIO_REQUIRE_FULL_VALIDATION "remove runtime options allowing light validation" OFF)
 
 # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
 # uncomment this line to tell GDB about macros (slows compile times)

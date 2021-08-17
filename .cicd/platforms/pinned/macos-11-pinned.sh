@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres || :
+brew install git cmake python libtool libusb graphviz automake wget gmp pkgconfig doxygen openssl jq postgres rabbitmq || :
 # install clang from source
 git clone --single-branch --branch llvmorg-10.0.0 https://github.com/llvm/llvm-project clang10
 mkdir clang10/build
@@ -23,6 +23,8 @@ sudo rm -rf boost_1_72_0.tar.bz2 boost_1_72_0
 
 # install nvm for ship_test
 cd ~ && brew install nvm && mkdir -p ~/.nvm && echo "export NVM_DIR=$HOME/.nvm" >> ~/.bash_profile && echo 'source $(brew --prefix nvm)/nvm.sh' >> ~/.bash_profile && cat ~/.bash_profile && source ~/.bash_profile && echo $NVM_DIR && nvm install --lts=dubnium
+# add sbin to path from rabbitmq-server
+echo "export PATH=$PATH:/usr/local/sbin" >> ~/.bash_profile
 # initialize postgres configuration files
 sudo rm -rf /usr/local/var/postgres
 initdb --locale=C -E UTF-8 /usr/local/var/postgres
