@@ -151,7 +151,7 @@ namespace eosio {
 
    public:
       explicit sync_manager( uint32_t span );
-      static void send_handshakes(bool force = false);
+      static void send_handshakes();
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
@@ -677,7 +677,7 @@ namespace eosio {
       bool process_next_trx_message(uint32_t message_length);
    public:
 
-      bool populate_handshake( handshake_message& hello, bool force );
+      bool populate_handshake( handshake_message& hello );
 
       bool resolve_and_connect();
       void connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
@@ -693,7 +693,7 @@ namespace eosio {
        */
       bool process_next_message(uint32_t message_length);
 
-      void send_handshake( bool force = false );
+      void send_handshake();
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -1116,10 +1116,10 @@ namespace eosio {
       syncing = false;
    }
 
-   void connection::send_handshake( bool force ) {
-      strand.post( [force, c = shared_from_this()]() {
+   void connection::send_handshake() {
+      strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         if( c->populate_handshake( c->last_handshake_sent, force ) ) {
+         if( c->populate_handshake( c->last_handshake_sent ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
             c->last_handshake_sent.generation = ++c->sent_handshake_count;
@@ -1154,7 +1154,7 @@ namespace eosio {
          } else {
             const tstamp timeout = std::max(hb_timeout/2, 2*std::chrono::milliseconds(config::block_interval_ms).count());
             if ( current_time > latest_blk_time + timeout ) {
-               send_handshake(true);
+               send_handshake();
                return;
             }
          }
@@ -1735,10 +1735,10 @@ namespace eosio {
    }
 
    // static, thread safe
-   void sync_manager::send_handshakes(bool force) {
-      for_each_connection( [&]( auto& ci ) {
+   void sync_manager::send_handshakes() {
+      for_each_connection( []( auto& ci ) {
          if( ci->current() ) {
-            ci->send_handshake(force);
+            ci->send_handshake();
          }
          return true;
       } );
@@ -1840,7 +1840,7 @@ namespace eosio {
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
          if (c->sent_handshake_count > 0) {
-            c->send_handshake(true);
+            c->send_handshake();
          }
          return;
       }
@@ -1985,7 +1985,7 @@ namespace eosio {
          g.unlock();
          c->close();
       } else {
-         c->send_handshake( true );
+         c->send_handshake();
       }
    }
 
@@ -2044,18 +2044,18 @@ namespace eosio {
 
          if( set_state_to_head_catchup ) {
             if( set_state( head_catchup ) ) {
-                send_handshakes(true);
+                send_handshakes();
             }
          } else {
             set_state( in_sync );
-            send_handshakes(true);
+            send_handshakes();
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
             set_state( in_sync );
             g_sync.unlock();
-            send_handshakes(true);
+            send_handshakes();
          } else if( blk_num == sync_last_requested_num ) {
             request_next_chunk( std::move( g_sync) );
          } else {
@@ -3585,19 +3585,13 @@ namespace eosio {
    }
 
    // call from connection strand
-   bool connection::populate_handshake( handshake_message& hello, bool force ) {
+   bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
-      bool send = force;
       hello.network_version = net_version_base + net_version;
       const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();
-      // only send handshake if state has changed since last handshake
-      send |= lib != hello.last_irreversible_block_num;
-      send |= head != hello.head_num;
-      send |= prev_head_id != hello.head_id;
-      if( !send ) return false;
       hello.last_irreversible_block_num = lib;
       hello.head_num = head;
       hello.chain_id = my_impl->chain_id;
