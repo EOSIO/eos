@@ -111,7 +111,11 @@ struct amqp_trx_plugin_impl : std::enable_shared_from_this<amqp_trx_plugin_impl>
       if (!prod_plugin->paused() || allow_speculative_execution) {
          if (!started_consuming) {
             ilog("Starting consuming amqp messages during on_block_start");
-            amqp_trx->start_consume(true);
+            amqp_trx->start_consume(amqp_trx_queue,
+               [&]( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
+                  if( app().is_quiting() ) return; // leave non-ack
+                  consume_message( message, delivery_tag, redelivered );
+            }, true);
             started_consuming = true;
          }
 
@@ -222,9 +226,9 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
    auto op = cfg.add_options();
    op("amqp-trx-address", bpo::value<std::string>(),
       "AMQP address: Format: amqp://USER:PASSWORD@ADDRESS:PORT\n"
-      "Will consume from amqp-trx-queue-name ('trx') queue.");
+      "Will consume from amqp-trx-queue-name (amqp-trx-queue-name) queue.");
    op("amqp-trx-queue-name", bpo::value<std::string>()->default_value("trx"),
-      "AMQP queue to consume transactions from.");
+      "AMQP queue to consume transactions from, must already exist.");
    op("amqp-trx-queue-size", bpo::value<uint32_t>()->default_value(my->trx_processing_queue_size),
       "The maximum number of transactions to pull from the AMQP queue at any given time.");
    op("amqp-trx-speculative-execution", bpo::bool_switch()->default_value(false),
@@ -233,6 +237,8 @@ void amqp_trx_plugin::set_program_options(options_description& cli, options_desc
       "AMQP ack when 'received' from AMQP, when 'executed', or when 'in_block' is produced that contains trx.\n"
       "Options: received, executed, in_block");
    op("amqp-trx-trace-reliable-mode", bpo::value<amqp_trace_plugin_impl::reliable_mode>()->default_value(amqp_trace_plugin_impl::reliable_mode::queue),
+      "If AMQP reply-to header is set, transaction trace is sent to default exchange with routing key of the reply-to header.\n"
+      "If AMQP reply-to header is not set, then transaction trace is discarded.\n"
       "Reliable mode 'exit', exit application on any AMQP publish error.\n"
       "Reliable mode 'queue', queue transaction traces to send to AMQP on connection establishment.\n"
       "Reliable mode 'log', log an error and drop message when unable to directly publish to AMQP.");
@@ -260,7 +266,7 @@ void amqp_trx_plugin::plugin_initialize(const variables_map& options) {
 
       my->trace_plug.amqp_trace_address = my->amqp_trx_address;
       my->trace_plug.amqp_trace_queue_name = ""; // not used, reply-to is used for each message
-      my->trace_plug.amqp_trace_exchange = ""; // not used, reply-to used for routing-key
+      my->trace_plug.amqp_trace_exchange = ""; // default exchange, reply-to used for routing-key
       my->trace_plug.pub_reliable_mode = options.at("amqp-trx-trace-reliable-mode").as<amqp_trace_plugin_impl::reliable_mode>();
 
       my->chain_plug->enable_accept_transactions();
@@ -312,20 +318,20 @@ void amqp_trx_plugin::plugin_startup() {
 
    my->trx_queue_ptr->run();
 
-   my->amqp_trx.emplace( my->amqp_trx_address, my->amqp_trx_queue,
+   my->amqp_trx.emplace( my->amqp_trx_address,
                          []( const std::string& err ) {
                             elog( "amqp error: ${e}", ("e", err) );
                             app().quit();
-                         },
-                         [&]( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
-                            if( app().is_quiting() ) return; // leave non-ack
-                            my->consume_message( message, delivery_tag, redelivered );
                          }
    );
 
    if (!my->prod_plugin->paused() || my->allow_speculative_execution) {
       ilog("Starting amqp consumption at startup.");
-      my->amqp_trx->start_consume(true);
+      my->amqp_trx->start_consume(my->amqp_trx_queue,
+         [&]( const AMQP::Message& message, const amqp_handler::delivery_tag_t& delivery_tag, bool redelivered ) {
+            if( app().is_quiting() ) return; // leave non-ack
+            my->consume_message( message, delivery_tag, redelivered );
+         }, true);
       my->started_consuming = true;
    }
 }

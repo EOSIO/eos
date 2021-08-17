@@ -86,6 +86,7 @@ try:
                                   totalNodes=totalNodes, totalProducers=totalProducers,
                                   useBiosBootFile=False, topo="ring")
     else:
+        cluster.createAMQPQueue("trx")
         launched = cluster.launch(pnodes=totalProducerNodes,
                                   totalNodes=totalNodes, totalProducers=totalProducers,
                                   useBiosBootFile=False, topo="ring",

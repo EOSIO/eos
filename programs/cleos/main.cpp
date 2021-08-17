@@ -165,6 +165,7 @@ string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wal
 string wallet_url; //to be set to default_wallet_url in main
 string amqp_address;
 string amqp_reply_to;
+string amqp_queue_name = "trx";
 bool no_verify = false;
 vector<string> headers;
 
@@ -448,14 +449,14 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
             auto buf = fc::raw::pack( msg );
             const auto& tid = std::get<packed_transaction>(msg).id();
             string id = tid.str();
-            eosio::amqp_handler qp_trx( amqp_address, "trx", []( const std::string& err ) {
+            eosio::amqp_handler qp_trx( amqp_address, []( const std::string& err ) {
                std::cerr << "AMQP trx error: " << err << std::endl;
                exit( 1 );
             } );
             result = fc::mutable_variant_object()
                   ( "transaction_id", id )
                   ( "status", "submitted" );
-            qp_trx.publish( "", std::move( id ), amqp_reply_to, std::move( buf ) );
+            qp_trx.publish( "", amqp_queue_name, std::move( id ), amqp_reply_to, std::move( buf ) );
             return result;
          } else {
             try {
@@ -2596,6 +2597,7 @@ int main( int argc, char** argv ) {
    app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
    app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
    app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
    app.add_option( "-r,--header", header_opt_callback, localized("Pass specific HTTP header; repeat this option to pass multiple headers"));
