@@ -317,16 +317,17 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
 
    {
       global_property_kv table{ { db_view_state } };
-      bool               found = false;
       if (table.primary_index.begin() != table.primary_index.end()) {
          auto record = table.primary_index.begin().value();
-         if (auto* obj = std::get_if<ship_protocol::global_property_v1>(&record)) {
-            found = true;
-            result += ",\"chain_id\":" + eosio::convert_to_json(obj->chain_id);
-         }
+         
+         std::visit( [&result](auto& obj) {
+            if constexpr ( std::is_base_of_v<ship_protocol::global_property_v1, std::decay_t<decltype(obj)>> ) {
+               result += ",\"chain_id\":" + eosio::convert_to_json(obj.chain_id);
+            } else {
+               throw std::runtime_error("No records of type global_property_v1 or derived found; is filler running?");
+            }
+         } , record);
       }
-      if (!found)
-         throw std::runtime_error("No global_property_v1 records found; is filler running?");
    }
 
    {

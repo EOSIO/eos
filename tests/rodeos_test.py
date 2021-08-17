@@ -2,7 +2,7 @@
 
 from testUtils import Account
 from testUtils import Utils
-from Cluster import Cluster
+from Cluster import Cluster, PFSetupPolicy
 from WalletMgr import WalletMgr
 from Node import Node
 from Node import ReturnType
@@ -169,6 +169,7 @@ try:
         totalNodes=1,
         useBiosBootFile=False,
         loadSystemContract=False,
+        pfSetupPolicy=PFSetupPolicy.NONE,
         specificExtraNodeosArgs={
             0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts "
                 "--state-history-stride {0} " 
