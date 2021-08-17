@@ -29,15 +29,43 @@ class rabbitmq : public stream_handler {
 
       exchangeName_ = DEFAULT_EXCHANGE;
 
-      declare_queue();
+public:
+   rabbitmq(std::vector<std::string> routes, const AMQP::Address& address, bool publish_immediately, std::string queue_name)
+       : stream_handler(std::move(routes))
+       , address_(address)
+       , publish_immediately_(publish_immediately)
+       , queue_name_( std::move( queue_name))
+   {
+      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
+      std::atomic<bool> error = false;
+      eosio::amqp_handler declare_queue( address_, [&error](const std::string& err){
+         elog("AMQP Queue error: ${e}", ("e", err));
+         appbase::app().quit();
+         error = true;
+      } );
+      if( !error ) declare_queue.declare_queue(queue_name_);
+      if( error ) return;
+      init();
    }
 
    rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, const AMQP::Address& address,
             std::string exchange_name, std::string exchange_type)
-       : exchangeName_(std::move(exchange_name)), routes_(std::move(routes)) {
-      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(address))("e", exchangeName_));
-
-      init(io_service, address);
+       : stream_handler(std::move(routes))
+       , address_(address)
+       , publish_immediately_(publish_immediately)
+       , exchange_name_( std::move( exchange_name))
+   {
+      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
+      std::atomic<bool> error = false;
+      eosio::amqp_handler declare_exchange( address_, [&error](const std::string& err){
+         elog("AMQP Exchange error: ${e}", ("e", err));
+         appbase::app().quit();
+         error = true;
+      } );
+      if( !error ) declare_exchange.declare_exchange(exchange_name_, exchange_type);
+      if( error ) return;
+      init();
+   }
 
       declare_exchange(exchange_type);
    }
