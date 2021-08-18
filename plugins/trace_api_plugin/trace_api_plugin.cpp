@@ -376,7 +376,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
          };
 
          try {
-            // search for the trx id in the kv file and find out associate block number
+            // search for the trx id in the log file and find out associate block number
             const auto deadline = that->calc_deadline( max_response_time );
             get_block_n blk_num;
             blk_num = common->store->get_trx_block_number(input_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });

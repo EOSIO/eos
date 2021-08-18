@@ -8,7 +8,7 @@ namespace {
       static constexpr const char* _trace_prefix = "trace_";
       static constexpr const char* _trace_index_prefix = "trace_index_";
       static constexpr const char* _trace_ext = ".log";
-      static constexpr const char* _kv_file_name = "kv.log";
+      static constexpr const char* _trx_id_file_name = "trx_id.log";
       static constexpr const char* _compressed_trace_ext = ".clog";
       static constexpr uint _max_filename_size = std::char_traits<char>::length(_trace_index_prefix) + 10 + 1 + 10 + std::char_traits<char>::length(_compressed_trace_ext) + 1; // "trace_index_" + 10-digits + '-' + 10-digits + ".clog" + null-char
 
@@ -64,15 +64,15 @@ namespace eosio::trace_api {
    }
 
    void store_provider::append_trx_ids(const trx_ids_trace& tt){
-      fc::cfile kv_file;
+      fc::cfile trx_id_file;
       for (const auto& id : tt.ids) {
-         _slice_directory.find_or_create_kv_file(open_state::write, kv_file);
-         // save to the kv log without packing
+         _slice_directory.find_or_create_trx_id_file(open_state::write, trx_id_file);
+         // save to the trx id log without packing
          std::string entry = id.str() + std::to_string(tt.block_num);
          uint32_t entry_size = id.str().size() + std::to_string(UINT32_MAX).size() + 1;
-         kv_file.write(entry.c_str(), entry_size);
-         kv_file.flush();
-         kv_file.sync();
+         trx_id_file.write(entry.c_str(), entry_size);
+         trx_id_file.flush();
+         trx_id_file.sync();
       }
    }
 
@@ -104,9 +104,9 @@ namespace eosio::trace_api {
       return std::make_tuple( entry.value(), irreversible );
    }
 
-    get_block_n store_provider::get_trx_block_number(chain::transaction_id_type trx_id, const yield_function& yield) {
-      fc::cfile kv_file;
-      const bool found = _slice_directory.find_kv_file(open_state::read, kv_file);
+    get_block_n store_provider::get_trx_block_number(chain::transaction_id_type& trx_id, const yield_function& yield) {
+      fc::cfile trx_id_file;
+      const bool found = _slice_directory.find_trx_id_file(open_state::read, trx_id_file);
       if( !found ) {
          return {};
       }
@@ -120,8 +120,8 @@ namespace eosio::trace_api {
          return r;
       };
 
-      const uint64_t end = file_size(kv_file.get_file_path());
-      uint64_t offset = kv_file.tellp();
+      const uint64_t end = file_size(trx_id_file.get_file_path());
+      uint64_t offset = trx_id_file.tellp();
       uint32_t trx_id_size = trx_id.str().size();
       uint32_t blk_num_size = std::to_string(UINT32_MAX).size() + 1;
       uint32_t entry_size = trx_id_size + blk_num_size;
@@ -129,12 +129,12 @@ namespace eosio::trace_api {
          //yield();
          auto buffer = std::make_unique<char[]>(entry_size);
          char* buf = buffer.get();
-         kv_file.read(buf, entry_size);
+         trx_id_file.read(buf, entry_size);
          int match = memcmp(trx_id.str().c_str(), buf, trx_id_size);
          if (match == 0) {
              return convert_to_int(buf+trx_id_size);
          }
-         offset = kv_file.tellp();
+         offset = trx_id_file.tellp();
       }
       return get_block_n{};
    }
@@ -258,39 +258,39 @@ namespace eosio::trace_api {
       }
    }
 
-   bool slice_directory::find_or_create_kv_file(open_state state, fc::cfile& kv_file) const {
-       const bool found = find_kv_file(state, kv_file);
+   bool slice_directory::find_or_create_trx_id_file(open_state state, fc::cfile& trx_id_file) const {
+       const bool found = find_trx_id_file(state, trx_id_file);
        if( !found ) {
-           kv_file.open(fc::cfile::create_or_update_rw_mode);
+           trx_id_file.open(fc::cfile::create_or_update_rw_mode);
        }
        return found;
    }
 
-   bool slice_directory::find_kv_file(open_state state, fc::cfile& kv_file, bool open_file) const {
-      const bool found = find_kv(kv_file, open_file);
+   bool slice_directory::find_trx_id_file(open_state state, fc::cfile& trx_id_file, bool open_file) const {
+      const bool found = find_trx_id(trx_id_file, open_file);
       if( !found || !open_file ) {
          return found;
       }
       if( state == open_state::write ) {
-         kv_file.seek_end(0);
+          trx_id_file.seek_end(0);
       }
       return true;
    }
 
-   bool slice_directory::find_kv(fc::cfile& kv_file, bool open_file) const {
-       auto filename = _kv_file_name;
+   bool slice_directory::find_trx_id(fc::cfile& trx_id_file, bool open_file) const {
+       auto filename = _trx_id_file_name;
        const path slice_path = _slice_dir / filename;
-       kv_file.set_file_path(slice_path);
+       trx_id_file.set_file_path(slice_path);
 
        const bool file_exists = exists(slice_path);
        if( !file_exists || !open_file ) {
            return file_exists;
        }
 
-       kv_file.open(fc::cfile::create_or_update_rw_mode);
+       trx_id_file.open(fc::cfile::create_or_update_rw_mode);
        // TODO: this is a temporary fix until fc::cfile handles it internally.  OSX and Linux differ on the read offset
        // when opening in "ab+" mode
-       kv_file.seek(0);
+       trx_id_file.seek(0);
        return true;
    }
 

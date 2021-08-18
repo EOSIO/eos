@@ -185,24 +185,24 @@ namespace eosio::trace_api {
       void find_or_create_slice_pair(uint32_t slice_number, open_state state, fc::cfile& trace, fc::cfile& index);
 
       /**
-       * Find or create the kv file that contains all the transaction ids and associate block numbers
+       * Find or create a trx id file that contains all the transaction ids and associate block numbers
        *
        * @param state : indicate if the file is going to be written to (appended) or read
-       * @param kv_file : the cfile
+       * @param trx_id_file : the cfile
        * @return the true if file was found (i.e. already existed)
        */
-      bool find_or_create_kv_file(open_state state, fc::cfile& kv_file) const;
+      bool find_or_create_trx_id_file(open_state state, fc::cfile& trx_id_file) const;
 
       /**
-       * Find the kv file
+       * Find the trx id file
        *
        * @param state : indicate if the file is going to be written to (appended) or read
-       * @param kv_file : the cfile
+       * @param trx_id_file : the cfile
        * @param open_file : indicate if the file should be opened (if found) or not
-       * @return the true if file was found (i.e. already existed), if not found kv_file
+       * @return the true if file was found (i.e. already existed), if not found trx_id_file
        *         is set to the appropriate file, but not open
        */
-      bool find_kv_file(open_state state, fc::cfile& kv_file, bool open_file = true) const;
+      bool find_trx_id_file(open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
 
       /**
        * set the LIB for maintenance
@@ -233,8 +233,8 @@ namespace eosio::trace_api {
       // the slice_prefix and slice_number, but will only be opened if found
       bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const;
 
-      // return true if the kv file is found, the file will always be set to the appropriate path, but will only be opened if found
-      bool find_kv(fc::cfile& kv_file, bool open_file) const;
+      // return true if the trx id file is found, the file will always be set to the appropriate path, but will only be opened if found
+      bool find_trx_id(fc::cfile& trx_id_file, bool open_file) const;
 
       // take an index file that is initialized to a file and open it and write its header
       void create_new_index_slice_file(fc::cfile& index_file) const;
@@ -285,7 +285,7 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-      get_block_n get_trx_block_number(chain::transaction_id_type trx_id, const yield_function& yield= {});
+      get_block_n get_trx_block_number(chain::transaction_id_type& trx_id, const yield_function& yield= {});
 
       uint32_t get_last_block_num() const {
           return _last_block_num;
