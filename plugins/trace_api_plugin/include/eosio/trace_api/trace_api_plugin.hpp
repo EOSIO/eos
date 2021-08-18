@@ -5,6 +5,22 @@
 #include <eosio/trace_api/trace.hpp>
 
 namespace eosio {
+
+   typedef shared_ptr<struct trace_api_rpc_plugin_impl> trace_api_rpc_ptr;
+   namespace trace_apis {
+      class read_only {
+         trace_api_rpc_ptr trace_api_rpc;
+         public:
+            read_only(trace_api_rpc_ptr&& trace_api_rpc): trace_api_rpc(trace_api_rpc) {}
+
+            struct get_transaction_params {
+               string                                id;
+               std::optional<uint32_t>               block_num_hint;
+            };
+            trace_api::transaction_trace_v3 get_transaction( const get_transaction_params& ) const;
+      };
+   } // namespace trace_apis
+
    /**
     * Plugin that runs both a data extraction  and the HTTP RPC in the same application
     */
@@ -23,31 +39,12 @@ namespace eosio {
 
       void handle_sighup() override;
 
+      trace_apis::read_only  get_read_only_api()const { return trace_apis::read_only(trace_api_rpc_ptr(rpc)); }
    private:
       std::shared_ptr<struct trace_api_plugin_impl>     my;
       std::shared_ptr<struct trace_api_rpc_plugin_impl> rpc;
    };
 
-   typedef shared_ptr<struct trace_api_rpc_plugin_impl> trace_api_rpc_ptr;
-
-   namespace trace_apis {
-
-      class read_only {
-
-          trace_api_rpc_ptr trace_api_rpc;
-
-      public:
-         read_only(trace_api_rpc_ptr&& trace_api_rpc): trace_api_rpc(trace_api_rpc) {}
-
-         struct get_transaction_params {
-            string                                id;
-            std::optional<uint32_t>               block_num_hint;
-         };
-
-         trace_api::transaction_trace_v3 get_transaction( const get_transaction_params& ) const;
-
-      };
-   } // namespace trace_apis
    /**
     * Plugin that only runs the RPC
     */
@@ -65,8 +62,6 @@ namespace eosio {
       void plugin_shutdown();
 
       void handle_sighup() override;
-
-      trace_apis::read_only  get_read_only_api()const { return trace_apis::read_only(trace_api_rpc_ptr(rpc)); }
 
    private:
       std::shared_ptr<struct trace_api_rpc_plugin_impl> rpc;
