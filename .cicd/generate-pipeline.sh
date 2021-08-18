@@ -457,7 +457,7 @@ EOF
     fi
         if [[ "$ROUND" != "$ROUNDS" ]]; then
             echo '  - wait: ~'
-            echo '    continue_on_failure: true'
+            [[ "$BUILDKITE_SOURCE" == 'schedule' || "$CONTINUE_ON_FAILURE" == 'true' ]] && echo '    continue_on_failure: true'
             echo ''
         fi
     done
