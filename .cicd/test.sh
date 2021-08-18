@@ -7,6 +7,7 @@ if [[ "$DEBUG" == 'true' ]]; then
     echo 'The artifact download completed successfully, so this Buildkite job step cannot be used for debugging the issue.'
     echo "To run a normal build, do not set DEBUG='true' in the build environment."
     echo 'Exiting without running tests.'
+    exit 0
 fi
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
