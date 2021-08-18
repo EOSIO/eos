@@ -15,6 +15,7 @@ using namespace eosio::trace_api;
 using namespace eosio::trace_api::configuration_utils;
 using boost::signals2::scoped_connection;
 
+
 namespace {
    appbase::abstract_plugin& plugin_reg = app().register_plugin<trace_api_plugin>();
 
@@ -96,6 +97,24 @@ namespace {
 }
 
 namespace eosio {
+
+struct trace_api_rpc_plugin_impl;
+
+#define CALL_WITH_400(api_name, api_handle, api_namespace, call_name, params_type) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
+          try { \
+             auto params = parse_params<api_namespace::call_name ## _params, params_type>(body);\
+             fc::variant result( api_handle.call_name( std::move(params) ) ); \
+             cb(200, std::move(result)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+          } \
+       }}
+
+#define CHAIN_API_RO_CALL(call_name, params_type) CALL_WITH_400(trace_api, ro_api, trace_apis::read_only, call_name, params_type)
+
+
 
 /**
  * A common source for information shared between the extraction process and the RPC process
@@ -394,6 +413,11 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
             http_plugin::handle_exception("trace_api", "get_transaction", body, cb);
          }
       });
+
+      auto ro_api = app().get_plugin<trace_api_rpc_plugin>().get_read_only_api();
+      app().get_plugin<http_plugin>().add_api({
+         CHAIN_API_RO_CALL(get_transaction, http_params_types::params_required),
+      });
    }
 
    void plugin_shutdown() {
@@ -404,6 +428,56 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
    using request_handler_t = request_handler<shared_store_provider<store_provider>, abi_data_handler::shared_provider>;
    std::shared_ptr<request_handler_t> req_handler;
 };
+
+namespace trace_apis {
+
+   trace_api::transaction_trace_v3 read_only::get_transaction(const read_only::get_transaction_params &p) const {
+      trace_api::transaction_trace_v3 result;
+      transaction_id_type input_id;
+      auto input_id_length = p.id.size();
+      try {
+         FC_ASSERT( input_id_length <= 64, "hex string is too long to represent an actual transaction id" );
+         FC_ASSERT( input_id_length >= 8,  "hex string representing transaction id should be at least 8 characters long to avoid excessive collisions" );
+         input_id = transaction_id_type(p.id);
+      } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", p.id))
+
+      fc::microseconds max_response_time = app().get_plugin<http_plugin>().get_max_response_time();
+      const auto deadline = trace_api_rpc->calc_deadline( max_response_time );
+
+      // search for the trx id in the log to find out associate block number
+      get_block_n blk_num;
+      blk_num = trace_api_rpc->common->store->get_trx_block_number(input_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });
+
+      // extract the trx trace from the block trace
+      if (blk_num.has_value()){
+         auto resp = trace_api_rpc->req_handler->get_block_trace(blk_num.value(), [deadline]() { FC_CHECK_DEADLINE(deadline); });
+         if (resp.is_null()) {
+            EOS_THROW(tx_not_found, "Transaction ${id} not found in trace log", ("id",p.id));
+         } else {
+            auto& b_mvo = resp.get_object();
+            if (b_mvo.contains("transactions")) {
+               auto& transactions = b_mvo["transactions"];
+               for (uint32_t i = 0; i < transactions.size(); ++i) {
+                  if (transactions[i].is_null()) continue;
+                  auto& t_mvo = transactions[i].get_object();
+                  if (t_mvo.contains("id")) {
+                     string t_id = t_mvo["id"].as_string();
+                     if (input_id == transaction_id_type(t_id)) {
+                        // TODO: copy t_mvo into result
+                        //
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+      } else {
+         EOS_THROW(tx_not_found, "Transaction ${id} not found in trace log", ("id",p.id));
+      }
+
+      return result;
+   }
+} // namespace trace_apis
 
 struct trace_api_plugin_impl {
    trace_api_plugin_impl( const std::shared_ptr<trace_api_common_impl>& common )
