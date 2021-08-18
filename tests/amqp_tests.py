@@ -32,6 +32,7 @@ args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_p
 server=args.host
 port=args.port
 debug=args.v
+#defproduceraPrvtKey="5J4epz9MPhZgVtRm8erfCKe29dN5wHVgb9SCW1kCNuJAnJSFcyU"
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -72,15 +73,18 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
 
-        producers = Cluster.createAccountKeys(1)
-        amqProducerAccount = producers[0]
+#        producers = Cluster.createAccountKeys(1)
+#        amqProducerAccount = producers[0]
+        amqProducerAccount = cluster.defProducerAccounts["defproducera"]
+#        pubkey = "EOS6uhrFT3sVBDiqrtaw4cBr46aAhtkEBW7ruzFVX5RqQehrYdhtp"
 
+        producerOptString = " "
         specificExtraNodeosArgs={ 0: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr),
-                                  1: " --pause-on-startup --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr)}
+                                  1: " --backing-store=chainbase --plugin eosio::amqp_trx_plugin --amqp-trx-address %s --plugin eosio::amqp_trace_plugin --amqp-trace-address %s" % (amqpAddr, amqpAddr)}
 
 
-        manualProducerArgs = {0 : { 'key': amqProducerAccount, 'names': ['amqproducer']}, 1 : { 'key': amqProducerAccount, 'names': ['amqproducer']} }
-        if cluster.launch(totalNodes=3, pnodes=2, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, manualProducerNodeConf=manualProducerArgs) is False:
+        manualProducerArgs = {0 : { 'key': amqProducerAccount, 'names': ['defproducera']}, 1 : { 'key': amqProducerAccount, 'names': ['defproducera']} }
+        if cluster.launch(totalNodes=2, pnodes=1, dontBootstrap=False, onlyBios=False, useBiosBootFile=True, specificExtraNodeosArgs=specificExtraNodeosArgs, manualProducerNodeConf=manualProducerArgs) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -98,8 +102,24 @@ try:
         testSuccessful=True
         exit(0)
 
+    
+
+
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
+
+    amqProducerAccount = cluster.defProducerAccounts["defproducera"]
+    Print("defproducera opk=%s" % (amqProducerAccount.ownerPublicKey) )
+    producerOptString = " --pause-on-startup --producer-name defproducera --plugin eosio::producer_plugin --signature-provider {}=KEY:{} ".format(amqProducerAccount.ownerPublicKey, amqProducerAccount.ownerPrivateKey)
+    backup_node = cluster.getNode(1)
+    backup_node.kill(signal.SIGTERM)
+    backup_node.relaunch(addSwapFlags={
+        "--pause-on-startup": "",
+        "--producer-name": "defproducera",
+        "--plugin": "eosio::producer_plugin",
+        "--plugin": "eosio::producer_api_plugin",
+        "--signature-provider": "{}=KEY:{}".format(amqProducerAccount.ownerPublicKey, amqProducerAccount.ownerPrivateKey)
+    })
 
     accounts=Cluster.createAccountKeys(4)
     if accounts is None:
@@ -269,7 +289,7 @@ try:
     transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
-    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True, waitForTransBlock=amqpAddr)
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", expiration=1000, waitForTransBlock=amqpAddr)
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
