@@ -135,6 +135,11 @@ struct trace_api_common_impl {
    }
 
    void plugin_initialize(const appbase::variables_map& options) {
+      auto dir_option = options.at("trace-dir").as<bfs::path>();
+      if (dir_option.is_relative())
+         trace_dir = app().data_dir() / dir_option;
+      else
+         trace_dir = dir_option;
 
       if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>())
         resmon_plugin->monitor_directory(trace_dir);
@@ -161,29 +166,8 @@ struct trace_api_common_impl {
          slice_stride,
          minimum_irreversible_history_blocks,
          minimum_uncompressed_irreversible_history_blocks,
-         compression_seek_point_stride,
-         rdb
+         compression_seek_point_stride
       );
-   }
-
-   void rocksdb_initialize(const appbase::variables_map& options) {
-      auto dir_option = options.at("trace-dir").as<bfs::path>();
-      if (dir_option.is_relative())
-         trace_dir = app().data_dir() / dir_option;
-      else
-         trace_dir = dir_option;
-
-      rocksdb::DB* cache_ptr{ nullptr };
-      auto opts                                 = rocksdb::Options{};
-      opts.create_if_missing                    = true;
-      opts.level_compaction_dynamic_level_bytes = true;
-      opts.bytes_per_sync                       = 1048576;
-      opts.OptimizeLevelStyleCompaction(256ull << 20);
-      opts.create_if_missing = true;
-
-      const path rdb_path = trace_dir;
-      auto status = rocksdb::DB::Open(opts, rdb_path.string().c_str(), &cache_ptr);
-      rdb.reset(cache_ptr);
    }
 
    void plugin_startup() {
@@ -562,7 +546,6 @@ void trace_api_plugin::set_program_options(appbase::options_description& cli, ap
 
 void trace_api_plugin::plugin_initialize(const appbase::variables_map& options) {
    auto common = std::make_shared<trace_api_common_impl>();
-   common->rocksdb_initialize(options);
    common->plugin_initialize(options);
 
    my = std::make_shared<trace_api_plugin_impl>(common);

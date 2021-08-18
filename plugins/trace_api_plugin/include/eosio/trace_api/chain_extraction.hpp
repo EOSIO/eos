@@ -107,7 +107,7 @@ private:
 
          store.append( std::move( bt ) );
 
-         //save trx ids into rocksdb
+         //save to trx id log file
          if (ids.size() > 0){
             trx_ids_trace tt;
             tt.ids = ids;

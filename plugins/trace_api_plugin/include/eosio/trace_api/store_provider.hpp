@@ -269,7 +269,7 @@ namespace eosio::trace_api {
       using open_state = slice_directory::open_state;
 
       store_provider(const boost::filesystem::path& slice_dir, uint32_t stride_width, std::optional<uint32_t> minimum_irreversible_history_blocks,
-            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride,std::shared_ptr<rocksdb::DB> rdb);
+            std::optional<uint32_t> minimum_uncompressed_irreversible_history_blocks, size_t compression_seek_point_stride);
 
       template<typename BlockTrace>
       void append(const BlockTrace& bt);
@@ -386,7 +386,6 @@ namespace eosio::trace_api {
 
       slice_directory _slice_directory;
       uint32_t _last_block_num;
-      std::shared_ptr<rocksdb::DB> rdb;
    };
 
 }
