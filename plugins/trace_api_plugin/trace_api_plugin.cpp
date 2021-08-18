@@ -416,7 +416,7 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
       auto ro_api = app().get_plugin<trace_api_plugin>().get_read_only_api();
       app().get_plugin<http_plugin>().add_api({
-         CHAIN_API_RO_CALL(get_transaction, http_params_types::params_required),
+         //CHAIN_API_RO_CALL(get_transaction, http_params_types::params_required),
       });
    }
 
