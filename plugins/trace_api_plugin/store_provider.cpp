@@ -67,12 +67,8 @@ namespace eosio::trace_api {
       fc::cfile trx_id_file;
       for (const auto& id : tt.ids) {
          _slice_directory.find_or_create_trx_id_file(open_state::write, trx_id_file);
-         // save to the trx id log without packing
-         std::string entry = id.str() + std::to_string(tt.block_num);
-         uint32_t entry_size = id.str().size() + std::to_string(UINT32_MAX).size() + 1;
-         trx_id_file.write(entry.c_str(), entry_size);
-         trx_id_file.flush();
-         trx_id_file.sync();
+         auto entry = metadata_log_entry { trx_id_entry { .id = id, .block_num = tt.block_num }};
+         append_store(entry, trx_id_file);
       }
    }
 
@@ -111,28 +107,21 @@ namespace eosio::trace_api {
          return {};
       }
 
-      auto convert_to_int = []( const char* p)
-      {
-         uint32_t r = 0;
-         while (*p){
-            r = r*10 + ((*p++)-'0');
-         }
-         return r;
-      };
-
+      metadata_log_entry entry;
+      auto ds = trx_id_file.create_datastream();
       const uint64_t end = file_size(trx_id_file.get_file_path());
       uint64_t offset = trx_id_file.tellp();
+
       uint32_t trx_id_size = trx_id.str().size();
       uint32_t blk_num_size = std::to_string(UINT32_MAX).size() + 1;
       uint32_t entry_size = trx_id_size + blk_num_size;
       while (offset < end) {
          //yield();
-         auto buffer = std::make_unique<char[]>(entry_size);
-         char* buf = buffer.get();
-         trx_id_file.read(buf, entry_size);
-         int match = memcmp(trx_id.str().c_str(), buf, trx_id_size);
-         if (match == 0) {
-             return convert_to_int(buf+trx_id_size);
+         fc::raw::unpack(ds, entry);
+         FC_ASSERT( std::holds_alternative<trx_id_entry>(entry) == true, "unpacked data should be a trx id entry" );
+         const auto& id_entry = std::get<trx_id_entry>(entry);
+         if (id_entry.id == trx_id) {
+            return id_entry.block_num;
          }
          offset = trx_id_file.tellp();
       }

@@ -191,8 +191,6 @@ struct trace_api_common_impl {
    static constexpr uint32_t compression_seek_point_stride = 6 * 1024 * 1024; // 6 MiB strides for clog seek points
 
    std::shared_ptr<store_provider> store;
-
-   std::shared_ptr<rocksdb::DB> rdb;
 };
 
 /**
