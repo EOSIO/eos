@@ -18,19 +18,19 @@ ensure-scl
 # GCC8 for Centos / Needed for CMAKE install even if we're pinning
 ensure-devtoolset
 if [[ -d /opt/rh/devtoolset-8 ]]; then
-	echo "${COLOR_CYAN}[Enabling Centos devtoolset-8 (so we can use GCC 8)]${COLOR_NC}"
-	execute-always source /opt/rh/devtoolset-8/enable
-	echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
+    echo "${COLOR_CYAN}[Enabling Centos devtoolset-8 (so we can use GCC 8)]${COLOR_NC}"
+    execute-always source /opt/rh/devtoolset-8/enable
+    echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
 fi
 
 # Ensure packages exist
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
 export PYTHON3PATH="/opt/rh/rh-python36"
 if $DRYRUN || [ -d $PYTHON3PATH ]; then
-	echo "${COLOR_CYAN}[Enabling python36]${COLOR_NC}"
-	execute source $PYTHON3PATH/enable
-	echo " ${COLOR_GREEN}- Python36 successfully enabled!${COLOR_NC}"
-	echo ""
+    echo "${COLOR_CYAN}[Enabling python36]${COLOR_NC}"
+    execute source $PYTHON3PATH/enable
+    echo " ${COLOR_GREEN}- Python36 successfully enabled!${COLOR_NC}"
+    echo ""
 fi
 fi
 
@@ -72,7 +72,7 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
     install-package ncurses-compat-libs
     install-package nodejs
     install-package epel-release
-		
+   
     # needed for Centos 8 otherwise cmake is broken
     install-package libarchive
 
@@ -85,7 +85,7 @@ if [[ "$(echo ${VERSION} | sed 's/ .*//g')" == 8 ]]; then
     popd
 
     if [ ! -L "/usr/local/lib/libtinfo.so" ] ; then
-	    ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
+        ln -s /usr/lib64/libtinfo.so.6 /usr/local/lib/libtinfo.so
     fi
 fi
 
