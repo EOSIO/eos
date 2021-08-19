@@ -2918,47 +2918,8 @@ void read_write::send_transaction(const read_write::send_transaction_params_v1& 
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
-      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
-      fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "send_transaction");
+      send_transaction(input_trx, "send_transaction", false, next);
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
-            [this, token=trx_trace.get_token(), input_trx, next]
-            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         auto trx_span = fc_create_span_from_token(token, "Processed");
-         fc_add_tag(trx_span, "trx_id", input_trx->id());
-
-         if (std::holds_alternative<fc::exception_ptr>(result)) {
-            auto& eptr = std::get<fc::exception_ptr>(result);
-            fc_add_tag(trx_span, "error", eptr->to_string());
-            next(eptr);
-         } else {
-            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
-
-            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
-            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
-            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
-            if( trx_trace_ptr->receipt ) {
-               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
-            }
-            if( trx_trace_ptr->except ) {
-               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
-            }
-
-            try {
-               fc::variant output;
-               try {
-                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-               } catch( chain::abi_exception& ) {
-                  output = *trx_trace_ptr;
-               }
-
-               const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::send_transaction_results{id, output});
-            } CATCH_AND_CALL(next);
-         }
-      });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
@@ -2977,52 +2938,57 @@ void read_write::send_transaction(const read_write::send_transaction_params_v2& 
          input_trx = std::make_shared<packed_transaction>( std::move( input_trx_v0 ), true );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
-      auto trx_span = fc_create_span(trx_trace, "HTTP Received");
-      fc_add_tag(trx_span, "trx_id", input_trx->id());
-      fc_add_tag(trx_span, "method", "/v2/chain/send_transaction");
+      send_transaction(input_trx, "/v2/chain/send_transaction", params.return_failure_traces, next);
 
-      app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace.get_token(), input_trx, next]
-            (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         auto trx_span = fc_create_span_from_token(token, "Processed");
-         fc_add_tag(trx_span, "trx_id", input_trx->id());
-
-         if (std::holds_alternative<fc::exception_ptr>(result)) {
-            auto& eptr = std::get<fc::exception_ptr>(result);
-            fc_add_tag(trx_span, "error", eptr->to_string());
-            next(eptr);
-         } else {
-            auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
-
-            fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
-            fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
-            fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
-            if( trx_trace_ptr->receipt ) {
-               fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
-            }
-            if( trx_trace_ptr->except ) {
-               fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
-            }
-
-            try {
-               fc::variant output;
-               try {
-                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
-               } catch( chain::abi_exception& ) {
-                  output = *trx_trace_ptr;
-               }
-
-               const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::send_transaction_results{id, output});
-            } CATCH_AND_CALL(next);
-         }
-      });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
       chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
+}
+
+void read_write::send_transaction(packed_transaction_ptr input_trx, const std::string method, bool return_failure_traces, chain::plugin_interface::next_function<send_transaction_results> next) {
+   auto trx_trace = fc_create_trace_with_id("Transaction", input_trx->id());
+   auto trx_span = fc_create_span(trx_trace, "HTTP Received");
+   fc_add_tag(trx_span, "trx_id", input_trx->id());
+   fc_add_tag(trx_span, "method", method);
+
+   app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, static_cast<const bool>(return_failure_traces),
+         [this, token=trx_trace.get_token(), input_trx, next]
+         (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+      auto trx_span = fc_create_span_from_token(token, "Processed");
+      fc_add_tag(trx_span, "trx_id", input_trx->id());
+
+      if (std::holds_alternative<fc::exception_ptr>(result)) {
+         auto& eptr = std::get<fc::exception_ptr>(result);
+         fc_add_tag(trx_span, "error", eptr->to_string());
+         next(eptr);
+      } else {
+         auto& trx_trace_ptr = std::get<transaction_trace_ptr>(result);
+
+         fc_add_tag(trx_span, "block_num", trx_trace_ptr->block_num);
+         fc_add_tag(trx_span, "block_time", trx_trace_ptr->block_time.to_time_point());
+         fc_add_tag(trx_span, "elapsed", trx_trace_ptr->elapsed.count());
+         if( trx_trace_ptr->receipt ) {
+            fc_add_tag(trx_span, "status", std::string(trx_trace_ptr->receipt->status));
+         }
+         if( trx_trace_ptr->except ) {
+            fc_add_tag(trx_span, "error", trx_trace_ptr->except->to_string());
+         }
+
+         try {
+            fc::variant output;
+            try {
+               output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer::create_yield_function( abi_serializer_max_time ) );
+            } catch( chain::abi_exception& ) {
+               output = *trx_trace_ptr;
+            }
+
+            const chain::transaction_id_type& id = trx_trace_ptr->id;
+            next(read_write::send_transaction_results{id, output});
+         } CATCH_AND_CALL(next);
+      }
+   });
 }
 
 read_only::get_abi_results read_only::get_abi( const get_abi_params& params )const {
