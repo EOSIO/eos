@@ -6,7 +6,7 @@ export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 [[ -z "$ROUND_SIZE" ]] && export ROUND_SIZE='1'
 BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
-BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
+[[ "$DEBUG" != 'true' ]] && BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet' || BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-debug-fleet'
 # attach pipeline documentation
 export DOCS_URL="https://github.com/EOSIO/eos/blob/$(git rev-parse HEAD)/.cicd"
 export RETRY="$([[ "$BUILDKITE" == 'true' ]] && buildkite-agent meta-data get pipeline-upload-retries --default '0' || echo "${RETRY:-0}")"
