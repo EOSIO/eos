@@ -448,7 +448,8 @@ EOF
         done
         IFS=$oIFS
         if [[ "$ROUND" != "$ROUNDS" ]]; then
-            echo '  - wait'
+            echo '  - wait: ~'
+            [[ "$BUILDKITE_SOURCE" == 'schedule' || "$CONTINUE_ON_FAILURE" == 'true' ]] && echo '    continue_on_failure: true'
             echo ''
         fi
     done
@@ -533,7 +534,7 @@ EOF
 fi
 # pipeline tail
 cat <<EOF
-  - wait:
+  - wait: ~
     continue_on_failure: true
 
   - label: ":bar_chart: Test Metrics"
