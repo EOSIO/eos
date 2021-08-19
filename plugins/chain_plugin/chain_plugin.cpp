@@ -3248,11 +3248,6 @@ void read_write::send_transaction(const read_write::send_transaction_params_v1& 
                   output = *trx_trace_ptr;
                }
 
-               const chain::transaction_id_type& id = trx_trace_ptr->id;
-               next(read_write::send_transaction_results{id, output});
-            } CATCH_AND_CALL(next);
-         }
-      });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } catch ( const std::bad_alloc& ) {
