@@ -170,11 +170,14 @@ add_test(NAME read_only_query COMMAND tests/read_only_query_tests.py -p 1 -v --d
 set_property(TEST read_only_query PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME cleos_action_no_params COMMAND tests/cleos_action_no_params.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST cleos_action_no_params PROPERTY LABELS nonparallelizable_tests)
-add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
-if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-   set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
+
+if (ENABLE_RODEOS)
+  add_test(NAME rodeos_test COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST rodeos_test PROPERTY LABELS nonparallelizable_tests)
+  if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
+    add_test(NAME rodeos_test_eosvmoc COMMAND tests/rodeos_test.py -v --clean-run --dump-error-detail --eos-vm-oc-enable WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_property(TEST rodeos_test_eosvmoc PROPERTY LABELS nonparallelizable_tests)
+  endif()
 endif()
 
 # Long running tests

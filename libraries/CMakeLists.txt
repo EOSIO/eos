@@ -64,7 +64,9 @@ set_property(GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE
   yubico_otp wrap_data wrap info import_rsa import_authkey generate_hmac generate_ec\
   attest pbkdf2 parsing ${_CTEST_CUSTOM_TESTS_IGNORE}")
 
-add_subdirectory( rodeos )
+if (ENABLE_RODEOS)
+  add_subdirectory( rodeos )
+endif()
 
 find_package(OpenSSL REQUIRED)
 option(AMQP-CPP_LINUX_TCP CACHE ON)
