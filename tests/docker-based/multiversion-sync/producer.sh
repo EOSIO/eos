@@ -31,7 +31,7 @@ cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79z
 date
 sleep 10
 date
-cleos create account eosio $producer_name ${pub_key} ${pub_key} --use-old-send-rpc
+cleos create account eosio $producer_name ${pub_key} ${pub_key} ${cleos_additional_args}
 
 for host in ${peers//;/ }; do
   peer_args="$peer_args --p2p-peer-address $host"
