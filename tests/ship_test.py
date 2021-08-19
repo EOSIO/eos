@@ -32,6 +32,7 @@ Print=Utils.Print
 appArgs = AppArgs()
 extraArgs = appArgs.add(flag="--num-requests", type=int, help="How many requests that each ship_client requests", default=1)
 extraArgs = appArgs.add(flag="--num-clients", type=int, help="How many ship_clients should be started", default=1)
+extraArgs = appArgs.add_bool(flag="--unix-socket", help="Run ship over unix socket")
 args = TestHelper.parse_args({"-p", "-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
 
 Utils.Debug=args.v
@@ -69,6 +70,9 @@ try:
     shipNodeNum = totalNodes - 1
     specificExtraNodeosArgs[shipNodeNum]="--plugin eosio::state_history_plugin --disable-replay-opts --sync-fetch-span 200 --plugin eosio::net_api_plugin "
 
+    if args.unix_socket:
+        specificExtraNodeosArgs[shipNodeNum] += "--state-history-unix-socket-path ship.sock"
+
     if cluster.launch(pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
                       useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
@@ -86,6 +90,8 @@ try:
 
     javascriptClient = "tests/ship_client.js"
     cmd = "node %s --num-requests %d" % (javascriptClient, args.num_requests)
+    if args.unix_socket:
+        cmd += " -a ws+unix:///%s/%s" % (os.getcwd(), Utils.getNodeDataDir(shipNodeNum, "ship.sock"))
     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
     clients = []
     files = []

@@ -345,6 +345,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Timeout for sending Zipkin span." )
          ("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
           "Retry interval for connecting to Zipkin." )
+         ("telemetry-wait-timeout-seconds", bpo::value<uint32_t>()->default_value(0),
+          "Initial wait time for Zipkin to become available, stop the program if the connection cannot be established within the wait time.")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -717,6 +719,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
+      
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const std::exception& ) {
@@ -1206,7 +1209,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
                                   options["telemetry-timeout-us"].as<uint32_t>(),
-                                  options["telemetry-retry-interval-us"].as<uint32_t>() );
+                                  options["telemetry-retry-interval-us"].as<uint32_t>(),
+                                  options["telemetry-wait-timeout-seconds"].as<uint32_t>());
       }
 
 
@@ -2781,7 +2785,7 @@ void read_write::push_transaction(const read_write::push_transaction_params_v1& 
       fc_add_tag(trx_span, "method", "push_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, false,
-            [this, token=trx_trace.get_token(), input_trx, next]
+            [this, token=fc_get_token(trx_trace), input_trx, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
 
          auto trx_span = fc_create_span_from_token(token, "Processed");
@@ -2927,6 +2931,7 @@ void read_write::send_transaction(const read_write::send_transaction_params_v1& 
    } CATCH_AND_CALL(next);
 }
 
+
 void read_write::send_transaction(const read_write::send_transaction_params_v2& params, next_function<read_write::send_transaction_results> next) {
 
    try {
@@ -2954,7 +2959,7 @@ void read_write::send_transaction(packed_transaction_ptr input_trx, const std::s
    fc_add_tag(trx_span, "method", method);
 
    app().get_method<incoming::methods::transaction_async>()(input_trx, true, false, static_cast<const bool>(return_failure_traces),
-         [this, token=trx_trace.get_token(), input_trx, next]
+         [this, token=fc_get_token(trx_trace), input_trx, next]
          (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
       auto trx_span = fc_create_span_from_token(token, "Processed");
       fc_add_tag(trx_span, "trx_id", input_trx->id());
@@ -3236,7 +3241,7 @@ void read_only::send_ro_transaction(const read_only::send_ro_transaction_params_
       fc_add_tag(trx_span, "method", "send_ro_transaction");
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true, true, static_cast<const bool>(params.return_failure_traces),
-            [this, token=trx_trace.get_token(), input_trx, params, next]
+            [this, token=fc_get_token(trx_trace), input_trx, params, next]
             (const std::variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          auto trx_span = fc_create_span_from_token(token, "Processed");
          fc_add_tag(trx_span, "trx_id", input_trx->id());

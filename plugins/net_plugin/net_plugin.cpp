@@ -287,6 +287,8 @@ namespace eosio {
       uint16_t                                       thread_pool_size = 2;
       std::optional<eosio::chain::named_thread_pool> thread_pool;
 
+      bool telemetry_span_root = false;
+
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
@@ -570,7 +572,7 @@ namespace eosio {
       fc::time_point   window_start_;              ///< The start of the recent rbw (0 implies not started)
       uint32_t         events_{0};                 ///< The number of consecutive rbws
       const uint32_t   max_consecutive_rejected_windows_{13};
-      
+
    public:
       /// ctor
       ///
@@ -731,6 +733,7 @@ namespace eosio {
       /** @} */
       // timestamp for the lastest message
       tstamp                         latest_msg_time{0};
+      tstamp                         latest_blk_time{0};
       tstamp                         hb_timeout;
 
       bool connected();
@@ -746,7 +749,7 @@ namespace eosio {
       bool process_next_trx_message(uint32_t message_length);
    public:
 
-      bool populate_handshake( handshake_message& hello, bool force );
+      bool populate_handshake( handshake_message& hello );
 
       bool resolve_and_connect();
       void connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
@@ -762,7 +765,7 @@ namespace eosio {
        */
       bool process_next_message(uint32_t message_length);
 
-      void send_handshake( bool force = false );
+      void send_handshake();
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -1321,10 +1324,10 @@ namespace eosio {
       syncing = false;
    }
 
-   void connection::send_handshake( bool force ) {
-      strand.post( [force, c = shared_from_this()]() {
+   void connection::send_handshake() {
+      strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         if( c->populate_handshake( c->last_handshake_sent, force ) ) {
+         if( c->populate_handshake( c->last_handshake_sent ) ) {
             static_assert( std::is_same_v<decltype( c->sent_handshake_count ), int16_t>, "INT16_MAX based on int16_t" );
             if( c->sent_handshake_count == INT16_MAX ) c->sent_handshake_count = 1; // do not wrap
             c->last_handshake_sent.generation = ++c->sent_handshake_count;
@@ -1340,24 +1343,31 @@ namespace eosio {
    }
 
    // called from connection strand
-   void connection::check_heartbeat( tstamp current_time )
-   {
-      if( protocol_version >= heartbeat_interval ) {
-         if( latest_msg_time > 0 &&  current_time > latest_msg_time + hb_timeout ) {
+   void connection::check_heartbeat( tstamp current_time ) {
+      if( protocol_version >= heartbeat_interval && latest_msg_time > 0 ) {
+         if( current_time > latest_msg_time + hb_timeout ) {
             no_retry = benign_other;
             if( !peer_address().empty() ) {
                fc_wlog(logger, "heartbeat timed out for peer address ${adr}", ("adr", peer_address()));
-               close(true);  // reconnect
+               close(true);
             } else {
                {
                   std::lock_guard<std::mutex> g_conn( conn_mtx );
-                  fc_wlog(logger, "heartbeat timed out from ${p} ${ag}", ("p", last_handshake_recv.p2p_address)("ag", last_handshake_recv.agent));
+                  fc_wlog(logger, "heartbeat timed out from ${p} ${ag}",
+                          ("p", last_handshake_recv.p2p_address)("ag", last_handshake_recv.agent));
                }
-               close(false); // don't reconnect
+               close(false);
             }
             return;
+         } else {
+            const tstamp timeout = std::max(hb_timeout/2, 2*std::chrono::milliseconds(config::block_interval_ms).count());
+            if ( current_time > latest_blk_time + timeout ) {
+               send_handshake();
+               return;
+            }
          }
       }
+
       send_time();
    }
 
@@ -1669,6 +1679,7 @@ namespace eosio {
       enqueue_buffer( send_buffer, close_after_send );
    }
 
+   // called from connection strand
    void connection::enqueue_block( const signed_block_ptr& b, bool to_sync_queue) {
       if(!is_participating()) {
          return;
@@ -1685,6 +1696,7 @@ namespace eosio {
          enqueue( go_away_message( fatal_other ) );
          return;
       }
+      latest_blk_time = get_time();
       enqueue_buffer( sb, no_reason, to_sync_queue);
    }
 
@@ -1985,6 +1997,7 @@ namespace eosio {
       if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
+         c->send_handshake();
          return;
       }
 
@@ -2057,7 +2070,7 @@ namespace eosio {
                   ("id", msg.head_id.str().substr(8,16)) );
          c->syncing = false;
          if (c->sent_handshake_count > 0) {
-            c->send_handshake(true);
+            c->send_handshake();
          }
          return;
       }
@@ -2202,7 +2215,7 @@ namespace eosio {
          g.unlock();
          c->close();
       } else {
-         c->send_handshake( true );
+         c->send_handshake();
       }
    }
 
@@ -2426,6 +2439,7 @@ namespace eosio {
          }
 
          cp->strand.post( [this, cp, id, bnum, sb{std::move(sb)}]() {
+            cp->latest_blk_time = cp->get_time();
             std::unique_lock<std::mutex> g_conn( cp->conn_mtx );
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
             g_conn.unlock();
@@ -2871,6 +2885,7 @@ namespace eosio {
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
          if( which == signed_block_which || which == signed_block_v0_which ) {
+            latest_blk_time = get_time();
             return process_next_block_message( message_length );
 
          } else if( which == trx_message_v1_which || which == packed_transaction_v0_which ) {
@@ -3477,8 +3492,20 @@ namespace eosio {
             return;
          }
       }
-      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
-         c->process_signed_block( id, std::move( ptr ) );
+
+      auto trace = fc_create_trace_with_id_if(my_impl->telemetry_span_root, "block", id);
+      fc_add_tag(trace, "block_num", ptr->block_num());
+      fc_add_tag(trace, "block_id", id );
+
+      auto handle_message_span  = fc_create_span_with_id("handle_message", (uint64_t) rand(), id);
+      fc_add_tag(handle_message_span, "queue_size", app().get_priority_queue().size());
+
+
+      app().post(priority::medium, [ptr{std::move(ptr)}, id, c = shared_from_this(),
+                                    handle_message_span = std::move(handle_message_span)]() mutable {
+         auto       span = fc_create_span(handle_message_span, "processing_singed_block");
+         const auto bn   = ptr->block_num();
+         c->process_signed_block(id, std::move(ptr));
       });
    }
 
@@ -3724,13 +3751,6 @@ namespace eosio {
       update_security_group(bs);
       dispatcher->strand.post( [this, bs]() {
          fc_dlog( logger, "signaled accepted_block, blk num = ${num}, id = ${id}", ("num", bs->block_num)("id", bs->id) );
-
-         auto blk_trace = fc_create_trace_with_id( "Block", bs->id );
-         auto blk_span = fc_create_span( blk_trace, "Accepted" );
-         fc_add_tag( blk_span, "block_id", bs->id );
-         fc_add_tag( blk_span, "block_num", bs->block_num );
-         fc_add_tag( blk_span, "block_time", bs->block->timestamp.to_time_point() );
-
          dispatcher->bcast_block( bs->block, bs->id );
       });
    }
@@ -3743,13 +3763,6 @@ namespace eosio {
          dispatcher->strand.post( [this, block]() {
             auto id = block->calculate_id();
             fc_dlog( logger, "signaled pre_accepted_block, blk num = ${num}, id = ${id}", ("num", block->block_num())("id", id) );
-
-            auto blk_trace = fc_create_trace_with_id("Block", id);
-            auto blk_span = fc_create_span(blk_trace, "PreAccepted");
-            fc_add_tag(blk_span, "block_id", id);
-            fc_add_tag(blk_span, "block_num", block->block_num());
-            fc_add_tag(blk_span, "block_time", block->timestamp.to_time_point());
-            fc_add_tag(blk_span, "producer", block->producer.to_string());
 
             dispatcher->bcast_block( block, id );
          });
@@ -3884,19 +3897,13 @@ namespace eosio {
    }
 
    // call from connection strand
-   bool connection::populate_handshake( handshake_message& hello, bool force ) {
+   bool connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
-      bool send = force;
       hello.network_version = net_version_base + net_version;
       const auto prev_head_id = hello.head_id;
       uint32_t lib, head;
       std::tie( lib, std::ignore, head,
                 hello.last_irreversible_block_id, std::ignore, hello.head_id ) = my_impl->get_chain_info();
-      // only send handshake if state has changed since last handshake
-      send |= lib != hello.last_irreversible_block_num;
-      send |= head != hello.head_num;
-      send |= prev_head_id != hello.head_id;
-      if( !send ) return false;
       hello.last_irreversible_block_num = lib;
       hello.head_num = head;
       hello.chain_id = my_impl->chain_id;
@@ -3974,8 +3981,9 @@ namespace eosio {
            "   _lport \tlocal port number connected to peer\n\n")
          ( "p2p-keepalive-interval-ms", bpo::value<int>()->default_value(def_keepalive_interval), "peer heartbeat keepalive message interval in milliseconds")
          ( "p2p-tls-security-group-ca-file", bpo::value<bfs::path>(), "Certificate Authority's certificate file used for verifying peers TLS connection when security groups feature enabled" )
-         ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
          ( "p2p-tls-private-key-file", bpo::value<bfs::path>(), "Private key file that is used in conjunction with p2p-tls-own-certificate-file for server authorization in TLS connection. Together p2p-tls-private-key-file + p2p-tsl-own-certificate-file automatically enables TLS-only connection for peers.")
+         ( "p2p-tls-own-certificate-file", bpo::value<bfs::path>(), "Certificate file that will be used to authenticate running node if TLS is enabled")
+         ( "telemtry-span-root", bpo::value<bool>()->default_value(false), "generate zipkin root span for blocks received from net-plugin")
         ;
    }
 
@@ -4128,6 +4136,7 @@ namespace eosio {
             }
          }
          cc.enable_security_groups(security_group_enabled);
+         my->telemetry_span_root = options["telemtry-span-root"].as<bool>();
 
       } FC_LOG_AND_RETHROW()
    }
