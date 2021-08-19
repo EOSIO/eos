@@ -17,12 +17,15 @@ The [eosio-test-stability](https://buildkite.com/EOSIO/eosio-test-stability) pip
 ### Variables
 There are five primary environment variables relevant to stability testing:
 ```bash
-PINNED='true|false'    # whether to perform the test with pinned dependencies, or default dependencies
-ROUNDS='ℕ'             # natural number defining the number of gated rounds of tests to generate
-ROUND_SIZE='ℕ'         # number of test steps to generate per operating system, per round
-SKIP_MAC='true|false'  # conserve finite macOS Anka agents by excluding them from your testing
-TEST='name'            # PCRE expression defining the tests to run, preceded by '^' and followed by '$'
-TIMEOUT='ℕ'            # set timeout in minutes for all Buildkite steps
+CONTINUE_ON_FAILURE='true|false' # by default, only scheduled builds will continue to the following round if
+                                 # any test fails for the current round; however, this setting can be explicitly
+                                 # overriden by setting this variable to 'true'.
+PINNED='true|false'              # whether to perform the test with pinned dependencies, or default dependencies
+ROUNDS='ℕ'                       # natural number defining the number of gated rounds of tests to generate
+ROUND_SIZE='ℕ'                   # number of test steps to generate per operating system, per round
+SKIP_MAC='true|false'            # conserve finite macOS Anka agents by excluding them from your testing
+TEST='name'                      # PCRE expression defining the tests to run, preceded by '^' and followed by '$'
+TIMEOUT='ℕ'                      # set timeout in minutes for all Buildkite steps
 ```
 The `TEST` variable is parsed as [pearl-compatible regular expression](https://www.debuggex.com/cheatsheet/regex/pcre) where the expression in `TEST` is preceded by `^` and followed by `$`. To specify one test, set `TEST` equal to the test name (e.g. `TEST='read_only_query'`). Specify two tests as `TEST='(nodeos_short_fork_take_over_lr_test|read_only_query)'`. Or, perhaps, you want all of the `restart_scenarios` tests. Then, you could define `TEST='restart-scenario-test-.*'` and Buildkite will generate `ROUND_SIZE` steps each round for each operating system for all three restart scenarios tests.
 
