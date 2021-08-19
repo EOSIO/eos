@@ -100,7 +100,7 @@ namespace eosio::trace_api {
       return std::make_tuple( entry.value(), irreversible );
    }
 
-    get_block_n store_provider::get_trx_block_number(chain::transaction_id_type& trx_id, const yield_function& yield) {
+    get_block_n store_provider::get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield) {
       fc::cfile trx_id_file;
       const bool found = _slice_directory.find_trx_id_file(open_state::read, trx_id_file);
       if( !found ) {
@@ -111,10 +111,6 @@ namespace eosio::trace_api {
       auto ds = trx_id_file.create_datastream();
       const uint64_t end = file_size(trx_id_file.get_file_path());
       uint64_t offset = trx_id_file.tellp();
-
-      uint32_t trx_id_size = trx_id.str().size();
-      uint32_t blk_num_size = std::to_string(UINT32_MAX).size() + 1;
-      uint32_t entry_size = trx_id_size + blk_num_size;
       while (offset < end) {
          //yield();
          fc::raw::unpack(ds, entry);

@@ -285,7 +285,7 @@ namespace eosio::trace_api {
        */
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
-      get_block_n get_trx_block_number(chain::transaction_id_type& trx_id, const yield_function& yield= {});
+      get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield= {});
 
       uint32_t get_last_block_num() const {
           return _last_block_num;
