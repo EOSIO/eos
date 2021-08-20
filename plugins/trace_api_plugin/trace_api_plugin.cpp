@@ -360,8 +360,11 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
          try {
             // search for the trx id in the log file and find out associate block number
             const auto deadline = that->calc_deadline( max_response_time );
+            auto start = fc::time_point::now(); //test
             get_block_n blk_num;
             blk_num = common->store->get_trx_block_number(input_id, [deadline]() { FC_CHECK_DEADLINE(deadline); });
+            auto stop = fc::time_point::now(); //test
+            auto duration = (stop - start).count(); //test
 
             // extract the trx trace from the block trace
             if (blk_num.has_value()){
@@ -381,6 +384,8 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
                            string t_id = t_mvo["id"].as_string();
                            if (txn_id_matched(transaction_id_type(t_id))) {
                               cb( 200, std::move(t_mvo) );
+                              auto stop2 = fc::time_point::now(); //test
+                              auto duration2 = (stop2 - stop).count(); //test
                               break; // terminate the loop
                            }
                         }
@@ -412,6 +417,26 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 };
 
 namespace trace_apis {
+
+   struct resolver_factory {
+      static auto make( const controller& control, abi_serializer::yield_function_t yield) {
+         return [&control, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
+            const auto* accnt = control.db().template find<account_object, by_name>(name);
+            if (accnt != nullptr) {
+               abi_def abi;
+               if (abi_serializer::to_abi(accnt->abi, abi)) {
+                  return abi_serializer(abi, yield);
+               }
+            }
+            return std::optional<abi_serializer>();
+         };
+      }
+   };
+
+   //copied from chain_plugin.cpp
+   auto make_resolver(const controller& control, abi_serializer::yield_function_t yield) {
+      return resolver_factory::make(control, std::move( yield ));
+   }
 
    trace_api::transaction_trace_v3 read_only::get_transaction(const read_only::get_transaction_params &p) const {
       trace_api::transaction_trace_v3 result;
@@ -445,8 +470,30 @@ namespace trace_apis {
                   if (t_mvo.contains("id")) {
                      string t_id = t_mvo["id"].as_string();
                      if (input_id == transaction_id_type(t_id)) {
-                        // TODO: copy t_mvo into result
-                        //
+                        auto& chain = app().find_plugin<chain_plugin>()->chain();
+                        result.id = transaction_id_type(t_mvo["id"].as_string());
+                        result.cpu_usage_us = t_mvo["cpu_usage_us"].as_uint64();
+                        result.net_usage_words = t_mvo["net_usage_words"].as_uint64();
+                        std::vector<action_trace_v1> actions;
+                        abi_serializer::from_variant(t_mvo["actions"], actions, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
+                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
+                        result.actions = actions;
+                        fc::enum_type<uint8_t, chain::transaction_receipt_header::status_enum> status;
+                        abi_serializer::from_variant(t_mvo["status"], status, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
+                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
+                        result.status = status;
+                        std::vector<chain::signature_type> signatures;
+                        abi_serializer::from_variant(t_mvo["signatures"], signatures, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
+                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
+                        result.signatures = signatures;
+                        chain::transaction_header trx_header;
+                        abi_serializer::from_variant(t_mvo["transaction_header"], trx_header, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
+                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
+                        result.trx_header = trx_header;
+                        std::vector<chain::name> bill_to_accounts;
+                        abi_serializer::from_variant(t_mvo["bill_to_accounts"], bill_to_accounts, make_resolver(chain, abi_serializer::create_yield_function(chain.get_abi_serializer_max_time())),
+                                                      abi_serializer::create_yield_function(chain.get_abi_serializer_max_time()));
+                        result.bill_to_accounts = bill_to_accounts;
                         break;
                      }
                   }
