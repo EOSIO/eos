@@ -1531,10 +1531,13 @@ namespace eosio {
             if( cptr != my_impl->connections.end() ) {
                auto cstart_it = cptr;
                do {
-                  //select the first one which is current and break out.
+                  //select the first one which is current and has valid lib and break out.
                   if( !(*cptr)->is_transactions_only_connection() && (*cptr)->current() ) {
-                     sync_source = *cptr;
-                     break;
+                     std::lock_guard<std::mutex> g_conn( (*cptr)->conn_mtx );
+                     if( (*cptr)->last_handshake_recv.last_irreversible_block_num >= sync_known_lib_num ) {
+                        sync_source = *cptr;
+                        break;
+                     }
                   }
                   if( ++cptr == my_impl->connections.end() )
                      cptr = my_impl->connections.begin();
