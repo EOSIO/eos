@@ -418,24 +418,8 @@ struct trace_api_rpc_plugin_impl : public std::enable_shared_from_this<trace_api
 
 namespace trace_apis {
 
-   struct resolver_factory {
-      static auto make( const controller& control, abi_serializer::yield_function_t yield) {
-         return [&control, yield{std::move(yield)}](const account_name &name) -> std::optional<abi_serializer> {
-            const auto* accnt = control.db().template find<account_object, by_name>(name);
-            if (accnt != nullptr) {
-               abi_def abi;
-               if (abi_serializer::to_abi(accnt->abi, abi)) {
-                  return abi_serializer(abi, yield);
-               }
-            }
-            return std::optional<abi_serializer>();
-         };
-      }
-   };
-
-   //copied from chain_plugin.cpp
    auto make_resolver(const controller& control, abi_serializer::yield_function_t yield) {
-      return resolver_factory::make(control, std::move( yield ));
+      return chain_apis::resolver_factory::make(control, std::move( yield ));
    }
 
    trace_api::transaction_trace_v3 read_only::get_transaction(const read_only::get_transaction_params &p) const {
