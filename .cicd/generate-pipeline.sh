@@ -657,7 +657,7 @@ EOF
     agents:
       queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     key: "ubuntu2004pb"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-20}
     skip: ${SKIP_UBUNTU_20_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 20.04 - Test Package"
