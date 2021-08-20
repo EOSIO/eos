@@ -10,8 +10,7 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
    std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> result;
    result.emplace();
    result->first =
-         view.get(state_account.value,
-                  chain_kv::to_slice(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))));
+         view.get(state_account.value, chain_kv::to_slice(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))));
    if (!result->first) {
       result.reset();
       return result;
@@ -20,7 +19,7 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
    eosio::input_stream stream{ *result->first };
    try {
       from_bin(result->second, stream);
-   } catch(std::exception& e) {
+   } catch (std::exception& e) {
       throw std::runtime_error("An error occurred deserializing state: " + std::string(e.what()));
    }
    return result;
@@ -31,8 +30,7 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
                                                                                             const K&        key) {
    std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> result;
    auto                                                                pk =
-         view.get(state_account.value,
-                  chain_kv::to_slice(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))));
+         view.get(state_account.value, chain_kv::to_slice(eosio::convert_to_key(std::make_tuple((uint8_t)0x01, key))));
    if (!pk)
       return result;
 
@@ -46,7 +44,7 @@ std::optional<std::pair<std::shared_ptr<const chain_kv::bytes>, T>> get_state_ro
    eosio::input_stream stream{ *result->first };
    try {
       from_bin(result->second, stream);
-   } catch(std::exception& e) {
+   } catch (std::exception& e) {
       throw std::runtime_error("An error occurred deserializing state: " + std::string(e.what()));
    }
    return result;

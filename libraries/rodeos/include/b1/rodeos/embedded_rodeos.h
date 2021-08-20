@@ -31,12 +31,11 @@ rodeos_context* rodeos_create();
 // other objects currently exist for this context. This is a no-op if context == NULL.
 void rodeos_destroy(rodeos_context* context);
 
-// Open database. num_threads is the target number of rocksdb background threads; use 0 for default. max_open_files is
-// the max number of open rocksdb files; 0 to make this unlimited.
+// Open database.
 //
 // It is undefined behavior if the context is used between threads without synchronization. Returns false on error.
 rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* context, const char* path,
-                           rodeos_bool create_if_missing, int num_threads, int max_open_files);
+                           rodeos_bool create_if_missing);
 
 // Create or open a database partition. It is undefined behavior if more than 1 partition is opened for a given prefix,
 // if any partitions have overlapping prefixes, or if the context is used between threads without synchronization.

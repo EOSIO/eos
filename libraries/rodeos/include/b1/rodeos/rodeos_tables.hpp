@@ -47,7 +47,7 @@ inline bool operator==(const fill_status_v0& a, fill_status_v0& b) {
 
 inline bool operator!=(const fill_status_v0& a, fill_status_v0& b) { return !(a == b); }
 
-using fill_status_sing = eosio::kv_singleton<fill_status, eosio::name{ "fill.status" }, state_database>;
+using fill_status_sing = eosio::kv_singleton<fill_status, eosio::name{ "fill.status" }>;
 
 struct block_info_v0 {
    uint32_t                         num                = {};
@@ -225,14 +225,11 @@ void store_delta_kv(eosio::kv_environment environment, D& delta, F f) {
       f();
       auto  obj  = eosio::from_bin<key_value>(row.data);
       auto& obj0 = std::get<key_value_v0>(obj);
-#warning uncomment this when we remove the database logic on rodeos
-      /*
       if (row.present)
-         environment.kv_set(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining(),
-                            obj0.value.pos, obj0.value.remaining());
+         environment.kv_set(obj0.contract.value, obj0.key.pos, obj0.key.remaining(),
+                            obj0.value.pos, obj0.value.remaining(), obj0.payer.value);
       else
-         environment.kv_erase(obj0.database.value, obj0.contract.value, obj0.key.pos, obj0.key.remaining());
-      */
+         environment.kv_erase(obj0.contract.value, obj0.key.pos, obj0.key.remaining());
    }
 }
 

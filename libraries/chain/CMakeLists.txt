@@ -32,7 +32,8 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/runtimes/eos-vm-oc/stack.cpp
                              webassembly/runtimes/eos-vm-oc/switch_stack_linux.s
                              webassembly/runtimes/eos-vm-oc.cpp
-                             webassembly/runtimes/eos-vm-oc/default_real_main.cpp)
+                             webassembly/runtimes/eos-vm-oc/default_real_main.cpp
+                             webassembly/runtimes/eos-vm-oc/softfloat.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       enable_language(ASM-LLVMWAR)
@@ -68,7 +69,6 @@ set(CHAIN_WEBASSEMBLY_SOURCES
    webassembly/permission.cpp
    webassembly/privileged.cpp
    webassembly/producer.cpp
-   webassembly/softfloat.cpp
    webassembly/system.cpp
    webassembly/transaction.cpp
    webassembly/security_group.cpp
