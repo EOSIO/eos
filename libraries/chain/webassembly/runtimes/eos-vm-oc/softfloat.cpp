@@ -1,37 +1,50 @@
-#include <eosio/chain/webassembly/interface.hpp>
-#include <eosio/chain/webassembly/preconditions.hpp>
+#include <string.h> // softfloat uses memcpy
 #include <softfloat.hpp>
 
-namespace eosio { namespace chain { namespace webassembly {
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+
+using eosio::chain::eosvmoc::throw_internal_exception;
+
+namespace {
    static constexpr uint32_t inv_float_eps = 0x4B000000;
    static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
+   inline static bool is_nan( const float32_t f ) {
+      return f32_is_nan( f );
+   }
+   inline static bool is_nan( const float64_t f ) {
+      return f64_is_nan( f );
+   }
+   inline static bool is_nan( const float128_t& f ) {
+      return f128_is_nan( f );
+   }
+
    // float binops
-   float interface::_eosio_f32_add( float a, float b ) const {
+   float _eosio_f32_add( float a, float b ) {
       float32_t r = ::f32_add( to_softfloat32(a), to_softfloat32(b) );
       float ret;
       std::memcpy((char*)&ret, (char*)&r, sizeof(ret));
       return ret;
    }
-   float interface::_eosio_f32_sub( float a, float b ) const {
+   float _eosio_f32_sub( float a, float b ) {
       float32_t r = ::f32_sub( to_softfloat32(a), to_softfloat32(b) );
       float ret;
       std::memcpy((char*)&ret, (char*)&r, sizeof(ret));
       return ret;
    }
-   float interface::_eosio_f32_div( float a, float b ) const {
+   float _eosio_f32_div( float a, float b ) {
       float32_t r = ::f32_div( to_softfloat32(a), to_softfloat32(b) );
       float ret;
       std::memcpy((char*)&ret, (char*)&r, sizeof(ret));
       return ret;
    }
-   float interface::_eosio_f32_mul( float a, float b ) const {
+   float _eosio_f32_mul( float a, float b ) {
       float32_t r = ::f32_mul( to_softfloat32(a), to_softfloat32(b) );
       float ret;
       std::memcpy((char*)&ret, (char*)&r, sizeof(ret));
       return ret;
    }
-   float interface::_eosio_f32_min( float af, float bf ) const {
+   float _eosio_f32_min( float af, float bf ) {
       float32_t a = to_softfloat32(af);
       float32_t b = to_softfloat32(bf);
       if (is_nan(a)) {
@@ -45,7 +58,7 @@ namespace eosio { namespace chain { namespace webassembly {
       }
       return ::f32_lt(a,b) ? af : bf;
    }
-   float interface::_eosio_f32_max( float af, float bf ) const {
+   float _eosio_f32_max( float af, float bf ) {
       float32_t a = to_softfloat32(af);
       float32_t b = to_softfloat32(bf);
       if (is_nan(a)) {
@@ -59,7 +72,7 @@ namespace eosio { namespace chain { namespace webassembly {
       }
       return ::f32_lt( a, b ) ? bf : af;
    }
-   float interface::_eosio_f32_copysign( float af, float bf ) const {
+   float _eosio_f32_copysign( float af, float bf ) {
       float32_t a = to_softfloat32(af);
       float32_t b = to_softfloat32(bf);
       uint32_t sign_of_b = b.v >> 31;
@@ -68,24 +81,24 @@ namespace eosio { namespace chain { namespace webassembly {
       return from_softfloat32(a);
    }
    // float unops
-   float interface::_eosio_f32_abs( float af ) const {
+   float _eosio_f32_abs( float af ) {
       float32_t a = to_softfloat32(af);
       a.v &= ~(1 << 31);
       return from_softfloat32(a);
    }
-   float interface::_eosio_f32_neg( float af ) const {
+   float _eosio_f32_neg( float af ) {
       float32_t a = to_softfloat32(af);
       uint32_t sign = a.v >> 31;
       a.v &= ~(1 << 31);
       a.v |= (!sign << 31);
       return from_softfloat32(a);
    }
-   float interface::_eosio_f32_sqrt( float a ) const {
+   float _eosio_f32_sqrt( float a ) {
       float32_t ret = ::f32_sqrt( to_softfloat32(a) );
       return from_softfloat32(ret);
    }
    // ceil, floor, trunc and nearest are lifted from libc
-   float interface::_eosio_f32_ceil( float af ) const {
+   float _eosio_f32_ceil( float af ) {
       float32_t a = to_softfloat32(af);
       int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
       uint32_t m;
@@ -107,7 +120,7 @@ namespace eosio { namespace chain { namespace webassembly {
 
       return from_softfloat32(a);
    }
-   float interface::_eosio_f32_floor( float af ) const {
+   float _eosio_f32_floor( float af ) {
       float32_t a = to_softfloat32(af);
       int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
       uint32_t m;
@@ -128,7 +141,7 @@ namespace eosio { namespace chain { namespace webassembly {
       }
       return from_softfloat32(a);
    }
-   float interface::_eosio_f32_trunc( float af ) const {
+   float _eosio_f32_trunc( float af ) {
       float32_t a = to_softfloat32(af);
       int e = (int)(a.v >> 23 & 0xff) - 0x7f + 9;
       uint32_t m;
@@ -142,7 +155,7 @@ namespace eosio { namespace chain { namespace webassembly {
       a.v &= ~m;
       return from_softfloat32(a);
    }
-   float interface::_eosio_f32_nearest( float af ) const {
+   float _eosio_f32_nearest( float af ) {
       float32_t a = to_softfloat32(af);
       int e = a.v>>23 & 0xff;
       int s = a.v>>31;
@@ -159,11 +172,11 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    // float relops
-   bool interface::_eosio_f32_eq( float a, float b ) const {  return ::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-   bool interface::_eosio_f32_ne( float a, float b ) const { return !::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-   bool interface::_eosio_f32_lt( float a, float b ) const { return ::f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
-   bool interface::_eosio_f32_le( float a, float b ) const { return ::f32_le( to_softfloat32(a), to_softfloat32(b) ); }
-   bool interface::_eosio_f32_gt( float af, float bf ) const {
+   U32 _eosio_f32_eq( float a, float b ) {  return ::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+   U32 _eosio_f32_ne( float a, float b ) { return !::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+   U32 _eosio_f32_lt( float a, float b ) { return ::f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
+   U32 _eosio_f32_le( float a, float b ) { return ::f32_le( to_softfloat32(a), to_softfloat32(b) ); }
+   U32 _eosio_f32_gt( float af, float bf ) {
       float32_t a = to_softfloat32(af);
       float32_t b = to_softfloat32(bf);
       if (is_nan(a))
@@ -172,7 +185,7 @@ namespace eosio { namespace chain { namespace webassembly {
          return false;
       return !::f32_le( a, b );
    }
-   bool interface::_eosio_f32_ge( float af, float bf ) const {
+   U32 _eosio_f32_ge( float af, float bf ) {
       float32_t a = to_softfloat32(af);
       float32_t b = to_softfloat32(bf);
       if (is_nan(a))
@@ -183,23 +196,23 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    // double binops
-   double interface::_eosio_f64_add( double a, double b ) const {
+   double _eosio_f64_add( double a, double b ) {
       float64_t ret = ::f64_add( to_softfloat64(a), to_softfloat64(b) );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_sub( double a, double b ) const {
+   double _eosio_f64_sub( double a, double b ) {
       float64_t ret = ::f64_sub( to_softfloat64(a), to_softfloat64(b) );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_div( double a, double b ) const {
+   double _eosio_f64_div( double a, double b ) {
       float64_t ret = ::f64_div( to_softfloat64(a), to_softfloat64(b) );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_mul( double a, double b ) const {
+   double _eosio_f64_mul( double a, double b ) {
       float64_t ret = ::f64_mul( to_softfloat64(a), to_softfloat64(b) );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_min( double af, double bf ) const {
+   double _eosio_f64_min( double af, double bf ) {
       float64_t a = to_softfloat64(af);
       float64_t b = to_softfloat64(bf);
       if (is_nan(a))
@@ -210,7 +223,7 @@ namespace eosio { namespace chain { namespace webassembly {
          return f64_sign_bit(a) ? af : bf;
       return ::f64_lt( a, b ) ? af : bf;
    }
-   double interface::_eosio_f64_max( double af, double bf ) const {
+   double _eosio_f64_max( double af, double bf ) {
       float64_t a = to_softfloat64(af);
       float64_t b = to_softfloat64(bf);
       if (is_nan(a))
@@ -221,7 +234,7 @@ namespace eosio { namespace chain { namespace webassembly {
          return f64_sign_bit(a) ? bf : af;
       return ::f64_lt( a, b ) ? bf : af;
    }
-   double interface::_eosio_f64_copysign( double af, double bf ) const {
+   double _eosio_f64_copysign( double af, double bf ) {
       float64_t a = to_softfloat64(af);
       float64_t b = to_softfloat64(bf);
       uint64_t sign_of_b = b.v >> 63;
@@ -231,24 +244,24 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    // double unops
-   double interface::_eosio_f64_abs( double af ) const {
+   double _eosio_f64_abs( double af ) {
       float64_t a = to_softfloat64(af);
       a.v &= ~(uint64_t(1) << 63);
       return from_softfloat64(a);
    }
-   double interface::_eosio_f64_neg( double af ) const {
+   double _eosio_f64_neg( double af ) {
       float64_t a = to_softfloat64(af);
       uint64_t sign = a.v >> 63;
       a.v &= ~(uint64_t(1) << 63);
       a.v |= (uint64_t(!sign) << 63);
       return from_softfloat64(a);
    }
-   double interface::_eosio_f64_sqrt( double a ) const {
+   double _eosio_f64_sqrt( double a ) {
       float64_t ret = ::f64_sqrt( to_softfloat64(a) );
       return from_softfloat64(ret);
    }
    // ceil, floor, trunc and nearest are lifted from libc
-   double interface::_eosio_f64_ceil( double af ) const {
+   double _eosio_f64_ceil( double af ) {
       float64_t a = to_softfloat64( af );
       float64_t ret;
       int e = a.v >> 52 & 0x7ff;
@@ -271,7 +284,7 @@ namespace eosio { namespace chain { namespace webassembly {
       ret = ::f64_add( a, y );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_floor( double af ) const {
+   double _eosio_f64_floor( double af ) {
       float64_t a = to_softfloat64( af );
       float64_t ret;
       int e = a.v >> 52 & 0x7FF;
@@ -297,7 +310,7 @@ namespace eosio { namespace chain { namespace webassembly {
       ret = ::f64_add( a, y );
       return from_softfloat64(ret);
    }
-   double interface::_eosio_f64_trunc( double af ) const {
+   double _eosio_f64_trunc( double af ) {
       float64_t a = to_softfloat64( af );
       int e = (int)(a.v >> 52 & 0x7ff) - 0x3ff + 12;
       uint64_t m;
@@ -312,7 +325,7 @@ namespace eosio { namespace chain { namespace webassembly {
       return from_softfloat64(a);
    }
 
-   double interface::_eosio_f64_nearest( double af ) const {
+   double _eosio_f64_nearest( double af ) {
       float64_t a = to_softfloat64( af );
       int e = (a.v >> 52 & 0x7FF);
       int s = a.v >> 63;
@@ -329,11 +342,11 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    // double relops
-   bool interface::_eosio_f64_eq( double a, double b ) const { return ::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-   bool interface::_eosio_f64_ne( double a, double b ) const { return !::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-   bool interface::_eosio_f64_lt( double a, double b ) const { return ::f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
-   bool interface::_eosio_f64_le( double a, double b ) const { return ::f64_le( to_softfloat64(a), to_softfloat64(b) ); }
-   bool interface::_eosio_f64_gt( double af, double bf ) const {
+   U32 _eosio_f64_eq( double a, double b ) { return ::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+   U32 _eosio_f64_ne( double a, double b ) { return !::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+   U32 _eosio_f64_lt( double a, double b ) { return ::f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
+   U32 _eosio_f64_le( double a, double b ) { return ::f64_le( to_softfloat64(a), to_softfloat64(b) ); }
+   U32 _eosio_f64_gt( double af, double bf ) {
       float64_t a = to_softfloat64(af);
       float64_t b = to_softfloat64(bf);
       if (is_nan(a))
@@ -342,7 +355,7 @@ namespace eosio { namespace chain { namespace webassembly {
          return false;
       return !::f64_le( a, b );
    }
-   bool interface::_eosio_f64_ge( double af, double bf ) const {
+   U32 _eosio_f64_ge( double af, double bf ) {
       float64_t a = to_softfloat64(af);
       float64_t b = to_softfloat64(bf);
       if (is_nan(a))
@@ -353,100 +366,168 @@ namespace eosio { namespace chain { namespace webassembly {
    }
 
    // float and double conversions
-   double interface::_eosio_f32_promote( float a ) const {
+   double _eosio_f32_promote( float a ) {
       return from_softfloat64(f32_to_f64( to_softfloat32(a)) );
    }
-   float interface::_eosio_f64_demote( double a ) const {
+   float _eosio_f64_demote( double a ) {
       return from_softfloat32(f64_to_f32( to_softfloat64(a)) );
    }
-   int32_t interface::_eosio_f32_trunc_i32s( float af ) const {
+   int32_t _eosio_f32_trunc_i32s( float af ) {
       float32_t a = to_softfloat32(af);
       if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_lt(af, -2147483648.0f))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
+         throw_internal_exception("Error, f32.convert_s/i32 overflow" );
 
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         throw_internal_exception("Error, f32.convert_s/i32 unrepresentable");
       return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
    }
-   int32_t interface::_eosio_f64_trunc_i32s( double af ) const {
+   int32_t _eosio_f64_trunc_i32s( double af ) {
       float64_t a = to_softfloat64(af);
       if (_eosio_f64_ge(af, 2147483648.0) || _eosio_f64_lt(af, -2147483648.0))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
+         throw_internal_exception("Error, f64.convert_s/i32 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
+         throw_internal_exception("Error, f64.convert_s/i32 unrepresentable");
       return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
    }
-   uint32_t interface::_eosio_f32_trunc_i32u( float af ) const {
+   uint32_t _eosio_f32_trunc_i32u( float af ) {
       float32_t a = to_softfloat32(af);
       if (_eosio_f32_ge(af, 4294967296.0f) || _eosio_f32_le(af, -1.0f))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 overflow");
+         throw_internal_exception("Error, f32.convert_u/i32 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 unrepresentable");
+         throw_internal_exception("Error, f32.convert_u/i32 unrepresentable");
       return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
    }
-   uint32_t interface::_eosio_f64_trunc_i32u( double af ) const {
+   uint32_t _eosio_f64_trunc_i32u( double af ) {
       float64_t a = to_softfloat64(af);
       if (_eosio_f64_ge(af, 4294967296.0) || _eosio_f64_le(af, -1.0))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 overflow");
+         throw_internal_exception("Error, f64.convert_u/i32 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 unrepresentable");
+         throw_internal_exception("Error, f64.convert_u/i32 unrepresentable");
       return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
    }
-   int64_t interface::_eosio_f32_trunc_i64s( float af ) const {
+   int64_t _eosio_f32_trunc_i64s( float af ) {
       float32_t a = to_softfloat32(af);
       if (_eosio_f32_ge(af, 9223372036854775808.0f) || _eosio_f32_lt(af, -9223372036854775808.0f))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 overflow");
+         throw_internal_exception("Error, f32.convert_s/i64 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
+         throw_internal_exception("Error, f32.convert_s/i64 unrepresentable");
       return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
    }
-   int64_t interface::_eosio_f64_trunc_i64s( double af ) const {
+   int64_t _eosio_f64_trunc_i64s( double af ) {
       float64_t a = to_softfloat64(af);
       if (_eosio_f64_ge(af, 9223372036854775808.0) || _eosio_f64_lt(af, -9223372036854775808.0))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 overflow");
+         throw_internal_exception("Error, f64.convert_s/i64 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
+         throw_internal_exception("Error, f64.convert_s/i64 unrepresentable");
 
       return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
    }
-   uint64_t interface::_eosio_f32_trunc_i64u( float af ) const {
+   uint64_t _eosio_f32_trunc_i64u( float af ) {
       float32_t a = to_softfloat32(af);
       if (_eosio_f32_ge(af, 18446744073709551616.0f) || _eosio_f32_le(af, -1.0f))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 overflow");
+         throw_internal_exception("Error, f32.convert_u/i64 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 unrepresentable");
+         throw_internal_exception("Error, f32.convert_u/i64 unrepresentable");
       return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
    }
-   uint64_t interface::_eosio_f64_trunc_i64u( double af ) const {
+   uint64_t _eosio_f64_trunc_i64u( double af ) {
       float64_t a = to_softfloat64(af);
       if (_eosio_f64_ge(af, 18446744073709551616.0) || _eosio_f64_le(af, -1.0))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 overflow");
+         throw_internal_exception("Error, f64.convert_u/i64 overflow");
       if (is_nan(a))
-         FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 unrepresentable");
+         throw_internal_exception("Error, f64.convert_u/i64 unrepresentable");
       return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
    }
-   float interface::_eosio_i32_to_f32( int32_t a ) const {
+   float _eosio_i32_to_f32( int32_t a ) {
       return from_softfloat32(i32_to_f32( a ));
    }
-   float interface::_eosio_i64_to_f32( int64_t a ) const {
+   float _eosio_i64_to_f32( int64_t a ) {
       return from_softfloat32(i64_to_f32( a ));
    }
-   float interface::_eosio_ui32_to_f32( uint32_t a ) const {
+   float _eosio_ui32_to_f32( uint32_t a ) {
       return from_softfloat32(ui32_to_f32( a ));
    }
-   float interface::_eosio_ui64_to_f32( uint64_t a ) const {
+   float _eosio_ui64_to_f32( uint64_t a ) {
       return from_softfloat32(ui64_to_f32( a ));
    }
-   double interface::_eosio_i32_to_f64( int32_t a ) const {
+   double _eosio_i32_to_f64( int32_t a ) {
       return from_softfloat64(i32_to_f64( a ));
    }
-   double interface::_eosio_i64_to_f64( int64_t a ) const {
+   double _eosio_i64_to_f64( int64_t a ) {
       return from_softfloat64(i64_to_f64( a ));
    }
-   double interface::_eosio_ui32_to_f64( uint32_t a ) const {
+   double _eosio_ui32_to_f64( uint32_t a ) {
       return from_softfloat64(ui32_to_f64( a ));
    }
-   double interface::_eosio_ui64_to_f64( uint64_t a ) const {
+   double _eosio_ui64_to_f64( uint64_t a ) {
       return from_softfloat64(ui64_to_f64( a ));
    }
-}}} // ns eosio::chain::webassembly
+}
+
+#define REGISTER_INJECTED_HOST_FUNCTION(name)\
+   intrinsic name##Function("eosio_injection." #name, (void*)&name, \
+     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosio_injection." #name))).value() \
+   ); \
+
+namespace eosio::chain::eosvmoc {
+void register_softfloat() {
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_add);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sub);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_div);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_mul);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_min);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_max);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_copysign);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_abs);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_neg);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sqrt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ceil);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_floor);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_nearest);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_eq);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ne);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_lt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_gt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ge);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_add);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sub);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_div);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_mul);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_min);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_max);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_copysign);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_abs);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_neg);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sqrt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ceil);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_floor);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_nearest);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_eq);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ne);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_lt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_le);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_gt);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ge);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_promote);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_demote);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32s);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32s);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32u);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32u);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64s);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64s);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64u);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64u);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f32);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f32);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f32);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f32);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f64);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f64);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f64);
+   REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f64);
+}
+}

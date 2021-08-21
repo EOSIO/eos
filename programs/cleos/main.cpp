@@ -86,6 +86,10 @@ Options:
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/thread_utils.hpp>
+
+#include <eosio/amqp_trx_plugin/amqp_trx_plugin.hpp>
+#include <eosio/amqp/amqp_handler.hpp>
 
 #include <eosio/version/version.hpp>
 
@@ -98,21 +102,11 @@ Options:
 #include <boost/filesystem.hpp>
 #include <boost/process.hpp>
 #include <boost/process/spawn.hpp>
-#include <boost/range/algorithm/find_if.hpp>
-#include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
-#include <boost/algorithm/string/classification.hpp>
 
 #pragma pop_macro("N")
-
-#include <Inline/BasicTypes.h>
-#include <IR/Module.h>
-#include <IR/Validate.h>
-#include <WASM/WASM.h>
-#include <Runtime/Runtime.h>
 
 #include <fc/io/fstream.hpp>
 
@@ -166,9 +160,12 @@ std::string clean_output( std::string str ) {
    return fc::escape_string( str, nullptr, escape_control_chars );
 }
 
-string url = "http://127.0.0.1:8888/";
+string default_url = "http://127.0.0.1:8888/";
 string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
 string wallet_url; //to be set to default_wallet_url in main
+string amqp_address;
+string amqp_reply_to;
+string amqp_queue_name = "trx";
 bool no_verify = false;
 vector<string> headers;
 
@@ -325,7 +322,7 @@ fc::variant call( const std::string& url,
       return eosio::client::http::do_http_call(*sp, fc::variant(v), print_request, print_response );
    }
    catch(boost::system::system_error& e) {
-      if(url == ::url)
+      if(url == ::default_url)
          std::cerr << localized("Failed to connect to ${n} at ${u}; is ${n} running?", ("n", node_executable_name)("u", url)) << std::endl;
       else if(url == ::wallet_url)
          std::cerr << localized("Failed to connect to ${k} at ${u}; is ${k} running?", ("k", key_store_executable_name)("u", url)) << std::endl;
@@ -335,14 +332,14 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( default_url, path, fc::variant( v) ); }
 
 template<>
 fc::variant call( const std::string& url,
                   const std::string& path) { return call( url, path, fc::variant() ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(default_url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -456,25 +453,43 @@ fc::variant push_transaction( signed_transaction& trx, const std::vector<public_
          EOSC_ASSERT( !tx_rtn_failure_trace, "ERROR: --return-failure-trace can not be used with --use-old-send-rpc" );
          return call(send_txn_func, pt_v0);
       } else {
-         try {
-             auto args = fc::mutable_variant_object()
-                        ("return_failure_traces", tx_rtn_failure_trace)
-                        ("transaction", pt_v0);
-            if (tx_read_only){
-               tx_ro_print_json = true;
-               return call(send_ro_txns_func, args);
-            } else {
-               return call(send_txn_func_v2, args);
+
+         if( !amqp_address.empty() ) {
+            fc::variant result;
+            eosio::transaction_msg msg{packed_transaction( std::move( trx ), true, compression )};
+            auto buf = fc::raw::pack( msg );
+            const auto& tid = std::get<packed_transaction>(msg).id();
+            string id = tid.str();
+            eosio::amqp_handler qp_trx( amqp_address, []( const std::string& err ) {
+               std::cerr << "AMQP trx error: " << err << std::endl;
+               exit( 1 );
+            } );
+            result = fc::mutable_variant_object()
+                  ( "transaction_id", id )
+                  ( "status", "submitted" );
+            qp_trx.publish( "", amqp_queue_name, std::move( id ), amqp_reply_to, std::move( buf ) );
+            return result;
+         } else {
+            try {
+               auto args = fc::mutable_variant_object()
+                          ("return_failure_traces", tx_rtn_failure_trace)
+                          ("transaction", pt_v0);
+               if (tx_read_only) {
+                  tx_ro_print_json = true;
+                  return call(send_ro_txns_func, args);
+               } else {
+                  return call(send_txn_func_v2, args);
+               }
             }
-         }
-         catch (chain::missing_chain_api_plugin_exception &) {
-            if (tx_read_only || tx_rtn_failure_trace) {
-               std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
-                         << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
-                         << "push_transaction instead or submit your transaction to a different node." << std::endl;
-               throw;
+            catch (chain::missing_chain_api_plugin_exception &) {
+               if (tx_read_only || tx_rtn_failure_trace) {
+                  std::cerr << "New RPC /v2/chain/send_transaction or send_ro_transaction may not be supported." << std::endl
+                            << "Add flag --use-old-send-rpc or --use-old-rpc to use old RPC send_transaction or " << std::endl
+                            << "push_transaction instead or submit your transaction to a different node." << std::endl;
+                  throw;
+               }
+               return call(send_txn_func, pt_v0);  // With compatible options, silently fall back to v1 API
             }
-            return call(send_txn_func, pt_v0);  // With compatible options, silently fall back to v1 API
          }
       }
    } else {
@@ -2593,8 +2608,11 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-host", obsoleted_option_host_port, localized("The host where ${k} is running", ("k", key_store_executable_name)) )->group("");
    app.add_option( "--wallet-port", obsoleted_option_host_port, localized("The port where ${k} is running", ("k", key_store_executable_name)) )->group("");
 
-   app.add_option( "-u,--url", url, localized("The http/https URL where ${n} is running", ("n", node_executable_name)), true );
+   app.add_option( "-u,--url", default_url, localized( "The http/https URL where ${n} is running", ("n", node_executable_name)), true );
    app.add_option( "--wallet-url", wallet_url, localized("The http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
+   app.add_option( "--amqp", amqp_address, localized("The ampq URL where AMQP is running amqp://USER:PASSWORD@ADDRESS:PORT"), false );
+   app.add_option( "--amqp-queue-name", amqp_queue_name, localized("The ampq queue to send transaction to"), true );
+   app.add_option( "--amqp-reply-to", amqp_reply_to, localized("The ampq reply to string"), false );
 
    app.add_option( "-r,--header", header_opt_callback, localized("Pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("Don't verify peer certificate when using HTTPS"));
@@ -3609,27 +3627,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("Start a new connection to a peer"));
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->callback([&] {
-      const auto& v = call(url, net_connect, new_host);
+      const auto& v = call(default_url, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("Close an existing connection"));
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->callback([&] {
-      const auto& v = call(url, net_disconnect, new_host);
+      const auto& v = call(default_url, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("Status of existing connection"));
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->callback([&] {
-      const auto& v = call(url, net_status, new_host);
+      const auto& v = call(default_url, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("Status of all existing peers"));
    connections->callback([&] {
-      const auto& v = call(url, net_connections);
+      const auto& v = call(default_url, net_connections);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 

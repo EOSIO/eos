@@ -13,6 +13,11 @@ RUN yum update -y && \
     yum clean all && rm -rf /var/cache/yum
 # requests module. used by tests
 RUN source /opt/rh/rh-python36/enable && python -m pip install requests
+# install erlang and rabbitmq
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | bash && \
+    yum install -y erlang
+RUN curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | bash && \
+    yum install -y rabbitmq-server
 # build cmake
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
     tar -xzf cmake-3.16.2.tar.gz && \

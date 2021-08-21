@@ -9,11 +9,10 @@
 
 #include <list>
 #include <vector>
+#include <functional>
 #include <cstddef>
 
 namespace eosio { namespace chain {
-
-class apply_context;
 
 namespace eosvmoc {
 
@@ -21,12 +20,19 @@ class code_cache_base;
 class memory;
 struct code_descriptor;
 
+struct timer_base {
+   virtual void set_expiration_callback(void(*)(void*), void*) {}
+   virtual void checktime() {}
+};
+
+void throw_internal_exception(const char* const s);
+
 class executor {
    public:
       executor(const code_cache_base& cc);
       ~executor();
 
-      void execute(const code_descriptor& code, memory& mem, apply_context& context);
+      void execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_base* timer, uint64_t receiver, uint64_t account, uint64_t action);
 
    private:
       uint8_t* code_mapping;

@@ -364,9 +364,9 @@ namespace LLVMJIT
 		// Emits a call to a WAVM intrinsic function.
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
-			const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(intrinsicName);
-			llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-ie.ordinal*8), llvmI64Type->getPointerTo(256)) );
-			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
+         const std::size_t io = eosio::chain::eosvmoc::get_intrinsic_ordinal(intrinsicName);
+			llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(OFFSET_OF_FIRST_INTRINSIC-io*8), llvmI64Type->getPointerTo(256)) );
+			llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(intrinsicType)->getPointerTo());
 			return createCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
 		}
 
@@ -1264,8 +1264,8 @@ namespace LLVMJIT
 		// Create LLVM pointer constants for the module's imported functions.
 		for(Uptr functionIndex = 0;functionIndex < module.functions.imports.size();++functionIndex)
 		{
-			const intrinsic_entry& ie =get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
-			importedFunctionOffsets.push_back(ie.ordinal);
+                        const std::size_t io =get_intrinsic_ordinal(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
+			importedFunctionOffsets.push_back(io);
 		}
 
 		intptr_t current_prologue = -8;

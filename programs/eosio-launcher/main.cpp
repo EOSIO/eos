@@ -1135,6 +1135,9 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   }
 
   auto log_config = fc::logging_config::default_config();
+  // make default logger debug level
+  if( !log_config.loggers.empty() )
+     log_config.loggers[0].level = fc::log_level::debug;
   if(gelf_enabled) {
      log_config.appenders.push_back(
            fc::appender_config( "net", "gelf",
@@ -1162,6 +1165,12 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   pp.appenders.push_back( "stderr" );
   if( gelf_enabled ) pp.appenders.push_back( "net" );
   log_config.loggers.emplace_back( pp );
+
+  fc::logger_config ta( "trace_api" );
+  ta.level = fc::log_level::debug;
+  ta.appenders.push_back( "stderr" );
+  if( gelf_enabled ) ta.appenders.push_back( "net" );
+  log_config.loggers.emplace_back( ta );
 
   auto str = fc::json::to_pretty_string( log_config, fc::time_point::maximum(), fc::json::output_formatting::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );

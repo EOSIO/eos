@@ -4,101 +4,107 @@
 #include "amqpcpp/libboostasio.h"
 #include "amqpcpp/linux_tcp.h"
 #include "stream.hpp"
+#include <appbase/application.hpp>
+#include <eosio/amqp/amqp_handler.hpp>
+#include <eosio/amqp/transactional_amqp_publisher.hpp>
 #include <fc/log/logger.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <memory>
 
 namespace b1 {
 
-class rabbitmq_handler;
-
 class rabbitmq : public stream_handler {
-   std::shared_ptr<rabbitmq_handler>    handler_;
-   std::shared_ptr<AMQP::TcpConnection> connection_;
-   std::shared_ptr<AMQP::TcpChannel>    channel_;
-   std::string                          exchangeName_;
-   std::string                          queueName_;
-   std::vector<eosio::name>             routes_;
+   std::unique_ptr<eosio::transactional_amqp_publisher> amqp_publisher_;
+   const AMQP::Address                  address_;
+   const bool                           publish_immediately_ = false;
+   const std::string                    exchange_name_;
+   const std::string                    queue_name_;
+   // capture all messages per block and send as one amqp transaction
+   std::deque<std::pair<std::string, std::vector<char>>> queue_;
 
- public:
-   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, const AMQP::Address& address,
-            std::string queue_name)
-       : queueName_(std::move(queue_name)), routes_(std::move(routes)) {
-      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", std::string(address))("q", queueName_));
-
-      init(io_service, address);
-
-      exchangeName_ = DEFAULT_EXCHANGE;
-
-      declare_queue();
+private:
+   void init() {
+      amqp_publisher_ =
+            std::make_unique<eosio::transactional_amqp_publisher>( address_, exchange_name_,
+                                                                   fc::seconds( 60 ),
+                                                                   []( const std::string& err ) {
+                                                                      elog( "AMQP fatal error: ${e}", ("e", err) );
+                                                                      appbase::app().quit();
+                                                                   } );
    }
 
-   rabbitmq(boost::asio::io_service& io_service, std::vector<eosio::name> routes, const AMQP::Address& address,
+public:
+   rabbitmq(std::vector<std::string> routes, const AMQP::Address& address, bool publish_immediately, std::string queue_name)
+       : stream_handler(std::move(routes))
+       , address_(address)
+       , publish_immediately_(publish_immediately)
+       , queue_name_( std::move( queue_name))
+   {
+      ilog("Connecting to RabbitMQ address ${a} - Queue: ${q}...", ("a", address)( "q", queue_name_));
+      std::atomic<bool> error = false;
+      eosio::amqp_handler declare_queue( address_, [&error](const std::string& err){
+         elog("AMQP Queue error: ${e}", ("e", err));
+         appbase::app().quit();
+         error = true;
+      } );
+      if( !error ) declare_queue.declare_queue(queue_name_);
+      if( error ) return;
+      init();
+   }
+
+   rabbitmq(std::vector<std::string> routes, const AMQP::Address& address, bool publish_immediately,
             std::string exchange_name, std::string exchange_type)
-       : exchangeName_(std::move(exchange_name)), routes_(std::move(routes)) {
-      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", std::string(address))("e", exchangeName_));
-
-      init(io_service, address);
-
-      declare_exchange(exchange_type);
+       : stream_handler(std::move(routes))
+       , address_(address)
+       , publish_immediately_(publish_immediately)
+       , exchange_name_( std::move( exchange_name))
+   {
+      ilog("Connecting to RabbitMQ address ${a} - Exchange: ${e}...", ("a", address)( "e", exchange_name_));
+      std::atomic<bool> error = false;
+      eosio::amqp_handler declare_exchange( address_, [&error](const std::string& err){
+         elog("AMQP Exchange error: ${e}", ("e", err));
+         appbase::app().quit();
+         error = true;
+      } );
+      if( !error ) declare_exchange.declare_exchange(exchange_name_, exchange_type);
+      if( error ) return;
+      init();
    }
 
-   const std::vector<eosio::name>& get_routes() const override { return routes_; }
+   void start_block(uint32_t block_num) override {
+      queue_.clear();
+   }
 
-   void publish(const char* data, uint64_t data_size, const eosio::name& routing_key) override {
-      if (DEFAULT_EXCHANGE == exchangeName_) {
-         channel_->publish(exchangeName_, queueName_, data, data_size, 0);
+   void stop_block(uint32_t block_num) override {
+      if( !publish_immediately_ && !queue_.empty() ) {
+         amqp_publisher_->publish_messages_raw( std::move( queue_ ) );
+         queue_.clear();
+      }
+   }
+
+   void publish(const std::vector<char>& data, const std::string& routing_key) override {
+      if (exchange_name_.empty()) {
+         if( publish_immediately_ ) {
+            amqp_publisher_->publish_message_direct( queue_name_, data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
+         } else {
+            queue_.emplace_back( std::make_pair( queue_name_, data ) );
+         }
       } else {
-         channel_->publish(exchangeName_, routing_key.to_string(), data, data_size, 0);
+         if( publish_immediately_ ) {
+            amqp_publisher_->publish_message_direct( routing_key, data,
+                                                     []( const std::string& err ) {
+                                                        elog( "AMQP direct message error: ${e}", ("e", err) );
+                                                     } );
+         } else {
+            queue_.emplace_back( std::make_pair( routing_key, data ) );
+         }
       }
    }
 
- private:
-   inline static const std::string DEFAULT_EXCHANGE = "";
-
-   void init(boost::asio::io_service& io_service, const AMQP::Address& address) {
-      handler_    = std::make_shared<rabbitmq_handler>(io_service);
-      connection_ = std::make_shared<AMQP::TcpConnection>(handler_.get(), address);
-      channel_    = std::make_shared<AMQP::TcpChannel>(connection_.get());
-   }
-
-   void declare_queue() {
-      auto& queue = channel_->declareQueue(queueName_, AMQP::durable);
-      queue.onSuccess([](const std::string& name, uint32_t messagecount, uint32_t consumercount) {
-         ilog("RabbitMQ Connected Successfully!\n Queue ${q} - Messages: ${mc} - Consumers: ${cc}",
-              ("q", name)("mc", messagecount)("cc", consumercount));
-      });
-      queue.onError([](const char* error_message) {
-         throw std::runtime_error("RabbitMQ Queue error: " + std::string(error_message));
-      });
-   }
-
-   void declare_exchange(const std::string& exchange_type) {
-      auto type = AMQP::direct;
-      if (exchange_type == "fanout") {
-         type = AMQP::fanout;
-      } else if (exchange_type != "direct") {
-         throw std::runtime_error("Unsupported RabbitMQ exchange type: " + exchange_type);
-      }
-
-      auto& exchange = channel_->declareExchange(exchangeName_, type);
-      exchange.onSuccess(
-            [en = exchangeName_]() { ilog("RabbitMQ Connected Successfully!\n Exchange ${e}", ("e", en)); });
-      exchange.onError([](const char* error_message) {
-         throw std::runtime_error("RabbitMQ Exchange error: " + std::string(error_message));
-      });
-   }
-};
-
-class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
- public:
-   explicit rabbitmq_handler(boost::asio::io_service& io_service) : AMQP::LibBoostAsioHandler(io_service) {}
-
-   void onError(AMQP::TcpConnection* connection, const char* message) {
-      throw std::runtime_error("rabbitmq connection failed: " + std::string(message));
-   }
-
-   uint16_t onNegotiate(AMQP::TcpConnection* connection, uint16_t interval) { return 0; }
-};
+ };
 
 // Parse the specified argument of a '--stream-rabbits'
 // or '--stream-rabbits-exchange' option and split it into:
@@ -126,7 +132,7 @@ class rabbitmq_handler : public AMQP::LibBoostAsioHandler {
 //    amqp:///vhost//*
 //
 inline AMQP::Address parse_rabbitmq_address(const std::string& cmdline_arg, std::string& queue_name_or_exchange_spec,
-                                            std::vector<eosio::name>& routes) {
+                                            std::vector<std::string>& routes) {
    // AMQP address starts with "amqp://" or "amqps://".
    const auto double_slash_pos = cmdline_arg.find("//");
    if (double_slash_pos == std::string::npos) {
@@ -158,12 +164,13 @@ inline AMQP::Address parse_rabbitmq_address(const std::string& cmdline_arg, std:
    return AMQP::Address(cmdline_arg.substr(0, second_slash_pos));
 }
 
-inline void initialize_rabbits_queue(boost::asio::io_service&                      io_service,
-                                     std::vector<std::unique_ptr<stream_handler>>& streams,
-                                     const std::vector<std::string>&               rabbits) {
+inline void initialize_rabbits_queue(std::vector<std::unique_ptr<stream_handler>>& streams,
+                                     const std::vector<std::string>&               rabbits,
+                                     bool                                          publish_immediately,
+                                     const boost::filesystem::path&                p) {
    for (const std::string& rabbit : rabbits) {
       std::string              queue_name;
-      std::vector<eosio::name> routes;
+      std::vector<std::string> routes;
 
       AMQP::Address address = parse_rabbitmq_address(rabbit, queue_name, routes);
 
@@ -171,16 +178,17 @@ inline void initialize_rabbits_queue(boost::asio::io_service&                   
          queue_name = "stream.default";
       }
 
-      streams.emplace_back(std::make_unique<rabbitmq>(io_service, std::move(routes), address, std::move(queue_name)));
+      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately, std::move(queue_name)));
    }
 }
 
-inline void initialize_rabbits_exchange(boost::asio::io_service&                      io_service,
-                                        std::vector<std::unique_ptr<stream_handler>>& streams,
-                                        const std::vector<std::string>&               rabbits) {
-   for (std::string rabbit : rabbits) {
+inline void initialize_rabbits_exchange(std::vector<std::unique_ptr<stream_handler>>& streams,
+                                        const std::vector<std::string>&               rabbits,
+                                        bool                                          publish_immediately,
+                                        const boost::filesystem::path&                p) {
+   for (const std::string& rabbit : rabbits) {
       std::string              exchange;
-      std::vector<eosio::name> routes;
+      std::vector<std::string> routes;
 
       AMQP::Address address = parse_rabbitmq_address(rabbit, exchange, routes);
 
@@ -192,8 +200,8 @@ inline void initialize_rabbits_exchange(boost::asio::io_service&                
          exchange.erase(double_column_pos);
       }
 
-      streams.emplace_back(std::make_unique<rabbitmq>(io_service, std::move(routes), address, std::move(exchange),
-                                                      std::move(exchange_type)));
+      streams.emplace_back(std::make_unique<rabbitmq>(std::move(routes), address, publish_immediately,
+                                                      std::move(exchange), std::move(exchange_type)));
    }
 }
 

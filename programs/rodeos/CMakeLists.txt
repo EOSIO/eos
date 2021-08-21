@@ -38,7 +38,7 @@ target_include_directories(${RODEOS_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINA
 
 target_link_libraries( ${RODEOS_EXECUTABLE_NAME}
         PRIVATE appbase version
-        PRIVATE rodeos_lib fc amqpcpp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
+        PRIVATE rodeos_lib fc amqpcpp amqp ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
 add_subdirectory(tests)
 
@@ -46,3 +46,5 @@ copy_bin( ${RODEOS_EXECUTABLE_NAME} )
 install( TARGETS
    ${RODEOS_EXECUTABLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
 )
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/rocksdb_options.ini DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
