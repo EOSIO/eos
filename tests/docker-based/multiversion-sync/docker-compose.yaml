@@ -53,6 +53,7 @@ services:
     <<: *default-producer
     environment:
       peers: "bios:9876"
+      cleos_additional_args: "--use-old-send-rpc"
 
   defproducerb:
     hostname: defproducerb
