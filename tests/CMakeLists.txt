@@ -76,6 +76,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_config_test_no_ca.py ${CMAKE_
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/privacy_network_from_snapshot.py ${CMAKE_CURRENT_BINARY_DIR}/privacy_network_from_snapshot.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/read_only_query_tests.py ${CMAKE_CURRENT_BINARY_DIR}/read_only_query_tests.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cleos_action_no_params.py ${CMAKE_CURRENT_BINARY_DIR}/cleos_action_no_params.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/large-lib-test.py ${CMAKE_CURRENT_BINARY_DIR}/large-lib-test.py COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
@@ -242,6 +243,9 @@ if (HAS_POSTGRES_SERVER)
   add_test(NAME blockvault_tests COMMAND tests/blockvault_tests.py --dump-error-detail -v --clean-run WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_property(TEST blockvault_tests PROPERTY LABELS nonparallelizable_tests)
 endif()
+
+add_test(NAME larger_lib_test COMMAND tests/large-lib-test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST larger_lib_test PROPERTY LABELS nonparallelizable_tests)
 
 if(ENABLE_COVERAGE_TESTING)
 
