@@ -401,6 +401,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                   EOS_ASSERT(false, plugin_exception, "");
                }
          }), "Number of threads to use for EOS VM OC tier-up")
+         ("eos-vm-oc-code-cache-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chain::eosvmoc::config().map_mode),
+          "Map mode for EOS VM OC code cache (\"mapped\", \"heap\", or \"locked\").\n"
+          "In \"mapped\" mode code cache is memory mapped as a file.\n"
+          "In \"heap\" mode code cache is preloaded in to swappable memory and will use huge pages if available.\n"
+          "In \"locked\" mode code cache is preloaded, locked in to memory, and will use huge pages if available.\n"
+         )
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
          ("enable-account-queries", bpo::value<bool>()->default_value(false), "enable queries to find accounts by various metadata.")
@@ -1170,6 +1176,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
       if( options.count("eos-vm-oc-compile-threads") )
          my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if( options.count("eos-vm-oc-code-cache-map-mode") )
+         my->chain_config->eosvmoc_config.map_mode = options.at("eos-vm-oc-code-cache-map-mode").as<chainbase::pinnable_mapped_file::map_mode>();
       if( options["eos-vm-oc-enable"].as<bool>() )
          my->chain_config->eosvmoc_tierup = true;
 #endif
