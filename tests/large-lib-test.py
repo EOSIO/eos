@@ -102,9 +102,10 @@ try:
     Utils.rmNodeDataDir(2)
 
     Print ("Relaunch all cluster nodes instances.")
-    relaunchNode(producingNode, chainArg="-e -p eosio --sync-fetch-span 5 --connection-cleanup-period 2 ", skipGenesis=False) # -e -p eosio for resuming production, skipGenesis=False for launch the same chain as before
-    relaunchNode(speculativeNode1)
-    relaunchNode(speculativeNode2)
+    # -e -p eosio for resuming production, skipGenesis=False for launch the same chain as before
+    relaunchNode(producingNode, chainArg="-e -p eosio --sync-fetch-span 5 ", skipGenesis=False)
+    relaunchNode(speculativeNode1, chainArg="--sync-fetch-span 5 ")
+    relaunchNode(speculativeNode2, chainArg="--sync-fetch-span 5 ", skipGenesis=False)
 
     Print("Note LIBs")
     prodLib = producingNode.getIrreversibleBlockNum()
