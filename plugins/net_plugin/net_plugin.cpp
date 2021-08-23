@@ -1469,6 +1469,9 @@ namespace eosio {
 
          if( c == sync_source ) {
             sync_last_requested_num = 0;
+            uint32_t head_blk_num = 0;
+            std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
+            sync_next_expected_num = head_blk_num + 1;
             request_next_chunk( std::move(g) );
          }
       }
@@ -2627,6 +2630,7 @@ namespace eosio {
       peer_dlog( this, "received handshake_message" );
       if( !is_valid( msg ) ) {
          peer_elog( this, "bad handshake message");
+         no_retry = go_away_reason::fatal_other;
          enqueue( go_away_message( fatal_other ) );
          return;
       }
@@ -2638,6 +2642,7 @@ namespace eosio {
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
             fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", msg.node_id) );
+            no_retry = go_away_reason::self;
             enqueue( go_away_message( self ) );
             return;
          }
@@ -2687,6 +2692,7 @@ namespace eosio {
 
          if( msg.chain_id != my_impl->chain_id ) {
             fc_elog( logger, "Peer on a different chain. Closing connection" );
+            no_retry = go_away_reason::wrong_chain;
             enqueue( go_away_message(go_away_reason::wrong_chain) );
             return;
          }
@@ -2704,6 +2710,7 @@ namespace eosio {
 
          if( !my_impl->authenticate_peer( msg ) ) {
             fc_elog( logger, "Peer not authenticated.  Closing connection." );
+            no_retry = go_away_reason::authentication;
             enqueue( go_away_message( authentication ) );
             return;
          }
@@ -2734,7 +2741,8 @@ namespace eosio {
                if( on_fork ) {
                   c->strand.post( [c]() {
                      peer_elog( c, "Peer chain is forked, sending: forked go away" );
-                     c->enqueue( go_away_message( forked ) );
+                     c->no_retry = go_away_reason::forked;
+                     c->enqueue( go_away_message( go_away_reason::forked ) );
                   } );
                }
             }
