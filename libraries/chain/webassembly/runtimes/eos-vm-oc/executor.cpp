@@ -144,11 +144,7 @@ executor::executor(const code_cache_base& cc) {
    if(arch_prctl(ARCH_GET_GS, &current_gs) || current_gs)
       wlog("x86_64 GS register is not set as expected. EOS VM OC may not run correctly on this platform");
 
-   struct stat s;
-   FC_ASSERT(fstat(cc.fd(), &s) == 0, "executor failed to get code cache size");
-   code_mapping = (uint8_t*)mmap(nullptr, s.st_size, PROT_EXEC|PROT_READ, MAP_SHARED, cc.fd(), 0);
-   FC_ASSERT(code_mapping != MAP_FAILED, "failed to map code cache in to executor");
-   code_mapping_size = s.st_size;
+   cc.cache_mapping_for_execution(PROT_EXEC|PROT_READ, code_mapping, code_mapping_size);
    mapping_is_executable = true;
 }
 
