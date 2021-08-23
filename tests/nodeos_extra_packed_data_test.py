@@ -140,10 +140,10 @@ try:
     node=cluster.getNode(0)
 
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True, additionalArgs='--use-old-send-rpc')
 
     Print("Create new account %s via %s" % (testerbAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True, additionalArgs='--use-old-send-rpc')
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, testerbAccount]
