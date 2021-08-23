@@ -1689,6 +1689,7 @@ namespace eosio {
          peer_wlog( this, "Sending go away for incomplete block #${n} ${id}...",
                     ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
          // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+         no_retry = go_away_reason::fatal_other;
          enqueue( go_away_message( fatal_other ) );
          return;
       }
@@ -1864,6 +1865,9 @@ namespace eosio {
 
          if( c == sync_source ) {
             sync_last_requested_num = 0;
+            uint32_t head_blk_num = 0;
+            std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
+            sync_next_expected_num = head_blk_num + 1;
             request_next_chunk( std::move(g) );
          }
       }
@@ -2444,6 +2448,7 @@ namespace eosio {
             peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
                        ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
             // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+            cp->no_retry = go_away_reason::fatal_other;
             cp->enqueue( go_away_message( fatal_other ) );
             return true;
          }
@@ -3143,6 +3148,7 @@ namespace eosio {
       peer_dlog( this, "received handshake_message" );
       if( !is_valid( msg ) ) {
          peer_elog( this, "bad handshake message");
+         no_retry = go_away_reason::fatal_other;
          enqueue( go_away_message( fatal_other ) );
          return;
       }
@@ -3154,7 +3160,8 @@ namespace eosio {
       if (msg.generation == 1) {
          if( msg.node_id == my_impl->node_id) {
             fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", msg.node_id) );
-            enqueue( go_away_message( self ) );
+            no_retry = go_away_reason::self;
+            enqueue( go_away_message( go_away_reason::self ) );
             return;
          }
 
@@ -3211,6 +3218,7 @@ namespace eosio {
 
          if( msg.chain_id != my_impl->chain_id ) {
             fc_elog( logger, "Peer on a different chain. Closing connection" );
+            no_retry = go_away_reason::wrong_chain;
             enqueue( go_away_message(go_away_reason::wrong_chain) );
             return;
          }
@@ -3228,7 +3236,8 @@ namespace eosio {
 
          if( !my_impl->authenticate_peer( msg ) ) {
             fc_elog( logger, "Peer not authenticated.  Closing connection." );
-            enqueue( go_away_message( authentication ) );
+            no_retry = go_away_reason::authentication;
+            enqueue( go_away_message( go_away_reason::authentication ) );
             return;
          }
 
@@ -3258,7 +3267,8 @@ namespace eosio {
                if( on_fork ) {
                   c->strand.post( [c]() {
                      peer_elog( c, "Peer chain is forked, sending: forked go away" );
-                     c->enqueue( go_away_message( forked ) );
+                     c->no_retry = go_away_reason::forked;
+                     c->enqueue( go_away_message( go_away_reason::forked ) );
                   } );
                }
             }
@@ -3498,6 +3508,7 @@ namespace eosio {
          if( ptr->prune_state == signed_block::prune_state_type::incomplete ) {
             peer_wlog( this, "Sending go away for incomplete block #${n} ${id}...",
                   ("n", ptr->block_num())("id", id.str().substr(8,16)) );
+            no_retry = go_away_reason::fatal_other;
             enqueue( go_away_message( fatal_other ) );
             return;
          }
