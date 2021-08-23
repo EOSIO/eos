@@ -1113,6 +1113,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   cfg << "plugin = eosio::net_plugin\n";
   cfg << "plugin = eosio::chain_api_plugin\n"
       << "plugin = eosio::history_api_plugin\n";
+      //<< "plugin = eosio::trace_api_plugin\n";
   cfg.close();
 }
 
@@ -1527,6 +1528,9 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     eosdcmd += "--enable-stale-production true ";
     add_enable_stale_production = false;
   }
+
+  eosdcmd += " --plugin eosio::trace_api_plugin ";
+  eosdcmd += " --trace-no-abis ";
 
   eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
   eosdcmd += " --genesis-json " + instance.config_dir_name + "/genesis.json";
