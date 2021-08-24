@@ -9,7 +9,6 @@ from TestHelper import TestHelper
 
 import random
 import signal
-import shutil
 import time
 
 ###############################################################
@@ -98,11 +97,9 @@ try:
 
     # Remove both state and blocks such that no replay happens
     Print("Remove producer node's state and blocks directories")
-    shutil.rmtree(Utils.getNodeDataDir(0,"state"))
-    shutil.rmtree(Utils.getNodeDataDir(0,"blocks"))
+    Utils.rmNodeDataDir(0)
     Print("Remove the second speculative node's state and blocks directories")
-    shutil.rmtree(Utils.getNodeDataDir(2,"state"))
-    shutil.rmtree(Utils.getNodeDataDir(2,"blocks"))
+    Utils.rmNodeDataDir(2)
 
     Print ("Relaunch all cluster nodes instances.")
     # -e -p eosio for resuming production, skipGenesis=False for launch the same chain as before
