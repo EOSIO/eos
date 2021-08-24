@@ -1457,6 +1457,8 @@ namespace eosio {
             sync_known_lib_num = c->last_handshake_recv.last_irreversible_block_num;
          }
       } else if ( closing ) {
+         // Closing connection, therefore its view of LIB can no longer be considered as we will no longer be connected.
+         // Determine current LIB of remaining peers as our sync_known_lib_num.
          uint32_t highest_lib_num = 0;
          for_each_block_connection( [&highest_lib_num]( const auto& cc ) {
             std::lock_guard<std::mutex> g_conn( cc->conn_mtx );
@@ -1467,6 +1469,7 @@ namespace eosio {
          } );
          sync_known_lib_num = highest_lib_num;
 
+         // if closing the connection we are currently syncing from, then reset our last requested and next expected.
          if( c == sync_source ) {
             sync_last_requested_num = 0;
             uint32_t head_blk_num = 0;
