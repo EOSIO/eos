@@ -1892,12 +1892,12 @@ namespace eosio {
       std::tie( lib_block_num, std::ignore, fork_head_block_num,
                 std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
-      peer_dlog( conn, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
-                 ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
+      fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+               ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
 
       if( fork_head_block_num < sync_last_requested_num && sync_source && sync_source->current() ) {
-         peer_ilog( conn, "ignoring request, head is ${h} last req = ${r}",
-                    ("h", fork_head_block_num)("r", sync_last_requested_num) );
+         fc_ilog( logger, "ignoring request, head is ${h} last req = ${r}",
+                  ("h", fork_head_block_num)("r", sync_last_requested_num) );
          return;
       }
 
