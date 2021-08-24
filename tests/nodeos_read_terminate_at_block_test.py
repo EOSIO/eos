@@ -62,7 +62,6 @@ def executeTest(
         producerNode,
         testNode,
         readMode,
-        checkReplay,
         resultMsgs
     ):
     testResult = False
@@ -83,7 +82,7 @@ def executeTest(
         # Kill node and replay
         assert testNode.kill(signal.SIGTERM)
 
-        producerNode.waitForHeadToAdvance()
+        producerNode.waitForHeadToAdvance(10 * numOfProducers)
         prodInfo = producingNode.getInfo()
         assert prodInfo
 
@@ -112,21 +111,20 @@ def executeTest(
         ]))
 
         # Run test scenario
-        replay = getReplayInfo(cluster, testNode)
-        checkReplay(replay["block_num"], termAtBlockNum)
+        head = cluster.getBlockLog(testNode.nodeId, throwException=True)[-1]
+
+        assert head["block_num"] >= termAtBlockNum, (
+            "Head ({}) should no less than termAtBlockNum ({})".format(
+                head["block_num"],
+                termAtBlockNum
+            )
+        )
 
         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(
             testNode.nodeId,
             readMode
         )
         testResult = True
-
-    except Exception as e:
-        resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({}): {}".format(
-            testNode.nodeId,
-            readMode,
-            e
-        )
 
     finally:
         Print(resultDesc)
@@ -140,21 +138,6 @@ def executeTest(
             assert testNode.kill(signal.SIGTERM)
 
     return testResult
-
-
-def getReplayInfo(cluster, testNode):
-    log = cluster.getBlockLog(testNode.nodeId)
-    assert log
-    return log[-1]
-
-
-def checkHead(head, termAtBlockNum):
-    assert head >= termAtBlockNum, (
-        "Head ({}) should no less than termAtBlockNum ({})".format(
-            head,
-            termAtBlockNum
-        )
-    )
 
 
 # List to contain the test result message
@@ -182,12 +165,10 @@ try:
     producingNode = cluster.getNode(producingNodeId)
 
     # Give some time for it to produce, so lib is advancing
-    producingNode.waitForHeadToAdvance()
+    producingNode.waitForLibToAdvance(10 * numOfProducers)
 
     # Kill all nodes, so we can test all node in isolated environment
-    for clusterNode in cluster.nodes:
-        clusterNode.kill(signal.SIGTERM)
-    cluster.biosNode.kill(signal.SIGTERM)
+    cluster.killSomeEosInstances(totalNodes, Utils.SigTermTag)
 
     # Start executing test cases here
     Utils.Print("Script Begin .............................")
@@ -197,7 +178,6 @@ try:
         producingNode,
         cluster.getNode(1),
         "irreversible",
-        checkHead,
         testResultMsgs
     )
 
@@ -206,7 +186,6 @@ try:
         producingNode,
         cluster.getNode(2),
         "speculative",
-        checkHead,
         testResultMsgs
     )
 
@@ -215,7 +194,6 @@ try:
         producingNode,
         cluster.getNode(3),
         "head",
-        checkHead,
         testResultMsgs
     )
 
