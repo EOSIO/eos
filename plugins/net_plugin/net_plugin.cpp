@@ -1477,6 +1477,8 @@ namespace eosio {
             sync_next_expected_num = head_blk_num + 1;
             request_next_chunk( std::move(g) );
          }
+      } else {
+         fc_elog( logger, "sync_reset_lib_num called on non-current connection ${cid}", ("cid", c->connection_id) );
       }
    }
 
