@@ -1230,7 +1230,7 @@ class Node(object):
 
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None, termMaxBlock=10):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1290,7 +1290,11 @@ class Node(object):
                 except TimeoutExpired:
                     return False
                 with open(self.popen.errfile.name, 'r') as f:
-                    if "Reached configured maximum block 10; terminating" in f.read():
+                    termSuccessMsg = (
+                        "Reached configured maximum block {}; terminating"
+                    ).format(termMaxBlock)
+
+                    if termSuccessMsg in f.read():
                         return True
                     else:
                         return False
