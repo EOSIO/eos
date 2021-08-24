@@ -88,7 +88,7 @@ namespace {
          return store->get_block(height, yield);
       }
 
-      void append_trx_ids(const trx_ids_trace& tt){
+      void append_trx_ids(const block_trxs_entry& tt){
          store->append_trx_ids(tt);
       }
 

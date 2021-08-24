@@ -184,7 +184,7 @@ struct extraction_test_fixture {
          fixture.max_lib = std::max(fixture.max_lib, lib);
       }
 
-      void append_trx_ids(const trx_ids_trace& tt){
+      void append_trx_ids(const block_trxs_entry& tt){
          for (const auto& id : tt.ids) {
              fixture.rdb[id.str()] = tt.block_num;
          }

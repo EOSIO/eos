@@ -191,7 +191,7 @@ namespace eosio::trace_api {
        * @param trx_id_file : the cfile
        * @return the true if file was found (i.e. already existed)
        */
-      bool find_or_create_trx_id_file(open_state state, fc::cfile& trx_id_file) const;
+      bool find_or_create_trx_id_slice(open_state state, fc::cfile& trx_id_file) const;
 
       /**
        * Find the trx id file
@@ -202,7 +202,7 @@ namespace eosio::trace_api {
        * @return the true if file was found (i.e. already existed), if not found trx_id_file
        *         is set to the appropriate file, but not open
        */
-      bool find_trx_id_file(open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
+      bool find_trx_id_slice(open_state state, fc::cfile& trx_id_file, bool open_file = true) const;
 
       /**
        * set the LIB for maintenance
@@ -275,7 +275,7 @@ namespace eosio::trace_api {
       void append(const BlockTrace& bt);
       void append_lib(uint32_t lib);
 
-      void append_trx_ids(const trx_ids_trace& tt);
+      void append_trx_ids(const block_trxs_entry& tt);
 
       /**
        * Read the trace for a given block
@@ -286,6 +286,14 @@ namespace eosio::trace_api {
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
       get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield= {});
+
+      uint64_t get_total_trxs() const {
+         return _total_trxs;
+      }
+
+      void update_total_trxs(const uint32_t num) {
+          _total_trxs += num;
+      }
 
       void start_maintenance_thread( log_handler log ) {
          _slice_directory.start_maintenance_thread( std::move(log) );
@@ -380,7 +388,9 @@ namespace eosio::trace_api {
        */
       void validate_existing_index_slice_file(fc::cfile& index, open_state state);
 
+
       slice_directory _slice_directory;
+      uint64_t _total_trxs = 0;
    };
 
 }

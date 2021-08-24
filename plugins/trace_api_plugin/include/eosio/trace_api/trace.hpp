@@ -89,7 +89,7 @@ namespace eosio { namespace trace_api {
       chain::packed_transaction_ptr       trx;
   };
 
-  struct trx_ids_trace {
+  struct block_trxs_entry {
       std::vector<chain::transaction_id_type> ids;
       uint32_t block_num;
   };
@@ -106,4 +106,4 @@ FC_REFLECT_DERIVED(eosio::trace_api::transaction_trace_v3, (eosio::trace_api::tr
 FC_REFLECT(eosio::trace_api::block_trace_v0, (id)(number)(previous_id)(timestamp)(producer)(transactions))
 FC_REFLECT_DERIVED(eosio::trace_api::block_trace_v1, (eosio::trace_api::block_trace_v0), (transaction_mroot)(action_mroot)(schedule_version)(transactions_v1))
 FC_REFLECT(eosio::trace_api::block_trace_v2, (id)(number)(previous_id)(timestamp)(producer)(transaction_mroot)(action_mroot)(schedule_version)(transactions))
-FC_REFLECT(eosio::trace_api::trx_ids_trace, (ids)(block_num))
+FC_REFLECT(eosio::trace_api::block_trxs_entry, (ids)(block_num))

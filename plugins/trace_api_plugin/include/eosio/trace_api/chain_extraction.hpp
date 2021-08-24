@@ -87,7 +87,7 @@ private:
 
          std::vector<transaction_trace_t>& traces = std::get<std::vector<transaction_trace_t>>(bt.transactions);
          traces.reserve( block_state->block->transactions.size() + 1 );
-         trx_ids_trace tt;
+         block_trxs_entry tt;
          tt.ids.reserve(block_state->block->transactions.size() + 1);
          if( onblock_trace )
             traces.emplace_back( to_transaction_trace<transaction_trace_t>( *onblock_trace ));
@@ -112,6 +112,7 @@ private:
          if (tt.ids.size() > 0){
             tt.block_num = bt.number;
             store.append_trx_ids( std::move(tt) );
+            //store.update_total_trxs(tt.ids.size());
          }
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
