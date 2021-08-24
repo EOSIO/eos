@@ -4,7 +4,7 @@ from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
-from Node import ReturnType
+from Node import BlockType
 from TestHelper import TestHelper
 
 import random
@@ -35,8 +35,10 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 killAll=args.clean_run
 relaunchTimeout=10
-numBlocksToProduceBeforeRelaunch=80 # Don't want to set too big, trying to reduce test time
-secsToWaitBeforeChecking=20
+# Don't want to set too big, trying to reduce test time, but needs to be large enough for test to finish before
+# restart re-creates this many blocks.
+numBlocksToProduceBeforeRelaunch=80
+numBlocksToWaitBeforeChecking=20
 
 Utils.Debug=debug
 testSuccessful=False
@@ -86,7 +88,7 @@ try:
     Print ("Cluster stabilized")
 
     Print("Wait for producing {} blocks".format(numBlocksToProduceBeforeRelaunch))
-    time.sleep(numBlocksToProduceBeforeRelaunch/2)
+    producingNode.waitForBlock(numBlocksToProduceBeforeRelaunch, blockType=BlockType.lib)
 
     Print("Kill all node instances.")
     for clusterNode in cluster.nodes:
@@ -114,8 +116,8 @@ try:
     specLib2 = speculativeNode2.getIrreversibleBlockNum()
     Print("prodLib {}, specLib1 {}, specLib2 {},".format(prodLib, specLib1, specLib2))
 
-    Print("Wait for {} seconds to produce blocks".format(secsToWaitBeforeChecking))
-    time.sleep(secsToWaitBeforeChecking)
+    Print("Wait for {} blocks to produce".format(numBlocksToWaitBeforeChecking))
+    speculativeNode2.waitForBlock( specLib2 + numBlocksToWaitBeforeChecking, blockType=BlockType.lib)
 
     Print("Check whether LIBs advance or not")
     prodLibAfterWait = producingNode.getIrreversibleBlockNum()
