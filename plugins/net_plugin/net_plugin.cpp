@@ -627,9 +627,9 @@ namespace eosio {
 
       queued_buffer           buffer_queue;
 
+      fc::sha256              conn_node_id;
+      string                  short_conn_node_id;
       string                  log_p2p_address;
-      fc::sha256              log_conn_node_id;
-      string                  log_short_conn_node_id;
       string                  log_remote_endpoint_ip;
       string                  log_remote_endpoint_port;
       string                  local_endpoint_ip;
@@ -658,7 +658,6 @@ namespace eosio {
       block_id_type                    fork_head;
       uint32_t                         fork_head_num{0};
       fc::time_point                   last_close;
-      fc::sha256                       conn_node_id;
       string                           remote_endpoint_ip;
       string                           remote_endpoint_port;
 
@@ -733,8 +732,6 @@ namespace eosio {
       }
       /** @} */
 
-      const string peer_name();
-
       void blk_send_branch( const block_id_type& msg_head_id );
       void blk_send_branch_impl( uint32_t msg_head_num, uint32_t lib_num, uint32_t head_num );
       void blk_send(const block_id_type& blkid);
@@ -795,8 +792,8 @@ namespace eosio {
          fc::mutable_variant_object mvo;
          mvo( "_name", log_p2p_address)
             ( "_cid", connection_id )
-            ( "_id", log_conn_node_id )
-            ( "_sid", log_short_conn_node_id )
+            ( "_id", conn_node_id )
+            ( "_sid", short_conn_node_id )
             ( "_ip", log_remote_endpoint_ip )
             ( "_port", log_remote_endpoint_port )
             ( "_lip", local_endpoint_ip )
@@ -918,6 +915,7 @@ namespace eosio {
       remote_endpoint_port = log_remote_endpoint_port;
    }
 
+   // called from connection strand
    void connection::set_connection_type( const string& peer_add ) {
       // host:port:[<trx>|<blk>]
       string::size_type colon = peer_add.find(':');
@@ -1545,21 +1543,6 @@ namespace eosio {
       }
    }
 
-   // locks conn_mtx, do not call while holding conn_mtx
-   const string connection::peer_name() {
-      std::lock_guard<std::mutex> g_conn( conn_mtx );
-      if( !last_handshake_recv.p2p_address.empty() ) {
-         return last_handshake_recv.p2p_address;
-      }
-      if( !peer_address().empty() ) {
-         return peer_address();
-      }
-      if( remote_endpoint_port != unknown ) {
-         return remote_endpoint_ip + ":" + remote_endpoint_port;
-      }
-      return "connecting client";
-   }
-
    // called from connection strand
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
@@ -1635,6 +1618,7 @@ namespace eosio {
       return true;
    }
 
+   // called from c's connection strand
    void sync_manager::sync_reset_lib_num(const connection_ptr& c, bool closing) {
       std::unique_lock<std::mutex> g( sync_mtx );
       if( sync_state == in_sync ) {
@@ -1672,19 +1656,19 @@ namespace eosio {
       }
    }
 
-   // call with g_sync locked
+   // call with g_sync locked, called from conn's connection strand
    void sync_manager::request_next_chunk( std::unique_lock<std::mutex> g_sync, const connection_ptr& conn ) {
       uint32_t fork_head_block_num = 0;
       uint32_t lib_block_num = 0;
       std::tie( lib_block_num, std::ignore, fork_head_block_num,
                 std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
-      fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
-               ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
+      peer_dlog( conn, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+                 ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
 
       if( fork_head_block_num < sync_last_requested_num && sync_source && sync_source->current() ) {
-         fc_ilog( logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
-                  ("h", fork_head_block_num)( "r", sync_last_requested_num )( "p", sync_source->peer_name() ) );
+         peer_ilog( conn, "ignoring request, head is ${h} last req = ${r}",
+                    ("h", fork_head_block_num)("r", sync_last_requested_num) );
          return;
       }
 
@@ -2950,30 +2934,28 @@ namespace eosio {
 
          std::unique_lock<std::mutex> g_conn( conn_mtx );
          if( peer_address().empty() || last_handshake_recv.node_id == fc::sha256()) {
+            auto c_time = last_handshake_sent.time;
             g_conn.unlock();
             peer_dlog( this, "checking for duplicate" );
             std::shared_lock<std::shared_mutex> g_cnts( my_impl->connections_mtx );
             for(const auto& check : my_impl->connections) {
                if(check.get() == this)
                   continue;
-               fc_dlog( logger, "dup check ${l} =? ${r}", ("l", check->peer_name())("r", msg.p2p_address) );
-               if(check->connected() && check->peer_name() == msg.p2p_address) {
+               std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
+               fc_dlog( logger, "dup check ${l} =? ${r}",
+                        ("l", check->last_handshake_recv.p2p_address)("r", msg.p2p_address) );
+               if(check->connected() && check->last_handshake_recv.p2p_address == msg.p2p_address) {
                   if (net_version < dup_goaway_resolution || msg.network_version < dup_goaway_resolution) {
                      // It's possible that both peers could arrive here at relatively the same time, so
                      // we need to avoid the case where they would both tell a different connection to go away.
                      // Using the sum of the initial handshake times of the two connections, we will
                      // arbitrarily (but consistently between the two peers) keep one of them.
                   
-                     std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
                      auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
                      g_check_conn.unlock();
-                     g_conn.lock();
-                     auto c_time = last_handshake_sent.time;
-                     g_conn.unlock();
                      if (msg.time + c_time <= check_time)
                         continue;
-                  }
-                  else if (my_impl->p2p_address < msg.p2p_address) {
+                  } else if (my_impl->p2p_address < msg.p2p_address) {
                      // only the connection from lower p2p_address to higher p2p_address will be considered as a duplicate, 
                      // so there is no chance for both connections to be closed
                      continue; 
@@ -2982,9 +2964,7 @@ namespace eosio {
                   g_cnts.unlock();
                   peer_dlog( this, "sending go_away duplicate, msg.p2p_address: ${add}", ("add", msg.p2p_address) );
                   go_away_message gam(duplicate);
-                  g_conn.lock();
                   gam.node_id = conn_node_id;
-                  g_conn.unlock();
                   enqueue(gam);
                   no_retry = duplicate;
                   return;
@@ -3008,11 +2988,8 @@ namespace eosio {
                        ("nv", net_version)("mnv", protocol_version.load()) );
          }
 
-         g_conn.lock();
          conn_node_id = msg.node_id;
-         g_conn.unlock();
-         log_conn_node_id = msg.node_id;
-         log_short_conn_node_id = log_conn_node_id.str().substr( 0, 7 );
+         short_conn_node_id = conn_node_id.str().substr( 0, 7 );
 
          if( !my_impl->authenticate_peer( msg ) ) {
             peer_elog( this, "Peer not authenticated.  Closing connection." );
@@ -3074,7 +3051,6 @@ namespace eosio {
       bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
-         std::lock_guard<std::mutex> g_conn( conn_mtx );
          conn_node_id = msg.node_id;
       }
       if( msg.reason == wrong_version ) {
@@ -3966,7 +3942,7 @@ namespace eosio {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::lock_guard<std::shared_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
-               fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
+               fc_dlog( logger, "close: ${cid}", ("cid", con->connection_id) );
                con->close( false, true );
             }
             my->connections.clear();
@@ -3999,7 +3975,7 @@ namespace eosio {
       connection_ptr c = std::make_shared<connection>( host );
       fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
-         fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );
+         fc_dlog( logger, "adding new connection to the list: ${host} ${cid}", ("host", host)("cid", c->connection_id) );
          c->set_heartbeat_timeout( my->heartbeat_timeout );
          my->connections.insert( c );
       }
@@ -4010,7 +3986,7 @@ namespace eosio {
       std::lock_guard<std::shared_mutex> g( my->connections_mtx );
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_address() == host ) {
-            fc_ilog( logger, "disconnecting: ${p}", ("p", (*itr)->peer_name()) );
+            fc_ilog( logger, "disconnecting: ${cid}", ("cid", (*itr)->connection_id) );
             (*itr)->close();
             my->connections.erase(itr);
             return "connection removed";
