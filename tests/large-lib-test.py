@@ -48,8 +48,8 @@ cluster=Cluster(walletd=True)
 walletMgr=WalletMgr(True)
 cluster.setWalletMgr(walletMgr)
 
-def relaunchNode(node: Node, chainArg="", skipGenesis=True, relaunchAssertMessage="Fail to relaunch"):
-   isRelaunchSuccess=node.relaunch(chainArg=chainArg, timeout=relaunchTimeout, skipGenesis=skipGenesis, cachePopen=True)
+def relaunchNode(node: Node, nodeId, chainArg="", skipGenesis=True, relaunchAssertMessage="Fail to relaunch"):
+   isRelaunchSuccess=node.relaunch(nodeId, chainArg=chainArg, timeout=relaunchTimeout, skipGenesis=skipGenesis, cachePopen=True)
    time.sleep(1) # Give a second to replay or resync if needed
    assert isRelaunchSuccess, relaunchAssertMessage
    return isRelaunchSuccess
@@ -103,9 +103,9 @@ try:
 
     Print ("Relaunch all cluster nodes instances.")
     # -e -p eosio for resuming production, skipGenesis=False for launch the same chain as before
-    relaunchNode(producingNode, chainArg="-e -p eosio --sync-fetch-span 5 ", skipGenesis=False)
-    relaunchNode(speculativeNode1, chainArg="--sync-fetch-span 5 ")
-    relaunchNode(speculativeNode2, chainArg="--sync-fetch-span 5 ", skipGenesis=False)
+    relaunchNode(producingNode, 0, chainArg="-e -p eosio --sync-fetch-span 5 ", skipGenesis=False)
+    relaunchNode(speculativeNode1, 1, chainArg="--sync-fetch-span 5 ")
+    relaunchNode(speculativeNode2, 2, chainArg="--sync-fetch-span 5 ", skipGenesis=False)
 
     Print("Note LIBs")
     prodLib = producingNode.getIrreversibleBlockNum()
