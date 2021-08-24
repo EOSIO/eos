@@ -717,7 +717,7 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex               conn_mtx; //< mtx for last_req .. remote_endpoint_port
+      mutable std::mutex               conn_mtx; //< mtx for last_req .. remote_endpoint_ip
       std::optional<request_message>   last_req;
       handshake_message                last_handshake_recv;
       handshake_message                last_handshake_sent;
@@ -725,7 +725,6 @@ namespace eosio {
       uint32_t                         fork_head_num{0};
       fc::time_point                   last_close;
       string                           remote_endpoint_ip;
-      string                           remote_endpoint_port;
 
       connection_status get_status()const;
 
@@ -1090,7 +1089,6 @@ namespace eosio {
       local_endpoint_port = ec2 ? unknown : std::to_string(lep.port());
       std::lock_guard<std::mutex> g_conn( conn_mtx );
       remote_endpoint_ip = log_remote_endpoint_ip;
-      remote_endpoint_port = log_remote_endpoint_port;
    }
 
    // called from connection strand
@@ -1366,11 +1364,7 @@ namespace eosio {
                peer_wlog(this, "heartbeat timed out for peer address");
                close(true);
             } else {
-               std::unique_lock<std::mutex> g_conn( conn_mtx );
-               auto p2p_address = last_handshake_recv.p2p_address;
-               auto agent = last_handshake_recv.agent;
-               g_conn.unlock();
-               peer_wlog( this, "heartbeat timed out from ${ag}", ("ag", agent) );
+               peer_wlog( this, "heartbeat timed out" );
                close(false);
             }
             return;
@@ -3137,18 +3131,21 @@ namespace eosio {
          valid = false;
       } else if( msg.p2p_address.length() > max_handshake_str_length ) {
          // see max_handshake_str_length comment in protocol.hpp
-         fc_wlog( logger, "Handshake message validation: p2p_address to large: ${p}", ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
+         fc_wlog( logger, "Handshake message validation: p2p_address to large: ${p}",
+                  ("p", msg.p2p_address.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if (msg.os.empty()) {
          fc_wlog( logger, "Handshake message validation: os field is null string" );
          valid = false;
       } else if( msg.os.length() > max_handshake_str_length ) {
-         fc_wlog( logger, "Handshake message validation: os field to large: ${p}", ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
+         fc_wlog( logger, "Handshake message validation: os field to large: ${p}",
+                  ("p", msg.os.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if( msg.agent.length() > max_handshake_str_length ) {
-         fc_wlog( logger, "Handshake message validation: agent field to large: ${p}", ("p", msg.agent.substr(0, max_handshake_str_length) + "...") );
+         fc_wlog( logger, "Handshake message validation: agent field to large: ${p}",
+                  ("p", msg.agent.substr(0, max_handshake_str_length) + "...") );
          valid = false;
       }
       if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
