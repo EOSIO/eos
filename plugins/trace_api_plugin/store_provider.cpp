@@ -47,8 +47,6 @@ namespace eosio::trace_api {
 
       auto be = metadata_log_entry { block_entry_v0 { .id = bt.id, .number = bt.number, .offset = offset }};
       append_store(be, index);
-
-       _last_block_num = bt.number;
    }
 
    template void store_provider::append<block_trace_v1>(const block_trace_v1& bt);
@@ -65,8 +63,8 @@ namespace eosio::trace_api {
 
    void store_provider::append_trx_ids(const trx_ids_trace& tt){
       fc::cfile trx_id_file;
+      _slice_directory.find_or_create_trx_id_file(open_state::write, trx_id_file);
       for (const auto& id : tt.ids) {
-         _slice_directory.find_or_create_trx_id_file(open_state::write, trx_id_file);
          auto entry = metadata_log_entry { trx_id_entry { .id = id, .block_num = tt.block_num }};
          append_store(entry, trx_id_file);
       }
@@ -252,7 +250,7 @@ namespace eosio::trace_api {
    }
 
    bool slice_directory::find_trx_id_file(open_state state, fc::cfile& trx_id_file, bool open_file) const {
-      const bool found = find_trx_id(trx_id_file, open_file);
+      const bool found = find_file(trx_id_file, open_file);
       if( !found || !open_file ) {
          return found;
       }
@@ -262,7 +260,7 @@ namespace eosio::trace_api {
       return true;
    }
 
-   bool slice_directory::find_trx_id(fc::cfile& trx_id_file, bool open_file) const {
+   bool slice_directory::find_file(fc::cfile& trx_id_file, bool open_file) const {
        auto filename = _trx_id_file_name;
        const path slice_path = _slice_dir / filename;
        trx_id_file.set_file_path(slice_path);

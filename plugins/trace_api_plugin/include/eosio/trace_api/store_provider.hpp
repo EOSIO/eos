@@ -234,7 +234,7 @@ namespace eosio::trace_api {
       bool find_slice(const char* slice_prefix, uint32_t slice_number, fc::cfile& slice_file, bool open_file) const;
 
       // return true if the trx id file is found, the file will always be set to the appropriate path, but will only be opened if found
-      bool find_trx_id(fc::cfile& trx_id_file, bool open_file) const;
+      bool find_file(fc::cfile& trx_id_file, bool open_file) const;
 
       // take an index file that is initialized to a file and open it and write its header
       void create_new_index_slice_file(fc::cfile& index_file) const;
@@ -286,10 +286,6 @@ namespace eosio::trace_api {
       get_block_t get_block(uint32_t block_height, const yield_function& yield= {});
 
       get_block_n get_trx_block_number(const chain::transaction_id_type& trx_id, const yield_function& yield= {});
-
-      uint32_t get_last_block_num() const {
-          return _last_block_num;
-      }
 
       void start_maintenance_thread( log_handler log ) {
          _slice_directory.start_maintenance_thread( std::move(log) );
@@ -385,7 +381,6 @@ namespace eosio::trace_api {
       void validate_existing_index_slice_file(fc::cfile& index, open_state state);
 
       slice_directory _slice_directory;
-      uint32_t _last_block_num;
    };
 
 }
