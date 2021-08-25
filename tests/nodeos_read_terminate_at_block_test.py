@@ -29,6 +29,7 @@ cmdError = Utils.cmdError
 relaunchTimeout = 10
 numOfProducers = 4
 totalNodes = 10
+bufferTime = 6
 
 termAtFutureBlockNum = 30
 
@@ -75,14 +76,10 @@ def executeTest(
             )
         )
 
-        # Relaunch killed node so it can be used for the test
-        assert testNode.relaunch(cachePopen=True)
         assert producerNode.relaunch(cachePopen=True)
 
-        # Kill node and replay
-        assert testNode.kill(signal.SIGTERM)
-
-        producerNode.waitForHeadToAdvance(10 * numOfProducers)
+        # Get current information from the producer.
+        producerNode.waitForHeadToAdvance()
         prodInfo = producingNode.getInfo()
         assert prodInfo
 
@@ -98,6 +95,11 @@ def executeTest(
             termAtBlockNum
         )
 
+        # Wait for the producer to get to at least termAtBlockNum
+        # before relaunching the node.
+        producerNode.waitForBlock(termAtBlockNum)
+
+        # Relaunch killed node with the terminate-at-blocka option.
         assert testNode.relaunch(
             cachePopen=True,
             chainArg=chainArg,
@@ -110,7 +112,7 @@ def executeTest(
             str(termAtBlockNum)
         ]))
 
-        # Run test scenario
+        # Node should be finished, get the last block from the block log.
         head = cluster.getBlockLog(testNode.nodeId, throwException=True)[-1]
 
         assert head["block_num"] >= termAtBlockNum, (
@@ -163,9 +165,6 @@ try:
 
     producingNodeId = 0
     producingNode = cluster.getNode(producingNodeId)
-
-    # Give some time for it to produce, so lib is advancing
-    producingNode.waitForLibToAdvance(10 * numOfProducers)
 
     # Kill all nodes, so we can test all node in isolated environment
     cluster.killSomeEosInstances(totalNodes, Utils.SigTermTag)
