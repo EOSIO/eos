@@ -27,9 +27,8 @@ Print = Utils.Print
 errorExit = Utils.errorExit
 cmdError = Utils.cmdError
 relaunchTimeout = 10
-numOfProducers = 4
-totalNodes = 10
-bufferTime = 6
+numOfProducers = 1
+totalNodes = 4
 
 termAtFutureBlockNum = 30
 
@@ -58,15 +57,12 @@ cluster.setWalletMgr(walletMgr)
 # Wrapper function to execute test
 # This wrapper function will resurrect the node to be tested, and shut
 # it down by the end of the test
-def executeTest(
-        cluster,
-        producerNode,
-        testNode,
-        readMode,
-        resultMsgs
-    ):
+def executeTest(producerNode, testNode, readMode, checkResult, resultMsgs):
     testResult = False
-    resultDesc = None
+    resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({})".format(
+        testNode.nodeId,
+        readMode
+    )
 
     try:
         Print(
@@ -75,8 +71,6 @@ def executeTest(
                 readMode
             )
         )
-
-        assert producerNode.relaunch(cachePopen=True)
 
         # Get current information from the producer.
         producerNode.waitForHeadToAdvance()
@@ -99,11 +93,11 @@ def executeTest(
         # before relaunching the node.
         producerNode.waitForBlock(termAtBlockNum)
 
-        # Relaunch killed node with the terminate-at-blocka option.
+        # Relaunch killed node with the terminate-at-block option.
         assert testNode.relaunch(
             cachePopen=True,
             chainArg=chainArg,
-            termMaxBlock=termAtBlockNum
+            waitForTerm=False
         )
 
         Print(" ".join([
@@ -112,15 +106,11 @@ def executeTest(
             str(termAtBlockNum)
         ]))
 
-        # Node should be finished, get the last block from the block log.
-        head = cluster.getBlockLog(testNode.nodeId, throwException=True)[-1]
+        # Read block information from the test node as it runs.
+        head, lib = getBlockNumInfo(testNode)
+        Print("Test node head = {}, lib = {}.".format(head, lib))
 
-        assert head["block_num"] >= termAtBlockNum, (
-            "Head ({}) should no less than termAtBlockNum ({})".format(
-                head["block_num"],
-                termAtBlockNum
-            )
-        )
+        checkResult(head, lib)
 
         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(
             testNode.nodeId,
@@ -132,14 +122,44 @@ def executeTest(
         Print(resultDesc)
         resultMsgs.append(resultDesc)
 
-        # Kill nodes after use
-        if not producerNode.killed:
-            assert producerNode.kill(signal.SIGTERM)
-
+        # Kill node after use.
         if not testNode.killed:
             assert testNode.kill(signal.SIGTERM)
 
     return testResult
+
+
+def getBlockNumInfo(testNode):
+    head = None
+    lib = None
+
+    while True:
+        info = testNode.getInfo()
+
+        if not info:
+            break
+
+        try:
+            head = info["head_block_num"]
+            lib = info["last_irreversible_block_num"]
+
+        except KeyError:
+            pass
+
+    assert head and lib, "Could not retrieve head and lib with getInfo()"
+    return head, lib
+
+
+def checkIrreversible(head, lib):
+    assert head == lib, (
+        "Head ({}) should be equal to lib ({})".format(head, lib)
+    )
+
+
+def checkHeadOrSpeculative(head, lib):
+    assert head > lib, (
+        "Head ({}) should be greater than lib ({})".format(head, lib)
+    )
 
 
 # List to contain the test result message
@@ -158,41 +178,42 @@ try:
         useBiosBootFile=False,
         topo="mesh",
         specificExtraNodeosArgs={
-            0:"--enable-stale-production",
-            4:"--read-mode irreversible",
-            6:"--read-mode irreversible",
-            9:"--plugin eosio::producer_api_plugin"})
+            0 : "--enable-stale-production",
+        }
+    )
 
     producingNodeId = 0
     producingNode = cluster.getNode(producingNodeId)
 
     # Kill all nodes, so we can test all node in isolated environment
     cluster.killSomeEosInstances(totalNodes, Utils.SigTermTag)
+    # Restart the producer for the tests.
+    assert producingNode.relaunch(cachePopen=True)
 
     # Start executing test cases here
     Utils.Print("Script Begin .............................")
 
     irreversibleSuccess = executeTest(
-        cluster,
         producingNode,
         cluster.getNode(1),
         "irreversible",
+        checkIrreversible,
         testResultMsgs
     )
 
     speculativeSuccess = executeTest(
-        cluster,
         producingNode,
         cluster.getNode(2),
         "speculative",
+        checkHeadOrSpeculative,
         testResultMsgs
     )
 
     headSuccess = executeTest(
-        cluster,
         producingNode,
         cluster.getNode(3),
         "head",
+        checkHeadOrSpeculative,
         testResultMsgs
     )
 
