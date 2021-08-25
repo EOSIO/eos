@@ -106,14 +106,15 @@ private:
          }
          clear_caches();
 
-         store.append( std::move( bt ) );
-
          //save to trx id log file
          if (tt.ids.size() > 0){
             tt.block_num = bt.number;
             store.append_trx_ids( std::move(tt) );
             //store.update_total_trxs(tt.ids.size());
          }
+
+         store.append( std::move( bt ) );
+
       } catch( ... ) {
          except_handler( MAKE_EXCEPTION_WITH_CONTEXT( std::current_exception() ) );
       }
