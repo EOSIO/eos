@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 
+import signal
+import time
+
 from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
-from Node import Node
-from Node import ReturnType
 from TestHelper import TestHelper
-from testUtils import Account
 
-import re
-import os
-import time
-import signal
-import subprocess
-import shutil
 
 ###############################################################
 # nodeos_read_terminate_at_block_test
@@ -49,72 +43,57 @@ killEosInstances = not dontKill
 killWallet = not dontKill
 keepLogs = args.keep_logs
 
-# Setup cluster and it's wallet manager
-walletMgr = WalletMgr(True)
-cluster = Cluster(walletd=True)
-cluster.setWalletMgr(walletMgr)
-
 # Wrapper function to execute test
 # This wrapper function will resurrect the node to be tested, and shut
 # it down by the end of the test
-def executeTest(producerNode, testNode, readMode, checkResult, resultMsgs):
+def executeTest(cluster, producerNode, testNodeId, testNodeArgs, resultMsgs):
     testResult = False
     resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({})".format(
-        testNode.nodeId,
-        readMode
+        testNodeId,
+        testNodeArgs
     )
 
     try:
         Print(
-            "Re-launch node #{} to execute test scenario: {}".format(
-                testNode.nodeId,
-                readMode
+            "Launch node #{} to execute test scenario: {}".format(
+                testNodeId,
+                testNodeArgs
             )
         )
 
         # Get current information from the producer.
         producerNode.waitForHeadToAdvance()
-        prodInfo = producingNode.getInfo()
-        assert prodInfo
 
-        if readMode == "irreversible":
-            blockNum = int(prodInfo["last_irreversible_block_num"])
-        else:
-            blockNum = int(prodInfo["head_block_num"])
+        # Launch the node with the terminate-at-block option specified
+        # in testNodeArgs. The option for each node has already
+        # been set via specificExtraNodeosArg in the cluster launch.
+        cluster.launchUnstarted(cachePopen=True)
 
-        termAtBlockNum = blockNum + termAtFutureBlockNum
+        # Wait for node to start up.
+        time.sleep(10)
 
-        chainArg = " --read-mode {}  --terminate-at-block={}".format(
-            readMode,
-            termAtBlockNum
-        )
-
-        # Wait for the producer to get to at least termAtBlockNum
-        # before relaunching the node.
-        producerNode.waitForBlock(termAtBlockNum)
-
-        # Relaunch killed node with the terminate-at-block option.
-        assert testNode.relaunch(
-            cachePopen=True,
-            chainArg=chainArg,
-            waitForTerm=False
-        )
-
+        Print(testNodeArgs)
         Print(" ".join([
-            "Test node has begun receiving from the producing node and",
-            "is expected to stop at or little bigger than block number",
-            str(termAtBlockNum)
+            "The test node has begun receiving from the producing node and",
+            "is expected to stop at or little bigger than the block number",
+            "specified here: ",
+            testNodeArgs
         ]))
 
         # Read block information from the test node as it runs.
+        testNode = cluster.getNode(testNodeId)
         head, lib = getBlockNumInfo(testNode)
+
         Print("Test node head = {}, lib = {}.".format(head, lib))
 
-        checkResult(head, lib)
+        if "irreversible" in testNodeArgs:
+            checkIrreversible(head, lib)
+        else:
+            checkHeadOrSpeculative(head, lib)
 
         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(
-            testNode.nodeId,
-            readMode
+            testNodeId,
+            testNodeArgs
         )
         testResult = True
 
@@ -162,10 +141,22 @@ def checkHeadOrSpeculative(head, lib):
     )
 
 
+# Setup cluster and it's wallet manager
+walletMgr = WalletMgr(True)
+cluster = Cluster(walletd=True)
+cluster.setWalletMgr(walletMgr)
+
 # List to contain the test result message
 testResultMsgs = []
-testSuccessful = True
+testSuccessful = False
 try:
+    specificNodeosArgs = {
+        0 : "--enable-stale-production",
+        1 : "--read-mode irreversible --terminate-at-block=150",
+        2 : "--read-mode speculative --terminate-at-block=200",
+        3 : "--read-mode head --terminate-at-block=250",
+    }
+
     # Kill any existing instances and launch cluster
     TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=killAll)
@@ -174,52 +165,36 @@ try:
         prodCount=numOfProducers,
         totalProducers=numOfProducers,
         totalNodes=totalNodes,
+        unstartedNodes=totalNodes - numOfProducers,
         pnodes=1,
         useBiosBootFile=False,
         topo="mesh",
-        specificExtraNodeosArgs={
-            0 : "--enable-stale-production",
-        }
+        specificExtraNodeosArgs=specificNodeosArgs
     )
 
     producingNodeId = 0
     producingNode = cluster.getNode(producingNodeId)
 
-    # Kill all nodes, so we can test all node in isolated environment
-    cluster.killSomeEosInstances(totalNodes, Utils.SigTermTag)
-    # Restart the producer for the tests.
-    assert producingNode.relaunch(cachePopen=True)
-
     # Start executing test cases here
     Utils.Print("Script Begin .............................")
 
-    irreversibleSuccess = executeTest(
-        producingNode,
-        cluster.getNode(1),
-        "irreversible",
-        checkIrreversible,
-        testResultMsgs
-    )
+    for nodeId, nodeArgs in specificNodeosArgs.items():
+        # The test only needs to be run on the non-producer nodes.
+        if nodeId == producingNodeId:
+            continue
 
-    speculativeSuccess = executeTest(
-        producingNode,
-        cluster.getNode(2),
-        "speculative",
-        checkHeadOrSpeculative,
-        testResultMsgs
-    )
+        success = executeTest(
+            cluster,
+            producingNode,
+            nodeId,
+            nodeArgs,
+            testResultMsgs
+        )
 
-    headSuccess = executeTest(
-        producingNode,
-        cluster.getNode(3),
-        "head",
-        checkHeadOrSpeculative,
-        testResultMsgs
-    )
-
-    testSuccessful = (
-        irreversibleSuccess and speculativeSuccess and headSuccess
-    )
+        if not success:
+            break
+    else:
+        testSuccessful = True
 
     Utils.Print("Script End ................................")
 
