@@ -71,7 +71,7 @@ extern "C" rodeos_context* rodeos_create() {
 extern "C" void rodeos_destroy(rodeos_context* context) { std::unique_ptr<rodeos_context>{ context }; }
 
 extern "C" rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* context, const char* path,
-                                      rodeos_bool create_if_missing, int num_threads, int max_open_files) {
+                                      rodeos_bool create_if_missing) {
    return handle_exceptions(error, false, [&] {
       if (!context)
          return error->set("context is null");
@@ -80,8 +80,7 @@ extern "C" rodeos_bool rodeos_open_db(rodeos_error* error, rodeos_context* conte
       if (context->db)
          return error->set("a database is already open on this context");
       context->db = std::make_shared<b1::chain_kv::database>(
-            path, create_if_missing, num_threads ? std::make_optional(num_threads) : std::nullopt,
-            max_open_files ? std::make_optional(max_open_files) : std::nullopt);
+            path, create_if_missing);
       return true;
    });
 }
@@ -228,6 +227,7 @@ extern "C" rodeos_query_handler* rodeos_create_query_handler(rodeos_error* error
       shared_state->max_console_size = max_console_size;
       shared_state->wasm_cache_size  = wasm_cache_size;
       shared_state->max_exec_time_ms = max_exec_time_ms;
+      shared_state->max_action_return_value_size = MAX_SIZE_OF_BYTE_ARRAYS;
       shared_state->contract_dir     = contract_dir ? contract_dir : "";
       return std::make_unique<rodeos_query_handler>(partition->obj, shared_state).release();
    });
@@ -249,9 +249,9 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
 
       std::vector<std::vector<char>> memory;
       eosio::input_stream            s{ data, size };
-      auto trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
+      auto                           trx = eosio::from_bin<eosio::ship_protocol::packed_transaction>(s);
 
-      auto                                    thread_state = handler->state_cache.get_state();
+      auto                                    thread_state = handler->state_cache->get_state();
       eosio::ship_protocol::transaction_trace tt;
       if (snapshot->snap) {
          tt = query_send_transaction(*thread_state, snapshot->partition->contract_kv_prefix, trx,
@@ -261,14 +261,12 @@ rodeos_bool rodeos_query_transaction(rodeos_error* error, rodeos_query_handler* 
                                      true);
       }
 
-      handler->state_cache.store_state(std::move(thread_state));
-
       eosio::size_stream ss;
       eosio::to_bin(tt, ss);
       *result = (char*)malloc(ss.size);
       if (!result)
          throw std::bad_alloc();
-      auto free_on_except = fc::make_scoped_exit([&]{
+      auto                    free_on_except = fc::make_scoped_exit([&] {
          free(*result);
          *result = nullptr;
       });

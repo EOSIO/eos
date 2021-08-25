@@ -1,9 +1,12 @@
 #pragma once
 
+#include <boost/filesystem.hpp>
 #include <fc/io/raw.hpp>
 #include <optional>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
+#include <rocksdb/utilities/options_util.h>
+
 #include <stdexcept>
 #include <softfloat.hpp>
 #include <algorithm>
@@ -301,29 +304,42 @@ bytes create_full_key(const bytes& prefix, uint64_t contract, const T& key) {
 struct database {
    std::unique_ptr<rocksdb::DB> rdb;
 
-   database(const char* db_path, bool create_if_missing, std::optional<uint32_t> threads = {},
-            std::optional<int> max_open_files = {}) {
-
-      rocksdb::Options options;
-      options.create_if_missing                    = create_if_missing;
-      options.level_compaction_dynamic_level_bytes = true;
-      options.bytes_per_sync                       = 1048576;
-
-      if (threads)
-         options.IncreaseParallelism(*threads);
-
-      options.OptimizeLevelStyleCompaction(256ull << 20);
-
-      if (max_open_files)
-         options.max_open_files = *max_open_files;
-
-      rocksdb::BlockBasedTableOptions table_options;
-      table_options.format_version               = 4;
-      table_options.index_block_restart_interval = 16;
-      options.table_factory.reset(NewBlockBasedTableFactory(table_options));
-
+   database(const char* db_path, bool create_if_missing,
+            std::optional<boost::filesystem::path> options_file_name = {}) {
       rocksdb::DB* p;
-      check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
+
+      if (options_file_name) {
+         // load the options file
+         rocksdb::DBOptions loaded_db_opt;
+         std::vector<rocksdb::ColumnFamilyDescriptor> loaded_cf_descs;
+         check(LoadOptionsFromFile(options_file_name->string(), rocksdb::Env::Default(), &loaded_db_opt, &loaded_cf_descs), "database::database: rocksdb::LoadOptionsFromFile: ");
+
+         // open rocksdb using the loaded options
+         std::vector<rocksdb::ColumnFamilyHandle*> handles;
+         check(rocksdb::DB::Open(loaded_db_opt, db_path, loaded_cf_descs, &handles, &p), "database::database:rocksdb::DB::Open (options files): ");
+      } else {
+         rocksdb::Options options;
+         options.create_if_missing = create_if_missing;
+
+         // Configuration tested.
+         options.IncreaseParallelism(20);  // number of background threads
+         options.max_open_files = 765; // max number of files in open
+
+         // Those are from RocksDB Performance Tuning Guide for a typical
+         // setting. Applications are encuroage to experiment different settings
+         // and use options file instead.
+         options.max_write_buffer_number = 10;
+         options.compaction_style = rocksdb::kCompactionStyleLevel; // level style compaction
+         options.level0_file_num_compaction_trigger = 10; // number of L0 files to trigger L0 to L1 compaction.
+         options.level0_slowdown_writes_trigger = 20;     // number of L0 files that will slow down writes
+         options.level0_stop_writes_trigger = 40;         // number of L0 files that will stop writes
+         options.write_buffer_size = 256 * 1024 * 1024;   // memtable size
+         options.target_file_size_base = 256 * 1024 * 1024; // size of files in L1
+         options.max_bytes_for_level_base = options.target_file_size_base;  // total size of L1, recommended to be 10 * target_file_size_base but to match the number used in testing.
+
+         check(rocksdb::DB::Open(options, db_path, &p), "database::database: rocksdb::DB::Open: ");
+      }
+
       rdb.reset(p);
 
       // Sentinels with keys 0x00 and 0xff simplify iteration logic.

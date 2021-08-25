@@ -1,4 +1,7 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#endif
 #include <eosio/chain/webassembly/interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -7,9 +10,6 @@
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 #include <eosio/chain/webassembly/preconditions.hpp>
-#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-#include <eosio/chain/webassembly/eos-vm-oc.hpp>
-#endif
 #include <boost/hana/string.hpp>
 #include <boost/hana/equal.hpp>
 
@@ -21,33 +21,33 @@ namespace wasm_constraints = eosio::chain::wasm_constraints;
 
 namespace {
 
-  struct checktime_watchdog {
-     checktime_watchdog(transaction_checktime_timer& timer) : _timer(timer) {}
-     template<typename F>
-     struct guard {
-        guard(transaction_checktime_timer& timer, F&& func)
-           : _timer(timer), _func(static_cast<F&&>(func)) {
-           _timer.set_expiration_callback(&callback, this);
-           if(_timer.expired) {
-              _func(); // it's harmless if _func is invoked twice
-           }
-        }
-        ~guard() {
-           _timer.set_expiration_callback(nullptr, nullptr);
-        }
-        static void callback(void* data) {
-           guard* self = static_cast<guard*>(data);
-           self->_func();
-        }
-        transaction_checktime_timer& _timer;
-        F _func;
-     };
-     template<typename F>
-     guard<F> scoped_run(F&& func) {
-        return guard{_timer, static_cast<F&&>(func)};
-     }
-     transaction_checktime_timer& _timer;
-  };
+struct checktime_watchdog {
+   checktime_watchdog(transaction_checktime_timer& timer) : _timer(timer) {}
+   template<typename F>
+   struct guard {
+      guard(transaction_checktime_timer& timer, F&& func)
+            : _timer(timer), _func(static_cast<F&&>(func)) {
+         _timer.set_expiration_callback(&callback, this);
+         if(_timer.expired) {
+            _func(); // it's harmless if _func is invoked twice
+         }
+      }
+      ~guard() {
+         _timer.set_expiration_callback(nullptr, nullptr);
+      }
+      static void callback(void* data) {
+         guard* self = static_cast<guard*>(data);
+         self->_func();
+      }
+      transaction_checktime_timer& _timer;
+      F _func;
+   };
+   template<typename F>
+   guard<F> scoped_run(F&& func) {
+      return guard{_timer, static_cast<F&&>(func)};
+   }
+   transaction_checktime_timer& _timer;
+};
 }
 
 // Used on setcode.  Must not reject anything that WAVM accepts
@@ -66,7 +66,7 @@ void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) 
    try {
       eos_vm_null_backend_t<setcode_options> bkend(code_ptr, code.size(), nullptr);
       // check import signatures
-       eos_vm_host_functions_t::resolve(bkend.get_module());
+      eos_vm_host_functions_t::resolve(bkend.get_module());
       // check that the imports are all currently enabled
       const auto& imports = bkend.get_module().imports;
       for(std::uint32_t i = 0; i < imports.size(); ++i) {
@@ -74,7 +74,7 @@ void validate(const bytes& code, const whitelisted_intrinsics_type& intrinsics) 
                     is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
                     wasm_serialization_error, "${module}.${fn} unresolveable",
                     ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
-                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
+                          ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
    } catch(vm::exception& e) {
       EOS_THROW(wasm_serialization_error, e.detail());
@@ -95,7 +95,7 @@ void validate( const bytes& code, const wasm_config& cfg, const whitelisted_intr
                     is_intrinsic_whitelisted(intrinsics, std::string_view((char*)imports[i].field_str.raw(), imports[i].field_str.size())),
                     wasm_serialization_error, "${module}.${fn} unresolveable",
                     ("module", std::string((char*)imports[i].module_str.raw(), imports[i].module_str.size()))
-                    ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
+                          ("fn", std::string((char*)imports[i].field_str.raw(), imports[i].field_str.size())));
       }
       // check apply
       uint32_t apply_idx = bkend.get_module().get_exported_function("apply");
@@ -121,46 +121,47 @@ struct apply_options {
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
    using backend_t = eos_vm_backend_t<Impl>;
-   public:
+public:
 
-      eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
+   eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
 
-      void apply(apply_context& context) override {
-         _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
-         _runtime->_bkend = _instantiated_module.get();
-         apply_options opts;
-         if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
-            const wasm_config& config = context.control.get_global_properties().wasm_configuration;
-            opts = {config.max_pages, config.max_call_depth};
-         }
-         auto fn = [&]() {
-            eosio::chain::webassembly::interface iface(context);
-            _runtime->_bkend->initialize(&iface, opts);
-            _runtime->_bkend->call(
-                iface, "env", "apply",
-                context.get_receiver().to_uint64_t(),
-                context.get_action().account.to_uint64_t(),
-                context.get_action().name.to_uint64_t());
-         };
-         try {
-            checktime_watchdog wd(context.trx_context.transaction_timer);
-            _runtime->_bkend->timed_run(wd, fn);
-         } catch(eosio::vm::timeout_exception&) {
-            context.trx_context.checktime();
-         } catch(eosio::vm::wasm_memory_exception& e) {
-            FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
-         } catch(eosio::vm::exception& e) {
-            FC_THROW_EXCEPTION(wasm_execution_error, "eos-vm system failure");
-         }
-         _runtime->_bkend = nullptr;
+   void apply(apply_context& context) override {
+      _instantiated_module->set_wasm_allocator(&context.control.get_wasm_allocator());
+      _runtime->_bkend = _instantiated_module.get();
+      apply_options opts;
+      if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
+         const wasm_config& config = context.control.get_global_properties().wasm_configuration;
+         opts = {config.max_pages, config.max_call_depth};
       }
+      auto fn = [&]() {
+         eosio::chain::webassembly::interface iface(context);
+         _runtime->_bkend->initialize(&iface, opts);
+         _runtime->_bkend->call(
+               iface, "env", "apply",
+               context.get_receiver().to_uint64_t(),
+               context.get_action().account.to_uint64_t(),
+               context.get_action().name.to_uint64_t());
+      };
+      try {
+         checktime_watchdog wd(context.trx_context.transaction_timer);
+         _runtime->_bkend->timed_run(wd, fn);
+      } catch(eosio::vm::timeout_exception&) {
+         context.trx_context.checktime();
+      } catch(eosio::vm::wasm_memory_exception& e) {
+         FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
+      } catch(eosio::vm::exception& e) {
+         FC_THROW_EXCEPTION(wasm_execution_error, "eos-vm system failure");
+      }
+      _runtime->_bkend = nullptr;
+   }
 
-   private:
-      eos_vm_runtime<Impl>*            _runtime;
-      std::unique_ptr<backend_t> _instantiated_module;
+private:
+   eos_vm_runtime<Impl>*            _runtime;
+   std::unique_ptr<backend_t> _instantiated_module;
 };
+
 
 template<typename Impl>
 eos_vm_runtime<Impl>::eos_vm_runtime() {}
@@ -183,7 +184,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
       apply_options options = { .max_pages = 65536,
-                                .max_call_depth = 0 };
+            .max_call_depth = 0 };
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size, nullptr, options);
       eos_vm_host_functions_t::resolve(bkend->get_module());
       return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
@@ -195,7 +196,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
 template class eos_vm_runtime<eosio::vm::interpreter>;
 template class eos_vm_runtime<eosio::vm::jit>;
 
-} 
+}
 
 template <auto HostFunction, typename... Preconditions>
 struct host_function_registrator {
@@ -204,18 +205,10 @@ struct host_function_registrator {
       using rhf_t = eos_vm_host_functions_t;
       rhf_t::add<HostFunction, Preconditions...>(mod_name.c_str(), fn_name.c_str());
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-      constexpr bool is_injected = (Mod() == BOOST_HANA_STRING(EOSIO_INJECTED_MODULE_NAME));
-      eosvmoc::register_eosvm_oc<HostFunction, is_injected, std::tuple<Preconditions...>>(
-          mod_name + BOOST_HANA_STRING(".") + fn_name);
+      eosvmoc::register_eosvm_oc<HostFunction, std::tuple<Preconditions...>>(mod_name + BOOST_HANA_STRING(".") + fn_name);
 #endif
    }
 };
-
-#define REGISTER_INJECTED_HOST_FUNCTION(NAME, ...)                                                                     \
-   static host_function_registrator<&interface::NAME, ##__VA_ARGS__> NAME##_registrator_impl() {                       \
-      return {BOOST_HANA_STRING(EOSIO_INJECTED_MODULE_NAME), BOOST_HANA_STRING(#NAME)};                                \
-   }                                                                                                                   \
-   inline static auto NAME##_registrator = NAME##_registrator_impl();
 
 #define REGISTER_HOST_FUNCTION(NAME, ...)                                                                              \
    static host_function_registrator<&interface::NAME, core_precondition, context_aware_check, ##__VA_ARGS__>           \
@@ -280,66 +273,6 @@ REGISTER_HOST_FUNCTION(add_security_group_participants, privileged_check);
 REGISTER_HOST_FUNCTION(remove_security_group_participants, privileged_check);
 REGISTER_HOST_FUNCTION(in_active_security_group);
 REGISTER_HOST_FUNCTION(get_active_security_group);
-
-// softfloat api
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_add);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sub);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_div);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_mul);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_min);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_max);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_copysign);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_abs);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_neg);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_sqrt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ceil);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_floor);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_nearest);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_eq);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ne);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_lt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_le);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_gt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_ge);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_add);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sub);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_div);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_mul);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_min);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_max);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_copysign);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_abs);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_neg);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_sqrt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ceil);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_floor);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_nearest);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_eq);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ne);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_lt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_le);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_gt);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_ge);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_promote);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_demote);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32s);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32s);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i32u);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i32u);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64s);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64s);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f32_trunc_i64u);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_f64_trunc_i64u);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f32);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f32);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f32);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f32);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_i32_to_f64);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_i64_to_f64);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui32_to_f64);
-REGISTER_INJECTED_HOST_FUNCTION(_eosio_ui64_to_f64);
 
 // producer api
 REGISTER_LEGACY_HOST_FUNCTION(get_active_producers);

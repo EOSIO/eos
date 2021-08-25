@@ -72,9 +72,9 @@ notus:
    __builtin_unreachable();
 }
 
-static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
+static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory",
   (void*)&eos_vm_oc_grow_memory,
-  std::integral_constant<std::size_t, find_intrinsic_index("eosvmoc_internal.grow_memory")>::value
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
@@ -82,11 +82,11 @@ static void eosio_exit(int32_t code) {
    siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_CLEAN_EXIT);
    __builtin_unreachable();
 }
-static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
-  std::integral_constant<std::size_t, find_intrinsic_index("env.eosio_exit")>::value
+static intrinsic eosio_exit_intrinsic("env.eosio_exit", (void*)&eosio_exit,
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
 );
 
-static void throw_internal_exception(const char* const s) {
+void throw_internal_exception(const char* const s) {
    *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
    siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
    __builtin_unreachable();
@@ -94,8 +94,8 @@ static void throw_internal_exception(const char* const s) {
 
 #define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
-	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,IR::FunctionType::get(),(void*)&name, \
-     std::integral_constant<std::size_t, find_intrinsic_index(#module "." #name)>::value \
+	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,(void*)&name, \
+     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
    ); \
 	void name()
 
@@ -118,6 +118,9 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,indirect_call_oob) {
 DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
+
+void register_softfloat();
+static auto registration = (register_softfloat(),0);
 
 struct executor_signal_init {
    executor_signal_init() {
@@ -149,19 +152,12 @@ executor::executor(const code_cache_base& cc) {
    mapping_is_executable = true;
 }
 
-void executor::execute(const code_descriptor& code, memory& mem, apply_context& context) {
+void executor::execute(const code_descriptor& code, memory& mem, void* context, uint64_t max_call_depth, uint64_t max_pages, timer_base* timer, uint64_t receiver, uint64_t account, uint64_t action) {
    if(mapping_is_executable == false) {
       mprotect(code_mapping, code_mapping_size, PROT_EXEC|PROT_READ);
       mapping_is_executable = true;
    }
 
-   uint64_t max_call_depth = eosio::chain::wasm_constraints::maximum_call_depth+1;
-   uint64_t max_pages = eosio::chain::wasm_constraints::maximum_linear_memory/eosio::chain::wasm_constraints::wasm_page_size;
-   if(context.control.is_builtin_activated(builtin_protocol_feature_t::configurable_wasm_limits)) {
-      const wasm_config& config = context.control.get_global_properties().wasm_configuration;
-      max_call_depth = config.max_call_depth;
-      max_pages = config.max_pages;
-   }
    stack.reset(max_call_depth);
    EOS_ASSERT(code.starting_memory_pages <= (int)max_pages, wasm_execution_error, "Initial memory out of range");
 
@@ -197,7 +193,7 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    cb->execution_thread_code_length = code_mapping_size;
    cb->execution_thread_memory_start = (uintptr_t)mem.start_of_memory_slices();
    cb->execution_thread_memory_length = mem.size_of_memory_slice_mapping();
-   cb->ctx = &context;
+   cb->ctx = context;
    executors_exception_ptr = nullptr;
    cb->eptr = &executors_exception_ptr;
    cb->current_call_depth_remaining = max_call_depth + 1;
@@ -211,17 +207,17 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
    cb->is_running = true;
    cb->globals = globals;
 
-   context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
+   timer->set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
       syscall(SYS_mprotect, self->code_mapping, self->code_mapping_size, PROT_NONE);
       self->mapping_is_executable = false;
    }, this);
-   context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
+   timer->checktime(); //catch any expiration that might have occurred before setting up callback
 
-   auto cleanup = fc::make_scoped_exit([cb, &tt=context.trx_context.transaction_timer, &mem=mem](){
+   auto cleanup = fc::make_scoped_exit([cb, timer, &mem=mem](){
       cb->is_running = false;
       cb->bounce_buffers->clear();
-      tt.set_expiration_callback(nullptr, nullptr);
+      timer->set_expiration_callback(nullptr, nullptr);
 
       uint64_t base_pages = mem.size_of_memory_slice_mapping()/memory::stride - 1;
       if(cb->current_linear_memory_pages > base_pages) {
@@ -246,12 +242,12 @@ void executor::execute(const code_descriptor& code, memory& mem, apply_context& 
                   start_func();
                }
             }, code.start);
-            apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
+            apply_func(receiver, account, action);
          });
          break;
       //case 1: clean eosio_exit
       case EOSVMOC_EXIT_CHECKTIME_FAIL:
-         context.trx_context.checktime();
+         timer->checktime();
          break;
       case EOSVMOC_EXIT_SEGV:
          EOS_ASSERT(false, wasm_execution_error, "access violation");

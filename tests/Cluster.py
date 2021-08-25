@@ -723,6 +723,13 @@ class Cluster(object):
         return ret
 
     @staticmethod
+    def createAMQPQueue(queueName):
+        Utils.runCmdReturnStr("rabbitmq-plugins enable rabbitmq_management")
+        cmd="curl -u guest:guest -H \"content-type:application/json\" -XPUT http://127.0.0.1:15672/api/queues/%%2F/%s -d'{\"durable\":true}' " % \
+            (queueName)
+        return Utils.runCmdReturnStr(cmd)
+
+    @staticmethod
     def getClientVersion(fullVersion=False):
         """Returns client version (string)"""
         p = re.compile(r'^v?(.+)\n$')
