@@ -2212,11 +2212,13 @@ namespace eosio {
          if( !cp->current() ) return true;
          send_buffer_type sb = buff_factory.get_send_buffer( b, cp->protocol_version.load() );
          if( !sb ) {
-            peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
-                       ("n", b->block_num())("id", b->calculate_id().str().substr(8,16)) );
-            // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
-            cp->no_retry = go_away_reason::fatal_other;
-            cp->enqueue( go_away_message( fatal_other ) );
+            cp->strand.post( [cp, sb{std::move(sb)}, bnum, id]() {
+               peer_wlog( cp, "Sending go away for incomplete block #${n} ${id}...",
+                          ("n", bnum)("id", id.str().substr(8,16)) );
+               // unable to convert to v0 signed block and client doesn't support proto_pruned_types, so tell it to go away
+               cp->no_retry = go_away_reason::fatal_other;
+               cp->enqueue( go_away_message( fatal_other ) );
+            } );
             return true;
          }
 
