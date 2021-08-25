@@ -7,6 +7,7 @@
 #include <abieos.hpp>
 #include <eosio/abi.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <chainbase/pinnable_mapped_file.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/log/trace.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -62,7 +63,9 @@ struct streamer_plugin_impl : public streamer_t {
 
 static abstract_plugin& _streamer_plugin = app().register_plugin<streamer_plugin>();
 
-streamer_plugin::streamer_plugin() : my(std::make_shared<streamer_plugin_impl>()) {}
+streamer_plugin::streamer_plugin() : my(std::make_shared<streamer_plugin_impl>()) {
+   app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
+}
 
 streamer_plugin::~streamer_plugin() {}
 
