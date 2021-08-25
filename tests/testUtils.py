@@ -14,6 +14,7 @@ from datetime import datetime
 from sys import stdout
 from sys import exit
 import traceback
+import shutil
 
 ###########################################################################################
 
@@ -126,6 +127,13 @@ class Utils:
         if trailingSlash:
            path=os.path.join(path, "")
         return path
+
+    @staticmethod
+    def rmNodeDataDir(ext, rmState=True, rmBlocks=True):
+        if rmState:
+            shutil.rmtree(Utils.getNodeDataDir(ext, "state"))
+        if rmBlocks:
+            shutil.rmtree(Utils.getNodeDataDir(ext, "blocks"))
 
     @staticmethod
     def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):

@@ -1355,7 +1355,7 @@ class Node(object):
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, nodeId, chainArg=None, newChain=False, skipGenesis=True, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1376,7 +1376,7 @@ class Node(object):
                 if skip:
                     skip=False
                     continue
-                if "--genesis-json" == i or "--genesis-timestamp" == i:
+                if skipGenesis and ("--genesis-json" == i or "--genesis-timestamp" == i):
                     skip=True
                     continue
 
