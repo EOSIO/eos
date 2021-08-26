@@ -1,17 +1,35 @@
+## Command
+```sh
+cleos get account [OPTIONS] name [core-symbol]
+```
+**Where**:
+* [`OPTIONS`] = See **Options** in [**Command Usage**](command-usage) section below
+* `name` = The name of the account to retrieve
+* [`core-symbol`] = The expected core symbol of the chain you are querying
+
+**Note:** The arguments and options enclosed in square brackets are optional.
+
 ## Description
-Retrieves an account from the blockchain
+Use this command to retrieve information associated with an EOSIO account. 
 
-## Positional Parameters
-- `name` _TEXT_ - The name of the account to retrieve
-- `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying
+## Command Usage
+The following information shows the different positionals and options you can use with the `cleos get account` command:
 
-## Options
-- `-j,--json` - Output in JSON format
+### Positionals
+* `name` _TEXT_ REQUIRED - The name of the account to retrieve
+* `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying
+
+### Options
+* `-h,--help` - Print this help message and exit
+* `-j,--json` - Output in JSON format
+
+## Requirements
+For prerequisites to run this command, see the **Before you Begin** section of the [How to Get Account Information](../../02_how-to-guides/how-to-get-account-information.md) topic.
 
 ## Examples
+The following examples demonstrate the `cleos get account` command:
 
-### Get formatted data for user **eosio**
-
+**Example 1.** Retrieve human-readable information about the `eosio` account:
 ```sh
 cleos get account eosio
 ```
@@ -35,8 +53,8 @@ cpu bandwidth: (averaged over 3 days)
 
 producers:     <not voted>
 ```
-### Get JSON data for user **eosio**
 
+**Example 2.** Retrieve JSON-formatted data about the `eosio` account:
 ```sh
 cleos get account eosio --json
 ```
@@ -106,4 +124,4 @@ cleos get account eosio --json
 ```
 
 ## See Also
-- [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.
+* [Accounts and Permissions](https://developers.eos.io/welcome/v2.1/protocol/accounts_and_permissions) protocol document.

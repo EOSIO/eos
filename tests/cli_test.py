@@ -27,7 +27,7 @@ def cleos_help_test(args):
 def cli11_bugfix_test():
     """Test that subcommand names can be used as option arguments"""
     completed_process = subprocess.run(
-        ['./programs/cleos/cleos', '-u', 'http://localhost:0/',
+        ['./programs/cleos/cleos', '--no-auto-keosd', '-u', 'http://localhost:0/',
          'push', 'action', 'accout', 'action', '["data"]', '-p', 'wallet'],
         check=False,
         stderr=subprocess.PIPE)
@@ -46,13 +46,13 @@ def cli11_optional_option_arg_test():
     chain = 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f'
     key = '5Jgfqh3svgBZvCAQkcnUX8sKmVUkaUekYDGqFakm52Ttkc5MBA4'
 
-    output = subprocess.check_output(['./programs/cleos/cleos', 'sign',
+    output = subprocess.check_output(['./programs/cleos/cleos', '--no-auto-keosd', 'sign',
                                       '-c', chain, '-k', '{}'],
                                      input=key.encode(),
                                      stderr=subprocess.DEVNULL)
     assert(b'signatures' in output)
 
-    output = subprocess.check_output(['./programs/cleos/cleos', 'sign',
+    output = subprocess.check_output(['./programs/cleos/cleos', '--no-auto-keosd', 'sign',
                                       '-c', chain, '-k', key, '{}'])
     assert(b'signatures' in output)
 

@@ -231,6 +231,8 @@ void cloner_plugin::set_program_options(options_description& cli, options_descri
       "Zipkin localEndpoint.serviceName sent with each span" );
    op("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
       "Timeout for sending Zipkin span." );
+   op("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
+      "Retry interval for connecting to Zipkin." );
    // todo: remove
    op("filter-name", bpo::value<std::string>(), "Filter name");
    op("filter-wasm", bpo::value<std::string>(), "Filter wasm");
@@ -258,7 +260,8 @@ void cloner_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>() );
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-retry-interval-us"].as<uint32_t>() );
       }
    }
    FC_LOG_AND_RETHROW()
@@ -282,6 +285,7 @@ void cloner_plugin::set_streamer(std::function<void(const char* data, uint64_t d
 }
 
 void cloner_plugin::handle_sighup() {
+   fc::zipkin_config::handle_sighup();
 }
 
 } // namespace b1

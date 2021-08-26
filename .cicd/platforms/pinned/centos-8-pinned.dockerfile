@@ -7,10 +7,10 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y  graphviz bzip2-devel openssl-devel gmp-devel && \
     yum --enablerepo=extras install -y  file libusbx-devel && \
     yum --enablerepo=extras install -y libcurl-devel patch vim-common jq && \
-    yum install -y python3 glibc-locale-source glibc-langpack-en && \
+    yum install -y python3 glibc-locale-source glibc-langpack-en postgresql-server postgresql-server-devel libpq-devel && \
     yum clean all && rm -rf /var/cache/yum
 RUN dnf install -y  https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    dnf group install -y  "Development Tools" && \
+    dnf group install -y  "Development Tools"  && \
     dnf --enablerepo=powertools install -y doxygen ocaml
 # cmake3.18.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0.tar.gz && \
@@ -32,32 +32,19 @@ RUN git clone --depth 1 --single-branch --branch llvmorg-10.0.0 https://github.c
     cd llvm/llvm && \
     mkdir build && \
     cd build && \
-    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO -DLLVM_ENABLE_TERMINFO=OFF .. && \
+    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DLLVM_ENABLE_PIC=NO -DLLVM_ENABLE_TERMINFO=OFF -DLLVM_ENABLE_Z3_SOLVER=OFF .. && \
     make -j$(nproc)  && \
     make install && \
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
+RUN curl -LO https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.bz2 && \
     tar -xjf boost_1_72_0.tar.bz2 && \
     cd boost_1_72_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fpie' linkflags='-stdlib=libc++ -pie' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
     rm -rf boost_1_72_0.tar.bz2 /boost_1_72_0
-# install libpq & postgres
-RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
-    dnf -qy module disable postgresql && \
-    dnf install -y postgresql13-devel postgresql13-server \
-  	&& dnf clean all && rm -rf /var/cache/yum
-ENV PostgreSQL_ROOT=/usr/pgsql-13  
-ENV PKG_CONFIG_PATH=/usr/pgsql-13/lib/pkgconfig:/usr/local/lib64/pkgconfig
-#build libpqxx
-RUN curl -L https://github.com/jtv/libpqxx/archive/7.2.1.tar.gz | tar zxvf - && \
-    cd  libpqxx-7.2.1  && \
-    cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/clang.cmake -DSKIP_BUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -S . -B build && \
-    cmake --build build && cmake --install build && \
-    cd .. && rm -rf libpqxx-7.2.1
 # install nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh | bash
 # load nvm in non-interactive shells
@@ -72,4 +59,4 @@ RUN yum install -y nodejs && \
     yum clean all && rm -rf /var/cache/yum
 # setup Postgress
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8 && \
-    su - postgres -c "/usr/pgsql-13/bin/initdb" 
+    su - postgres -c initdb

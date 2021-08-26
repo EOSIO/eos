@@ -342,6 +342,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Zipkin localEndpoint.serviceName sent with each span" )
          ("telemetry-timeout-us", bpo::value<uint32_t>()->default_value(200000),
           "Timeout for sending Zipkin span." )
+         ("telemetry-retry-interval-us", bpo::value<uint32_t>()->default_value(30000000),
+          "Retry interval for connecting to Zipkin." )
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -1230,7 +1232,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if (options.count("telemetry-url")) {
          fc::zipkin_config::init( options["telemetry-url"].as<std::string>(),
                                   options["telemetry-service-name"].as<std::string>(),
-                                  options["telemetry-timeout-us"].as<uint32_t>() );
+                                  options["telemetry-timeout-us"].as<uint32_t>(),
+                                  options["telemetry-retry-interval-us"].as<uint32_t>() );
       }
 
 
