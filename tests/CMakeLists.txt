@@ -115,12 +115,20 @@ set_property(TEST nodeos_protocol_feature_test PROPERTY LABELS nonparallelizable
 
 add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -d 2 -p 4 -n 6 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST distributed-transactions-test PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME distributed-transactions-test-p1 COMMAND tests/distributed-transactions-test.py -d 2 -p 1 -n 6 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST distributed-transactions-test-p1 PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST restart-scenarios-test-resync PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME restart-scenarios-test-resync-p1 COMMAND tests/restart-scenarios-test.py -c resync -p1 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-resync-p1 PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-hard_replay COMMAND tests/restart-scenarios-test.py -c hardReplay -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST restart-scenarios-test-hard_replay PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME restart-scenarios-test-hard_replay-p1 COMMAND tests/restart-scenarios-test.py -c hardReplay -p1 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-hard_replay-p1 PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-none COMMAND tests/restart-scenarios-test.py -c none --kill-sig term -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST restart-scenarios-test-none PROPERTY LABELS nonparallelizable_tests)
+add_test(NAME restart-scenarios-test-none-p1 COMMAND tests/restart-scenarios-test.py -c none --kill-sig term -p1 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-none-p1 PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME terminate-scenarios-test-resync COMMAND tests/terminate-scenarios-test.py -p 1 -c resync --kill-count 1 --terminate-at-block 10 --kill-sig term --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST terminate-scenarios-test-resync PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME terminate-scenarios-test-replay COMMAND tests/terminate-scenarios-test.py -p 1 -c replay --kill-count 1 --terminate-at-block 10 --kill-sig term --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -241,6 +249,9 @@ set_property(TEST nodeos_high_transaction_lr_test PROPERTY LABELS long_running_t
 
 add_test(NAME nodeos_repeat_transaction_lr_test COMMAND tests/nodeos_high_transaction_test.py -v --clean-run --dump-error-detail -p 4 -n 8 --num-transactions 1000 --max-transactions-per-second 500 --send-duplicates WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_repeat_transaction_lr_test PROPERTY LABELS long_running_tests)
+
+add_test(NAME nodeos_high_transaction_lr_test-p1 COMMAND tests/nodeos_high_transaction_test.py -v --clean-run --dump-error-detail -p 1 -n 8 --num-transactions 10000 --max-transactions-per-second 500 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_high_transaction_lr_test PROPERTY LABELS long_running_tests)
 
 add_test(NAME cli_test COMMAND tests/cli_test.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
