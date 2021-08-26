@@ -2,6 +2,7 @@
 #include <appbase/application.hpp>
 #include <appbase/plugin.hpp>
 #include <boost/signals2/connection.hpp>
+#include <optional>
 
 namespace eosio {
 
