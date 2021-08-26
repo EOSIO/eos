@@ -197,16 +197,19 @@ try:
     amountVal=None
     key=""
     try:
-        key="[traces][0][act][name]"
-        typeVal=  transaction["traces"][0]["act"]["name"]
-        key="[traces][0][act][data][quantity]"
-        amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
-        amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+        #key="[traces][0][act][name]"
+        key = "[actions][1][0][action]"
+        typeVal = transaction["actions"][1][0]["action"]
+        ## data in trace log is packed, individual fields can't be accessed directly
+        #key="[traces][0][act][data][quantity]"
+        #amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
+        #amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
 
-    if typeVal != "transfer" or amountVal != 975311:
+    #if typeVal != "transfer" or amountVal != 975311:
+    if typeVal != "transfer":
         errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
 
     Print("Bouncing nodes #00 and #01")
