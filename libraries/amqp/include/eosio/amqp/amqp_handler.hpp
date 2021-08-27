@@ -5,6 +5,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/time.hpp>
 #include <amqpcpp.h>
 #include <condition_variable>
 
@@ -25,11 +26,17 @@ public:
 
    /// Blocks until connection successful or error
    /// @param address AMQP address
+   /// @param retry_timeout time to wait for connection to be established before calling on_err
+   /// @param retry_interval time between retry of connection attempts to AMQP
    /// @param on_err callback for errors, called from amqp thread or caller thread, can be nullptr
-   amqp_handler( const std::string& address, on_error_t on_err )
+   amqp_handler( const std::string& address,
+                 const fc::microseconds& retry_timeout, const fc::microseconds& retry_interval,
+                 on_error_t on_err )
          : first_connect_()
          , thread_pool_( "ampq", 1 ) // amqp is not thread safe, use only one thread
-         , amqp_connection_(  thread_pool_.get_executor(), address,
+         , timer_( thread_pool_.get_executor() )
+         , retry_timeout_( retry_timeout.count() )
+         , amqp_connection_(  thread_pool_.get_executor(), address, retry_interval,
                               [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();} )
          , on_error_( std::move( on_err ) )
    {
@@ -41,7 +48,7 @@ public:
    /// Declare a durable exchange, blocks until successful or error
    /// @param exchange_name AMQP exchange to declare
    /// @param exchange_type AMQP exchange type, empty (direct), "fanout", or "direct" anything else calls on_err
-   void declare_exchange(std::string exchange_name, const std::string& exchange_type) {
+   void declare_exchange(const std::string& exchange_name, const std::string& exchange_type) {
       auto type = AMQP::direct;
       if( !exchange_type.empty() ) {
          if (exchange_type == "fanout") {
@@ -85,7 +92,7 @@ public:
 
    /// Declare a durable queue, blocks until successful or error
    /// @param queue_name AMQP queue name to declare
-   void declare_queue(std::string queue_name) {
+   void declare_queue(const std::string& queue_name) {
       start_cond cond;
       boost::asio::post( thread_pool_.get_executor(), [this, &cond, qn=queue_name]() mutable {
           try {
@@ -123,7 +130,7 @@ public:
       stop();
    }
 
-   /// publish to AMQP, on_error() called if not connected
+   /// publish to AMQP, on_error() called if not connected at time of call
    void publish( std::string exchange, std::string queue_name, std::string correlation_id, std::string reply_to,
                  std::vector<char> buf ) {
       boost::asio::post( thread_pool_.get_executor(),
@@ -145,7 +152,7 @@ public:
    }
 
    /// publish to AMQP calling f() -> std::vector<char> on amqp thread
-   //  on_error() called if not connected
+   //  on_error() called if not connected at time of call
    template<typename Func>
    void publish( std::string exchange, std::string queue_name, std::string correlation_id, std::string reply_to, Func f ) {
       boost::asio::post( thread_pool_.get_executor(),
@@ -167,7 +174,7 @@ public:
       } );
    }
 
-   /// ack consume message
+   /// ack consume message, if not connected at time of call, ack is saved and ack'ed on re-establishment of connection
    /// @param multiple true if given delivery_tag and all previous should be ack'ed
    void ack( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( thread_pool_.get_executor(),
@@ -176,20 +183,20 @@ public:
                   if( my->channel_ )
                      my->channel_->ack( delivery_tag, multiple ? AMQP::multiple : 0 );
                   else
-                     my->on_error( "AMQP Unable to ack: " + std::to_string(delivery_tag) );
+                     my->acks_.emplace_back( ack_reject_t{.tag_ = delivery_tag, .ack_ = true, .multiple_ = multiple} );
                } FC_LOG_AND_DROP()
             } );
    }
 
-   // reject consume message
-   void reject( const delivery_tag_t& delivery_tag ) {
+   /// reject consume message, if not connected at time of call, reject is saved and rejected on re-establishment of connection
+   void reject( const delivery_tag_t& delivery_tag, bool multiple = false ) {
       boost::asio::post( thread_pool_.get_executor(),
-            [my = this, delivery_tag]() {
+            [my = this, delivery_tag, multiple]() {
                try {
                   if( my->channel_ )
-                     my->channel_->reject( delivery_tag );
+                     my->channel_->reject( delivery_tag, multiple ? AMQP::multiple : 0 );
                   else
-                     my->on_error( "AMQP Unable to reject: " + std::to_string(delivery_tag) );
+                     my->acks_.emplace_back( ack_reject_t{.tag_ = delivery_tag, .ack_ = false, .multiple_ = multiple} );
                } FC_LOG_AND_DROP()
             } );
    }
@@ -266,14 +273,36 @@ private:
    void channel_ready(AMQP::Channel* c) {
       ilog( "AMQP Channel ready: ${id}, for ${a}", ("id", c ? c->id() : 0)("a", amqp_connection_.address()) );
       channel_ = c;
+      boost::system::error_code ec;
+      timer_.cancel(ec);
+      for( const ack_reject_t& ack : acks_ ) {
+         if( ack.ack_ )
+            channel_->ack(ack.tag_, ack.multiple_ ? AMQP::multiple : 0);
+         else
+            channel_->reject(ack.tag_, ack.multiple_ ? AMQP::multiple : 0);
+      }
+      acks_.clear();
       init_consume(true);
       first_connect_.set();
    }
 
    // called from amqp thread
    void channel_failed() {
-      elog( "AMQP connection failed to: ${a}", ("a", amqp_connection_.address()) );
+      wlog( "AMQP connection failed to: ${a}", ("a", amqp_connection_.address()) );
       channel_ = nullptr;
+      // connection will automatically be retried by single_channel_retrying_amqp_connection
+
+      boost::system::error_code ec;
+      timer_.expires_from_now(retry_timeout_, ec);
+      if(ec)
+         return;
+      timer_.async_wait(boost::asio::bind_executor(thread_pool_.get_executor(), [this](const auto& ec) {
+         if(ec)
+            return;
+         elog( "AMQP connection timeout" );
+         on_error("AMQP connection timeout");
+      }));
+
    }
 
    // called from amqp thread
@@ -336,11 +365,20 @@ private:
 private:
    start_cond first_connect_;
    eosio::chain::named_thread_pool thread_pool_;
+   boost::asio::steady_timer timer_;
+   const std::chrono::microseconds retry_timeout_;
    single_channel_retrying_amqp_connection amqp_connection_;
    AMQP::Channel* channel_ = nullptr; // null when not connected
    on_error_t on_error_;
    on_consume_t on_consume_;
    std::string queue_name_;
+
+   struct ack_reject_t {
+      delivery_tag_t tag_{};
+      bool ack_ = false;
+      bool multiple_ = false;
+   };
+   std::deque<ack_reject_t> acks_;
 };
 
 } // namespace eosio
