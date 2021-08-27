@@ -69,7 +69,7 @@ reliable_amqp_publisher_impl::reliable_amqp_publisher_impl(const std::string& ur
                                                            const boost::filesystem::path& unconfirmed_path,
                                                            reliable_amqp_publisher::error_callback_t on_fatal_error,
                                                            const std::optional<std::string>& message_id) :
-  retrying_connection(ctx, url, [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
+  retrying_connection(ctx, url, fc::milliseconds(250), [this](AMQP::Channel* c){channel_ready(c);}, [this](){channel_failed();}),
   on_fatal_error(std::move(on_fatal_error)),
   data_file_path(unconfirmed_path), exchange(exchange), routing_key(routing_key), message_id(message_id) {
 
