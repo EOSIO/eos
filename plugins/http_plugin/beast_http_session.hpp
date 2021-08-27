@@ -236,8 +236,8 @@ using local_stream = beast::basic_stream<
             beast_http_session(
                 std::shared_ptr<http_plugin_state> plugin_state,  
                 std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
-                : plugin_state_(plugin_state) 
-                , thread_pool_(thread_pool)
+                : plugin_state_(std::move(plugin_state))
+                , thread_pool_(std::move(thread_pool))
             {  
                 plugin_state_->requests_in_flight += 1;
                 req_parser_.emplace();
@@ -407,7 +407,7 @@ using local_stream = beast::basic_stream<
                 std::shared_ptr<ssl::context> ctx,
                 std::shared_ptr<http_plugin_state> plugin_state, 
                 std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
-                : beast_http_session<plain_session>(plugin_state, thread_pool)
+                : beast_http_session<plain_session>(std::move(plugin_state), std::move(thread_pool))
                 , socket_(std::move(socket))
             {}
 
@@ -459,7 +459,7 @@ using local_stream = beast::basic_stream<
                 std::shared_ptr<ssl::context> ctx,
                 std::shared_ptr<http_plugin_state> plugin_state, 
                 std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
-                : beast_http_session<ssl_session>(plugin_state, thread_pool)
+                : beast_http_session<ssl_session>(std::move(plugin_state), std::move(thread_pool))
                 , stream_(std::move(socket), *ctx)
             { }
 
@@ -537,7 +537,7 @@ using local_stream = beast::basic_stream<
                             std::shared_ptr<ssl::context> ctx,
                             std::shared_ptr<http_plugin_state> plugin_state, 
                             std::shared_ptr<eosio::chain::named_thread_pool> thread_pool)
-            : beast_http_session(plugin_state, thread_pool)
+            : beast_http_session(std::move(plugin_state), std::move(thread_pool))
             , socket_(std::move(sock)) 
             {  }
 

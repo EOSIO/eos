@@ -29,7 +29,6 @@ namespace eosio {
             std::shared_ptr<http_plugin_state> plugin_state_;
 
             typename protocol_type::acceptor acceptor_;
-            typename protocol_type::endpoint listen_ep_;
             socket_type socket_;
 
         public:
@@ -44,9 +43,9 @@ namespace eosio {
                                 std::shared_ptr<ssl::context> ctx, 
                                 std::shared_ptr<http_plugin_state> plugin_state) : 
                 is_listening_(false)
-                , thread_pool_(thread_pool)
-                , ctx_(ctx)
-                , plugin_state_(plugin_state)
+                , thread_pool_(std::move(thread_pool))
+                , ctx_(std::move(ctx))
+                , plugin_state_(std::move(plugin_state))
                 , acceptor_(thread_pool_->get_executor())
                 , socket_(thread_pool_->get_executor())
             { }
